@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>야구 스프레이 차트</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;
+  --text:#e6edf3;--muted:#8b949e;
+  --ta:#58a6ff;--tb:#f0883e;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px;}
+
+/* ── header ── */
+.hdr{width:100%;max-width:1120px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;margin-bottom:14px;}
+.hdr-logo{font-size:1.2rem;}
+.team-inp{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:6px 10px;font-size:.9rem;font-weight:700;width:90px;
+  text-align:center;outline:none;transition:border-color .15s;}
+.team-inp.ta{border-color:var(--ta);color:var(--ta);}
+.team-inp.tb{border-color:var(--tb);color:var(--tb);}
+.vs{font-size:.75rem;font-weight:700;color:var(--muted);padding:4px 8px;
+  border:1px solid var(--border);border-radius:4px;}
+.date-inp{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);padding:6px 10px;font-size:.85rem;outline:none;}
+.spacer{flex:1;}
+.hbtn{padding:7px 13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;
+  font-size:.8rem;font-weight:600;background:#21262d;color:var(--text);
+  transition:all .15s;white-space:nowrap;}
+.hbtn:hover{border-color:var(--muted);}
+.hbtn.pri{background:#1f6feb;border-color:#388bfd;color:#fff;}
+.hbtn.pri:hover{background:#388bfd;}
+
+/* ── layout ── */
+.main{display:flex;gap:14px;align-items:flex-start;width:100%;max-width:1120px;flex-wrap:wrap;justify-content:center;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px;display:flex;flex-direction:column;gap:12px;}
+.plabel{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+
+/* ── team tabs ── */
+.tabs{display:flex;gap:4px;}
+.tab{flex:1;padding:7px;border:2px solid var(--border);border-radius:8px;cursor:pointer;
+  font-size:.82rem;font-weight:700;text-align:center;background:var(--bg);color:var(--muted);
+  transition:all .15s;}
+.tab.act-a{border-color:var(--ta);color:var(--ta);background:rgba(88,166,255,.1);}
+.tab.act-b{border-color:var(--tb);color:var(--tb);background:rgba(240,136,62,.1);}
+
+/* ── lineup ── */
+.lu-row{display:flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid transparent;
+  border-radius:6px;cursor:pointer;transition:all .12s;}
+.lu-row:hover{background:rgba(255,255,255,.04);}
+.lu-row.sel-a{border-color:var(--ta)!important;background:rgba(88,166,255,.08)!important;}
+.lu-row.sel-b{border-color:var(--tb)!important;background:rgba(240,136,62,.08)!important;}
+.ord{font-size:.75rem;font-weight:700;color:var(--muted);width:15px;text-align:center;flex-shrink:0;}
+.bname{background:transparent;border:none;color:var(--text);font-size:.83rem;flex:1;outline:none;padding:2px 3px;}
+.bname::placeholder{color:#484f58;}
+.htgl{font-size:.68rem;font-weight:700;padding:2px 5px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg);color:var(--muted);flex-shrink:0;transition:all .1s;}
+.htgl.L{border-color:#e3b341;color:#e3b341;background:rgba(227,179,65,.1);}
+.htgl.R{border-color:#3fb950;color:#3fb950;background:rgba(63,185,80,.1);}
+
+/* ── score ── */
+.score-row{display:flex;align-items:center;gap:8px;}
+.score-team{flex:1;text-align:center;}
+.score-n{font-size:.72rem;color:var(--muted);margin-bottom:3px;}
+.score-v{font-size:1.6rem;font-weight:900;}
+.score-sep{color:var(--muted);font-size:.8rem;}
+.stat2{display:flex;gap:6px;}
+.stat2-card{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:7px;text-align:center;}
+.stat2-n{font-size:1.2rem;font-weight:800;}
+.stat2-l{font-size:.68rem;color:var(--muted);}
+
+/* ── canvas ── */
+canvas{border-radius:12px;cursor:crosshair;display:block;}
+
+/* ── hit type btns ── */
+.htbtns{display:flex;flex-direction:column;gap:5px;}
+.htbtn{display:flex;align-items:center;gap:8px;padding:8px 11px;border:2px solid transparent;
+  border-radius:8px;cursor:pointer;font-size:.83rem;font-weight:600;
+  background:#21262d;color:#c9d1d9;transition:all .15s;}
+.htbtn:hover{filter:brightness(1.1);}
+.htdot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.htbtn[data-t=single].act{border-color:#3fb950;background:rgba(63,185,80,.15);}
+.htbtn[data-t=double].act{border-color:#58a6ff;background:rgba(88,166,255,.15);}
+.htbtn[data-t=triple].act{border-color:#e3b341;background:rgba(227,179,65,.15);}
+.htbtn[data-t=homer].act{border-color:#f85149;background:rgba(248,81,73,.15);}
+
+/* ── current batter card ── */
+.cb-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.cb-name{font-size:.88rem;font-weight:700;}
+.cb-info{font-size:.75rem;color:var(--muted);margin-top:3px;}
+
+/* ── pitch zone ── */
+.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:90px;}
+.zone-cell{height:26px;border:1px solid var(--border);border-radius:4px;cursor:pointer;
+  background:var(--bg);transition:all .12s;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;color:var(--muted);}
+.zone-cell:hover{border-color:var(--muted);background:#21262d;}
+.zone-cell.zon-sel{border-color:#e3b341;background:rgba(227,179,65,.2);color:#e3b341;font-weight:700;}
+.zone-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.zone-lbl{font-size:.7rem;color:var(--muted);}
+
+/* ── legend ── */
+.legend{display:flex;flex-wrap:wrap;gap:8px;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:.73rem;color:var(--muted);}
+
+/* ── log ── */
+.log-wrap{flex:1;display:flex;flex-direction:column;gap:6px;}
+.log-list{overflow-y:auto;display:flex;flex-direction:column;gap:3px;max-height:200px;}
+.log-list::-webkit-scrollbar{width:3px;}
+.log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.log-item{display:flex;align-items:center;gap:5px;font-size:.76rem;color:var(--muted);
+  padding:4px 7px;border-radius:5px;background:var(--bg);}
+.ldot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ltxt{flex:1;line-height:1.4;}
+.ldel{color:#f85149;cursor:pointer;font-size:.68rem;flex-shrink:0;}
+.ldel:hover{color:#ff7b6b;}
+.empty-msg{color:#484f58;font-size:.8rem;text-align:center;padding:14px;}
+.log-hdr{display:flex;justify-content:space-between;align-items:center;}
+
+/* ── modal ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;
+  align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:22px;width:540px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;gap:14px;}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:1rem;font-weight:700;}
+.modal-x{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;}
+.saved-list{overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1;}
+.saved-item{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;}
+.saved-info{flex:1;}
+.saved-title{font-size:.88rem;font-weight:700;}
+.saved-meta{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.sact{padding:5px 11px;border:1px solid var(--border);border-radius:5px;font-size:.78rem;
+  font-weight:600;cursor:pointer;background:#21262d;color:var(--text);white-space:nowrap;}
+.sact:hover{border-color:var(--muted);}
+.sact.del{color:#f85149;}
+.sact.del:hover{border-color:#f85149;}
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="hdr">
+  <span class="hdr-logo">⚾</span>
+  <input class="team-inp ta" id="nameA" value="홈팀" placeholder="팀A" />
+  <span class="vs">VS</span>
+  <input class="team-inp tb" id="nameB" value="원정팀" placeholder="팀B" />
+  <input class="date-inp" type="date" id="gameDate" />
+  <div class="spacer"></div>
+  <button class="hbtn" onclick="openLoad()">📂 불러오기</button>
+  <button class="hbtn pri" onclick="saveGame()">💾 경기 저장</button>
+  <button class="hbtn" onclick="exportPNG()">📷 PNG</button>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- LEFT: Lineup -->
+  <div class="panel" style="width:210px;">
+    <div class="plabel">라인업 관리</div>
+
+    <div class="tabs">
+      <div class="tab act-a" id="tabA" onclick="switchTeam(0)">홈팀</div>
+      <div class="tab" id="tabB" onclick="switchTeam(1)">원정팀</div>
+    </div>
+
+    <div id="lineupList" style="display:flex;flex-direction:column;gap:3px;"></div>
+
+    <!-- Score -->
+    <div>
+      <div class="plabel" style="margin-bottom:7px;">안타 현황</div>
+      <div class="score-row">
+        <div class="score-team">
+          <div class="score-n" id="snA">홈팀</div>
+          <div class="score-v" id="svA" style="color:var(--ta)">0</div>
+        </div>
+        <div class="score-sep">vs</div>
+        <div class="score-team">
+          <div class="score-n" id="snB">원정팀</div>
+          <div class="score-v" id="svB" style="color:var(--tb)">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Homers -->
+    <div>
+      <div class="plabel" style="margin-bottom:6px;">홈런</div>
+      <div class="stat2">
+        <div class="stat2-card">
+          <div class="stat2-n" id="hrA" style="color:var(--ta)">0</div>
+          <div class="stat2-l" id="hrLA">홈팀</div>
+        </div>
+        <div class="stat2-card">
+          <div class="stat2-n" id="hrB" style="color:var(--tb)">0</div>
+          <div class="stat2-l" id="hrLB">원정팀</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div>
+    <canvas id="field" width="500" height="500"></canvas>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="panel" style="width:228px;">
+
+    <!-- Hit type -->
+    <div>
+      <div class="plabel" style="margin-bottom:7px;">타구 유형</div>
+      <div class="htbtns">
+        <button class="htbtn act" data-t="single" onclick="selHit('single',this)">
+          <span class="htdot" style="background:#3fb950"></span>단타 (1루타)
+        </button>
+        <button class="htbtn" data-t="double" onclick="selHit('double',this)">
+          <span class="htdot" style="background:#58a6ff"></span>2루타
+        </button>
+        <button class="htbtn" data-t="triple" onclick="selHit('triple',this)">
+          <span class="htdot" style="background:#e3b341"></span>3루타
+        </button>
+        <button class="htbtn" data-t="homer" onclick="selHit('homer',this)">
+          <span class="htdot" style="background:#f85149"></span>홈런 ⚡
+        </button>
+      </div>
+    </div>
+
+    <!-- Current batter -->
+    <div>
+      <div class="plabel" style="margin-bottom:6px;">현재 타자</div>
+      <div class="cb-card">
+        <div class="cb-name" id="cbName" style="color:var(--ta)">—</div>
+        <div class="cb-info" id="cbInfo">타자를 선택하세요</div>
+      </div>
+    </div>
+
+    <!-- Pitch zone -->
+    <div>
+      <div class="plabel" style="margin-bottom:6px;">투구 위치 (선택)</div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div class="zone-wrap">
+          <div class="zone-lbl">높음</div>
+          <div class="zone-grid" id="zoneGrid"></div>
+          <div class="zone-lbl">낮음</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:space-between;height:90px;font-size:.65rem;color:var(--muted);">
+          <span>내각</span>
+          <span>중간</span>
+          <span>외각</span>
+        </div>
+      </div>
+      <div style="margin-top:5px;font-size:.7rem;color:#484f58;">클릭으로 투구 위치 표시</div>
+    </div>
+
+    <!-- Legend -->
+    <div>
+      <div class="plabel" style="margin-bottom:6px;">범례</div>
+      <div class="legend">
+        <div class="leg-item">
+          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#555" stroke="#58a6ff" stroke-width="2"/></svg>
+          팀A(원형)
+        </div>
+        <div class="leg-item">
+          <svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,1 11,6 6,11 1,6" fill="#555" stroke="#f0883e" stroke-width="2"/></svg>
+          팀B(마름모)
+        </div>
+        <div class="leg-item"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#3fb950;"></span> 단타</div>
+        <div class="leg-item"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#58a6ff;"></span> 2루타</div>
+        <div class="leg-item"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#e3b341;"></span> 3루타</div>
+        <div class="leg-item"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f85149;"></span> 홈런</div>
+        <div class="leg-item"><svg width="14" height="6" viewBox="0 0 14 6"><line x1="0" y1="3" x2="14" y2="3" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-dasharray="3,3"/></svg> 타구방향</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-wrap">
+      <div class="log-hdr">
+        <div class="plabel">기록 목록</div>
+        <div style="display:flex;gap:6px;">
+          <button style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;" onclick="undoLast()">↩ 취소</button>
+          <button style="font-size:.7rem;color:#f85149;background:none;border:none;cursor:pointer;" onclick="clearAll()">전체삭제</button>
+        </div>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="empty-msg">야구장을 클릭해서 기록하세요!</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Load Modal ── -->
+<div class="overlay" id="loadModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">📂 저장된 경기 기록</div>
+      <button class="modal-x" onclick="closeLoad()">✕</button>
+    </div>
+    <div class="saved-list" id="savedList"></div>
+  </div>
+</div>
+
+<script>
+const HIT_COLORS = {single:'#3fb950',double:'#58a6ff',triple:'#e3b341',homer:'#f85149'};
+const HIT_LABELS = {single:'단타',double:'2루타',triple:'3루타',homer:'홈런'};
+const TEAM_COLORS = ['#58a6ff','#f0883e'];
+const ZONE_LABELS = [
+  '높·내','높·중','높·외',
+  '중·내','중·중','중·외',
+  '낮·내','낮·중','낮·외',
+];
+
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const HX = W/2, HY = H*0.82; // home plate
+
+// ── State ─────────────────────────────────────────────────────────
+const S = {
+  gameDate: new Date().toISOString().slice(0,10),
+  teams: [{name:'홈팀'},{name:'원정팀'}],
+  lineup: [
+    Array.from({length:9},()=>({name:'',hand:'R'})),
+    Array.from({length:9},()=>({name:'',hand:'R'}))
+  ],
+  curTeam: 0,
+  curBatter: 0,
+  curHitType: 'single',
+  curZone: -1,  // -1 = none selected
+  hits: []
+};
+
+// ── Init inputs ────────────────────────────────────────────────────
+document.getElementById('gameDate').value = S.gameDate;
+document.getElementById('gameDate').addEventListener('change', e => { S.gameDate = e.target.value; redraw(); });
+
+document.getElementById('nameA').addEventListener('input', e => {
+  S.teams[0].name = e.target.value || '홈팀';
+  syncLabels(); redraw();
+});
+document.getElementById('nameB').addEventListener('input', e => {
+  S.teams[1].name = e.target.value || '원정팀';
+  syncLabels(); redraw();
+});
+
+function syncLabels() {
+  document.getElementById('tabA').textContent = S.teams[0].name;
+  document.getElementById('tabB').textContent = S.teams[1].name;
+  document.getElementById('snA').textContent = S.teams[0].name;
+  document.getElementById('snB').textContent = S.teams[1].name;
+  document.getElementById('hrLA').textContent = S.teams[0].name;
+  document.getElementById('hrLB').textContent = S.teams[1].name;
+}
+
+// ── Zone grid ──────────────────────────────────────────────────────
+function buildZoneGrid() {
+  const g = document.getElementById('zoneGrid');
+  g.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement('div');
+    c.className = 'zone-cell' + (S.curZone === i ? ' zon-sel' : '');
+    c.title = ZONE_LABELS[i];
+    c.addEventListener('click', () => {
+      S.curZone = S.curZone === i ? -1 : i;
+      buildZoneGrid();
+    });
+    g.appendChild(c);
+  }
+}
+buildZoneGrid();
+
+// ── Lineup render ─────────────────────────────────────────────────
+function renderLineup() {
+  const list = document.getElementById('lineupList');
+  list.innerHTML = '';
+  const t = S.curTeam;
+  S.lineup[t].forEach((b, i) => {
+    const row = document.createElement('div');
+    const isSel = S.curBatter === i;
+    row.className = 'lu-row' + (isSel ? (t===0?' sel-a':' sel-b') : '');
+
+    const ord = document.createElement('span');
+    ord.className = 'ord';
+    ord.textContent = i + 1;
+
+    const ni = document.createElement('input');
+    ni.className = 'bname';
+    ni.placeholder = `${i+1}번 타자`;
+    ni.value = b.name;
+    ni.addEventListener('input', e => { S.lineup[t][i].name = e.target.value; updateCB(); redraw(); });
+    ni.addEventListener('click', e => e.stopPropagation());
+
+    const hb = document.createElement('button');
+    hb.className = 'htgl ' + b.hand;
+    hb.textContent = b.hand === 'L' ? '좌타' : '우타';
+    hb.addEventListener('click', e => {
+      e.stopPropagation();
+      S.lineup[t][i].hand = S.lineup[t][i].hand === 'R' ? 'L' : 'R';
+      hb.textContent = S.lineup[t][i].hand === 'L' ? '좌타' : '우타';
+      hb.className = 'htgl ' + S.lineup[t][i].hand;
+      if (S.curBatter === i) { updateCB(); redraw(); }
+    });
+
+    row.append(ord, ni, hb);
+    row.addEventListener('click', () => {
+      S.curBatter = i;
+      renderLineup();
+      updateCB();
+      redraw();
+    });
+    list.appendChild(row);
+  });
+}
+
+function updateCB() {
+  const t = S.curTeam;
+  const b = S.lineup[t][S.curBatter];
+  const name = b.name || `${S.curBatter+1}번 타자`;
+  document.getElementById('cbName').textContent = `${S.curBatter+1}번 — ${name}`;
+  document.getElementById('cbName').style.color = TEAM_COLORS[t];
+  document.getElementById('cbInfo').textContent = `${S.teams[t].name} · ${b.hand==='L'?'좌타자':'우타자'}`;
+}
+
+function switchTeam(t) {
+  S.curTeam = t;
+  S.curBatter = 0;
+  document.getElementById('tabA').className = 'tab' + (t===0?' act-a':'');
+  document.getElementById('tabB').className = 'tab' + (t===1?' act-b':'');
+  renderLineup();
+  updateCB();
+  redraw();
+}
+
+// ── Hit type ──────────────────────────────────────────────────────
+function selHit(type, btn) {
+  S.curHitType = type;
+  document.querySelectorAll('.htbtn').forEach(b => b.classList.remove('act'));
+  btn.classList.add('act');
+}
+
+// ── Field drawing ─────────────────────────────────────────────────
+function drawField() {
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = HX, cy = HY;
+  const fR = W*0.47, wR = W*0.44, bL = W*0.14;
+
+  // Fair territory
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx,cy);
+  ctx.arc(cx,cy,fR,-Math.PI,0,false);
+  ctx.closePath();
+  ctx.fillStyle='#1c3a1a'; ctx.fill();
+  ctx.restore();
+
+  // Infield grass
+  ctx.beginPath();
+  ctx.arc(cx,cy,W*0.22,0,Math.PI*2);
+  ctx.fillStyle='#1a3318'; ctx.fill();
+
+  // Infield dirt (diamond)
+  ctx.save();
+  ctx.translate(cx, cy - bL*0.5);
+  ctx.rotate(Math.PI/4);
+  const sq = bL*Math.SQRT2;
+  ctx.fillStyle='#3d2b1a';
+  ctx.fillRect(-sq/2,-sq/2,sq,sq);
+  ctx.restore();
+
+  // Outfield wall
+  ctx.beginPath();
+  ctx.arc(cx,cy,wR,-Math.PI,0);
+  ctx.strokeStyle='#c9d1d9'; ctx.lineWidth=3; ctx.setLineDash([]); ctx.stroke();
+
+  // Foul lines
+  ctx.strokeStyle='#c9d1d9'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx-fR,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+fR,cy); ctx.stroke();
+
+  // Bases
+  const bases=[
+    {x:cx,        y:cy-bL},
+    {x:cx-bL*0.7, y:cy-bL*0.5},
+    {x:cx+bL*0.7, y:cy-bL*0.5},
+  ];
+  bases.forEach(b=>{
+    ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(Math.PI/4);
+    ctx.fillStyle='#f0f6fc'; ctx.fillRect(-7,-7,14,14); ctx.restore();
+  });
+
+  // Home plate
+  ctx.fillStyle='#f0f6fc';
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-10); ctx.lineTo(cx+8,cy-4);
+  ctx.lineTo(cx+8,cy+4); ctx.lineTo(cx-8,cy+4); ctx.lineTo(cx-8,cy-4);
+  ctx.closePath(); ctx.fill();
+
+  // Pitcher mound
+  ctx.beginPath(); ctx.arc(cx,cy-bL*0.6,8,0,Math.PI*2);
+  ctx.fillStyle='#3d2b1a'; ctx.fill();
+  ctx.strokeStyle='#c9d1d9'; ctx.lineWidth=1; ctx.stroke();
+
+  // Direction labels
+  ctx.font='10px Segoe UI'; ctx.fillStyle='#484f58'; ctx.textAlign='center';
+  ctx.fillText('좌익수',cx-wR*0.65,cy-wR*0.44);
+  ctx.fillText('중견수',cx,cy-wR*0.92);
+  ctx.fillText('우익수',cx+wR*0.65,cy-wR*0.44);
+  ctx.fillText('좌중간',cx-wR*0.36,cy-wR*0.78);
+  ctx.fillText('우중간',cx+wR*0.36,cy-wR*0.78);
+
+  // Batter stance indicator at home plate
+  const batter = S.lineup[S.curTeam][S.curBatter];
+  const hand = batter.hand;
+  const tc = TEAM_COLORS[S.curTeam];
+  ctx.font='bold 10px Segoe UI'; ctx.fillStyle=tc;
+  // Draw batter box outline
+  if (hand === 'R') {
+    ctx.strokeStyle = tc; ctx.lineWidth=1.5; ctx.setLineDash([2,2]);
+    ctx.strokeRect(cx+10, cy-22, 20, 30);
+    ctx.setLineDash([]);
+    ctx.fillText('우타',cx+20,cy+14);
+  } else {
+    ctx.strokeStyle = tc; ctx.lineWidth=1.5; ctx.setLineDash([2,2]);
+    ctx.strokeRect(cx-30, cy-22, 20, 30);
+    ctx.setLineDash([]);
+    ctx.fillText('좌타',cx-20,cy+14);
+  }
+
+  // Game title bar
+  ctx.font='bold 11px Segoe UI'; ctx.fillStyle='#484f58'; ctx.textAlign='center';
+  ctx.fillText(`${S.teams[0].name}  vs  ${S.teams[1].name}   |   ${S.gameDate}`, cx, 18);
+}
+
+function drawHitMarker(h) {
+  const color = HIT_COLORS[h.type];
+  const tc = TEAM_COLORS[h.teamIdx];
+
+  // Direction line (home → hit)
+  ctx.beginPath();
+  ctx.moveTo(HX, HY);
+  ctx.lineTo(h.x, h.y);
+  ctx.strokeStyle='rgba(255,255,255,0.13)';
+  ctx.lineWidth=1; ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Arrowhead
+  const ang = Math.atan2(h.y-HY, h.x-HX);
+  const al = 8;
+  ctx.beginPath();
+  ctx.moveTo(h.x, h.y);
+  ctx.lineTo(h.x - al*Math.cos(ang-0.4), h.y - al*Math.sin(ang-0.4));
+  ctx.moveTo(h.x, h.y);
+  ctx.lineTo(h.x - al*Math.cos(ang+0.4), h.y - al*Math.sin(ang+0.4));
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.stroke();
+
+  const r = h.type==='homer'?9:7;
+
+  // Shadow
+  ctx.beginPath(); ctx.arc(h.x,h.y,r+3,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fill();
+
+  if (h.teamIdx === 0) {
+    // Team A: filled circle
+    ctx.beginPath(); ctx.arc(h.x,h.y,r,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle=tc; ctx.lineWidth=2; ctx.stroke();
+  } else {
+    // Team B: diamond
+    ctx.save();
+    ctx.translate(h.x,h.y); ctx.rotate(Math.PI/4);
+    const s=r*1.15;
+    ctx.fillStyle=color; ctx.fillRect(-s,-s,s*2,s*2);
+    ctx.strokeStyle=tc; ctx.lineWidth=2; ctx.strokeRect(-s,-s,s*2,s*2);
+    ctx.restore();
+  }
+
+  if (h.type==='homer') {
+    ctx.font='bold 8px Arial'; ctx.fillStyle='#fff';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('★',h.x,h.y); ctx.textBaseline='alphabetic';
+  }
+
+  // Pitch zone dot (small, near hit marker)
+  if (h.zone >= 0) {
+    const zx = h.x + (h.teamIdx===0?-14:14);
+    const zy = h.y - 14;
+    ctx.beginPath(); ctx.arc(zx,zy,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(227,179,65,0.7)'; ctx.fill();
+    ctx.font='bold 6px Arial'; ctx.fillStyle='#000';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(h.zone+1,zx,zy); ctx.textBaseline='alphabetic';
+  }
+}
+
+function redraw() {
+  drawField();
+  S.hits.forEach(h => drawHitMarker(h));
+}
+
+// ── Canvas click ──────────────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (W/rect.width);
+  const y = (e.clientY - rect.top)  * (H/rect.height);
+
+  const dx=x-HX, dy=y-HY;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  if (y >= HY-5) return;           // below home plate
+  if (dist > W*0.46) return;       // beyond wall
+
+  const batter = S.lineup[S.curTeam][S.curBatter];
+  const hit = {
+    id: Date.now(),
+    teamIdx: S.curTeam,
+    batterIdx: S.curBatter,
+    batterName: batter.name || `${S.curBatter+1}번 타자`,
+    batterHand: batter.hand,
+    type: S.curHitType,
+    zone: S.curZone,
+    x, y
+  };
+  S.hits.push(hit);
+  redraw();
+  updateStats();
+  addLogItem(hit);
+});
+
+// ── Stats ─────────────────────────────────────────────────────────
+function updateStats() {
+  const ha = S.hits.filter(h=>h.teamIdx===0);
+  const hb = S.hits.filter(h=>h.teamIdx===1);
+  document.getElementById('svA').textContent = ha.length;
+  document.getElementById('svB').textContent = hb.length;
+  document.getElementById('hrA').textContent = ha.filter(h=>h.type==='homer').length;
+  document.getElementById('hrB').textContent = hb.filter(h=>h.type==='homer').length;
+}
+
+// ── Log ───────────────────────────────────────────────────────────
+function addLogItem(hit) {
+  const list = document.getElementById('logList');
+  const em = list.querySelector('.empty-msg');
+  if (em) em.remove();
+
+  const tc = TEAM_COLORS[hit.teamIdx];
+  const zone = hit.zone >= 0 ? ` [${ZONE_LABELS[hit.zone]}]` : '';
+  const item = document.createElement('div');
+  item.className='log-item'; item.dataset.id=hit.id;
+  item.innerHTML=`
+    <span class="ldot" style="background:${HIT_COLORS[hit.type]}"></span>
+    <span class="ltxt">
+      <span style="color:${tc};font-weight:700;">${S.teams[hit.teamIdx].name}</span>
+      ${hit.batterName}·<b>${HIT_LABELS[hit.type]}</b>
+      <span style="color:#484f58;">${hit.batterHand==='L'?'좌':'우'}타${zone}</span>
+    </span>
+    <span class="ldel" onclick="deleteHit(${hit.id})">✕</span>`;
+  list.prepend(item);
+}
+
+function rebuildLog() {
+  const list = document.getElementById('logList');
+  list.innerHTML='';
+  if (!S.hits.length) {
+    list.innerHTML='<div class="empty-msg">야구장을 클릭해서 기록하세요!</div>';
+    return;
+  }
+  [...S.hits].reverse().forEach(h=>addLogItem(h));
+}
+
+function deleteHit(id) {
+  S.hits = S.hits.filter(h=>h.id!==id);
+  const el=document.querySelector(`.log-item[data-id="${id}"]`);
+  if (el) el.remove();
+  if (!S.hits.length) document.getElementById('logList').innerHTML='<div class="empty-msg">야구장을 클릭해서 기록하세요!</div>';
+  redraw(); updateStats();
+}
+
+function undoLast() {
+  if (!S.hits.length) return;
+  const last = S.hits.pop();
+  const el=document.querySelector(`.log-item[data-id="${last.id}"]`);
+  if (el) el.remove();
+  if (!S.hits.length) document.getElementById('logList').innerHTML='<div class="empty-msg">야구장을 클릭해서 기록하세요!</div>';
+  redraw(); updateStats();
+}
+
+function clearAll() {
+  if (!S.hits.length) return;
+  if (!confirm('모든 기록을 삭제할까요?')) return;
+  S.hits=[];
+  document.getElementById('logList').innerHTML='<div class="empty-msg">야구장을 클릭해서 기록하세요!</div>';
+  redraw(); updateStats();
+}
+
+// ── Save / Load ────────────────────────────────────────────────────
+const SKEY='baseball_spray_v2';
+
+function saveGame() {
+  const saved=JSON.parse(localStorage.getItem(SKEY)||'[]');
+  const game={
+    id:Date.now(),
+    gameDate:S.gameDate,
+    teamNames:[S.teams[0].name,S.teams[1].name],
+    lineup:JSON.parse(JSON.stringify(S.lineup)),
+    hits:JSON.parse(JSON.stringify(S.hits)),
+    savedAt:new Date().toISOString()
+  };
+  saved.unshift(game);
+  localStorage.setItem(SKEY,JSON.stringify(saved));
+  alert(`저장 완료!\n${game.teamNames[0]} vs ${game.teamNames[1]}  (${game.gameDate})\n총 ${game.hits.length}개 기록`);
+}
+
+function openLoad() {
+  const saved=JSON.parse(localStorage.getItem(SKEY)||'[]');
+  const list=document.getElementById('savedList');
+  list.innerHTML='';
+  if (!saved.length) {
+    list.innerHTML='<div class="empty-msg" style="padding:20px;">저장된 경기가 없습니다.</div>';
+  } else {
+    saved.forEach(g=>{
+      const hA=g.hits.filter(h=>h.teamIdx===0).length;
+      const hB=g.hits.filter(h=>h.teamIdx===1).length;
+      const item=document.createElement('div');
+      item.className='saved-item';
+      item.innerHTML=`
+        <div class="saved-info">
+          <div class="saved-title">${g.teamNames[0]} vs ${g.teamNames[1]}</div>
+          <div class="saved-meta">
+            ${g.gameDate} &nbsp;|&nbsp;
+            <span style="color:var(--ta)">${g.teamNames[0]} ${hA}안타</span> /
+            <span style="color:var(--tb)">${g.teamNames[1]} ${hB}안타</span>
+            &nbsp;·&nbsp; ${new Date(g.savedAt).toLocaleString('ko-KR')}
+          </div>
+        </div>
+        <button class="sact" onclick="loadGame(${g.id})">불러오기</button>
+        <button class="sact del" onclick="deleteSaved(${g.id})">삭제</button>`;
+      list.appendChild(item);
+    });
+  }
+  document.getElementById('loadModal').classList.add('open');
+}
+
+function closeLoad() {
+  document.getElementById('loadModal').classList.remove('open');
+}
+
+document.getElementById('loadModal').addEventListener('click', e=>{
+  if (e.target===document.getElementById('loadModal')) closeLoad();
+});
+
+function loadGame(id) {
+  const saved=JSON.parse(localStorage.getItem(SKEY)||'[]');
+  const game=saved.find(g=>g.id===id);
+  if (!game) return;
+  if (S.hits.length && !confirm('현재 기록을 버리고 불러올까요?')) return;
+
+  S.gameDate=game.gameDate;
+  S.teams[0].name=game.teamNames[0];
+  S.teams[1].name=game.teamNames[1];
+  S.lineup=game.lineup;
+  S.hits=game.hits;
+  S.curTeam=0; S.curBatter=0;
+
+  document.getElementById('gameDate').value=game.gameDate;
+  document.getElementById('nameA').value=game.teamNames[0];
+  document.getElementById('nameB').value=game.teamNames[1];
+
+  syncLabels();
+  renderLineup();
+  updateCB();
+  rebuildLog();
+  redraw();
+  updateStats();
+  closeLoad();
+}
+
+function deleteSaved(id) {
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  let saved=JSON.parse(localStorage.getItem(SKEY)||'[]');
+  saved=saved.filter(g=>g.id!==id);
+  localStorage.setItem(SKEY,JSON.stringify(saved));
+  openLoad();
+}
+
+// ── Export ────────────────────────────────────────────────────────
+function exportPNG() {
+  const link=document.createElement('a');
+  link.download=`${S.teams[0].name}vs${S.teams[1].name}_${S.gameDate}.png`;
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+syncLabels();
+renderLineup();
+updateCB();
+redraw();
+</script>
+</body>
+</html>

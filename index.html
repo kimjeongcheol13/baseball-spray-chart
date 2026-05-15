@@ -1,267 +1,329 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Baseball Spray Chart v2</title>
-    <style>
-        :root {
-            --bg: #0d1117;
-            --panel: #161b22;
-            --border: #30363d;
-            --text: #e6edf3;
-            --accent: #58a6ff;
-            /* 타구 결과별 색상 */
-            --color-hit: #44CC66;
-            --color-extra: #FFCC44;
-            --color-homerun: #FF5555;
-            --color-out: #8b949e;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            display: flex; flex-direction: column; height: 100vh;
-            background: var(--bg); color: var(--text);
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            overflow: hidden;
-        }
-
-        /* 헤더 스타일 */
-        .hdr {
-            padding: 10px 20px; background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        .hdr h1 { font-size: 16px; color: var(--accent); }
-
-        .main { display: flex; flex: 1; overflow: hidden; }
-
-        /* 필드 및 캔버스 */
-        .center-col {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; padding: 20px;
-            background: #0d1117;
-        }
-
-        #canvas-wrapper { position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        canvas { display: block; background: #1a2e1a; cursor: crosshair; touch-action: none; }
-
-        /* 컨트롤 패널 */
-        .right-panel {
-            width: 300px; background: var(--panel);
-            border-left: 1px solid var(--border);
-            padding: 20px; display: flex; flex-direction: column; gap: 15px;
-            overflow-y: auto;
-        }
-
-        .section-label { font-size: 11px; color: #8b949e; font-weight: 600; text-transform: uppercase; }
-
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        button {
-            padding: 10px; border-radius: 6px; border: 1px solid var(--border);
-            background: #21262d; color: var(--text); font-weight: 600; cursor: pointer;
-        }
-        button:hover { background: #30363d; }
-        button.active { border-color: var(--accent); background: #1c2d3d; }
-
-        .btn-save { background: #238636; border: none; }
-        .btn-save:hover { background: #2ea043; }
-
-        /* 모달/알림 */
-        #status-msg { margin-top: 10px; font-size: 13px; color: var(--accent); min-height: 1.2em; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Baseball Spray Chart</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;-webkit-tap-highlight-color:transparent}
+input,button,select{font-family:inherit;font-size:13px}
+button{cursor:pointer;border:none;border-radius:4px;padding:4px 8px}
+input[type=text],input[type=date]{background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:3px 6px;outline:none}
+input[type=text]:focus,input[type=date]:focus{border-color:#58a6ff}
+.hdr{flex-shrink:0;border-bottom:1px solid #30363d;background:#161b22;padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hdr .score-block{display:flex;align-items:center;gap:5px}
+.hdr .team-name{width:80px}
+.score-btn{background:#21262d;color:#e6edf3;border:1px solid #30363d;width:24px;height:24px;border-radius:4px;font-size:14px;display:flex;align-items:center;justify-content:center}
+.score-btn:hover{background:#30363d}
+.score-val{font-size:18px;font-weight:700;min-width:28px;text-align:center}
+.hdr .vs{font-weight:700;color:#8b949e;font-size:15px}
+.hdr-actions{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap}
+.btn-save{background:#238636;color:#fff;border:1px solid #2ea043}
+.btn-save:hover{background:#2ea043}
+.btn-load{background:#21262d;color:#e6edf3;border:1px solid #30363d}
+.btn-load:hover{background:#30363d}
+.btn-export{background:#21262d;color:#8b949e;border:1px solid #30363d;font-size:11px}
+.btn-export:hover{background:#30363d;color:#e6edf3}
+.main{flex:1;display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;min-height:0}
+.left-panel{width:200px;flex-shrink:0;overflow-y:auto;border-right:1px solid #30363d;background:#161b22}
+.team-header{padding:6px 8px;font-weight:700;font-size:12px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:6px}
+.batter-row{display:flex;align-items:center;gap:4px;padding:3px 6px;border-bottom:1px solid #21262d;cursor:pointer;transition:background 0.1s}
+.batter-row:hover{background:#21262d}
+.batter-row.active-batter{background:#1c2d3d}
+.batter-num{width:16px;font-size:11px;color:#8b949e;flex-shrink:0}
+.batter-name-input{flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid transparent;color:#e6edf3;padding:1px 2px;font-size:12px}
+.batter-name-input:focus{outline:none;border-bottom-color:#30363d;background:#0d1117}
+.hand-toggle{flex-shrink:0;font-size:10px;padding:2px 4px;border-radius:3px;font-weight:700;cursor:pointer;border:1px solid #30363d;background:#21262d;color:#e6edf3}
+.hand-toggle.left-hand{background:#1c3a2d;color:#44cc66;border-color:#44cc66}
+.hand-toggle.right-hand{background:#2d1c1c;color:#ff5555;border-color:#ff5555}
+.center-col{flex-shrink:0;display:flex;flex-direction:column;padding:10px;gap:6px;background:#0d1117;align-items:center}
+#fieldCanvas{display:block;cursor:crosshair;border-radius:4px;touch-action:none}
+.canvas-controls{width:480px;display:flex;gap:6px;align-items:center}
+.status-bar{flex:1;padding:5px 10px;border:1px solid #30363d;border-radius:4px;background:#161b22;font-size:12px;color:#8b949e;text-align:center}
+.status-bar.pending{border-color:#f85149;color:#f85149}
+.btn-heatmap{background:#21262d;color:#8b949e;border:1px solid #30363d;font-size:11px;padding:4px 8px;white-space:nowrap}
+.btn-heatmap.active{background:#1c2d3d;color:#58a6ff;border-color:#58a6ff}
+.rbi-bar{width:480px;display:none;align-items:center;gap:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;padding:6px 10px}
+.rbi-bar.visible{display:flex}
+.rbi-label{font-size:12px;color:#8b949e}
+.counter-btn{background:#21262d;color:#e6edf3;border:1px solid #30363d;width:22px;height:22px;border-radius:3px;font-size:14px;display:flex;align-items:center;justify-content:center}
+.rbi-val{min-width:20px;text-align:center;font-weight:700}
+.run-check{accent-color:#58a6ff}
+.btn-confirm{background:#238636;color:#fff;border:1px solid #2ea043;padding:3px 10px}
+.btn-confirm:hover{background:#2ea043}
+.btn-cancel-rbi{background:#21262d;color:#e6edf3;border:1px solid #30363d;padding:3px 8px}
+.right-panel{width:255px;flex-shrink:0;overflow-y:auto;border-left:1px solid #30363d;display:flex;flex-direction:column;gap:8px;padding:10px;background:#161b22}
+.section-label{font-size:11px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.pitch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.pitch-btn{padding:5px 2px;border-radius:4px;font-size:12px;font-weight:600;border:2px solid transparent;color:#fff;transition:all 0.1s}
+.pitch-btn:hover{filter:brightness(1.2)}
+.zone-wrap{display:flex;flex-direction:column;gap:3px}
+.zone-header{display:flex;justify-content:space-between;align-items:center}
+.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.zone-cell{background:#21262d;border:1px solid #30363d;border-radius:3px;padding:5px 0;text-align:center;font-size:11px;cursor:pointer;color:#8b949e;transition:all 0.1s}
+.zone-cell:hover{background:#30363d;color:#e6edf3}
+.zone-cell.selected{background:#1c2d3d;border-color:#58a6ff;color:#58a6ff}
+.btn-clear-zone{background:#21262d;color:#8b949e;border:1px solid #30363d;font-size:11px;padding:2px 6px}
+.hit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.hit-btn{padding:5px 4px;border-radius:4px;font-size:12px;font-weight:600;border:2px solid transparent;transition:all 0.1s}
+.hit-btn:hover{filter:brightness(1.2)}
+.traj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.traj-btn{padding:4px 2px;border-radius:4px;font-size:10px;font-weight:700;border:2px solid transparent;transition:all 0.1s;text-align:center}
+.traj-btn:hover{filter:brightness(1.2)}
+.nonhit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.nonhit-btn{padding:5px 2px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid #30363d;background:#21262d;color:#e6edf3;transition:all 0.1s}
+.nonhit-btn:hover{background:#30363d}
+.log-section{flex:1;display:flex;flex-direction:column;min-height:0}
+.log-actions{display:flex;gap:4px;margin-bottom:4px}
+.log-scroll{overflow-y:auto;max-height:150px;border:1px solid #30363d;border-radius:4px}
+.log-item{display:flex;align-items:center;gap:4px;padding:3px 6px;border-bottom:1px solid #21262d;font-size:11px}
+.log-item:last-child{border-bottom:none}
+.log-outcome{font-weight:700;padding:1px 4px;border-radius:3px;font-size:10px}
+.log-delete{background:none;border:none;color:#8b949e;font-size:13px;padding:1px 3px;margin-left:auto}
+.log-delete:hover{color:#f85149}
+.log-empty{padding:10px;text-align:center;color:#8b949e;font-size:11px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#161b22;border:1px solid #30363d;border-radius:8px;width:580px;max-width:95vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-header{padding:10px 14px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.modal-header h3{flex:1;font-size:14px;min-width:0}
+.modal-close{background:#21262d;color:#e6edf3;border:1px solid #30363d;width:28px;height:28px;border-radius:4px;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal-close:hover{background:#f85149;color:#fff}
+.sb-btn{background:#21262d;color:#e6edf3;border:1px solid #30363d;padding:3px 8px;font-size:12px;border-radius:4px}
+.sb-btn:hover{background:#30363d}
+.modal-tabs{display:flex;border-bottom:1px solid #30363d;background:#0d1117;overflow-x:auto}
+.tab-btn{padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:#8b949e;cursor:pointer;font-size:12px;white-space:nowrap}
+.tab-btn.active{color:#58a6ff;border-bottom-color:#58a6ff}
+.modal-body{flex:1;overflow-y:auto;padding:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.stat-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px;text-align:center}
+.stat-card .s-label{font-size:10px;color:#8b949e;margin-bottom:2px}
+.stat-card .s-val{font-size:14px;font-weight:700;color:#e6edf3}
+.pa-table{width:100%;border-collapse:collapse;font-size:11px}
+.pa-table th{background:#21262d;padding:4px 6px;border:1px solid #30363d;text-align:center;color:#8b949e;font-weight:600}
+.pa-table td{padding:4px 6px;border:1px solid #21262d;text-align:center}
+.pa-table tr:nth-child(even) td{background:#0d1117}
+.analysis-section{margin-bottom:14px}
+.analysis-title{font-size:11px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.bar-label{width:110px;font-size:11px;color:#8b949e;flex-shrink:0}
+.bar-track{flex:1;background:#21262d;border-radius:3px;height:14px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.4s}
+.bar-pct{width:38px;text-align:right;font-size:11px;font-weight:700;flex-shrink:0}
+.insight-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:10px;line-height:2}
+.insight-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin:2px}
+.load-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto}
+.load-item{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:10px;display:flex;align-items:center;gap:8px}
+.load-info{flex:1;min-width:0}
+.load-info .li-title{font-weight:700;margin-bottom:2px;font-size:12px}
+.load-info .li-meta{font-size:11px;color:#8b949e}
+.btn-load-item{background:#1f6feb;color:#fff;border:1px solid #388bfd;padding:3px 10px;border-radius:4px;font-size:12px;flex-shrink:0}
+.btn-load-item:hover{background:#388bfd}
+.btn-del-item{background:#21262d;color:#f85149;border:1px solid #f85149;padding:3px 8px;border-radius:4px;font-size:12px;flex-shrink:0}
+.btn-del-item:hover{background:#3d1c1c}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+</style>
 </head>
 <body>
-
 <div class="hdr">
-    <h1>⚾ Pro Spray Analyzer</h1>
-    <div style="display:flex; gap:8px;">
-        <button onclick="downloadImage()" style="font-size:12px; padding:5px 10px;">📸 이미지 저장</button>
-        <button onclick="clearData()" style="font-size:12px; padding:5px 10px; color:#f85149;">🗑️ 초기화</button>
-    </div>
+  <div class="score-block">
+    <input type="text" class="team-name" id="teamNameA" value="팀 A" style="color:#58a6ff;border-color:#58a6ff44">
+    <button class="score-btn" onclick="changeScore(0,-1)">−</button>
+    <span class="score-val" id="scoreA" style="color:#58a6ff">0</span>
+    <button class="score-btn" onclick="changeScore(0,1)">+</button>
+  </div>
+  <span class="vs">VS</span>
+  <div class="score-block">
+    <button class="score-btn" onclick="changeScore(1,-1)">−</button>
+    <span class="score-val" id="scoreB" style="color:#f0883e">0</span>
+    <button class="score-btn" onclick="changeScore(1,1)">+</button>
+    <input type="text" class="team-name" id="teamNameB" value="팀 B" style="color:#f0883e;border-color:#f0883e44">
+  </div>
+  <input type="date" id="gameDate" style="margin-left:6px">
+  <div class="hdr-actions">
+    <button class="btn-export" onclick="exportCSV()">📊 CSV</button>
+    <button class="btn-export" onclick="exportJSON()">📁 JSON</button>
+    <button class="btn-load" onclick="openLoadModal()">📂 불러오기</button>
+    <button class="btn-save" onclick="saveGame()">💾 저장</button>
+  </div>
 </div>
-
 <div class="main">
-    <div class="center-col">
-        <div id="canvas-wrapper">
-            <canvas id="sprayCanvas" width="500" height="500"></canvas>
-        </div>
-        <div id="status-msg">결과를 선택하고 필드를 클릭하세요.</div>
+  <div class="left-panel" id="leftPanel"></div>
+  <div class="center-col">
+    <canvas id="fieldCanvas" width="480" height="480"></canvas>
+    <div class="canvas-controls">
+      <div class="status-bar" id="statusBar">타구 유형을 선택하세요</div>
+      <button class="btn-heatmap" id="heatmapBtn" onclick="toggleHeatmap()">🌡️ 히트맵</button>
     </div>
-
-    <div class="right-panel">
-        <div>
-            <div class="section-label">1. 타구 결과</div>
-            <div class="btn-group" id="outcome-btns">
-                <button onclick="setOutcome('single', this)" style="color:var(--color-hit)">단타</button>
-                <button onclick="setOutcome('extra', this)" style="color:var(--color-extra)">장타</button>
-                <button onclick="setOutcome('homerun', this)" style="color:var(--color-homerun)">홈런</button>
-                <button onclick="setOutcome('out', this)" style="color:var(--color-out)">아웃</button>
-            </div>
-        </div>
-
-        <div>
-            <div class="section-label">2. 타구 궤적</div>
-            <div class="btn-group" id="traj-btns">
-                <button onclick="setTraj('GB', this)">땅볼</button>
-                <button onclick="setTraj('LD', this)">라인드라이브</button>
-                <button onclick="setTraj('FB', this)">플라이</button>
-                <button onclick="setTraj('PU', this)">팝업</button>
-            </div>
-        </div>
-
-        <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
-
-        <button class="btn-save" onclick="saveRecord()">타석 기록 확정</button>
-        <button onclick="toggleHeatmap()" id="heatmapBtn">🌡️ 히트맵 모드: OFF</button>
+    <div class="rbi-bar" id="rbiBar">
+      <span class="rbi-label">타점</span>
+      <button class="counter-btn" onclick="changeRBI(-1)">−</button>
+      <span class="rbi-val" id="rbiVal">0</span>
+      <button class="counter-btn" onclick="changeRBI(1)">+</button>
+      <label style="display:flex;align-items:center;gap:4px;margin-left:8px;font-size:12px">
+        <input type="checkbox" id="runCheck" class="run-check"> 득점
+      </label>
+      <button class="btn-confirm" onclick="confirmHit()" style="margin-left:auto">기록 확인</button>
+      <button class="btn-cancel-rbi" onclick="cancelPending()">취소</button>
     </div>
+  </div>
+  <div class="right-panel">
+    <div id="curBatterInfo" style="background:#21262d;border:1px solid #30363d;border-radius:4px;padding:6px 8px;font-size:12px;color:#8b949e">좌측 라인업에서 타자를 선택하세요</div>
+    <div><div class="section-label">투구 종류</div><div class="pitch-grid" id="pitchGrid"></div></div>
+    <div class="zone-wrap">
+      <div class="zone-header">
+        <span class="section-label" style="margin-bottom:0">투구 위치 <span style="font-size:9px;font-weight:400">(선택)</span></span>
+        <button class="btn-clear-zone" onclick="clearZone()">초기화</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#8b949e;padding:0 4px;margin-top:2px"><span>내각</span><span>중앙</span><span>외각</span></div>
+      <div class="zone-grid" id="zoneGrid"></div>
+    </div>
+    <div><div class="section-label">타구 유형 <span style="font-size:9px;font-weight:400;text-transform:none">(필드 클릭 필요)</span></div><div class="hit-grid" id="hitGrid"></div></div>
+    <div><div class="section-label">타구 궤적 <span style="font-size:9px;font-weight:400;text-transform:none">(선택)</span></div><div class="traj-grid" id="trajGrid"></div></div>
+    <div><div class="section-label">기타 결과 <span style="font-size:9px;font-weight:400;text-transform:none">(즉시 기록)</span></div><div class="nonhit-grid" id="nonhitGrid"></div></div>
+    <div class="log-section">
+      <div class="section-label">타석 기록</div>
+      <div class="log-actions">
+        <button class="sb-btn" onclick="undoLast()" style="font-size:11px">↩ 취소</button>
+        <button class="sb-btn" onclick="clearAllPAs()" style="font-size:11px;color:#f85149;border-color:#f85149">전체삭제</button>
+      </div>
+      <div class="log-scroll" id="logScroll"></div>
+    </div>
+  </div>
 </div>
-
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <button class="sb-btn" onclick="changeSB(-1)">− 도루</button>
+      <button class="sb-btn" onclick="changeSB(1)" style="margin-right:4px">+ 도루</button>
+      <button class="modal-close" onclick="closeStatsModal()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="tab-btn active" onclick="switchTab(0)">📊 통계</button>
+      <button class="tab-btn" onclick="switchTab(1)">📋 타석기록</button>
+      <button class="tab-btn" onclick="switchTab(2)">📈 분석</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="loadModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-header"><h3 style="flex:1">저장된 게임 불러오기</h3><button class="modal-close" onclick="closeLoadModal()">✕</button></div>
+    <div class="modal-body"><div class="load-list" id="loadList"></div></div>
+  </div>
+</div>
 <script>
-    const canvas = document.getElementById('sprayCanvas');
-    const ctx = canvas.getContext('2d');
-    const statusMsg = document.getElementById('status-msg');
-
-    // 상태 변수
-    let pas = JSON.parse(localStorage.getItem('baseball_data')) || [];
-    let currentOutcome = null;
-    let currentTraj = null;
-    let isHeatmap = false;
-
-    // 초기화
-    function init() {
-        drawField();
-        renderDots();
+const PITCH_TYPES=[{name:'직구',color:'#FF5555'},{name:'커브',color:'#5588FF'},{name:'슬라이더',color:'#AA55FF'},{name:'체인지업',color:'#44CC66'},{name:'포크',color:'#FF9944'},{name:'너클',color:'#AAAAAA'},{name:'팜볼',color:'#FFCC44'},{name:'스플리터',color:'#AA7744'},{name:'싱커',color:'#44AACC'}];
+const ZONE_LABELS=['높내','높중','높외','중내','중중','중외','낮내','낮중','낮외'];
+const ZONE_ROW_LABELS=['높음','중간','낮음'];
+const HIT_OUTCOMES=[{key:'single',label:'단타',color:'#44CC66'},{key:'double',label:'2루타',color:'#5588FF'},{key:'triple',label:'3루타',color:'#FFCC44'},{key:'homer',label:'홈런',color:'#FF5555'}];
+const NONHIT_OUTCOMES=[{key:'K',label:'삼진K',color:'#f85149'},{key:'BB',label:'볼넷',color:'#58a6ff'},{key:'HBP',label:'사구',color:'#a371f7'},{key:'OUT',label:'범타',color:'#8b949e'},{key:'SF',label:'희비',color:'#e3b341'},{key:'SAC',label:'희번',color:'#d29922'}];
+const TRAJ_TYPES=[{key:'GB',label:'땅볼',color:'#a8855a'},{key:'LD',label:'라인드라이브',color:'#44CC66'},{key:'FB',label:'플라이볼',color:'#5588FF'},{key:'PU',label:'팝업',color:'#8b949e'}];
+const OUTCOME_COLORS={single:'#44CC66',double:'#5588FF',triple:'#FFCC44',homer:'#FF5555',K:'#f85149',BB:'#58a6ff',HBP:'#a371f7',OUT:'#8b949e',SF:'#e3b341',SAC:'#d29922'};
+const OUTCOME_KR={single:'단타',double:'2루타',triple:'3루타',homer:'홈런',K:'삼진',BB:'볼넷',HBP:'사구',OUT:'범타',SF:'희비',SAC:'희번'};
+const TEAM_COLORS=['#58a6ff','#f0883e'];
+const STORAGE_KEY='baseball_spray_v4';
+let teamNames=['팀 A','팀 B'],teamRuns=[0,0],gameDate='';
+let lineup=[Array.from({length:9},(_,i)=>({name:`타자${i+1}`,hand:'R',sb:0})),Array.from({length:9},(_,i)=>({name:`타자${i+1}`,hand:'R',sb:0}))];
+let pas=[],nextId=1;
+let selectedTeam=0,selectedBatter=0,selectedPitch=null,selectedZone=-1,selectedHit=null,selectedTraj=null;
+let pendingMode=false,pendingHitX=null,pendingHitY=null,pendingRBI=0;
+let modalTeam=0,modalBatter=0,modalTab=0,showHeatmap=false;
+const CW=480,CH=480,HX=CW/2,HY=440;
+function init(){
+  const today=new Date();
+  document.getElementById('gameDate').value=today.toISOString().slice(0,10);
+  gameDate=today.toISOString().slice(0,10);
+  document.getElementById('gameDate').addEventListener('change',e=>{gameDate=e.target.value;drawField();});
+  document.getElementById('teamNameA').addEventListener('input',e=>{teamNames[0]=e.target.value;syncTeamHeaderInput(0);drawField();});
+  document.getElementById('teamNameB').addEventListener('input',e=>{teamNames[1]=e.target.value;syncTeamHeaderInput(1);drawField();});
+  buildPitchGrid();buildZoneGrid();buildHitGrid();buildTrajGrid();buildNonhitGrid();buildLineup();updateBatterInfo();drawField();renderLog();
+  const canvas=document.getElementById('fieldCanvas');
+  canvas.addEventListener('click',onCanvasClick);
+  canvas.addEventListener('touchend',e=>{e.preventDefault();if(!pendingMode)return;const touch=e.changedTouches[0];const rect=canvas.getBoundingClientRect();triggerPlace((touch.clientX-rect.left)*(CW/rect.width),(touch.clientY-rect.top)*(CH/rect.height));},{passive:false});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')cancelPending();});
+}
+function buildPitchGrid(){const g=document.getElementById('pitchGrid');g.innerHTML='';PITCH_TYPES.forEach((pt,i)=>{const b=document.createElement('button');b.className='pitch-btn';b.textContent=pt.name;b.dataset.idx=i;applyPitchStyle(b,i,false);b.onclick=()=>selectPitch(i);g.appendChild(b);});}
+function applyPitchStyle(btn,idx,active){const c=PITCH_TYPES[idx].color;btn.style.background=active?c+'55':c+'22';btn.style.color=c;btn.style.borderColor=active?c:'transparent';btn.style.boxShadow=active?`0 0 8px ${c}66`:'none';}
+function buildZoneGrid(){const g=document.getElementById('zoneGrid');g.innerHTML='';ZONE_LABELS.forEach((lbl,i)=>{const c=document.createElement('div');c.className='zone-cell';c.dataset.zone=i;const row=Math.floor(i/3);c.innerHTML=`<div style="font-size:9px;color:#555;line-height:1">${ZONE_ROW_LABELS[row]}</div><div style="font-size:11px">${i+1}</div>`;c.onclick=()=>selectZone(i);g.appendChild(c);});}
+function buildHitGrid(){const g=document.getElementById('hitGrid');g.innerHTML='';HIT_OUTCOMES.forEach(ho=>{const b=document.createElement('button');b.className='hit-btn';b.textContent=ho.label;b.dataset.key=ho.key;b.style.background=ho.color+'22';b.style.color=ho.color;b.style.borderColor='transparent';b.onclick=()=>selectHit(ho.key);g.appendChild(b);});}
+function buildTrajGrid(){const g=document.getElementById('trajGrid');g.innerHTML='';TRAJ_TYPES.forEach(tt=>{const b=document.createElement('button');b.className='traj-btn';b.textContent=tt.label;b.dataset.key=tt.key;b.style.background=tt.color+'22';b.style.color=tt.color;b.style.borderColor='transparent';b.onclick=()=>selectTraj(tt.key);g.appendChild(b);});}
+function buildNonhitGrid(){const g=document.getElementById('nonhitGrid');g.innerHTML='';NONHIT_OUTCOMES.forEach(no=>{const b=document.createElement('button');b.className='nonhit-btn';b.textContent=no.label;b.style.color=no.color;b.onclick=()=>recordNonHit(no.key);g.appendChild(b);});}
+function buildLineup(){
+  const panel=document.getElementById('leftPanel');panel.innerHTML='';
+  [0,1].forEach(t=>{
+    const hdr=document.createElement('div');hdr.className='team-header';
+    const arrow=document.createElement('span');arrow.style.color=TEAM_COLORS[t];arrow.textContent=t===0?'▲':'▼';hdr.appendChild(arrow);
+    const nameInp=document.createElement('input');nameInp.type='text';nameInp.value=teamNames[t];nameInp.className='batter-name-input';nameInp.style.cssText=`font-weight:700;color:${TEAM_COLORS[t]};width:100px`;nameInp.dataset.teamHdr=t;
+    nameInp.addEventListener('input',e=>{teamNames[t]=e.target.value;document.getElementById(t===0?'teamNameA':'teamNameB').value=e.target.value;drawField();});
+    nameInp.addEventListener('click',e=>e.stopPropagation());hdr.appendChild(nameInp);panel.appendChild(hdr);
+    for(let i=0;i<9;i++){
+      const row=document.createElement('div');row.className='batter-row';row.dataset.team=t;row.dataset.batter=i;
+      if(t===selectedTeam&&i===selectedBatter)row.classList.add('active-batter');
+      const num=document.createElement('span');num.className='batter-num';num.textContent=i+1;
+      const ni=document.createElement('input');ni.type='text';ni.className='batter-name-input';ni.value=lineup[t][i].name;ni.placeholder=`타자${i+1}`;
+      ni.addEventListener('input',e=>{lineup[t][i].name=e.target.value;if(t===modalTeam&&i===modalBatter)updateModalHeader();renderLog();drawField();});
+      ni.addEventListener('click',e=>e.stopPropagation());
+      const htBtn=document.createElement('button');htBtn.className='hand-toggle '+(lineup[t][i].hand==='L'?'left-hand':'right-hand');htBtn.textContent=lineup[t][i].hand==='L'?'좌타':'우타';
+      htBtn.addEventListener('click',e=>{e.stopPropagation();lineup[t][i].hand=lineup[t][i].hand==='L'?'R':'L';htBtn.className='hand-toggle '+(lineup[t][i].hand==='L'?'left-hand':'right-hand');htBtn.textContent=lineup[t][i].hand==='L'?'좌타':'우타';drawField();});
+      row.appendChild(num);row.appendChild(ni);row.appendChild(htBtn);
+      row.addEventListener('click',()=>{selectedTeam=t;selectedBatter=i;updateActiveBatter();updateBatterInfo();drawField();openStatsModal(t,i);});
+      panel.appendChild(row);
     }
-
-    // 결과/궤적 선택
-    function setOutcome(val, btn) {
-        currentOutcome = val;
-        setActive(btn, 'outcome-btns');
-    }
-
-    function setTraj(val, btn) {
-        currentTraj = val;
-        setActive(btn, 'traj-btns');
-    }
-
-    function setActive(targetBtn, parentId) {
-        document.querySelectorAll(`#${parentId} button`).forEach(b => b.classList.remove('active'));
-        targetBtn.classList.add('active');
-    }
-
-    // 캔버스 클릭 이벤트 (3. 모바일 정확도 보정)
-    canvas.addEventListener('click', (e) => {
-        if (!currentOutcome) {
-            statusMsg.textContent = "⚠️ 타구 결과를 먼저 선택해 주세요!";
-            return;
-        }
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width; // 0 ~ 1 사이 비율로 저장
-        const y = (e.clientY - rect.top) / rect.height;
-
-        addPoint(x, y);
-    });
-
-    function addPoint(x, y) {
-        const newPA = {
-            x, y,
-            outcome: currentOutcome,
-            traj: currentTraj,
-            date: new Date().toISOString()
-        };
-        pas.push(newPA);
-        saveToLocal();
-        drawField();
-        renderDots();
-        statusMsg.textContent = "✅ 기록되었습니다.";
-    }
-
-    // 데이터 관리 (4. 저장 기능)
-    function saveToLocal() {
-        localStorage.setItem('baseball_data', JSON.stringify(pas));
-    }
-
-    function clearData() {
-        if(confirm("모든 데이터를 삭제할까요?")) {
-            pas = [];
-            saveToLocal();
-            drawField();
-            renderDots();
-        }
-    }
-
-    // 시각화 로직 (1. 결과 분류 & 2. 히트맵)
-    function drawField() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // 야구장 베이스 라인 그리기 (간략화)
-        ctx.strokeStyle = "rgba(255,255,255,0.2)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(250, 450); ctx.lineTo(50, 250); // 3루 라인
-        ctx.moveTo(250, 450); ctx.lineTo(450, 250); // 1루 라인
-        ctx.stroke();
-    }
-
-    function renderDots() {
-        if (isHeatmap) {
-            drawHeatmap();
-        }
-
-        pas.forEach(p => {
-            const px = p.x * canvas.width;
-            const py = p.y * canvas.height;
-            
-            ctx.beginPath();
-            ctx.arc(px, py, 6, 0, Math.PI * 2);
-            ctx.fillStyle = getOutcomeColor(p.outcome);
-            ctx.fill();
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        });
-    }
-
-    function getOutcomeColor(out) {
-        switch(out) {
-            case 'single': return '#44CC66';
-            case 'extra': return '#FFCC44';
-            case 'homerun': return '#FF5555';
-            default: return '#8b949e';
-        }
-    }
-
-    // 2. 히트맵 기능
-    function drawHeatmap() {
-        pas.forEach(p => {
-            const px = p.x * canvas.width;
-            const py = p.y * canvas.height;
-            const grad = ctx.createRadialGradient(px, py, 0, px, py, 40);
-            grad.addColorStop(0, 'rgba(255, 171, 0, 0.3)');
-            grad.addColorStop(1, 'rgba(255, 171, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(px-40, py-40, 80, 80);
-        });
-    }
-
-    function toggleHeatmap() {
-        isHeatmap = !isHeatmap;
-        document.getElementById('heatmapBtn').textContent = `🌡️ 히트맵 모드: ${isHeatmap ? 'ON' : 'OFF'}`;
-        drawField();
-        renderDots();
-    }
-
-    // 5. 공유 기능 (이미지 다운로드)
-    function downloadImage() {
-        const link = document.createElement('a');
-        link.download = 'spray_chart.png';
-        link.href = canvas.toDataURL();
-        link.click();
-    }
-
-    init();
+  });
+}
+function syncTeamHeaderInput(t){const inp=document.querySelector(`input[data-team-hdr="${t}"]`);if(inp)inp.value=teamNames[t];}
+function updateActiveBatter(){document.querySelectorAll('.batter-row').forEach(r=>{r.classList.toggle('active-batter',parseInt(r.dataset.team)===selectedTeam&&parseInt(r.dataset.batter)===selectedBatter);});}
+function updateBatterInfo(){const b=lineup[selectedTeam][selectedBatter];const el=document.getElementById('curBatterInfo');const hn=b.hand==='L'?'좌타':'우타';const hc=b.hand==='L'?'#44cc66':'#ff5555';el.innerHTML=`<span style="color:${TEAM_COLORS[selectedTeam]};font-weight:700">${teamNames[selectedTeam]}</span> · ${selectedBatter+1}번 타자<br><strong style="font-size:13px">${b.name||`타자${selectedBatter+1}`}</strong> <span style="color:${hc};font-size:11px">${hn}</span>`;}
+function selectPitch(idx){selectedPitch=idx;document.querySelectorAll('.pitch-btn').forEach((b,i)=>applyPitchStyle(b,i,i===idx));}
+function selectZone(idx){selectedZone=selectedZone===idx?-1:idx;document.querySelectorAll('.zone-cell').forEach((c,i)=>c.classList.toggle('selected',i===selectedZone));}
+function clearZone(){selectedZone=-1;document.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('selected'));}
+function selectTraj(key){selectedTraj=selectedTraj===key?null:key;document.querySelectorAll('.traj-btn').forEach(b=>{const tt=TRAJ_TYPES.find(t=>t.key===b.dataset.key);const active=b.dataset.key===selectedTraj;b.style.borderColor=active?tt.color:'transparent';b.style.background=active?tt.color+'44':tt.color+'22';b.style.boxShadow=active?`0 0 6px ${tt.color}66`:'none';});}
+function selectHit(key){if(pendingMode&&selectedHit===key){cancelPending();return;}selectedHit=key;pendingMode=true;document.querySelectorAll('.hit-btn').forEach(b=>{const ho=HIT_OUTCOMES.find(h=>h.key===b.dataset.key);const active=b.dataset.key===key;b.style.borderColor=active?'#fff':'transparent';b.style.boxShadow=active?'0 0 8px rgba(255,255,255,0.3)':'none';b.style.background=active?ho.color+'44':ho.color+'22';});setStatus(`${HIT_OUTCOMES.find(h=>h.key===key).label} 위치를 필드에서 클릭하세요 (ESC 취소)`,true);}
+function toggleHeatmap(){showHeatmap=!showHeatmap;document.getElementById('heatmapBtn').classList.toggle('active',showHeatmap);drawField();}
+function drawHeatmap(ctx){const hitPAs=pas.filter(p=>p.x!==null);if(hitPAs.length===0)return;ctx.save();hitPAs.forEach(pa=>{const r=55;const oc=OUTCOME_COLORS[pa.outcome]||'#ff5555';const grad=ctx.createRadialGradient(pa.x,pa.y,0,pa.x,pa.y,r);grad.addColorStop(0,oc+'99');grad.addColorStop(0.5,oc+'44');grad.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=grad;ctx.beginPath();ctx.arc(pa.x,pa.y,r,0,Math.PI*2);ctx.fill();});ctx.restore();}
+function onCanvasClick(e){if(!pendingMode)return;const rect=e.target.getBoundingClientRect();triggerPlace((e.clientX-rect.left)*(CW/rect.width),(e.clientY-rect.top)*(CH/rect.height));}
+function triggerPlace(x,y){pendingHitX=x;pendingHitY=y;pendingRBI=0;document.getElementById('rbiVal').textContent='0';document.getElementById('runCheck').checked=false;document.getElementById('rbiBar').classList.add('visible');setStatus('위치 선택됨 · 기록 확인을 누르세요',false);drawField();}
+function changeRBI(delta){pendingRBI=Math.max(0,pendingRBI+delta);document.getElementById('rbiVal').textContent=pendingRBI;}
+function confirmHit(){if(!pendingMode||pendingHitX===null)return;pas.push(makePAObj(selectedHit,pendingHitX,pendingHitY,pendingRBI,document.getElementById('runCheck').checked));resetPendingState();renderLog();drawField();}
+function recordNonHit(key){pas.push(makePAObj(key,null,null,0,false));renderLog();drawField();}
+function makePAObj(outcome,x,y,rbi,run){return{id:nextId++,teamIdx:selectedTeam,batterIdx:selectedBatter,batterName:lineup[selectedTeam][selectedBatter].name||`타자${selectedBatter+1}`,batterHand:lineup[selectedTeam][selectedBatter].hand,pitchType:selectedPitch,zone:selectedZone,traj:selectedTraj,outcome,x,y,rbi,run};}
+function cancelPending(){resetPendingState();drawField();}
+function resetPendingState(){pendingMode=false;pendingHitX=null;pendingHitY=null;selectedHit=null;document.getElementById('rbiBar').classList.remove('visible');document.querySelectorAll('.hit-btn').forEach(b=>{const ho=HIT_OUTCOMES.find(h=>h.key===b.dataset.key);b.style.borderColor='transparent';b.style.boxShadow='none';b.style.background=ho.color+'22';});setStatus('타구 유형을 선택하세요',false);}
+function setStatus(msg,isPending){const el=document.getElementById('statusBar');el.textContent=msg;el.classList.toggle('pending',isPending);}
+function changeScore(team,delta){teamRuns[team]=Math.max(0,teamRuns[team]+delta);document.getElementById(team===0?'scoreA':'scoreB').textContent=teamRuns[team];}
+function renderLog(){const el=document.getElementById('logScroll');if(pas.length===0){el.innerHTML='<div class="log-empty">기록된 타석이 없습니다</div>';return;}el.innerHTML='';[...pas].reverse().forEach(pa=>{const div=document.createElement('div');div.className='log-item';const oc=OUTCOME_COLORS[pa.outcome]||'#8b949e';const pc=pa.pitchType!==null?PITCH_TYPES[pa.pitchType].color:'#8b949e';const pn=pa.pitchType!==null?PITCH_TYPES[pa.pitchType].name:'—';const tc=TEAM_COLORS[pa.teamIdx];const tt=pa.traj?TRAJ_TYPES.find(t=>t.key===pa.traj):null;const tj=tt?`<span style="font-size:9px;color:${tt.color};flex-shrink:0">${tt.key}</span>`:'';div.innerHTML=`<span style="color:${tc};font-size:10px;flex-shrink:0">${pa.batterIdx+1}</span><span style="color:${tc};font-size:10px;max-width:34px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${pa.batterName}</span><span class="log-outcome" style="background:${oc}33;color:${oc}">${OUTCOME_KR[pa.outcome]}</span><span style="color:${pc};font-size:10px;flex-shrink:0">${pn}</span>${tj}${pa.rbi>0?`<span style="font-size:10px;color:#e3b341;flex-shrink:0">타${pa.rbi}</span>`:''}${pa.run?'<span style="font-size:10px;color:#44CC66;flex-shrink:0">득</span>':''}<button class="log-delete" onclick="deletePA(${pa.id})">✕</button>`;el.appendChild(div);});}
+function deletePA(id){pas=pas.filter(p=>p.id!==id);renderLog();drawField();}
+function undoLast(){if(pas.length>0){pas.pop();renderLog();drawField();}}
+function clearAllPAs(){if(confirm('모든 타석 기록을 삭제하시겠습니까?')){pas=[];renderLog();drawField();}}
+function calcStats(ti,bi){const myPAs=pas.filter(p=>p.teamIdx===ti&&p.batterIdx===bi);const PA=myPAs.length,BB=myPAs.filter(p=>p.outcome==='BB').length,HBP=myPAs.filter(p=>p.outcome==='HBP').length,SF=myPAs.filter(p=>p.outcome==='SF').length,SAC=myPAs.filter(p=>p.outcome==='SAC').length,K=myPAs.filter(p=>p.outcome==='K').length;const singles=myPAs.filter(p=>p.outcome==='single').length,doubles=myPAs.filter(p=>p.outcome==='double').length,triples=myPAs.filter(p=>p.outcome==='triple').length,HR=myPAs.filter(p=>p.outcome==='homer').length;const H=singles+doubles+triples+HR,AB=PA-BB-HBP-SF-SAC;const RBI=myPAs.reduce((s,p)=>s+(p.rbi||0),0),R=myPAs.filter(p=>p.run===true).length,SB=lineup[ti][bi].sb||0;const AVG=AB>0?H/AB:0,OBP=(AB+BB+HBP+SF)>0?(H+BB+HBP)/(AB+BB+HBP+SF):0,SLG=AB>0?(singles+2*doubles+3*triples+4*HR)/AB:0,OPS=OBP+SLG,IsoP=SLG-AVG;const babipD=AB-K-HR+SF,BABIP=babipD>0?(H-HR)/babipD:0;const wOBA=PA>0?(0.69*BB+0.72*HBP+0.888*singles+1.271*doubles+1.616*triples+2.101*HR)/PA:0;const wRCp=Math.round(((wOBA-0.320)/1.21+0.115)/0.115*100);const rv=singles*0.47+doubles*0.78+triples*1.09+HR*1.40+BB*0.33+HBP*0.33-(AB-H-K)*0.27-K*0.30;const WPA=PA>0?+(rv/10).toFixed(2):0;const WAR=+(((wOBA-0.320)/1.21*AB+0.0333*AB)/10).toFixed(1);return{PA,AB,H,singles,doubles,triples,HR,BB,HBP,K,SF,SAC,RBI,R,SB,AVG,OBP,SLG,OPS,IsoP,BABIP,wOBA,wRCp,WPA,WAR,myPAs};}
+function getDir(pa){if(pa.x===null)return null;const a=Math.atan2(pa.x-CW/2,HY-pa.y)*180/Math.PI;return pa.batterHand==='R'?(a<-15?'pull':a>15?'oppo':'center'):(a>15?'pull':a<-15?'oppo':'center');}
+function calcAn(myPAs){const wl=myPAs.filter(p=>p.x!==null);const tot=wl.length||1;const pull=wl.filter(p=>getDir(p)==='pull').length,center=wl.filter(p=>getDir(p)==='center').length,oppo=wl.filter(p=>getDir(p)==='oppo').length;const wt=myPAs.filter(p=>p.traj);const totT=wt.length||1;const GB=wt.filter(p=>p.traj==='GB').length,LD=wt.filter(p=>p.traj==='LD').length,FB=wt.filter(p=>p.traj==='FB').length,PU=wt.filter(p=>p.traj==='PU').length;const lf=wl.filter(p=>Math.atan2(p.x-CW/2,HY-p.y)*180/Math.PI<-15).length,rf=wl.filter(p=>Math.atan2(p.x-CW/2,HY-p.y)*180/Math.PI>15).length;return{pp:Math.round(pull/tot*100),cp:Math.round(center/tot*100),op:Math.round(oppo/tot*100),GBp:Math.round(GB/totT*100),LDp:Math.round(LD/totT*100),FBp:Math.round(FB/totT*100),PUp:Math.round(PU/totT*100),lfp:Math.round(lf/tot*100),cfp:Math.round((wl.length-lf-rf)/tot*100),rfp:Math.round(rf/tot*100),twl:wl.length,twt:wt.length};}
+function fmt3(v){if(isNaN(v)||!isFinite(v))return'.000';const s=v.toFixed(3);return s.startsWith('0.')?s.slice(1):(s.startsWith('-0.')?'-'+s.slice(2):s);}
+function openStatsModal(t,i){modalTeam=t;modalBatter=i;modalTab=0;document.querySelectorAll('.tab-btn').forEach((b,idx)=>b.classList.toggle('active',idx===0));updateModalHeader();renderModalContent();document.getElementById('statsModal').classList.add('open');}
+function updateModalHeader(){const b=lineup[modalTeam][modalBatter];document.getElementById('modalTitle').innerHTML=`<span style="color:${TEAM_COLORS[modalTeam]}">${b.name||`타자${modalBatter+1}`}</span> <span style="font-size:11px;color:#8b949e;font-weight:400">${modalBatter+1}번 · ${teamNames[modalTeam]} · ${b.hand==='L'?'좌타':'우타'} · 도루 ${b.sb||0}</span>`;}
+function closeStatsModal(){document.getElementById('statsModal').classList.remove('open');}
+function switchTab(idx){modalTab=idx;document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));renderModalContent();}
+function changeSB(delta){lineup[modalTeam][modalBatter].sb=Math.max(0,(lineup[modalTeam][modalBatter].sb||0)+delta);updateModalHeader();if(modalTab===0)renderModalContent();}
+function renderModalContent(){const body=document.getElementById('modalBody');const st=calcStats(modalTeam,modalBatter);if(modalTab===0){const cards=[{l:'타율',v:fmt3(st.AVG)},{l:'경기',v:st.PA>0?1:0},{l:'타수',v:st.AB},{l:'안타',v:st.H},{l:'홈런',v:st.HR},{l:'2루타',v:st.doubles},{l:'3루타',v:st.triples},{l:'타점',v:st.RBI},{l:'득점',v:st.R},{l:'도루',v:st.SB},{l:'볼넷',v:st.BB},{l:'사구',v:st.HBP},{l:'삼진',v:st.K},{l:'출루율',v:fmt3(st.OBP)},{l:'장타율',v:fmt3(st.SLG)},{l:'OPS',v:fmt3(st.OPS)},{l:'IsoP',v:fmt3(st.IsoP)},{l:'BABIP',v:fmt3(st.BABIP)},{l:'wOBA',v:fmt3(st.wOBA)},{l:'wRC+',v:isFinite(st.wRCp)?st.wRCp:'—'},{l:'WPA',v:isFinite(st.WPA)?st.WPA:'—'},{l:'WAR',v:isFinite(st.WAR)?st.WAR:'—'}];body.innerHTML=`<div class="stats-grid">${cards.map(c=>`<div class="stat-card"><div class="s-label">${c.l}</div><div class="s-val">${c.v}</div></div>`).join('')}</div>`;}else if(modalTab===1){const rows=st.myPAs.map((pa,idx)=>{const oc=OUTCOME_COLORS[pa.outcome]||'#8b949e';const pc=pa.pitchType!==null?PITCH_TYPES[pa.pitchType].color:'#8b949e';const pn=pa.pitchType!==null?PITCH_TYPES[pa.pitchType].name:'—';const zn=pa.zone>=0?ZONE_LABELS[pa.zone]:'—';const tt=pa.traj?TRAJ_TYPES.find(t=>t.key===pa.traj):null;const tj=tt?`<span style="color:${tt.color}">${tt.label}</span>`:'—';return`<tr><td>${idx+1}</td><td style="color:${oc};font-weight:700">${OUTCOME_KR[pa.outcome]}</td><td style="color:${pc}">${pn}</td><td>${zn}</td><td>${tj}</td><td>${pa.rbi}</td><td>${pa.run?'✓':''}</td><td>${getFieldLocation(pa)}</td></tr>`;}).join('');body.innerHTML=`<table class="pa-table"><thead><tr><th>#</th><th>결과</th><th>투구</th><th>존</th><th>궤적</th><th>타점</th><th>득점</th><th>구역</th></tr></thead><tbody>${rows||'<tr><td colspan="8" style="color:#8b949e;padding:12px;text-align:center">기록 없음</td></tr>'}</tbody></table>`;}else{const an=calcAn(st.myPAs);const hand=lineup[modalTeam][modalBatter].hand;const br=(label,pct,color)=>`<div class="bar-row"><span class="bar-label">${label}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="bar-pct" style="color:${color}">${pct}%</span></div>`;const ins=[];if(an.twl>=3){if(an.pp>=50)ins.push({t:'당김 성향 (Pull Hitter)',c:'#58a6ff'});else if(an.op>=40)ins.push({t:'밀어치기 성향 (Oppo Hitter)',c:'#f0883e'});else ins.push({t:'균형 잡힌 타자 (All-Field)',c:'#44CC66'});}if(an.twt>=3){if(an.GBp>=50)ins.push({t:'땅볼형 타자',c:'#a8855a'});else if(an.FBp>=50)ins.push({t:'플라이볼형 타자',c:'#5588FF'});else if(an.LDp>=35)ins.push({t:'라인드라이브형 타자',c:'#44CC66'});}if(st.PA>=3){if(Math.round(st.K/st.PA*100)>=30)ins.push({t:`삼진 ${Math.round(st.K/st.PA*100)}% 주의`,c:'#f85149'});if(Math.round((st.BB+st.HBP)/st.PA*100)>=15)ins.push({t:`볼넷+사구 ${Math.round((st.BB+st.HBP)/st.PA*100)}% (좋은 선구안)`,c:'#58a6ff'});}body.innerHTML=`${ins.length?`<div class="analysis-section"><div class="analysis-title">🔍 인사이트</div><div class="insight-box">${ins.map(i=>`<span class="insight-tag" style="background:${i.c}33;color:${i.c};border:1px solid ${i.c}55">${i.t}</span>`).join('')}</div></div>`:''}<div class="analysis-section"><div class="analysis-title">방향 분포 <span style="font-size:10px;font-weight:400;text-transform:none;color:#555">${an.twl}타구 · ${hand==='R'?'우타':'좌타'}</span></div>${br('당김 (Pull)',an.pp,'#58a6ff')}${br('중앙 (Center)',an.cp,'#44CC66')}${br('밀어치기 (Oppo)',an.op,'#f0883e')}</div><div class="analysis-section"><div class="analysis-title">타구 궤적 분포 <span style="font-size:10px;font-weight:400;text-transform:none;color:#555">${an.twt}타구</span></div>${br('땅볼 (GB)',an.GBp,'#a8855a')}${br('라인드라이브 (LD)',an.LDp,'#44CC66')}${br('플라이볼 (FB)',an.FBp,'#5588FF')}${br('팝업 (PU)',an.PUp,'#8b949e')}</div><div class="analysis-section"><div class="analysis-title">구역별 분포</div>${br('좌측',an.lfp,'#FF5555')}${br('중앙',an.cfp,'#FFCC44')}${br('우측',an.rfp,'#44CC66')}</div><div class="analysis-section"><div class="analysis-title">타석 결과 분포 <span style="font-size:10px;font-weight:400;text-transform:none;color:#555">${st.PA}타석</span></div>${br('안타',st.PA>0?Math.round(st.H/st.PA*100):0,'#44CC66')}${br('삼진',st.PA>0?Math.round(st.K/st.PA*100):0,'#f85149')}${br('볼넷+사구',st.PA>0?Math.round((st.BB+st.HBP)/st.PA*100):0,'#58a6ff')}${br('범타+기타',st.PA>0?Math.round((st.PA-st.H-st.K-st.BB-st.HBP)/st.PA*100):0,'#8b949e')}</div>`;}}
+function getFieldLocation(pa){if(pa.x===null)return'—';const dx=pa.x-CW/2,dy=HY-pa.y,dist=Math.sqrt(dx*dx+dy*dy),angle=Math.atan2(dx,dy)*180/Math.PI;if(dist<85)return'내야';if(angle<-45)return'좌익수';if(angle<-15)return'좌중간';if(angle<15)return'중견수';if(angle<45)return'우중간';return'우익수';}
+function drawField(){const canvas=document.getElementById('fieldCanvas');const ctx=canvas.getContext('2d');ctx.clearRect(0,0,CW,CH);const hp={x:HX,y:HY};ctx.fillStyle='#0d1117';ctx.fillRect(0,0,CW,CH);ctx.save();ctx.beginPath();ctx.moveTo(hp.x,hp.y);ctx.arc(hp.x,hp.y,380,-Math.PI*0.86,-Math.PI*0.14);ctx.closePath();ctx.fillStyle='#162a16';ctx.fill();ctx.restore();ctx.save();ctx.strokeStyle='#ffffff55';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(hp.x,hp.y);ctx.lineTo(hp.x-342,hp.y-342);ctx.moveTo(hp.x,hp.y);ctx.lineTo(hp.x+342,hp.y-342);ctx.stroke();ctx.restore();ctx.save();ctx.beginPath();ctx.arc(hp.x,hp.y,338,-Math.PI*0.86,-Math.PI*0.14);ctx.strokeStyle='#aaaaaa88';ctx.lineWidth=2.5;ctx.stroke();ctx.restore();ctx.save();ctx.beginPath();ctx.arc(hp.x,hp.y-8,135,0,Math.PI*2);ctx.fillStyle='#1e3e1e';ctx.fill();ctx.restore();ctx.save();ctx.translate(hp.x,hp.y-8);ctx.rotate(Math.PI/4);ctx.fillStyle='#2e1e10';ctx.fillRect(-63,-63,126,126);ctx.restore();[{bx:92,by:-92},{bx:0,by:-184},{bx:-92,by:-92}].forEach(b=>{ctx.save();ctx.beginPath();ctx.arc(hp.x+b.bx,hp.y+b.by,18,0,Math.PI*2);ctx.fillStyle='#3a2510';ctx.fill();ctx.restore();});const db=(bx,by)=>{ctx.save();ctx.translate(hp.x+bx,hp.y+by);ctx.rotate(Math.PI/4);ctx.fillStyle='#e8e8e8';ctx.shadowColor='#ffffff66';ctx.shadowBlur=4;ctx.fillRect(-6,-6,12,12);ctx.restore();};db(92,-92);db(0,-184);db(-92,-92);ctx.save();ctx.translate(hp.x,hp.y);ctx.beginPath();ctx.moveTo(-10,-8);ctx.lineTo(10,-8);ctx.lineTo(13,4);ctx.lineTo(0,12);ctx.lineTo(-13,4);ctx.closePath();ctx.fillStyle='#ffffff';ctx.shadowColor='#ffffff88';ctx.shadowBlur=6;ctx.fill();ctx.restore();ctx.save();ctx.beginPath();ctx.arc(hp.x,hp.y-108,9,0,Math.PI*2);ctx.fillStyle='#4a3010';ctx.strokeStyle='#6a5030';ctx.lineWidth=1;ctx.fill();ctx.stroke();ctx.restore();ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle='#ffffff44';ctx.textAlign='center';ctx.fillText('중견수',hp.x,hp.y-308);ctx.fillText('좌중간',hp.x-158,hp.y-242);ctx.fillText('우중간',hp.x+158,hp.y-242);ctx.fillText('좌익수',hp.x-248,hp.y-148);ctx.fillText('우익수',hp.x+248,hp.y-148);ctx.restore();ctx.save();ctx.font='11px sans-serif';ctx.fillStyle='#8b949e';ctx.textAlign='center';ctx.fillText(`${teamNames[0]||'팀 A'} vs ${teamNames[1]||'팀 B'}  |  ${gameDate||''}`,CW/2,15);ctx.restore();const curB=lineup[selectedTeam][selectedBatter];const xOff=curB.hand==='L'?-30:18;ctx.save();ctx.strokeStyle=TEAM_COLORS[selectedTeam]+'99';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.strokeRect(hp.x+xOff,hp.y-22,14,22);ctx.restore();if(showHeatmap)drawHeatmap(ctx);pas.forEach(pa=>{if(pa.x===null)return;drawPAMarker(ctx,pa,hp);});if(pendingMode&&pendingHitX!==null){ctx.save();ctx.beginPath();ctx.arc(pendingHitX,pendingHitY,11,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.15)';ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(hp.x,hp.y);ctx.lineTo(pendingHitX,pendingHitY);ctx.strokeStyle='#ffffff44';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.restore();}}
+function drawPAMarker(ctx,pa,hp){const ptC=pa.pitchType!==null?PITCH_TYPES[pa.pitchType].color:'#aaaaaa';const outC=OUTCOME_COLORS[pa.outcome]||'#aaaaaa';const teamC=TEAM_COLORS[pa.teamIdx];const px=pa.x,py=pa.y;ctx.save();ctx.beginPath();ctx.moveTo(hp.x,hp.y);ctx.lineTo(px,py);ctx.strokeStyle=ptC+'bb';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.restore();const angle=Math.atan2(py-hp.y,px-hp.x);ctx.save();ctx.translate(px,py);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-9,-4);ctx.lineTo(-9,4);ctx.closePath();ctx.fillStyle=ptC;ctx.fill();ctx.restore();ctx.save();ctx.translate(px,py);if(pa.teamIdx===0){ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.fillStyle=outC;ctx.strokeStyle=teamC;ctx.lineWidth=1.8;ctx.fill();ctx.stroke();}else{ctx.rotate(Math.PI/4);ctx.fillStyle=outC;ctx.strokeStyle=teamC;ctx.lineWidth=1.8;ctx.fillRect(-5.5,-5.5,11,11);ctx.strokeRect(-5.5,-5.5,11,11);}ctx.restore();if(pa.traj){const tt=TRAJ_TYPES.find(t=>t.key===pa.traj);ctx.save();ctx.translate(px,py-14);ctx.font='bold 8px sans-serif';ctx.fillStyle=tt.color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(pa.traj,0,0);ctx.restore();}if(pa.outcome==='homer'){ctx.save();ctx.translate(px,py-(pa.traj?24:15));ctx.font='12px sans-serif';ctx.fillStyle='#FFD700';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('★',0,0);ctx.restore();}}
+function exportCSV(){const h=['번호','팀','타자','결과','투구종류','투구위치','타구궤적','타점','득점','타구위치'];const rows=pas.map((pa,i)=>[i+1,teamNames[pa.teamIdx],pa.batterName,OUTCOME_KR[pa.outcome],pa.pitchType!==null?PITCH_TYPES[pa.pitchType].name:'',pa.zone>=0?ZONE_LABELS[pa.zone]:'',pa.traj||'',pa.rbi,pa.run?1:0,getFieldLocation(pa)]);const csv=[h,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`baseball_${gameDate}.csv`;a.click();URL.revokeObjectURL(url);showToast('CSV 다운로드 완료');}
+function exportJSON(){const data={gameDate,teamNames,teamRuns,lineup,pas,exportedAt:new Date().toISOString()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`baseball_${gameDate}.json`;a.click();URL.revokeObjectURL(url);showToast('JSON 다운로드 완료');}
+function saveGame(){const all=getSavedGames();const entry={id:Date.now(),gameDate:document.getElementById('gameDate').value,teamNames:[...teamNames],teamRuns:[...teamRuns],lineup:JSON.parse(JSON.stringify(lineup)),pas:JSON.parse(JSON.stringify(pas)),nextId,savedAt:new Date().toISOString()};all.push(entry);try{localStorage.setItem(STORAGE_KEY,JSON.stringify(all));showToast('저장 완료');}catch(e){showToast('저장 실패: '+e.message,true);}}
+function getSavedGames(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');}catch{return[];}}
+function openLoadModal(){renderLoadList();document.getElementById('loadModal').classList.add('open');}
+function closeLoadModal(){document.getElementById('loadModal').classList.remove('open');}
+function renderLoadList(){const list=document.getElementById('loadList');const games=getSavedGames();if(games.length===0){list.innerHTML='<div style="color:#8b949e;text-align:center;padding:20px">저장된 게임이 없습니다</div>';return;}list.innerHTML='';[...games].reverse().forEach(g=>{const hA=(g.pas||[]).filter(p=>p.teamIdx===0&&['single','double','triple','homer'].includes(p.outcome)).length;const hB=(g.pas||[]).filter(p=>p.teamIdx===1&&['single','double','triple','homer'].includes(p.outcome)).length;const at=new Date(g.savedAt).toLocaleString('ko-KR');const div=document.createElement('div');div.className='load-item';div.innerHTML=`<div class="load-info"><div class="li-title"><span style="color:#58a6ff">${g.teamNames[0]}</span> <span style="color:#58a6ff;font-weight:700">${g.teamRuns[0]}</span>:<span style="color:#f0883e;font-weight:700">${g.teamRuns[1]}</span> <span style="color:#f0883e">${g.teamNames[1]}</span></div><div class="li-meta">${g.gameDate} · ${(g.pas||[]).length}타석 · A:${hA}H B:${hB}H · ${at}</div></div><button class="btn-load-item" onclick="loadGame(${g.id})">불러오기</button><button class="btn-del-item" onclick="deleteSave(${g.id})">삭제</button>`;list.appendChild(div);});}
+function loadGame(id){const g=getSavedGames().find(x=>x.id===id);if(!g)return;teamNames=[...(g.teamNames||['팀 A','팀 B'])];teamRuns=[...(g.teamRuns||[0,0])];lineup=JSON.parse(JSON.stringify(g.lineup));pas=JSON.parse(JSON.stringify(g.pas||[]));nextId=g.nextId||(pas.length>0?Math.max(...pas.map(p=>p.id))+1:1);gameDate=g.gameDate||'';document.getElementById('teamNameA').value=teamNames[0];document.getElementById('teamNameB').value=teamNames[1];document.getElementById('scoreA').textContent=teamRuns[0];document.getElementById('scoreB').textContent=teamRuns[1];document.getElementById('gameDate').value=gameDate;selectedTeam=0;selectedBatter=0;buildLineup();updateBatterInfo();renderLog();drawField();closeLoadModal();showToast('불러오기 완료');}
+function deleteSave(id){if(!confirm('삭제하시겠습니까?'))return;localStorage.setItem(STORAGE_KEY,JSON.stringify(getSavedGames().filter(g=>g.id!==id)));renderLoadList();}
+function showToast(msg,isErr){const t=document.createElement('div');t.textContent=msg;t.style.cssText=['position:fixed','bottom:20px','left:50%','transform:translateX(-50%)',`background:${isErr?'#8b1a1a':'#238636'}`,'color:#fff','padding:8px 20px','border-radius:6px','z-index:9999','font-size:13px','box-shadow:0 4px 12px rgba(0,0,0,0.5)','white-space:nowrap'].join(';');document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+init();
 </script>
-
 </body>
 </html>

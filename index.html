@@ -636,7 +636,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
       </div>
       <div class="tab-pnl" id="pnl-stat">
-        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
+        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
         <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
         <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
         <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
@@ -784,8 +784,8 @@ function goHome(){
 
 // ───── APP STATE ─────
 const AS={hs:0,as:0,lineup:[],batter:null,abs:[],pt:null,zone:null,rbi:0,pending:null};
-const MAX_HITS = 300; // [지침 3번] 점 개수 제한 처리
-let saveTimer; // [지침 1번] localStorage 디바운싱 타이머
+const MAX_HITS = 300; // [PDF 지침 3번] 점 개수 최대치 제한선 확보
+let saveTimer; // [PDF 지침 1번] 성능 최적화용 디바운스 타이머 인스턴스
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
 
 const OB=[
@@ -826,8 +826,15 @@ function initCanvas(){
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
   drawField();
   
-  // [지침 2번] 모바일 터치 두번찍힘 방지 및 스크롤 충돌 제어를 위한 pointerdown 통합 구조 최적화
-  fC.addEventListener('pointerdown', onFClick);
+  // ── [치명적 이벤트 오류 긴급 교정 블록] ──
+  // pointerdown 오동작 제거 및 모바일 터치-스크롤 좌표 유연 동거 모드로 전면 롤백
+  fC.addEventListener('click',onFClick);
+  fC.addEventListener('touchend',e=>{
+    const t=e.changedTouches[0];
+    const r=fC.getBoundingClientRect();
+    onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
+  },{passive:true});
+  
   window.addEventListener('resize',()=>{if(document.getElementById('app-page').style.display!=='none'){initCanvas(); safeRender();}});
 }
 
@@ -846,7 +853,7 @@ function drawField(){
   ctx.setLineDash([]);
   ctx.beginPath();ctx.arc(cx,cy,S2*.89,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1;ctx.stroke();
   const br=S2*.42;[[cx,cy-br*.65],[cx-br*.46,cy-br*.33],[cx+br*.46,cy-br*.33]].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();});
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();fillTimer();
+  ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();ctx.fill();
   ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle='#1a1106';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;ctx.stroke();
   ctx.fillStyle='rgba(255,255,255,.12)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
   ctx.fillText('LF',cx-S2*.32,cy-S2*.58);ctx.fillText('CF',cx,cy-S2*.72);ctx.fillText('RF',cx+S2*.32,cy-S2*.58);
@@ -860,7 +867,7 @@ function drawField(){
 }
 
 function onFClick(e){
-  let x,y;const rect=fC.getBoundingClientRect();const sx=(FS/rect.width),sy=(FS/rect.height);
+  let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
   if(dy>0||dist>FS*.97)return;
@@ -879,25 +886,25 @@ function onFClick(e){
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   
-  // [지침 3번] 점 개수 제한 처리 (최대 MAX_HITS 제한)
-  if (AS.abs.length >= MAX_HITS) {
-    AS.abs.shift(); 
+  // [PDF 지침 3번] 데이터 개수 초과 시 오래된 타구 버리기 (Shift 처리)
+  if(AS.abs.length >= MAX_HITS){
+    AS.abs.shift();
   }
 
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
 }
-function recOther(res){if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}if (AS.abs.length >= MAX_HITS) { AS.abs.shift(); } const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);}
+function recOther(res){if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}if(AS.abs.length >= MAX_HITS){AS.abs.shift();}const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);}
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
 const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','플라이 아웃':'#374151','땅볼 아웃':'#2a3040'};
 function drawDot(r){if(!r.x)return;const x=r.x*FS,y=r.y*FS;const col=RC[r.res]||'#94a3b8';const out=r.res.includes('아웃');hCtx.beginPath();hCtx.arc(x,y,out?4:6.5,0,Math.PI*2);hCtx.fillStyle=col+'bb';hCtx.fill();hCtx.strokeStyle=col;hCtx.lineWidth=1.5;hCtx.stroke();if(!out){hCtx.beginPath();hCtx.arc(x,y,11,0,Math.PI*2);hCtx.strokeStyle=col+'33';hCtx.lineWidth=2;hCtx.stroke();}}
 
-// [지침 6번] requestAnimationFrame 브라우저 프레임 최적화 적용
-function safeRender() {
-  requestAnimationFrame(() => {
-    if(!hCtx) return;
+// [PDF 지침 6번] 브라우저 주사율 렌더링 스케줄링 가속
+function safeRender(){
+  requestAnimationFrame(()=>{
+    if(!hCtx)return;
     hCtx.clearRect(0,0,FS,FS);
     AS.abs.forEach(a=>{if(a.x)drawDot(a);});
   });
@@ -946,7 +953,7 @@ function drawDonut(){
 
 function renderPsTable(){
   const el=document.getElementById('psTable');if(!AS.lineup.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div>';return;}
-  const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
+  const noab=['bold','볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
   el.innerHTML=AS.lineup.map(p=>{const pAbs=AS.abs.filter(a=>a.bid===p.id);const oab=pAbs.filter(a=>!noab.includes(a.res)).length;const h=pAbs.filter(a=>hits.includes(a.res)).length;const av=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';const rbi=pAbs.reduce((s,a)=>s+a.rbi,0);return`<div class="ps-row"><div class="ps-num">${p.num}</div><div class="ps-name">${p.name}</div><div class="ps-avg">${av}</div><div class="ps-ab">${h}H/${oab}AB${rbi>0?' '+rbi+'타점':''}</div></div>`;}).join('');
 }
 
@@ -960,10 +967,10 @@ let _tt;
 function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,3000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
-// [지침 1번] localStorage 비동기 타이머 기반 처리 (메인 스레드 프리징 제어 디바운싱)
+// [PDF 지침 1번] 로컬 스토리지 데이터 무거운 쓰기 작업 디바운싱(Debounce) 최적화
 function saveGame(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
+  saveTimer = setTimeout(()=>{
     const key='sl_'+Date.now();
     const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,lineup:AS.lineup,abs:AS.abs,d:new Date().toLocaleDateString('ko-KR'),ts:new Date().toLocaleString('ko-KR')};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');

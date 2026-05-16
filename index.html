@@ -199,9 +199,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 <div class="app-layout">
   <div class="pnl-left">
-    <div class="tabs" style="border-bottom: 1px solid var(--border);">
-      <div class="tab on" id="subtab-home" onclick="swLineupTab('home')" style="font-size:10px; padding:8px;">홈 라인업</div>
-      <div class="tab" id="subtab-away" onclick="swLineupTab('away')" style="font-size:10px; padding:8px;">원정 라인업</div>
+    <div class="tabs" style="border-bottom: 1px solid var(--border); flex-shrink: 0;">
+      <div class="tab on" id="subtab-home" onclick="swLineupTab('home')" style="font-size:11px; padding:10px 4px; font-weight:700;">홈 라인업</div>
+      <div class="tab" id="subtab-away" onclick="swLineupTab('away')" style="font-size:11px; padding:10px 4px; font-weight:700;">원정 라인업</div>
     </div>
     <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
     <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
@@ -342,12 +342,12 @@ function goHome(){
     const S=220,cx=S/2,cy=S,R=S*.93;
     const bg=mctx.createRadialGradient(cx,cy,0,cx,cy,R);
     bg.addColorStop(0,'#0a1a0c');bg.addColorStop(.55,'#081508');bg.addColorStop(1,'#050e07');
-    mctx.beginPath();mctx.arc(cx,cy,R,-Math.PI,0);mctx.lineTo(cx,cy);mclosed=false;mctx.closePath();mctx.fillStyle=bg;mctx.fill();
+    mctx.beginPath();mctx.arc(cx,cy,R,-Math.PI,0);mctx.lineTo(cx,cy);mctx.closePath();mctx.fillStyle=bg;mctx.fill();
     mctx.beginPath();mctx.arc(cx,cy,R,-Math.PI,0);mctx.arc(cx,cy,R*.88,0,-Math.PI,true);mctx.closePath();mctx.fillStyle='#150e06';mctx.fill();
     mctx.beginPath();mctx.arc(cx,cy,S*.41,-Math.PI,0);mctx.lineTo(cx,cy);mctx.closePath();mctx.fillStyle='#1a1106';mctx.fill();
     mctx.beginPath();mctx.arc(cx,cy,S*.33,-Math.PI,0);mctx.lineTo(cx,cy);mctx.closePath();mctx.fillStyle='#0b1a0d';mctx.fill();
     mctx.strokeStyle='rgba(255,255,255,.15)';mctx.lineWidth=1;
-    mctx.beginPath();mctx.moveTo(cx,cy);mctx.lineTo(cx-R,cy);mctx.stroke();
+    mctx.beginPath();mmoveTo=false;mctx.moveTo(cx,cy);mctx.lineTo(cx-R,cy);mctx.stroke();
     mctx.beginPath();mctx.moveTo(cx,cy);mctx.lineTo(cx+R,cy);mctx.stroke();
     mctx.beginPath();mctx.arc(cx,cy,R*.88,-Math.PI,0);mctx.strokeStyle='rgba(255,255,255,.08)';mctx.lineWidth=1;mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.5)';
@@ -377,7 +377,6 @@ function goHome(){
 })();
 
 // ───── APP STATE ─────
-// 원정팀 리엔업 배열 추가 및 존 기록 구조화 변경
 const AS={
   hs:0,as:0,
   curTeam:'home',
@@ -389,10 +388,10 @@ const AS={
   zone:null,
   rbi:0,
   pending:null,
-  zoneHistory:{} // 코스별 기호 표기용 저장 구조
+  zoneHistory:{}
 };
-const MAX_HITS = 300; // [지침 3번] 최대 점 데이터 보존 리스크 제어
-let saveTimer; // [지침 1번] localStorage 성능 안정화 타이머
+const MAX_HITS = 300; 
+let saveTimer; 
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
 
 const OB=[
@@ -413,12 +412,15 @@ function initApp(){
 
 function chSc(t,d){if(t==='h'){AS.hs=Math.max(0,AS.hs+d);document.getElementById('scH').textContent=AS.hs}else{AS.as=Math.max(0,AS.as+d);document.getElementById('scA').textContent=AS.as}}
 
-// ── 홈 / 원정 라인업 스위칭 ──
+// ── 홈 / 원정 라인업 독립 처리 ──
 function swLineupTab(team) {
+  if(AS.curTeam === team) return;
   AS.curTeam = team;
   document.getElementById('subtab-home').classList.toggle('on', team==='home');
   document.getElementById('subtab-away').classList.toggle('on', team==='away');
   document.getElementById('lineupTitle').textContent = team==='home' ? '홈팀 명단' : '원정팀 명단';
+  
+  // 무한 렌더러 루프 제거를 위해 조용히 컴포넌트 갱신만 수행
   renderLP();
   renderMob();
 }
@@ -443,10 +445,14 @@ function addPlayer(){
 function selBatter(id){
   const targetLineup = getActiveLineup();
   AS.batter=targetLineup.find(p=>p.id===id)||null;
+  
+  // 무한 돔 트리거 차단을 위한 선별적 엘리먼트 타겟팅 고정
+  document.querySelectorAll('.player-row').forEach(row => row.classList.remove('active'));
   renderLP();
   renderMob();
+  
   const d=document.getElementById('batterDisp');
-  if(AS.batter)d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name} (${AS.curTeam === 'home'?'홈':'원정'})</span>`;
+  if(AS.batter) d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name} (${AS.curTeam === 'home'?'홈':'원정'})</span>`;
   else d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
 }
 
@@ -457,9 +463,10 @@ function delPlayer(id,e){
   } else {
     AS.away_lineup=AS.away_lineup.filter(p=>p.id!==id);
   }
-  if(AS.batter&&AS.batter.id===id)selBatter(null);
+  if(AS.batter&&AS.batter.id===id)AS.batter = null;
   renderLP();
   renderMob();
+  selBatter(null);
 }
 
 function renderLP(){
@@ -487,7 +494,13 @@ function renderMob(){
   }).join('');
 }
 
-function selChip(el,k,v){el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');AS[k]=v; logPitchAction();}
+function selChip(el,k,v){
+  el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  AS[k]=v; 
+  logPitchAction();
+}
+
 function selZone(el){
   document.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
@@ -495,12 +508,11 @@ function selZone(el){
   logPitchAction();
 }
 
-// ── 코스별 변화구 기호 인스턴스 기록 핸들러 ──
+// ── 구종/코스 입력 시 메모리 과부하 제거 독립 루틴 ──
 function logPitchAction(){
   if(!AS.zone || !AS.pt) return;
   if(!AS.zoneHistory[AS.zone]) AS.zoneHistory[AS.zone] = [];
   
-  // 구종별 기호 맵핑
   let symbol = '•';
   if(AS.pt === '커브') symbol = 'Ｃ';
   else if(AS.pt === '변화구') symbol = 'Ｖ';
@@ -518,7 +530,6 @@ function refreshZoneDisplay() {
     const zoneName = cell.dataset.z;
     const history = AS.zoneHistory[zoneName] || [];
     if(history.length > 0) {
-      // 마지막 등록된 구종 기호와 개수 요약 노출
       const last = history[history.length - 1];
       cell.innerHTML = `<div style="font-size:10px; font-weight:800; color:var(--blue); text-align:center; line-height:1.2; padding-top:2px;">${last.symbol}<br><span style="font-size:8px; color:var(--text2); font-family:var(--mono);">${history.length}</span></div>`;
     } else {
@@ -533,9 +544,10 @@ function initCanvas(){
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
   drawField();
   
-  // [지침 2번] 마우스 click 이벤트와 모바일 터치 중복 마커 유실 오류 완전 방어 완료
+  // 캔버스 마우스/모바일 제스처 리스너 통합 정밀 보정
   fC.onclick = onFClick;
   fC.ontouchend = function(e) {
+    if(!e.changedTouches || e.changedTouches.length === 0) return;
     const t=e.changedTouches[0];
     const r=fC.getBoundingClientRect();
     onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
@@ -605,7 +617,6 @@ function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').
 const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','플라이 아웃':'#374151','땅볼 아웃':'#2a3040'};
 function drawDot(r){if(!r.x)return;const x=r.x*FS,y=r.y*FS;const col=RC[r.res]||'#94a3b8';const out=r.res.includes('아웃');hCtx.beginPath();hCtx.arc(x,y,out?4:6.5,0,Math.PI*2);hCtx.fillStyle=col+'bb';hCtx.fill();hCtx.strokeStyle=col;hCtx.lineWidth=1.5;hCtx.stroke();if(!out){hCtx.beginPath();hCtx.arc(x,y,11,0,Math.PI*2);hCtx.strokeStyle=col+'33';hCtx.lineWidth=2;hCtx.stroke();}}
 
-// [지침 6번] 프레임 드랍 억제를 위한 스케줄러 동기화 드로잉
 function safeRender(){
   requestAnimationFrame(()=>{
     if(!hCtx)return;
@@ -672,7 +683,6 @@ let _tt;
 function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,3000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
-// [지침 1번] 비동기 디바운스 세이브 핸들링
 function saveGame(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{

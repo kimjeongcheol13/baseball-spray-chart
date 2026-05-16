@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SprayLab — Your Swing, Visualized</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -218,468 +218,91 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .sc-btn{width:22px;height:22px;border:1px solid var(--border2);background:var(--bg-card);color:var(--text2);border-radius:5px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 90ms;font-family:var(--mono);line-height:1}
 .sc-btn:hover{border-color:var(--accent);color:var(--accent)}.sc-btn:active{transform:scale(.88)}
 .sc-val{font-family:var(--mono);font-size:20px;font-weight:700;min-width:28px;text-align:center;color:var(--text)}
-.vs{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:1px}
-.inn-sel{background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;outline:none}
-.inn-sel option{background:var(--bg-card)}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;border:none;outline:none;white-space:nowrap}
-.btn:active{transform:scale(.95)}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#5d9bff}
-.btn-ghost{background:none;border:1px solid var(--border2);color:var(--text2)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim2)}
-.btn-red{background:none;border:1px solid var(--red);color:var(--red)}.btn-red:hover{background:rgba(245,101,101,.1)}
-.btn-icon{padding:7px;border-radius:8px}
-
-/* LAYOUT */
-.app-layout{display:grid;grid-template-columns:220px 1fr 260px;flex:1;overflow:hidden}
-
-/* LEFT */
-.pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.pnl-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.pnl-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3)}
-.lineup-list{flex:1;overflow-y:auto;padding:6px}
-.player-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 100ms;border:1px solid transparent;margin-bottom:3px;position:relative}
-.player-row:hover{background:var(--bg-raised)}.player-row.active{background:var(--accent-dim);border-color:var(--accent)}
-.p-num{font-family:var(--mono);font-size:11px;color:var(--text3);width:18px;text-align:right;flex-shrink:0}
-.p-avatar{width:28px;height:28px;border-radius:50%;background:var(--bg-hover);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--accent);flex-shrink:0}
-.player-row.active .p-avatar{background:var(--accent);color:#fff;border-color:var(--accent)}
-.p-info{flex:1;min-width:0}
-.p-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
-.p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
-.player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
-.add-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
-.inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
-.inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
-
-/* CENTER */
-.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
-.batter-bar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-card);flex-shrink:0}
-.batter-display{font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
-.batter-empty{font-size:12px;color:var(--text3)}
-.batter-hint{font-size:11px;color:var(--text3)}
-.field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden}
-.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair}
-#fldCanvas,#hitCanvas,#ovrCanvas{position:absolute;top:0;left:0;width:100%;height:100%}
-#ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
-#ovrCanvas.show{opacity:1}
-#hitCanvas{pointer-events:none}
-.field-hint{text-align:center;font-size:11px;color:var(--text3);padding:4px 14px;letter-spacing:.3px;flex-shrink:0}
-
-/* INPUT BAR */
-.input-bar{background:var(--bg-card);border-top:1px solid var(--border);padding:10px 14px;flex-shrink:0}
-.ib-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
-.ib-sec{flex-shrink:0}
-.sec-lbl{font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
-.chips{display:flex;gap:3px;flex-wrap:wrap}
-.chip{padding:4px 10px;border-radius:16px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
-.chip:active{transform:scale(.93)}.chip.on,.chip:hover{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px}
-.zone-cell{aspect-ratio:1;border:1px solid var(--border2);border-radius:3px;background:var(--bg-raised);cursor:pointer;transition:all 100ms}
-.zone-cell:hover{background:var(--accent-dim);border-color:var(--accent)}.zone-cell.on{background:var(--accent);border-color:var(--accent)}
-.ib-sec-grow{flex:1;min-width:150px}
-.other-btns{display:flex;gap:3px;flex-wrap:wrap}
-.o-btn{padding:4px 9px;border-radius:14px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
-.o-btn:active{transform:scale(.93)}
-.o-btn.walk:hover{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.08)}
-.o-btn.k:hover{border-color:var(--red);color:var(--red);background:rgba(245,101,101,.08)}
-.o-btn.hbp:hover{border-color:var(--orange);color:var(--orange);background:rgba(251,146,60,.08)}
-.o-btn.sac:hover{border-color:var(--yellow);color:var(--yellow);background:rgba(246,194,62,.08)}
-.o-btn.dp:hover{border-color:var(--text2);color:var(--text);background:var(--bg-hover)}
-.sb-row{display:flex;gap:4px;margin-top:5px}
-.sb-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
-.sb-btn:hover{border-color:var(--yellow);color:var(--yellow)}.sb-btn:active{transform:scale(.93)}
-
-/* RIGHT */
-.pnl-right{background:var(--bg-card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
-.tab{flex:1;padding:11px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;transition:all 100ms;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:4px}
-.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-body{flex:1;overflow-y:auto;padding:10px}
-.tab-pnl{display:none}.tab-pnl.on{display:block}
-
-/* RECORDS */
-.rec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
-.rec-count{font-size:10px;color:var(--text3)}
-.rec-item{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:7px;border:1px solid var(--border);margin-bottom:4px;background:var(--bg-raised);position:relative;transition:border-color 100ms}
-.rec-item:hover{border-color:var(--border2)}
-.badge{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0}
-.b-hit{background:rgba(45,212,160,.12);color:var(--green)}.b-2b{background:rgba(75,140,245,.12);color:var(--accent)}
-.b-3b{background:rgba(246,194,62,.12);color:var(--yellow)}.b-hr{background:rgba(245,101,101,.12);color:var(--red)}
-.b-out{background:rgba(67,76,94,.2);color:var(--text3)}.b-walk{background:rgba(167,139,250,.12);color:var(--purple)}
-.b-k{background:rgba(245,101,101,.12);color:var(--red)}.b-hbp{background:rgba(251,146,60,.12);color:var(--orange)}
-.b-other{background:rgba(67,76,94,.15);color:var(--text2)}
-.rec-info{flex:1;min-width:0}.rec-player{font-size:11px;font-weight:700}.rec-detail{font-size:10px;color:var(--text3);margin-top:1px}
-.rec-del{position:absolute;top:7px;right:7px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:1px 3px;border-radius:3px;transition:all 100ms}
-.rec-del:hover{color:var(--red);background:rgba(245,101,101,.1)}
-
-/* STATS */
-.stat-card{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px}
-.sc-title{font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.stat-it{text-align:center}.stat-v{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text)}.stat-l{font-size:9px;color:var(--text3);margin-top:1px}
-.stat-v-sm{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
-.dir-chart{display:flex;gap:6px;align-items:flex-end;height:52px;margin-bottom:6px}
-.dir-bar-w{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
-.dir-bar{width:100%;border-radius:3px 3px 0 0;min-height:3px;transition:height 500ms cubic-bezier(.4,0,.2,1)}
-.dir-pull{background:var(--red)}.dir-ctr{background:var(--green)}.dir-oppo{background:var(--accent)}
-.dir-pct{font-family:var(--mono);font-size:11px;font-weight:700}.dir-lbl{font-size:9px;color:var(--text3);text-align:center}
-.donut-row{display:flex;align-items:center;gap:12px}
-.donut-cvs{width:72px;height:72px;flex-shrink:0}
-.legend{flex:1}.leg-item{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:10px;color:var(--text2)}
-.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.leg-pct{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text)}
-.ps-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
-.ps-num{font-family:var(--mono);font-size:10px;color:var(--text3);width:18px;text-align:right}
-.ps-name{flex:1;font-weight:700}.ps-avg{font-family:var(--mono);font-size:12px;font-weight:700}.ps-ab{font-size:10px;color:var(--text3)}
-
-/* MODALS */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 180ms}
-.overlay.show{opacity:1;pointer-events:all}
-.modal{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:22px;width:min(320px,92vw);transform:translateY(10px);transition:transform 180ms;box-shadow:var(--shadow)}
-.overlay.show .modal{transform:translateY(0)}
-.modal-title{font-size:15px;font-weight:800;margin-bottom:4px}.modal-sub{font-size:11px;color:var(--text3);margin-bottom:14px}
-.hit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
-.hit-btn{padding:12px 8px;border-radius:9px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;text-align:center}
-.hit-btn:active{transform:scale(.95)}
-.hb-hit{border-color:var(--green)}.hb-hit:hover{background:rgba(45,212,160,.1)}
-.hb-2b{border-color:var(--accent)}.hb-2b:hover{background:var(--accent-dim)}
-.hb-3b{border-color:var(--yellow)}.hb-3b:hover{background:rgba(246,194,62,.1)}
-.hb-hr{border-color:var(--red)}.hb-hr:hover{background:rgba(245,101,101,.1)}
-.hb-fly{border-color:var(--text3)}.hb-fly:hover{background:var(--bg-hover)}
-.hb-grd{border-color:var(--text3)}.hb-grd:hover{background:var(--bg-hover)}
-.rbi-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.rbi-lbl{font-size:11px;color:var(--text2);font-weight:700}.rbi-val{font-family:var(--mono);font-size:16px;font-weight:700;min-width:24px;text-align:center}
-.rbi-btn{width:26px;height:26px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 90ms;font-family:var(--mono)}
-.rbi-btn:hover{border-color:var(--accent);color:var(--accent)}.rbi-btn:active{transform:scale(.88)}
-.load-item{padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:pointer;background:var(--bg-raised);transition:border-color 100ms}
-.load-item:hover{border-color:var(--accent)}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
-
-/* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg-raised);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;z-index:300;opacity:0;transition:all 280ms;display:flex;align-items:center;gap:10px;white-space:nowrap;box-shadow:var(--shadow);pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all}
-.toast-undo{color:var(--accent);cursor:pointer;font-weight:800;border:none;background:none;font-family:var(--font);font-size:12px;padding:0}
-
-/* ONBOARDING */
-.ob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:flex;align-items:center;justify-content:center}
-.ob-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:28px 24px;width:min(360px,92vw);text-align:center;box-shadow:var(--shadow)}
-.ob-icon{font-size:40px;margin-bottom:12px}.ob-step{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
-.ob-title{font-size:20px;font-weight:900;margin-bottom:10px;line-height:1.3}.ob-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px}
-.ob-dots{display:flex;justify-content:center;gap:5px;margin-bottom:18px}
-.ob-dot{width:5px;height:5px;border-radius:50%;background:var(--border2);transition:all 200ms}.ob-dot.on{background:var(--accent);width:16px;border-radius:3px}
-
-/* MOBILE APP */
-@media(max-width:720px){
-  #app-page{overflow:auto;height:auto}
-  .app-layout{grid-template-columns:1fr;grid-template-rows:auto;height:auto;overflow:visible}
-  .pnl-left{display:none}
-  .pnl-right{border-left:none;border-top:1px solid var(--border);height:auto;min-height:360px}
-  .canvas-wrap{width:min(380px,100%)}
-  .field-wrap{padding:8px}
-  .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0}
-  .mob-batter::-webkit-scrollbar{display:none}
-  .mob-chip{flex-shrink:0;padding:5px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all 100ms;white-space:nowrap;font-family:var(--font)}
-  .mob-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}.mob-chip:active{transform:scale(.95)}
-  .app-brand-tag{display:none}
-  .scoreboard{padding:5px 10px;gap:8px}.sc-val{font-size:17px}.inn-sel{display:none}
-}
-@media(min-width:721px){.mob-batter{display:none}}
-</style>
-</head>
-<body>
-
-<!-- ===================== LANDING PAGE ===================== -->
-<div id="landing-page">
-
-<nav id="mainNav">
-  <a class="nav-brand" onclick="goHome()">
-    <svg class="nav-logo" viewBox="0 0 30 30" fill="none">
-      <circle cx="15" cy="15" r="13" stroke="#4b8cf5" stroke-width="1.3"/>
-      <path d="M7 23 Q15 4 23 23" stroke="#4b8cf5" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-      <circle cx="15" cy="14" r="2" fill="#4b8cf5"/>
-      <circle cx="8" cy="21" r="1.3" fill="#2dd4a0" opacity=".9"/>
-      <circle cx="22" cy="21" r="1.3" fill="#f56565" opacity=".9"/>
-      <circle cx="15" cy="7.5" r="1.3" fill="#f6c23e" opacity=".9"/>
-    </svg>
-    <span class="nav-name">Spray<em>Lab</em></span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="#features">기능</a></li>
-    <li><a href="#howto">사용법</a></li>
-    <li><a href="#preview">미리보기</a></li>
-    <li><a href="#target">대상</a></li>
-  </ul>
-  <button class="nav-cta" onclick="showApp()">
-    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    앱 시작하기
-  </button>
-</nav>
-
-<section class="hero">
-  <canvas id="heroCanvas"></canvas>
-  <div class="hero-content">
-    <div class="hero-badge"><span class="hero-badge-dot"></span>사회인야구 · 아마추어 · 데이터 분석</div>
-    <h1 class="hero-title">YOUR<br><span class="hl">SWING</span><br>VISUALIZED</h1>
-    <p class="hero-sub">타석을 기록하고, <strong>패턴을 발견하세요.</strong><br>당겨치기 비율부터 타율까지 — 모든 타석이 데이터가 됩니다.</p>
-    <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="showApp()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        무료로 시작하기
-      </button>
-      <a class="btn-hero-secondary" href="#preview">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
-        미리보기
-      </a>
-    </div>
-    <div class="hero-stats" id="heroStats">
-      <div class="hs-item"><div class="hs-val" data-target="847">0</div><div class="hs-lbl">누적 기록 경기</div></div>
-      <div class="hs-item"><div class="hs-val" data-target="12480">0</div><div class="hs-lbl">기록된 타석</div></div>
-      <div class="hs-item"><div class="hs-val" data-target="3">0</div><div class="hs-lbl">초 · 기록까지</div></div>
-      <div class="hs-item"><div class="hs-val">100%</div><div class="hs-lbl">무료 · 광고없음</div></div>
-    </div>
-  </div>
-  <div class="scroll-hint"><span>스크롤</span><div class="scroll-arrow"></div></div>
-</section>
-
-<div class="ticker">
-  <div class="ticker-track">
-    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
-    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
-    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
-    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
-    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
-    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
-    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
-    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
-    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
-    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
-    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
-    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
-  </div>
+.vs">VS</span>
+<div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
 </div>
-
-<section id="features" style="background:var(--bg)">
-  <div class="section-head centered">
-    <span class="section-label fade-up">기능</span>
-    <h2 class="section-title fade-up" data-delay="1">프로처럼 분석하세요</h2>
-    <p class="section-sub fade-up" data-delay="2">Baseball Savant에서 영감을 받은 기능들을<br>사회인야구 환경에 맞게 재설계했습니다.</p>
-  </div>
-  <div class="feat-grid">
-    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div><div class="feat-title">실시간 스프레이 차트</div><div class="feat-desc">필드를 탭하는 순간 타구 위치가 차트에 기록됩니다. 색상으로 구분된 점이 경기 내내 쌓입니다.</div><span class="feat-tag">CORE</span></div>
-    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#2dd4a0" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="feat-title">자동 통계 계산</div><div class="feat-desc">타율(AVG), 출루율(OBP), 장타율(SLG)이 기록과 동시에 자동으로 계산됩니다. 수작업 불필요.</div><span class="feat-tag">AUTO</span></div>
-    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f6c23e" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="feat-title">방향 분포 분석</div><div class="feat-desc">당겨치기 / 센터 / 밀어치기 비율을 시각화합니다. 타격 패턴의 약점과 강점을 직관적으로 파악.</div><span class="feat-tag">ANALYTICS</span></div>
-    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div><div class="feat-title">9분할 투구 코스</div><div class="feat-desc">내각/중앙/외각 × 높음/중간/낮음 9개 존을 클릭 한 번으로 선택. 코스별 타격 경향을 분석.</div><span class="feat-tag">DETAIL</span></div>
-    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f56565" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="feat-title">선수별 개인 통계</div><div class="feat-desc">라인업 전체 선수의 타석을 각각 관리합니다. 선수별 타율, 안타수, 타점을 한눈에 비교.</div><span class="feat-tag">ROSTER</span></div>
-    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div><div class="feat-title">경기 저장 · 불러오기</div><div class="feat-desc">경기 데이터를 저장하고 언제든 불러올 수 있습니다. 시즌 내내 누적 데이터를 관리하세요.</div><span class="feat-tag">PERSIST</span></div>
-  </div>
-</section>
-
-<section id="howto" class="how">
-  <div class="section-head centered">
-    <span class="section-label fade-up">사용법</span>
-    <h2 class="section-title fade-up" data-delay="1">3단계로 바로 시작</h2>
-    <p class="section-sub fade-up" data-delay="2">설명서 없이도 첫 타석부터 바로 기록할 수 있습니다.</p>
-  </div>
-  <div class="steps">
-    <div class="step fade-up" data-delay="1"><div class="step-num">01</div><div class="step-title">라인업 구성</div><div class="step-desc">선수 이름과 등번호를 입력해 라인업을 만드세요. 이름 첫 글자가 자동으로 아바타가 됩니다.</div><div class="step-sub">선수 추가 → 타자 탭으로 선택</div></div>
-    <div class="step fade-up" data-delay="2"><div class="step-num">02</div><div class="step-title">필드 탭 · 결과 선택</div><div class="step-desc">타구가 떨어진 위치를 필드에서 탭하세요. 안타 / 아웃 등 결과를 선택하면 즉시 기록됩니다.</div><div class="step-sub">볼넷·삼진은 하단 버튼으로 즉시 기록</div></div>
-    <div class="step fade-up" data-delay="3"><div class="step-num">03</div><div class="step-title">통계 확인 · 저장</div><div class="step-desc">경기 중에도 통계 탭에서 실시간으로 확인하세요. 경기 종료 후 저장하면 나중에 불러올 수 있습니다.</div><div class="step-sub">Ctrl+Z로 마지막 기록 즉시 취소</div></div>
-  </div>
-</section>
-
-<section id="preview" style="background:var(--bg)">
-  <div class="section-head centered">
-    <span class="section-label fade-up">미리보기</span>
-    <h2 class="section-title fade-up" data-delay="1">실제 화면 그대로</h2>
-  </div>
-  <div class="preview-wrap fade-up">
-    <div class="preview-bar">
-      <div class="win-dot" style="background:#f56565"></div>
-      <div class="win-dot" style="background:#f6c23e;margin-left:4px"></div>
-      <div class="win-dot" style="background:#2dd4a0;margin-left:4px"></div>
-      <div class="preview-url">spraylab · Baseball Spray Chart</div>
-      <button class="nav-cta" onclick="showApp()" style="margin-left:auto;padding:5px 12px;font-size:11px">열기 →</button>
-    </div>
-    <div class="preview-screen">
-      <div class="pv-left">
-        <div class="pv-title">라인업 · 5명</div>
-        <div class="mk-player on"><div class="mk-av">김</div><div><div class="mk-n">#7 김정철</div><div class="mk-s">3AB .333</div></div></div>
-        <div class="mk-player"><div class="mk-av">이</div><div><div class="mk-n">#12 이민준</div><div class="mk-s">2AB .500</div></div></div>
-        <div class="mk-player"><div class="mk-av">박</div><div><div class="mk-n">#3 박성현</div><div class="mk-s">3AB .000</div></div></div>
-        <div class="mk-player"><div class="mk-av">최</div><div><div class="mk-n">#21 최준혁</div><div class="mk-s">2AB .500</div></div></div>
-        <div class="mk-player"><div class="mk-av">정</div><div><div class="mk-n">#9 정우성</div><div class="mk-s">1AB .000</div></div></div>
-      </div>
-      <div class="pv-center" style="background:#09090f;flex-direction:column;gap:8px">
-        <div style="font-size:11px;color:#4b8cf5;font-weight:700">#7 김정철 타석 준비</div>
-        <canvas id="mockCanvas" width="220" height="220"></canvas>
-        <div style="font-size:10px;color:#374151">필드를 탭하여 타구 위치 기록</div>
-      </div>
-      <div class="pv-right">
-        <div class="pv-title">이번 경기</div>
-        <div class="mk-stat"><div class="mk-st">타격</div><div class="mk-nums"><div><div class="mk-v" style="color:#2dd4a0">.318</div><div class="mk-l">AVG</div></div><div><div class="mk-v" style="color:#4b8cf5">.389</div><div class="mk-l">OBP</div></div><div><div class="mk-v" style="color:#f6c23e">.455</div><div class="mk-l">SLG</div></div></div></div>
-        <div class="mk-stat"><div class="mk-st">타구 방향</div><div class="dir-mini"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:22px;background:#f56565"></div></div><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:14px;background:#2dd4a0"></div></div><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:10px;background:#4b8cf5"></div></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:#374151"><span>당겨 48%</span><span>센터 32%</span><span>밀어 20%</span></div></div>
-        <div class="mk-stat"><div class="mk-st">선수별</div><div style="font-size:10px"><div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1c1c26"><span>#7 김정철</span><span style="font-family:var(--mono);color:#2dd4a0">.333</span></div><div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1c1c26"><span>#12 이민준</span><span style="font-family:var(--mono);color:#4b8cf5">.500</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span>#3 박성현</span><span style="font-family:var(--mono);color:#374151">.000</span></div></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="target" class="targets">
-  <div class="section-head centered">
-    <span class="section-label fade-up">대상</span>
-    <h2 class="section-title fade-up" data-delay="1">누구를 위한 앱인가요?</h2>
-  </div>
-  <div class="tgt-grid">
-    <div class="tgt-card fade-up" data-delay="1"><span class="tgt-emoji">⚾</span><div class="tgt-title">사회인야구 선수</div><div class="tgt-desc">경기 중 빠르게 기록하고, 시즌이 끝난 후 나의 타격 패턴을 분석하세요.</div><ul class="tgt-list"><li>내 당겨치기 비율이 얼마나 되지?</li><li>외각 슬라이더에서 자꾸 아웃되는 이유</li><li>안타 방향이 한쪽으로 몰려있지 않나?</li></ul></div>
-    <div class="tgt-card fade-up" data-delay="2"><span class="tgt-emoji">📋</span><div class="tgt-title">감독 · 코치</div><div class="tgt-desc">팀 전체 타석을 경기 중 실시간으로 기록하고, 선수별 통계를 즉시 파악하세요.</div><ul class="tgt-list"><li>누가 오늘 컨디션이 좋은지 데이터로 확인</li><li>상대 투수 패턴에 팀이 어떻게 반응하는지</li><li>이닝별 타석 기록으로 흐름 파악</li></ul></div>
-    <div class="tgt-card fade-up" data-delay="3"><span class="tgt-emoji">📊</span><div class="tgt-title">야구 데이터 팬</div><div class="tgt-desc">Baseball Savant 스타일로 직접 데이터를 만들어보고 싶은 분들을 위한 도구입니다.</div><ul class="tgt-list"><li>직접 기록한 스프레이 차트 시각화</li><li>세이버메트릭스 지표를 일상에서 경험</li><li>경기별 데이터 누적 및 비교</li></ul></div>
-  </div>
-</section>
-
-<section class="cta-section">
-  <div class="cta-glow"></div>
-  <span class="section-label fade-up" style="display:block;margin-bottom:12px">지금 시작하세요</span>
-  <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
-  <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
-  <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      SprayLab 시작하기
-    </button>
-    <div class="cta-free"><strong>✓ 완전 무료</strong> &nbsp;·&nbsp; <strong>✓ 광고 없음</strong> &nbsp;·&nbsp; <strong>✓ 로그인 불필요</strong></div>
-  </div>
-</section>
-
-<footer>
-  <div class="foot-top">
-    <div class="foot-brand"><div class="foot-brand-name">Spray<em>Lab</em></div><div class="foot-desc">사회인야구와 아마추어 야구를 위한<br>스프레이 차트 & 타석 분석 도구.<br>야구를 데이터로 즐기세요.</div></div>
-    <div><div class="foot-links-title">서비스</div><ul class="foot-links"><li><a onclick="showApp()">앱 시작하기</a></li><li><a href="#features">주요 기능</a></li><li><a href="#howto">사용법</a></li></ul></div>
-    <div><div class="foot-links-title">분석 지표</div><ul class="foot-links"><li><a href="#">타율 AVG</a></li><li><a href="#">출루율 OBP</a></li><li><a href="#">장타율 SLG</a></li><li><a href="#">방향 분포 PULL/OPPO%</a></li></ul></div>
-  </div>
-  <div class="foot-bottom">
-    <span class="foot-copy">© 2025 SprayLab. Built for baseball.</span>
-    <div class="foot-tags"><span class="foot-tag">v1.0</span><span class="foot-tag">사회인야구</span><span class="foot-tag">spray-chart</span></div>
-  </div>
-</footer>
-
-</div><!-- /landing -->
-
-<!-- ===================== APP PAGE ===================== -->
-<div id="app-page">
-
-<div class="ob-overlay" id="obOverlay" style="display:none">
-  <div class="ob-card">
-    <div class="ob-icon" id="obIcon">⚾</div>
-    <div class="ob-step" id="obStep">시작하기 · 1 / 3</div>
-    <div class="ob-title" id="obTitle">SprayLab에 오신 걸 환영합니다</div>
-    <div class="ob-desc" id="obDesc">타석을 기록하고 패턴을 발견하세요.<br>사회인야구를 위한 가장 쉬운 데이터 분석 툴입니다.</div>
-    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음</button>
-  </div>
+<div style="display:flex;gap:6px;align-items:center">
+  <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
+  <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
+  <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+  <button class="app-back" onclick="goHome()">← 홈</button>
 </div>
-
-<header class="app-hdr">
-  <div class="app-brand" onclick="goHome()">
-    <svg viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="12.5" stroke="#4b8cf5" stroke-width="1.4"/>
-      <path d="M6 22 Q14 3 22 22" stroke="#4b8cf5" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-      <circle cx="14" cy="13" r="2.2" fill="#4b8cf5"/>
-      <circle cx="7.5" cy="20" r="1.4" fill="#2dd4a0" opacity=".9"/>
-      <circle cx="20.5" cy="20" r="1.4" fill="#f56565" opacity=".9"/>
-      <circle cx="14" cy="7" r="1.4" fill="#f6c23e" opacity=".9"/>
-    </svg>
-    <div><div class="app-brand-name">Spray<em>Lab</em></div><div class="app-brand-tag">YOUR SWING, VISUALIZED</div></div>
-  </div>
-  <div class="scoreboard">
-    <div class="team-blk"><input class="team-inp" id="tHome" value="홈팀" maxlength="6"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('h',-1)">−</button><span class="sc-val" id="scH">0</span><button class="sc-btn" onclick="chSc('h',1)">+</button></div></div>
-    <span class="vs">VS</span>
-    <div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
-  </div>
-  <div style="display:flex;gap:6px;align-items:center">
-    <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
-    <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
-    <button class="app-back" onclick="goHome()">← 홈</button>
-  </div>
 </header>
 
 <div class="mob-batter" id="mobBar"></div>
 
 <div class="app-layout">
-  <div class="pnl-left">
-    <div class="pnl-hd"><span class="pnl-title">라인업</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
-    <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
-    <div class="add-row">
-      <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
-      <input class="inp" id="pNum" placeholder="#" maxlength="3" style="flex:0.7;width:36px" onkeydown="if(event.key==='Enter')addPlayer()">
-      <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-    </div>
+<div class="pnl-left">
+  <div class="pnl-hd"><span class="pnl-title">라인업</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
+  <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
+  <div class="add-row">
+    <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
+    <input class="inp" id="pNum" placeholder="#" maxlength="3" style="flex:0.7;width:36px" onkeydown="if(event.key==='Enter')addPlayer()">
+    <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
   </div>
+</div>
 
-  <div class="pnl-center">
-    <div class="batter-bar"><div id="batterDisp"><span class="batter-empty">← 타자를 선택하세요</span></div><span class="batter-hint" id="innDisp">1회초</span></div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
-    <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
-    <div class="input-bar">
-      <div class="ib-row">
-        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','변화구')">변화구</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
-        <div class="ib-sec"><div class="sec-lbl">코스</div><div style="display:flex;align-items:center;gap:5px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div></div>
-        <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
-      </div>
+<div class="pnl-center">
+  <div class="batter-bar"><div id="batterDisp"><span class="batter-empty">← 타자를 선택하세요</span></div><span class="batter-hint" id="innDisp">1회초</span></div>
+  <div class="field-wrap"><div class="canvas-wrap" id="cwrap"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
+  <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
+  <div class="input-bar">
+    <div class="ib-row">
+      <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','변화구')">변화구</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
+      <div class="ib-sec"><div class="sec-lbl">코스</div><div style="display:flex;align-items:center;gap:5px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div></div>
+      <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
     </div>
   </div>
+</div>
 
-  <div class="pnl-right">
-    <div class="tabs">
-      <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
-      <div class="tab" id="tab-stat" onclick="swTab('stat',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>통계</div>
+<div class="pnl-right">
+  <div class="tabs">
+    <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
+    <div class="tab" id="tab-stat" onclick="swTab('stat',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" height="14"/></svg>통계</div>
+  </div>
+  <div class="tab-body">
+    <div class="tab-pnl on" id="pnl-rec">
+      <div class="rec-hd"><span class="rec-count" id="recCnt">기록 없음</span><button class="btn btn-red" style="padding:3px 9px;font-size:10px" onclick="clearAll()">전체 삭제</button></div>
+      <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
     </div>
-    <div class="tab-body">
-      <div class="tab-pnl on" id="pnl-rec">
-        <div class="rec-hd"><span class="rec-count" id="recCnt">기록 없음</span><button class="btn btn-red" style="padding:3px 9px;font-size:10px" onclick="clearAll()">전체 삭제</button></div>
-        <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
-      </div>
-      <div class="tab-pnl" id="pnl-stat">
-        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
-        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
-        <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
-        <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
-      </div>
+    <div class="tab-pnl" id="pnl-stat">
+      <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
+      <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+      <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
+      <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
     </div>
   </div>
+</div>
 </div>
 
 <div class="overlay" id="hitOverlay">
-  <div class="modal">
-    <div class="modal-title">타구 결과 입력</div>
-    <div class="modal-sub" id="hitSub">방향 정보 로딩 중...</div>
-    <div class="rbi-row"><span class="rbi-lbl">타점</span><button class="rbi-btn" onclick="chRbi(-1)">−</button><span class="rbi-val" id="rbiVal">0</span><button class="rbi-btn" onclick="chRbi(1)">+</button></div>
-    <div class="hit-grid">
-      <button class="hit-btn hb-hit" onclick="recHit('안타')">🟢 안타</button>
-      <button class="hit-btn hb-2b" onclick="recHit('2루타')">🔵 2루타</button>
-      <button class="hit-btn hb-3b" onclick="recHit('3루타')">🟡 3루타</button>
-      <button class="hit-btn hb-hr" onclick="recHit('홈런')">🔴 홈런</button>
-      <button class="hit-btn hb-fly" onclick="recHit('플라이 아웃')">↑ 플라이 아웃</button>
-      <button class="hit-btn hb-grd" onclick="recHit('땅볼 아웃')">↓ 땅볼 아웃</button>
-    </div>
-    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeHit()">취소</button>
+<div class="modal">
+  <div class="modal-title">타구 결과 입력</div>
+  <div class="modal-sub" id="hitSub">방향 정보 로딩 중...</div>
+  <div class="rbi-row"><span class="rbi-lbl">타점</span><button class="rbi-btn" onclick="chRbi(-1)">−</button><span class="rbi-val" id="rbiVal">0</span><button class="rbi-btn" onclick="chRbi(1)">+</button></div>
+  <div class="hit-grid">
+    <button class="hit-btn hb-hit" onclick="recHit('안타')">🟢 안타</button>
+    <button class="hit-btn hb-2b" onclick="recHit('2루타')">🔵 2루타</button>
+    <button class="hit-btn hb-3b" onclick="recHit('3루타')">🟡 3루타</button>
+    <button class="hit-btn hb-hr" onclick="recHit('홈런')">🔴 홈런</button>
+    <button class="hit-btn hb-fly" onclick="recHit('플라이 아웃')">↑ 플라이 아웃</button>
+    <button class="hit-btn hb-grd" onclick="recHit('땅볼 아웃')">↓ 땅볼 아웃</button>
   </div>
+  <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeHit()">취소</button>
+</div>
 </div>
 
 <div class="overlay" id="loadOverlay">
-  <div class="modal">
-    <div class="modal-title">저장된 경기</div>
-    <div id="saveList" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
-    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
-  </div>
+<div class="modal">
+  <div class="modal-title">저장된 경기</div>
+  <div id="saveList" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+  <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
+</div>
 </div>
 
 <div class="toast" id="toast">
-  <span id="toastTxt"></span>
-  <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 취소</button>
+<span id="toastTxt"></span>
+<button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 취소</button>
 </div>
 
 </div><!-- /app-page -->
@@ -690,13 +313,14 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 function showApp(){
   document.getElementById('landing-page').style.display='none';
   document.getElementById('app-page').style.display='flex';
-  document.body.style.overflow='hidden';
+  // [수정 포인트] body의 overflow를 강제 hidden 처리하지 않아 스크롤 컨텍스트 유지
+  document.body.style.overflow='auto'; 
   initApp();
 }
 function goHome(){
   document.getElementById('app-page').style.display='none';
   document.getElementById('landing-page').style.display='block';
-  document.body.style.overflow='';
+  document.body.style.overflow='auto';
   window.scrollTo(0,0);
 }
 
@@ -834,7 +458,8 @@ function initCanvas(){
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
   drawField();
   fC.addEventListener('click',onFClick);
-  fC.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0];const r=fC.getBoundingClientRect();onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});},{passive:false});
+  // [수정 포인트] 패시브 모드를 켜서 캔버스 드래그 조작이 차단되지 않고 자연스럽게 스크롤을 넘겨주도록 변경
+  fC.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0];const r=fC.getBoundingClientRect();onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});},{passive:true});
   window.addEventListener('resize',()=>{if(document.getElementById('app-page').style.display!=='none'){initCanvas();redrawHits();}});
 }
 

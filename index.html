@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SprayLab — Your Swing, Visualized</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style id="landing-css">
 :root{
@@ -347,7 +347,7 @@ function goHome(){
     mctx.beginPath();mctx.arc(cx,cy,S*.41,-Math.PI,0);mctx.lineTo(cx,cy);mctx.closePath();mctx.fillStyle='#1a1106';mctx.fill();
     mctx.beginPath();mctx.arc(cx,cy,S*.33,-Math.PI,0);mctx.lineTo(cx,cy);mctx.closePath();mctx.fillStyle='#0b1a0d';mctx.fill();
     mctx.strokeStyle='rgba(255,255,255,.15)';mctx.lineWidth=1;
-    mctx.beginPath();mmoveTo=false;mctx.moveTo(cx,cy);mctx.lineTo(cx-R,cy);mctx.stroke();
+    mctx.beginPath();mctx.moveTo(cx,cy);mctx.lineTo(cx-R,cy);mctx.stroke();
     mctx.beginPath();mctx.moveTo(cx,cy);mctx.lineTo(cx+R,cy);mctx.stroke();
     mctx.beginPath();mctx.arc(cx,cy,R*.88,-Math.PI,0);mctx.strokeStyle='rgba(255,255,255,.08)';mctx.lineWidth=1;mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.5)';
@@ -412,7 +412,7 @@ function initApp(){
 
 function chSc(t,d){if(t==='h'){AS.hs=Math.max(0,AS.hs+d);document.getElementById('scH').textContent=AS.hs}else{AS.as=Math.max(0,AS.as+d);document.getElementById('scA').textContent=AS.as}}
 
-// ── 홈 / 원정 라인업 독립 처리 ──
+// ── 홈 / 원정 라인업 탭 전환 ──
 function swLineupTab(team) {
   if(AS.curTeam === team) return;
   AS.curTeam = team;
@@ -420,7 +420,7 @@ function swLineupTab(team) {
   document.getElementById('subtab-away').classList.toggle('on', team==='away');
   document.getElementById('lineupTitle').textContent = team==='home' ? '홈팀 명단' : '원정팀 명단';
   
-  // 무한 렌더러 루프 제거를 위해 조용히 컴포넌트 갱신만 수행
+  // 상태 변경 후 조용히 리스트업 교체 (브라우저 루프 완벽 차단)
   renderLP();
   renderMob();
 }
@@ -446,8 +446,7 @@ function selBatter(id){
   const targetLineup = getActiveLineup();
   AS.batter=targetLineup.find(p=>p.id===id)||null;
   
-  // 무한 돔 트리거 차단을 위한 선별적 엘리먼트 타겟팅 고정
-  document.querySelectorAll('.player-row').forEach(row => row.classList.remove('active'));
+  // 무한 돔 트리거 차단을 위한 선별적 엘리먼트 렌더링 세팅
   renderLP();
   renderMob();
   
@@ -463,7 +462,7 @@ function delPlayer(id,e){
   } else {
     AS.away_lineup=AS.away_lineup.filter(p=>p.id!==id);
   }
-  if(AS.batter&&AS.batter.id===id)AS.batter = null;
+  if(AS.batter&&AS.batter.id===id) AS.batter = null;
   renderLP();
   renderMob();
   selBatter(null);
@@ -508,7 +507,7 @@ function selZone(el){
   logPitchAction();
 }
 
-// ── 구종/코스 입력 시 메모리 과부하 제거 독립 루틴 ──
+// ── 구종/코스 기록 연산 격리 루틴 ──
 function logPitchAction(){
   if(!AS.zone || !AS.pt) return;
   if(!AS.zoneHistory[AS.zone]) AS.zoneHistory[AS.zone] = [];
@@ -544,7 +543,6 @@ function initCanvas(){
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
   drawField();
   
-  // 캔버스 마우스/모바일 제스처 리스너 통합 정밀 보정
   fC.onclick = onFClick;
   fC.ontouchend = function(e) {
     if(!e.changedTouches || e.changedTouches.length === 0) return;

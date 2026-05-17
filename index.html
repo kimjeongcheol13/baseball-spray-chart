@@ -365,8 +365,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .rbi-lbl{font-size:11px;color:var(--text2);font-weight:700}.rbi-val{font-family:var(--mono);font-size:16px;font-weight:700;min-width:24px;text-align:center}
 .rbi-btn{width:26px;height:26px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 90ms;font-family:var(--mono)}
 .rbi-btn:hover{border-color:var(--accent);color:var(--accent)}.rbi-btn:active{transform:scale(.88)}
-.load-item{padding:9px 11px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:pointer;background:var(--bg-raised);transition:border-color 100ms}
-.load-item:hover{border-color:var(--accent)}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
+.load-item{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--bg-raised);transition:border-color 100ms;overflow:hidden}
+.load-item:hover{border-color:var(--accent)}.load-item-body{flex:1;padding:9px 11px;cursor:pointer}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
+.load-item-actions{display:flex;flex-direction:column;border-left:1px solid var(--border);flex-shrink:0}
+.li-btn{padding:5px 9px;font-size:10px;font-weight:700;font-family:var(--font);border:none;background:none;cursor:pointer;color:var(--text2);transition:all 90ms;white-space:nowrap}
+.li-btn:hover{background:var(--bg-hover)}.li-btn.share-btn:hover{color:var(--green)}.li-btn.load-btn:hover{color:var(--accent)}.li-btn.del-btn:hover{color:var(--red);background:rgba(245,101,101,.1)}
+.li-btn+.li-btn{border-top:1px solid var(--border)}
+.import-row{margin-bottom:10px}
+.import-label{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;border:1px dashed var(--border2);border-radius:7px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;transition:all 100ms;width:100%}
+.import-label:hover{border-color:var(--green);color:var(--green)}
 
 /* TOAST */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg-raised);border:1px solid var(--border2);border-radius:10px;padding:10px 16px;font-size:12px;font-weight:700;z-index:300;opacity:0;transition:all 280ms;display:flex;align-items:center;gap:10px;white-space:nowrap;box-shadow:var(--shadow);pointer-events:none}
@@ -670,9 +677,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 </div>
 
 <div class="overlay" id="loadOverlay">
-  <div class="modal">
-    <div class="modal-title">저장된 경기</div>
-    <div id="saveList" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+  <div class="modal" style="width:min(380px,96vw)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="modal-title" style="margin-bottom:0">저장된 경기</div>
+      <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
+    </div>
+    <div class="import-row">
+      <label class="import-label">파일에서 가져오기 (다른 기기 동기화)<input type="file" accept=".json" style="display:none" onchange="importGames(this)"></label>
+    </div>
+    <div id="saveList" style="max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>
 </div>
@@ -1099,7 +1112,104 @@ function saveGame(){
   }, 300);
 }
 
-function openLoad(){const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');const el=document.getElementById('saveList');if(!saves.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';}else{el.innerHTML=[...saves].reverse().map(s=>`<div class="load-item" onclick="restoreGame('${s.key}')"><div class="load-item-title">${s.label}</div><div class="load-item-date">${s.ts}</div></div>`).join('');}openOverlay('loadOverlay');}
+function openLoad(){
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  var el=document.getElementById('saveList');
+  if(!saves.length){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';
+  }else{
+    el.innerHTML=[...saves].reverse().map(function(s){
+      return '<div class="load-item">' +
+        '<div class="load-item-body" onclick="restoreGame(\'' + s.key + '\')">' +
+          '<div class="load-item-title">' + s.label + '</div>' +
+          '<div class="load-item-date">' + s.ts + '</div>' +
+        '</div>' +
+        '<div class="load-item-actions">' +
+          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')">공유</button>' +
+          '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
+          '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  openOverlay('loadOverlay');
+}
+
+function deleteGame(key){
+  if(!confirm('이 저장 기록을 삭제할까요?'))return;
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  saves=saves.filter(function(s){return s.key!==key;});
+  localStorage.setItem('sl_saves',JSON.stringify(saves));
+  localStorage.removeItem(key);
+  openLoad();
+  showToast('삭제되었습니다',false);
+}
+
+function shareGame(key){
+  var d=JSON.parse(localStorage.getItem(key));
+  if(!d)return;
+  var exportObj={version:1,type:'single',saves:[{key:key,label:(d.th||'홈팀')+' vs '+(d.ta||'원정팀'),ts:d.ts}],data:{}};
+  exportObj.data[key]=d;
+  var blob=new Blob([JSON.stringify(exportObj,null,2)],{type:'application/json'});
+  var fileName=((d.th||'홈팀').replace(/[\/\:*?"<>|]/g,'_'))+'_vs_'+((d.ta||'원정팀').replace(/[\/\:*?"<>|]/g,'_'))+'_'+((d.ts||'').replace(/[\/\:*?"<>|\s]/g,'_'))+'.json';
+  if(navigator.share){
+    var file=new File([blob],fileName,{type:'application/json'});
+    navigator.share({title:'SprayLab 경기 기록',text:(d.th||'홈팀')+' '+d.hs+':'+d.as+' '+(d.ta||'원정팀'),files:[file]}).catch(function(){downloadBlob(blob,fileName);});
+  }else{
+    downloadBlob(blob,fileName);
+  }
+}
+
+function exportAllGames(){
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  if(!saves.length){showToast('저장된 경기가 없습니다',false);return;}
+  var data={};
+  saves.forEach(function(s){var raw=localStorage.getItem(s.key);if(raw)data[s.key]=JSON.parse(raw);});
+  var blob=new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/json'});
+  var today=new Date().toLocaleDateString('ko-KR').replace(/\./g,'-').replace(/-$/,'');
+  var fileName='SprayLab_backup_'+today+'.json';
+  if(navigator.share){
+    var file=new File([blob],fileName,{type:'application/json'});
+    navigator.share({title:'SprayLab 전체 경기 백업',text:saves.length+'개 경기 데이터',files:[file]}).catch(function(){downloadBlob(blob,fileName);});
+  }else{
+    downloadBlob(blob,fileName);
+  }
+}
+
+function downloadBlob(blob,fileName){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=fileName;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);
+}
+
+function importGames(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var obj=JSON.parse(e.target.result);
+      if(!obj.saves||!obj.data){showToast('올바른 SprayLab 파일이 아닙니다',false);return;}
+      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+      var existingKeys=new Set(saves.map(function(s){return s.key;}));
+      var added=0;
+      obj.saves.forEach(function(s){
+        if(!existingKeys.has(s.key)){
+          saves.push(s);
+          if(obj.data[s.key])localStorage.setItem(s.key,JSON.stringify(obj.data[s.key]));
+          added++;
+        }
+      });
+      localStorage.setItem('sl_saves',JSON.stringify(saves));
+      input.value='';
+      openLoad();
+      showToast(added>0?added+'개 경기를 가져왔습니다':'이미 있는 경기입니다',false);
+    }catch(err){
+      showToast('파일을 읽을 수 없습니다',false);
+    }
+  };
+  reader.readAsText(file);
+}
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
   document.getElementById('tHome').value=d.th;document.getElementById('tAway').value=d.ta;

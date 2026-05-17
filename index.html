@@ -682,7 +682,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 </div>
 
 <div class="overlay" id="loadOverlay">
-  <div class="modal" style="width:min(380px,96vw)">
+  <div class="modal" style="width:min(380px,96vw);max-height:88vh;overflow-y:auto;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="modal-title" style="margin-bottom:0">저장된 경기</div>
       <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
@@ -697,7 +697,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
       </div>
     </div>
-    <div id="saveList" style="max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
+    <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>
 </div>

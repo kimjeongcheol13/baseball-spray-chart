@@ -289,6 +289,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px}
 .zone-cell{aspect-ratio:1;border:1px solid var(--border2);border-radius:3px;background:var(--bg-raised);cursor:pointer;transition:all 100ms}
 .zone-cell:hover{background:var(--accent-dim);border-color:var(--accent)}.zone-cell.on{background:var(--accent);border-color:var(--accent)}
+.zone-cell.pending{background:var(--accent-dim);border-color:var(--accent);outline:2px solid var(--accent)}
+.zone-ball-btn{padding:2px 5px;border-radius:4px;border:1px solid var(--border2);background:none;color:var(--text3);font-size:9px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;white-space:nowrap}
+.zone-ball-btn:hover,.zone-ball-btn.pending{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+#ptPickerArea{margin-top:5px;background:var(--bg-raised);border:1px solid var(--accent);border-radius:8px;padding:6px;animation:fadeIn .15s ease}
+.bh-badge{display:inline-block;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:800;margin-left:3px;background:rgba(75,140,245,.15);color:var(--blue);border:1px solid rgba(75,140,245,.3)}
+.bh-L{background:rgba(45,212,160,.15);color:#2dd4a0;border-color:rgba(45,212,160,.3)}
+.bh-S{background:rgba(246,194,62,.15);color:#f6c23e;border-color:rgba(246,194,62,.3)}
 .ib-sec-grow{flex:1;min-width:150px}
 .other-btns{display:flex;gap:3px;flex-wrap:wrap}
 .o-btn{padding:4px 9px;border-radius:14px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
@@ -653,6 +660,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
       <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:38px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
       <select class="inp" id="pPos" style="width:52px;flex-shrink:0;padding:7px 2px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+      <select class="inp" id="pBH" style="width:42px;flex-shrink:0;padding:7px 2px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
       <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     </div>
   </div>
@@ -684,7 +692,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="input-bar">
       <div class="ib-row">
         <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','커터')">커터</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
-        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;align-items:center;gap:5px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div></div>
+        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
       </div>
     </div>
@@ -1002,7 +1010,8 @@ const AS={
   zoneHistory:{},
   balls:0,strikes:0,outs:0,
   batterFilter:false,
-  showHotCold:false
+  showHotCold:false,
+  currentPitches:[]
 };
 const MAX_HITS = 300; 
 let saveTimer; 
@@ -1045,11 +1054,13 @@ function addPlayer(){
   const num=document.getElementById('pNum').value.trim()||(getActiveLineup().length+1)+'';
   const pos=(document.getElementById('pPos')||{}).value||'';
   if(!n)return;
-  const p={id:Date.now(),name:n,num,pos,isStarter:true};
+  const bh=(document.getElementById('pBH')||{}).value||'';
+  const p={id:Date.now(),name:n,num,pos,bh,isStarter:true};
   getActiveLineup().push(p);
   document.getElementById('pName').value='';
   document.getElementById('pNum').value='';
   if(document.getElementById('pPos'))document.getElementById('pPos').value='';
+  if(document.getElementById('pBH'))document.getElementById('pBH').value='';
   renderLP();
   renderMob();
   if(getActiveLineup().length===1)selBatter(p.id);
@@ -1092,6 +1103,8 @@ function renderLP(){
     const av=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';
     const on=AS.batter&&AS.batter.id===p.id;
     const posHtml=p.pos?`<span class="pos-badge">${p.pos}</span>`:'';
+    const bhLabels={'R':'우타','L':'좌타','S':'스위치'};
+    const bhHtml=p.bh?`<span class="bh-badge bh-${p.bh}">${bhLabels[p.bh]||p.bh}</span>`:'';
     const sCls=(p.isStarter!==false)?'on':'';
     const sTxt=(p.isStarter!==false)?'주전':'후보';
     return`<div class="player-row${on?' active':''}" draggable="true" ondragstart="dragStart(event,${p.id})" ondragover="dragOver(event)" ondrop="dropPlayer(event,${p.id})" ondragleave="this.classList.remove('drag-over')" ondragend="document.querySelectorAll('.player-row').forEach(r=>{r.classList.remove('drag-over');r.style.opacity=''})" style="user-select:none">
@@ -1099,7 +1112,7 @@ function renderLP(){
       <span class="p-num" onclick="selBatter(${p.id})">${idx+1}</span>
       <div class="p-avatar" onclick="selBatter(${p.id})">${p.name[0]}</div>
       <div class="p-info" onclick="selBatter(${p.id})">
-        <div class="p-name">${p.name}${posHtml}</div>
+        <div class="p-name">${p.name}${posHtml}${bhHtml}</div>
         <div class="p-mini">${oab>0?oab+'AB '+av:'기록없음'}</div>
       </div>
       <button class="starter-btn ${sCls}" onclick="toggleStarter(${p.id},event)">${sTxt}</button>
@@ -1120,8 +1133,7 @@ function renderMob(){
 function selChip(el,k,v){
   el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
-  AS[k]=v; 
-  logPitchAction();
+  AS[k]=v;
 }
 
 // ───── 투구 추적 코어 엔진 ─────
@@ -1688,7 +1700,8 @@ function updBatterStat(){
   if(!AS.batter){ph.style.display='';pc.style.display='none';return;}
   ph.style.display='none';pc.style.display='';
   var b=AS.batter;
-  document.getElementById('bsName').textContent='#'+b.num+' '+b.name+(b.pos?' ('+b.pos+')':'');
+  var bhLbl={'R':'우타','L':'좌타','S':'스위치'};
+  document.getElementById('bsName').textContent='#'+b.num+' '+b.name+(b.pos?' ('+b.pos+')':'')+(b.bh?' ['+( bhLbl[b.bh]||b.bh)+']':'');
   var bAbs=AS.abs.filter(function(a){return a.bid===b.id;});
   var oab=bAbs.filter(function(a){return!_NOAB.includes(a.res);}).length;
   var h=bAbs.filter(function(a){return _HITS.includes(a.res);}).length;

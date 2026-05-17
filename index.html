@@ -1148,18 +1148,52 @@ function deleteGame(key){
 function shareGame(key){
   var d=JSON.parse(localStorage.getItem(key));
   if(!d)return;
+  
   var exportObj={version:1,type:'single',saves:[{key:key,label:(d.th||'홈팀')+' vs '+(d.ta||'원정팀'),ts:d.ts}],data:{}};
   exportObj.data[key]=d;
-  var blob=new Blob([JSON.stringify(exportObj,null,2)],{type:'application/json'});
-  var fileName=((d.th||'홈팀').replace(/[\/\:*?"<>|]/g,'_'))+'_vs_'+((d.ta||'원정팀').replace(/[\/\:*?"<>|]/g,'_'))+'_'+((d.ts||'').replace(/[\/\:*?"<>|\s]/g,'_'))+'.json';
-  if(navigator.share){
-    var file=new File([blob],fileName,{type:'application/json'});
-    navigator.share({title:'SprayLab 경기 기록',text:(d.th||'홈팀')+' '+d.hs+':'+d.as+' '+(d.ta||'원정팀'),files:[file]}).catch(function(){downloadBlob(blob,fileName);});
-  }else{
-    downloadBlob(blob,fileName);
+  
+  var jsonText = JSON.stringify(exportObj);
+  var summaryText = `[SprayLab 경기 데이터]\n${d.th||'홈팀'} ${d.hs}:${d.as} ${d.ta||'원정팀'}\n\n아래 코드를 복사해서 다른 기기의 [파일에서 가져오기]에 활용하세요.`;
+
+  if(navigator.share && !window.location.protocol.startsWith('file')) {
+    navigator.share({
+      title: 'SprayLab 경기 기록',
+      text: summaryText + '\n\n' + jsonText
+    }).catch(function(){
+      copyToClipboard(jsonText);
+    });
+  } else {
+    copyToClipboard(jsonText);
   }
 }
 
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showToast('경기 데이터가 클립보드에 복사되었습니다! 카톡에 붙여넣으세요.', false);
+    }).catch(function() {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('경기 데이터가 클립보드에 복사되었습니다! 카톡에 붙여넣으세요.', false);
+  } catch (err) {
+    showToast('복사에 실패했습니다. 수동으로 다운로드 파일을 이용해 주세요.', false);
+  }
+  document.body.removeChild(ta);
+}
 function exportAllGames(){
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
   if(!saves.length){showToast('저장된 경기가 없습니다',false);return;}

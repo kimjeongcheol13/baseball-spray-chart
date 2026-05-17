@@ -1125,38 +1125,58 @@ function selChip(el,k,v){
 }
 
 // ───── 투구 추적 코어 엔진 ─────
-function selZone(el){
-  document.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  AS.zone=el.dataset.z;
-  logPitchAction();
+var _pendingZoneEl=null;
+function clickZone(el){
+  document.querySelectorAll('.zone-cell,.zone-ball-btn').forEach(function(c){c.classList.remove('pending');});
+  el.classList.add('pending');
+  _pendingZoneEl=el;
+  var picker=document.getElementById('ptPickerArea');
+  var lbl=document.getElementById('ptPickerZone');
+  if(picker&&lbl){
+    picker.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c.textContent.trim()===AS.pt);});
+    lbl.textContent=el.dataset.z;
+    picker.style.display='';
+  }
 }
+function confirmZonePitch(pt){
+  if(!_pendingZoneEl)return;
+  AS.zone=_pendingZoneEl.dataset.z;
+  AS.pt=pt;
+  document.querySelectorAll('#ptGroup .chip').forEach(function(c){c.classList.toggle('on',c.textContent.trim()===pt);});
+  logPitchAction();
+  hidePtPicker();
+}
+function hidePtPicker(){
+  var picker=document.getElementById('ptPickerArea');
+  if(picker)picker.style.display='none';
+  if(_pendingZoneEl){_pendingZoneEl.classList.remove('pending');_pendingZoneEl=null;}
+}
+function selZone(el){clickZone(el);}
 
 function logPitchAction(){
-  if(!AS.zone || !AS.pt) return;
-  if(!AS.zoneHistory[AS.zone]) AS.zoneHistory[AS.zone] = [];
-  
-  let symbol = '•';
-  if(AS.pt === '커브') symbol = 'Ｃ';
-  else if(AS.pt === '커터') symbol = 'CT';
-  else if(AS.pt === '직구') symbol = 'Ｆ';
-  else if(AS.pt === '슬라이더') symbol = 'Ｓ';
-  else if(AS.pt === '체인지업') symbol = 'ＣＨ';
-  else if(AS.pt === '포크볼') symbol = 'ＦＫ';
-
-  AS.zoneHistory[AS.zone].push({pt: AS.pt, symbol: symbol});
+  if(!AS.zone||!AS.pt)return;
+  if(!AS.zoneHistory[AS.zone])AS.zoneHistory[AS.zone]=[];
+  var symMap={'커브':'Ｃ','커터':'CT','직구':'Ｆ','슬라이더':'Ｓ','체인지업':'CH','포크볼':'FK'};
+  var symbol=symMap[AS.pt]||'•';
+  AS.zoneHistory[AS.zone].push({pt:AS.pt,symbol:symbol});
+  AS.currentPitches.push({zone:AS.zone,pt:AS.pt});
   refreshZoneDisplay();
 }
 
-function refreshZoneDisplay() {
-  document.querySelectorAll('.zone-cell').forEach(cell => {
-    const zoneName = cell.dataset.z;
-    const history = AS.zoneHistory[zoneName] || [];
-    if(history.length > 0) {
-      const last = history[history.length - 1];
-      cell.innerHTML = `<div style="font-size:10px; font-weight:800; color:var(--blue); text-align:center; line-height:1.2; padding-top:2px;">${last.symbol}<br><span style="font-size:8px; color:var(--text2); font-family:var(--mono);">${history.length}</span></div>`;
-    } else {
-      cell.innerHTML = '';
+function refreshZoneDisplay(){
+  document.querySelectorAll('.zone-cell,.zone-ball-btn').forEach(function(cell){
+    var zoneName=cell.dataset.z;if(!zoneName)return;
+    var history=AS.zoneHistory[zoneName]||[];
+    if(cell.classList.contains('zone-cell')){
+      if(history.length>0){
+        var last=history[history.length-1];
+        cell.innerHTML='<div style="font-size:9px;font-weight:800;color:var(--blue);text-align:center;line-height:1.2;padding-top:1px">'+last.symbol+'<br><span style="font-size:8px;color:var(--text2);font-family:var(--mono)">'+history.length+'</span></div>';
+      }else{cell.innerHTML='';}
+    }else{
+      var orig=cell.getAttribute('data-orig');
+      if(!orig){orig=cell.textContent.trim();cell.setAttribute('data-orig',orig);}
+      cell.textContent=history.length?(orig+' '+history.length):orig;
+      cell.style.opacity=history.length?'1':'';
     }
   });
 }
@@ -1229,13 +1249,15 @@ function onFClick(e){
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),pitches:[...AS.currentPitches]};
+AS.currentPitches=[];
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
 }
 function recOther(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),pitches:[...AS.currentPitches]};
+AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
@@ -1262,7 +1284,7 @@ function renderRecs(){
 }
 function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){if(!AS.abs.length)return;AS.abs.pop();updateAll();hideToast();}
-function clearAll(){if(!confirm('모든 타석 기록을 삭제할까요?'))return;AS.abs=[];AS.zoneHistory={};refreshZoneDisplay();updateAll();}
+function clearAll(){if(!confirm('모든 타석 기록을 삭제할까요?'))return;AS.abs=[];AS.zoneHistory={};AS.currentPitches=[];hidePtPicker();refreshZoneDisplay();updateAll();}
 
 function updStats(){
   const abs=AS.abs,hits=['안타','내야안타','2루타','3루타','홈런'],base={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4},noab=['볼넷','사구','희타','희비'];
@@ -1292,6 +1314,48 @@ function drawDonut(){
   if(!tot){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#1e2535';ctx.lineWidth=r-ir;ctx.stroke();}
   else{let st=-Math.PI/2;keys.forEach((k,i)=>{const sl=(cts[k]/tot)*Math.PI*2;if(!sl)return;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,st,st+sl);ctx.closePath();ctx.fillStyle=cols[i];ctx.fill();st+=sl;});ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle='#18181f';ctx.fill();}
   const ids=['lp1','lp2','lp3','lp4','lp5'];keys.forEach((k,i)=>{const pct=tot?Math.round(cts[k]/tot*100):0;document.getElementById(ids[i]).textContent=pct+'%';});
+}
+
+function calcMVP(){
+  var allLP=[...AS.home_lineup,...AS.away_lineup];
+  if(!allLP.length)return null;
+  var NOAB=['볼넷','사구','희타','희비'],HITS=['안타','내야안타','2루타','3루타','홈런'],BASE={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+  var best=null,bestScore=-1;
+  allLP.forEach(function(p){
+    var pa=AS.abs.filter(function(a){return a.bid===p.id;});if(!pa.length)return;
+    var oab=pa.filter(function(a){return!NOAB.includes(a.res);}).length;
+    var h=pa.filter(function(a){return HITS.includes(a.res);}).length;
+    var reach=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
+    var tb=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
+    var rbi=pa.reduce(function(s,a){return s+a.rbi;},0);
+    var hr=pa.filter(function(a){return a.res==='홈런';}).length;
+    var avg=oab?h/oab:0,obp=pa.length?reach/pa.length:0,slg=oab?tb/oab:0;
+    var score=avg*30+obp*25+slg*20+rbi*10+hr*8+h*5;
+    if(score>bestScore){bestScore=score;best={p:p,avg:avg,obp:obp,slg:slg,rbi:rbi,hr:hr,h:h,oab:oab,score:Math.round(score)};}
+  });
+  return best;
+}
+function showMVP(){
+  var w=document.getElementById('mvpCardWrap');if(!w)return;
+  var mv=calcMVP();
+  if(!mv){w.style.display='none';return;}
+  w.style.display='';
+  var content=document.getElementById('mvpContent');
+  var p=mv.p;
+  var reasons=[];
+  if(mv.hr>0)reasons.push('홈런 '+mv.hr+'개');
+  if(mv.rbi>0)reasons.push('타점 '+mv.rbi+'점');
+  if(mv.h>0)reasons.push('안타 '+mv.h+'개');
+  reasons.push('타율 '+mv.avg.toFixed(3).replace('0.','.')+' / OPS '+(mv.obp+mv.slg).toFixed(3).replace('0.','.'));
+  content.innerHTML='<div class="mvp-card">'
+    +'<div class="mvp-badge">MVP · '+mv.score+'pts</div>'
+    +'<div class="mvp-name">#'+p.num+' '+p.name+(p.pos?' <span style="font-size:11px;color:var(--text3)">('+p.pos+')</span>':'')+'</div>'
+    +'<div class="mvp-reason">'+reasons.join(' · ')+'</div>'
+    +'<div style="margin-top:6px;display:flex;gap:10px">'
+    +'<span style="font-size:10px;color:var(--text3)">AVG <strong style="color:var(--text)">'+mv.avg.toFixed(3).replace('0.','.')+'</strong></span>'
+    +'<span style="font-size:10px;color:var(--text3)">OBP <strong style="color:var(--text)">'+mv.obp.toFixed(3).replace('0.','.')+'</strong></span>'
+    +'<span style="font-size:10px;color:var(--text3)">SLG <strong style="color:var(--text)">'+mv.slg.toFixed(3).replace('0.','.')+'</strong></span>'
+    +'</div></div>';
 }
 
 function renderPsTable(){
@@ -1660,19 +1724,56 @@ function updBatterStat(){
     return'<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px"><div style="width:8px;height:8px;border-radius:50%;background:'+typeColors[e[0]]+'"></div><span style="flex:1">'+e[0]+'</span><span style="font-family:var(--mono);font-size:12px;font-weight:700">'+e[1]+'</span><span style="color:var(--text3);font-size:10px">'+pct+'%</span></div>';
   }).join('')||'<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록 없음</div>';
   var zoneOrder=['내각 높음','중앙 높음','외각 높음','내각 중간','중앙 중간','외각 중간','내각 낮음','중앙 낮음','외각 낮음'];
-  var zoneCounts={},zoneHits={};
-  zoneOrder.forEach(function(z){zoneCounts[z]=0;zoneHits[z]=0;});
-  bAbs.forEach(function(a){
-    if(a.zone){zoneCounts[a.zone]=(zoneCounts[a.zone]||0)+1;if(_HITS.includes(a.res))zoneHits[a.zone]=(zoneHits[a.zone]||0)+1;}
+  var ballZones=['볼 위','볼 내','볼 외','볼 아래'];
+  var zonePitches={};
+  zoneOrder.concat(ballZones).forEach(function(z){zonePitches[z]=[];});
+  bAbs.forEach(function(ab){
+    var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{zone:ab.zone,pt:ab.pt}]:[]);
+    ps.forEach(function(p,idx){
+      if(!p.zone)return;
+      if(!zonePitches[p.zone])zonePitches[p.zone]=[];
+      zonePitches[p.zone].push({pt:p.pt,result:idx===ps.length-1?ab.res:null});
+    });
   });
-  var maxZ=Math.max.apply(null,Object.values(zoneCounts).concat([1]));
+  function zoneHR(z){var pp=zonePitches[z]||[];var n=pp.length,h=pp.filter(function(p){return _HITS.includes(p.result);}).length;return{n:n,h:h,rate:n?h/n:0};}
+  var maxZ=Math.max.apply(null,zoneOrder.concat(ballZones).map(function(z){return(zonePitches[z]||[]).length;}).concat([1]));
   var heatEl=document.getElementById('bsZoneHeat');
-  heatEl.innerHTML=zoneOrder.map(function(z){
-    var n=zoneCounts[z],hr=n?zoneHits[z]/n:0;
-    var bg='transparent',col='var(--text3)';
-    if(n>0){if(hr>=0.4){bg='rgba(45,212,160,'+(0.15+n/maxZ*.4)+')';col='#2dd4a0';}else{bg='rgba(245,101,101,'+(0.1+n/maxZ*.35)+')';col='#f56565';}}
-    return'<div class="zh-cell" style="background:'+bg+';color:'+col+'">'+(n||'')+'</div>';
-  }).join('');
+  if(heatEl){
+    heatEl.style.width='90px';
+    heatEl.innerHTML=zoneOrder.map(function(z){
+      var zd=zoneHR(z);var bg='transparent',col='var(--text3)';
+      if(zd.n>0){if(zd.rate>=0.4){bg='rgba(45,212,160,'+(0.2+zd.n/maxZ*.4)+')';col='#2dd4a0';}else{bg='rgba(245,101,101,'+(0.15+zd.n/maxZ*.4)+')';col='#f56565';}}
+      var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
+      return'<div class="zh-cell" title="'+z+': '+tips+'" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0">'+(zd.n?'<span>'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span>':'')+'</div>';
+    }).join('');
+  }
+  var bzEl=document.getElementById('bsBallZone');
+  if(bzEl){
+    var bzNames={'볼 위':'위볼','볼 내':'내볼','볼 외':'외볼','볼 아래':'아래볼'};
+    bzEl.innerHTML=ballZones.map(function(z){
+      var zd=zoneHR(z);var col=zd.n?(zd.rate>=0.4?'#2dd4a0':'#f56565'):'var(--text3)';
+      return'<div style="font-size:9px;color:'+col+'">'+bzNames[z]+(zd.n?' '+zd.n:'')+'</div>';
+    }).join('');
+  }
+  var seqEl=document.getElementById('bsPitchSeq');
+  var ptColors={'직구':'#4b8cf5','커터':'#7c8898','커브':'#a78bfa','슬라이더':'#f6c23e','체인지업':'#2dd4a0','포크볼':'#fb923c'};
+  var ptSym={'직구':'F','커터':'CT','커브':'C','슬라이더':'S','체인지업':'CH','포크볼':'FK'};
+  var resColors={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','삼진':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','플라이 아웃':'#374151','땅볼 아웃':'#374151','병살':'#374151'};
+  if(seqEl){
+    if(!bAbs.length){seqEl.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px">기록 없음</div>';}
+    else{
+      seqEl.innerHTML=bAbs.map(function(ab,idx){
+        var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{zone:ab.zone,pt:ab.pt}]:[]);
+        var rCol=resColors[ab.res]||'#7c8898';
+        var zShort=function(z){if(!z)return'?';var p=z.split(' ');return p.map(function(w){return w[0];}).join('');};
+        var pitchHtml=ps.map(function(p,i){
+          var sym=ptSym[p.pt]||'?';var col=ptColors[p.pt]||'#7c8898';var isLast=i===ps.length-1;
+          return'<span style="display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;font-size:9px;font-weight:700;font-family:var(--mono);background:'+col+'22;color:'+col+';border:1px solid '+col+'55'+(isLast?';outline:1px solid '+col:'')+'">'+sym+' '+zShort(p.zone)+(isLast?'★':'')+'</span>';
+        }).join('<span style="color:var(--text3);font-size:8px">→</span>');
+        return'<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:10px"><div style="margin-bottom:2px"><span style="color:var(--text3);font-size:9px">'+(idx+1)+'타석</span> <span style="color:'+rCol+';font-weight:800">'+ab.res+'</span> <span style="color:var(--text3);font-size:9px">'+ab.inn+'</span></div><div style="line-height:1.6">'+(pitchHtml||'<span style="color:var(--text3)">코스 기록 없음</span>')+'</div></div>';
+      }).join('');
+    }
+  }
 }
 
 document.addEventListener('keydown',e=>{

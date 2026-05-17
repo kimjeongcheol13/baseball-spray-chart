@@ -681,7 +681,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
     </div>
     <div class="import-row">
-      <label class="import-label">파일에서 가져오기 (.spray)<input type="file" accept=".spray" style="display:none" onchange="importGames(this)"></label>
+      <label class="import-label">📥 파일에서 가져오기 (다른 기기 연계)<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
     </div>
     <div id="saveList" style="max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
@@ -1171,20 +1171,25 @@ function deleteGame(key){
 
 // ───── [진짜 앱 데이터 변환 장치] 내장 저장소 다운로드 폴더 출력 ─────
 function shareGame(key){
-  var d = JSON.parse(localStorage.getItem(key));
-  if(!d) return;
-
-  var exportObj = { version: 1, type: 'single', saves: [{ key: key, label: (d.th||'홈팀')+' vs '+(d.ta||'원정팀'), ts: d.ts }], data: { [key]: d } };
-  
-  // 일반 문서 포맷 위장이 아니라 진짜 전용 데이터 스트림(octet-stream) 규격 선언
-  var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/octet-stream' });
-  
-  var rawFileName = (d.th || '홈팀') + '_vs_' + (d.ta || '원정팀') + '_' + (d.d || '경기');
-  // 💡 확장자를 독자적 규격인 .spray로 선언해 앱 전용 저장소 연동 지원
-  var fileName = rawFileName.replace(/[\/\:*?"<>|]/g, '_') + '.spray';
-  
-  downloadBlob(blob, fileName);
-  showToast('태블릿 [다운로드] 폴더에 .spray 파일이 저장되었습니다.', false);
+  var d=JSON.parse(localStorage.getItem(key));
+  if(!d)return;
+  var exportObj={version:1,type:'single',saves:[{key:key,label:(d.th||'홈팀')+' vs '+(d.ta||'원정팀'),ts:d.ts}],data:{}};
+  exportObj.data[key]=d;
+  var jsonStr=JSON.stringify(exportObj,null,2);
+  var blob=new Blob([jsonStr],{type:'application/json'});
+  var safe=function(s){return (s||'').replace(/[\/\:*?"<>|\s]/g,'_');};
+  var fileName=safe(d.th||'홈팀')+'_vs_'+safe(d.ta||'원정팀')+'_'+safe(d.d||'경기')+'.json';
+  var shareTitle='SprayLab: '+(d.th||'홈팀')+' '+d.hs+':'+d.as+' '+(d.ta||'원정팀');
+  if(navigator.share){
+    var file=new File([blob],fileName,{type:'application/json'});
+    var canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+    navigator.share(canShareFiles
+      ?{title:shareTitle,text:shareTitle,files:[file]}
+      :{title:shareTitle,text:shareTitle}
+    ).catch(function(err){if(err.name!=='AbortError')downloadBlob(blob,fileName);});
+  }else{
+    downloadBlob(blob,fileName);
+  }
 }
 
 function exportAllGames(){
@@ -1192,23 +1197,49 @@ function exportAllGames(){
   if(!saves.length){showToast('저장된 경기가 없습니다',false);return;}
   var data={};
   saves.forEach(function(s){var raw=localStorage.getItem(s.key);if(raw)data[s.key]=JSON.parse(raw);});
-  
-  var blob = new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/octet-stream'});
-  var today = new Date().toLocaleDateString('ko-KR').replace(/\./g,'-').replace(/-$/,'').trim();
-  var fileName = 'SprayLab_TotalBackup_' + today + '.spray';
-  
-  downloadBlob(blob, fileName);
-  showToast('전체 데이터가 통합 백업(.spray) 파일로 추출되었습니다.', false);
+  var jsonStr=JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2);
+  var blob=new Blob([jsonStr],{type:'application/json'});
+  var today=new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/\s/g,'');
+  var fileName='SprayLab_전체백업_'+today+'.json';
+  var shareTitle='SprayLab 전체 경기 백업 ('+saves.length+'개)';
+  if(navigator.share){
+    var file=new File([blob],fileName,{type:'application/json'});
+    var canShareFiles=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+    navigator.share(canShareFiles
+      ?{title:shareTitle,text:shareTitle,files:[file]}
+      :{title:shareTitle,text:shareTitle}
+    ).catch(function(err){if(err.name!=='AbortError')downloadBlob(blob,fileName);});
+  }else{
+    downloadBlob(blob,fileName);
+  }
 }
 
 function downloadBlob(blob,fileName){
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  if(isIOS){
+    var reader=new FileReader();
+    reader.onloadend=function(){
+      var b64=reader.result.split(',')[1];
+      var json=decodeURIComponent(escape(atob(b64)));
+      var win=window.open('','_blank');
+      if(win){
+        win.document.write('<html><head><meta charset="utf-8"><title>'+fileName+'</title><meta name="viewport" content="width=device-width"></head><body style="background:#07090f;color:#eef0f8;font-family:sans-serif;padding:16px"><h3 style="color:#4b8cf5;margin-bottom:6px">'+fileName+'</h3><p style="font-size:12px;color:#7c8898;margin-bottom:12px">이 내용을 복사하거나, 상단 공유(□↑) 버튼으로 카카오톡·에어드랍에 공유하세요</p><textarea readonly style="width:100%;height:65vh;background:#111;color:#ccc;font-size:10px;border:1px solid #333;padding:10px;border-radius:8px;word-break:break-all"></textarea></body></html>');
+        win.document.close();
+        win.document.querySelector('textarea').value=json;
+      }else{
+        showToast('팝업을 허용하고 다시 시도해주세요',false);
+      }
+    };
+    reader.readAsDataURL(blob);
+    return;
+  }
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;
-  a.download=fileName;
+  a.href=url;a.download=fileName;a.style.display='none';
   document.body.appendChild(a);
   a.click();
-  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);
+  showToast('파일 저장 완료: '+fileName,false);
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},2000);
 }
 
 function importGames(input){
@@ -1216,13 +1247,17 @@ function importGames(input){
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var obj=JSON.parse(e.target.result);
-      if(!obj.saves||!obj.data){showToast('올바른 SprayLab 파일이 아닙니다',false);return;}
+      var text=e.target.result;
+      if(!text||!text.trim()){showToast('빈 파일입니다',false);return;}
+      var obj=JSON.parse(text);
+      if(!obj||typeof obj!=='object'||!obj.saves||!obj.data){
+        showToast('올바른 SprayLab 파일이 아닙니다',false);return;
+      }
       var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
       var existingKeys=new Set(saves.map(function(s){return s.key;}));
       var added=0;
       obj.saves.forEach(function(s){
-        if(!existingKeys.has(s.key)){
+        if(s&&s.key&&!existingKeys.has(s.key)){
           saves.push(s);
           if(obj.data[s.key])localStorage.setItem(s.key,JSON.stringify(obj.data[s.key]));
           added++;
@@ -1231,13 +1266,15 @@ function importGames(input){
       localStorage.setItem('sl_saves',JSON.stringify(saves));
       input.value='';
       openLoad();
-      showToast(added>0?added+'개 경기를 성공적으로 연동했습니다':'이미 동기화된 경기입니다',false);
+      showToast(added>0?added+'개 경기를 가져왔습니다':'이미 있는 경기입니다',false);
     }catch(err){
-      showToast('파일 데이터 포맷 분석에 실패했습니다',false);
+      showToast('파일을 읽을 수 없습니다 ('+err.message+')',false);
     }
   };
-  reader.readAsText(file);
+  reader.onerror=function(){showToast('파일 읽기 실패',false);};
+  reader.readAsText(file,'utf-8');
 }
+
 
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;

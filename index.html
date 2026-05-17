@@ -1144,31 +1144,44 @@ function deleteGame(key){
 }
 
 function shareGame(key){
-  var d=JSON.parse(localStorage.getItem(key));
-  if(!d)return;
+  var d = JSON.parse(localStorage.getItem(key));
+  if(!d) return;
 
-  var exportObj={version:1,type:'single',saves:[{key:key,label:(d.th||'홈팀')+' vs '+(d.ta||'원정팀'),ts:d.ts}],data:{}};
-  exportObj.data[key]=d;
-  
-  var blob=new Blob([JSON.stringify(exportObj,null,2)],{type:'application/json'});
-  var fileName=((d.th||'홈팀').replace(/[\/\:*?"<>|]/g,'_'))+'_vs_'+((d.ta||'원정팀').replace(/[\/\:*?"<>|]/g,'_'))+'_'+((d.ts||'').replace(/[\/\:*?"<>|\s]/g,'_'))+'.json';
-  
-  if(navigator.share && navigator.canShare && !window.location.protocol.startsWith('file')){
-    var file = new File([blob], fileName, {type: 'application/json'});
+  var gameTitle = (d.th || '홈팀') + ' vs ' + (d.ta || '원정팀');
+  var gameScore = d.hs + ':' + d.as;
+  var summaryText = '[SprayLab 경기 기록]\n' + gameTitle + ' (' + gameScore + ')\n' + d.ts;
 
-    if(navigator.canShare({files:[file]})){
-      navigator.share({
-        title: 'SprayLab 경기 기록 파일',
-        text: (d.th||'홈팀')+' '+d.hs+':'+d.as+' '+(d.ta||'원정팀')+' 경기 데이터입니다.',
-        files: [file]
-      }).catch(function(){
-        downloadBlob(blob,fileName);
-      });
-      return;
-    }
+  var rawJson = JSON.stringify({ version: 1, type: 'single', saves: [{ key: key, label: gameTitle, ts: d.ts }], data: { [key]: d } });
+  var encodedData = btoa(encodeURIComponent(rawJson));
+  
+  var shareUrl = window.location.origin + window.location.pathname + '?import=' + encodedData;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'SprayLab 경기 기록',
+      text: summaryText,
+      url: shareUrl
+    })
+    .then(function() {
+      showToast('공유 창을 열었습니다.', false);
+    })
+    .catch(function(err) {
+      // 카카오톡 내장 브라우저 등에서 취소하거나 거부당했을 때 파일 다운로드로 안전하게 복구(Fallback)
+      if(err.name !== 'AbortError') {
+        fallbackFileDownload(d, key);
+      }
+    });
+  } else {
+    fallbackFileDownload(d, key);
   }
-  
-  downloadBlob(blob,fileName);
+}
+
+function fallbackFileDownload(d, key) {
+  var exportObj = { version: 1, type: 'single', saves: [{ key: key, label: (d.th||'홈팀')+' vs '+(d.ta||'원정팀'), ts: d.ts }], data: { [key]: d } };
+  var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  var fileName = ((d.th || '홈팀').replace(/[\/\:*?"<>|]/g, '_')) + '_vs_' + ((d.ta || '원정팀').replace(/[\/\:*?"<>|]/g, '_')) + '.json';
+  downloadBlob(blob, fileName);
+  showToast('기기 호환성을 위해 파일 다운로드로 대체합니다.', false);
 }
 
 function exportAllGames(){
@@ -1240,6 +1253,43 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeHit();closeOverlay('loadOverlay');}
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
 });
+
+(function checkImportUrl() {
+  var urlParams = new URLSearchParams(window.location.search);
+  var importData = urlParams.get('import');
+  
+  if (importData) {
+    try {
+      var decodedJson = decodeURIComponent(atob(importData));
+      var obj = JSON.parse(decodedJson);
+      
+      if (obj.saves && obj.data) {
+        var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
+        var existingKeys = new Set(saves.map(function(s) { return s.key; }));
+        var targetKey = obj.saves[0].key;
+
+        if (!existingKeys.has(targetKey)) {
+          saves.push(obj.saves[0]);
+          localStorage.setItem('sl_saves', JSON.stringify(saves));
+          if (obj.data[targetKey]) {
+            localStorage.setItem(targetKey, JSON.stringify(obj.data[targetKey]));
+          }
+        }
+        
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        setTimeout(function() {
+          if(typeof initApp === 'function') initApp();
+          restoreGame(targetKey);
+          showToast('공유받은 경기 기록을 성공적으로 가져왔습니다! ⚾', false);
+        }, 400);
+      }
+    } catch (e) {
+      console.error('공유 데이터 링크 분석 실패:', e);
+    }
+  }
+})();
+
 </script>
 </body>
 </html>

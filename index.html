@@ -364,7 +364,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .rbi-btn{width:26px;height:26px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 90ms;font-family:var(--mono)}
 .rbi-btn:hover{border-color:var(--accent);color:var(--accent)}.rbi-btn:active{transform:scale(.88)}
 .load-item{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--bg-raised);transition:border-color 100ms;overflow:hidden}
-.load-item:hover{border-color:var(--accent)}.load-item-body{flex:1;padding:9px 11px;cursor:pointer}.load-item-titleを開く{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
+.load-item:hover{border-color:var(--accent)}.load-item-body{flex:1;padding:9px 11px;cursor:pointer}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
 .load-item-actions{display:flex;flex-direction:column;border-left:1px solid var(--border);flex-shrink:0}
 .li-btn{padding:5px 9px;font-size:10px;font-weight:700;font-family:var(--font);border:none;background:none;cursor:pointer;color:var(--text2);transition:all 90ms;white-space:nowrap}
 .li-btn:hover{background:var(--bg-hover)}.li-btn.share-btn:hover{color:var(--green)}.li-btn.load-btn:hover{color:var(--accent)}.li-btn.del-btn:hover{color:var(--red);background:rgba(245,101,101,.1)}
@@ -924,6 +924,7 @@ function selZone(el){
   logPitchAction();
 }
 
+// ───── 투구 코스 분석용 ─────
 function logPitchAction(){
   if(!AS.zone || !AS.pt) return;
   if(!AS.zoneHistory[AS.zone]) AS.zoneHistory[AS.zone] = [];
@@ -1123,7 +1124,7 @@ function openLoad(){
           '<div class="load-item-date">' + s.ts + '</div>' +
         '</div>' +
         '<div class="load-item-actions">' +
-          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')">공유</button>' +
+          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')">파일 다운로드</button>' +
           '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
           '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
         '</div>' +
@@ -1143,45 +1144,21 @@ function deleteGame(key){
   showToast('삭제되었습니다',false);
 }
 
+// ───── [태블릿 완벽 호환] 무조건 다운로드 폴더로 파일 생성 ─────
 function shareGame(key){
   var d = JSON.parse(localStorage.getItem(key));
   if(!d) return;
 
-  var gameTitle = (d.th || '홈팀') + ' vs ' + (d.ta || '원정팀');
-  var gameScore = d.hs + ':' + d.as;
-  var summaryText = '[SprayLab 경기 기록]\n' + gameTitle + ' (' + gameScore + ')\n' + d.ts;
-
-  var rawJson = JSON.stringify({ version: 1, type: 'single', saves: [{ key: key, label: gameTitle, ts: d.ts }], data: { [key]: d } });
-  var encodedData = btoa(encodeURIComponent(rawJson));
-  
-  var shareUrl = window.location.origin + window.location.pathname + '?import=' + encodedData;
-
-  if (navigator.share) {
-    navigator.share({
-      title: 'SprayLab 경기 기록',
-      text: summaryText,
-      url: shareUrl
-    })
-    .then(function() {
-      showToast('공유 창을 열었습니다.', false);
-    })
-    .catch(function(err) {
-      // 카카오톡 내장 브라우저 등에서 취소하거나 거부당했을 때 파일 다운로드로 안전하게 복구(Fallback)
-      if(err.name !== 'AbortError') {
-        fallbackFileDownload(d, key);
-      }
-    });
-  } else {
-    fallbackFileDownload(d, key);
-  }
-}
-
-function fallbackFileDownload(d, key) {
   var exportObj = { version: 1, type: 'single', saves: [{ key: key, label: (d.th||'홈팀')+' vs '+(d.ta||'원정팀'), ts: d.ts }], data: { [key]: d } };
   var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
-  var fileName = ((d.th || '홈팀').replace(/[\/\:*?"<>|]/g, '_')) + '_vs_' + ((d.ta || '원정팀').replace(/[\/\:*?"<>|]/g, '_')) + '.json';
+  
+  // 파일 이름 생성 (특수문자 제거)
+  var rawFileName = (d.th || '홈팀') + '_vs_' + (d.ta || '원정팀') + '_' + (d.d || '경기');
+  var fileName = rawFileName.replace(/[\/\:*?"<>|]/g, '_') + '.json';
+  
+  // 태블릿의 브라우저 다운로드 시스템 강제 구동
   downloadBlob(blob, fileName);
-  showToast('기기 호환성을 위해 파일 다운로드로 대체합니다.', false);
+  showToast('내장 [다운로드] 폴더에 파일이 저장되었습니다.', false);
 }
 
 function exportAllGames(){
@@ -1189,21 +1166,22 @@ function exportAllGames(){
   if(!saves.length){showToast('저장된 경기가 없습니다',false);return;}
   var data={};
   saves.forEach(function(s){var raw=localStorage.getItem(s.key);if(raw)data[s.key]=JSON.parse(raw);});
-  var blob=new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/json'});
-  var today=new Date().toLocaleDateString('ko-KR').replace(/\./g,'-').replace(/-$/,'');
-  var fileName='SprayLab_backup_'+today+'.json';
-  if(navigator.share){
-    var file=new File([blob],fileName,{type:'application/json'});
-    navigator.share({title:'SprayLab 전체 경기 백업',text:saves.length+'개 경기 데이터',files:[file]}).catch(function(){downloadBlob(blob,fileName);});
-  }else{
-    downloadBlob(blob,fileName);
-  }
+  
+  var blob = new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/json'});
+  var today = new Date().toLocaleDateString('ko-KR').replace(/\./g,'-').replace(/-$/,'').trim();
+  var fileName = 'SprayLab_backup_' + today + '.json';
+  
+  downloadBlob(blob, fileName);
+  showToast('전체 백업 파일이 다운로드되었습니다.', false);
 }
 
 function downloadBlob(blob,fileName){
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;a.download=fileName;document.body.appendChild(a);a.click();
+  a.href=url;
+  a.download=fileName;
+  document.body.appendChild(a);
+  a.click();
   setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);
 }
 
@@ -1234,6 +1212,7 @@ function importGames(input){
   };
   reader.readAsText(file);
 }
+
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
   document.getElementById('tHome').value=d.th;document.getElementById('tAway').value=d.ta;
@@ -1254,42 +1233,32 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
 });
 
+// ───── 웹 url import 기능 백업 ─────
 (function checkImportUrl() {
   var urlParams = new URLSearchParams(window.location.search);
   var importData = urlParams.get('import');
-  
   if (importData) {
     try {
       var decodedJson = decodeURIComponent(atob(importData));
       var obj = JSON.parse(decodedJson);
-      
       if (obj.saves && obj.data) {
         var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
         var existingKeys = new Set(saves.map(function(s) { return s.key; }));
         var targetKey = obj.saves[0].key;
-
         if (!existingKeys.has(targetKey)) {
           saves.push(obj.saves[0]);
           localStorage.setItem('sl_saves', JSON.stringify(saves));
-          if (obj.data[targetKey]) {
-            localStorage.setItem(targetKey, JSON.stringify(obj.data[targetKey]));
-          }
+          if (obj.data[targetKey]) localStorage.setItem(targetKey, JSON.stringify(obj.data[targetKey]));
         }
-        
         window.history.replaceState({}, document.title, window.location.pathname);
-        
         setTimeout(function() {
           if(typeof initApp === 'function') initApp();
           restoreGame(targetKey);
-          showToast('공유받은 경기 기록을 성공적으로 가져왔습니다! ⚾', false);
         }, 400);
       }
-    } catch (e) {
-      console.error('공유 데이터 링크 분석 실패:', e);
-    }
+    } catch (e) {}
   }
 })();
-
 </script>
 </body>
 </html>

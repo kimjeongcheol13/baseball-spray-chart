@@ -131,6 +131,7 @@ section{padding:100px 5%}
 .tgt-emoji{font-size:36px;margin-bottom:12px;display:block}
 .tgt-title{font-size:15px;font-weight:800;margin-bottom:8px}
 .tgt-desc{font-size:12px;color:var(--text2);line-height:1.7}
+.tgt-desc{font-size:12px;color:var(--text2);line-height:1.7}
 .tgt-list{list-style:none;margin-top:12px;text-align:left}
 .tgt-list li{font-size:11px;color:var(--text2);padding:4px 0;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border)}
 .tgt-list li:last-child{border-bottom:none}
@@ -511,7 +512,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div class="mk-player"><div class="mk-av">이</div><div><div class="mk-n">#12 이민준</div><div class="mk-s">2AB .500</div></div></div>
         <div class="mk-player"><div class="mk-av">박</div><div><div class="mk-n">#3 박성현</div><div class="mk-s">3AB .000</div></div></div>
         <div class="mk-player"><div class="mk-av">최</div><div><div class="mk-n">#21 최준혁</div><div class="mk-s">2AB .500</div></div></div>
-        <div class="mk-player"><div class="mk-av">정</div><div><div class="mk-n">#9 정우성</div><div class="mk-s">1AB .000</div></div></div>
+        <div class="mk-player"><div class="mk-av">정</div><div><div class="mk-n">#9정우성</div><div class="mk-s">1AB .000</div></div></div>
       </div>
       <div class="pv-center" style="background:#09090f;flex-direction:column;gap:8px">
         <div style="font-size:11px;color:#4b8cf5;font-weight:700">#7 김정철 타석 준비</div>
@@ -546,7 +547,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
   <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
   <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
+    <button class="btn-hero-primary" onclick="showApp()">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       SprayLab 시작하기
     </button>
@@ -771,7 +772,7 @@ function goHome(){
     mctx.beginPath();mctx.arc(cx,cy,R*.88,-Math.PI,0);mctx.strokeStyle='rgba(255,255,255,.08)';mctx.lineWidth=1;mctx.stroke();
     mctx.fillStyle='rgba(255,255,255,.5)';
     mctx.beginPath();mctx.moveTo(cx,cy-6);mctx.lineTo(cx+5,cy-2);mctx.lineTo(cx+5,cy+3);mctx.lineTo(cx-5,cy+3);mctx.lineTo(cx-5,cy-2);mctx.closePath();mctx.fill();
-    [[|0.42,0.55,'#2dd4a0',5],[0.6,0.38,'#4b8cf5',5],[0.35,0.72,'#374151',4],[0.55,0.65,'#374151',4],[0.48,0.42,'#f6c23e',5],[0.7,0.5,'#2dd4a0',5],[0.3,0.48,'#f56565',6],[0.52,0.3,'#2dd4a0',5],[0.38,0.62,'#374151',4]].forEach(([px,py,col,r])=>{
+    [[0.42,0.55,'#2dd4a0',5],[0.6,0.38,'#4b8cf5',5],[0.35,0.72,'#374151',4],[0.55,0.65,'#374151',4],[0.48,0.42,'#f6c23e',5],[0.7,0.5,'#2dd4a0',5],[0.3,0.48,'#f56565',6],[0.52,0.3,'#2dd4a0',5],[0.38,0.62,'#374151',4]].forEach(([px,py,col,r])=>{
       const x=px*S,y=py*S;
       mctx.beginPath();mctx.arc(x,y,r,0,Math.PI*2);mctx.fillStyle=col+'bb';mctx.fill();mctx.strokeStyle=col;mctx.lineWidth=1.2;mctx.stroke();
     });
@@ -983,7 +984,7 @@ function drawField(){
   ctx.setLineDash([]);
   ctx.beginPath();ctx.arc(cx,cy,S2*.89,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1;ctx.stroke();
   const br=S2*.42;[[cx,cy-br*.65],[cx-br*.46,cy-br*.33],[cx+br*.46,cy-br*.33]].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();});
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();fill();
+  ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();ctx.fill();
   ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle='#1a1106';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;ctx.stroke();
   ctx.fillStyle='rgba(255,255,255,.12)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
   ctx.fillText('LF',cx-S2*.32,cy-S2*.58);ctx.fillText('CF',cx,cy-S2*.72);ctx.fillText('RF',cx+S2*.32,cy-S2*.58);

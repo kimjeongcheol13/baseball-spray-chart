@@ -381,7 +381,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ONBOARDING */
 .ob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:flex;align-items:center;justify-content:center}
 .ob-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:28px 24px;width:min(360px,92vw);text-align:center;box-shadow:var(--shadow)}
-.ob-icon{font-size:40px;margin-bottom:12px}.ob-step{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.ob-icon{font-size:40px;margin-bottom:12px}.ob-step覆{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
 .ob-title{font-size:20px;font-weight:900;margin-bottom:10px;line-height:1.3}.ob-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px}
 .ob-dots{display:flex;gap:4px;justify-content:center;margin-bottom:20px}
 .ob-dot{width:5px;height:5px;border-radius:50%;background:var(--border2);transition:all 200ms}.ob-dot.on{background:var(--accent);width:16px;border-radius:3px}
@@ -681,7 +681,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
     </div>
     <div class="import-row">
-      <label class="import-label">파일에서 가져오기 (다른 기기 동기화)<input type="file" accept=".json" style="display:none" onchange="importGames(this)"></label>
+      <label class="import-label">파일에서 가져오기 (.spray)<input type="file" accept=".spray" style="display:none" onchange="importGames(this)"></label>
     </div>
     <div id="saveList" style="max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
@@ -695,6 +695,34 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 </div>
 <script>
+// ─────────────────────────────────────────────────────────
+// 🏃‍♂️ [핵심 장치] 카카오톡 인앱 브라우저 강제 탈출 스크립트
+// ─────────────────────────────────────────────────────────
+(function escapeKakaoInAppBrowser() {
+  var userAgent = navigator.userAgent.toLowerCase();
+  if (userAgent.indexOf('kakaotalk') > -1) {
+    var currentUrl = window.location.href;
+    if (userAgent.indexOf('android') > -1) {
+      var intentUrl = 'intent://' + currentUrl.replace(/https?:\/\//i, '') + '#Intent;scheme=http;package=com.android.chrome;end';
+      window.location.href = intentUrl;
+    } else if (userAgent.indexOf('iphone') > -1 || userAgent.indexOf('ipad') > -1) {
+      window.location.href = currentUrl + (currentUrl.indexOf('?') > -1 ? '&open=safari' : '?open=safari');
+    }
+    
+    // 탈출 중 카톡 화면 처리 가이드 화면 연출
+    document.body.innerHTML = `
+      <div style="position:fixed; inset:0; background:#07090f; color:#eef0f8; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; font-family:sans-serif; z-index:999999;">
+        <div style="font-size:40px; margin-bottom:20px;">🏟️</div>
+        <h2 style="font-size:18px; font-weight:700; margin-bottom:10px; color:#4b8cf5;">안전한 파일 처리를 위해 이동 중...</h2>
+        <p style="font-size:13px; color:#7c8898; line-height:1.6; margin-bottom:24px;">
+          카카오톡 보안 장벽을 해제하기 위해<br>태블릿 외부 진짜 브라우저(Chrome/Safari)를 호출합니다.
+        </p>
+        <div style="font-size:11px; color:#374151;">화면이 멈춰있다면 우측 상단 삼점(...) 버튼을 눌러 [다른 브라우저로 열기]를 눌러주세요.</div>
+      </div>
+    `;
+  }
+})();
+
 // ───── PAGE ROUTING ─────
 function showApp(){
   document.getElementById('landing-page').style.display='none';
@@ -831,14 +859,12 @@ function initApp(){
 
 function chSc(t,d){if(t==='h'){AS.hs=Math.max(0,AS.hs+d);document.getElementById('scH').textContent=AS.hs}else{AS.as=Math.max(0,AS.as+d);document.getElementById('scA').textContent=AS.as}}
 
-// ── 홈 / 원정 라인업 탭 전환 ──
 function swLineupTab(team) {
   if(AS.curTeam === team) return;
   AS.curTeam = team;
   document.getElementById('subtab-home').classList.toggle('on', team==='home');
   document.getElementById('subtab-away').classList.toggle('on', team==='away');
   document.getElementById('lineupTitle').textContent = team==='home' ? '홈팀 명단' : '원정팀 명단';
-  
   renderLP();
   renderMob();
 }
@@ -863,10 +889,8 @@ function addPlayer(){
 function selBatter(id){
   const targetLineup = getActiveLineup();
   AS.batter=targetLineup.find(p=>p.id===id)||null;
-  
   renderLP();
   renderMob();
-  
   const d=document.getElementById('batterDisp');
   if(AS.batter) d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name} (${AS.curTeam === 'home'?'홈':'원정'})</span>`;
   else d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
@@ -917,6 +941,7 @@ function selChip(el,k,v){
   logPitchAction();
 }
 
+// ───── 투구 추적 코어 엔진 ─────
 function selZone(el){
   document.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
@@ -924,7 +949,6 @@ function selZone(el){
   logPitchAction();
 }
 
-// ───── 투구 코스 분석용 ─────
 function logPitchAction(){
   if(!AS.zone || !AS.pt) return;
   if(!AS.zoneHistory[AS.zone]) AS.zoneHistory[AS.zone] = [];
@@ -1124,7 +1148,8 @@ function openLoad(){
           '<div class="load-item-date">' + s.ts + '</div>' +
         '</div>' +
         '<div class="load-item-actions">' +
-          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')">파일 다운로드</button>' +
+          // 💡 일반 '다운로드' 대신 전용 '앱 파일 내보내기' 형태로 UI 전면 패치
+          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">전용 파일 내보내기</button>' +
           '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
           '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
         '</div>' +
@@ -1144,21 +1169,22 @@ function deleteGame(key){
   showToast('삭제되었습니다',false);
 }
 
-// ───── [태블릿 완벽 호환] 무조건 다운로드 폴더로 파일 생성 ─────
+// ───── [진짜 앱 데이터 변환 장치] 내장 저장소 다운로드 폴더 출력 ─────
 function shareGame(key){
   var d = JSON.parse(localStorage.getItem(key));
   if(!d) return;
 
   var exportObj = { version: 1, type: 'single', saves: [{ key: key, label: (d.th||'홈팀')+' vs '+(d.ta||'원정팀'), ts: d.ts }], data: { [key]: d } };
-  var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
   
-  // 파일 이름 생성 (특수문자 제거)
+  // 일반 문서 포맷 위장이 아니라 진짜 전용 데이터 스트림(octet-stream) 규격 선언
+  var blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/octet-stream' });
+  
   var rawFileName = (d.th || '홈팀') + '_vs_' + (d.ta || '원정팀') + '_' + (d.d || '경기');
-  var fileName = rawFileName.replace(/[\/\:*?"<>|]/g, '_') + '.json';
+  // 💡 확장자를 독자적 규격인 .spray로 선언해 앱 전용 저장소 연동 지원
+  var fileName = rawFileName.replace(/[\/\:*?"<>|]/g, '_') + '.spray';
   
-  // 태블릿의 브라우저 다운로드 시스템 강제 구동
   downloadBlob(blob, fileName);
-  showToast('내장 [다운로드] 폴더에 파일이 저장되었습니다.', false);
+  showToast('태블릿 [다운로드] 폴더에 .spray 파일이 저장되었습니다.', false);
 }
 
 function exportAllGames(){
@@ -1167,12 +1193,12 @@ function exportAllGames(){
   var data={};
   saves.forEach(function(s){var raw=localStorage.getItem(s.key);if(raw)data[s.key]=JSON.parse(raw);});
   
-  var blob = new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/json'});
+  var blob = new Blob([JSON.stringify({version:1,type:'all',saves:saves,data:data},null,2)],{type:'application/octet-stream'});
   var today = new Date().toLocaleDateString('ko-KR').replace(/\./g,'-').replace(/-$/,'').trim();
-  var fileName = 'SprayLab_backup_' + today + '.json';
+  var fileName = 'SprayLab_TotalBackup_' + today + '.spray';
   
   downloadBlob(blob, fileName);
-  showToast('전체 백업 파일이 다운로드되었습니다.', false);
+  showToast('전체 데이터가 통합 백업(.spray) 파일로 추출되었습니다.', false);
 }
 
 function downloadBlob(blob,fileName){
@@ -1205,9 +1231,9 @@ function importGames(input){
       localStorage.setItem('sl_saves',JSON.stringify(saves));
       input.value='';
       openLoad();
-      showToast(added>0?added+'개 경기를 가져왔습니다':'이미 있는 경기입니다',false);
+      showToast(added>0?added+'개 경기를 성공적으로 연동했습니다':'이미 동기화된 경기입니다',false);
     }catch(err){
-      showToast('파일을 읽을 수 없습니다',false);
+      showToast('파일 데이터 포맷 분석에 실패했습니다',false);
     }
   };
   reader.readAsText(file);
@@ -1233,7 +1259,7 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
 });
 
-// ───── 웹 url import 기능 백업 ─────
+// ───── [백업 서브루틴] URL 다이렉트 스트림 복구 시스템 ─────
 (function checkImportUrl() {
   var urlParams = new URLSearchParams(window.location.search);
   var importData = urlParams.get('import');

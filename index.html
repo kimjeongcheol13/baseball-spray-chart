@@ -189,7 +189,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pnl-right{border-left:none;border-top:1px solid var(--border);height:auto;min-height:360px}
   .canvas-wrap{width:min(380px,100%)}
   .field-wrap{padding:8px}
-  .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0}
+  .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
   .mob-batter::-webkit-scrollbar{display:none}
   .mob-chip{flex-shrink:0;padding:5px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all 100ms;white-space:nowrap;font-family:var(--font)}
   .mob-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}.mob-chip:active{transform:scale(.95)}
@@ -951,7 +951,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
         <div class="stat-card">
           <div class="sc-title">코스 × 구종 교차분석</div>
-          <div id="zonePitchCross" style="overflow-x:auto"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
+          <div id="zonePitchCross" style="overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
         </div>
       </div>
 
@@ -1215,13 +1215,15 @@ function showApp(){
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
   if(isMob){ap.style.overflowY='auto';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
-  document.body.style.overflow='hidden';
+  document.body.style.overflowY='hidden';
+  document.body.style.overflowX='hidden';
   initApp();
 }
 function goHome(){
   document.getElementById('app-page').style.display='none';
   document.getElementById('landing-page').style.display='block';
-  document.body.style.overflow='';
+  document.body.style.overflowY='';
+  document.body.style.overflowX='';
   window.scrollTo(0,0);
 }
 
@@ -2526,12 +2528,12 @@ function openQR(){
   }
   if(innSel)innSel.value=AS.inning||1;
   ov.style.display='flex';
-  document.body.style.overflow='hidden';
+  document.body.style.overflowY='hidden';
 }
 function closeQR(){
   var ov=document.getElementById('qrOv');
   if(ov)ov.style.display='none';
-  document.body.style.overflow='';
+  document.body.style.overflowY='';
 }
 function qrQuickHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요');return;}

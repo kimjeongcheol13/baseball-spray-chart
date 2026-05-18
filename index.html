@@ -790,11 +790,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       </div>
     </div>
     <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀로 타석 기록 가져오기</div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px" onclick="downloadExcelTemplate()">서식 다운로드</button>
-        <label class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px;cursor:pointer">엑셀 파일 선택<input type="file" id="xlsxInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(this)"></label>
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀 내보내기 / 가져오기</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px" onclick="exportAllGamesToExcel()">📋 전체 경기 합치기</button>
+        <label class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px;cursor:pointer">📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
       </div>
+      <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
     </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
@@ -1844,6 +1845,266 @@ document.addEventListener('keydown',e=>{
     } catch (e) {}
   }
 })();
+
+// ─────────────────────────────────────────────────────────
+// 전체 경기 합치기 엑셀 내보내기
+// ─────────────────────────────────────────────────────────
+function exportAllGamesToExcel() {
+  if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
+  var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
+  if (!saves.length) { showToast('저장된 경기가 없습니다', false); return; }
+  var allGames = saves.map(function(s){ return JSON.parse(localStorage.getItem(s.key)); }).filter(Boolean);
+
+  var NOAB=['볼넷','사구','희타','희비'], HITS=['안타','내야안타','2루타','3루타','홈런'];
+  var BASE={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+  var DIRLBL={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
+  function fmt(v){if(v===null||v===undefined)return'-';return v.toFixed(3).replace(/^0\./,'.');}
+  function tavg(list){var oab=list.filter(function(a){return!NOAB.includes(a.res);}).length,h=list.filter(function(a){return HITS.includes(a.res);}).length;return oab?fmt(h/oab):'-';}
+
+  // === Sheet 1: 경기 목록 ===
+  var gameRows=[['#','날짜','홈팀','홈점수','원정팀','원정점수','총타석','홈타율','원정타율']];
+  allGames.forEach(function(d,i){
+    var abs=d.abs||[];
+    gameRows.push([i+1,d.d||'',d.th||'홈팀',d.hs||0,d.ta||'원정팀',d.as||0,abs.length,
+      tavg(abs.filter(function(a){return a.team==='home';})),
+      tavg(abs.filter(function(a){return a.team==='away';}))]);
+  });
+
+  // === Sheet 2: 통합 선수별 통계 ===
+  var pmap={};
+  allGames.forEach(function(d){
+    var allLP=(d.home_lineup||[]).map(function(p){return{p:p,t:'home'};})
+      .concat((d.away_lineup||[]).map(function(p){return{p:p,t:'away'};}));
+    allLP.forEach(function(item){
+      var pa=(d.abs||[]).filter(function(a){return a.bid===item.p.id;});
+      if(!pa.length)return;
+      var key=(item.p.name||'')+'|'+(item.p.num||'');
+      if(!pmap[key])pmap[key]={name:item.p.name||'',num:item.p.num||'',games:0,pa:0,oab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sac:0,k:0,rbi:0,tb:0,reach:0,fdN:0,pull:0,ctr:0,oppo:0};
+      var m=pmap[key]; m.games++;
+      m.pa+=pa.length;
+      m.oab+=pa.filter(function(a){return!NOAB.includes(a.res);}).length;
+      m.h+=pa.filter(function(a){return HITS.includes(a.res);}).length;
+      m.dbl+=pa.filter(function(a){return a.res==='2루타';}).length;
+      m.tpl+=pa.filter(function(a){return a.res==='3루타';}).length;
+      m.hr+=pa.filter(function(a){return a.res==='홈런';}).length;
+      m.bb+=pa.filter(function(a){return a.res==='볼넷';}).length;
+      m.hbp+=pa.filter(function(a){return a.res==='사구';}).length;
+      m.sac+=pa.filter(function(a){return a.res==='희타'||a.res==='희비';}).length;
+      m.k+=pa.filter(function(a){return a.res==='삼진';}).length;
+      m.rbi+=pa.reduce(function(s,a){return s+a.rbi;},0);
+      m.tb+=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
+      m.reach+=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
+      var fd=pa.filter(function(a){return a.deg!=null;});
+      m.fdN+=fd.length; m.pull+=fd.filter(function(a){return a.deg<72;}).length;
+      m.ctr+=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+      m.oppo+=fd.filter(function(a){return a.deg>108;}).length;
+    });
+  });
+  var aggRows=[['선수','번호','경기수','타석','타수','안타','2루타','3루타','홈런','볼넷','사구','희생','삼진','타점','타율','출루율','장타율','당겨치기%','센터%','밀어치기%']];
+  Object.keys(pmap).sort(function(a,b){return pmap[b].pa-pmap[a].pa;}).forEach(function(k){
+    var m=pmap[k],t=m.fdN||1;
+    aggRows.push([m.name,m.num,m.games,m.pa,m.oab,m.h,m.dbl,m.tpl,m.hr,m.bb,m.hbp,m.sac,m.k,m.rbi,
+      fmt(m.oab?m.h/m.oab:null),fmt(m.pa?m.reach/m.pa:null),fmt(m.oab?m.tb/m.oab:null),
+      Math.round(m.pull/t*100)+'%',Math.round(m.ctr/t*100)+'%',Math.round(m.oppo/t*100)+'%']);
+  });
+
+  // === Sheet 3: 전체 타석 기록 ===
+  var allAbRows=[['경기날짜','홈팀','원정팀','이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간']];
+  allGames.forEach(function(d){
+    var th=d.th||'홈팀',ta=d.ta||'원정팀';
+    (d.abs||[]).forEach(function(a){
+      allAbRows.push([d.d||'',th,ta,a.inn||'',a.team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
+        a.dir?(DIRLBL[a.dir]||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+    });
+  });
+
+  var wb=XLSX.utils.book_new();
+  var ws1=XLSX.utils.aoa_to_sheet(gameRows); ws1['!cols']=[{wch:4},{wch:12},{wch:10},{wch:6},{wch:10},{wch:6},{wch:6},{wch:8},{wch:8}];
+  var ws2=XLSX.utils.aoa_to_sheet(aggRows); ws2['!cols']=[{wch:10},{wch:5},{wch:7},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:9}];
+  var ws3=XLSX.utils.aoa_to_sheet(allAbRows); ws3['!cols']=[{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:5},{wch:10},{wch:8},{wch:5},{wch:7},{wch:8},{wch:4},{wch:7}];
+  XLSX.utils.book_append_sheet(wb, ws1, '경기목록');
+  XLSX.utils.book_append_sheet(wb, ws2, '통합선수별통계');
+  XLSX.utils.book_append_sheet(wb, ws3, '전체타석기록');
+
+  var d=new Date(),ds=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+  XLSX.writeFile(wb, 'SprayLab_전체경기_'+ds+'.xlsx');
+  showToast(allGames.length+'개 경기 엑셀 저장 완료', false);
+}
+
+// ─────────────────────────────────────────────────────────
+// 엑셀 파일 → 새 경기로 추가 (Import as saved game)
+// ─────────────────────────────────────────────────────────
+function downloadGameTemplate() {
+  if (typeof XLSX === 'undefined') { showToast('로딩 중...', false); return; }
+  var wb=XLSX.utils.book_new();
+  var sumData=[
+    ['항목','홈팀(홈)','원정팀(원정)'],
+    ['점수',0,0]
+  ];
+  var ws1=XLSX.utils.aoa_to_sheet(sumData); ws1['!cols']=[{wch:14},{wch:14},{wch:14}];
+  var abData=[
+    ['이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간'],
+    ['1회초','홈','김정철','7','안타','LF',1,280,'직구',5,'14:30'],
+    ['1회초','홈','이민준','12','삼진','',0,'','','',''],
+    ['1회말','원정','박성현','3','홈런','CF',2,380,'','','']
+  ];
+  var ws2=XLSX.utils.aoa_to_sheet(abData); ws2['!cols']=[{wch:8},{wch:8},{wch:10},{wch:5},{wch:10},{wch:8},{wch:5},{wch:7},{wch:8},{wch:4},{wch:7}];
+  var note=[
+    ['※ 작성 안내'],
+    ['팀: 홈 또는 원정  (경기요약 시트의 팀명과 일치시키면 팀명 자동 적용)'],
+    ['결과: 안타 내야안타 2루타 3루타 홈런 볼넷 사구 삼진 플라이 아웃 땅볼 아웃 희타 희비 병살'],
+    ['방향: LF LC CF RC RF  (볼넷·삼진 등은 빈칸)'],
+    ['이 시트는 무시됩니다. 경기요약·타석기록 시트만 읽습니다.']
+  ];
+  var ws3=XLSX.utils.aoa_to_sheet(note); ws3['!cols']=[{wch:70}];
+  XLSX.utils.book_append_sheet(wb, ws1, '경기요약');
+  XLSX.utils.book_append_sheet(wb, ws2, '타석기록');
+  XLSX.utils.book_append_sheet(wb, ws3, '작성안내');
+  XLSX.writeFile(wb, 'spraylab_game_template.xlsx');
+  showToast('서식 파일 다운로드 완료', false);
+}
+
+function importExcelAsGame(input) {
+  var file=input.files[0]; if(!file)return;
+  if(typeof XLSX==='undefined'){showToast('Excel 라이브러리 로딩 중...', false);input.value='';return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try {
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+
+      // 1) 경기요약 시트에서 팀명·점수 추출
+      var th='홈팀',ta='원정팀',hs=0,gameAs=0,gameDate=new Date().toLocaleDateString('ko-KR');
+      var sumSN=wb.SheetNames.find(function(n){return n.replace(/\s/g,'').includes('요약')||n.toLowerCase().includes('summary');});
+      if(sumSN){
+        var srows=XLSX.utils.sheet_to_json(wb.Sheets[sumSN],{header:1,defval:''});
+        // row 0: ['항목','홈팀(홈)','원정팀(원정)']
+        if(srows[0]&&srows[0][1]){th=String(srows[0][1]).replace(/\(홈\)/g,'').trim()||'홈팀';}
+        if(srows[0]&&srows[0][2]){ta=String(srows[0][2]).replace(/\(원정\)/g,'').trim()||'원정팀';}
+        var scRow=srows.find(function(r){return String(r[0]).includes('점수');});
+        if(scRow){hs=parseInt(scRow[1])||0; gameAs=parseInt(scRow[2])||0;}
+      }
+
+      // 2) 타석기록 시트 찾기
+      var abSN=wb.SheetNames.find(function(n){return n.replace(/\s/g,'').includes('타석');});
+      if(!abSN){
+        // fallback: try 전체타석기록
+        abSN=wb.SheetNames.find(function(n){return n.includes('기록');});
+      }
+      if(!abSN){showToast('"타석기록" 시트를 찾을 수 없습니다', false);input.value='';return;}
+
+      var rows=XLSX.utils.sheet_to_json(wb.Sheets[abSN],{header:1,defval:''});
+
+      // 헤더 행 탐색
+      var hIdx=-1;
+      for(var i=0;i<Math.min(rows.length,5);i++){
+        if(rows[i].some(function(c){return String(c).trim()==='결과';})){hIdx=i;break;}
+      }
+      if(hIdx===-1){showToast('"결과" 헤더 행을 찾을 수 없습니다', false);input.value='';return;}
+
+      var headers=rows[hIdx].map(function(h){return String(h).trim();});
+      function colOf(aliases){
+        for(var i=0;i<aliases.length;i++){
+          var idx=headers.findIndex(function(h){return h===aliases[i]||h.replace(/\s/g,'')===aliases[i].replace(/\s/g,'');});
+          if(idx!==-1)return idx;
+        }
+        return -1;
+      }
+      var C={
+        inn:colOf(['이닝']),
+        team:colOf(['팀']),
+        bname:colOf(['선수','선수이름']),
+        bnum:colOf(['번호','등번호']),
+        res:colOf(['결과']),
+        dir:colOf(['방향']),
+        rbi:colOf(['타점']),
+        ft:colOf(['거리(ft)','거리','ft']),
+        pt:colOf(['구종']),
+        zone:colOf(['존','zone']),
+        ts:colOf(['시간'])
+      };
+      if(C.bname===-1||C.res===-1){showToast('"선수"·"결과" 컬럼이 필요합니다',false);input.value='';return;}
+
+      var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+      var noLocSet={'볼넷':1,'사구':1,'삼진':1};
+      var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+
+      var homeLP=[],awayLP=[],absArr=[];
+      var homeSet={},awaySet={},added=0,skipped=0;
+
+      // 팀명 → home/away 매핑 (경기요약의 팀명과 비교)
+      function teamNorm(raw){
+        var s=raw.trim();
+        if(s===th||s==='홈'||s.toLowerCase()==='home'||s==='H')return 'home';
+        if(s===ta||s==='원정'||s.toLowerCase()==='away'||s==='A')return 'away';
+        // 최초 등장 기준
+        return 'home';
+      }
+
+      rows.slice(hIdx+1).forEach(function(row){
+        if(!row||row.every(function(c){return c===''||c===null||c===undefined;}))return;
+        var bname=C.bname>=0?String(row[C.bname]||'').trim():'';
+        var res=C.res>=0?String(row[C.res]||'').trim():'';
+        if(!bname||!res)return;
+        if(!validRes[res]){skipped++;return;}
+
+        var teamRaw=C.team>=0?String(row[C.team]||'').trim():'홈';
+        var team=teamNorm(teamRaw);
+        var bnum=C.bnum>=0?String(row[C.bnum]||'').trim():'';
+        var inn=C.inn>=0?String(row[C.inn]||'').trim():'1회초';
+        if(!validInn[inn])inn='1회초';
+        var rbi=C.rbi>=0?(parseInt(row[C.rbi])||0):0;
+        var ft=C.ft>=0?(parseFloat(row[C.ft])||0):0;
+        var dirStr=C.dir>=0?String(row[C.dir]||'').trim():'';
+        var pt=C.pt>=0?String(row[C.pt]||'').trim():'';
+        var zone=C.zone>=0?(parseInt(row[C.zone])||null):null;
+        var ts=C.ts>=0?String(row[C.ts]||'').trim():'';
+
+        // 선수 찾거나 생성
+        var lineup=team==='home'?homeLP:awayLP;
+        var set=team==='home'?homeSet:awaySet;
+        var pkey=bname+'|'+bnum;
+        if(!set[pkey]){
+          set[pkey]={id:'xi'+Date.now()+Math.random().toString(36).slice(2,6),name:bname,num:bnum,pos:'',bh:''};
+          lineup.push(set[pkey]);
+        }
+        var player=set[pkey];
+
+        // 위치 계산
+        var deg=null,dir=null,x=null,y=null;
+        if(!noLocSet[res]&&dirStr&&dirDeg[dirStr]!==undefined){
+          deg=dirDeg[dirStr];
+          if(deg<54)dir='LF'; else if(deg<78)dir='LC'; else if(deg<102)dir='CF'; else if(deg<126)dir='RC'; else dir='RF';
+          var dp=(ft>50?ft:280)/450;
+          var ang=deg*Math.PI/180-Math.PI;
+          x=Math.min(0.97,Math.max(0.03,0.5+dp*Math.cos(ang)));
+          y=Math.min(0.97,Math.max(0.01,1.0+dp*Math.sin(ang)));
+        }
+
+        absArr.push({id:Date.now()+added,bid:player.id,bname:player.name,bnum:player.num,team:team,res:res,pt:pt||null,zone:zone,rbi:rbi,x:x,y:y,deg:deg,dir:dir,ft:ft>0?ft:(deg!==null?280:null),inn:inn,ts:ts,pitches:[]});
+        added++;
+      });
+
+      input.value='';
+      if(!added){showToast('가져올 타석 데이터가 없습니다'+(skipped>0?' (오류 '+skipped+'개)':''),false);return;}
+
+      // 새 경기로 저장
+      var key='sl_'+Date.now();
+      var gameData={key,hs,as:gameAs,th,ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:new Date().toLocaleString('ko-KR')};
+      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+      saves.push({key,label:th+' '+hs+':'+gameAs+' '+ta+' ('+gameDate+')',ts:gameData.ts});
+      localStorage.setItem('sl_saves',JSON.stringify(saves));
+      localStorage.setItem(key,JSON.stringify(gameData));
+      openLoad();
+      showToast(added+'개 타석 기록 → 새 경기로 저장됨'+(skipped>0?' (건너뜀 '+skipped+'개)':''),false);
+    }catch(err){
+      console.error(err);
+      showToast('파일 읽기 오류: '+err.message,false);
+      input.value='';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ─────────────────────────────────────────────────────────
 // 엑셀 내보내기 (통계 Export)

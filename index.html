@@ -6,6 +6,7 @@
 <title>SprayLab — Your Swing, Visualized</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style id="landing-css">
 :root{
@@ -249,7 +250,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .pnl-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .pnl-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3)}
-.lineup-list{flex:1;overflow-y:auto;padding:6px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.lineup-list{flex:1;overflow-y:auto;padding:6px}
 .player-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 100ms;border:1px solid transparent;margin-bottom:3px;position:relative}
 .player-row:hover{background:var(--bg-raised)}.player-row.active{background:var(--accent-dim);border-color:var(--accent)}
 .p-num{font-family:var(--mono);font-size:11px;color:var(--text3);width:18px;text-align:right;flex-shrink:0}
@@ -260,7 +261,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
 .p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
 .player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
-.add-row{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.add-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
 .inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
@@ -271,7 +272,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .batter-empty{font-size:12px;color:var(--text3)}
 .batter-hint{font-size:11px;color:var(--text3)}
 .field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden}
-.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair;touch-action:manipulation}
+.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair}
 #fldCanvas,#hitCanvas,#ovrCanvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
 #ovrCanvas.show{opacity:1}
@@ -314,7 +315,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .tab{flex:1;padding:11px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;transition:all 100ms;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:4px}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-body{flex:1;overflow-y:auto;padding:10px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.tab-body{flex:1;overflow-y:auto;padding:10px}
 .tab-pnl{display:none}.tab-pnl.on{display:block}
 
 /* RECORDS */
@@ -417,16 +418,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .bs-name{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px}
 .zone-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px;margin-top:2px}
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
-/* === 모바일/태블릿 스크롤 수정 (≤1024px) === */
-@media(max-width:1024px){
-  #app-page{height:auto !important;overflow:visible !important;min-height:100svh;}
+/* === 모바일 스크롤 수정 === */
+@media(max-width:720px){
+  #app-page{overflow-y:auto !important;}
   .app-layout{flex:none !important;height:auto !important;overflow:visible !important;}
-  .pnl-left{height:auto !important;overflow:visible !important;}
-  .lineup-list{flex:none !important;height:auto !important;overflow-y:visible !important;}
   .pnl-center{flex:none !important;height:auto !important;overflow:visible !important;}
-  .field-wrap{flex:none !important;height:auto !important;overflow:visible !important;}
+  .field-wrap{flex:none !important;overflow:visible !important;}
   .pnl-right{height:auto !important;overflow:visible !important;}
-  .tab-body{flex:none !important;height:auto !important;overflow-y:visible !important;}
 }
 </style>
 </head>
@@ -668,15 +666,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
     <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
     <div class="add-row">
-      <div style="display:flex;gap:5px">
-        <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
-        <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:44px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
-      </div>
-      <div style="display:flex;gap:5px">
-        <select class="inp" id="pPos" style="flex:1;padding:7px 4px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
-        <select class="inp" id="pBH" style="flex:1;padding:7px 4px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-        <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-      </div>
+      <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
+      <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:38px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
+      <select class="inp" id="pPos" style="width:52px;flex-shrink:0;padding:7px 2px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+      <select class="inp" id="pBH" style="width:42px;flex-shrink:0;padding:7px 2px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+      <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     </div>
   </div>
 
@@ -792,6 +786,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       <div id="paste-area" style="display:none;margin-top:6px">
         <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀로 타석 기록 가져오기</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px" onclick="downloadExcelTemplate()">서식 다운로드</button>
+        <label class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px;cursor:pointer">엑셀 파일 선택<input type="file" id="xlsxInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(this)"></label>
       </div>
     </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
@@ -913,24 +914,17 @@ function showDataModal(jsonStr, fileName) {
 // ───── PAGE ROUTING ─────
 function showApp(){
   document.getElementById('landing-page').style.display='none';
+  var isMob=window.innerWidth<=720;
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
-  ap.style.height='';
-  ap.style.overflowY='';
-  if(window.innerWidth>1024){
-    document.body.style.overflow='hidden';
-  }else{
-    document.body.style.overflow='';
-    document.body.style.overflowX='hidden';
-    window.scrollTo(0,0);
-  }
+  if(isMob){ap.style.overflowY='auto';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
+  document.body.style.overflow='hidden';
   initApp();
 }
 function goHome(){
   document.getElementById('app-page').style.display='none';
   document.getElementById('landing-page').style.display='block';
   document.body.style.overflow='';
-  document.body.style.overflowX='';
   window.scrollTo(0,0);
 }
 
@@ -1227,10 +1221,8 @@ function initCanvas(){
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   fC.onclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
   fC.ondblclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
-  fC.addEventListener('touchstart',function(e){
-    if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}
-  },{passive:true});
-  fC.addEventListener('touchend',function(e){
+  fC.ontouchstart=function(e){if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}};
+  fC.ontouchend=function(e){
     if(!e.changedTouches||e.changedTouches.length===0)return;
     const _t=e.changedTouches[0];
     if(Math.abs(_t.clientX-_touchStartX)>10||Math.abs(_t.clientY-_touchStartY)>10)return;
@@ -1239,7 +1231,7 @@ function initCanvas(){
     const t=_t;
     const r=fC.getBoundingClientRect();
     onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
-  },{passive:false});
+  };
 }
 
 function drawField(){
@@ -1850,6 +1842,143 @@ document.addEventListener('keydown',e=>{
     } catch (e) {}
   }
 })();
+
+// ─────────────────────────────────────────────────────────
+// 엑셀 가져오기 / 서식 다운로드
+// ─────────────────────────────────────────────────────────
+function downloadExcelTemplate() {
+  if (typeof XLSX === 'undefined') {
+    var csv = '﻿이닝,팀,선수이름,등번호,결과,방향,타점,거리(ft)\n1회초,홈,김정철,7,안타,LF,1,280\n1회초,홈,이민준,12,삼진,,,\n1회말,원정,박성현,3,홈런,CF,2,380\n';
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    downloadBlob(blob, 'spraylab_template.csv');
+    showToast('서식 CSV 다운로드 완료', false);
+    return;
+  }
+  var wb = XLSX.utils.book_new();
+  var data = [
+    ['SprayLab 타석 기록 서식 — 이 행은 삭제하세요'],
+    ['결과: 안타  내야안타  2루타  3루타  홈런  볼넷  사구  삼진  플라이 아웃  땅볼 아웃  희타  희비  병살'],
+    ['방향: LF(당겨치기)  LC(좌중간)  CF(센터)  RC(우중간)  RF(밀어치기)  ※볼넷/삼진 등은 빈칸'],
+    ['팀: 홈 또는 원정'],
+    [],
+    ['이닝','팀','선수이름','등번호','결과','방향','타점','거리(ft)'],
+    ['1회초','홈','김정철','7','안타','LF',1,280],
+    ['1회초','홈','이민준','12','삼진','',0,''],
+    ['1회말','원정','박성현','3','홈런','CF',2,380]
+  ];
+  var ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:8},{wch:6},{wch:10},{wch:6},{wch:12},{wch:12},{wch:6},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, '타석기록');
+  XLSX.writeFile(wb, 'spraylab_template.xlsx');
+  showToast('서식 파일 다운로드 완료', false);
+}
+
+function importExcel(input) {
+  var file = input.files[0]; if (!file) return;
+  if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중... 잠시 후 다시 시도하세요', false); input.value=''; return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+      // 헤더 행 찾기 (이닝 컬럼이 있는 행)
+      var hIdx = -1;
+      for (var i = 0; i < Math.min(rows.length, 10); i++) {
+        if (rows[i].some(function(c){ return String(c).replace(/\s/g,'').includes('이닝'); })) { hIdx=i; break; }
+      }
+      if (hIdx === -1) { showToast('"이닝" 헤더 행을 찾을 수 없습니다', false); input.value=''; return; }
+
+      var headers = rows[hIdx].map(function(h){ return String(h).trim(); });
+      function colOf(aliases) {
+        for (var i=0; i<aliases.length; i++) {
+          var idx = headers.findIndex(function(h){ return h===aliases[i]||h.replace(/\s/g,'')===aliases[i].replace(/\s/g,''); });
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      }
+      var C = {
+        inn:  colOf(['이닝']),
+        team: colOf(['팀']),
+        bname:colOf(['선수이름','선수']),
+        bnum: colOf(['등번호','번호']),
+        res:  colOf(['결과']),
+        dir:  colOf(['방향']),
+        rbi:  colOf(['타점']),
+        ft:   colOf(['거리(ft)','거리','ft','피트']),
+        deg:  colOf(['각도','deg','DEG'])
+      };
+      if (C.bname === -1 || C.res === -1) { showToast('"선수이름"·"결과" 컬럼이 필요합니다', false); input.value=''; return; }
+
+      var dirDeg = {'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+      var noLocSet = {'볼넷':1,'사구':1,'삼진':1};
+      var validRes = {'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validInn = {'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+
+      var added=0, skipped=0;
+      var curInn = document.getElementById('innSel').value;
+
+      rows.slice(hIdx+1).forEach(function(row) {
+        if (!row || row.every(function(c){ return c==='' || c===null || c===undefined; })) return;
+        var bname = C.bname>=0 ? String(row[C.bname]||'').trim() : '';
+        var res   = C.res>=0   ? String(row[C.res]||'').trim()   : '';
+        if (!bname || !res) return;
+        if (!validRes[res]) { skipped++; return; }
+
+        var teamRaw = C.team>=0 ? String(row[C.team]||'').trim() : '홈';
+        var team = (teamRaw==='홈'||teamRaw==='home'||teamRaw.toUpperCase()==='H') ? 'home' : 'away';
+        var bnum  = C.bnum>=0  ? String(row[C.bnum]||'').trim()  : '';
+        var rbi   = C.rbi>=0   ? (parseInt(row[C.rbi])||0) : 0;
+        var ft    = C.ft>=0    ? (parseFloat(row[C.ft])||0) : 0;
+        var degOv = C.deg>=0   ? (parseFloat(row[C.deg])||null) : null;
+        var dirStr= C.dir>=0   ? String(row[C.dir]||'').trim()   : '';
+        var inn   = C.inn>=0   ? String(row[C.inn]||'').trim()   : '';
+        if (!validInn[inn]) inn = curInn;
+
+        // 선수 찾거나 추가
+        var lineup = team==='home' ? AS.home_lineup : AS.away_lineup;
+        var player = lineup.find(function(p){ return p.name===bname||(bnum&&p.num===bnum&&p.num!==''); });
+        if (!player) {
+          player = {id:'xl'+Date.now()+Math.random().toString(36).slice(2,6), name:bname, num:bnum, pos:'', bh:''};
+          lineup.push(player);
+        }
+
+        // 위치 계산
+        var deg=null, dir=null, x=null, y=null;
+        if (!noLocSet[res]) {
+          if (degOv!==null) deg=degOv;
+          else if (dirDeg[dirStr]!==undefined) deg=dirDeg[dirStr];
+          if (deg!==null) {
+            if (deg<54) dir='LF'; else if (deg<78) dir='LC'; else if (deg<102) dir='CF'; else if (deg<126) dir='RC'; else dir='RF';
+            var distPx = (ft>50?ft:280)/450;
+            var ang = deg*Math.PI/180 - Math.PI;
+            x = Math.min(0.97, Math.max(0.03, 0.5 + distPx*Math.cos(ang)));
+            y = Math.min(0.97, Math.max(0.01, 1.0 + distPx*Math.sin(ang)));
+          }
+        }
+
+        if (AS.abs.length >= MAX_HITS) AS.abs.shift();
+        AS.abs.push({id:Date.now()+added, bid:player.id, bname:player.name, bnum:player.num, team:team, res:res, pt:null, zone:null, rbi:rbi, x:x, y:y, deg:deg, dir:dir, ft:ft>0?ft:(deg!==null?280:null), inn:inn, ts:'', pitches:[]});
+        added++;
+      });
+
+      input.value='';
+      if (added>0) {
+        updateAll(); closeOverlay('loadOverlay');
+        showToast(added+'개 타석 기록을 가져왔습니다'+(skipped>0?' ('+skipped+'개 건너뜀)':''), false);
+      } else {
+        showToast('가져올 데이터가 없습니다'+(skipped>0?' (결과값 오류 '+skipped+'개)':''), false);
+      }
+    } catch(err) {
+      console.error(err);
+      showToast('파일 읽기 오류: '+err.message, false);
+      input.value='';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 </script>
 </body>
 </html>

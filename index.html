@@ -507,6 +507,98 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ── zone 구종 태그 ── */
 .zh-pt-row{display:flex;flex-wrap:wrap;gap:1px;justify-content:center;margin-top:1px}
 .zh-pt{font-size:6.5px;padding:0 2px;border-radius:2px;font-weight:800;line-height:1.4}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   AUTO-SAVE INDICATOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.save-ind{font-size:10px;font-family:var(--mono);color:var(--text3);flex-shrink:0;white-space:nowrap;transition:color .4s;letter-spacing:.3px}
+.save-ind.ok{color:var(--green)}
+.save-ind.fail{color:var(--red)}
+.save-ind.saving{color:var(--yellow)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE FAB + QUICK-RECORD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fab{position:fixed;bottom:20px;right:18px;width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:350;display:none;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(75,140,245,.45),0 0 0 4px rgba(75,140,245,.12);transition:all .2s;-webkit-tap-highlight-color:transparent;font-family:var(--font)}
+.fab:active{transform:scale(.91)}
+@media(max-width:720px){.fab{display:flex}}
+
+.qr-ov{position:fixed;inset:0;background:rgba(7,9,15,.96);z-index:400;flex-direction:column;padding:14px 14px env(safe-area-inset-bottom,14px);display:none;backdrop-filter:blur(12px)}
+.qr-ov.show{display:flex}
+.qr-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0}
+.qr-batter-wrap{flex:1}
+.qr-bname{font-size:16px;font-weight:900;color:var(--accent);line-height:1.2}
+.qr-bstat{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px}
+.qr-close{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:var(--font);font-weight:700;transition:all .1s}
+.qr-close:active{background:var(--bg-raised)}
+.qr-inn-row{display:flex;gap:5px;margin-bottom:8px;flex-shrink:0;align-items:center}
+.qr-inn-lbl{font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text3);text-transform:uppercase;white-space:nowrap}
+.qr-inn-sel{flex:1;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;outline:none}
+.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;flex:1;min-height:0}
+.qr-btn{border:none;border-radius:14px;font-size:15px;font-weight:900;font-family:var(--font);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:transform .1s;-webkit-tap-highlight-color:transparent;min-height:70px;max-height:110px}
+.qr-btn:active{transform:scale(.93)}
+.qr-btn small{font-size:9px;font-weight:600;opacity:.75;letter-spacing:.3px}
+.qr-sep{grid-column:1/-1;border:none;border-top:1px solid var(--border2);margin:0}
+.qr-field-row{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;padding-top:10px;border-top:1px solid var(--border);margin-top:4px}
+.qr-field-btn{flex:1;padding:12px 8px;border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;text-align:center;transition:all .1s}
+.qr-field-btn:active{transform:scale(.96)}
+.qr-field-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PNG EXPORT / SHARE CARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.export-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.ex-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .1s;white-space:nowrap}
+.ex-btn:hover{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.08)}
+.ex-btn.green:hover{border-color:var(--green);color:var(--green);background:rgba(45,212,160,.08)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   STAT VALUE COLOR CODING + OPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sv-hot{color:#f56565!important}
+.sv-good{color:#2dd4a0!important}
+.sv-avg{color:#f6c23e!important}
+.sv-dim{color:var(--text3)!important}
+.ops-tag{display:inline-block;padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:9px;font-weight:800;margin-left:4px;vertical-align:middle}
+.ops-elite{background:rgba(245,101,101,.15);color:#f56565}
+.ops-good{background:rgba(45,212,160,.15);color:#2dd4a0}
+.ops-avg{background:rgba(75,140,245,.15);color:#4b8cf5}
+.ops-low{background:rgba(67,76,94,.2);color:var(--text3)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE SWIPE TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tab-body{touch-action:pan-y}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PITCH TYPE QUICK CHIPS (Input Bar)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.pt-chip-F{--c:#4b8cf5}
+.pt-chip-C{--c:#a78bfa}
+.pt-chip-S{--c:#f6c23e}
+.pt-chip-CH{--c:#2dd4a0}
+.pt-chip-FK{--c:#fb923c}
+.pt-chip-CT{--c:#8892a4}
+.chip.on.pt-chip-F{background:rgba(75,140,245,.2)!important;border-color:#4b8cf5!important;color:#4b8cf5!important}
+.chip.on.pt-chip-C{background:rgba(167,139,250,.2)!important;border-color:#a78bfa!important;color:#a78bfa!important}
+.chip.on.pt-chip-S{background:rgba(246,194,62,.2)!important;border-color:#f6c23e!important;color:#f6c23e!important}
+.chip.on.pt-chip-CH{background:rgba(45,212,160,.2)!important;border-color:#2dd4a0!important;color:#2dd4a0!important}
+.chip.on.pt-chip-FK{background:rgba(251,146,60,.2)!important;border-color:#fb923c!important;color:#fb923c!important}
+.chip.on.pt-chip-CT{background:rgba(136,146,164,.2)!important;border-color:#8892a4!important;color:#8892a4!important}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE 개선 - 터치 영역 확대
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media(max-width:720px){
+  .o-btn{padding:8px 12px;font-size:12px;border-radius:16px}
+  .chip{padding:6px 12px;font-size:12px}
+  .sc-btn{width:28px;height:28px;font-size:15px}
+  .hit-btn{padding:16px 8px;font-size:13px;min-height:58px}
+  .zone-cell{min-width:26px;min-height:26px}
+  .tab{padding:13px 6px;font-size:12px}
+  .rec-item{padding:10px 10px}
+  .player-row{padding:10px 12px}
+}
 </style>
 </head>
 <body>
@@ -730,6 +822,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   </div>
   <div style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
+    <span class="save-ind" id="saveInd">—</span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
@@ -787,7 +880,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
     <div class="input-bar">
       <div class="ib-row">
-        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button><button class="chip" onclick="selChip(this,'pt','커터')">커터</button></div></div>
+        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip pt-chip-F" onclick="selChip(this,'pt','직구')">직구</button><button class="chip pt-chip-C" onclick="selChip(this,'pt','커브')">커브</button><button class="chip pt-chip-S" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip pt-chip-CH" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip pt-chip-FK" onclick="selChip(this,'pt','포크볼')">포크볼</button><button class="chip pt-chip-CT" onclick="selChip(this,'pt','커터')">커터</button></div></div>
         <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
       </div>
@@ -863,6 +956,14 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       </div>
 
       <div class="tab-pnl" id="pnl-chart">
+        <div class="stat-card">
+          <div class="sc-title" style="margin-bottom:6px">스프레이차트 내보내기</div>
+          <div class="export-row">
+            <button class="ex-btn green" onclick="exportSprayPNG()">📷 스프레이차트 PNG</button>
+            <button class="ex-btn green" onclick="exportShareCard()">📊 성적 카드 이미지</button>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.6">PNG로 저장 후 SNS·카카오톡에 공유하세요<br>성적 카드: 팀 통계 요약 이미지</div>
+        </div>
         <div class="stat-card">
           <div class="sc-title">카운트별 결과 히트맵</div>
           <div id="countHeatmap"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
@@ -958,6 +1059,38 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- ⚡ MOBILE FAB -->
+<button class="fab" id="qrFab" onclick="openQR()" title="빠른 기록">⚡</button>
+
+<!-- 빠른 기록 오버레이 -->
+<div class="qr-ov" id="qrOv">
+  <div class="qr-hdr">
+    <div class="qr-batter-wrap">
+      <div class="qr-bname" id="qrBname">타자를 선택하세요</div>
+      <div class="qr-bstat" id="qrBstat">—</div>
+    </div>
+    <button class="qr-close" onclick="closeQR()">✕ 닫기</button>
+  </div>
+  <div class="qr-inn-row">
+    <span class="qr-inn-lbl">이닝</span>
+    <select class="qr-inn-sel" id="qrInn" onchange="AS.inning=+this.value;var s=document.getElementById('innSel');if(s)s.value=this.value;var d=document.getElementById('innDisp');if(d)d.textContent=this.value+'회'"></select>
+  </div>
+  <div class="qr-grid" id="qrGrid">
+    <button class="qr-btn" style="background:rgba(45,212,160,.15);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.3)" onclick="qrOther('볼넷')">볼넷<small>BB</small></button>
+    <button class="qr-btn" style="background:rgba(75,140,245,.12);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.25)" onclick="qrField()">필드<br>클릭<small>타구위치→</small></button>
+    <button class="qr-btn" style="background:rgba(245,101,101,.12);color:#f56565;border:1.5px solid rgba(245,101,101,.25)" onclick="qrOther('삼진')">삼진<small>K</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.22);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.4)" onclick="qrQuickHit('안타')">안타<small>1B</small></button>
+    <button class="qr-btn" style="background:rgba(75,140,245,.2);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.4)" onclick="qrQuickHit('2루타')">2루타<small>2B</small></button>
+    <button class="qr-btn" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.35)" onclick="qrQuickHit('3루타')">3루타<small>3B</small></button>
+    <button class="qr-btn" style="background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.35)" onclick="qrQuickHit('홈런')">홈런<small>HR</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('플라이 아웃')">플라이<br>아웃<small>F/O</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('땅볼 아웃')">땅볼<br>아웃<small>G/O</small></button>
+    <button class="qr-btn" style="background:rgba(251,146,60,.12);color:#fb923c;border:1.5px solid rgba(251,146,60,.25)" onclick="qrOther('사구')">사구<small>HBP</small></button>
+    <button class="qr-btn" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1.5px solid rgba(167,139,250,.25)" onclick="qrOther('희타')">희타<small>SAC</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.15);color:#7c8898;border:1.5px solid rgba(67,76,94,.3)" onclick="qrOther('병살')">병살<small>DP</small></button>
   </div>
 </div>
 
@@ -1511,7 +1644,7 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
 function renderRecs(){
   const el=document.getElementById('recList');document.getElementById('recCnt').textContent=AS.abs.length+'개 기록';
   if(!AS.abs.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div>';return;}
@@ -2326,6 +2459,262 @@ function updBatterStat(){
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeHit();closeOverlay('loadOverlay');closeOverlay('editRecOverlay');}
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AUTO-SAVE ENGINE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _autoTimer=null,_autoKey=null,_lastAutoLen=0;
+function scheduleAutoSave(){
+  clearTimeout(_autoTimer);
+  _autoTimer=setTimeout(_doAutoSave,10000);
+  var ind=document.getElementById('saveInd');
+  if(ind){ind.textContent='저장 대기…';ind.className='save-ind';}
+}
+function _doAutoSave(){
+  if(!AS.abs.length)return;
+  var key='sl_auto_'+(AS.curGame||Date.now());
+  _autoKey=key;
+  var data=JSON.stringify({abs:AS.abs,hs:AS.hs,as:AS.as,ts:Date.now()});
+  var ind=document.getElementById('saveInd');
+  try{
+    localStorage.setItem(key,data);
+    _lastAutoLen=data.length;
+    _pruneOldAutoSaves(key);
+    if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}
+    setTimeout(function(){if(ind)ind.textContent='';},2500);
+  }catch(e){
+    if(ind){ind.textContent='저장 실패!';ind.className='save-ind fail';}
+    if(e.name==='QuotaExceededError'){
+      _pruneOldAutoSaves(null);
+      try{localStorage.setItem(key,data);if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}}catch(e2){}
+    }
+  }
+}
+function _pruneOldAutoSaves(keepKey){
+  var keys=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k&&k.startsWith('sl_auto_'))keys.push(k);
+  }
+  keys.sort();
+  while(keys.length>3){
+    var old=keys.shift();
+    if(old!==keepKey)localStorage.removeItem(old);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MOBILE FAB / QUICK-RECORD OVERLAY
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function openQR(){
+  var ov=document.getElementById('qrOv');
+  if(!ov)return;
+  var nameEl=document.getElementById('qrBname');
+  if(nameEl)nameEl.textContent=(AS.batter&&AS.batter.name)||'타자를 선택하세요';
+  var statEl=document.getElementById('qrBstat');
+  if(statEl&&AS.batter){
+    var bAbs=AS.abs.filter(function(a){return a.bid===AS.batter.id;});
+    var hits=['안타','내야안타','2루타','3루타','홈런'];
+    var h=bAbs.filter(function(a){return hits.includes(a.res);}).length;
+    var ab=bAbs.filter(function(a){return !['볼넷','사구','희타','희비'].includes(a.res);}).length;
+    statEl.textContent=ab>0?h+'H / .'+Math.round(h/ab*1000).toString().padStart(3,'0'):'—';
+  }
+  var innSel=document.getElementById('qrInn');
+  if(innSel&&innSel.options.length===0){
+    for(var i=1;i<=12;i++){var o=document.createElement('option');o.value=i;o.textContent=i+'회';innSel.appendChild(o);}
+  }
+  if(innSel)innSel.value=AS.inning||1;
+  ov.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function closeQR(){
+  var ov=document.getElementById('qrOv');
+  if(ov)ov.style.display='none';
+  document.body.style.overflow='';
+}
+function qrQuickHit(res){
+  if(!AS.batter){showToast('타자를 먼저 선택하세요');return;}
+  var rmap={
+    '안타':{res:'안타',ft:'GB',deg:45,dir:'center',x:0.55,y:0.6},
+    '2루타':{res:'2루타',ft:'LD',deg:30,dir:'right',x:0.7,y:0.45},
+    '3루타':{res:'3루타',ft:'FB',deg:-30,dir:'left',x:0.3,y:0.35},
+    '홈런':{res:'홈런',ft:'FB',deg:0,dir:'center',x:0.5,y:0.15}
+  };
+  var defaults=rmap[res]||{res:res,ft:'GB',deg:0,dir:'center',x:0.5,y:0.5};
+  var W=500,H=500;
+  var ab={
+    id:Date.now(),
+    bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,
+    team:AS.curTeam,
+    res:defaults.res,pt:AS.pt||'직구',zone:AS.zone||5,rbi:AS.rbi||0,
+    x:defaults.x*W,y:defaults.y*H,
+    deg:defaults.deg,dir:defaults.dir,ft:defaults.ft,
+    inn:AS.inning||1,ts:Date.now(),
+    count:{b:AS.balls,s:AS.strikes,o:AS.outs},
+    pitches:AS.currentPitches.slice()
+  };
+  AS.abs.push(ab);
+  updateAll();
+  scheduleAutoSave();
+  showToast(res+' 기록됨');
+  closeQR();
+}
+function qrOther(res){
+  if(!AS.batter){showToast('타자를 먼저 선택하세요');return;}
+  recOther(res);
+  closeQR();
+}
+function qrField(){
+  closeQR();
+  showToast('필드를 탭해서 타구 위치를 기록하세요');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PNG EXPORT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function exportSprayPNG(){
+  var fld=document.getElementById('fldCanvas');
+  var hit=document.getElementById('hitCanvas');
+  if(!fld||!hit){showToast('캔버스를 찾을 수 없습니다');return;}
+  var out=document.createElement('canvas');
+  out.width=fld.width;out.height=fld.height;
+  var ctx=out.getContext('2d');
+  ctx.drawImage(fld,0,0);
+  ctx.drawImage(hit,0,0);
+  var dpr=window.devicePixelRatio||1;
+  ctx.save();
+  ctx.font=(14*dpr)+'px sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.textAlign='right';
+  ctx.fillText('Baseball Spray Chart',out.width-8*dpr,out.height-8*dpr);
+  ctx.restore();
+  _downloadCanvas(out,'spray_chart_'+Date.now()+'.png');
+}
+function exportShareCard(){
+  var W=800,H=450;
+  var out=document.createElement('canvas');
+  out.width=W;out.height=H;
+  var ctx=out.getContext('2d');
+  ctx.fillStyle='#1a1f2e';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#e8eaf6';
+  ctx.font='bold 22px sans-serif';
+  ctx.fillText('경기 요약',24,44);
+  ctx.font='bold 36px sans-serif';
+  ctx.fillStyle='#7c9cfc';
+  ctx.fillText(AS.hs+' : '+AS.as,24,90);
+  var homeAbs=AS.abs.filter(function(a){return a.team==='home';});
+  var awayAbs=AS.abs.filter(function(a){return a.team==='away';});
+  function calcLine(abArr){
+    var hits=['안타','내야안타','2루타','3루타','홈런'];
+    var nobb=['볼넷','사구','희생번트','희생플라이'];
+    var h=abArr.filter(function(a){return hits.includes(a.res);}).length;
+    var ab=abArr.filter(function(a){return !nobb.includes(a.res);}).length;
+    var bb=abArr.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+    var avg=ab>0?h/ab:0;
+    return {h:h,ab:ab,bb:bb,avg:avg};
+  }
+  var hs2=calcLine(homeAbs);
+  var as2=calcLine(awayAbs);
+  ctx.font='16px sans-serif';
+  ctx.fillStyle='#b0bec5';
+  ctx.fillText('홈: '+hs2.h+'안타 / .'+Math.round(hs2.avg*1000).toString().padStart(3,'0')+' 타율',24,130);
+  ctx.fillText('원정: '+as2.h+'안타 / .'+Math.round(as2.avg*1000).toString().padStart(3,'0')+' 타율',24,155);
+  var fld=document.getElementById('fldCanvas');
+  var hit=document.getElementById('hitCanvas');
+  if(fld&&hit){
+    var side=Math.min(H-40,260);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(W-side/2-20,H/2,side/2,0,Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(fld,W-side-20,20,side,side);
+    ctx.drawImage(hit,W-side-20,20,side,side);
+    ctx.restore();
+  }
+  ctx.font='12px sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.textAlign='right';
+  ctx.fillText('Baseball Spray Chart',W-12,H-12);
+  _downloadCanvas(out,'game_summary_'+Date.now()+'.png');
+}
+function _downloadCanvas(canvas,name){
+  canvas.toBlob(function(blob){
+    if(!blob)return;
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File([blob],name,{type:'image/png'})]})){
+      navigator.share({files:[new File([blob],name,{type:'image/png'})],title:'Baseball Spray Chart'}).catch(function(){});
+    }else{
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=name;
+      a.click();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},5000);
+    }
+  },'image/png');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PERFORMANCE: RAF-DEDUPED RENDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _rafPending=false;
+function safeRenderOpt(){
+  if(_rafPending)return;
+  _rafPending=true;
+  requestAnimationFrame(function(){
+    _rafPending=false;
+    renderHits();
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TAB SWIPE (mobile)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function(){
+  var tabOrder=['tab-rec','tab-batter','tab-stat','tab-chart'];
+  var _sx=0,_sy=0,_sTime=0;
+  document.addEventListener('touchstart',function(e){
+    var tb=e.target.closest('.tab-body');
+    if(!tb)return;
+    _sx=e.touches[0].clientX;_sy=e.touches[0].clientY;_sTime=Date.now();
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    var tb=e.target.closest('.tab-body');
+    if(!tb)return;
+    var dx=e.changedTouches[0].clientX-_sx;
+    var dy=e.changedTouches[0].clientY-_sy;
+    var dt=Date.now()-_sTime;
+    if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.8||dt>400)return;
+    var active=document.querySelector('.tab-btn.on');
+    if(!active)return;
+    var onclickAttr=active.getAttribute('onclick')||'';
+    var m=onclickAttr.match(/showTab\('([^']+)'/);
+    if(!m)return;
+    var cur=tabOrder.indexOf(m[1]);
+    if(cur<0)return;
+    var next=dx<0?Math.min(cur+1,tabOrder.length-1):Math.max(cur-1,0);
+    if(next===cur)return;
+    var btn=document.querySelector('.tab-btn[onclick*="'+tabOrder[next]+'"]');
+    if(btn)btn.click();
+  },{passive:true});
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// KEYBOARD SHORTCUTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable)return;
+  var k=e.key;
+  if(k==='q'||k==='Q'){
+    var ov=document.getElementById('qrOv');
+    if(ov&&ov.style.display==='flex')closeQR();else openQR();
+    return;
+  }
+  var tabMap={'1':'tab-rec','2':'tab-batter','3':'tab-stat','4':'tab-chart'};
+  if(tabMap[k]){
+    var btn=document.querySelector('.tab-btn[onclick*="'+tabMap[k]+'"]');
+    if(btn)btn.click();
+  }
 });
 
 // ─── 심화지표/구종/교차분석 팀 필터 ───

@@ -2672,44 +2672,37 @@ function safeRenderOpt(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function(){
   var tabOrder=['rec','batter','stat','chart'];
-  var _sx=0,_sy=0,_sTime=0,_skip=false;
-
-  function isHScrollable(el){
-    while(el&&el!==document.body){
-      var st=window.getComputedStyle(el);
-      var ox=st.overflowX;
-      if((ox==='auto'||ox==='scroll')&&el.scrollWidth>el.clientWidth+4)return true;
-      el=el.parentElement;
-    }
-    return false;
-  }
+  var _sx=0,_sy=0,_dir=null;
 
   document.addEventListener('touchstart',function(e){
-    var tb=e.target.closest('.tab-body');
-    if(!tb){_skip=true;return;}
-    _skip=isHScrollable(e.target);
-    _sx=e.touches[0].clientX;_sy=e.touches[0].clientY;_sTime=Date.now();
+    _sx=e.touches[0].clientX;
+    _sy=e.touches[0].clientY;
+    _dir=null;
+  },{passive:true});
+
+  document.addEventListener('touchmove',function(e){
+    if(_dir)return;
+    var dx=Math.abs(e.touches[0].clientX-_sx);
+    var dy=Math.abs(e.touches[0].clientY-_sy);
+    if(dx<10&&dy<10)return;
+    _dir=dx>dy?'h':'v';
   },{passive:true});
 
   document.addEventListener('touchend',function(e){
-    if(_skip)return;
-    var tb=e.target.closest('.tab-body');
-    if(!tb)return;
+    if(_dir!=='h')return;
+    if(!e.target.closest('.tab-body'))return;
     var dx=e.changedTouches[0].clientX-_sx;
-    var dy=e.changedTouches[0].clientY-_sy;
-    var dt=Date.now()-_sTime;
-    if(Math.abs(dx)<80||Math.abs(dy)>Math.abs(dx)*0.6||dt>400)return;
+    if(Math.abs(dx)<60)return;
     var active=document.querySelector('.tab.on');
     if(!active)return;
-    var onclickAttr=active.getAttribute('onclick')||'';
-    var m=onclickAttr.match(/swTab\('([^']+)'/);
+    var m=(active.getAttribute('onclick')||'').match(/swTab\('([^']+)'/);
     if(!m)return;
     var cur=tabOrder.indexOf(m[1]);
     if(cur<0)return;
     var next=dx<0?Math.min(cur+1,tabOrder.length-1):Math.max(cur-1,0);
     if(next===cur)return;
-    var target=document.getElementById('tab-'+tabOrder[next]);
-    if(target)target.click();
+    var t=document.getElementById('tab-'+tabOrder[next]);
+    if(t)t.click();
   },{passive:true});
 })();
 

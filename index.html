@@ -261,7 +261,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
 .p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
 .player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
-.add-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
+.add-row{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.add-row-r1{display:flex;gap:5px}
+.add-row-r2{display:flex;gap:5px}
 .inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
@@ -639,12 +641,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
     <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
     <div class="add-row">
-      <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
-      <input class="inp" id="pNum" placeholder="#" maxlength="3" style="flex:0.7;width:36px" onkeydown="if(event.key==='Enter')addPlayer()">
-      <select class="inp" id="pHand" style="flex:0.9;width:40px;padding:4px 2px;font-size:10px"><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-      <select class="inp" id="pPos" style="flex:1;padding:4px 2px;font-size:10px"><option value="">포지션</option><option value="C">포수</option><option value="1B">1루</option><option value="2B">2루</option><option value="3B">3루</option><option value="SS">유격</option><option value="LF">좌익</option><option value="CF">중견</option><option value="RF">우익</option><option value="P">투수</option><option value="DH">지명</option></select>
-      <select class="inp" id="pStarter" style="flex:0.9;width:40px;padding:4px 2px;font-size:10px"><option value="1">주전</option><option value="0">후보</option></select>
-      <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <div class="add-row-r1">
+        <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
+        <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:52px;flex:none" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="btn btn-primary btn-icon" onclick="addPlayer()" style="flex:none"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
+      <div class="add-row-r2">
+        <select class="inp" id="pHand" style="flex:1"><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+        <select class="inp" id="pPos" style="flex:2"><option value="">포지션</option><option value="C">포수</option><option value="1B">1루</option><option value="2B">2루</option><option value="3B">3루</option><option value="SS">유격</option><option value="LF">좌익</option><option value="CF">중견</option><option value="RF">우익</option><option value="P">투수</option><option value="DH">지명</option></select>
+        <select class="inp" id="pStarter" style="flex:1"><option value="1">주전</option><option value="0">후보</option></select>
+      </div>
     </div>
   </div>
 

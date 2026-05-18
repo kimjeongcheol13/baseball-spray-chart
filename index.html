@@ -2672,12 +2672,25 @@ function safeRenderOpt(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function(){
   var tabOrder=['rec','batter','stat','chart'];
-  var _sx=0,_sy=0,_dir=null;
+  var _sx=0,_sy=0,_dir=null,_inPane=false;
+
+  function hasHScroll(el,stop){
+    while(el&&el!==stop){
+      if(el.scrollWidth>el.clientWidth+4){
+        var ox=window.getComputedStyle(el).overflowX;
+        if(ox==='auto'||ox==='scroll')return true;
+      }
+      el=el.parentElement;
+    }
+    return false;
+  }
 
   document.addEventListener('touchstart',function(e){
     _sx=e.touches[0].clientX;
     _sy=e.touches[0].clientY;
     _dir=null;
+    var pane=e.target.closest('.pnl-right');
+    _inPane=!!pane&&!hasHScroll(e.target,pane);
   },{passive:true});
 
   document.addEventListener('touchmove',function(e){
@@ -2689,8 +2702,7 @@ function safeRenderOpt(){
   },{passive:true});
 
   document.addEventListener('touchend',function(e){
-    if(_dir!=='h')return;
-    if(e.target.closest('.field-wrap'))return;
+    if(_dir!=='h'||!_inPane)return;
     var dx=e.changedTouches[0].clientX-_sx;
     if(Math.abs(dx)<60)return;
     var active=document.querySelector('.tab.on');

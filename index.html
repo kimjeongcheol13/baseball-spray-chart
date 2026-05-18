@@ -192,10 +192,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   #app-page{overflow:hidden;height:100svh}
   .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
-  .pnl-center{flex-shrink:0;max-height:56svh;overflow-y:auto;overflow-x:hidden}
+  .pnl-center{flex:0 0 auto;max-height:56svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .canvas-wrap{width:min(380px,100%)}
-  .field-wrap{padding:8px}
+  .canvas-wrap{width:min(220px,100%)}
+  .field-wrap{padding:8px;flex:none}
   .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
   .mob-batter::-webkit-scrollbar{display:none}
   .mob-chip{flex-shrink:0;padding:5px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all 100ms;white-space:nowrap;font-family:var(--font)}
@@ -574,7 +574,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     overflow-x:scroll;overflow-y:hidden;
     scroll-snap-type:x mandatory;
     -webkit-overflow-scrolling:touch;
-    touch-action:pan-x;
     padding:0;
     scrollbar-width:none;
   }

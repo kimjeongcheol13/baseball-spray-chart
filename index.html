@@ -271,7 +271,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .batter-empty{font-size:12px;color:var(--text3)}
 .batter-hint{font-size:11px;color:var(--text3)}
 .field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden}
-.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair;touch-action:none}
+.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair;touch-action:manipulation}
 #fldCanvas,#hitCanvas,#ovrCanvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
 #ovrCanvas.show{opacity:1}
@@ -417,13 +417,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .bs-name{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px}
 .zone-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px;margin-top:2px}
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
-/* === 폰(≤720px) 스크롤 수정 === */
-@media(max-width:720px){
-  #app-page{height:auto !important;overflow:visible !important;touch-action:pan-y;}
+/* === 모바일/태블릿 스크롤 수정 (≤1024px) === */
+@media(max-width:1024px){
+  #app-page{height:auto !important;overflow:visible !important;min-height:100svh;}
   .app-layout{flex:none !important;height:auto !important;overflow:visible !important;}
+  .pnl-left{height:auto !important;overflow:visible !important;}
+  .lineup-list{flex:none !important;height:auto !important;overflow-y:visible !important;}
   .pnl-center{flex:none !important;height:auto !important;overflow:visible !important;}
   .field-wrap{flex:none !important;height:auto !important;overflow:visible !important;}
   .pnl-right{height:auto !important;overflow:visible !important;}
+  .tab-body{flex:none !important;height:auto !important;overflow-y:visible !important;}
 }
 </style>
 </head>
@@ -919,6 +922,7 @@ function showApp(){
   }else{
     document.body.style.overflow='';
     document.body.style.overflowX='hidden';
+    window.scrollTo(0,0);
   }
   initApp();
 }

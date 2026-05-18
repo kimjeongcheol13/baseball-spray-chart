@@ -711,6 +711,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="cnt-reset" onclick="resetCount()" title="카운트 초기화">↺</button>
   </div>
   <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" title="선택 타자 타구만 표시">👤</button>
+  <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" title="팀 필터">전체</button>
   <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" title="핵/콜드 존">🌡️</button>
   <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
 </div>
@@ -1050,6 +1051,7 @@ const AS={
   zoneHistory:{},
   balls:0,strikes:0,outs:0,
   batterFilter:false,
+  teamFilter:null,
   showHotCold:false,
   currentPitches:[]
 };
@@ -1273,8 +1275,10 @@ function _showNearDot(cx,cy){
   if(!hCtx)return;
   const r=fC.getBoundingClientRect();
   const x=(cx-r.left)*(FS/r.width),y=(cy-r.top)*(FS/r.height);
-  const visList=(AS.batterFilter&&AS.batter)?AS.abs.filter(a=>a.bid===AS.batter.id&&a.x!=null):AS.abs.filter(a=>a.x!=null);
-  const THR=Math.max(28,FS*0.065);
+  let visList=AS.abs.filter(a=>a.x!=null);
+  if(AS.batterFilter&&AS.batter)visList=visList.filter(a=>a.bid===AS.batter.id);
+  if(AS.teamFilter)visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
+  const THR=Math.max(30,FS*0.07);
   let closest=null,closestD=Infinity;
   visList.forEach(a=>{const d=Math.hypot(x-a.x*FS,y-a.y*FS);if(d<THR&&d<closestD){closestD=d;closest=a;}});
   if(closest)showHitDetail(closest,cx,cy);
@@ -1331,14 +1335,14 @@ function onFClick(e){
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
 }
 function recOther(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
 }
@@ -1352,7 +1356,9 @@ function safeRender(){
   requestAnimationFrame(()=>{
     if(!hCtx)return;
     hCtx.clearRect(0,0,FS,FS);
-    const list=AS.batterFilter&&AS.batter?AS.abs.filter(a=>a.bid===AS.batter.id):AS.abs;
+    let list=AS.abs;
+    if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
+    if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
     list.forEach(a=>{if(a.x)drawDot(a);});
   });
 }
@@ -1654,11 +1660,12 @@ function restoreGame(key){
   // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
-  AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;
+  AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;
   closeOverlay('loadOverlay');
   refreshZoneDisplay();renderCount();
   var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
   var hb=document.getElementById('hotColdBtn');if(hb)hb.classList.remove('btn-primary');
+  var tb=document.getElementById('teamFilterBtn');if(tb){tb.textContent='전체';tb.classList.remove('btn-primary');}
   updateAll();
   showToast('경기 불러오기 완료',false);
 }
@@ -1683,6 +1690,13 @@ function renderCount(){
 function toggleBatterFilter(){
   AS.batterFilter=!AS.batterFilter;
   document.getElementById('filterBtn').classList.toggle('btn-primary',AS.batterFilter);
+  safeRender();
+}
+function cycleTeamFilter(){
+  const btn=document.getElementById('teamFilterBtn');
+  if(AS.teamFilter===null){AS.teamFilter='home';if(btn){btn.textContent='홈';btn.classList.add('btn-primary');}}
+  else if(AS.teamFilter==='home'){AS.teamFilter='away';if(btn)btn.textContent='원정';}
+  else{AS.teamFilter=null;if(btn){btn.textContent='전체';btn.classList.remove('btn-primary');}}
   safeRender();
 }
 
@@ -1903,10 +1917,17 @@ const DIR_KO={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간
 function showHitDetail(ab, clientX, clientY) {
   const el=document.getElementById('hitDetailCard'); if(!el)return;
   const col=RC_COLOR[ab.res]||'#94a3b8';
-  const isOut=ab.res.includes('아웃')||ab.res==='삼진'||ab.res==='병살';
+  const teamLbl=ab.team==='home'
+    ?(document.getElementById('tHome')||{value:'홈'}).value
+    :(document.getElementById('tAway')||{value:'원정'}).value;
   let rows='';
-  if(ab.inn) rows+=`<div class="hdc-row">📍 <span>${ab.inn}</span></div>`;
+  if(ab.inn) rows+=`<div class="hdc-row">📍 <span>${ab.inn} · ${teamLbl}</span></div>`;
   if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${DIR_KO[ab.dir]||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
+  // 카운트 (볼·스트라이크·아웃)
+  if(ab.count!=null){
+    const c=ab.count;
+    rows+=`<div class="hdc-row">🔢 <span>${c.o}아웃 ${c.b}볼 ${c.s}스트라이크</span></div>`;
+  }
   if(ab.rbi>0) rows+=`<div class="hdc-row">🏅 <span style="color:#f6c23e">${ab.rbi}타점</span></div>`;
   if(ab.pt||ab.zone!=null) rows+=`<div class="hdc-row">🎯 <span>${[ab.pt,ab.zone!=null?'존 '+ab.zone:''].filter(Boolean).join(' · ')}</span></div>`;
   if(ab.ts) rows+=`<div class="hdc-row">🕐 <span>${ab.ts}</span></div>`;
@@ -1916,13 +1937,13 @@ function showHitDetail(ab, clientX, clientY) {
     <div class="hdc-player">#${ab.bnum||''} ${ab.bname}</div>
     ${rows}
   `;
-  // 위치 계산 — 화면 밖으로 넘치지 않게
-  const W=el.offsetWidth||190, H=el.offsetHeight||140;
+  el.style.display='block';
+  const W=Math.max(el.offsetWidth,170), H=Math.max(el.offsetHeight,130);
   let left=clientX+14, top=clientY-20;
   if(left+W>window.innerWidth-8) left=clientX-W-14;
   if(top+H>window.innerHeight-8) top=window.innerHeight-H-8;
-  if(top<8) top=8;
-  el.style.left=left+'px'; el.style.top=top+'px'; el.style.display='block';
+  if(top<8) top=8; if(left<8) left=8;
+  el.style.left=left+'px'; el.style.top=top+'px';
 }
 
 function closeHitDetail(){

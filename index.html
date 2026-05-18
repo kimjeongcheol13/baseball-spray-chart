@@ -439,6 +439,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .hdc-row{font-size:11px;color:var(--text2);line-height:1.8;display:flex;align-items:baseline;gap:5px}
 .hdc-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0;line-height:1;float:right;margin-left:8px}
 .hdc-close:hover{color:var(--text)}
+#btnTooltip{
+  position:fixed;z-index:600;pointer-events:none;
+  background:var(--card);border:1px solid var(--border2);border-radius:10px;
+  padding:10px 13px;max-width:210px;
+  box-shadow:0 6px 24px rgba(0,0,0,.7);
+  animation:cardIn .15s ease;
+}
+.btt-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px}
+.btt-desc{font-size:11px;color:var(--text2);line-height:1.65}
 </style>
 </head>
 <body>
@@ -710,17 +719,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     </div>
     <button class="cnt-reset" onclick="resetCount()" title="카운트 초기화">↺</button>
   </div>
-  <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" title="선택 타자 타구만 표시">👤</button>
-  <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" title="팀 필터">전체</button>
-  <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" title="핵/콜드 존">🌡️</button>
+  <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" onmouseenter="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" ontouchend="hideBtnTipDelay()">👤</button>
+  <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" onmouseenter="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" ontouchend="hideBtnTipDelay()">전체</button>
+  <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 핫·콜드 존','선택한 타자가 자주 친 투구 코스를 색으로 표시합니다.<br>🔴 빨강 = 많이 친 코스<br>🔵 파랑 = 적게 친 코스')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 핫·콜드 존','선택한 타자가 자주 친 투구 코스를 색으로 표시합니다.<br>🔴 빨강 = 많이 친 코스<br>🔵 파랑 = 적게 친 코스')" ontouchend="hideBtnTipDelay()">🌡️</button>
   <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
 </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
     <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
     <div class="input-bar">
       <div class="ib-row">
-        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','커터')">커터</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
-        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
+        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button><button class="chip" onclick="selChip(this,'pt','커터')">커터</button></div></div>
+        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
       </div>
     </div>
@@ -821,6 +830,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 </div>
 
 <div id="hitDetailCard" style="display:none;position:fixed;z-index:500;pointer-events:auto"></div>
+<div id="btnTooltip" style="display:none"></div>
 
 <div class="toast" id="toast">
   <span id="toastTxt"></span>
@@ -1960,6 +1970,26 @@ function showHitDetail(ab, clientX, clientY) {
 
 function closeHitDetail(){
   const el=document.getElementById('hitDetailCard'); if(el)el.style.display='none';
+}
+
+let _btTipTimer=null;
+function showBtnTip(btn,title,desc){
+  clearTimeout(_btTipTimer);
+  const el=document.getElementById('btnTooltip'); if(!el)return;
+  el.innerHTML=`<div class="btt-title">${title}</div><div class="btt-desc">${desc}</div>`;
+  el.style.display='block';
+  const r=btn.getBoundingClientRect();
+  const W=Math.max(el.offsetWidth,180);
+  let left=r.left, top=r.bottom+6;
+  if(left+W>window.innerWidth-8) left=window.innerWidth-W-8;
+  if(left<8) left=8;
+  el.style.left=left+'px'; el.style.top=top+'px';
+}
+function hideBtnTip(){
+  const el=document.getElementById('btnTooltip'); if(el)el.style.display='none';
+}
+function hideBtnTipDelay(){
+  _btTipTimer=setTimeout(hideBtnTip,1200);
 }
 
 // ─────────────────────────────────────────────────────────

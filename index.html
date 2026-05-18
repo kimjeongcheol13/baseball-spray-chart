@@ -189,10 +189,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pv-center{height:280px}
 }
 @media(max-width:720px){
-  #app-page{overflow:auto;height:auto}
-  .app-layout{grid-template-columns:1fr;grid-template-rows:auto;height:auto;overflow:visible}
+  #app-page{overflow:hidden;height:100svh}
+  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
-  .pnl-right{border-left:none;border-top:1px solid var(--border);height:auto;min-height:360px}
+  .pnl-center{flex-shrink:0;max-height:56svh;overflow-y:auto;overflow-x:hidden}
+  .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
   .canvas-wrap{width:min(380px,100%)}
   .field-wrap{padding:8px}
   .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
@@ -424,14 +425,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .bs-name{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px}
 .zone-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px;margin-top:2px}
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
-/* === 모바일 스크롤 수정 === */
-@media(max-width:720px){
-  #app-page{overflow-y:auto !important;}
-  .app-layout{flex:none !important;height:auto !important;overflow:visible !important;}
-  .pnl-center{flex:none !important;height:auto !important;overflow:visible !important;}
-  .field-wrap{flex:none !important;overflow:visible !important;}
-  .pnl-right{height:auto !important;overflow:visible !important;}
-}
 /* 타구 상세 카드 */
 #hitDetailCard{
   background:var(--card);border:1px solid var(--border2);border-radius:12px;
@@ -576,12 +569,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media(max-width:720px){
   .tab-body{
+    flex:1;min-height:0;
     display:flex;flex-direction:row;
     overflow-x:scroll;overflow-y:hidden;
     scroll-snap-type:x mandatory;
     -webkit-overflow-scrolling:touch;
     touch-action:pan-x;
-    height:60vh;
     padding:0;
     scrollbar-width:none;
   }
@@ -1292,7 +1285,7 @@ function showApp(){
   var isMob=window.innerWidth<=720;
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
-  if(isMob){ap.style.overflowY='auto';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
+  if(isMob){ap.style.overflowY='hidden';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
   document.body.style.overflowY='hidden';
   document.body.style.overflowX='hidden';
   initApp();

@@ -426,6 +426,19 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .field-wrap{flex:none !important;overflow:visible !important;}
   .pnl-right{height:auto !important;overflow:visible !important;}
 }
+/* 타구 상세 카드 */
+#hitDetailCard{
+  background:var(--card);border:1px solid var(--border2);border-radius:12px;
+  padding:12px 14px;min-width:160px;max-width:220px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+  animation:cardIn .15s ease;
+}
+@keyframes cardIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.hdc-res{font-size:14px;font-weight:800;margin-bottom:6px}
+.hdc-player{font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px}
+.hdc-row{font-size:11px;color:var(--text2);line-height:1.8;display:flex;align-items:baseline;gap:5px}
+.hdc-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0;line-height:1;float:right;margin-left:8px}
+.hdc-close:hover{color:var(--text)}
 </style>
 </head>
 <body>
@@ -806,6 +819,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   </div>
 </div>
 
+<div id="hitDetailCard" style="display:none;position:fixed;z-index:500;pointer-events:auto"></div>
+
 <div class="toast" id="toast">
   <span id="toastTxt"></span>
   <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 취소</button>
@@ -1094,11 +1109,15 @@ function addPlayer(){
 function selBatter(id){
   const targetLineup = getActiveLineup();
   AS.batter=targetLineup.find(p=>p.id===id)||null;
+  AS.batterFilter=!!AS.batter;
+  const fb=document.getElementById('filterBtn');
+  if(fb)fb.classList.toggle('btn-primary',AS.batterFilter);
   renderLP();
   renderMob();
   const d=document.getElementById('batterDisp');
   if(AS.batter) d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
   else d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  closeHitDetail();
   safeRender();updateHotCold();updBatterStat();
 }
 
@@ -1273,6 +1292,13 @@ function onFClick(e){
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
   if(dy>0||dist>FS*.97)return;
+  // 기존 타구 근처 탭 → 상세 카드
+  const visList=AS.batterFilter&&AS.batter?AS.abs.filter(a=>a.bid===AS.batter.id&&a.x!=null):AS.abs.filter(a=>a.x!=null);
+  const THR=Math.max(20,FS*0.045);
+  let closest=null,closestD=Infinity;
+  visList.forEach(a=>{const d2=Math.hypot(x-a.x*FS,y-a.y*FS);if(d2<THR&&d2<closestD){closestD=d2;closest=a;}});
+  if(closest){showHitDetail(closest,e.clientX,e.clientY);return;}
+  closeHitDetail();
   oCtx.clearRect(0,0,FS,FS);
   if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
   oCtx.beginPath();oCtx.arc(x,y,10,0,Math.PI*2);oCtx.fillStyle='rgba(255,255,255,.2)';oCtx.fill();
@@ -1408,7 +1434,7 @@ function renderPsTable(){
 function swTab(name,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.tab-pnl').forEach(p=>p.classList.remove('on'));el.classList.add('on');document.getElementById('pnl-'+name).classList.add('on');if(name==='stat')updStats();if(name==='batter')updBatterStat();}
 
 function openOverlay(id){document.getElementById(id).classList.add('show');}
-function closeOverlay(id){document.getElementById(id).classList.remove('show');if(id==='hitOverlay'){AS.pending=null;if(oCtx){oCtx.clearRect(0,0,FS,FS);if(AS.showHotCold&&AS.batter){_drawHotColdOnCtx();oC&&oC.classList.add('show');}else{oC&&oC.classList.remove('show');}}}}
+function closeOverlay(id){document.getElementById(id).classList.remove('show');if(id==='hitOverlay'){closeHitDetail();AS.pending=null;if(oCtx){oCtx.clearRect(0,0,FS,FS);if(AS.showHotCold&&AS.batter){_drawHotColdOnCtx();oC&&oC.classList.add('show');}else{oC&&oC.classList.remove('show');}}}}
 function closeHit(){closeOverlay('hitOverlay');}
 
 let _tt;
@@ -1442,8 +1468,9 @@ function openLoad(){
         '</div>' +
         '<div class="load-item-actions">' +
           // 💡 일반 '다운로드' 대신 전용 '앱 파일 내보내기' 형태로 UI 전면 패치
+          '<button class="li-btn" onclick="renameGame(\'' + s.key + '\')" title="이름 변경">✏️</button>' +
           '<button class="li-btn" onclick="exportGameToExcel(\'' + s.key + '\')" style="color:var(--blue)">📊 엑셀</button>' +
-          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">파일 내보내기</button>' +
+          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">내보내기</button>' +
           '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
           '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
         '</div>' +
@@ -1850,6 +1877,55 @@ document.addEventListener('keydown',e=>{
     } catch (e) {}
   }
 })();
+
+// ─────────────────────────────────────────────────────────
+// 타구 상세 카드
+// ─────────────────────────────────────────────────────────
+const RC_COLOR={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#f97316','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b'};
+const DIR_KO={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
+
+function showHitDetail(ab, clientX, clientY) {
+  const el=document.getElementById('hitDetailCard'); if(!el)return;
+  const col=RC_COLOR[ab.res]||'#94a3b8';
+  const isOut=ab.res.includes('아웃')||ab.res==='삼진'||ab.res==='병살';
+  let rows='';
+  if(ab.inn) rows+=`<div class="hdc-row">📍 <span>${ab.inn}</span></div>`;
+  if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${DIR_KO[ab.dir]||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
+  if(ab.rbi>0) rows+=`<div class="hdc-row">🏅 <span style="color:#f6c23e">${ab.rbi}타점</span></div>`;
+  if(ab.pt||ab.zone!=null) rows+=`<div class="hdc-row">🎯 <span>${[ab.pt,ab.zone!=null?'존 '+ab.zone:''].filter(Boolean).join(' · ')}</span></div>`;
+  if(ab.ts) rows+=`<div class="hdc-row">🕐 <span>${ab.ts}</span></div>`;
+  el.innerHTML=`
+    <button class="hdc-close" onclick="closeHitDetail()">✕</button>
+    <div class="hdc-res" style="color:${col}">${ab.res}</div>
+    <div class="hdc-player">#${ab.bnum||''} ${ab.bname}</div>
+    ${rows}
+  `;
+  // 위치 계산 — 화면 밖으로 넘치지 않게
+  const W=el.offsetWidth||190, H=el.offsetHeight||140;
+  let left=clientX+14, top=clientY-20;
+  if(left+W>window.innerWidth-8) left=clientX-W-14;
+  if(top+H>window.innerHeight-8) top=window.innerHeight-H-8;
+  if(top<8) top=8;
+  el.style.left=left+'px'; el.style.top=top+'px'; el.style.display='block';
+}
+
+function closeHitDetail(){
+  const el=document.getElementById('hitDetailCard'); if(el)el.style.display='none';
+}
+
+// ─────────────────────────────────────────────────────────
+// 저장 경기 이름 바꾸기
+// ─────────────────────────────────────────────────────────
+function renameGame(key) {
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  var s=saves.find(function(s){return s.key===key;}); if(!s)return;
+  var newName=prompt('경기 이름 변경:', s.label);
+  if(newName===null||!newName.trim())return;
+  s.label=newName.trim();
+  localStorage.setItem('sl_saves',JSON.stringify(saves));
+  openLoad();
+  showToast('이름이 변경되었습니다',false);
+}
 
 // ─────────────────────────────────────────────────────────
 // 전체 경기 합치기 엑셀 내보내기

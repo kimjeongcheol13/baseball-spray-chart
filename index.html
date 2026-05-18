@@ -249,7 +249,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .pnl-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .pnl-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3)}
-.lineup-list{flex:1;overflow-y:auto;padding:6px}
+.lineup-list{flex:1;overflow-y:auto;padding:6px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .player-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:all 100ms;border:1px solid transparent;margin-bottom:3px;position:relative}
 .player-row:hover{background:var(--bg-raised)}.player-row.active{background:var(--accent-dim);border-color:var(--accent)}
 .p-num{font-family:var(--mono);font-size:11px;color:var(--text3);width:18px;text-align:right;flex-shrink:0}
@@ -271,7 +271,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .batter-empty{font-size:12px;color:var(--text3)}
 .batter-hint{font-size:11px;color:var(--text3)}
 .field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden}
-.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair}
+.canvas-wrap{position:relative;width:min(440px,calc(100vh - 220px));max-width:100%;aspect-ratio:1;cursor:crosshair;touch-action:none}
 #fldCanvas,#hitCanvas,#ovrCanvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
 #ovrCanvas.show{opacity:1}
@@ -314,7 +314,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .tab{flex:1;padding:11px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;transition:all 100ms;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:4px}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-body{flex:1;overflow-y:auto;padding:10px}
+.tab-body{flex:1;overflow-y:auto;padding:10px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .tab-pnl{display:none}.tab-pnl.on{display:block}
 
 /* RECORDS */
@@ -419,7 +419,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
 /* === 폰(≤720px) 스크롤 수정 === */
 @media(max-width:720px){
-  #app-page{height:auto !important;overflow:visible !important;}
+  #app-page{height:auto !important;overflow:visible !important;touch-action:pan-y;}
   .app-layout{flex:none !important;height:auto !important;overflow:visible !important;}
   .pnl-center{flex:none !important;height:auto !important;overflow:visible !important;}
   .field-wrap{flex:none !important;height:auto !important;overflow:visible !important;}
@@ -1223,8 +1223,10 @@ function initCanvas(){
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   fC.onclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
   fC.ondblclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
-  fC.ontouchstart=function(e){if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}};
-  fC.ontouchend=function(e){
+  fC.addEventListener('touchstart',function(e){
+    if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}
+  },{passive:true});
+  fC.addEventListener('touchend',function(e){
     if(!e.changedTouches||e.changedTouches.length===0)return;
     const _t=e.changedTouches[0];
     if(Math.abs(_t.clientX-_touchStartX)>10||Math.abs(_t.clientY-_touchStartY)>10)return;
@@ -1233,7 +1235,7 @@ function initCanvas(){
     const t=_t;
     const r=fC.getBoundingClientRect();
     onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
-  };
+  },{passive:false});
 }
 
 function drawField(){

@@ -1246,17 +1246,39 @@ function initCanvas(){
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   fC.onclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
   fC.ondblclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
-  fC.ontouchstart=function(e){if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}};
-  fC.ontouchend=function(e){
+  fC.addEventListener('touchstart',function(e){
+    if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}
+    closeHitDetail();
+  },{passive:true});
+  fC.addEventListener('touchmove',function(e){
+    if(e.touches.length!==1)return;
+    _showNearDot(e.touches[0].clientX,e.touches[0].clientY);
+  },{passive:true});
+  fC.addEventListener('touchend',function(e){
     if(!e.changedTouches||e.changedTouches.length===0)return;
     const _t=e.changedTouches[0];
-    if(Math.abs(_t.clientX-_touchStartX)>10||Math.abs(_t.clientY-_touchStartY)>10)return;
+    if(Math.abs(_t.clientX-_touchStartX)>16||Math.abs(_t.clientY-_touchStartY)>16){
+      closeHitDetail();return;
+    }
     e.preventDefault();
     _lastTouch=Date.now();
-    const t=_t;
     const r=fC.getBoundingClientRect();
-    onFClick({clientX:t.clientX,clientY:t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
-  };
+    onFClick({clientX:_t.clientX,clientY:_t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
+  },{passive:false});
+  fC.addEventListener('mousemove',function(e){_showNearDot(e.clientX,e.clientY);});
+  fC.addEventListener('mouseleave',closeHitDetail);
+}
+
+function _showNearDot(cx,cy){
+  if(!hCtx)return;
+  const r=fC.getBoundingClientRect();
+  const x=(cx-r.left)*(FS/r.width),y=(cy-r.top)*(FS/r.height);
+  const visList=(AS.batterFilter&&AS.batter)?AS.abs.filter(a=>a.bid===AS.batter.id&&a.x!=null):AS.abs.filter(a=>a.x!=null);
+  const THR=Math.max(28,FS*0.065);
+  let closest=null,closestD=Infinity;
+  visList.forEach(a=>{const d=Math.hypot(x-a.x*FS,y-a.y*FS);if(d<THR&&d<closestD){closestD=d;closest=a;}});
+  if(closest)showHitDetail(closest,cx,cy);
+  else closeHitDetail();
 }
 
 function drawField(){
@@ -1292,12 +1314,6 @@ function onFClick(e){
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
   if(dy>0||dist>FS*.97)return;
-  // 기존 타구 근처 탭 → 상세 카드
-  const visList=AS.batterFilter&&AS.batter?AS.abs.filter(a=>a.bid===AS.batter.id&&a.x!=null):AS.abs.filter(a=>a.x!=null);
-  const THR=Math.max(20,FS*0.045);
-  let closest=null,closestD=Infinity;
-  visList.forEach(a=>{const d2=Math.hypot(x-a.x*FS,y-a.y*FS);if(d2<THR&&d2<closestD){closestD=d2;closest=a;}});
-  if(closest){showHitDetail(closest,e.clientX,e.clientY);return;}
   closeHitDetail();
   oCtx.clearRect(0,0,FS,FS);
   if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();

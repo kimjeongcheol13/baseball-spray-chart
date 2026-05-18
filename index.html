@@ -568,7 +568,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    MOBILE SWIPE TAB
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.tab-body{touch-action:pan-y}
+.tab-body{touch-action:auto}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    PITCH TYPE QUICK CHIPS (Input Bar)
@@ -2699,17 +2699,17 @@ function safeRenderOpt(){
     var dy=e.changedTouches[0].clientY-_sy;
     var dt=Date.now()-_sTime;
     if(Math.abs(dx)<80||Math.abs(dy)>Math.abs(dx)*0.6||dt>400)return;
-    var active=document.querySelector('.tab-btn.on');
+    var active=document.querySelector('.tab.on');
     if(!active)return;
     var onclickAttr=active.getAttribute('onclick')||'';
-    var m=onclickAttr.match(/showTab\('([^']+)'/);
+    var m=onclickAttr.match(/swTab\('([^']+)'/);
     if(!m)return;
     var cur=tabOrder.indexOf(m[1]);
     if(cur<0)return;
     var next=dx<0?Math.min(cur+1,tabOrder.length-1):Math.max(cur-1,0);
     if(next===cur)return;
-    var btn=document.querySelector('.tab-btn[onclick*="'+tabOrder[next]+'"]');
-    if(btn)btn.click();
+    var target=document.querySelector('.tab[onclick*="swTab(\''+tabOrder[next]+'\'"]');
+    if(target)target.click();
   },{passive:true});
 })();
 

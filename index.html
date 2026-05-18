@@ -261,7 +261,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
 .p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
 .player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
-.add-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
+.add-row{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
@@ -667,11 +667,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
     <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
     <div class="add-row">
-      <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
-      <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:38px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
-      <select class="inp" id="pPos" style="width:52px;flex-shrink:0;padding:7px 2px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
-      <select class="inp" id="pBH" style="width:42px;flex-shrink:0;padding:7px 2px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-      <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <div style="display:flex;gap:5px">
+        <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
+        <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:54px;flex-shrink:0;text-align:center" onkeydown="if(event.key==='Enter')addPlayer()">
+      </div>
+      <div style="display:flex;gap:5px">
+        <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+        <select class="inp" id="pBH" style="flex:1;padding:7px 6px;font-size:12px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+        <button class="btn btn-primary btn-icon" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
     </div>
   </div>
 
@@ -1600,11 +1604,12 @@ function importGames(input) {
 
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
-  document.getElementById('tHome').value=d.th;document.getElementById('tAway').value=d.ta;
-  AS.hs=d.hs;AS.as=d.as;document.getElementById('scH').textContent=d.hs;document.getElementById('scA').textContent=d.as;
+  document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
+  AS.hs=d.hs||0;AS.as=d.as||0;document.getElementById('scH').textContent=AS.hs;document.getElementById('scA').textContent=AS.as;
   AS.home_lineup=d.home_lineup || d.lineup || [];
   AS.away_lineup=d.away_lineup || [];
-  AS.abs=d.abs;
+  // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
+  AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
   AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;
   closeOverlay('loadOverlay');
@@ -1873,10 +1878,11 @@ function exportAllGamesToExcel() {
   // === Sheet 2: 통합 선수별 통계 ===
   var pmap={};
   allGames.forEach(function(d){
-    var allLP=(d.home_lineup||[]).map(function(p){return{p:p,t:'home'};})
+    var allLP=(d.home_lineup||d.lineup||[]).map(function(p){return{p:p,t:'home'};})
       .concat((d.away_lineup||[]).map(function(p){return{p:p,t:'away'};}));
+    var normAbs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
     allLP.forEach(function(item){
-      var pa=(d.abs||[]).filter(function(a){return a.bid===item.p.id;});
+      var pa=normAbs.filter(function(a){return a.bid===item.p.id;});
       if(!pa.length)return;
       var key=(item.p.name||'')+'|'+(item.p.num||'');
       if(!pmap[key])pmap[key]={name:item.p.name||'',num:item.p.num||'',games:0,pa:0,oab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sac:0,k:0,rbi:0,tb:0,reach:0,fdN:0,pull:0,ctr:0,oppo:0};
@@ -1913,7 +1919,8 @@ function exportAllGamesToExcel() {
   allGames.forEach(function(d){
     var th=d.th||'홈팀',ta=d.ta||'원정팀';
     (d.abs||[]).forEach(function(a){
-      allAbRows.push([d.d||'',th,ta,a.inn||'',a.team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
+      var team=a.team||'home';
+      allAbRows.push([d.d||'',th,ta,a.inn||'',team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
         a.dir?(DIRLBL[a.dir]||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
     });
   });
@@ -2131,8 +2138,8 @@ function exportCurrentGameToExcel() {
 function _doExportToExcel(data) {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중... 잠시 후 다시 시도하세요', false); return; }
   var th = data.th || '홈팀', ta = data.ta || '원정팀';
-  var abs = data.abs || [];
-  var allLP = (data.home_lineup||[]).map(function(p){return{p:p,team:'home'};})
+  var abs = (data.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
+  var allLP = (data.home_lineup||data.lineup||[]).map(function(p){return{p:p,team:'home'};})
     .concat((data.away_lineup||[]).map(function(p){return{p:p,team:'away'};}));
 
   var noab=['볼넷','사구','희타','희비'], hits=['안타','내야안타','2루타','3루타','홈런'];

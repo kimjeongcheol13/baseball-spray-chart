@@ -650,6 +650,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <div style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
+    <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
   </div>
@@ -1436,7 +1437,8 @@ function openLoad(){
         '</div>' +
         '<div class="load-item-actions">' +
           // 💡 일반 '다운로드' 대신 전용 '앱 파일 내보내기' 형태로 UI 전면 패치
-          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">전용 파일 내보내기</button>' +
+          '<button class="li-btn" onclick="exportGameToExcel(\'' + s.key + '\')" style="color:var(--blue)">📊 엑셀</button>' +
+          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">파일 내보내기</button>' +
           '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
           '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
         '</div>' +
@@ -1842,6 +1844,129 @@ document.addEventListener('keydown',e=>{
     } catch (e) {}
   }
 })();
+
+// ─────────────────────────────────────────────────────────
+// 엑셀 내보내기 (통계 Export)
+// ─────────────────────────────────────────────────────────
+function exportGameToExcel(key) {
+  var d = JSON.parse(localStorage.getItem(key));
+  if (!d) { showToast('데이터를 찾을 수 없습니다', false); return; }
+  _doExportToExcel(d);
+}
+
+function exportCurrentGameToExcel() {
+  if (!AS.abs.length) { showToast('기록된 타석이 없습니다', false); return; }
+  _doExportToExcel({
+    th: document.getElementById('tHome').value,
+    ta: document.getElementById('tAway').value,
+    hs: AS.hs, as: AS.as,
+    home_lineup: AS.home_lineup,
+    away_lineup: AS.away_lineup,
+    abs: AS.abs,
+    d: new Date().toLocaleDateString('ko-KR')
+  });
+}
+
+function _doExportToExcel(data) {
+  if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중... 잠시 후 다시 시도하세요', false); return; }
+  var th = data.th || '홈팀', ta = data.ta || '원정팀';
+  var abs = data.abs || [];
+  var allLP = (data.home_lineup||[]).map(function(p){return{p:p,team:'home'};})
+    .concat((data.away_lineup||[]).map(function(p){return{p:p,team:'away'};}));
+
+  var noab=['볼넷','사구','희타','희비'], hits=['안타','내야안타','2루타','3루타','홈런'];
+  var base={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+  var dirLabel={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
+
+  function ps(pid) {
+    var pa=abs.filter(function(a){return a.bid===pid;});if(!pa.length)return null;
+    var oab=pa.filter(function(a){return!noab.includes(a.res);}).length;
+    var h=pa.filter(function(a){return hits.includes(a.res);}).length;
+    var dbl=pa.filter(function(a){return a.res==='2루타';}).length;
+    var tpl=pa.filter(function(a){return a.res==='3루타';}).length;
+    var hr=pa.filter(function(a){return a.res==='홈런';}).length;
+    var bb=pa.filter(function(a){return a.res==='볼넷';}).length;
+    var hbp=pa.filter(function(a){return a.res==='사구';}).length;
+    var sac=pa.filter(function(a){return a.res==='희타'||a.res==='희비';}).length;
+    var k=pa.filter(function(a){return a.res==='삼진';}).length;
+    var rbi=pa.reduce(function(s,a){return s+a.rbi;},0);
+    var tb=pa.reduce(function(s,a){return s+(base[a.res]||0);},0);
+    var reach=pa.filter(function(a){return hits.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
+    var fd=pa.filter(function(a){return a.deg!=null;});
+    var tot=fd.length||1;
+    var pull=fd.filter(function(a){return a.deg<72;}).length;
+    var ctr=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+    var oppo=fd.filter(function(a){return a.deg>108;}).length;
+    return {
+      pa:pa.length,oab:oab,h:h,dbl:dbl,tpl:tpl,hr:hr,bb:bb,hbp:hbp,sac:sac,k:k,rbi:rbi,tb:tb,
+      avg:oab?h/oab:null, obp:pa.length?reach/pa.length:null, slg:oab?tb/oab:null,
+      pull:Math.round(pull/tot*100), ctr:Math.round(ctr/tot*100), oppo:Math.round(oppo/tot*100)
+    };
+  }
+
+  function fmt(v){if(v===null||v===undefined)return'-';return v.toFixed(3).replace(/^0\./,'.');}
+
+  function teamStat(teamAbs){
+    var oab=teamAbs.filter(function(a){return!noab.includes(a.res);}).length;
+    var h=teamAbs.filter(function(a){return hits.includes(a.res);}).length;
+    var reach=teamAbs.filter(function(a){return hits.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
+    var tb=teamAbs.reduce(function(s,a){return s+(base[a.res]||0);},0);
+    var rbi=teamAbs.reduce(function(s,a){return s+a.rbi;},0);
+    var hr=teamAbs.filter(function(a){return a.res==='홈런';}).length;
+    var bb=teamAbs.filter(function(a){return a.res==='볼넷';}).length;
+    var k=teamAbs.filter(function(a){return a.res==='삼진';}).length;
+    return {pa:teamAbs.length,oab:oab,h:h,rbi:rbi,hr:hr,bb:bb,k:k,avg:oab?h/oab:null,obp:teamAbs.length?reach/teamAbs.length:null,slg:oab?tb/oab:null};
+  }
+
+  // === Sheet 1: 경기 요약 ===
+  var hst=teamStat(abs.filter(function(a){return a.team==='home';}));
+  var ast=teamStat(abs.filter(function(a){return a.team==='away';}));
+  var sumRows=[
+    ['항목', th+'(홈)', ta+'(원정)'],
+    ['점수', data.hs||0, data.as||0],
+    ['타석(PA)', hst.pa, ast.pa],
+    ['타수(AB)', hst.oab, ast.oab],
+    ['안타(H)', hst.h, ast.h],
+    ['홈런(HR)', hst.hr, ast.hr],
+    ['볼넷(BB)', hst.bb, ast.bb],
+    ['삼진(K)', hst.k, ast.k],
+    ['타점(RBI)', hst.rbi, ast.rbi],
+    ['타율(AVG)', fmt(hst.avg), fmt(ast.avg)],
+    ['출루율(OBP)', fmt(hst.obp), fmt(ast.obp)],
+    ['장타율(SLG)', fmt(hst.slg), fmt(ast.slg)]
+  ];
+
+  // === Sheet 2: 선수별 통계 ===
+  var statRows=[['선수','번호','팀','타석','타수','안타','2루타','3루타','홈런','볼넷','사구','희생','삼진','타점','타율','출루율','장타율','당겨치기%','센터%','밀어치기%']];
+  allLP.forEach(function(item){
+    var st=ps(item.p.id); if(!st) return;
+    statRows.push([item.p.name||'',item.p.num||'',item.team==='home'?th:ta,
+      st.pa,st.oab,st.h,st.dbl,st.tpl,st.hr,st.bb,st.hbp,st.sac,st.k,st.rbi,
+      fmt(st.avg),fmt(st.obp),fmt(st.slg),st.pull+'%',st.ctr+'%',st.oppo+'%']);
+  });
+
+  // === Sheet 3: 타석 기록 ===
+  var abRows=[['이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간']];
+  abs.forEach(function(a){
+    abRows.push([a.inn||'',a.team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
+      a.dir?(dirLabel[a.dir]||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+  });
+
+  var wb=XLSX.utils.book_new();
+  var ws1=XLSX.utils.aoa_to_sheet(sumRows);
+  ws1['!cols']=[{wch:14},{wch:12},{wch:12}];
+  var ws2=XLSX.utils.aoa_to_sheet(statRows);
+  ws2['!cols']=[{wch:10},{wch:5},{wch:8},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:7},{wch:7},{wch:7},{wch:10},{wch:7},{wch:10}];
+  var ws3=XLSX.utils.aoa_to_sheet(abRows);
+  ws3['!cols']=[{wch:8},{wch:8},{wch:10},{wch:5},{wch:10},{wch:8},{wch:5},{wch:7},{wch:8},{wch:4},{wch:7}];
+  XLSX.utils.book_append_sheet(wb, ws1, '경기요약');
+  XLSX.utils.book_append_sheet(wb, ws2, '선수별통계');
+  XLSX.utils.book_append_sheet(wb, ws3, '타석기록');
+
+  var safe=function(s){return(s||'').replace(/[\/\:*?"<>|\s]/g,'_');};
+  XLSX.writeFile(wb, safe(th)+'_vs_'+safe(ta)+'_'+(data.d||'').replace(/\./g,'').replace(/\s/g,'')+'_SprayLab.xlsx');
+  showToast('엑셀 파일 저장 완료', false);
+}
 
 // ─────────────────────────────────────────────────────────
 // 엑셀 가져오기 / 서식 다운로드

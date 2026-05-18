@@ -260,7 +260,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
 .p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
 .player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
-.add-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:5px;flex-shrink:0}
+.add-row{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
@@ -417,10 +417,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .bs-name{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px}
 .zone-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px;margin-top:2px}
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
-/* === 모바일 스크롤 수정 === */
-@media(max-width:720px){
+/* === 모바일/태블릿 스크롤 수정 (≤1024px) === */
+@media(max-width:1024px){
   #app-page{overflow-y:auto !important;}
   .app-layout{flex:none !important;height:auto !important;overflow:visible !important;}
+  .pnl-left{overflow:visible !important;height:auto !important;}
   .pnl-center{flex:none !important;height:auto !important;overflow:visible !important;}
   .field-wrap{flex:none !important;overflow:visible !important;}
   .pnl-right{height:auto !important;overflow:visible !important;}
@@ -665,11 +666,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
     <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div></div>
     <div class="add-row">
-      <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
-      <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:38px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
-      <select class="inp" id="pPos" style="width:52px;flex-shrink:0;padding:7px 2px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
-      <select class="inp" id="pBH" style="width:42px;flex-shrink:0;padding:7px 2px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-      <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      <div style="display:flex;gap:5px">
+        <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
+        <input class="inp" id="pNum" placeholder="#" maxlength="3" style="width:44px;flex-shrink:0" onkeydown="if(event.key==='Enter')addPlayer()">
+      </div>
+      <div style="display:flex;gap:5px">
+        <select class="inp" id="pPos" style="flex:1;padding:7px 4px;font-size:11px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+        <select class="inp" id="pBH" style="flex:1;padding:7px 4px;font-size:11px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+        <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
     </div>
   </div>
 
@@ -906,10 +911,10 @@ function showDataModal(jsonStr, fileName) {
 // ───── PAGE ROUTING ─────
 function showApp(){
   document.getElementById('landing-page').style.display='none';
-  var isMob=window.innerWidth<=720;
+  var isTouch=window.innerWidth<=1024;
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
-  if(isMob){ap.style.overflowY='auto';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
+  if(isTouch){ap.style.overflowY='auto';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
   document.body.style.overflow='hidden';
   initApp();
 }

@@ -1110,8 +1110,13 @@ function addPlayer(){
 
 function selBatter(id){
   const targetLineup = getActiveLineup();
-  AS.batter=targetLineup.find(p=>p.id===id)||null;
-  AS.batterFilter=!!AS.batter;
+  const clicked=targetLineup.find(p=>p.id===id)||null;
+  // 같은 선수 다시 누르면 필터 해제 (toggle)
+  if(AS.batter&&AS.batter.id===id){
+    AS.batter=null;AS.batterFilter=false;
+  } else {
+    AS.batter=clicked;AS.batterFilter=!!clicked;
+  }
   const fb=document.getElementById('filterBtn');
   if(fb)fb.classList.toggle('btn-primary',AS.batterFilter);
   renderLP();
@@ -1696,7 +1701,14 @@ function cycleTeamFilter(){
   const btn=document.getElementById('teamFilterBtn');
   if(AS.teamFilter===null){AS.teamFilter='home';if(btn){btn.textContent='홈';btn.classList.add('btn-primary');}}
   else if(AS.teamFilter==='home'){AS.teamFilter='away';if(btn)btn.textContent='원정';}
-  else{AS.teamFilter=null;if(btn){btn.textContent='전체';btn.classList.remove('btn-primary');}}
+  else{
+    AS.teamFilter=null;
+    // 전체로 돌아올 때 타자 필터도 해제
+    AS.batter=null;AS.batterFilter=false;
+    const fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+    const d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+    if(btn){btn.textContent='전체';btn.classList.remove('btn-primary');}
+  }
   safeRender();
 }
 

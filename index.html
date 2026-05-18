@@ -721,7 +721,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   </div>
   <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" onmouseenter="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" ontouchend="hideBtnTipDelay()">👤</button>
   <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" onmouseenter="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" ontouchend="hideBtnTipDelay()">전체</button>
-  <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 핫·콜드 존','선택한 타자가 자주 친 투구 코스를 색으로 표시합니다.<br>🔴 빨강 = 많이 친 코스<br>🔵 파랑 = 적게 친 코스')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 핫·콜드 존','선택한 타자가 자주 친 투구 코스를 색으로 표시합니다.<br>🔴 빨강 = 많이 친 코스<br>🔵 파랑 = 적게 친 코스')" ontouchend="hideBtnTipDelay()">🌡️</button>
+  <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" ontouchend="hideBtnTipDelay()">🌡️</button>
   <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
 </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
@@ -1731,9 +1731,12 @@ function toggleHotCold(){
 function updateHotCold(){
   if(!oCtx)return;
   oCtx.clearRect(0,0,FS,FS);
-  if(AS.showHotCold&&AS.batter){_drawHotColdOnCtx();oC.classList.add('show');}
-  else oC.classList.remove('show');
+  if(!AS.showHotCold){oC.classList.remove('show');return;}
+  if(AS.batter){_drawHotColdOnCtx();}
+  else{_drawFieldHeatmap();}
+  oC.classList.add('show');
 }
+// 선택 타자의 구역별 안타율 (기존)
 function _drawHotColdOnCtx(){
   if(!AS.batter)return;
   var bAbs=AS.abs.filter(function(a){return a.bid===AS.batter.id&&a.x!=null;});
@@ -1774,6 +1777,55 @@ function _drawHotColdOnCtx(){
       oCtx.fill();
     }
   }
+}
+// 전체 타구 밀집도 히트맵 (타자 미선택 시)
+function _drawFieldHeatmap(){
+  var list=AS.abs.filter(function(a){return a.x!=null;});
+  if(AS.teamFilter)list=list.filter(function(a){return (a.team||'home')===AS.teamFilter;});
+  if(!list.length)return;
+  var cx=FS/2,cy=FS,ANGS=9,DISTS=3;
+  var counts={};
+  for(var aa=0;aa<ANGS;aa++)for(var dd=0;dd<DISTS;dd++)counts[aa+'_'+dd]=0;
+  list.forEach(function(ab){
+    var dx=ab.x*FS-cx,dy=ab.y*FS-cy;
+    var ang=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI; // 0~360
+    if(ang>180)return; // 하반부 제외
+    var dist=Math.sqrt(dx*dx+dy*dy)/FS;
+    var ai=Math.min(ANGS-1,Math.floor(ang/(180/ANGS)));
+    var di=dist<0.35?0:dist<0.65?1:2;
+    counts[ai+'_'+di]++;
+  });
+  var maxC=Math.max.apply(null,Object.values(counts).concat([1]));
+  for(var a=0;a<ANGS;a++){
+    for(var d=0;d<DISTS;d++){
+      var n=counts[a+'_'+d];if(!n)continue;
+      var intensity=n/maxC;
+      var r,g,b;
+      if(intensity<0.25){r=75;g=140;b=245;}       // 파랑(콜드)
+      else if(intensity<0.55){r=246;g=194;b=62;}  // 노랑(보통)
+      else{r=245;g=101;b=101;}                    // 빨강(핫)
+      var alpha=0.1+intensity*0.42;
+      var a1=(a*(180/ANGS))*Math.PI/180-Math.PI;
+      var a2=((a+1)*(180/ANGS))*Math.PI/180-Math.PI;
+      var r1=(d===0?0.08:d===1?0.35:0.65)*FS;
+      var r2=(d===0?0.35:d===1?0.65:0.97)*FS;
+      oCtx.beginPath();
+      oCtx.arc(cx,cy,r2,a1,a2);
+      oCtx.arc(cx,cy,r1,a2,a1,true);
+      oCtx.closePath();
+      oCtx.fillStyle='rgba('+r+','+g+','+b+','+alpha+')';
+      oCtx.fill();
+    }
+  }
+  // 범례
+  var ly=18,lx=FS-8;
+  [['🔴 집중',245,101,101],['🟡 보통',246,194,62],['🔵 분산',75,140,245]].forEach(function(item){
+    oCtx.fillStyle='rgba('+item[1]+','+item[2]+','+item[3]+',.85)';
+    oCtx.font='bold 10px Noto Sans KR,sans-serif';
+    oCtx.textAlign='right';
+    oCtx.fillText(item[0],lx,ly);
+    ly+=14;
+  });
 }
 
 // ─── DRAG REORDER ───

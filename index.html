@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -289,6 +290,14 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px}
 .zone-cell{aspect-ratio:1;border:1px solid var(--border2);border-radius:3px;background:var(--bg-raised);cursor:pointer;transition:all 100ms}
 .zone-cell:hover{background:var(--accent-dim);border-color:var(--accent)}.zone-cell.on{background:var(--accent);border-color:var(--accent)}
+.zone-ball{border-style:dashed;background:rgba(255,255,255,.02)}
+.bz-cell{width:30px;height:30px;border-radius:3px;border:1px solid var(--border2);background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;font-family:var(--mono);color:var(--text);transition:background .2s;cursor:default}
+.bz-ball{width:90px;height:18px;border-radius:3px;border:1px dashed var(--border2);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;font-family:var(--mono);color:var(--text);transition:background .2s}
+.bz-side{width:18px;height:90px;writing-mode:vertical-rl}
+.drag-handle{cursor:grab;color:var(--text3);font-size:14px;padding:0 2px;user-select:none}
+.player-row.drag-over{border:1px dashed var(--accent);background:var(--accent-dim)}
+.p-hand{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:var(--raised);color:var(--text2)}
+.p-starter{font-size:9px;padding:1px 5px;border-radius:4px;cursor:pointer;border:none;font-family:var(--font);font-weight:700}
 .ib-sec-grow{flex:1;min-width:150px}
 .other-btns{display:flex;gap:3px;flex-wrap:wrap}
 .o-btn{padding:4px 9px;border-radius:14px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
@@ -620,6 +629,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="add-row">
       <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:2" onkeydown="if(event.key==='Enter')addPlayer()">
       <input class="inp" id="pNum" placeholder="#" maxlength="3" style="flex:0.7;width:36px" onkeydown="if(event.key==='Enter')addPlayer()">
+      <select class="inp" id="pHand" style="flex:0.9;width:40px;padding:4px 2px;font-size:10px"><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+      <select class="inp" id="pStarter" style="flex:0.9;width:40px;padding:4px 2px;font-size:10px"><option value="1">주전</option><option value="0">후보</option></select>
       <button class="btn btn-primary btn-icon" onclick="addPlayer()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     </div>
   </div>
@@ -630,8 +641,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
     <div class="input-bar">
       <div class="ib-row">
-        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','변화구')">변화구</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
-        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;align-items:center;gap:5px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div></div>
+        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip" onclick="selChip(this,'pt','직구')">직구</button><button class="chip" onclick="selChip(this,'pt','커터')">커터</button><button class="chip" onclick="selChip(this,'pt','커브')">커브</button><button class="chip" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip" onclick="selChip(this,'pt','포크볼')">포크볼</button></div></div>
+        <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="display:flex;gap:2px;justify-content:center"><div class="zone-cell zone-ball" data-z="높은볼" onclick="selZone(this)" style="width:72px;height:16px;aspect-ratio:unset;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3)">높은볼</div></div><div style="display:flex;align-items:center;gap:2px"><div class="zone-cell zone-ball" data-z="내각볼" onclick="selZone(this)" style="width:16px;height:72px;aspect-ratio:unset;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3);writing-mode:vertical-rl">내각볼</div><div style="display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:2px;align-items:center"><div style="font-size:8px;color:var(--text3);width:12px;text-align:right">높</div><div class="zone-grid" id="zoneGrid" style="width:72px"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div></div><div style="font-size:8px;color:var(--text3);text-align:center;margin-left:14px">내·중·외</div></div><div class="zone-cell zone-ball" data-z="외각볼" onclick="selZone(this)" style="width:16px;height:72px;aspect-ratio:unset;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3);writing-mode:vertical-rl">외각볼</div></div><div style="display:flex;gap:2px;justify-content:center"><div class="zone-cell zone-ball" data-z="낮은볼" onclick="selZone(this)" style="width:72px;height:16px;aspect-ratio:unset;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text3)">낮은볼</div></div></div></div>
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
       </div>
     </div>
@@ -676,6 +687,19 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
             </div>
           </div>
           <div class="stat-card">
+            <div class="sc-title">코스별 성적</div>
+            <div id="bsZoneWrap" style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px">
+              <div id="bsZoneHigh" style="display:flex;gap:2px"><div class="bz-ball" id="bz-높은볼"></div></div>
+              <div style="display:flex;gap:2px;align-items:center">
+                <div class="bz-ball bz-side" id="bz-내각볼"></div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:90px"><div class="bz-cell" id="bz-내각 높음"></div><div class="bz-cell" id="bz-중앙 높음"></div><div class="bz-cell" id="bz-외각 높음"></div><div class="bz-cell" id="bz-내각 중간"></div><div class="bz-cell" id="bz-중앙 중간"></div><div class="bz-cell" id="bz-외각 중간"></div><div class="bz-cell" id="bz-내각 낮음"></div><div class="bz-cell" id="bz-중앙 낮음"></div><div class="bz-cell" id="bz-외각 낮음"></div></div>
+                <div class="bz-ball bz-side" id="bz-외각볼"></div>
+              </div>
+              <div id="bsZoneLow" style="display:flex;gap:2px"><div class="bz-ball" id="bz-낮은볼"></div></div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:6px;font-size:9px;color:var(--text3)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);display:inline-block"></span>안타多</span><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:var(--red);display:inline-block"></span>아웃多</span><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border2);display:inline-block"></span>기록없음</span></div>
+          </div>
+          <div class="stat-card">
             <div class="sc-title">타구 유형</div>
             <div id="bsTypeList"></div>
           </div>
@@ -717,7 +741,14 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="import-row">
       <label class="import-label">📥 파일에서 가져오기 (다른 기기 연계)<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
     </div>
-    <div id="saveList" style="max-height:240px;overflow-y:auto;margin-bottom:12px"></div>
+    <div id="saveList" style="max-height:200px;overflow-y:auto;margin-bottom:8px"></div>
+    <div style="margin-bottom:10px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px" onclick="togglePasteArea()">📋 JSON 직접 붙여넣기</button>
+      <div id="pasteArea" style="display:none;margin-top:6px">
+        <textarea id="pasteJson" style="width:100%;height:90px;background:var(--raised);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:10px;font-family:var(--mono);padding:8px;resize:none" placeholder='{"version":1,"type":"all","saves":[...],"data":{...}}'></textarea>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:5px" onclick="importFromPaste()">가져오기</button>
+      </div>
+    </div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>
 </div>
@@ -913,7 +944,9 @@ function addPlayer(){
   const n=document.getElementById('pName').value.trim();
   const num=document.getElementById('pNum').value.trim()||(getActiveLineup().length+1)+'';
   if(!n)return;
-  const p={id:Date.now(),name:n,num};
+  const hand=document.getElementById('pHand')?.value||'R';
+  const starter=document.getElementById('pStarter')?.value!=='0';
+  const p={id:Date.now(),name:n,num,hand,starter};
   getActiveLineup().push(p);
   document.getElementById('pName').value='';
   document.getElementById('pNum').value='';
@@ -949,19 +982,44 @@ function delPlayer(id,e){
   selBatter(null);
 }
 
+let _dragId=null;
+function _dragStart(id){_dragId=id;}
+function _dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function _dragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function _drop(e,toId){
+  e.currentTarget.classList.remove('drag-over');
+  if(_dragId===toId)return;
+  const lu=getActiveLineup();
+  const fi=lu.findIndex(p=>p.id===_dragId),ti=lu.findIndex(p=>p.id===toId);
+  if(fi<0||ti<0)return;
+  lu.splice(ti,0,lu.splice(fi,1)[0]);
+  _dragId=null;renderLP();renderMob();
+}
+function toggleStarter(id,e){
+  e.stopPropagation();
+  const lu=getActiveLineup();
+  const p=lu.find(p=>p.id===id);
+  if(p)p.starter=!p.starter;
+  renderLP();
+}
+
 function renderLP(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
   if(!targetLineup.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div>';return;}
   const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
+  const handLabel={'R':'우','L':'좌','S':'스'};
   el.innerHTML=targetLineup.map(p=>{
     const pAbs=AS.abs.filter(a=>a.bid===p.id);
     const oab=pAbs.filter(a=>!noab.includes(a.res)).length;
     const h=pAbs.filter(a=>hits.includes(a.res)).length;
     const av=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';
     const on=AS.batter&&AS.batter.id===p.id;
-    return`<div class="player-row${on?' active':''}" onclick="selBatter(${p.id})"><span class="p-num">${p.num}</span><div class="p-avatar">${p.name[0]}</div><div class="p-info"><div class="p-name">${p.name}</div><div class="p-mini">${oab>0?oab+'AB '+av:'기록없음'}</div></div><button class="p-del" onclick="delPlayer(${p.id},event)">✕</button></div>`;
+    const isStarter=p.starter!==false;
+    const starterCol=isStarter?'var(--green)':'var(--text3)';
+    const handCol={'R':'var(--accent)','L':'var(--red)','S':'var(--yellow)'}[p.hand||'R'];
+    return`<div class="player-row${on?' active':''}" draggable="true" ondragstart="_dragStart(${p.id})" ondragover="_dragOver(event)" ondragleave="_dragLeave(event)" ondrop="_drop(event,${p.id})" onclick="selBatter(${p.id})"><span class="drag-handle">⠿</span><span class="p-num">${p.num}</span><div class="p-avatar">${p.name[0]}</div><div class="p-info"><div class="p-name" style="display:flex;align-items:center;gap:4px">${p.name}<span style="font-size:9px;font-weight:700;color:${handCol}">${handLabel[p.hand||'R']}</span></div><div class="p-mini">${oab>0?oab+'AB '+av:'기록없음'}</div></div><button class="p-starter" onclick="toggleStarter(${p.id},event)" style="background:none;color:${starterCol};font-size:9px;padding:1px 4px;border-radius:3px;border:1px solid ${starterCol}">${isStarter?'주전':'후보'}</button><button class="p-del" onclick="delPlayer(${p.id},event)">✕</button></div>`;
   }).join('');
 }
 
@@ -995,7 +1053,7 @@ function logPitchAction(){
   
   let symbol = '•';
   if(AS.pt === '커브') symbol = 'Ｃ';
-  else if(AS.pt === '변화구') symbol = 'Ｖ';
+  else if(AS.pt === '커터') symbol = 'ＣＴ';
   else if(AS.pt === '직구') symbol = 'Ｆ';
   else if(AS.pt === '슬라이더') symbol = 'Ｓ';
   else if(AS.pt === '체인지업') symbol = 'ＣＨ';
@@ -1144,6 +1202,20 @@ function updBatterStat(){
   const pp=fd.length?Math.round(pull/tot*100):0,pc=fd.length?Math.round(ctr/tot*100):0,po=fd.length?Math.round(oppo/tot*100):0;
   document.getElementById('bdPull').textContent=pp+'%';document.getElementById('bdCtr').textContent=pc+'%';document.getElementById('bdOppo').textContent=po+'%';
   document.getElementById('bdPullBar').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bdCtrBar').style.height=Math.max(3,pc*.44)+'px';document.getElementById('bdOppoBar').style.height=Math.max(3,po*.44)+'px';
+  const allZones=['내각 높음','중앙 높음','외각 높음','내각 중간','중앙 중간','외각 중간','내각 낮음','중앙 낮음','외각 낮음','높은볼','낮은볼','내각볼','외각볼'];
+  const hits2=['안타','내야안타','2루타','3루타','홈런'];
+  allZones.forEach(z=>{
+    const el=document.getElementById('bz-'+z);if(!el)return;
+    const zAbs=pAbs.filter(a=>a.zone===z);
+    const tot=zAbs.length;
+    if(!tot){el.style.background='var(--border2)';el.textContent='';el.title='';return;}
+    const hits=zAbs.filter(a=>hits2.includes(a.res)).length;
+    const rate=hits/tot;
+    const r=Math.round(255*(1-rate)*0.6),g=Math.round(200*rate),b=0;
+    el.style.background=rate>0.5?`rgba(45,212,160,${0.3+rate*0.5})`:`rgba(245,101,101,${0.3+(1-rate)*0.4})`;
+    el.textContent=tot;
+    el.title=`${z}: ${hits}안타/${tot}타석 (${Math.round(rate*100)}%)`;
+  });
   const typeEl=document.getElementById('bsTypeList');
   if(typeEl){
     const types=['홈런','3루타','2루타','안타','내야안타','플라이 아웃','땅볼 아웃','볼넷','삼진','사구','병살','희타','희비'];
@@ -1365,6 +1437,37 @@ function importGames(input){
   reader.readAsText(file,'utf-8');
 }
 
+
+function togglePasteArea(){
+  const a=document.getElementById('pasteArea');
+  if(a)a.style.display=a.style.display==='none'?'':'none';
+}
+
+function importFromPaste(){
+  const text=(document.getElementById('pasteJson')?.value||'').trim();
+  if(!text){showToast('데이터를 붙여넣으세요',false);return;}
+  try{
+    const obj=JSON.parse(text);
+    if(!obj||!obj.saves||!obj.data){showToast('올바른 SprayLab 데이터가 아닙니다',false);return;}
+    const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+    const existingKeys=new Set(saves.map(s=>s.key));
+    let added=0;
+    obj.saves.forEach(s=>{
+      if(s&&s.key&&!existingKeys.has(s.key)){
+        saves.push(s);
+        if(obj.data[s.key])localStorage.setItem(s.key,JSON.stringify(obj.data[s.key]));
+        added++;
+      }
+    });
+    localStorage.setItem('sl_saves',JSON.stringify(saves));
+    document.getElementById('pasteJson').value='';
+    document.getElementById('pasteArea').style.display='none';
+    openLoad();
+    showToast(added>0?added+'개 경기를 가져왔습니다':'이미 있는 경기입니다',false);
+  }catch(e){
+    showToast('JSON 형식이 올바르지 않습니다: '+e.message,false);
+  }
+}
 
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;

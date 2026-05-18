@@ -948,8 +948,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         </div>
       </div>
       <div class="tab-pnl" id="pnl-stat">
-        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
+        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
         <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+        <div class="stat-card">
+          <div class="sc-title">타구 결과 분포</div>
+          <div id="resultDistBar" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
+        </div>
         <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
         <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
 
@@ -974,6 +978,14 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
           <div class="sc-title">코스 × 구종 교차분석</div>
           <div id="zonePitchCross" style="overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
         </div>
+        <div class="stat-card" id="seasonCard">
+          <div class="sc-title">📅 시즌 누적 (저장된 경기)</div>
+          <div id="seasonSummary" style="font-size:11px;color:var(--text3);text-align:center;padding:8px">저장된 경기가 없습니다</div>
+          <div style="margin-top:8px">
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 5경기 타율 추세</div>
+            <canvas id="recentTrend" height="50" style="width:100%;display:block;border-radius:6px"></canvas>
+          </div>
+        </div>
       </div>
 
       <div class="tab-pnl" id="pnl-chart">
@@ -984,6 +996,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
             <button class="ex-btn green" onclick="exportShareCard()">📊 성적 카드 이미지</button>
           </div>
           <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.6">PNG로 저장 후 SNS·카카오톡에 공유하세요<br>성적 카드: 팀 통계 요약 이미지</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-title">🔥 핫존 분석</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px">안타 발생 밀집 구역을 히트맵으로 표시합니다</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('hit')" id="hzHitBtn" style="flex:1">🟢 안타 핫존</button>
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('out')" id="hzOutBtn" style="flex:1">🔴 아웃 콜드존</button>
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('hr')" id="hzHrBtn" style="flex:1">💥 장타 구역</button>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:5px">다시 클릭하면 오버레이 해제</div>
         </div>
         <div class="stat-card">
           <div class="sc-title">카운트별 결과 히트맵</div>
@@ -1664,6 +1686,7 @@ function safeRender(){
     if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
     if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
     list.forEach(a=>{if(a.x)drawDot(a);});
+    drawHotZoneOverlay();
   });
 }
 
@@ -1684,16 +1707,18 @@ function updStats(){
   const reach=abs.filter(a=>[...hits,'볼넷','사구'].includes(a.res)).length;
   const tb=abs.reduce((s,a)=>s+(base[a.res]||0),0),rbi=abs.reduce((s,a)=>s+a.rbi,0);
   const avg=oab?h/oab:null,obp=abs.length?reach/abs.length:null,slg=oab?tb/oab:null;
+  const ops=(obp!=null&&slg!=null)?obp+slg:null;
   document.getElementById('sAVG').textContent=avg!=null?avg.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('sOBP').textContent=obp!=null?obp.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('sSLG').textContent=slg!=null?slg.toFixed(3).replace('0.','.'):'.---';
+  document.getElementById('sOPS').textContent=ops!=null?ops.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('sAB').textContent=oab;document.getElementById('sH').textContent=h;document.getElementById('sRBI').textContent=rbi;
   const fd=abs.filter(a=>a.deg!=null),tot=fd.length||1;
   const pull=fd.filter(a=>a.deg<72).length,ctr=fd.filter(a=>a.deg>=72&&a.deg<=108).length,oppo=fd.filter(a=>a.deg>108).length;
   const pp=Math.round(pull/tot*100),pc=Math.round(ctr/tot*100),po=Math.round(oppo/tot*100);
   document.getElementById('dPull').textContent=pp+'%';document.getElementById('dCtr').textContent=pc+'%';document.getElementById('dOppo').textContent=po+'%';
   document.getElementById('bPull').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bCtr').style.height=Math.max(3,pc*.44)+'px';document.getElementById('bOppo').style.height=Math.max(3,po*.44)+'px';
-  drawDonut();renderPsTable();const _advAbs=AS.advFilter?abs.filter(a=>a.team===AS.advFilter):abs;renderExtStats(_advAbs);renderPitchTypeTable(_advAbs);renderZonePitchCross(_advAbs);
+  drawDonut();renderPsTable();const _advAbs=AS.advFilter?abs.filter(a=>a.team===AS.advFilter):abs;renderExtStats(_advAbs);renderPitchTypeTable(_advAbs);renderZonePitchCross(_advAbs);renderResultDist(abs);renderSeasonStats();
 }
 
 function renderExtStats(abs){
@@ -1775,6 +1800,139 @@ function renderZonePitchCross(abs){
   }).join('');
   html+='</tbody></table><div style="font-size:8px;color:var(--text3);margin-top:4px">숫자=투구수 · 🟢=안타율≥40% · 🟡=안타있음 · 🔴=안타없음</div>';
   el.innerHTML=html;
+}
+
+function renderSeasonStats(){
+  var games=[];
+  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+  for(var i=0;i<localStorage.length;i++){
+    var key=localStorage.key(i);
+    if(!key||!key.startsWith('sl_')||key.startsWith('sl_auto_'))continue;
+    try{
+      var d=JSON.parse(localStorage.getItem(key));
+      if(d&&Array.isArray(d.abs)&&d.abs.length){
+        var ab=d.abs.filter(function(a){return!noab.includes(a.res);}).length;
+        var h=d.abs.filter(function(a){return hits.includes(a.res);}).length;
+        var rbi=d.abs.reduce(function(s,a){return s+a.rbi;},0);
+        var bb=d.abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+        var tb=d.abs.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
+        var obp=d.abs.length?(h+bb)/d.abs.length:0;
+        var slg=ab?tb/ab:0;
+        games.push({key:key,ts:d.ts||0,ab:ab,h:h,rbi:rbi,bb:bb,avg:ab?h/ab:0,obp:obp,slg:slg,ops:obp+slg,pa:d.abs.length});
+      }
+    }catch(e){}
+  }
+  games.sort(function(a,b){return a.ts-b.ts;});
+  var el=document.getElementById('seasonSummary');
+  if(!el)return;
+  if(!games.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">저장된 경기가 없습니다</div>';return;}
+  var totAB=games.reduce(function(s,g){return s+g.ab;},0);
+  var totH=games.reduce(function(s,g){return s+g.h;},0);
+  var totRBI=games.reduce(function(s,g){return s+g.rbi;},0);
+  var totPA=games.reduce(function(s,g){return s+g.pa;},0);
+  var totBB=games.reduce(function(s,g){return s+g.bb;},0);
+  var sAvg=totAB?totH/totAB:0;
+  var sObp=totPA?(totH+totBB)/totPA:0;
+  var sTB=games.reduce(function(s,g){return s+Math.round(g.slg*g.ab);},0);
+  var sSlg=totAB?sTB/totAB:0;
+  var sOps=sObp+sSlg;
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'
+    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+sAvg.toFixed(3).replace('0.','.') +'</div><div class="stat-l">시즌AVG</div></div>'
+    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+sOps.toFixed(3).replace('0.','.') +'</div><div class="stat-l">시즌OPS</div></div>'
+    +'<div class="stat-it"><div class="stat-v-sm">'+totH+'</div><div class="stat-l">총안타</div></div>'
+    +'<div class="stat-it"><div class="stat-v-sm">'+games.length+'경기</div><div class="stat-l">기록수</div></div>'
+    +'</div>';
+  // draw recent 5 avg trend
+  var recent=games.slice(-5);
+  var cvs=document.getElementById('recentTrend');
+  if(!cvs)return;
+  cvs.width=cvs.offsetWidth*2||300;cvs.height=100;
+  var ctx=cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  if(recent.length<2)return;
+  var W=cvs.width,H=cvs.height,pad=16;
+  var avgs=recent.map(function(g){return g.avg;});
+  var minA=Math.min.apply(null,avgs),maxA=Math.max.apply(null,avgs);
+  var range=maxA-minA||0.1;
+  var toX=function(i){return pad+(W-pad*2)*i/(recent.length-1);};
+  var toY=function(v){return H-pad-(v-minA)/range*(H-pad*2);};
+  // gradient fill
+  var grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(75,140,245,0.35)');grad.addColorStop(1,'rgba(75,140,245,0)');
+  ctx.beginPath();ctx.moveTo(toX(0),toY(avgs[0]));
+  avgs.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});
+  ctx.lineTo(toX(avgs.length-1),H);ctx.lineTo(toX(0),H);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  // line
+  ctx.beginPath();ctx.strokeStyle='#4b8cf5';ctx.lineWidth=2;
+  avgs.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});
+  ctx.stroke();
+  // dots + labels
+  avgs.forEach(function(v,i){
+    ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);
+    ctx.fillStyle='#4b8cf5';ctx.fill();
+    ctx.fillStyle='#8892a4';ctx.font='9px sans-serif';ctx.textAlign='center';
+    ctx.fillText('.'+Math.round(v*1000).toString().padStart(3,'0'),toX(i),toY(v)-6);
+  });
+}
+
+function renderResultDist(abs){
+  var el=document.getElementById('resultDistBar');
+  if(!el)return;
+  var total=abs.length||1;
+  var cats=[
+    {label:'안타 (1루타)',res:['안타','내야안타'],color:'#4b8cf5'},
+    {label:'장타 (2·3·HR)',res:['2루타','3루타','홈런'],color:'#f56565'},
+    {label:'볼넷/사구',res:['볼넷','사구'],color:'#a78bfa'},
+    {label:'삼진',res:['삼진'],color:'#fb923c'},
+    {label:'아웃',res:['플라이 아웃','땅볼 아웃','병살'],color:'#374151'}
+  ];
+  el.innerHTML=cats.map(function(c){
+    var n=abs.filter(function(a){return c.res.includes(a.res);}).length;
+    var pct=Math.round(n/total*100);
+    return '<div style="display:flex;align-items:center;gap:6px">'
+      +'<div style="width:72px;font-size:10px;color:var(--text2);flex-shrink:0">'+c.label+'</div>'
+      +'<div style="flex:1;background:var(--bg-raised);border-radius:4px;height:10px;overflow:hidden">'
+      +'<div style="width:'+pct+'%;height:100%;background:'+c.color+';border-radius:4px;transition:width .4s ease"></div>'
+      +'</div>'
+      +'<div style="width:32px;font-size:10px;color:var(--text2);text-align:right;flex-shrink:0">'+n+' ('+pct+'%)</div>'
+      +'</div>';
+  }).join('');
+}
+
+var _hzMode=null;
+function toggleHotZoneOverlay(mode){
+  _hzMode=(_hzMode===mode)?null:mode;
+  ['hit','out','hr'].forEach(function(m){
+    var btn=document.getElementById('hz'+m.charAt(0).toUpperCase()+m.slice(1)+'Btn');
+    if(btn)btn.style.opacity=(_hzMode===m)?'1':'0.5';
+  });
+  drawHotZoneOverlay();
+}
+function drawHotZoneOverlay(){
+  var cvs=document.getElementById('ovrCanvas');
+  if(!cvs)return;
+  var ctx=cvs.getContext('2d');
+  var W=cvs.width,H=cvs.height,dpr=window.devicePixelRatio||1;
+  ctx.clearRect(0,0,W,H);
+  if(!_hzMode)return;
+  var hits=['안타','내야안타','2루타','3루타','홈런'],xbh=['2루타','3루타','홈런'];
+  var filter={
+    hit:function(a){return hits.includes(a.res);},
+    out:function(a){return ['플라이 아웃','땅볼 아웃','삼진','병살'].includes(a.res);},
+    hr:function(a){return xbh.includes(a.res);}
+  };
+  var pts=AS.abs.filter(function(a){return a.x&&a.y&&filter[_hzMode](a);});
+  if(!pts.length)return;
+  var color={hit:'rgba(45,212,160,',out:'rgba(245,101,101,',hr:'rgba(251,146,60,'};
+  var c=color[_hzMode];
+  // kernel density: draw gaussian blob per point
+  pts.forEach(function(a){
+    var r=28*dpr;
+    var grd=ctx.createRadialGradient(a.x*dpr,a.y*dpr,0,a.x*dpr,a.y*dpr,r);
+    grd.addColorStop(0,c+'0.18)');grd.addColorStop(1,c+'0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(a.x*dpr,a.y*dpr,r,0,Math.PI*2);ctx.fill();
+  });
 }
 
 function drawDonut(){
@@ -2674,12 +2832,28 @@ function exportShareCard(){
     var avg=ab>0?h/ab:0;
     return {h:h,ab:ab,bb:bb,avg:avg};
   }
-  var hs2=calcLine(homeAbs);
-  var as2=calcLine(awayAbs);
-  ctx.font='16px sans-serif';
-  ctx.fillStyle='#b0bec5';
-  ctx.fillText('홈: '+hs2.h+'안타 / .'+Math.round(hs2.avg*1000).toString().padStart(3,'0')+' 타율',24,130);
-  ctx.fillText('원정: '+as2.h+'안타 / .'+Math.round(as2.avg*1000).toString().padStart(3,'0')+' 타율',24,155);
+  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+  function calcFull(abArr){
+    var h=abArr.filter(function(a){return hits.includes(a.res);}).length;
+    var ab=abArr.filter(function(a){return !noab.includes(a.res);}).length;
+    var bb=abArr.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+    var tb=abArr.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
+    var pa=abArr.length;
+    var obp=pa?(h+bb)/pa:0, slg=ab?tb/ab:0;
+    return {h:h,ab:ab,avg:ab?h/ab:0,ops:obp+slg};
+  }
+  var hs3=calcFull(homeAbs), as3=calcFull(awayAbs);
+  var fmt=function(v){return '.'+Math.round(v*1000).toString().padStart(3,'0');};
+  ctx.font='bold 15px sans-serif'; ctx.fillStyle='#e8eaf6'; ctx.textAlign='left';
+  ctx.fillText('홈  AVG '+fmt(hs3.avg)+'  OPS '+fmt(hs3.ops)+'  '+hs3.h+'H/'+hs3.ab+'AB', 24, 130);
+  ctx.fillText('원정 AVG '+fmt(as3.avg)+'  OPS '+fmt(as3.ops)+'  '+as3.h+'H/'+as3.ab+'AB', 24, 155);
+  // direction
+  var allAbs=AS.abs, fd=allAbs.filter(function(a){return a.deg!=null;}), tot=fd.length||1;
+  var pullP=Math.round(fd.filter(function(a){return a.deg<72;}).length/tot*100);
+  var ctrP=Math.round(fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length/tot*100);
+  var oppoP=100-pullP-ctrP;
+  ctx.font='13px sans-serif'; ctx.fillStyle='#8892a4';
+  ctx.fillText('방향: 당겨 '+pullP+'%  중앙 '+ctrP+'%  밀어 '+oppoP+'%', 24, 178);
   var fld=document.getElementById('fldCanvas');
   var hit=document.getElementById('hitCanvas');
   if(fld&&hit){

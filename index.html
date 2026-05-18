@@ -2668,44 +2668,24 @@ function safeRenderOpt(){
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TAB SWIPE (mobile)
+// TAB SWIPE (mobile) — listener on .pnl-right directly
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function(){
   var tabOrder=['rec','batter','stat','chart'];
-  var _sx=0,_sy=0,_dir=null,_inPane=false;
+  var _sx=0,_sy=0;
+  var pane=document.querySelector('.pnl-right');
+  if(!pane)return;
 
-  function hasHScroll(el,stop){
-    while(el&&el!==stop){
-      if(el.scrollWidth>el.clientWidth+4){
-        var ox=window.getComputedStyle(el).overflowX;
-        if(ox==='auto'||ox==='scroll')return true;
-      }
-      el=el.parentElement;
-    }
-    return false;
-  }
-
-  document.addEventListener('touchstart',function(e){
+  pane.addEventListener('touchstart',function(e){
     _sx=e.touches[0].clientX;
     _sy=e.touches[0].clientY;
-    _dir=null;
-    var pane=e.target.closest('.pnl-right');
-    _inPane=!!pane&&!hasHScroll(e.target,pane);
   },{passive:true});
 
-  document.addEventListener('touchmove',function(e){
-    if(_dir)return;
-    var dx=Math.abs(e.touches[0].clientX-_sx);
-    var dy=Math.abs(e.touches[0].clientY-_sy);
-    if(dx<8&&dy<8)return;
-    _dir=dx>dy?'h':'v';
-  },{passive:true});
-
-  document.addEventListener('touchend',function(e){
-    if(_dir!=='h'||!_inPane)return;
+  pane.addEventListener('touchend',function(e){
     var dx=e.changedTouches[0].clientX-_sx;
-    if(Math.abs(dx)<60)return;
-    var active=document.querySelector('.tab.on');
+    var dy=e.changedTouches[0].clientY-_sy;
+    if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.5)return;
+    var active=pane.querySelector('.tab.on');
     if(!active)return;
     var m=(active.getAttribute('onclick')||'').match(/swTab\('([^']+)'/);
     if(!m)return;
@@ -2713,8 +2693,7 @@ function safeRenderOpt(){
     if(cur<0)return;
     var next=dx<0?Math.min(cur+1,tabOrder.length-1):Math.max(cur-1,0);
     if(next===cur)return;
-    var t=document.getElementById('tab-'+tabOrder[next]);
-    if(t)t.click();
+    document.getElementById('tab-'+tabOrder[next]).click();
   },{passive:true});
 })();
 

@@ -473,6 +473,40 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .cl-item{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)}
 .cl-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+/* ── 중간 화면 크기 대응 (브라우저 반쪽 등) ── */
+@media(min-width:721px) and (max-width:960px){
+  .app-layout{grid-template-columns:175px 1fr 210px}
+  .app-hdr{flex-wrap:wrap;height:auto;padding:6px 10px;row-gap:4px}
+  .scoreboard{flex-shrink:1;padding:4px 8px;gap:5px}
+  .sc-val{font-size:16px}
+}
+@media(min-width:721px) and (max-width:820px){
+  .app-layout{grid-template-columns:150px 1fr 185px}
+  .app-brand-tag{display:none}
+  .inn-sel{display:none}
+  .btn{padding:5px 9px;font-size:11px}
+}
+@media(min-width:721px) and (max-width:740px){
+  .app-layout{grid-template-columns:1fr 185px}
+  .pnl-left{display:none}
+}
+/* ── 심화지표/구종 필터 탭 ── */
+.stat-filter{display:flex;gap:3px;margin-bottom:8px;background:var(--bg-hover);border-radius:8px;padding:3px}
+.sf-btn{flex:1;padding:4px 0;border-radius:6px;border:none;background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;text-align:center}
+.sf-btn.on{background:var(--bg-card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+/* ── 누적 타율 트렌드 툴팁 ── */
+.trend-cvs-wrap{position:relative}
+#trendTip{display:none;position:absolute;background:var(--bg-card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:10px;min-width:125px;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;z-index:10}
+.tt-avg{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);margin-bottom:3px}
+.tt-row{color:var(--text2);line-height:1.65}
+/* ── 타석 기록 수정 버튼 ── */
+.rec-edit{position:absolute;top:7px;right:25px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:1px 4px;border-radius:3px;transition:all 100ms;opacity:0;font-family:var(--font)}
+.rec-item:hover .rec-edit{opacity:1}
+.rec-edit:hover{color:var(--accent);background:var(--accent-dim)}
+.rec-del{position:absolute;top:7px;right:5px}
+/* ── zone 구종 태그 ── */
+.zh-pt-row{display:flex;flex-wrap:wrap;gap:1px;justify-content:center;margin-top:1px}
+.zh-pt{font-size:6.5px;padding:0 2px;border-radius:2px;font-weight:800;line-height:1.4}
 </style>
 </head>
 <body>
@@ -805,6 +839,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
         <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
 
+        <div id="advStatFilter" class="stat-filter"><button class="sf-btn on" onclick="setAdvFilter(null,this)">종합</button><button class="sf-btn" onclick="setAdvFilter('home',this)">홈팀</button><button class="sf-btn" onclick="setAdvFilter('away',this)">원정팀</button></div>
         <div class="stat-card">
           <div class="sc-title">심화 지표</div>
           <div class="ext-stat-grid">
@@ -849,7 +884,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
         <div class="stat-card">
           <div class="sc-title">누적 타율 트렌드</div>
-          <canvas id="avgTrendChart" class="trend-canvas"></canvas>
+          <div class="trend-cvs-wrap"><canvas id="avgTrendChart" class="trend-canvas"></canvas><div id="trendTip"></div></div>
           <div class="chart-legend">
             <div class="cl-item"><div class="cl-dot" style="background:#4b8cf5;border-radius:50%"></div>누적 AVG</div>
           </div>
@@ -874,6 +909,26 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       <button class="hit-btn hb-grd" onclick="recHit('땅볼 아웃')">↓ 땅볼 아웃</button>
     </div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeHit()">취소</button>
+  </div>
+</div>
+
+<div class="overlay" id="editRecOverlay">
+  <div class="modal" style="width:min(310px,96vw)">
+    <div class="modal-title">타석 기록 수정</div>
+    <div class="modal-sub">이닝·결과·구종·코스·타점을 수정하세요</div>
+    <input type="hidden" id="editRecId">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div><div class="sec-lbl" style="margin-bottom:4px">이닝</div><select class="inp" id="editInn"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">결과</div><select class="inp" id="editRes"><option>안타</option><option>내야안타</option><option>2루타</option><option>3루타</option><option>홈런</option><option>볼넷</option><option>사구</option><option>삼진</option><option>플라이 아웃</option><option>땅볼 아웃</option><option>희타</option><option>희비</option><option>병살</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">구종</div><select class="inp" id="editPt"><option value="">없음</option><option>직구</option><option>커브</option><option>슬라이더</option><option>체인지업</option><option>포크볼</option><option>커터</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">코스</div><select class="inp" id="editZone"><option value="">없음</option><option>내각 높음</option><option>중앙 높음</option><option>외각 높음</option><option>내각 중간</option><option>중앙 중간</option><option>외각 중간</option><option>내각 낮음</option><option>중앙 낮음</option><option>외각 낮음</option><option>볼 위</option><option>볼 아래</option><option>볼 내</option><option>볼 외</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">타구 방향</div><select class="inp" id="editDir"><option value="">없음</option><option value="LF">당겨치기(LF)</option><option value="LC">좌중간(LC)</option><option value="CF">센터(CF)</option><option value="RC">우중간(RC)</option><option value="RF">밀어치기(RF)</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">타점</div><div class="rbi-row" style="margin-bottom:0"><button class="rbi-btn" onclick="chEditRbi(-1)">−</button><span class="rbi-val" id="editRbiVal">0</span><button class="rbi-btn" onclick="chEditRbi(1)">+</button></div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveEditRec()">저장</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeOverlay('editRecOverlay')">취소</button>
+    </div>
   </div>
 </div>
 
@@ -1140,7 +1195,8 @@ const AS={
   batterFilter:false,
   teamFilter:null,
   showHotCold:false,
-  currentPitches:[]
+  currentPitches:[],
+  advFilter:null
 };
 const MAX_HITS = 300; 
 let saveTimer; 
@@ -1460,7 +1516,7 @@ function renderRecs(){
   const el=document.getElementById('recList');document.getElementById('recCnt').textContent=AS.abs.length+'개 기록';
   if(!AS.abs.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
-  el.innerHTML=[...AS.abs].reverse().map(a=>`<div class="rec-item"><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
+  el.innerHTML=[...AS.abs].reverse().map(a=>`<div class="rec-item"><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
 function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){if(!AS.abs.length)return;AS.abs.pop();updateAll();hideToast();}
@@ -1481,7 +1537,7 @@ function updStats(){
   const pp=Math.round(pull/tot*100),pc=Math.round(ctr/tot*100),po=Math.round(oppo/tot*100);
   document.getElementById('dPull').textContent=pp+'%';document.getElementById('dCtr').textContent=pc+'%';document.getElementById('dOppo').textContent=po+'%';
   document.getElementById('bPull').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bCtr').style.height=Math.max(3,pc*.44)+'px';document.getElementById('bOppo').style.height=Math.max(3,po*.44)+'px';
-  drawDonut();renderPsTable();renderExtStats(abs);renderPitchTypeTable(abs);renderZonePitchCross(abs);
+  drawDonut();renderPsTable();const _advAbs=AS.advFilter?abs.filter(a=>a.team===AS.advFilter):abs;renderExtStats(_advAbs);renderPitchTypeTable(_advAbs);renderZonePitchCross(_advAbs);
 }
 
 function renderExtStats(abs){
@@ -1700,8 +1756,10 @@ function drawInningChart(abs){
   });
 }
 
+var _trendData=[];
 function drawAvgTrend(abs){
   const c=document.getElementById('avgTrendChart');if(!c)return;
+  _trendData=[];
   const dpr=window.devicePixelRatio||1;
   const W=c.parentElement.clientWidth-24||220,H=80;
   c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';
@@ -1709,17 +1767,18 @@ function drawAvgTrend(abs){
   ctx.clearRect(0,0,W,H);
   const noab=['볼넷','사구','희타','희비'];
   const hits=['안타','내야안타','2루타','3루타','홈런'];
-  const pts=[];let ab=0,h=0;
+  const pts=[];let cumAB=0,cumH=0;
   abs.forEach(a=>{
-    if(!noab.includes(a.res))ab++;
-    if(hits.includes(a.res))h++;
-    if(ab>0)pts.push(h/ab);
+    if(!noab.includes(a.res))cumAB++;
+    if(hits.includes(a.res))cumH++;
+    if(cumAB>0){pts.push(cumH/cumAB);_trendData.push({avg:cumH/cumAB,cumAB,cumH,ab:a});}
   });
-  if(pts.length<2){ctx.fillStyle='#374151';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('타석 2개 이상 필요',W/2,H/2);return;}
+  if(pts.length<2){ctx.fillStyle='#374151';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('타석 2개 이상 필요',W/2,H/2);_trendData=[];return;}
   const pad=8;const cW=W-pad*2;const cH=H-pad*2;
   const minV=0,maxV=1;
   const toX=i=>pad+i/(pts.length-1)*cW;
   const toY=v=>pad+(1-(v-minV)/(maxV-minV))*cH;
+  _trendData.forEach((d,i)=>{d.px=toX(i);d.py=toY(d.avg);});
   // Grid lines
   [0,.2,.4,.6,.8,1.0].forEach(v=>{
     const y=toY(v);ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
@@ -1744,6 +1803,39 @@ function drawAvgTrend(abs){
   ctx.fillStyle='#eef0f8';ctx.font='bold 9px sans-serif';ctx.textAlign='right';
   const finalAvg=pts[pts.length-1].toFixed(3).replace('0.','.');
   ctx.fillText(finalAvg,W-pad-2,ly-4);
+  // Interaction
+  _initTrendInteraction(c);
+}
+function _initTrendInteraction(c){
+  const RES_COL={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b'};
+  function getNear(mx){let best=null,bestD=Infinity;_trendData.forEach(d=>{const dd=Math.abs(mx-d.px);if(dd<bestD){bestD=dd;best=d;}});return bestD<45?best:null;}
+  function showTip(mx,my){
+    const tip=document.getElementById('trendTip');if(!tip)return;
+    const d=getNear(mx);
+    if(!d){tip.style.display='none';return;}
+    const ab=d.ab,avgStr=d.avg.toFixed(3).replace('0.','.'),rCol=RES_COL[ab.res]||'var(--text2)';
+    const dirK={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
+    tip.innerHTML='<div class="tt-avg">'+avgStr+'</div>'
+      +'<div class="tt-row">#'+d.cumAB+'번째 타수 · '+(ab.bname||'?')+'</div>'
+      +'<div class="tt-row" style="color:'+rCol+'">→ '+ab.res+'</div>'
+      +(ab.pt?'<div class="tt-row">구종: '+ab.pt+'</div>':'')
+      +(ab.dir?'<div class="tt-row">방향: '+(dirK[ab.dir]||ab.dir)+'</div>':'')
+      +'<div class="tt-row">누적 '+d.cumH+'안타 / '+d.cumAB+'타수</div>'
+      +(ab.inn?'<div class="tt-row" style="color:var(--text3)">'+ab.inn+'</div>':'');
+    tip.style.display='block';
+    const tipW=tip.offsetWidth||130,tipH=tip.offsetHeight||90;
+    let tx=mx+10,ty=Math.max(2,my-tipH/2);
+    if(tx+tipW>c.offsetWidth-4)tx=mx-tipW-10;
+    if(tx<2)tx=2;
+    tip.style.left=tx+'px';tip.style.top=ty+'px';
+  }
+  function hideTip(){const tip=document.getElementById('trendTip');if(tip)tip.style.display='none';}
+  c.onmousemove=function(e){showTip(e.offsetX,e.offsetY);};
+  c.onmouseleave=hideTip;
+  c.style.cursor='crosshair';
+  c.ontouchstart=function(e){e.preventDefault();};
+  c.ontouchmove=function(e){e.preventDefault();const r=c.getBoundingClientRect(),t=e.touches[0];showTip(t.clientX-r.left,t.clientY-r.top);};
+  c.ontouchend=function(){setTimeout(hideTip,1800);};
 }
 
 function openOverlay(id){document.getElementById(id).classList.add('show');}
@@ -1951,7 +2043,8 @@ function restoreGame(key){
   // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
-  AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;
+  AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;AS.advFilter=null;
+  var afBtns=document.querySelectorAll('#advStatFilter .sf-btn');if(afBtns.length){afBtns.forEach(function(b,i){b.classList.toggle('on',i===0);});}
   closeOverlay('loadOverlay');
   refreshZoneDisplay();renderCount();
   var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
@@ -2194,7 +2287,11 @@ function updBatterStat(){
       var zd=zoneHR(z);var bg='transparent',col='var(--text3)';
       if(zd.n>0){if(zd.rate>=0.4){bg='rgba(45,212,160,'+(0.2+zd.n/maxZ*.4)+')';col='#2dd4a0';}else{bg='rgba(245,101,101,'+(0.15+zd.n/maxZ*.4)+')';col='#f56565';}}
       var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
-      return'<div class="zh-cell" title="'+z+': '+tips+'" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0">'+(zd.n?'<span>'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span>':'')+'</div>';
+      var ptCts={};(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
+      var ptColMap={'직구':'#4b8cf5','커터':'#8892a4','커브':'#a78bfa','슬라이더':'#f6c23e','체인지업':'#2dd4a0','포크볼':'#fb923c'};
+      var ptAbrMap={'직구':'F','커터':'CT','커브':'C','슬라이더':'S','체인지업':'CH','포크볼':'FK'};
+      var ptTagsHtml=Object.keys(ptCts).map(function(pt){return'<span class="zh-pt" style="background:'+ptColMap[pt]+'33;color:'+ptColMap[pt]+'">'+(ptAbrMap[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
+      return'<div class="zh-cell" title="'+z+': '+tips+'" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0;padding:1px">'+(zd.n?'<span style="font-size:9px;font-weight:800">'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span><div class="zh-pt-row">'+ptTagsHtml+'</div>':'')+'</div>';
     }).join('');
   }
   var bzEl=document.getElementById('bsBallZone');
@@ -2227,9 +2324,54 @@ function updBatterStat(){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeHit();closeOverlay('loadOverlay');}
+  if(e.key==='Escape'){closeHit();closeOverlay('loadOverlay');closeOverlay('editRecOverlay');}
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
 });
+
+// ─── 심화지표/구종/교차분석 팀 필터 ───
+function setAdvFilter(team,el){
+  AS.advFilter=team;
+  document.querySelectorAll('#advStatFilter .sf-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  var fabs=team?AS.abs.filter(function(a){return a.team===team;}):AS.abs;
+  renderExtStats(fabs);renderPitchTypeTable(fabs);renderZonePitchCross(fabs);
+}
+
+// ─── 타석 기록 수정 ───
+var _editRbi=0;
+function openEditRec(id){
+  var ab=AS.abs.find(function(a){return a.id===id;});
+  if(!ab)return;
+  document.getElementById('editRecId').value=id;
+  document.getElementById('editInn').value=ab.inn||'1회초';
+  document.getElementById('editRes').value=ab.res||'안타';
+  document.getElementById('editPt').value=ab.pt||'';
+  document.getElementById('editZone').value=ab.zone||'';
+  document.getElementById('editDir').value=ab.dir||'';
+  _editRbi=ab.rbi||0;
+  document.getElementById('editRbiVal').textContent=_editRbi;
+  openOverlay('editRecOverlay');
+}
+function chEditRbi(d){_editRbi=Math.max(0,_editRbi+d);document.getElementById('editRbiVal').textContent=_editRbi;}
+function saveEditRec(){
+  var id=parseInt(document.getElementById('editRecId').value);
+  var ab=AS.abs.find(function(a){return a.id===id;});
+  if(!ab)return;
+  ab.inn=document.getElementById('editInn').value;
+  ab.res=document.getElementById('editRes').value;
+  ab.pt=document.getElementById('editPt').value||null;
+  ab.zone=document.getElementById('editZone').value||null;
+  const dirVal=document.getElementById('editDir').value;
+  if(dirVal){
+    ab.dir=dirVal;
+    const dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150};
+    ab.deg=dirDeg[dirVal]||null;
+  }
+  ab.rbi=_editRbi;
+  closeOverlay('editRecOverlay');
+  updateAll();
+  showToast('타석 기록이 수정되었습니다',false);
+}
 
 // ───── [백업 서브루틴] URL 다이렉트 스트림 복구 시스템 ─────
 (function checkImportUrl() {

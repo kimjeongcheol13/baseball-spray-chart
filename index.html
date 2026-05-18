@@ -2684,13 +2684,13 @@ function safeRenderOpt(){
     if(_dir)return;
     var dx=Math.abs(e.touches[0].clientX-_sx);
     var dy=Math.abs(e.touches[0].clientY-_sy);
-    if(dx<10&&dy<10)return;
+    if(dx<8&&dy<8)return;
     _dir=dx>dy?'h':'v';
   },{passive:true});
 
   document.addEventListener('touchend',function(e){
     if(_dir!=='h')return;
-    if(!e.target.closest('.tab-body'))return;
+    if(e.target.closest('.field-wrap'))return;
     var dx=e.changedTouches[0].clientX-_sx;
     if(Math.abs(dx)<60)return;
     var active=document.querySelector('.tab.on');

@@ -1295,8 +1295,8 @@ function drawField(){
   const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S2);bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#112b14');
   ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=bg;ctx.fill();
   ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.arc(cx,cy,S2*.89,0,-Math.PI,true);ctx.closePath();ctx.fillStyle='#4a2e10';ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,S2*.41,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#5a3a18';ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,S2*.33,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#1e4a22';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,S2*.41,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#7d5028';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,S2*.33,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#2a6b30';ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-S2*.97,cy);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+S2*.97,cy);ctx.stroke();
@@ -1306,7 +1306,7 @@ function drawField(){
   ctx.beginPath();ctx.arc(cx,cy,S2*.89,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;ctx.stroke();
   const br=S2*.42;[[cx,cy-br*.65],[cx-br*.46,cy-br*.33],[cx+br*.46,cy-br*.33]].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();});
   ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle='#5a3a18';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle='#7d5028';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.stroke();
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
   ctx.fillText('LF',cx-S2*.32,cy-S2*.58);ctx.fillText('CF',cx,cy-S2*.72);ctx.fillText('RF',cx+S2*.32,cy-S2*.58);
   const dl=Math.floor(S2*.019);ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;

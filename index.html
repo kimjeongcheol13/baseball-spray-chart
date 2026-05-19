@@ -663,6 +663,42 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .rec-item{padding:10px 10px}
   .player-row{padding:10px 12px}
 }
+
+/* ===== TOOLTIP SYSTEM ===== */
+.tt{position:relative;cursor:help}
+.tt-box{position:fixed;background:var(--bg-card);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;font-size:11.5px;color:var(--text);white-space:pre-line;z-index:9000;pointer-events:none;min-width:180px;max-width:260px;line-height:1.65;box-shadow:0 8px 24px rgba(0,0,0,.5);font-weight:400;opacity:0;transition:opacity 150ms;display:none}
+.tt-box.vis{opacity:1;display:block}
+.tt-box b{color:var(--accent)}
+.tt-underline{border-bottom:1px dashed rgba(255,255,255,.3);cursor:help}
+
+/* ===== INTERACTIVE TOUR ===== */
+#tourOv{position:fixed;inset:0;z-index:9500;display:none}
+#tourOv.on{display:block}
+#tourSpot{position:fixed;border-radius:10px;transition:all 380ms cubic-bezier(.4,0,.2,1);z-index:9501;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 0 3px #4b8cf5,0 0 24px rgba(75,140,245,.5)}
+#tourSpot.pulse{animation:tPulse 1.6s ease-in-out infinite}
+@keyframes tPulse{0%,100%{box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 0 3px #4b8cf5,0 0 24px rgba(75,140,245,.5)}50%{box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 0 5px #4b8cf5,0 0 36px rgba(75,140,245,.8)}}
+#tourCard{position:fixed;background:var(--bg-card);border:1.5px solid var(--border2);border-radius:14px;padding:20px 20px 16px;width:min(300px,88vw);box-shadow:0 16px 48px rgba(0,0,0,.6);z-index:9502;transition:opacity 280ms,transform 280ms;opacity:0;transform:translateY(10px)}
+#tourCard.vis{opacity:1;transform:translateY(0)}
+#tourProg{font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+#tourProgBar{flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden}
+#tourProgFill{height:100%;background:var(--accent);border-radius:2px;transition:width 380ms}
+#tourTitle{font-size:17px;font-weight:900;line-height:1.35;margin-bottom:9px;color:var(--text)}
+#tourDesc{font-size:12.5px;color:var(--text2);line-height:1.75;margin-bottom:16px}
+#tourDesc b{color:var(--accent)}
+#tourDesc .t-tag{display:inline-block;background:rgba(75,140,245,.15);color:#4b8cf5;border:1px solid rgba(75,140,245,.3);border-radius:4px;padding:0 6px;font-size:11px;font-family:var(--mono)}
+.tour-btns{display:flex;gap:8px;align-items:center}
+#tourSkipBtn{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:6px 4px;flex-shrink:0}
+#tourSkipBtn:hover{color:var(--text)}
+#tourNextBtn{flex:1;padding:9px;font-size:13px;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;transition:opacity 150ms}
+#tourNextBtn:hover{opacity:.85}
+#tourCursor{position:fixed;z-index:9503;pointer-events:none;opacity:0;font-size:26px;transition:all 380ms cubic-bezier(.4,0,.2,1)}
+#tourOv.on #tourCursor{opacity:1}
+.tCursorAnim{animation:cTap 1.3s ease-in-out infinite}
+@keyframes cTap{0%,100%{transform:scale(1) rotate(-10deg)}50%{transform:scale(.8) rotate(-10deg) translateY(4px)}}
+#tourRing{position:fixed;z-index:9500;pointer-events:none;border-radius:50%;border:2px solid rgba(75,140,245,.7);transition:all 380ms cubic-bezier(.4,0,.2,1);opacity:0}
+#tourOv.on #tourRing{opacity:1}
+.tRingPulse{animation:rPulse 1.3s ease-in-out infinite}
+@keyframes rPulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.25);opacity:.2}}
 </style>
 </head>
 <body>
@@ -913,6 +949,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 </div><div id="app-page">
 
+<div class="tt-box" id="ttBox"></div>
+
+<div id="tourOv">
+  <div id="tourSpot" class="pulse"></div>
+  <div id="tourCard">
+    <div id="tourProg"><span id="tourProgTxt">1 / 9</span><div id="tourProgBar"><div id="tourProgFill" style="width:11%"></div></div></div>
+    <div id="tourTitle"></div>
+    <div id="tourDesc"></div>
+    <div class="tour-btns">
+      <button id="tourSkipBtn" onclick="tourSkip()">투어 종료</button>
+      <button id="tourNextBtn" onclick="tourNext()">다음 →</button>
+    </div>
+  </div>
+  <div id="tourCursor">👆</div>
+  <div id="tourRing"></div>
+</div>
+
 <div class="ob-overlay" id="obOverlay" style="display:none">
   <div class="ob-card">
     <div class="ob-icon" id="obIcon">⚾</div>
@@ -951,7 +1004,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px">🔗 공유</button>
-    <button class="btn btn-ghost" onclick="showTutorial()" title="튜토리얼 다시보기" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
+    <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
   </div>
 </header>
@@ -985,15 +1038,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <div class="count-board" id="countBoard">
     <div class="cnt-grp" onclick="chCount('b')" title="볼 (+1)">
       <div class="cnt-dots" id="cntBalls"><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
-      <div class="cnt-lbl">B</div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'볼 (Ball)','스트라이크존 밖으로 던진 투구\n4개 누적되면 타자 볼넷(1루 진출)')" onmouseleave="hideTT()">B</div>
     </div>
     <div class="cnt-grp" onclick="chCount('s')" title="스트라이크 (+1)">
       <div class="cnt-dots" id="cntStrikes"><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
-      <div class="cnt-lbl">S</div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'스트라이크 (Strike)','존 안으로 투구되거나 타자가 헛스윙한 경우\n3개 누적되면 삼진 아웃')" onmouseleave="hideTT()">S</div>
     </div>
     <div class="cnt-grp" onclick="chCount('o')" title="아웃 (+1)">
       <div class="cnt-dots" id="cntOuts"><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
-      <div class="cnt-lbl">O</div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'아웃 (Out)','현재 이닝의 아웃 카운트\n3개 누적되면 공수 교대')" onmouseleave="hideTT()">O</div>
     </div>
     <button class="cnt-reset" onclick="resetCount()" title="카운트 초기화">↺</button>
   </div>
@@ -1006,9 +1059,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="field-hint">필드를 탭하여 타구 위치 기록 · Ctrl+Z 실행 취소</div>
     <div class="input-bar">
       <div class="ib-row">
-        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip pt-chip-F" onclick="selChip(this,'pt','직구')">직구</button><button class="chip pt-chip-C" onclick="selChip(this,'pt','커브')">커브</button><button class="chip pt-chip-S" onclick="selChip(this,'pt','슬라이더')">슬라이더</button><button class="chip pt-chip-CH" onclick="selChip(this,'pt','체인지업')">체인지업</button><button class="chip pt-chip-FK" onclick="selChip(this,'pt','포크볼')">포크볼</button><button class="chip pt-chip-CT" onclick="selChip(this,'pt','커터')">커터</button></div></div>
+        <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip pt-chip-F" onclick="selChip(this,'pt','직구')" onmouseenter="showTT(this,'직구 (Fastball)','가장 빠른 기본 구종\n타자를 힘으로 제압하는 구질')" onmouseleave="hideTT()">직구</button><button class="chip pt-chip-C" onclick="selChip(this,'pt','커브')" onmouseenter="showTT(this,'커브 (Curveball)','위→아래로 크게 꺾여 떨어지는 변화구\n속도차와 궤적 변화로 타자를 혼란')" onmouseleave="hideTT()">커브</button><button class="chip pt-chip-S" onclick="selChip(this,'pt','슬라이더')" onmouseenter="showTT(this,'슬라이더 (Slider)','옆으로 꺾이며 떨어지는 변화구\n타자 손을 부수는 구질로 유명')" onmouseleave="hideTT()">슬라이더</button><button class="chip pt-chip-CH" onclick="selChip(this,'pt','체인지업')" onmouseenter="showTT(this,'체인지업 (Changeup)','직구와 같은 폼으로 던지지만 갑자기 느려짐\n타자의 타이밍을 뺏는 구질')" onmouseleave="hideTT()">체인지업</button><button class="chip pt-chip-FK" onclick="selChip(this,'pt','포크볼')" onmouseenter="showTT(this,'포크볼 (Forkball)','홈플레이트 근처에서 뚝 떨어지는 구질\n땅볼 유도에 효과적')" onmouseleave="hideTT()">포크볼</button><button class="chip pt-chip-CT" onclick="selChip(this,'pt','커터')" onmouseenter="showTT(this,'커터 (Cut Fastball)','직구처럼 빠르게 날아오다 안쪽으로 살짝 꺾임\n타자의 배트 손잡이를 공략')" onmouseleave="hideTT()">커터</button></div></div>
         <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
-        <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')">볼넷</button><button class="o-btn k" onclick="recOther('삼진')">삼진</button><button class="o-btn hbp" onclick="recOther('사구')">사구</button><button class="o-btn sac" onclick="recOther('희타')">희타</button><button class="o-btn sac" onclick="recOther('희비')">희비</button><button class="o-btn dp" onclick="recOther('병살')">병살</button><button class="o-btn dp" onclick="recOther('내야안타')">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
+        <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')" onmouseenter="showTT(this,'볼넷 (BB / 4볼)','투수가 스트라이크존 밖으로 4번 던지면\n타자는 자동으로 1루 진출\n\nBase on Balls')" onmouseleave="hideTT()">볼넷</button><button class="o-btn k" onclick="recOther('삼진')" onmouseenter="showTT(this,'삼진 (K / Strikeout)','스트라이크 3개로 타석 종료\n헛스윙 또는 존 통과로 스트라이크 누적')" onmouseleave="hideTT()">삼진</button><button class="o-btn hbp" onclick="recOther('사구')" onmouseenter="showTT(this,'사구 (HBP)','투수가 던진 공이 타자 몸에 맞은 경우\n볼넷처럼 1루로 자동 진루\n\nHit By Pitch')" onmouseleave="hideTT()">사구</button><button class="o-btn sac" onclick="recOther('희타')" onmouseenter="showTT(this,'희생번트 (SAC)','타자가 아웃되더라도\n주자를 다음 베이스로 진루시키는 번트\n\nSacrifice Bunt')" onmouseleave="hideTT()">희타</button><button class="o-btn sac" onclick="recOther('희비')" onmouseenter="showTT(this,'희생플라이 (SF)','외야 플라이 아웃으로\n3루 주자를 홈으로 불러들이는 타격\n\nSacrifice Fly')" onmouseleave="hideTT()">희비</button><button class="o-btn dp" onclick="recOther('병살')" onmouseenter="showTT(this,'병살 (DP / Double Play)','한 번의 플레이로 두 명이 아웃되는 상황\n주로 땅볼 → 2루 → 1루 순서로 발생')" onmouseleave="hideTT()">병살</button><button class="o-btn dp" onclick="recOther('내야안타')" onmouseenter="showTT(this,'내야안타 (Infield Hit)','내야에서 타구를 잡았지만\n타자가 1루에 먼저 도달한 안타')" onmouseleave="hideTT()">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
       </div>
     </div>
   </div>
@@ -1030,7 +1083,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div id="batter-analysis-content" style="display:none">
           <div class="batter-stat-section">
             <div class="bs-name" id="bsName">—</div>
-            <div class="stat-grid"><div class="stat-it"><div class="stat-v" id="bsAVG">.---</div><div class="stat-l">타율</div></div><div class="stat-it"><div class="stat-v" id="bsOBP">.---</div><div class="stat-l">출루율</div></div><div class="stat-it"><div class="stat-v" id="bsSLG">.---</div><div class="stat-l">장타율</div></div></div>
+            <div class="stat-grid"><div class="stat-it"><div class="stat-v" id="bsAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타\n\n가장 기본적인 타자 평가 지표')" onmouseleave="hideTT()">타율</div></div><div class="stat-it"><div class="stat-v" id="bsOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함, 베이스에 나간 비율\nOn-Base Percentage\n\n0.350 이상이면 우수한 수치')" onmouseleave="hideTT()">출루율</div></div><div class="stat-it"><div class="stat-v" id="bsSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\nSlugging Percentage\n\n홈런=4점, 3루타=3점, 2루타=2점, 안타=1점\n0.400 이상이면 파워형 타자')" onmouseleave="hideTT()">장타율</div></div></div>
             <div class="stat-grid" style="margin-top:6px"><div class="stat-it"><div class="stat-v-sm" id="bsAB">0</div><div class="stat-l">타수</div></div><div class="stat-it"><div class="stat-v-sm" id="bsH">0</div><div class="stat-l">안타</div></div><div class="stat-it"><div class="stat-v-sm" id="bsRBI">0</div><div class="stat-l">타점</div></div></div>
           </div>
           <div class="stat-card">
@@ -1053,8 +1106,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         </div>
       </div>
       <div class="tab-pnl" id="pnl-stat">
-        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
-        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타')" onmouseleave="hideTT()">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함 출루 비율\n0.350 이상 = 우수')" onmouseleave="hideTT()">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\n홈런=4점 · 2루타=2점 · 안타=1점')" onmouseleave="hideTT()">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'OPS','출루율 + 장타율\n0.800 이상 = 우수한 타자\n\n종합 타격 능력을 나타내는 핵심 지표')" onmouseleave="hideTT()">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
+        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
         <div class="stat-card">
           <div class="sc-title">타구 결과 분포</div>
           <div id="resultDistBar" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
@@ -1557,6 +1610,167 @@ const OB=[
 ];
 let obIdx=0;
 function obNext(){obIdx++;if(obIdx>=OB.length){document.getElementById('obOverlay').style.display='none';return}const o=OB[obIdx];document.getElementById('obIcon').textContent=o.icon;document.getElementById('obStep').textContent=o.step;document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);document.getElementById('obBtn').textContent=obIdx===OB.length-1?'시작하기 →':'다음 →';}
+/* ===== TOOLTIP JS ===== */
+let ttHideTimer;
+function showTT(el,title,body){
+  clearTimeout(ttHideTimer);
+  const box=document.getElementById('ttBox');
+  box.innerHTML='<b>'+title+'</b>'+(body?'\n'+body:'');
+  box.classList.add('vis');
+  const r=el.getBoundingClientRect();
+  let top=r.top-10;
+  let left=r.left+r.width/2;
+  box.style.transform='translateX(-50%)';
+  box.style.top='';box.style.bottom='';box.style.left='';
+  if(top-120<8){top=r.bottom+8;box.style.top=top+'px';}else{box.style.bottom=(window.innerHeight-r.top+8)+'px';}
+  box.style.left=Math.max(8,Math.min(left,window.innerWidth-140))+'px';
+}
+function hideTT(){ttHideTimer=setTimeout(()=>document.getElementById('ttBox').classList.remove('vis'),120);}
+
+/* ===== INTERACTIVE TOUR JS ===== */
+const TOUR=[
+  {sel:null, title:'SprayLab 앱 투어 시작!', desc:'<b>약 1분</b>짜리 빠른 투어입니다.\n각 구역이 어떤 역할을 하는지 하나씩 살펴봅니다.\n\n언제든 <b>투어 종료</b> 버튼으로 닫을 수 있어요.', card:'center', cursor:false},
+  {sel:'.pnl-left', title:'① 라인업 패널', desc:'<b>오늘 경기에 출전하는 선수 명단</b>입니다.\n\n홈팀 / 원정팀 탭을 전환할 수 있고,\n선수를 클릭하면 현재 타자로 선택됩니다.\n\n<span class="t-tag">라인업</span> = 타격 순서대로 나열된 선수 명단', card:'right', cursor:true},
+  {sel:'.add-row', title:'② 선수 추가', desc:'이름과 등번호를 입력한 뒤 <b>+ 버튼</b>을 누르세요.\n\n포지션(투수/포수/1루 등)과 타석(우타/좌타)도 선택할 수 있습니다.\n\n선수를 추가하면 라인업 목록에 자동으로 나타납니다.', card:'right', cursor:true},
+  {sel:'#cwrap', title:'③ 스프레이 차트 필드', desc:'타자가 공을 쳤을 때 <b>타구가 떨어진 위치를 탭</b>하세요.\n\n탭하면 결과 입력 창이 자동으로 나타납니다:\n• <b>안타</b> — 베이스에 안전히 도달\n• <b>2루타 / 3루타 / 홈런</b> — 장타\n• <b>아웃 종류</b> — 플라이·땅볼 등\n\n기록된 점들이 필드 위에 색으로 표시됩니다.', card:'right', cursor:true},
+  {sel:'#ptGroup', title:'④ 투구 종류 선택', desc:'투수가 던진 구종을 선택할 수 있습니다.\n<b>선택 사항</b>이므로 건너뛰어도 됩니다.\n\n• <b>직구</b> — 가장 빠른 기본 구질\n• <b>커브</b> — 크게 꺾여 떨어지는 변화구\n• <b>슬라이더</b> — 옆으로 꺾이는 변화구\n• <b>체인지업</b> — 직구처럼 오다 갑자기 느려짐\n\n선택 후 필드를 탭하면 구종과 함께 기록됩니다.', card:'top', cursor:true},
+  {sel:'#zoneGrid', title:'⑤ 투구 코스 (9분할 존)', desc:'타자 입장에서 스트라이크존을 9칸으로 나눈 그리드입니다.\n\n• <b>내각</b> — 타자 몸쪽\n• <b>외각</b> — 타자 바깥쪽\n• <b>높/중/낮</b> — 공의 높이\n\n구종처럼 <b>선택 사항</b>입니다.\n코스별 피안타 패턴을 분석할 때 유용합니다.', card:'top', cursor:false},
+  {sel:'.other-btns', title:'⑥ 즉시 기록 버튼', desc:'필드를 탭하지 않아도 바로 기록하는 버튼들입니다.\n\n• <b>볼넷</b> — 투수가 4번 빗나가 1루 자동 진루\n• <b>삼진</b> — 스트라이크 3개로 타석 종료\n• <b>사구</b> — 공이 타자 몸에 맞은 경우\n• <b>희타/희비</b> — 희생번트 / 희생플라이\n• <b>병살</b> — 한 플레이에서 두 명 아웃', card:'top', cursor:true},
+  {sel:'.pnl-right .tabs', title:'⑦ 통계 탭 패널', desc:'오른쪽 패널의 4개 탭입니다:\n\n• <b>타석기록</b> — 이번 경기 기록 목록\n• <b>타자</b> — 선택된 선수의 개인 통계\n• <b>팀통계</b> — 타율·방향 분포·선수별 성적\n• <b>차트</b> — 스프레이 차트·히트맵 PNG 내보내기\n\n탭을 클릭해서 전환하세요.', card:'left', cursor:true},
+  {sel:null, sels:'button[onclick="saveGame()"]', title:'⑧ 저장 · 공유', desc:'경기가 끝나면 꼭 <b>[저장]</b> 버튼을 눌러 데이터를 보관하세요.\n\n• <b>저장</b> — 기기 내 로컬 저장 (로그인 불필요)\n• <b>불러오기</b> — 저장된 경기 다시 열기\n• <b>🔗 공유</b> — QR코드·링크로 팀원에게 전송\n• <b>차트 탭</b> → PNG로 카카오톡·SNS 공유\n\n⌨️ <b>Ctrl+Z</b> 로 마지막 기록 언제든 취소', card:'bottom', cursor:true},
+];
+let tourIdx=0,tourActive=false;
+
+function startTour(){
+  tourActive=true;
+  tourIdx=0;
+  document.getElementById('tourOv').classList.add('on');
+  tourGo(tourIdx);
+}
+
+function tourNext(){
+  tourIdx++;
+  if(tourIdx>=TOUR.length){tourSkip();return;}
+  tourGo(tourIdx);
+}
+
+function tourSkip(){
+  tourActive=false;
+  document.getElementById('tourOv').classList.remove('on');
+  const spot=document.getElementById('tourSpot');
+  spot.style.cssText='';
+  const card=document.getElementById('tourCard');
+  card.classList.remove('vis');
+  hideTourCursor();
+}
+
+function tourGo(idx){
+  const step=TOUR[idx];
+  const card=document.getElementById('tourCard');
+  const spot=document.getElementById('tourSpot');
+  const cursor=document.getElementById('tourCursor');
+  const ring=document.getElementById('tourRing');
+
+  // Progress
+  document.getElementById('tourProgTxt').textContent=(idx+1)+' / '+TOUR.length;
+  document.getElementById('tourProgFill').style.width=((idx+1)/TOUR.length*100)+'%';
+
+  // Content
+  card.classList.remove('vis');
+  document.getElementById('tourTitle').textContent=step.title;
+  document.getElementById('tourDesc').innerHTML=step.desc.replace(/\n/g,'<br>');
+  document.getElementById('tourNextBtn').textContent=idx===TOUR.length-1?'완료 ✓':'다음 →';
+
+  const el=step.sel?document.querySelector(step.sel):(step.sels?document.querySelector(step.sels):null);
+
+  if(!el||step.sel===null){
+    // Center card, no spotlight
+    spot.style.cssText='display:none';
+    cursor.style.opacity='0';
+    ring.style.opacity='0';
+    card.style.top='50%';
+    card.style.left='50%';
+    card.style.transform='translate(-50%,-50%)';
+    setTimeout(()=>{card.style.transform='translate(-50%,-48%)';card.classList.add('vis');},40);
+    return;
+  }
+
+  const pad=step.sel==='.pnl-left'||step.sel==='.pnl-right .tabs'?6:8;
+  const r=el.getBoundingClientRect();
+  const sw=window.innerWidth,sh=window.innerHeight;
+
+  // Spotlight
+  spot.style.display='block';
+  spot.style.top=(r.top-pad)+'px';
+  spot.style.left=(r.left-pad)+'px';
+  spot.style.width=(r.width+pad*2)+'px';
+  spot.style.height=(r.height+pad*2)+'px';
+
+  // Cursor/ring on center of element
+  if(step.cursor){
+    const cx=r.left+r.width/2,cy=r.top+r.height/2;
+    cursor.style.opacity='1';
+    cursor.style.left=(cx-13)+'px';
+    cursor.style.top=(cy-13)+'px';
+    cursor.className='tCursorAnim';
+    ring.style.opacity='1';
+    ring.style.left=(cx-20)+'px';
+    ring.style.top=(cy-20)+'px';
+    ring.style.width='40px';ring.style.height='40px';
+    ring.className='tRingPulse';
+  } else {
+    cursor.style.opacity='0';
+    ring.style.opacity='0';
+  }
+
+  // Card position (prefer step.card direction, fallback if no space)
+  const cw=Math.min(300,sw*0.88),ch=220;
+  const margin=16;
+  let top,left;
+  const pos=step.card||'right';
+
+  if(pos==='right'&&r.right+cw+margin<sw){left=r.right+margin;top=Math.min(r.top,sh-ch-margin);}
+  else if(pos==='left'&&r.left-cw-margin>0){left=r.left-cw-margin;top=Math.min(r.top,sh-ch-margin);}
+  else if(pos==='top'&&r.top-ch-margin>0){top=r.top-ch-margin;left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
+  else if(pos==='bottom'&&r.bottom+ch+margin<sh){top=r.bottom+margin;left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
+  else{
+    // fallback: pick side with most room
+    const spaces={right:sw-r.right,left:r.left,top:r.top,bottom:sh-r.bottom};
+    const best=Object.entries(spaces).sort((a,b)=>b[1]-a[1])[0][0];
+    if(best==='right'){left=r.right+margin;top=Math.min(Math.max(margin,r.top),sh-ch-margin);}
+    else if(best==='left'){left=Math.max(margin,r.left-cw-margin);top=Math.min(Math.max(margin,r.top),sh-ch-margin);}
+    else if(best==='top'){top=Math.max(margin,r.top-ch-margin);left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
+    else{top=Math.min(sh-ch-margin,r.bottom+margin);left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
+  }
+  top=Math.max(margin,top);
+  left=Math.max(margin,Math.min(left,sw-cw-margin));
+
+  card.style.transform='';
+  card.style.width=cw+'px';
+  card.style.top=top+'px';
+  card.style.left=left+'px';
+  setTimeout(()=>card.classList.add('vis'),40);
+}
+
+function hideTourCursor(){
+  document.getElementById('tourCursor').style.opacity='0';
+  document.getElementById('tourRing').style.opacity='0';
+}
+
+function showHelpMenu(){
+  // Show a small choice: tutorial tour OR onboarding slides
+  const existing=document.getElementById('helpMenuPop');
+  if(existing){existing.remove();return;}
+  const btn=document.querySelector('button[onclick="showHelpMenu()"]');
+  const r=btn.getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.id='helpMenuPop';
+  pop.style.cssText='position:fixed;top:'+(r.bottom+6)+'px;right:'+(window.innerWidth-r.right)+'px;background:var(--bg-card);border:1px solid var(--border2);border-radius:10px;padding:6px;z-index:9000;box-shadow:0 8px 24px rgba(0,0,0,.4);min-width:180px';
+  pop.innerHTML='<div onclick="startTour();this.closest(\'#helpMenuPop\').remove()" style="padding:9px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600" onmouseenter="this.style.background=\'var(--raised)\'" onmouseleave="this.style.background=\'\'">🎯 앱 투어 시작 <span style="font-size:10px;color:var(--text3)">(화살표 가이드)</span></div><div onclick="showTutorial();this.closest(\'#helpMenuPop\').remove()" style="padding:9px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600" onmouseenter="this.style.background=\'var(--raised)\'" onmouseleave="this.style.background=\'\'">📖 슬라이드 튜토리얼</div>';
+  document.body.appendChild(pop);
+  setTimeout(()=>document.addEventListener('click',function h(e){if(!pop.contains(e.target)&&e.target!==btn){pop.remove();document.removeEventListener('click',h)}},{once:false}),0);
+}
+
 function showTutorial(){obIdx=0;const o=OB[0];document.getElementById('obIcon').textContent=o.icon;document.getElementById('obStep').textContent=o.step;document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===0);document.getElementById('obBtn').textContent='다음 →';document.getElementById('obOverlay').style.display='flex';}
 
 function initApp(){

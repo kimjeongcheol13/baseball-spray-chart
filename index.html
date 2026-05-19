@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style id="landing-css">
 :root{
@@ -533,10 +534,53 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qr-inn-row{display:flex;gap:5px;margin-bottom:8px;flex-shrink:0;align-items:center}
 .qr-inn-lbl{font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text3);text-transform:uppercase;white-space:nowrap}
 .qr-inn-sel{flex:1;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;outline:none}
-.qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;flex:1;min-height:0}
-.qr-btn{border:none;border-radius:14px;font-size:15px;font-weight:900;font-family:var(--font);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:transform .1s;-webkit-tap-highlight-color:transparent;min-height:70px;max-height:110px}
-.qr-btn:active{transform:scale(.93)}
+/* ── QR 오버레이 그리드 (리디자인) ── */
+.qr-grid{display:grid;gap:8px;flex-shrink:0}
+/* Primary: 2×2 큰 버튼 */
+.qr-grid-primary{grid-template-columns:repeat(2,1fr)}
+/* Secondary: 3열 작은 버튼 */
+.qr-grid-secondary{grid-template-columns:repeat(3,1fr);display:none}
+.qr-grid-secondary.open{display:grid}
+
+.qr-btn{border:none;border-radius:16px;font-size:15px;font-weight:900;font-family:var(--font);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:transform .1s,filter .1s;-webkit-tap-highlight-color:transparent;min-height:70px}
+/* Primary 버튼: 더 크게 */
+.qr-grid-primary .qr-btn{min-height:96px;font-size:19px;border-radius:18px}
+/* Secondary 버튼: 기존 크기 유지 */
+.qr-grid-secondary .qr-btn{min-height:64px;max-height:80px;font-size:13px}
+
+.qr-btn:active{transform:scale(.93);filter:brightness(.85)}
 .qr-btn small{font-size:9px;font-weight:600;opacity:.75;letter-spacing:.3px}
+
+/* 더보기 토글 */
+.qr-more-toggle{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;font-family:var(--font);padding:7px 0;cursor:pointer;width:100%;margin-top:2px;letter-spacing:.04em;transition:background .12s;flex-shrink:0}
+.qr-more-toggle.open{color:var(--accent);border-color:rgba(75,140,245,.35);background:rgba(75,140,245,.08)}
+.qr-sec-label{font-size:9px;font-weight:800;letter-spacing:1.2px;color:rgba(255,255,255,.25);text-transform:uppercase;text-align:center;padding:4px 0 2px;flex-shrink:0}
+
+/* 공유 QR 모달 */
+.share-qr-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:800;display:none;align-items:center;justify-content:center;padding:20px}
+.share-qr-ov.show{display:flex}
+.share-qr-box{background:#141c2e;border-radius:22px;padding:24px 20px 20px;width:300px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.share-qr-box h3{color:var(--text);font-size:16px;margin:0 0 6px;text-align:center}
+.share-qr-sub{font-size:11px;color:var(--text3);text-align:center;margin-bottom:16px}
+.share-qr-wrap{display:flex;justify-content:center;margin-bottom:14px}
+.share-qr-wrap canvas{border-radius:12px}
+.share-qr-url{background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;font-size:10px;color:rgba(255,255,255,.35);word-break:break-all;margin-bottom:12px;line-height:1.5;font-family:var(--mono)}
+.share-qr-copy{width:100%;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;font-family:var(--font);padding:12px;cursor:pointer;margin-bottom:8px;transition:filter .1s}
+.share-qr-copy:active{filter:brightness(.85)}
+.share-qr-close{width:100%;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:rgba(255,255,255,.4);font-size:13px;font-family:var(--font);padding:10px;cursor:pointer}
+
+/* 경기 컨디션 태그 */
+.cond-strip{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;flex-shrink:0}
+.cond-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;color:rgba(255,255,255,.5);font-size:11px;padding:4px 10px;cursor:pointer;font-family:var(--font);transition:all .12s;-webkit-tap-highlight-color:transparent}
+.cond-chip.on{background:rgba(75,140,245,.2);border-color:var(--accent);color:var(--accent)}
+.cond-strip-label{font-size:9px;color:rgba(255,255,255,.2);letter-spacing:.8px;text-transform:uppercase;align-self:center;white-space:nowrap}
+
+/* 시즌 통계 강화 */
+.season-month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.month-cell{background:rgba(255,255,255,.04);border-radius:8px;padding:7px 5px;text-align:center}
+.month-cell .mc-m{font-size:9px;color:var(--text3);margin-bottom:3px}
+.month-cell .mc-v{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono)}
+.month-cell .mc-ab{font-size:8px;color:var(--text3);margin-top:1px}
 .qr-sep{grid-column:1/-1;border:none;border-top:1px solid var(--border2);margin:0}
 .qr-field-row{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;padding-top:10px;border-top:1px solid var(--border);margin-top:4px}
 .qr-field-btn{flex:1;padding:12px 8px;border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;text-align:center;transition:all .1s}
@@ -1148,19 +1192,53 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <span class="qr-inn-lbl">이닝</span>
     <select class="qr-inn-sel" id="qrInn" onchange="AS.inning=+this.value;var s=document.getElementById('innSel');if(s)s.value=this.value;var d=document.getElementById('innDisp');if(d)d.textContent=this.value+'회'"></select>
   </div>
-  <div class="qr-grid" id="qrGrid">
-    <button class="qr-btn" style="background:rgba(45,212,160,.15);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.3)" onclick="qrOther('볼넷')">볼넷<small>BB</small></button>
-    <button class="qr-btn" style="background:rgba(75,140,245,.12);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.25)" onclick="qrField()">필드<br>클릭<small>타구위치→</small></button>
-    <button class="qr-btn" style="background:rgba(245,101,101,.12);color:#f56565;border:1.5px solid rgba(245,101,101,.25)" onclick="qrOther('삼진')">삼진<small>K</small></button>
-    <button class="qr-btn" style="background:rgba(45,212,160,.22);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.4)" onclick="qrQuickHit('안타')">안타<small>1B</small></button>
+  <!-- 경기 컨디션 태그 (사회인야구 특화) -->
+  <div class="cond-strip" id="qrCondStrip">
+    <span class="cond-strip-label">날씨</span>
+    <span class="cond-chip" onclick="toggleCond(this,'w','맑음')">☀️ 맑음</span>
+    <span class="cond-chip" onclick="toggleCond(this,'w','흐림')">⛅ 흐림</span>
+    <span class="cond-chip" onclick="toggleCond(this,'w','비')">🌧️ 비</span>
+    <span class="cond-chip" onclick="toggleCond(this,'w','강풍')">💨 강풍</span>
+    <span class="cond-strip-label" style="margin-left:4px">구장</span>
+    <span class="cond-chip" onclick="toggleCond(this,'f','흙')">⚾ 흙</span>
+    <span class="cond-chip" onclick="toggleCond(this,'f','잔디')">🌿 잔디</span>
+  </div>
+
+  <!-- Primary: 4개 큰 버튼 (2×2) -->
+  <div class="qr-grid qr-grid-primary" id="qrPrimary">
+    <button class="qr-btn" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:2px solid rgba(75,140,245,.4)" onclick="qrField()">📍 필드<br>클릭<small>타구위치→결과</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.2);color:#2dd4a0;border:2px solid rgba(45,212,160,.45)" onclick="qrOther('볼넷')">볼넷<small>BB</small></button>
+    <button class="qr-btn" style="background:rgba(245,101,101,.16);color:#f56565;border:2px solid rgba(245,101,101,.38)" onclick="qrOther('삼진')">삼진<small>K</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.28);color:#2dd4a0;border:2px solid rgba(45,212,160,.55)" onclick="qrQuickHit('안타')">안타<small>1B · 위치생략</small></button>
+  </div>
+
+  <!-- 더보기 토글 버튼 -->
+  <button class="qr-more-toggle" id="qrMoreToggle" onclick="toggleQRMore()">＋ 2루타 · 홈런 · 병살 더보기</button>
+
+  <!-- Secondary: 8개 (접혀 있음) -->
+  <div class="qr-sec-label" id="qrSecLabel" style="display:none">추가 결과</div>
+  <div class="qr-grid qr-grid-secondary" id="qrSecondary">
     <button class="qr-btn" style="background:rgba(75,140,245,.2);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.4)" onclick="qrQuickHit('2루타')">2루타<small>2B</small></button>
     <button class="qr-btn" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.35)" onclick="qrQuickHit('3루타')">3루타<small>3B</small></button>
     <button class="qr-btn" style="background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.35)" onclick="qrQuickHit('홈런')">홈런<small>HR</small></button>
     <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('플라이 아웃')">플라이<br>아웃<small>F/O</small></button>
     <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('땅볼 아웃')">땅볼<br>아웃<small>G/O</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.15);color:#7c8898;border:1.5px solid rgba(67,76,94,.3)" onclick="qrOther('병살')">병살<small>DP</small></button>
     <button class="qr-btn" style="background:rgba(251,146,60,.12);color:#fb923c;border:1.5px solid rgba(251,146,60,.25)" onclick="qrOther('사구')">사구<small>HBP</small></button>
     <button class="qr-btn" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1.5px solid rgba(167,139,250,.25)" onclick="qrOther('희타')">희타<small>SAC</small></button>
-    <button class="qr-btn" style="background:rgba(67,76,94,.15);color:#7c8898;border:1.5px solid rgba(67,76,94,.3)" onclick="qrOther('병살')">병살<small>DP</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.1);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.25)" onclick="qrQuickHit('내야안타')">내야<br>안타<small>IH</small></button>
+  </div>
+</div>
+
+<!-- 공유 QR 모달 -->
+<div class="share-qr-ov" id="shareQROv">
+  <div class="share-qr-box">
+    <h3>경기 데이터 공유</h3>
+    <p class="share-qr-sub">QR 코드를 스캔하거나 링크를 복사해 팀원에게 공유하세요</p>
+    <div class="share-qr-wrap" id="shareQRWrap"></div>
+    <div class="share-qr-url" id="shareQRUrl"></div>
+    <button class="share-qr-copy" onclick="copyShareURL()">링크 복사</button>
+    <button class="share-qr-close" onclick="closeShareQR()">닫기</button>
   </div>
 </div>
 
@@ -1832,6 +1910,7 @@ function renderZonePitchCross(abs){
 function renderSeasonStats(){
   var games=[];
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+  var BM={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
   for(var i=0;i<localStorage.length;i++){
     var key=localStorage.key(i);
     if(!key||!key.startsWith('sl_')||key.startsWith('sl_auto_'))continue;
@@ -1842,10 +1921,17 @@ function renderSeasonStats(){
         var h=d.abs.filter(function(a){return hits.includes(a.res);}).length;
         var rbi=d.abs.reduce(function(s,a){return s+a.rbi;},0);
         var bb=d.abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
-        var tb=d.abs.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
+        var tb=d.abs.reduce(function(s,a){return s+(BM[a.res]||0);},0);
+        var hr=d.abs.filter(function(a){return a.res==='홈런';}).length;
         var obp=d.abs.length?(h+bb)/d.abs.length:0;
         var slg=ab?tb/ab:0;
-        games.push({key:key,ts:d.ts||0,ab:ab,h:h,rbi:rbi,bb:bb,avg:ab?h/ab:0,obp:obp,slg:slg,ops:obp+slg,pa:d.abs.length});
+        // 저장 시각 파싱 (월 추출용)
+        var tsNum=0;
+        try{if(d.ts&&typeof d.ts==='number')tsNum=d.ts;else if(d.ts)tsNum=new Date(d.ts).getTime();}catch(e){}
+        var month=tsNum?new Date(tsNum).getMonth()+1:0;
+        // 컨디션 (공유 payload 또는 저장 데이터에서)
+        var cond=d.cond||{};
+        games.push({key:key,ts:tsNum,month:month,ab:ab,h:h,rbi:rbi,bb:bb,hr:hr,tb:tb,avg:ab?h/ab:0,obp:obp,slg:slg,ops:obp+slg,pa:d.abs.length,weather:cond.weather||'',field:cond.field||''});
       }
     }catch(e){}
   }
@@ -1853,53 +1939,123 @@ function renderSeasonStats(){
   var el=document.getElementById('seasonSummary');
   if(!el)return;
   if(!games.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">저장된 경기가 없습니다</div>';return;}
+
+  // ── 시즌 누적 합산 ──
   var totAB=games.reduce(function(s,g){return s+g.ab;},0);
   var totH=games.reduce(function(s,g){return s+g.h;},0);
   var totRBI=games.reduce(function(s,g){return s+g.rbi;},0);
+  var totHR=games.reduce(function(s,g){return s+g.hr;},0);
   var totPA=games.reduce(function(s,g){return s+g.pa;},0);
   var totBB=games.reduce(function(s,g){return s+g.bb;},0);
+  var totTB=games.reduce(function(s,g){return s+g.tb;},0);
   var sAvg=totAB?totH/totAB:0;
   var sObp=totPA?(totH+totBB)/totPA:0;
-  var sTB=games.reduce(function(s,g){return s+Math.round(g.slg*g.ab);},0);
-  var sSlg=totAB?sTB/totAB:0;
+  var sSlg=totAB?totTB/totAB:0;
   var sOps=sObp+sSlg;
+
+  var fmt=function(v){return '.'+Math.round(v*1000).toString().padStart(3,'0');};
+
+  // ── 월별 집계 ──
+  var monthMap={};
+  games.forEach(function(g){
+    if(!g.month)return;
+    if(!monthMap[g.month])monthMap[g.month]={ab:0,h:0};
+    monthMap[g.month].ab+=g.ab;monthMap[g.month].h+=g.h;
+  });
+  var monthKeys=Object.keys(monthMap).sort(function(a,b){return a-b;});
+  var monthHTML='';
+  if(monthKeys.length>1){
+    monthHTML='<div style="font-size:9px;color:var(--text3);margin:8px 0 4px;letter-spacing:.8px;text-transform:uppercase">월별 타율</div>'
+      +'<div class="season-month-grid">'
+      +monthKeys.map(function(m){
+        var d=monthMap[m];
+        var avg=d.ab?d.h/d.ab:0;
+        var col=avg>=0.3?'var(--green)':avg>=0.25?'var(--yellow)':'var(--red)';
+        return '<div class="month-cell">'
+          +'<div class="mc-m">'+m+'월</div>'
+          +'<div class="mc-v" style="color:'+col+'">'+fmt(avg)+'</div>'
+          +'<div class="mc-ab">'+d.h+'H/'+d.ab+'AB</div>'
+          +'</div>';
+      }).join('')+'</div>';
+  }
+
+  // ── 날씨·구장별 성적 (컨디션 태그가 있는 경우) ──
+  var condGames=games.filter(function(g){return g.weather||g.field;});
+  var condHTML='';
+  if(condGames.length){
+    var wMap={};
+    condGames.forEach(function(g){
+      var w=g.weather||'기타';
+      if(!wMap[w])wMap[w]={ab:0,h:0};
+      wMap[w].ab+=g.ab;wMap[w].h+=g.h;
+    });
+    condHTML='<div style="font-size:9px;color:var(--text3);margin:8px 0 4px;letter-spacing:.8px;text-transform:uppercase">날씨별 타율</div>'
+      +Object.entries(wMap).map(function(e){
+        var avg=e[1].ab?e[1].h/e[1].ab:0;
+        return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:3px">'
+          +'<span style="color:var(--text2)">'+e[0]+'</span>'
+          +'<span style="font-family:var(--mono);font-weight:700;color:var(--text)">'+fmt(avg)+'</span>'
+          +'</div>';
+      }).join('');
+  }
+
   el.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'
-    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+sAvg.toFixed(3).replace('0.','.') +'</div><div class="stat-l">시즌AVG</div></div>'
-    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+sOps.toFixed(3).replace('0.','.') +'</div><div class="stat-l">시즌OPS</div></div>'
-    +'<div class="stat-it"><div class="stat-v-sm">'+totH+'</div><div class="stat-l">총안타</div></div>'
-    +'<div class="stat-it"><div class="stat-v-sm">'+games.length+'경기</div><div class="stat-l">기록수</div></div>'
-    +'</div>';
-  // draw recent 5 avg trend
-  var recent=games.slice(-5);
+    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+fmt(sAvg)+'</div><div class="stat-l">시즌AVG</div></div>'
+    +'<div class="stat-it"><div class="stat-v" style="font-size:15px">'+fmt(sOps)+'</div><div class="stat-l">OPS</div></div>'
+    +'<div class="stat-it"><div class="stat-v-sm">'+totH+'안타</div><div class="stat-l">'+totHR+'HR · '+totRBI+'타점</div></div>'
+    +'<div class="stat-it"><div class="stat-v-sm">'+games.length+'경기</div><div class="stat-l">'+totAB+'타수</div></div>'
+    +'</div>'
+    +monthHTML
+    +condHTML;
+
+  // ── 최근 8경기 타율 추이 차트 ──
+  var recent=games.slice(-8);
   var cvs=document.getElementById('recentTrend');
-  if(!cvs)return;
-  cvs.width=cvs.offsetWidth*2||300;cvs.height=100;
+  if(!cvs||recent.length<2)return;
+  var dpr=window.devicePixelRatio||1;
+  cvs.width=(cvs.offsetWidth||280)*dpr;cvs.height=100*dpr;
+  cvs.style.height='100px';
   var ctx=cvs.getContext('2d');
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-  if(recent.length<2)return;
-  var W=cvs.width,H=cvs.height,pad=16;
+  ctx.scale(dpr,dpr);
+  var W=cvs.offsetWidth||280,H=100,pad=14;
   var avgs=recent.map(function(g){return g.avg;});
-  var minA=Math.min.apply(null,avgs),maxA=Math.max.apply(null,avgs);
+  var minA=Math.max(0,Math.min.apply(null,avgs)-0.04);
+  var maxA=Math.min(1,Math.max.apply(null,avgs)+0.04);
   var range=maxA-minA||0.1;
   var toX=function(i){return pad+(W-pad*2)*i/(recent.length-1);};
   var toY=function(v){return H-pad-(v-minA)/range*(H-pad*2);};
-  // gradient fill
-  var grad=ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'rgba(75,140,245,0.35)');grad.addColorStop(1,'rgba(75,140,245,0)');
+
+  // 그리드
+  ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
+  [0.25,0.5,0.75].forEach(function(r){var y=toY(minA+range*r);ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();});
+
+  // 시즌 평균 점선
+  var sAvgY=toY(sAvg);
+  ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(75,140,245,.3)';
+  ctx.beginPath();ctx.moveTo(pad,sAvgY);ctx.lineTo(W-pad,sAvgY);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 그라디언트 면적
+  var grad=ctx.createLinearGradient(0,pad,0,H);
+  grad.addColorStop(0,'rgba(75,140,245,0.3)');grad.addColorStop(1,'rgba(75,140,245,0)');
   ctx.beginPath();ctx.moveTo(toX(0),toY(avgs[0]));
   avgs.forEach(function(v,i){if(i>0)ctx.lineTo(toX(i),toY(v));});
-  ctx.lineTo(toX(avgs.length-1),H);ctx.lineTo(toX(0),H);ctx.closePath();
+  ctx.lineTo(toX(avgs.length-1),H-pad);ctx.lineTo(toX(0),H-pad);ctx.closePath();
   ctx.fillStyle=grad;ctx.fill();
-  // line
-  ctx.beginPath();ctx.strokeStyle='#4b8cf5';ctx.lineWidth=2;
+
+  // 라인
+  ctx.beginPath();ctx.strokeStyle='#4b8cf5';ctx.lineWidth=2.2;ctx.lineJoin='round';
   avgs.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});
   ctx.stroke();
-  // dots + labels
+
+  // 도트 + 레이블
   avgs.forEach(function(v,i){
-    ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);
+    ctx.beginPath();ctx.arc(toX(i),toY(v),3.5,0,Math.PI*2);
     ctx.fillStyle='#4b8cf5';ctx.fill();
-    ctx.fillStyle='#8892a4';ctx.font='9px sans-serif';ctx.textAlign='center';
-    ctx.fillText('.'+Math.round(v*1000).toString().padStart(3,'0'),toX(i),toY(v)-6);
+    ctx.strokeStyle='#07090f';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#8892a4';ctx.font='8px sans-serif';ctx.textAlign='center';
+    var lbl=fmt(v);
+    ctx.fillText(lbl,toX(i),toY(v)-7);
   });
 }
 
@@ -2228,7 +2384,7 @@ function saveGame(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     const key='sl_'+Date.now();
-    const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:new Date().toLocaleString('ko-KR')};
+    const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),cond:getGameCond()};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
     saves.push({key,label:`${data.d} ${data.th} ${data.hs}:${data.as} ${data.ta}`,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
@@ -2813,6 +2969,68 @@ function qrOther(res){
 function qrField(){
   closeQR();
   showToast('필드를 탭해서 타구 위치를 기록하세요');
+}
+
+// ── QR 더보기 토글 ──
+function toggleQRMore(){
+  var sec=document.getElementById('qrSecondary');
+  var lbl=document.getElementById('qrSecLabel');
+  var btn=document.getElementById('qrMoreToggle');
+  if(!sec)return;
+  var open=sec.classList.toggle('open');
+  if(lbl)lbl.style.display=open?'block':'none';
+  if(btn){btn.classList.toggle('open',open);btn.textContent=open?'－ 접기':'＋ 2루타 · 홈런 · 병살 더보기';}
+}
+
+// ── 경기 컨디션 태그 (사회인야구 특화) ──
+var _gameCond={w:'',f:''};
+function toggleCond(el,key,val){
+  if(_gameCond[key]===val){
+    _gameCond[key]='';
+    el.classList.remove('on');
+  } else {
+    // 같은 키의 다른 칩 해제
+    var strip=document.getElementById('qrCondStrip');
+    if(strip){
+      strip.querySelectorAll('.cond-chip').forEach(function(c){
+        var oc=c.getAttribute('onclick')||'';
+        if(oc.indexOf("'"+key+"'")!==-1) c.classList.remove('on');
+      });
+    }
+    _gameCond[key]=val;
+    el.classList.add('on');
+  }
+}
+function getGameCond(){return {weather:_gameCond.w,field:_gameCond.f};}
+
+// ── 공유 QR 모달 ──
+var _shareURL='';
+function showShareQR(url){
+  _shareURL=url;
+  var wrap=document.getElementById('shareQRWrap');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  // QRCode.js CDN이 로드된 경우
+  if(typeof QRCode!=='undefined'){
+    new QRCode(wrap,{text:url,width:192,height:192,colorDark:'#eef0f8',colorLight:'#141c2e',correctLevel:QRCode.CorrectLevel.M});
+  } else {
+    // fallback: QR 없이 URL만 표시
+    wrap.innerHTML='<div style="font-size:10px;color:var(--text3);padding:8px;text-align:center">QR 생성 실패<br>아래 링크를 복사하세요</div>';
+  }
+  var urlEl=document.getElementById('shareQRUrl');
+  if(urlEl)urlEl.textContent=url;
+  var ov=document.getElementById('shareQROv');
+  if(ov)ov.classList.add('show');
+}
+function closeShareQR(){
+  var ov=document.getElementById('shareQROv');
+  if(ov)ov.classList.remove('show');
+}
+function copyShareURL(){
+  if(!_shareURL)return;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(_shareURL).then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요',false);}).catch(function(){_fallbackCopy(_shareURL);});
+  } else {_fallbackCopy(_shareURL);}
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3695,13 +3913,20 @@ function shareGameLink(){
     ht:document.getElementById('tHome').value||'홈팀',
     at:document.getElementById('tAway').value||'원정팀',
     ts:Date.now(),
+    cond:getGameCond(),
     abs:AS.abs.map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:Math.round(a.x),y:Math.round(a.y),t:a.team};})
   };
   var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   var url=location.origin+location.pathname+'#share='+encoded;
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(url).then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요');}).catch(function(){_fallbackCopy(url);});
-  } else {_fallbackCopy(url);}
+  // QR 모달 표시 (QRCode.js 있을 때)
+  if(typeof QRCode!=='undefined'){
+    showShareQR(url);
+  } else {
+    // fallback: 기존 클립보드 복사
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(url).then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요');}).catch(function(){_fallbackCopy(url);});
+    } else {_fallbackCopy(url);}
+  }
 }
 function _fallbackCopy(text){
   var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';

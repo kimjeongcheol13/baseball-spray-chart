@@ -3008,29 +3008,49 @@ var _shareURL='';
 function showShareQR(url){
   _shareURL=url;
   var wrap=document.getElementById('shareQRWrap');
-  if(!wrap)return;
-  wrap.innerHTML='';
-  // QRCode.js CDN이 로드된 경우
-  if(typeof QRCode!=='undefined'){
-    new QRCode(wrap,{text:url,width:192,height:192,colorDark:'#eef0f8',colorLight:'#141c2e',correctLevel:QRCode.CorrectLevel.M});
-  } else {
-    // fallback: QR 없이 URL만 표시
-    wrap.innerHTML='<div style="font-size:10px;color:var(--text3);padding:8px;text-align:center">QR 생성 실패<br>아래 링크를 복사하세요</div>';
-  }
+  var ov=document.getElementById('shareQROv');
+  if(!ov){alert('공유 모달을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');return;}
+
+  // URL 표시
   var urlEl=document.getElementById('shareQRUrl');
   if(urlEl)urlEl.textContent=url;
-  var ov=document.getElementById('shareQROv');
-  if(ov)ov.classList.add('show');
+
+  // QR 코드 생성
+  if(wrap){
+    wrap.innerHTML='';
+    if(typeof QRCode!=='undefined'){
+      try{
+        new QRCode(wrap,{text:url,width:180,height:180,colorDark:'#eef0f8',colorLight:'#141c2e',correctLevel:QRCode.CorrectLevel.M});
+      }catch(e){
+        wrap.innerHTML='<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">QR 생성 실패<br>아래 링크를 복사해 공유하세요</div>';
+      }
+    } else {
+      wrap.innerHTML='<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">아래 링크를 복사해 공유하세요</div>';
+    }
+  }
+
+  // 모달 열기 — classList 방식 + inline style 양쪽 보장
+  ov.classList.add('show');
+  ov.style.display='flex';
 }
 function closeShareQR(){
   var ov=document.getElementById('shareQROv');
-  if(ov)ov.classList.remove('show');
+  if(!ov)return;
+  ov.classList.remove('show');
+  ov.style.display='none';
 }
 function copyShareURL(){
   if(!_shareURL)return;
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(_shareURL).then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요',false);}).catch(function(){_fallbackCopy(_shareURL);});
-  } else {_fallbackCopy(_shareURL);}
+  var doCopy=function(){
+    if(navigator.clipboard&&window.isSecureContext){
+      navigator.clipboard.writeText(_shareURL)
+        .then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요',false);})
+        .catch(function(){_fallbackCopy(_shareURL);});
+    }else{
+      _fallbackCopy(_shareURL);
+    }
+  };
+  doCopy();
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3906,7 +3926,6 @@ function renderWeaknessAlerts(abs){
 // FEATURE 3: SHARE LINK
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function shareGameLink(){
-  if(!AS.abs.length){showToast('기록이 없습니다');return;}
   var payload={
     v:1,
     hs:AS.hs,as:AS.as,
@@ -3914,19 +3933,16 @@ function shareGameLink(){
     at:document.getElementById('tAway').value||'원정팀',
     ts:Date.now(),
     cond:getGameCond(),
-    abs:AS.abs.map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:Math.round(a.x),y:Math.round(a.y),t:a.team};})
+    abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:Math.round(a.x),y:Math.round(a.y),t:a.team};})
   };
-  var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-  var url=location.origin+location.pathname+'#share='+encoded;
-  // QR 모달 표시 (QRCode.js 있을 때)
-  if(typeof QRCode!=='undefined'){
-    showShareQR(url);
-  } else {
-    // fallback: 기존 클립보드 복사
-    if(navigator.clipboard){
-      navigator.clipboard.writeText(url).then(function(){showToast('링크 복사됨! 카카오톡·단톡에 붙여넣기 하세요');}).catch(function(){_fallbackCopy(url);});
-    } else {_fallbackCopy(url);}
+  var url;
+  try{
+    var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    url=location.origin+location.pathname+'#share='+encoded;
+  }catch(e){
+    url=location.href;
   }
+  showShareQR(url);
 }
 function _fallbackCopy(text){
   var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';

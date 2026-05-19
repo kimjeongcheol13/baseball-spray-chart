@@ -766,13 +766,26 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 <section id="howto" class="how">
   <div class="section-head centered">
     <span class="section-label fade-up">사용법</span>
-    <h2 class="section-title fade-up" data-delay="1">3단계로 바로 시작</h2>
+    <h2 class="section-title fade-up" data-delay="1">5단계로 바로 시작</h2>
     <p class="section-sub fade-up" data-delay="2">설명서 없이도 첫 타석부터 바로 기록할 수 있습니다.</p>
   </div>
   <div class="steps">
-    <div class="step fade-up" data-delay="1"><div class="step-num">01</div><div class="step-title">라인업 구성</div><div class="step-desc">선수 이름 and 등번호를 입력해 라인업을 만드세요. 이름 첫 글자가 자동으로 아바타가 됩니다.</div><div class="step-sub">선수 추가 → 타자 탭으로 선택</div></div>
-    <div class="step fade-up" data-delay="2"><div class="step-num">02</div><div class="step-title">필드 탭 · 결과 선택</div><div class="step-desc">타구가 떨어진 위치를 필드에서 탭하세요. 안타 / 아웃 등 결과를 선택하면 즉시 기록됩니다.</div><div class="step-sub">볼넷·삼진은 하단 버튼으로 즉시 기록</div></div>
-    <div class="step fade-up" data-delay="3"><div class="step-num">03</div><div class="step-title">통계 확인 · 저장</div><div class="step-desc">경기 중에도 통계 탭에서 실시간으로 확인하세요. 경기 종료 후 저장하면 나중에 불러올 수 있습니다.</div><div class="step-sub">Ctrl+Z로 마지막 기록 즉시 취소</div></div>
+    <div class="step fade-up" data-delay="1"><div class="step-num">01</div><div class="step-title">앱 열기</div><div class="step-desc">상단 <strong>[앱 시작하기]</strong> 버튼을 누르세요. 가입·설치·로그인 없이 바로 사용 가능합니다.</div><div class="step-sub">✓ 모바일·태블릿·PC 모두 지원</div></div>
+    <div class="step fade-up" data-delay="2"><div class="step-num">02</div><div class="step-title">라인업 구성</div><div class="step-desc">왼쪽 패널에서 선수 이름과 등번호를 입력해 라인업을 만드세요. 홈팀 / 원정팀을 각각 관리할 수 있습니다.</div><div class="step-sub">이름 첫 글자가 자동으로 아바타 생성</div></div>
+    <div class="step fade-up" data-delay="3"><div class="step-num">03</div><div class="step-title">투구 · 타구 기록</div><div class="step-desc">타자를 선택 후 투구 종류·코스를 고르고, 필드에서 타구 위치를 탭하세요. 결과를 선택하면 즉시 기록됩니다.</div><div class="step-sub">볼넷 · 삼진은 하단 버튼으로 즉시 기록</div></div>
+    <div class="step fade-up" data-delay="4"><div class="step-num">04</div><div class="step-title">통계 · 차트 확인</div><div class="step-desc">오른쪽 탭에서 타율(AVG)·출루율(OBP)·장타율(SLG)과 당겨치기/밀어치기 비율을 실시간으로 확인하세요.</div><div class="step-sub">차트 탭에서 히트맵 · PNG 내보내기</div></div>
+    <div class="step fade-up" data-delay="5"><div class="step-num">05</div><div class="step-title">저장 · 공유</div><div class="step-desc">경기 종료 후 [저장] 버튼으로 데이터를 보관하세요. QR코드·링크로 팀원과 공유하거나 엑셀로 내보낼 수 있습니다.</div><div class="step-sub">Ctrl+Z로 마지막 기록 즉시 취소</div></div>
+  </div>
+  <div class="fade-up" style="margin-top:40px;background:var(--raised);border:1px solid var(--border2);border-radius:12px;padding:20px 24px;max-width:720px;margin-left:auto;margin-right:auto">
+    <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px">단축키 &amp; 팁</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;font-size:12px;color:var(--text2)">
+      <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+Z</span> &nbsp;마지막 기록 취소</div>
+      <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+S</span> &nbsp;경기 빠른 저장</div>
+      <div>🏟️ 필드 탭 → 결과 팝업 자동 표시</div>
+      <div>📸 차트 탭 → PNG로 SNS 공유</div>
+      <div>📊 투구 코스 선택은 선택 사항</div>
+      <div>🔗 공유 버튼 → QR코드 즉시 생성</div>
+    </div>
   </div>
 </section>
 
@@ -862,8 +875,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <div class="ob-step" id="obStep">시작하기 · 1 / 3</div>
     <div class="ob-title" id="obTitle">SprayLab에 오신 걸<br>환영합니다</div>
     <div class="ob-desc" id="obDesc">타석을 기록하고 패턴을 발견하세요.<br>사회인야구를 위한 가장 쉬운 데이터 분석 툴입니다.</div>
-    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음</button>
+    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div><div class="ob-dot" id="d3"></div><div class="ob-dot" id="d4"></div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="document.getElementById('obOverlay').style.display='none'" style="padding:10px 14px;flex-shrink:0;font-size:12px">건너뛰기</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음 →</button>
+    </div>
   </div>
 </div>
 
@@ -891,6 +907,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px">🔗 공유</button>
+    <button class="btn btn-ghost" onclick="showTutorial()" title="튜토리얼 다시보기" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
   </div>
 </header>
@@ -1488,12 +1505,15 @@ let saveTimer;
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
 
 const OB=[
-  {icon:'⚾',step:'시작하기 · 1 / 3',title:'SprayLab에 오신 걸<br>환영합니다',desc:'타석을 기록하고, 패턴을 발견하세요.<br>사회인야구를 위한 가장 쉬운 데이터 분석 툴입니다.'},
-  {icon:'🏟️',step:'기록 방법 · 2 / 3',title:'3단계로 타석을<br>기록하세요',desc:'① 좌측 라인업에서 타자 선택\n② 투구 종류 · 코스 선택 (선택사항)\n③ 필드를 클릭 → 타구 결과 선택\n\n볼넷·삼진은 하단 버튼으로 즉시 기록'},
-  {icon:'📊',step:'통계 분석 · 3 / 3',title:'통계가 자동으로<br>쌓입니다',desc:'당겨치기/밀어치기 비율, 타율, OBP, SLG가\n자동 계산됩니다.\n오른쪽 [통계] 탭에서 확인하세요.'}
+  {icon:'⚾',step:'시작하기 · 1 / 5',title:'SprayLab에 오신 걸\n환영합니다',desc:'타석을 기록하고 패턴을 발견하세요.\n사회인야구를 위한 가장 쉬운 데이터 분석 툴입니다.\n\n✓ 가입 불필요 &nbsp;·&nbsp; ✓ 설치 불필요 &nbsp;·&nbsp; ✓ 완전 무료'},
+  {icon:'📋',step:'라인업 설정 · 2 / 5',title:'먼저 라인업을\n구성하세요',desc:'왼쪽 패널에서 선수 이름과 등번호를 입력하세요.\n\n홈팀 / 원정팀을 탭으로 따로 관리할 수 있고,\n이름 첫 글자가 자동으로 아바타가 됩니다.\n\n선수를 클릭하면 타자로 선택됩니다.'},
+  {icon:'🏟️',step:'타석 기록 · 3 / 5',title:'필드를 탭해서\n타구를 기록하세요',desc:'① 왼쪽 라인업에서 타자를 선택하세요\n② (선택) 투구 종류 · 코스를 고르세요\n③ 필드에서 타구 위치를 탭하세요\n④ 결과(안타 / 2루타 / 아웃 등)를 선택하세요\n\n볼넷 · 삼진은 필드 아래 버튼으로 즉시 기록'},
+  {icon:'📊',step:'통계 분석 · 4 / 5',title:'통계가 자동으로\n계산됩니다',desc:'오른쪽 패널 탭에서 확인하세요:\n\n• <b>타자 탭</b> — 개인 타율(AVG), OBP, SLG\n• <b>팀통계 탭</b> — 당겨치기 / 밀어치기 비율\n• <b>차트 탭</b> — 히트맵, 스프레이 차트 PNG 내보내기'},
+  {icon:'💾',step:'저장 · 공유 · 5 / 5',title:'경기를 저장하고\n공유하세요',desc:'상단 <b>[저장]</b> 버튼으로 데이터를 로컬에 보관\n<b>[불러오기]</b>로 이전 경기를 다시 열 수 있어요\n\n🔗 <b>공유</b> 버튼 → QR코드 · 링크로 팀원과 공유\n📸 차트 탭 → PNG 이미지로 내보내기\n\n⌨️ <b>Ctrl+Z</b> 로 마지막 기록 취소'}
 ];
 let obIdx=0;
-function obNext(){obIdx++;if(obIdx>=OB.length){document.getElementById('obOverlay').style.display='none';return}const o=OB[obIdx];document.getElementById('obIcon').textContent=o.icon;document.getElementById('obStep').textContent=o.step;document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');for(let i=0;i<3;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);if(obIdx===2)document.getElementById('obBtn').textContent='시작하기 →';}
+function obNext(){obIdx++;if(obIdx>=OB.length){document.getElementById('obOverlay').style.display='none';return}const o=OB[obIdx];document.getElementById('obIcon').textContent=o.icon;document.getElementById('obStep').textContent=o.step;document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);document.getElementById('obBtn').textContent=obIdx===OB.length-1?'시작하기 →':'다음 →';}
+function showTutorial(){obIdx=0;const o=OB[0];document.getElementById('obIcon').textContent=o.icon;document.getElementById('obStep').textContent=o.step;document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===0);document.getElementById('obBtn').textContent='다음 →';document.getElementById('obOverlay').style.display='flex';}
 
 function initApp(){
   if(appInited)return;appInited=true;

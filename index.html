@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style id="landing-css">
@@ -543,8 +544,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qr-grid-secondary.open{display:grid}
 
 .qr-btn{border:none;border-radius:16px;font-size:15px;font-weight:900;font-family:var(--font);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:transform .1s,filter .1s;-webkit-tap-highlight-color:transparent;min-height:70px}
-/* Primary 버튼: 더 크게 */
-.qr-grid-primary .qr-btn{min-height:96px;font-size:19px;border-radius:18px}
+/* Primary 버튼 */
+.qr-grid-primary .qr-btn{min-height:76px;font-size:17px;border-radius:18px}
 /* Secondary 버튼: 기존 크기 유지 */
 .qr-grid-secondary .qr-btn{min-height:64px;max-height:80px;font-size:13px}
 
@@ -1192,18 +1193,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <span class="qr-inn-lbl">이닝</span>
     <select class="qr-inn-sel" id="qrInn" onchange="AS.inning=+this.value;var s=document.getElementById('innSel');if(s)s.value=this.value;var d=document.getElementById('innDisp');if(d)d.textContent=this.value+'회'"></select>
   </div>
-  <!-- 경기 컨디션 태그 (사회인야구 특화) -->
-  <div class="cond-strip" id="qrCondStrip">
-    <span class="cond-strip-label">날씨</span>
-    <span class="cond-chip" onclick="toggleCond(this,'w','맑음')">☀️ 맑음</span>
-    <span class="cond-chip" onclick="toggleCond(this,'w','흐림')">⛅ 흐림</span>
-    <span class="cond-chip" onclick="toggleCond(this,'w','비')">🌧️ 비</span>
-    <span class="cond-chip" onclick="toggleCond(this,'w','강풍')">💨 강풍</span>
-    <span class="cond-strip-label" style="margin-left:4px">구장</span>
-    <span class="cond-chip" onclick="toggleCond(this,'f','흙')">⚾ 흙</span>
-    <span class="cond-chip" onclick="toggleCond(this,'f','잔디')">🌿 잔디</span>
-  </div>
-
   <!-- Primary: 4개 큰 버튼 (2×2) -->
   <div class="qr-grid qr-grid-primary" id="qrPrimary">
     <button class="qr-btn" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:2px solid rgba(75,140,245,.4)" onclick="qrField()">📍 필드<br>클릭<small>타구위치→결과</small></button>
@@ -1215,9 +1204,22 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <!-- 더보기 토글 버튼 -->
   <button class="qr-more-toggle" id="qrMoreToggle" onclick="toggleQRMore()">＋ 2루타 · 홈런 · 병살 더보기</button>
 
-  <!-- Secondary: 8개 (접혀 있음) -->
-  <div class="qr-sec-label" id="qrSecLabel" style="display:none">추가 결과</div>
-  <div class="qr-grid qr-grid-secondary" id="qrSecondary">
+  <!-- Secondary: 경기 컨디션 + 추가 결과 (접혀 있음) -->
+  <div class="qr-grid qr-grid-secondary" id="qrSecondary" style="display:none">
+  <!-- 컨디션 태그를 secondary 안으로 -->
+  <div style="grid-column:1/-1">
+    <div class="cond-strip" id="qrCondStrip">
+      <span class="cond-strip-label">날씨</span>
+      <span class="cond-chip" onclick="toggleCond(this,'w','맑음')">☀️ 맑음</span>
+      <span class="cond-chip" onclick="toggleCond(this,'w','흐림')">⛅ 흐림</span>
+      <span class="cond-chip" onclick="toggleCond(this,'w','비')">🌧️ 비</span>
+      <span class="cond-chip" onclick="toggleCond(this,'w','강풍')">💨 강풍</span>
+      <span class="cond-strip-label" style="margin-left:4px">구장</span>
+      <span class="cond-chip" onclick="toggleCond(this,'f','흙')">⚾ 흙</span>
+      <span class="cond-chip" onclick="toggleCond(this,'f','잔디')">🌿 잔디</span>
+    </div>
+  </div>
+
     <button class="qr-btn" style="background:rgba(75,140,245,.2);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.4)" onclick="qrQuickHit('2루타')">2루타<small>2B</small></button>
     <button class="qr-btn" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.35)" onclick="qrQuickHit('3루타')">3루타<small>3B</small></button>
     <button class="qr-btn" style="background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.35)" onclick="qrQuickHit('홈런')">홈런<small>HR</small></button>
@@ -2974,12 +2976,14 @@ function qrField(){
 // ── QR 더보기 토글 ──
 function toggleQRMore(){
   var sec=document.getElementById('qrSecondary');
-  var lbl=document.getElementById('qrSecLabel');
   var btn=document.getElementById('qrMoreToggle');
   if(!sec)return;
-  var open=sec.classList.toggle('open');
-  if(lbl)lbl.style.display=open?'block':'none';
-  if(btn){btn.classList.toggle('open',open);btn.textContent=open?'－ 접기':'＋ 2루타 · 홈런 · 병살 더보기';}
+  var isOpen=sec.style.display==='grid';
+  sec.style.display=isOpen?'none':'grid';
+  if(btn){
+    btn.classList.toggle('open',!isOpen);
+    btn.textContent=isOpen?'＋ 2루타 · 홈런 · 병살 더보기':'－ 접기';
+  }
 }
 
 // ── 경기 컨디션 태그 (사회인야구 특화) ──
@@ -3937,7 +3941,11 @@ function shareGameLink(){
   };
   var url;
   try{
-    var encoded=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    var json=JSON.stringify(payload);
+    // LZ-String 있으면 압축 (URL 60~70% 단축), 없으면 btoa fallback
+    var encoded=typeof LZString!=='undefined'
+      ? 'z'+LZString.compressToEncodedURIComponent(json)
+      : 'b'+btoa(unescape(encodeURIComponent(json)));
     url=location.origin+location.pathname+'#share='+encoded;
   }catch(e){
     url=location.href;
@@ -3955,7 +3963,15 @@ function _loadSharedGame(){
   if(!hash||!hash.includes('#share='))return;
   try{
     var encoded=hash.replace('#share=','');
-    var payload=JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    var json;
+    // 'z' 접두어: LZ-String 압축, 'b' 접두어: btoa, 접두어 없으면 구버전 btoa
+    if(encoded.charAt(0)==='z'&&typeof LZString!=='undefined'){
+      json=LZString.decompressFromEncodedURIComponent(encoded.slice(1));
+    }else{
+      var raw=encoded.charAt(0)==='b'?encoded.slice(1):encoded;
+      json=decodeURIComponent(escape(atob(raw)));
+    }
+    var payload=JSON.parse(json);
     if(!payload||!payload.abs)return;
     AS.hs=payload.hs||0;AS.as=payload.as||0;
     var tH=document.getElementById('tHome');if(tH)tH.value=payload.ht||'홈팀';

@@ -883,6 +883,56 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .ob-no-show span{font-size:11px;color:var(--text3);font-weight:600}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   AI 타격 인사이트 카드
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.ai-section-head{font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-section-head::after{content:'';flex:1;height:1px;background:var(--border)}
+.ai-card{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg-raised);margin-bottom:5px;border-left-width:3px;animation:fadeSlideUp .3s ease both}
+.ai-card.ai-pos{border-left-color:#2dd4a0}
+.ai-card.ai-warn{border-left-color:#f6c23e}
+.ai-card.ai-neu{border-left-color:var(--border2)}
+.ai-icon{font-size:14px;flex-shrink:0;line-height:1.5}
+.ai-text{font-size:11px;color:var(--text2);line-height:1.65;font-weight:500}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FAB (Floating Action Button, 모바일 전용)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.fab-wrap{position:fixed;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 16px));right:14px;z-index:200;display:none}
+@media(max-width:720px){.fab-wrap{display:block}}
+.fab-btn{width:54px;height:54px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(75,140,245,.45);display:flex;align-items:center;justify-content:center;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.fab-btn:active{transform:scale(.9);filter:brightness(.9)}
+.fab-pop{position:fixed;right:14px;background:var(--bg-card);border:1px solid var(--border2);border-radius:14px;padding:7px;box-shadow:0 12px 40px rgba(0,0,0,.65);display:none;flex-direction:column;gap:5px;z-index:201;min-width:130px;bottom:calc(max(20px,env(safe-area-inset-bottom,0px) + 16px) + 62px)}
+.fab-pop.open{display:flex;animation:fadeSlideUp .15s ease}
+.fab-pop-btn{padding:10px 13px;border:1.5px solid transparent;border-radius:9px;font-size:13px;font-weight:800;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;-webkit-tap-highlight-color:transparent;min-height:44px;transition:filter .1s;background:var(--bg-raised);color:var(--text)}
+.fab-pop-btn.repeat{background:none;border-style:dashed;border-color:var(--border2);color:var(--text3);font-size:11px}
+.fab-pop-btn:active{filter:brightness(.85)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   경기 요약 모달 (GAME SUMMARY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#gameSummaryOv{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:20px}
+#gameSummaryOv.show{display:flex}
+.gs-card{background:var(--bg-card);border:1px solid rgba(75,140,245,.25);border-radius:var(--r2);padding:24px 20px;width:min(380px,100%);box-shadow:0 24px 64px rgba(0,0,0,.8);animation:cardIn .25s ease}
+.gs-title{font-size:18px;font-weight:900;color:var(--text);margin-bottom:3px}
+.gs-sub{font-size:11px;color:var(--text3);margin-bottom:18px}
+.gs-stat-row{display:flex;gap:6px;margin-bottom:10px}
+.gs-stat{flex:1;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r);padding:10px 6px;text-align:center}
+.gs-val{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--accent)}
+.gs-lbl{font-size:9px;color:var(--text3);margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.gs-highlight{background:rgba(75,140,245,.06);border:1px solid rgba(75,140,245,.18);border-radius:var(--r);padding:10px 12px;margin-bottom:10px}
+.gs-hl-text{font-size:12px;color:var(--text2);line-height:1.85}
+.gs-btn-row{display:flex;gap:8px;margin-top:14px}
+.gs-btn-ok{flex:2;padding:13px;background:var(--accent);border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;transition:filter .1s;min-height:48px}
+.gs-btn-ok:active{filter:brightness(.9)}
+.gs-btn-share{flex:1;padding:13px;background:none;border:1.5px solid var(--border2);border-radius:var(--r);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:48px;transition:all .1s}
+.gs-btn-share:active{background:var(--bg-raised)}
+
+/* 반복 기록 버튼 */
+.repeat-btn{padding:5px 10px;border:1px dashed var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0}
+.repeat-btn:active{border-color:var(--accent);color:var(--accent)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    VISUAL HIERARCHY & TOUCH POLISH
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .btn{min-height:36px}
@@ -1262,7 +1312,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div class="gw-ac-list" id="gwAwayAc"></div>
       </div>
     </div>
-    <button class="gw-load-recent" onclick="closeGameWizard();showAppWelcome();openLoad()">📋 이전 경기 불러오기</button>
+    <div style="display:flex;gap:8px">
+      <button class="gw-load-recent" style="flex:1" onclick="closeGameWizard();showAppWelcome();openLoad()">📋 이전 경기 불러오기</button>
+      <button class="gw-load-recent" style="flex:1" onclick="applyLastLineup()">👥 이전 라인업</button>
+    </div>
     <div class="gw-divider"></div>
     <div class="gw-btns">
       <button class="gw-btn-cancel" onclick="closeGameWizard();showAppWelcome()">← 취소</button>
@@ -1348,6 +1401,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       </button>
     </div>
   </div>
+</div>
+
+<!-- ████ FAB 퀵 액션 ████ -->
+<div class="fab-wrap" id="fabWrap">
+  <div class="fab-pop" id="fabPop">
+    <button class="fab-pop-btn" onclick="fabRecord('안타');fabToggle()">안타</button>
+    <button class="fab-pop-btn" onclick="fabRecord('아웃');fabToggle()">아웃</button>
+    <button class="fab-pop-btn" onclick="fabRecord('삼진');fabToggle()">삼진</button>
+    <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
+    <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
+  </div>
+  <button class="fab-btn" id="fabBtn" onclick="fabToggle()">⚡</button>
+</div>
+
+<!-- ████ 경기 종료 요약 ████ -->
+<div id="gameSummaryOv" onclick="if(event.target===this)closeGameSummary()">
+  <div class="gs-card" id="gameSummaryCard"></div>
 </div>
 
 <header class="app-hdr">
@@ -1525,6 +1595,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <div class="stat-card" id="weaknessCard">
           <div class="sc-title">⚠️ 약점 패턴 감지</div>
           <div id="weaknessList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">타석을 기록하면 패턴을 분석합니다</div></div>
+        </div>
+        <div class="stat-card" id="aiInsightCard">
+          <div class="sc-title">🤖 AI 타격 분석</div>
+          <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
         </div>
       </div>
 
@@ -2292,6 +2366,7 @@ function initApp(){
   localStorage.setItem('sl_visited','1');
   document.getElementById('innSel').addEventListener('change',()=>document.getElementById('innDisp').textContent=document.getElementById('innSel').value);
   refreshZoneDisplay();
+  initOfflineDetection();
 }
 
 function chSc(t,d){if(t==='h'){AS.hs=Math.max(0,AS.hs+d);document.getElementById('scH').textContent=AS.hs}else{AS.as=Math.max(0,AS.as+d);document.getElementById('scA').textContent=AS.as}}
@@ -3186,6 +3261,7 @@ function saveGame(){
     localStorage.setItem(key,JSON.stringify(data));
     showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
+    setTimeout(showGameSummary, 400);
   }, 300);
 }
 
@@ -3652,6 +3728,7 @@ function updBatterStat(){
       }).join('');
     }
   }
+  renderAIInsights(bAbs);
 }
 
 document.addEventListener('keydown',e=>{
@@ -5635,10 +5712,20 @@ function startFromWizard(){
   document.getElementById('tAway').value=away;
   closeGameWizard();
   hideAppWelcome();
-  // 초기화: 새 경기 시작
   if(homeInp)homeInp.value='';
   if(awayInp)awayInp.value='';
-  showToast('경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
+  // 이전 라인업이 대기 중이면 적용
+  if(AS._pendingHomeLineup){
+    AS.home_lineup=AS._pendingHomeLineup.slice();
+    delete AS._pendingHomeLineup;
+  }
+  if(AS._pendingAwayLineup){
+    AS.away_lineup=AS._pendingAwayLineup.slice();
+    delete AS._pendingAwayLineup;
+  }
+  renderLP();renderMob();
+  var hasLineup=(AS.home_lineup.length||AS.away_lineup.length);
+  showToast(hasLineup?'이전 라인업을 불러왔습니다. 바로 기록하세요':'경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
 }
 
 function gwAutoComplete(team,val){
@@ -5713,6 +5800,188 @@ function triggerSavePulse(){
   void btn.offsetWidth;
   btn.classList.add('save-pulse-anim');
   setTimeout(function(){btn.classList.remove('save-pulse-anim');},700);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AI 타격 분석 (generateBattingInsights / renderAIInsights)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function generateBattingInsights(bAbs){
+  var insights=[];
+  if(bAbs.length<2)return insights;
+  var oab=bAbs.filter(function(a){return!_NOAB.includes(a.res);}).length;
+  if(!oab)return insights;
+  var h=bAbs.filter(function(a){return _HITS.includes(a.res);}).length;
+  var avg=h/oab;
+  var k=bAbs.filter(function(a){return a.res==='삼진';}).length;
+  var bb=bAbs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+  var xbh=bAbs.filter(function(a){return['2루타','3루타','홈런'].includes(a.res);}).length;
+  var fd=bAbs.filter(function(a){return a.deg!=null;}),tot=fd.length||1;
+  var pull=fd.filter(function(a){return a.deg<72;}).length;
+  var oppo=fd.filter(function(a){return a.deg>108;}).length;
+  var pullR=pull/tot,oppoR=oppo/tot;
+
+  // 타율 평가
+  if(avg>=0.4)insights.push({type:'pos',icon:'🔥',text:'타율 '+avg.toFixed(3).replace('0.','.')+'로 오늘 폼이 아주 좋습니다!'});
+  else if(avg>=0.25)insights.push({type:'neu',icon:'📊',text:'타율 '+avg.toFixed(3).replace('0.','.')+'로 무난한 경기 중입니다.'});
+  else if(oab>=3)insights.push({type:'warn',icon:'📉',text:'타율 '+avg.toFixed(3).replace('0.','.')+'로 부진 중. 타이밍 조정이 필요해 보입니다.'});
+
+  // 삼진 비율
+  var kRate=k/bAbs.length;
+  if(kRate>=0.5&&k>=2)insights.push({type:'warn',icon:'⚡',text:'삼진 비율 '+Math.round(kRate*100)+'% — 스트라이크 존 공략을 재점검하세요.'});
+
+  // 볼넷 선구안
+  if(bb>=2)insights.push({type:'pos',icon:'👁️',text:'볼넷 '+bb+'개! 선구안이 뛰어납니다. 참을성 있는 타격입니다.'});
+
+  // 장타력
+  if(xbh>=2)insights.push({type:'pos',icon:'💥',text:'장타 '+xbh+'개! 강한 타구를 만들어내고 있습니다.'});
+
+  // 방향 편중
+  if(pullR>=0.75&&pull>=3)insights.push({type:'warn',icon:'↩️',text:'타구의 '+Math.round(pullR*100)+'%가 당겨치기 — 반대 방향 공략에 취약할 수 있습니다.'});
+  else if(oppoR>=0.65&&oppo>=3)insights.push({type:'pos',icon:'↪️',text:'밀어치기 비율 '+Math.round(oppoR*100)+'% — 밀어치는 능력이 좋습니다.'});
+
+  // 안타 없이 출루
+  if(h===0&&bb>=1&&oab>=2)insights.push({type:'neu',icon:'🏃',text:'안타는 없지만 볼넷으로 출루 중. 투수를 괴롭히고 있습니다.'});
+
+  return insights.slice(0,4);
+}
+
+function renderAIInsights(bAbs){
+  var el=document.getElementById('aiInsightList');
+  if(!el)return;
+  var insights=generateBattingInsights(bAbs);
+  if(!insights.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div>';
+    return;
+  }
+  var typeColors={pos:'#2dd4a0',warn:'#f6c23e',neu:'var(--border2)'};
+  el.innerHTML=insights.map(function(ins,i){
+    return'<div class="ai-card ai-'+ins.type+'" style="display:flex;align-items:flex-start;gap:8px;padding:9px 10px;background:var(--bg-raised);border-radius:8px;border-left:3px solid '+typeColors[ins.type]+';animation-delay:'+i*60+'ms">'
+      +'<span class="ai-icon">'+ins.icon+'</span>'
+      +'<span class="ai-text">'+ins.text+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 직전 타석 반복 기록
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function recallLastAtBat(){
+  if(!AS.batter){showToast('타자를 먼저 선택하세요',true);return;}
+  var last=AS.abs.slice().reverse().find(function(a){return a.bid===AS.batter.id;});
+  if(!last){showToast('이전 타석 기록이 없습니다',true);return;}
+  var inn=document.getElementById('innSel');
+  var ab={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,
+    res:last.res,pt:last.pt||null,zone:last.zone||null,rbi:0,
+    x:last.x,y:last.y,deg:last.deg,dir:last.dir,ft:last.ft,
+    inn:inn?inn.value:1,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[]};
+  AS.abs.push(ab);
+  updateAll();scheduleAutoSave();
+  showToast('↩ 반복 기록: '+last.res,false);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 이전 라인업 불러오기
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function applyLastLineup(){
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  if(!saves.length){showToast('저장된 경기가 없습니다',true);return;}
+  var last=saves[saves.length-1];
+  var raw=localStorage.getItem(last.key);
+  if(!raw){showToast('데이터를 불러올 수 없습니다',true);return;}
+  var data=JSON.parse(raw);
+  if(data.home_lineup&&data.home_lineup.length){
+    AS._pendingHomeLineup=data.home_lineup.map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
+  }
+  if(data.away_lineup&&data.away_lineup.length){
+    AS._pendingAwayLineup=data.away_lineup.map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
+  }
+  var homeCount=(AS._pendingHomeLineup||[]).length;
+  var awayCount=(AS._pendingAwayLineup||[]).length;
+  showToast('라인업 '+homeCount+'명 + '+awayCount+'명 준비 완료. 기록 시작을 누르세요',false);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 경기 저장 후 요약 모달
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function showGameSummary(){
+  var ov=document.getElementById('gameSummaryOv');
+  var card=document.getElementById('gameSummaryCard');
+  if(!ov||!card)return;
+  var abs=AS.abs;
+  var oab=abs.filter(function(a){return!_NOAB.includes(a.res);}).length||1;
+  var h=abs.filter(function(a){return _HITS.includes(a.res);}).length;
+  var bb=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+  var k=abs.filter(function(a){return a.res==='삼진';}).length;
+  var rbi=abs.reduce(function(s,a){return s+a.rbi;},0);
+  var tb=abs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
+  var avg=oab>0?h/oab:0;
+  var obp=abs.length>0?(h+bb)/abs.length:0;
+  var slg=oab>0?tb/oab:0;
+  var th=document.getElementById('tHome').value||'홈팀';
+  var ta=document.getElementById('tAway').value||'원정팀';
+  var mvpAbs={};
+  abs.forEach(function(a){if(!mvpAbs[a.bid])mvpAbs[a.bid]={name:a.bname,h:0,rbi:0};if(_HITS.includes(a.res))mvpAbs[a.bid].h++;mvpAbs[a.bid].rbi+=a.rbi;});
+  var mvpEntry=Object.values(mvpAbs).sort(function(a,b){return(b.h*2+b.rbi)-(a.h*2+a.rbi);})[0];
+  var mvpText=mvpEntry?mvpEntry.name+' ('+(mvpEntry.h)+'안타 '+mvpEntry.rbi+'타점)':'기록 없음';
+  card.innerHTML=
+    '<div class="gs-title">경기 종료 🎉</div>'
+    +'<div class="gs-sub">'+th+' '+AS.hs+' : '+AS.as+' '+ta+'</div>'
+    +'<div class="gs-stat-row">'
+    +'<div class="gs-stat"><div class="gs-val">'+avg.toFixed(3).replace('0.','.')+'</div><div class="gs-lbl">팀 타율</div></div>'
+    +'<div class="gs-stat"><div class="gs-val">'+obp.toFixed(3).replace('0.','.')+'</div><div class="gs-lbl">출루율</div></div>'
+    +'<div class="gs-stat"><div class="gs-val">'+slg.toFixed(3).replace('0.','.')+'</div><div class="gs-lbl">장타율</div></div>'
+    +'</div>'
+    +'<div class="gs-stat-row">'
+    +'<div class="gs-stat"><div class="gs-val">'+h+'</div><div class="gs-lbl">안타</div></div>'
+    +'<div class="gs-stat"><div class="gs-val">'+rbi+'</div><div class="gs-lbl">타점</div></div>'
+    +'<div class="gs-stat"><div class="gs-val">'+k+'</div><div class="gs-lbl">삼진</div></div>'
+    +'</div>'
+    +(mvpEntry?'<div class="gs-highlight"><div class="gs-hl-text">🏆 오늘의 MVP<br><b>'+_escHtml(mvpText)+'</b></div></div>':'')
+    +'<div class="gs-btn-row">'
+    +'<button class="gs-btn-ok" onclick="closeGameSummary()">확인</button>'
+    +'<button class="gs-btn-share" onclick="closeGameSummary();exportShareCard()">📊 카드 공유</button>'
+    +'</div>';
+  ov.classList.add('show');
+}
+function closeGameSummary(){
+  var ov=document.getElementById('gameSummaryOv');
+  if(ov)ov.classList.remove('show');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FAB 퀵 액션
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _fabOpen=false;
+function fabToggle(){
+  _fabOpen=!_fabOpen;
+  var pop=document.getElementById('fabPop');
+  var btn=document.getElementById('fabBtn');
+  if(pop)pop.classList.toggle('open',_fabOpen);
+  if(btn)btn.style.transform=_fabOpen?'rotate(45deg)':'';
+}
+function fabRecord(res){
+  if(!AS.batter){showToast('타자를 먼저 선택하세요',true);return;}
+  var inn=document.getElementById('innSel');
+  var ts=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  var ab={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,
+    res:res,pt:AS.pt||null,zone:AS.zone||null,rbi:AS.rbi||0,
+    x:null,y:null,deg:null,dir:null,ft:null,
+    inn:inn?inn.value:1,ts:ts,
+    count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[]};
+  AS.abs.push(ab);
+  updateAll();scheduleAutoSave();
+  showToast(res+' 기록됨',false);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 오프라인 감지
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function initOfflineDetection(){
+  function onOffline(){showToast('오프라인 상태입니다. 데이터는 기기에 안전하게 저장됩니다',true);}
+  function onOnline(){showToast('인터넷에 연결되었습니다 ✓',false);}
+  window.addEventListener('offline',onOffline);
+  window.addEventListener('online',onOnline);
 }
 </script>
 <script>

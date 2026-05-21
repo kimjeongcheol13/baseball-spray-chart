@@ -330,6 +330,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* RECORDS */
 .rec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
 .rec-count{font-size:10px;color:var(--text3)}
+.rec-player-nav{display:flex;align-items:center;gap:5px;margin-bottom:7px}
+.rpn-btn{background:var(--bg-raised);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1.4;transition:background 100ms;flex-shrink:0}
+.rpn-btn:hover{background:var(--border)}
+.rpn-label{flex:1;text-align:center;font-size:11px;color:var(--text1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--bg-raised);border:1px solid var(--border);border-radius:5px;padding:2px 6px}
 .rec-item{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:7px;border:1px solid var(--border);margin-bottom:4px;background:var(--bg-raised);position:relative;transition:border-color 100ms}
 .rec-item:hover{border-color:var(--border2)}
 .badge{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0}
@@ -1777,6 +1781,7 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
     <div class="tab-body">
       <div class="tab-pnl on" id="pnl-rec">
         <div class="rec-hd"><span class="rec-count" id="recCnt">기록 없음</span><button class="btn btn-red" style="padding:3px 9px;font-size:10px" onclick="clearAll()">전체 삭제</button></div>
+        <div class="rec-player-nav"><button class="rpn-btn" onclick="shiftRecPlayer(-1)">◀</button><span class="rpn-label" id="rpnLabel">전체</span><button class="rpn-btn" onclick="shiftRecPlayer(1)">▶</button></div>
         <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
       </div>
       <div class="tab-pnl" id="pnl-batter">
@@ -2406,7 +2411,8 @@ const AS={
   currentPitcher:null,
   pitcherZone:null,
   pitcherPt:null,
-  pitchLog:[]
+  pitchLog:[],
+  recFilterBid:null
 };
 const MAX_HITS = 300; 
 let saveTimer; 
@@ -2924,10 +2930,28 @@ function safeRender(){
 
 function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
 function renderRecs(){
-  const el=document.getElementById('recList');document.getElementById('recCnt').textContent=AS.abs.length+'개 기록';
-  if(!AS.abs.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div>';return;}
+  const el=document.getElementById('recList');
+  const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
+  const rpnLabel=document.getElementById('rpnLabel');
+  if(rpnLabel){
+    if(!AS.recFilterBid){rpnLabel.textContent='전체'+(allPlayers.length?' ('+allPlayers.length+'명)':'');}
+    else{const p=allPlayers.find(p=>p.id===AS.recFilterBid);rpnLabel.textContent=p?'#'+p.num+' '+p.name:'전체';}
+  }
+  const list=AS.recFilterBid?AS.abs.filter(a=>a.bid===AS.recFilterBid):AS.abs;
+  document.getElementById('recCnt').textContent=list.length+'개 기록';
+  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'타석을 기록하면<br>여기에 표시됩니다')+'</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
-  el.innerHTML=[...AS.abs].reverse().map(a=>`<div class="rec-item"><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item"><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
+}
+function shiftRecPlayer(dir){
+  const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
+  if(!allPlayers.length)return;
+  const ids=[null,...allPlayers.map(p=>p.id)];
+  let idx=ids.indexOf(AS.recFilterBid);
+  if(idx===-1)idx=0;
+  idx=(idx+dir+ids.length)%ids.length;
+  AS.recFilterBid=ids[idx];
+  renderRecs();
 }
 function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){if(!AS.abs.length)return;AS.abs.pop();updateAll();hideToast();}

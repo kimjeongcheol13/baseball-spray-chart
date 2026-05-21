@@ -1313,7 +1313,7 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
     <div class="ob-title" id="obTitle">필드를 터치해<br>타구 위치를 기록하세요</div>
     <div class="ob-desc" id="obDesc">공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.<br><b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.</div>
     <div class="ob-highlight" id="obHighlight">안타 · 2루타 · 아웃 · 삼진 · 볼넷</div>
-    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div></div>
+    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div><div class="ob-dot" id="d3"></div><div class="ob-dot" id="d4"></div></div>
     <label class="ob-no-show">
       <input type="checkbox" id="obNoShow"><span>다시 보지 않기</span>
     </label>
@@ -2300,8 +2300,10 @@ let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
 
 const OB=[
   {icon:'🏟️',step:'STEP 1 · 타구 기록',title:'필드를 터치해\n타구 위치를 기록하세요',desc:'공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.\n<b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.',highlight:'안타 · 2루타 · 아웃 · 삼진 · 볼넷'},
-  {icon:'✅',step:'STEP 2 · 자동 저장',title:'결과를 선택하면\n자동으로 저장됩니다',desc:'기록된 데이터는 기기에 자동 보관됩니다.\n경기가 끝나면 <b>[저장]</b> 버튼으로 영구 저장하세요.',highlight:'가입 불필요 · 클라우드 미사용 · 완전 무료'},
-  {icon:'📊',step:'STEP 3 · 자동 분석',title:'기록은 통계와 차트로\n자동 분석됩니다',desc:'타율 · 출루율 · 장타율이 자동 계산되고,\n타구 방향과 <b>약점 패턴</b>을 시각화해 보여줍니다.',highlight:'AVG · OBP · SLG · OPS 자동 계산'},
+  {icon:'▶',step:'STEP 2 · 경기 운영 모드',title:'타순·아웃카운트·이닝이\n자동으로 진행됩니다',desc:'<b>▶ 경기운영</b> 버튼을 탭하면 기록할 때마다 타순이 자동으로 넘어갑니다.\n3아웃 시 이닝이 전환되고, 종료 시 최종 요약 카드가 표시됩니다.',highlight:'경기운영 버튼 → 자동 타순 · 아웃카운트 · 이닝 전환'},
+  {icon:'🤖',step:'STEP 3 · AI 타격 분석',title:'타격 패턴을\n자동으로 분석합니다',desc:'타자 탭 하단에서 <b>AI 타격 분석</b>을 확인하세요.\n2타석 이상 기록하면 당겨치기 성향·삼진 패턴·강점 코스를 자동 감지합니다.',highlight:'타율 트렌드 · 방향 편중 · 약점 코스 자동 감지'},
+  {icon:'✅',step:'STEP 4 · 저장하기',title:'경기 종료 후\n[저장]을 눌러 보관하세요',desc:'기록된 데이터는 기기에 자동 보관됩니다.\n경기가 끝나면 <b>[저장]</b> 버튼으로 영구 저장하세요.',highlight:'가입 불필요 · 클라우드 미사용 · 완전 무료'},
+  {icon:'📊',step:'STEP 5 · 자동 분석',title:'기록은 통계와 차트로\n자동 분석됩니다',desc:'타율 · 출루율 · 장타율이 자동 계산되고,\n타구 방향과 <b>약점 패턴</b>을 시각화해 보여줍니다.',highlight:'AVG · OBP · SLG · OPS 자동 계산'},
 ];
 let obIdx=0;
 function obNext(){
@@ -2318,7 +2320,7 @@ function obNext(){
   document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');
   const hl=document.getElementById('obHighlight');
   if(hl){hl.textContent=o.highlight||'';hl.style.display=o.highlight?'block':'none';}
-  for(let i=0;i<3;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);
+  for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);
   document.getElementById('obBtn').textContent=obIdx===OB.length-1?'시작하기 →':'다음 →';
 }
 function obSkip(){
@@ -2346,17 +2348,19 @@ function hideTT(){ttHideTimer=setTimeout(()=>document.getElementById('ttBox').cl
 
 /* ===== INTERACTIVE TOUR JS ===== */
 const TOUR=[
-  {sel:null, title:'SprayLab 앱 투어 시작!', desc:'<b>약 1분</b>짜리 빠른 투어입니다.\n각 구역이 어떤 역할을 하는지 하나씩 살펴봅니다.\n\n언제든 <b>투어 종료</b> 버튼으로 닫을 수 있어요.', card:'center', cursor:false},
+  {sel:null, title:'SprayLab 앱 투어 시작!', desc:'<b>약 1분 30초</b>짜리 빠른 투어입니다.\n각 구역이 어떤 역할을 하는지 하나씩 살펴봅니다.\n\n언제든 <b>투어 종료</b> 버튼으로 닫을 수 있어요.', card:'center', cursor:false},
   {sel:'.pnl-left', title:'① 라인업 패널', desc:'<b>오늘 경기에 출전하는 선수 명단</b>입니다.\n\n홈팀 / 원정팀 탭을 전환할 수 있고,\n선수를 클릭하면 현재 타자로 선택됩니다.\n\n<span class="t-tag">라인업</span> = 타격 순서대로 나열된 선수 명단', card:'right', cursor:true},
   {sel:'.add-row', title:'② 선수 추가', desc:'이름과 등번호를 입력한 뒤 <b>+ 버튼</b>을 누르세요.\n\n포지션(투수/포수/1루 등)과 타석(우타/좌타)도 선택할 수 있습니다.\n\n선수를 추가하면 라인업 목록에 자동으로 나타납니다.', card:'right', cursor:true},
   {sel:'#quickBar', title:'③ 퀵버튼 바', desc:'화면 상단에 항상 고정된 <b>1탭 즉시 기록</b> 버튼입니다.\n\n타자를 선택한 뒤 버튼을 누르면 필드를 탭하지 않아도 바로 기록됩니다:\n• <b>안타 · 아웃 · 삼진 · 볼넷</b>\n\n경기 흐름이 빠를 때 가장 빠른 입력 방법입니다.', card:'bottom', cursor:true},
-  {sel:'#cwrap', title:'④ 스프레이 차트 필드', desc:'타자가 공을 쳤을 때 <b>타구가 떨어진 위치를 탭</b>하세요.\n\n탭하면 결과 입력 창이 나타납니다.\n팝업에서 <b>스와이프</b>하면 더욱 빠르게:\n→ 안타 &nbsp;·&nbsp; ← 아웃 &nbsp;·&nbsp; ↑ 볼넷 &nbsp;·&nbsp; ↓ 삼진', card:'right', cursor:true},
-  {sel:'#ptGroup', title:'⑤ 투구 종류 선택', desc:'투수가 던진 구종을 선택할 수 있습니다.\n<b>선택 사항</b>이므로 건너뛰어도 됩니다.\n\n• <b>직구</b> — 가장 빠른 기본 구질\n• <b>커브</b> — 크게 꺾여 떨어지는 변화구\n• <b>슬라이더</b> — 옆으로 꺾이는 변화구\n• <b>체인지업</b> — 직구처럼 오다 갑자기 느려짐\n\n선택 후 필드를 탭하면 구종과 함께 기록됩니다.', card:'top', cursor:true},
-  {sel:'#zoneGrid', title:'⑥ 투구 코스 (9분할 존)', desc:'타자 입장에서 스트라이크존을 9칸으로 나눈 그리드입니다.\n\n• <b>내각</b> — 타자 몸쪽\n• <b>외각</b> — 타자 바깥쪽\n• <b>높/중/낮</b> — 공의 높이\n\n구종처럼 <b>선택 사항</b>입니다.\n코스별 피안타 패턴을 분석할 때 유용합니다.', card:'top', cursor:false},
-  {sel:'.other-btns', title:'⑦ 즉시 기록 버튼', desc:'필드를 탭하지 않아도 바로 기록하는 버튼들입니다.\n\n• <b>볼넷</b> — 투수가 4번 빗나가 1루 자동 진루\n• <b>삼진</b> — 스트라이크 3개로 타석 종료\n• <b>사구</b> — 공이 타자 몸에 맞은 경우\n• <b>희타/희비</b> — 희생번트 / 희생플라이\n• <b>병살</b> — 한 플레이에서 두 명 아웃', card:'top', cursor:true},
-  {sel:null, title:'⑧ 투수 탭', desc:'상대 투수를 분석하는 전용 탭입니다.\n\n• 투수 등록 및 교체 기록\n• 구종(직구·슬라이더 등) · 코스 · 결과 기록\n• 구종 비율 도넛차트 & 코스 히트맵 자동 생성\n• 피안타율 · 삼진율 · 볼 비율 통계\n\n오른쪽 패널에서 <b>투수</b> 탭을 탭하세요.', card:'center', cursor:false},
-  {sel:'.pnl-right .tabs', title:'⑨ 통계 탭 패널', desc:'오른쪽 패널의 5개 탭입니다:\n\n• <b>타석기록</b> — 이번 경기 기록 목록\n• <b>타자</b> — 선택된 선수의 개인 통계\n• <b>팀통계</b> — 타율·방향 분포·선수별 성적\n• <b>차트</b> — 스프레이 차트·성적카드 PNG 내보내기\n• <b>투수</b> — 상대 투수 구종·코스 분석\n\n탭을 클릭해서 전환하세요.', card:'left', cursor:true},
-  {sel:null, sels:'button[onclick="saveGame()"]', title:'⑩ 저장 · 공유', desc:'경기가 끝나면 꼭 <b>[저장]</b> 버튼을 눌러 데이터를 보관하세요.\n\n• <b>저장</b> — 기기 내 로컬 저장 (로그인 불필요)\n• <b>불러오기</b> — 저장된 경기 다시 열기\n• <b>🔗 공유</b> — QR·링크로 팀원에게 전송, 수신자 배너로 안내\n• <b>차트 탭</b> → 개인(9:16)·팀(1:1) 성적카드 PNG 저장\n\n⌨️ <b>Ctrl+Z</b> 로 마지막 기록 언제든 취소', card:'center', cursor:false},
+  {sel:null, title:'④ FAB 퀵 액션 (모바일)', desc:'화면 우하단 <b>⚡ 플로팅 버튼</b>은 모바일 전용입니다.\n\n탭하면 팝업에서 안타·아웃·삼진·볼넷을 즉시 선택할 수 있습니다.\n\n• <b>↩ 반복</b> — 바로 전 타석 결과를 그대로 다시 입력\n\n한 손으로 빠르게 기록할 때 유용합니다.', card:'center', cursor:false},
+  {sel:'#cwrap', title:'⑤ 스프레이 차트 필드', desc:'타자가 공을 쳤을 때 <b>타구가 떨어진 위치를 탭</b>하세요.\n\n탭하면 결과 입력 창이 나타납니다.\n팝업에서 <b>스와이프</b>하면 더욱 빠르게:\n→ 안타 &nbsp;·&nbsp; ← 아웃 &nbsp;·&nbsp; ↑ 볼넷 &nbsp;·&nbsp; ↓ 삼진', card:'right', cursor:true},
+  {sel:'#ptGroup', title:'⑥ 투구 종류 선택', desc:'투수가 던진 구종을 선택할 수 있습니다.\n<b>선택 사항</b>이므로 건너뛰어도 됩니다.\n\n• <b>직구</b> — 가장 빠른 기본 구질\n• <b>커브</b> — 크게 꺾여 떨어지는 변화구\n• <b>슬라이더</b> — 옆으로 꺾이는 변화구\n• <b>체인지업</b> — 직구처럼 오다 갑자기 느려짐\n\n선택 후 필드를 탭하면 구종과 함께 기록됩니다.', card:'top', cursor:true},
+  {sel:'#zoneGrid', title:'⑦ 투구 코스 (9분할 존)', desc:'타자 입장에서 스트라이크존을 9칸으로 나눈 그리드입니다.\n\n• <b>내각</b> — 타자 몸쪽\n• <b>외각</b> — 타자 바깥쪽\n• <b>높/중/낮</b> — 공의 높이\n\n구종처럼 <b>선택 사항</b>입니다.\n코스별 피안타 패턴을 분석할 때 유용합니다.', card:'top', cursor:false},
+  {sel:'.other-btns', title:'⑧ 즉시 기록 버튼', desc:'필드를 탭하지 않아도 바로 기록하는 버튼들입니다.\n\n• <b>볼넷</b> — 투수가 4번 빗나가 1루 자동 진루\n• <b>삼진</b> — 스트라이크 3개로 타석 종료\n• <b>사구</b> — 공이 타자 몸에 맞은 경우\n• <b>희타/희비</b> — 희생번트 / 희생플라이\n• <b>병살</b> — 한 플레이에서 두 명 아웃', card:'top', cursor:true},
+  {sel:null, title:'⑨ 투수 탭', desc:'상대 투수를 분석하는 전용 탭입니다.\n\n• 투수 등록 및 교체 기록\n• 구종(직구·슬라이더 등) · 코스 · 결과 기록\n• 구종 비율 도넛차트 & 코스 히트맵 자동 생성\n• 피안타율 · 삼진율 · 볼 비율 통계\n\n오른쪽 패널에서 <b>투수</b> 탭을 탭하세요.', card:'center', cursor:false},
+  {sel:'.pnl-right .tabs', title:'⑩ 통계 탭 패널', desc:'오른쪽 패널의 5개 탭입니다:\n\n• <b>타석기록</b> — 이번 경기 기록 목록\n• <b>타자</b> — 선택된 선수의 개인 통계 + 🤖 AI 타격 분석\n• <b>팀통계</b> — 타율·방향 분포·선수별 성적\n• <b>차트</b> — 스프레이 차트·성적카드 PNG 내보내기\n• <b>투수</b> — 상대 투수 구종·코스 분석\n\n탭을 클릭해서 전환하세요.', card:'left', cursor:true},
+  {sel:'#gfToggleBtn', title:'⑪ 경기 운영 모드', desc:'<b>▶ 경기운영</b> 버튼을 탭하면 실전처럼 진행됩니다.\n\n• 기록할 때마다 타순 자동 전진\n• 3아웃 시 이닝 자동 전환\n• 상단 바에서 아웃카운트·베이스 실시간 표시\n• 경기종료 버튼 → 최종 요약 카드\n\n🤖 <b>AI 타격 분석</b>은 타자 탭 하단에서 2타석 이상 기록 시 자동 생성됩니다.', card:'bottom', cursor:true},
+  {sel:null, sels:'button[onclick="saveGame()"]', title:'⑫ 저장 · 공유', desc:'경기가 끝나면 꼭 <b>[저장]</b> 버튼을 눌러 데이터를 보관하세요.\n\n• <b>저장</b> — 기기 내 로컬 저장 (로그인 불필요)\n• <b>불러오기</b> — 저장된 경기 다시 열기\n• <b>🔗 공유</b> — QR·링크로 팀원에게 전송, 수신자 배너로 안내\n• <b>차트 탭</b> → 개인(9:16)·팀(1:1) 성적카드 PNG 저장\n\n⌨️ <b>Ctrl+Z</b> 로 마지막 기록 언제든 취소', card:'center', cursor:false},
 ];
 let tourIdx=0,tourActive=false;
 
@@ -2489,7 +2493,7 @@ function showTutorial(){
   document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');
   const hl=document.getElementById('obHighlight');
   if(hl){hl.textContent=o.highlight||'';hl.style.display=o.highlight?'block':'none';}
-  for(let i=0;i<3;i++)document.getElementById('d'+i).classList.toggle('on',i===0);
+  for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===0);
   document.getElementById('obBtn').textContent='다음 →';
   if(document.getElementById('obNoShow'))document.getElementById('obNoShow').checked=false;
   document.getElementById('obOverlay').style.display='flex';

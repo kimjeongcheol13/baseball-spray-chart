@@ -1259,6 +1259,52 @@ body.role-player #pnl-stat .stat-card:not(.personal){opacity:.7}
 .arch-dbg-row:last-child{border-bottom:none}
 .arch-dbg-k{color:var(--text3)}
 .arch-dbg-v{color:var(--text);font-weight:700}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FIELD v1.0 — 현장 베타 안정화
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* ── 고대비 모드 ── */
+body.high-contrast{--bg:#000;--bg-card:#0c0c0c;--bg-raised:#141414;--bg-hover:#1c1c1c;--text:#fff;--text2:#d0d0d0;--text3:#808080;--border:#252525;--border2:#333}
+body.high-contrast *{animation-duration:0ms!important;transition-duration:50ms!important}
+body.high-contrast .tab{border-bottom-width:3px}
+body.high-contrast .btn,.high-contrast .chip{border-width:2px!important}
+body.high-contrast .rec-item{border-width:2px}
+body.high-contrast .player-row{border-width:2px}
+
+/* ── 집중 모드 강화: 태블릿 가로모드 ── */
+@media(min-width:900px) and (orientation:landscape) and (max-height:620px){
+  body.game-focus .app-layout{grid-template-columns:160px 1fr 360px}
+  body.game-focus .chip{padding:10px 14px;font-size:13px;min-height:42px}
+  body.game-focus .o-btn{padding:10px 13px;font-size:13px;min-height:42px}
+  body.game-focus .zone-cell{border-radius:5px}
+}
+
+/* ── 오프라인 배너 ── */
+#fieldOfflineBanner{position:fixed;top:0;left:0;right:0;z-index:9001;background:#f59e0b;color:#000;text-align:center;padding:7px 16px;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px}
+#fieldOfflineBanner.show{display:flex}
+body.game-focus.offline-active .app-hdr{margin-top:34px}
+
+/* ── 고대비 토글 버튼 ── */
+#hcToggleBtn{padding:4px 8px;font-size:10px;white-space:nowrap}
+
+/* ── 피드백 버튼 ── */
+#fieldFeedbackBtn{position:fixed;bottom:90px;left:14px;z-index:400;background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:6px 11px;font-size:10px;font-weight:700;font-family:var(--font);color:var(--text3);cursor:pointer;display:none;transition:all .15s;-webkit-tap-highlight-color:transparent}
+@media(max-width:720px){#fieldFeedbackBtn{display:block}}
+#fieldFeedbackBtn:active{background:var(--bg-raised)}
+
+/* ── 피드백 모달 ── */
+#fieldFeedbackModal{position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+#fieldFeedbackModal.show{display:flex}
+.ffm-sheet{background:var(--bg-card);border-radius:16px 16px 0 0;padding:22px 18px 28px;width:100%;max-width:480px}
+.ffm-title{font-size:14px;font-weight:800;margin-bottom:12px}
+.ffm-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.ffm-tag{padding:7px 13px;border-radius:16px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .1s;min-height:36px}
+.ffm-tag.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.ffm-textarea{width:100%;padding:10px;background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--font);resize:none;outline:none;margin-bottom:12px;box-sizing:border-box}
+.ffm-btns{display:flex;gap:8px}
+.ffm-send{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
+.ffm-cancel{padding:13px 18px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
 </style>
 </head>
 <body>
@@ -7986,6 +8032,204 @@ if(location.search.includes('debug=1'))setTimeout(function(){SL.debug(true);},60
 // 2초마다 자동 갱신
 setInterval(function(){if(_dbgMode)SL.refresh();},2000);
 
+// ══════════════════════════════════════════════
+// FIELD v1.0 — 현장 베타 안정화
+// ══════════════════════════════════════════════
+
+// ─── 1. 고대비 모드 ────────────────────────────
+var _hcMode=false;
+(function(){
+  try{
+    if(localStorage.getItem('sl_hc')){
+      _hcMode=true;
+      document.body.classList.add('high-contrast');
+    }
+  }catch(e){}
+})();
+
+function toggleHighContrast(){
+  _hcMode=!_hcMode;
+  document.body.classList.toggle('high-contrast',_hcMode);
+  try{if(_hcMode)localStorage.setItem('sl_hc','1');else localStorage.removeItem('sl_hc');}catch(e){}
+  var btn=document.getElementById('hcToggleBtn');
+  if(btn)btn.textContent=_hcMode?'☀ 일반':'☀ 고대비';
+  showToast(_hcMode?'☀️ 고대비 모드 ON (야외)':'고대비 모드 OFF',false);
+}
+
+// 헤더에 고대비 버튼 주입
+(function _injectHcBtn(){
+  setTimeout(function(){
+    var hdr=document.querySelector('.app-hdr>div:last-child')||document.querySelector('.app-hdr');
+    if(!hdr)return;
+    var btn=document.createElement('button');
+    btn.id='hcToggleBtn';btn.className='btn btn-ghost';
+    btn.title='야외 고대비 모드';
+    btn.textContent='☀ 고대비';
+    btn.onclick=toggleHighContrast;
+    hdr.appendChild(btn);
+  },300);
+})();
+
+// ─── 2. 오프라인 배너 강화 ─────────────────────
+(function _fieldOffline(){
+  var banner=document.getElementById('fieldOfflineBanner');
+  if(!banner)return;
+  function _update(){
+    var online=navigator.onLine;
+    banner.classList.toggle('show',!online);
+    document.body.classList.toggle('offline-active',!online);
+    var cnt=document.getElementById('fieldOfflineCount');
+    if(cnt)cnt.textContent=!online&&AS.abs&&AS.abs.length?'('+AS.abs.length+'타석 기록 중)':'';
+    if(!online&&AS.abs&&AS.abs.length>0){
+      storageManager.scheduleAutosave({
+        abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
+        hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
+        th:(document.getElementById('tHome')||{}).value||'',
+        ta:(document.getElementById('tAway')||{}).value||''
+      },100);
+    }
+  }
+  window.addEventListener('offline',_update);
+  window.addEventListener('online',function(){_update();showToast('인터넷 연결 복구 ✓',false);});
+  _update();
+})();
+
+// ─── 3. GF 상태 포함 autosave 강화 ─────────────
+(function _enhanceAutosave(){
+  var _orig=storageManager.scheduleAutosave.bind(storageManager);
+  storageManager.scheduleAutosave=function(data,delay){
+    var enhanced=Object.assign({},data,{
+      gf:{active:GF.active,inning:GF.inning,half:GF.half,outs:GF.outs,
+          batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false]}
+    });
+    _orig(enhanced,delay);
+  };
+})();
+
+// GF 상태 복구 강화
+(function _enhanceRecovery(){
+  var _orig=archRecoverAutosave;
+  archRecoverAutosave=function(){
+    var rec=storageManager.getRecovery();
+    var gfData=rec&&rec.data?rec.data.gf:null;
+    _orig.apply(this,arguments);
+    if(gfData&&gfData.active){
+      setTimeout(function(){
+        try{
+          GF.inning=gfData.inning||1;
+          GF.half=gfData.half||'top';
+          GF.outs=gfData.outs||0;
+          GF.batterIdx=gfData.batterIdx||0;
+          GF.bases=gfData.bases||[false,false,false];
+          if(typeof gfActivate==='function')gfActivate();
+        }catch(e){console.warn('[Recovery] GF 복구 실패',e);}
+      },200);
+    }
+  };
+})();
+
+// ─── 4. 데이터 무결성 검사 ─────────────────────
+(function _integrityCheck(){
+  setTimeout(function(){
+    try{
+      var raw=localStorage.getItem('sl_saves');
+      if(!raw)return;
+      var saves=JSON.parse(raw);
+      if(!Array.isArray(saves)){localStorage.setItem('sl_saves','[]');return;}
+      var valid=saves.filter(function(s){
+        if(!s||typeof s.key!=='string')return false;
+        try{var d=localStorage.getItem(s.key);return!!d&&Array.isArray(JSON.parse(d).abs);}
+        catch(e){return false;}
+      });
+      if(valid.length<saves.length){
+        localStorage.setItem('sl_saves',JSON.stringify(valid));
+        console.log('[Integrity] 손상 항목 '+( saves.length-valid.length)+'개 제거');
+      }
+    }catch(e){console.warn('[Integrity] 검사 실패',e);}
+  },2000);
+})();
+
+// ─── 5. 연속 클릭 방지 (스팸 가드) ───────────
+(function _spamGuard(){
+  var _lock=false,_lockTimer=null;
+  function _guard(fn){
+    return function(){
+      if(_lock)return;
+      _lock=true;
+      clearTimeout(_lockTimer);
+      _lockTimer=setTimeout(function(){_lock=false;},700);
+      try{fn.apply(this,arguments);}catch(e){_lock=false;throw e;}
+    };
+  }
+  // recHit/recOther는 이미 undoManager 패치됨 — 그 위에 스팸 가드 추가
+  var _rh=recHit;recHit=_guard(function(r){_rh.apply(this,arguments);});
+  var _ro=recOther;recOther=_guard(function(r){_ro.apply(this,arguments);});
+})();
+
+// ─── 6. Ctrl+Z / Ctrl+Y 키보드 단축키 ──────────
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key==='z'){
+    e.preventDefault();undoManager.undo();
+  }
+  if(((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Z')||
+     ((e.ctrlKey||e.metaKey)&&e.key==='y')){
+    e.preventDefault();undoManager.redo();
+  }
+});
+
+// ─── 7. 피드백 시스템 ─────────────────────────
+var _ffmTags=[];
+function ffmToggle(el){
+  el.classList.toggle('on');
+  var v=el.dataset.v,i=_ffmTags.indexOf(v);
+  if(i>=0)_ffmTags.splice(i,1);else _ffmTags.push(v);
+}
+function fieldFeedbackOpen(){
+  var m=document.getElementById('fieldFeedbackModal');if(!m)return;
+  m.classList.add('show');
+  var ta=document.getElementById('ffmText');if(ta)ta.value='';
+  _ffmTags=[];
+  document.querySelectorAll('.ffm-tag').forEach(function(t){t.classList.remove('on');});
+}
+function fieldFeedbackClose(){
+  var m=document.getElementById('fieldFeedbackModal');if(m)m.classList.remove('show');
+}
+function fieldFeedbackSubmit(){
+  var text=(document.getElementById('ffmText')||{}).value||'';
+  var entry={ts:Date.now(),tags:_ffmTags.slice(),text:text.trim(),
+    abs:(AS.abs||[]).length,ver:'1.2.0',ua:navigator.userAgent.slice(0,80)};
+  try{
+    var list=JSON.parse(localStorage.getItem('sl_feedback')||'[]');
+    list.push(entry);if(list.length>50)list=list.slice(-50);
+    localStorage.setItem('sl_feedback',JSON.stringify(list));
+  }catch(e){}
+  fieldFeedbackClose();
+  showToast('피드백 감사합니다 ✓',false);
+}
+
+// ─── 8. 리포트 안전 수학 헬퍼 ─────────────────
+var safe=window.safe={
+  div:function(n,d){return(!d||isNaN(d)||!isFinite(d))?null:n/d;},
+  avg:function(n,d){var r=safe.div(n,d);return r===null?'.---':r.toFixed(3).replace('0.','.');},
+  pct:function(n,d){var r=safe.div(n,d);return r===null?'--':r.toFixed(1)+'%';},
+  nn:function(v,fb){return(v===null||v===undefined||isNaN(v))?fb:v;}
+};
+
+// ─── 9. SL 디버그 객체 확장 ──────────────────
+if(window.SL){
+  SL.feedback={
+    list:function(){return JSON.parse(localStorage.getItem('sl_feedback')||'[]');},
+    clear:function(){localStorage.removeItem('sl_feedback');console.log('피드백 삭제됨');},
+    export:function(){
+      var b=new Blob([JSON.stringify(SL.feedback.list(),null,2)],{type:'application/json'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(b);
+      a.download='sl-feedback-'+Date.now()+'.json';
+      document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);},200);
+    }
+  };
+  SL.hc={toggle:toggleHighContrast,state:function(){return _hcMode;}};
+}
+
 </script>
 <script>
 if('serviceWorker' in navigator){
@@ -7996,6 +8240,33 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+
+<!-- FIELD: Offline Banner -->
+<div id="fieldOfflineBanner">
+  <span>📵 오프라인 — 데이터는 기기에 안전하게 저장됩니다</span>
+  <span id="fieldOfflineCount" style="font-weight:400;opacity:.75"></span>
+</div>
+
+<!-- FIELD: Feedback Button & Modal -->
+<button id="fieldFeedbackBtn" onclick="fieldFeedbackOpen()">💬 피드백</button>
+
+<div id="fieldFeedbackModal">
+  <div class="ffm-sheet">
+    <div class="ffm-title">💬 현장 피드백</div>
+    <div class="ffm-tags" id="ffmTags">
+      <button class="ffm-tag" data-v="bug" onclick="ffmToggle(this)">🐛 오류</button>
+      <button class="ffm-tag" data-v="slow" onclick="ffmToggle(this)">🐌 느려요</button>
+      <button class="ffm-tag" data-v="ui" onclick="ffmToggle(this)">🎨 UI 불편</button>
+      <button class="ffm-tag" data-v="miss" onclick="ffmToggle(this)">✨ 기능 필요</button>
+      <button class="ffm-tag" data-v="good" onclick="ffmToggle(this)">⭐ 만족</button>
+    </div>
+    <textarea class="ffm-textarea" id="ffmText" rows="3" placeholder="자세한 내용 (선택)..."></textarea>
+    <div class="ffm-btns">
+      <button class="ffm-cancel" onclick="fieldFeedbackClose()">취소</button>
+      <button class="ffm-send" onclick="fieldFeedbackSubmit()">전송</button>
+    </div>
+  </div>
+</div>
 
 <!-- ARCH: Autosave Recovery Banner -->
 <div id="archRecoveryBanner">

@@ -334,8 +334,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .rpn-btn{background:var(--bg-raised);border:1px solid var(--border);color:var(--text2);padding:2px 9px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1.4;transition:background 100ms;flex-shrink:0}
 .rpn-btn:hover{background:var(--border)}
 .rpn-label{flex:1;text-align:center;font-size:11px;color:var(--text1);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--bg-raised);border:1px solid var(--border);border-radius:5px;padding:2px 6px}
-.rec-item{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:7px;border:1px solid var(--border);margin-bottom:4px;background:var(--bg-raised);position:relative;transition:border-color 100ms}
+.rec-item{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:7px;border:1px solid var(--border);margin-bottom:4px;background:var(--bg-raised);position:relative;transition:border-color 100ms,opacity 100ms}
 .rec-item:hover{border-color:var(--border2)}
+.rec-item.drag-over{border-color:var(--accent);border-style:dashed}
+.rec-item.dragging{opacity:0.35}
+.rec-drag-handle{color:var(--text3);cursor:grab;font-size:14px;line-height:1;padding:2px 0;flex-shrink:0;touch-action:none;user-select:none}
+.rec-drag-handle:active{cursor:grabbing}
 .badge{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0}
 .b-hit{background:rgba(45,212,160,.12);color:var(--green)}.b-2b{background:rgba(75,140,245,.12);color:var(--accent)}
 .b-3b{background:rgba(246,194,62,.12);color:var(--yellow)}.b-hr{background:rgba(245,101,101,.12);color:var(--red)}
@@ -2941,8 +2945,24 @@ function renderRecs(){
   document.getElementById('recCnt').textContent=list.length+'개 기록';
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'타석을 기록하면<br>여기에 표시됩니다')+'</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
-  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item"><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
+var _dragRecId=null;
+function recDragStart(e,id){_dragRecId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
+function recDragOver(e,id){e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.rec-item').forEach(el=>el.classList.remove('drag-over'));if(id!==_dragRecId)e.currentTarget.classList.add('drag-over');}
+function recDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function recDrop(e,targetId){
+  e.preventDefault();
+  if(!_dragRecId||_dragRecId===targetId)return;
+  const si=AS.abs.findIndex(a=>a.id===_dragRecId);
+  const ti=AS.abs.findIndex(a=>a.id===targetId);
+  if(si===-1||ti===-1)return;
+  const [item]=AS.abs.splice(si,1);
+  AS.abs.splice(ti,0,item);
+  _dragRecId=null;
+  updateAll();
+}
+function recDragEnd(){_dragRecId=null;document.querySelectorAll('.rec-item').forEach(el=>{el.classList.remove('dragging','drag-over');});}
 function shiftRecPlayer(dir){
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
   if(!allPlayers.length)return;

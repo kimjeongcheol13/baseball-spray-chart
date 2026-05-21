@@ -945,6 +945,67 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gs-btn-share{flex:1;padding:13px;background:none;border:1.5px solid var(--border2);border-radius:var(--r);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:48px;transition:all .1s}
 .gs-btn-share:active{background:var(--bg-raised)}
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   POST-GAME REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#pgFade{position:fixed;inset:0;z-index:810;background:#07090f;opacity:0;pointer-events:none;transition:opacity .38s ease}
+#pgFade.fading{opacity:1;pointer-events:all}
+#pgReport{position:fixed;inset:0;z-index:820;display:none;flex-direction:column;background:#09090f;overflow:hidden}
+#pgReport.show{display:flex}
+#pgSkeleton{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:2;background:#09090f}
+.pg-skel{border-radius:8px;background:linear-gradient(90deg,#141720 25%,#1e2535 50%,#141720 75%);background-size:200% 100%;animation:pgShimmer 1.4s infinite}
+@keyframes pgShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.pg-loading-txt{font-size:11px;color:var(--text3);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;animation:pulse 1.5s ease-in-out infinite;margin-top:4px}
+#pgCard{position:absolute;inset:0;overflow-y:auto;transform:translateY(100%);transition:transform .42s cubic-bezier(.2,.8,.2,1);z-index:3;-webkit-overflow-scrolling:touch;padding-bottom:max(24px,env(safe-area-inset-bottom,24px))}
+#pgCard.up{transform:translateY(0)}
+/* header */
+.pg-hdr{background:linear-gradient(170deg,#07111f 0%,#0d1e3a 55%,#09090f 100%);padding:52px 20px 22px;text-align:center;position:relative}
+.pg-hdr-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.07);border:none;color:var(--text3);font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.pg-hdr-close:active{background:rgba(255,255,255,.14)}
+.pg-badge-gold{display:inline-block;background:rgba(246,194,62,.1);border:1px solid rgba(246,194,62,.3);border-radius:20px;padding:3px 12px;font-size:9px;font-weight:800;color:#f6c23e;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.pg-teams{font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600}
+.pg-score{font-family:var(--mono);font-size:56px;font-weight:900;color:#f6c23e;line-height:1;letter-spacing:-3px;margin-bottom:6px}
+.pg-date{font-size:10px;color:var(--text3);letter-spacing:.5px}
+/* sections */
+.pg-sec{padding:0 14px;margin-bottom:12px}
+.pg-sec-lbl{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.pg-sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+/* stat grid */
+.pg-sg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pg-sb{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:10px 4px;text-align:center}
+.pg-sv{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);line-height:1}
+.pg-sl{font-size:9px;color:var(--text3);margin-top:3px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+/* direction bar */
+.pg-dir{height:9px;border-radius:6px;overflow:hidden;display:flex;gap:2px;margin-bottom:5px}
+.pg-dp{background:#4b8cf5;border-radius:4px}
+.pg-dc{background:#2dd4a0;border-radius:4px}
+.pg-do{background:#f6c23e;border-radius:4px}
+.pg-dl{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-weight:700}
+/* mid row: mini chart + insights */
+.pg-mid{display:flex;gap:10px;padding:0 14px;margin-bottom:12px;align-items:flex-start}
+.pg-mini-wrap{flex-shrink:0;width:108px;height:108px;border-radius:10px;overflow:hidden;background:#0f2010;position:relative}
+.pg-insights{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+.pg-ins{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;border-left-width:3px}
+.pg-ins.hot{border-left-color:#f6c23e}
+.pg-ins.weak{border-left-color:#f56565}
+.pg-ins.mvp{border-left-color:#2dd4a0}
+.pg-ins-lbl{font-size:8px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.pg-ins.hot .pg-ins-lbl{color:#f6c23e}
+.pg-ins.weak .pg-ins-lbl{color:#f56565}
+.pg-ins.mvp .pg-ins-lbl{color:#2dd4a0}
+.pg-ins-val{font-size:11px;font-weight:700;color:var(--text);line-height:1.45}
+/* AI comment */
+.pg-ai{margin:0 14px 12px;background:rgba(75,140,245,.06);border:1px solid rgba(75,140,245,.18);border-radius:var(--r);padding:12px 14px}
+.pg-ai-lbl{font-size:8px;font-weight:900;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin-bottom:5px}
+.pg-ai-txt{font-size:12px;color:var(--text2);line-height:1.85}
+/* share / save */
+.pg-save{width:calc(100% - 28px);margin:0 14px 8px;padding:14px;background:#f6c23e;border:none;border-radius:var(--r);color:#1a1200;font-size:14px;font-weight:900;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:filter .12s}
+.pg-save:active{filter:brightness(.88)}
+.pg-share-row{display:flex;gap:8px;padding:0 14px 6px}
+.pg-sh-btn{flex:1;padding:12px 6px;border:1.5px solid var(--border2);border-radius:var(--r);background:none;color:var(--text2);font-size:11px;font-weight:800;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .12s}
+.pg-sh-btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.pg-sh-btn:active{filter:brightness(.88);transform:scale(.97)}
+
 /* 반복 기록 버튼 */
 .repeat-btn{padding:5px 10px;border:1px dashed var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0}
 .repeat-btn:active{border-color:var(--accent);color:var(--accent)}
@@ -1538,6 +1599,58 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
   <div class="gs-card" id="gameSummaryCard"></div>
 </div>
 
+<!-- ████ POST-GAME REPORT ████ -->
+<div id="pgFade"></div>
+<div id="pgReport">
+  <div id="pgSkeleton">
+    <div class="pg-skel" style="width:110px;height:11px"></div>
+    <div class="pg-skel" style="width:90px;height:46px;border-radius:10px;margin:2px 0"></div>
+    <div style="display:flex;gap:7px;margin-top:2px">
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+    </div>
+    <div class="pg-skel" style="width:220px;height:7px;border-radius:4px;margin-top:4px"></div>
+    <div class="pg-loading-txt">경기 분석 중...</div>
+  </div>
+  <div id="pgCard">
+    <div class="pg-hdr">
+      <button class="pg-hdr-close" onclick="closePgReport()">✕</button>
+      <div class="pg-badge-gold">GAME REPORT</div>
+      <div class="pg-teams" id="pgTeams"></div>
+      <div class="pg-score" id="pgScore"></div>
+      <div class="pg-date" id="pgDate"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-sec-lbl">팀 타격 성적</div>
+      <div class="pg-sg" id="pgStatGrid"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-sec-lbl">타구 방향 분포</div>
+      <div class="pg-dir" id="pgDirBar">
+        <div class="pg-dp" id="pgDP" style="flex:1"></div>
+        <div class="pg-dc" id="pgDC" style="flex:1"></div>
+        <div class="pg-do" id="pgDO" style="flex:1"></div>
+      </div>
+      <div class="pg-dl"><span id="pgDlPull"></span><span id="pgDlCtr"></span><span id="pgDlOppo"></span></div>
+    </div>
+    <div class="pg-mid">
+      <div class="pg-mini-wrap"><canvas id="pgMini" width="108" height="108"></canvas></div>
+      <div class="pg-insights" id="pgInsights"></div>
+    </div>
+    <div class="pg-ai">
+      <div class="pg-ai-lbl">🤖 AI 코멘트</div>
+      <div class="pg-ai-txt" id="pgAITxt"></div>
+    </div>
+    <button class="pg-save" id="pgSaveBtn" onclick="pgDoSave()">💾 경기 저장</button>
+    <div class="pg-share-row">
+      <button class="pg-sh-btn acc" onclick="pgExport(1080,1920,'story')">📱 스토리 9:16</button>
+      <button class="pg-sh-btn" onclick="pgExport(1080,1080,'feed')">🖼 피드 1:1</button>
+    </div>
+  </div>
+</div>
+
 <header class="app-hdr">
   <div class="app-brand" onclick="goHome()">
     <svg viewBox="0 0 28 28" fill="none">
@@ -1565,6 +1678,7 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
     <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.<br>팀원이 링크를 열면 배너로 자동 안내됩니다.">🔗 공유</button>
     <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
     <button class="btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내</button>
+    <button class="btn btn-ghost" onclick="showPostGameReport()" style="padding:4px 8px;font-size:10px;color:#f6c23e;border-color:rgba(246,194,62,.3)" title="경기 리포트 보기">📊 리포트</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
   </div>
 </header>
@@ -6381,8 +6495,7 @@ function gfEndConfirm(){
 }
 function gfEndGame(){
   gfDeactivate();
-  // 약간 딜레이 후 카드 표시 (deactivate 애니메이션 후)
-  setTimeout(gfShowEndCard,200);
+  setTimeout(showPostGameReport,300);
 }
 
 // ─── 종료 카드 빌드 ───
@@ -6531,6 +6644,329 @@ function initOfflineDetection(){
   function onOnline(){showToast('인터넷에 연결되었습니다 ✓',false);}
   window.addEventListener('offline',onOffline);
   window.addEventListener('online',onOnline);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// POST-GAME REPORT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function showPostGameReport(){
+  var fade=document.getElementById('pgFade');
+  var ov=document.getElementById('pgReport');
+  var skel=document.getElementById('pgSkeleton');
+  var card=document.getElementById('pgCard');
+  if(!ov)return;
+  // 1) 페이드 인
+  fade.classList.add('fading');
+  setTimeout(function(){
+    ov.style.display='flex';
+    fade.classList.remove('fading');
+    skel.style.display='flex';
+    card.classList.remove('up');
+    // 2) 스켈레톤 → 콘텐츠 슬라이드업
+    setTimeout(function(){
+      _pgBuild();
+      skel.style.display='none';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){card.classList.add('up');});
+      });
+    },1100);
+  },320);
+}
+
+function closePgReport(){
+  var ov=document.getElementById('pgReport');
+  var card=document.getElementById('pgCard');
+  if(!ov)return;
+  card.classList.remove('up');
+  setTimeout(function(){ov.style.display='none';},420);
+}
+
+function _pgBuild(){
+  var abs=AS.abs;
+  var th=document.getElementById('tHome').value||'홈팀';
+  var ta=document.getElementById('tAway').value||'원정팀';
+  var date=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  // 헤더
+  document.getElementById('pgTeams').textContent=th+' vs '+ta;
+  document.getElementById('pgScore').textContent=AS.hs+' : '+AS.as;
+  document.getElementById('pgDate').textContent=date;
+
+  // 통계
+  var oab=abs.filter(function(a){return!_NOAB.includes(a.res);}).length||1;
+  var h=abs.filter(function(a){return _HITS.includes(a.res);}).length;
+  var bb=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+  var k=abs.filter(function(a){return a.res==='삼진';}).length;
+  var hr=abs.filter(function(a){return a.res==='홈런';}).length;
+  var rbi=abs.reduce(function(s,a){return s+(a.rbi||0);},0);
+  var tb=abs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
+  var avg=h/oab;
+  var fmt=function(v){return v.toFixed(3).replace('0.','.');};
+  var grid=document.getElementById('pgStatGrid');
+  if(grid)grid.innerHTML=[
+    {v:fmt(avg),l:'타율'},{v:h,l:'안타'},{v:rbi,l:'타점'},{v:k,l:'삼진'}
+  ].map(function(s){return '<div class="pg-sb"><div class="pg-sv">'+s.v+'</div><div class="pg-sl">'+s.l+'</div></div>';}).join('');
+
+  // 방향 분포
+  var dabs=abs.filter(function(a){return a.deg!=null;});
+  var tot=dabs.length||1;
+  var pull=dabs.filter(function(a){return a.deg<72;}).length;
+  var ctr=dabs.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+  var oppo=dabs.length-pull-ctr;
+  var pP=Math.round(pull/tot*100),cP=Math.round(ctr/tot*100),oP=100-pP-cP;
+  var dp=document.getElementById('pgDP'),dc=document.getElementById('pgDC'),ddo=document.getElementById('pgDO');
+  if(dp)dp.style.flex=pP||1;
+  if(dc)dc.style.flex=cP||1;
+  if(ddo)ddo.style.flex=oP||1;
+  var el=document.getElementById('pgDlPull');if(el)el.textContent='당겨 '+pP+'%';
+  el=document.getElementById('pgDlCtr');if(el)el.textContent='중앙 '+cP+'%';
+  el=document.getElementById('pgDlOppo');if(el)el.textContent='밀어 '+oP+'%';
+
+  // 인사이트 (HOT ZONE / WEAKNESS / MVP)
+  var mainDir=dabs.length?(pull>=ctr&&pull>=oppo?'당겨치기':ctr>=oppo?'센터':'밀어치기'):null;
+  var dirG=[
+    {name:'당겨치기',list:dabs.filter(function(a){return a.deg<72;})},
+    {name:'센터',list:dabs.filter(function(a){return a.deg>=72&&a.deg<=108;})},
+    {name:'밀어치기',list:dabs.filter(function(a){return a.deg>108;})}
+  ];
+  var ins=[];
+
+  // HOT ZONE
+  var hotZ=null,hotR=-1;
+  dirG.forEach(function(g){
+    if(g.list.length<3)return;
+    var r=g.list.filter(function(a){return _HITS.includes(a.res);}).length/g.list.length;
+    if(r>hotR){hotR=r;hotZ={name:g.name,rate:r,n:g.list.length};}
+  });
+  if(hotZ&&hotR>=0.38)ins.push({cls:'hot',lbl:'🔥 HOT ZONE',val:hotZ.name+' '+Math.round(hotR*100)+'% 안타율 ('+hotZ.n+'타구)'});
+
+  // WEAKNESS
+  var weakZ=null,weakR=-1;
+  dirG.forEach(function(g){
+    if(g.list.length<3)return;
+    var outList=g.list.filter(function(a){return!_HITS.includes(a.res)&&!_NOAB.includes(a.res);});
+    var r=outList.length/g.list.length;
+    if(r>weakR&&r>=0.70){weakR=r;weakZ={name:g.name,rate:r};}
+  });
+  var kRate=abs.length?k/abs.length:0;
+  if(weakZ)ins.push({cls:'weak',lbl:'⚠ WEAKNESS',val:weakZ.name+' 아웃률 '+Math.round(weakZ.rate*100)+'% — 공략 포인트 조정 포인트'});
+  else if(kRate>=0.6&&k>=3)ins.push({cls:'weak',lbl:'⚠ WEAKNESS',val:'삼진률 '+Math.round(kRate*100)+'% — 컨택 비율을 높일 여지가 있습니다'});
+
+  // MVP (안타×1 + 2루타×1 추가 + 3루타×2 추가 + 홈런×3 추가 + 타점×1)
+  var mvpMap={};
+  abs.forEach(function(a){
+    if(!mvpMap[a.bid])mvpMap[a.bid]={name:a.bname,score:0,h:0,rbi:0,hr:0};
+    var pts=(_BASE[a.res]||0)+(a.rbi||0);
+    mvpMap[a.bid].score+=pts;
+    if(_HITS.includes(a.res))mvpMap[a.bid].h++;
+    mvpMap[a.bid].rbi+=a.rbi||0;
+    if(a.res==='홈런')mvpMap[a.bid].hr++;
+  });
+  var mvpArr=Object.values(mvpMap).sort(function(a,b){return b.score-a.score;});
+  if(mvpArr.length&&mvpArr[0].h>0){
+    var m=mvpArr[0];
+    ins.push({cls:'mvp',lbl:'🏆 MVP',val:_escHtml(m.name)+' — '+m.h+'안타 '+m.rbi+'타점'+(m.hr?' '+m.hr+'홈런':'')});
+  }
+
+  var insEl=document.getElementById('pgInsights');
+  if(insEl)insEl.innerHTML=ins.length
+    ?ins.map(function(i){return'<div class="pg-ins '+i.cls+'"><div class="pg-ins-lbl">'+i.lbl+'</div><div class="pg-ins-val">'+i.val+'</div></div>';}).join('')
+    :'<div style="font-size:11px;color:var(--text3);padding:6px">타석이 쌓이면 분석이 표시됩니다</div>';
+
+  // AI 코멘트
+  var xbh=abs.filter(function(a){return['2루타','3루타','홈런'].includes(a.res);}).length;
+  var aiLines=[];
+  if(dabs.length>=3){
+    if(pP>=60)aiLines.push('당겨치기 타구가 '+pP+'%로 집중됐습니다.');
+    else if(oP>=55)aiLines.push('밀어치기 비율이 '+oP+'%로 높았습니다.');
+    else if(cP>=45)aiLines.push('균형 잡힌 중앙 공략('+cP+'%)이 돋보였습니다.');
+  }
+  if(avg>=0.40)aiLines.push('팀 타율 '+fmt(avg)+' — 오늘 타선이 뜨겁게 가동됐습니다.');
+  else if(avg<0.18&&abs.length>=5)aiLines.push('타율 '+fmt(avg)+' — 이 데이터를 기반으로 다음 경기를 준비하세요.');
+  if(xbh>=3)aiLines.push('장타(2루타 이상) '+xbh+'개로 파워 타선이 빛났습니다.');
+  if(AS.hs>AS.as)aiLines.push('🎉 우리 팀 승리! 오늘의 스프레이 데이터가 다음 경기의 무기입니다.');
+  else if(AS.hs<AS.as)aiLines.push('아쉬운 결과지만, 이 데이터로 반드시 반격하세요.');
+  if(!aiLines.length)aiLines.push('SprayLab이 경기를 기록했습니다. 데이터는 쌓일수록 강력해집니다.');
+  var aiEl=document.getElementById('pgAITxt');
+  if(aiEl)aiEl.textContent=aiLines.slice(0,2).join(' ');
+
+  // 저장 버튼 초기화
+  var sb=document.getElementById('pgSaveBtn');
+  if(sb){sb.textContent='💾 경기 저장';sb.disabled=false;}
+
+  // 미니 스프레이 차트
+  requestAnimationFrame(function(){_pgDrawMini('pgMini',108);});
+}
+
+function _pgDrawMini(id,S){
+  var c=document.getElementById(id);
+  if(!c)return;
+  var ctx=c.getContext('2d'),cx=S/2,cy=S;
+  ctx.clearRect(0,0,S,S);
+  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
+  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
+  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=.8;
+  var br=S*.42,bp=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
+  ctx.beginPath();bp.forEach(function(p,i){i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
+  var RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
+  AS.abs.forEach(function(a){
+    if(!a.x||!a.y)return;
+    var col=RC[a.res]||'#94a3b8',out=!_HITS.includes(a.res)&&!_NOAB.includes(a.res);
+    ctx.beginPath();ctx.arc(a.x*S,a.y*S,out?1.8:3,0,Math.PI*2);
+    ctx.fillStyle=col+'aa';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=.7;ctx.stroke();
+  });
+}
+
+function pgDoSave(){
+  var sb=document.getElementById('pgSaveBtn');
+  if(sb){sb.textContent='저장 중...';sb.disabled=true;}
+  saveGame();
+  setTimeout(function(){if(sb){sb.textContent='✓ 저장 완료';sb.disabled=false;}},600);
+}
+
+function pgExport(W,H,mode){
+  showToast('이미지 생성 중...',false,true);
+  setTimeout(function(){
+    var c=document.createElement('canvas');
+    c.width=W;c.height=H;
+    var ctx=c.getContext('2d');
+    var bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#07111f');bg.addColorStop(.5,'#0d1e3a');bg.addColorStop(1,'#07090f');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    // 장식 그리드
+    ctx.strokeStyle='rgba(75,140,245,.05)';ctx.lineWidth=1;
+    for(var gi=0;gi<W;gi+=W/18){ctx.beginPath();ctx.moveTo(gi,0);ctx.lineTo(gi,H);ctx.stroke();}
+
+    var pad=W*0.08,cx2=W/2,y=0;
+    var abs=AS.abs;
+    var oab2=abs.filter(function(a){return!_NOAB.includes(a.res);}).length||1;
+    var h2=abs.filter(function(a){return _HITS.includes(a.res);}).length;
+    var bb2=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+    var k2=abs.filter(function(a){return a.res==='삼진';}).length;
+    var rbi2=abs.reduce(function(s,a){return s+(a.rbi||0);},0);
+    var avg2=h2/oab2;
+    var fmt2=function(v){return v.toFixed(3).replace('0.','.');};
+    var th2=document.getElementById('tHome').value||'홈팀';
+    var ta2=document.getElementById('tAway').value||'원정팀';
+    var date2=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+    // badge
+    y=mode==='story'?H*.09:H*.1;
+    ctx.font='bold '+Math.round(W*.022)+'px sans-serif';
+    ctx.fillStyle='#f6c23e';ctx.textAlign='center';
+    ctx.fillText('GAME REPORT',cx2,y);
+    // score
+    y+=mode==='story'?H*.09:H*.11;
+    ctx.font='bold '+Math.round(W*.14)+'px sans-serif';
+    ctx.fillStyle='#f6c23e';
+    ctx.fillText(AS.hs+' : '+AS.as,cx2,y);
+    // teams
+    y+=mode==='story'?H*.055:H*.065;
+    ctx.font=Math.round(W*.034)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.55)';
+    ctx.fillText(th2+' vs '+ta2,cx2,y);
+    // date
+    y+=mode==='story'?H*.038:H*.045;
+    ctx.font=Math.round(W*.024)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.3)';
+    ctx.fillText(date2,cx2,y);
+    // divider
+    y+=mode==='story'?H*.04:H*.048;
+    ctx.strokeStyle='rgba(246,194,62,.22)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
+    // stats
+    y+=mode==='story'?H*.065:H*.08;
+    var stats2=[{v:fmt2(avg2),l:'팀 타율'},{v:h2+'',l:'안타'},{v:rbi2+'',l:'타점'},{v:k2+'',l:'삼진'}];
+    var cw=(W-pad*2)/4;
+    stats2.forEach(function(s,i){
+      var sx=pad+cw*i+cw/2;
+      ctx.font='bold '+Math.round(W*.058)+'px sans-serif';ctx.fillStyle='#eef0f8';ctx.textAlign='center';
+      ctx.fillText(s.v,sx,y);
+      ctx.font=Math.round(W*.022)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';
+      ctx.fillText(s.l,sx,y+Math.round(W*.034));
+    });
+    // direction bar
+    y+=mode==='story'?H*.11:H*.13;
+    var dabs2=abs.filter(function(a){return a.deg!=null;});
+    var tot2=dabs2.length||1;
+    var pull2=dabs2.filter(function(a){return a.deg<72;}).length;
+    var ctr2=dabs2.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+    var oppo2=dabs2.length-pull2-ctr2;
+    var bw=W-pad*2,bh=Math.round(H*.012);
+    var pw2=Math.round(bw*pull2/tot2),cw2=Math.round(bw*ctr2/tot2),ow2=bw-pw2-cw2;
+    ctx.fillStyle='#4b8cf5';_pgRRect(ctx,pad,y,pw2,bh,4);ctx.fill();
+    ctx.fillStyle='#2dd4a0';_pgRRect(ctx,pad+pw2+2,y,cw2,bh,4);ctx.fill();
+    ctx.fillStyle='#f6c23e';_pgRRect(ctx,pad+pw2+cw2+4,y,ow2,bh,4);ctx.fill();
+    y+=bh+Math.round(H*.025);
+    ctx.font=Math.round(W*.021)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';
+    ctx.textAlign='left';ctx.fillText('당겨 '+Math.round(pull2/tot2*100)+'%',pad,y);
+    ctx.textAlign='center';ctx.fillText('중앙 '+Math.round(ctr2/tot2*100)+'%',cx2,y);
+    ctx.textAlign='right';ctx.fillText('밀어 '+Math.round(oppo2/tot2*100)+'%',W-pad,y);
+    // 미니 스프레이 차트
+    y+=mode==='story'?H*.05:H*.06;
+    var mS=Math.round(W*.36),mc=document.createElement('canvas');
+    mc.width=mS;mc.height=mS;
+    _pgDrawMiniOnCanvas(mc.getContext('2d'),mS);
+    ctx.save();
+    ctx.beginPath();ctx.arc(cx2,y+mS/2,mS/2,0,Math.PI*2);ctx.clip();
+    ctx.drawImage(mc,cx2-mS/2,y);
+    ctx.restore();
+    y+=mS+Math.round(H*.04);
+    // AI 코멘트
+    var aiEl2=document.getElementById('pgAITxt');
+    if(aiEl2&&aiEl2.textContent){
+      ctx.font=Math.round(W*.027)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='center';
+      _pgWrapText(ctx,aiEl2.textContent,cx2,y,W-pad*2,Math.round(H*.04));
+    }
+    // 워터마크
+    ctx.font=Math.round(W*.018)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.18)';ctx.textAlign='center';
+    ctx.fillText('Powered by SprayLab',cx2,H-Math.round(H*.035));
+    _downloadCanvas(c,'spraylab_'+mode+'_'+Date.now()+'.png');
+    showToast('이미지 저장 완료 ✓',false);
+  },80);
+}
+
+function _pgDrawMiniOnCanvas(ctx,S){
+  var cx=S/2,cy=S;
+  ctx.clearRect(0,0,S,S);
+  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
+  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
+  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=Math.max(.7,S/160);
+  var br=S*.42,bp=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
+  ctx.beginPath();bp.forEach(function(p,i){i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
+  var RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
+  var r=Math.max(2,S/38);
+  AS.abs.forEach(function(a){
+    if(!a.x||!a.y)return;
+    var col=RC[a.res]||'#94a3b8',out=!_HITS.includes(a.res)&&!_NOAB.includes(a.res);
+    ctx.beginPath();ctx.arc(a.x*S,a.y*S,out?r*.55:r,0,Math.PI*2);
+    ctx.fillStyle=col+'aa';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=.7;ctx.stroke();
+  });
+}
+
+function _pgRRect(ctx,x,y,w,h,r){
+  if(w<=0||h<=0)return;
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function _pgWrapText(ctx,text,x,y,maxW,lineH){
+  var words=text.split(' '),line='';
+  for(var n=0;n<words.length;n++){
+    var test=line+words[n]+' ';
+    if(ctx.measureText(test).width>maxW&&n>0){ctx.fillText(line,x,y);line=words[n]+' ';y+=lineH;}
+    else line=test;
+  }
+  if(line.trim())ctx.fillText(line,x,y);
 }
 </script>
 <script>

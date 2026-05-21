@@ -4915,6 +4915,7 @@ function loadSharedGame(){
   history.replaceState(null,'',location.pathname);
   dismissSharedBanner();
   showApp();
+  hideAppWelcome();
   setTimeout(function(){updateAll();showToast('공유된 경기 데이터를 불러왔습니다 (읽기 전용)');},500);
 }
 

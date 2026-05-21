@@ -1146,6 +1146,83 @@ body.game-focus #advToggleBtn{display:none!important}
 /* ══ ANIMATION CLEANUP ══ */
 .feat-card,.stat-card{transition:border-color .1s,opacity .1s}
 @keyframes recDone{0%{transform:scale(1)}30%{transform:scale(1.04)}100%{transform:scale(1)}}
+
+/* ════════════════════════════════════════
+   TEAM SYSTEM
+════════════════════════════════════════ */
+/* Team Create Modal */
+#teamCreateModal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center}
+#teamCreateModal.on{display:flex;animation:fadeSlideUp .15s ease}
+.tcm-sheet{width:100%;max-width:480px;background:var(--bg-card);border-radius:16px 16px 0 0;padding:20px 18px max(24px,env(safe-area-inset-bottom));border:1px solid var(--border2)}
+.tcm-title{font-size:16px;font-weight:800;margin-bottom:3px}
+.tcm-sub{font-size:11px;color:var(--text3);margin-bottom:18px}
+.tcm-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.tcm-color-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tcm-color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .12s,border-color .12s;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.tcm-color-dot.on{border-color:#fff;transform:scale(1.2)}
+.tcm-btns{display:flex;gap:8px;margin-top:10px}
+.tcm-btn-ok{flex:2;padding:13px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;min-height:48px;-webkit-tap-highlight-color:transparent}
+.tcm-btn-ok:active{filter:brightness(.9)}
+.tcm-btn-cancel{flex:1;padding:13px;border:1px solid var(--border2);border-radius:9px;background:none;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent}
+/* Team selector bar (AppWelcome) */
+.team-sel-bar{width:100%;max-width:380px;display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-shrink:0}
+.tsb-label{font-size:10px;color:var(--text3);font-weight:700;flex-shrink:0;white-space:nowrap}
+.tsb-sel{flex:1;background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-weight:600;font-family:var(--font);padding:7px 10px;cursor:pointer;min-height:36px;-webkit-tap-highlight-color:transparent}
+.tsb-new{padding:6px 11px;border:1px solid rgba(75,140,245,.4);border-radius:7px;background:none;color:var(--accent);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;flex-shrink:0;min-height:36px;-webkit-tap-highlight-color:transparent}
+/* Team Dashboard Panel */
+.team-hdr{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-raised);border-radius:10px;margin-bottom:8px;border:1px solid var(--border)}
+.team-color-circle{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.team-hdr-info{flex:1;min-width:0}
+.team-hdr-name{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-hdr-meta{font-size:10px;color:var(--text3);margin-top:2px}
+.team-hdr-btn{padding:5px 10px;border:1px solid var(--border2);border-radius:6px;background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:30px;-webkit-tap-highlight-color:transparent}
+/* Season Record Strip */
+.team-rec-strip{display:flex;gap:5px;margin-bottom:0}
+.trs-it{flex:1;padding:9px 4px;background:var(--bg-raised);border-radius:7px;border:1px solid var(--border);text-align:center}
+.trs-v{font-size:17px;font-weight:800;font-family:var(--mono)}
+.trs-l{font-size:9px;color:var(--text3);margin-top:1px;font-weight:700}
+/* Flow bar */
+.flow-bar{display:flex;gap:3px;align-items:center}
+.flow-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;flex-shrink:0}
+.flow-dot.w{background:rgba(45,212,160,.2);color:var(--green)}
+.flow-dot.l{background:rgba(245,101,101,.15);color:var(--red)}
+.flow-dot.d{background:rgba(255,255,255,.06);color:var(--text3)}
+/* Leaderboard */
+.ldr-tabs{display:flex;gap:4px;margin-bottom:8px}
+.ldr-tab{padding:4px 10px;border:1px solid var(--border);border-radius:5px;font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;color:var(--text3);background:var(--bg-raised);white-space:nowrap;-webkit-tap-highlight-color:transparent;min-height:28px}
+.ldr-tab.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.ldr-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border)}
+.ldr-rank{font-size:13px;width:22px;flex-shrink:0;text-align:center}
+.ldr-info{flex:1;min-width:0}
+.ldr-name{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldr-detail{font-size:10px;color:var(--text3);margin-top:1px}
+.ldr-stat{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--accent);flex-shrink:0}
+/* Game History */
+.gh-item{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent}
+.gh-item:active{background:var(--bg-raised)}
+.gh-res{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.gh-res.w{background:rgba(45,212,160,.15);color:var(--green)}
+.gh-res.l{background:rgba(245,101,101,.12);color:var(--red)}
+.gh-res.d{background:rgba(255,255,255,.06);color:var(--text3)}
+.gh-info{flex:1;min-width:0}
+.gh-vs{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-date{font-size:10px;color:var(--text3);margin-top:1px}
+.gh-mvp{font-size:9px;color:#f6c23e;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh-score{font-family:var(--mono);font-size:15px;font-weight:800;flex-shrink:0}
+/* Role Switcher */
+.role-sw{display:flex;background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:8px}
+.role-sw-btn{flex:1;padding:6px 4px;border:none;border-radius:6px;font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;color:var(--text3);background:none;transition:all .1s;-webkit-tap-highlight-color:transparent;min-height:30px}
+.role-sw-btn.on{background:var(--accent);color:#fff}
+/* Team share */
+.team-share-row{display:flex;gap:6px;margin-top:6px}
+.team-share-btn{flex:1;padding:10px 6px;border:1px solid var(--border2);border-radius:8px;background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;transition:background .1s}
+.team-share-btn:active{background:var(--bg-raised)}
+/* Shared team banner */
+#teamSharedBanner{position:fixed;top:0;left:0;right:0;z-index:9002;background:linear-gradient(90deg,#1a2640,#1e2d4a);border-bottom:1px solid rgba(75,140,245,.3);padding:11px 16px;display:none}
+.tsb-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;gap:10px}
+/* Role CSS */
+body.role-coach .pnl-right [id^="pnl-batter"]{order:99}
+body.role-player #pnl-stat .stat-card:not(.personal){opacity:.7}
 </style>
 </head>
 <body>
@@ -1483,8 +1560,54 @@ body.game-focus #advToggleBtn{display:none!important}
       </div>
     </button>
   </div>
+  <div class="team-sel-bar">
+    <span class="tsb-label">현재 팀</span>
+    <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
+      <option value="">팀 없음</option>
+    </select>
+    <button class="tsb-new" onclick="openTeamCreate()">+ 팀 만들기</button>
+  </div>
   <div class="aw-recent" id="awRecent"></div>
   <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 도움말 · 투어 · 설정</button>
+</div>
+
+<!-- ████ 공유된 팀 배너 ████ -->
+<div id="teamSharedBanner">
+  <div class="tsb-inner">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">🏟️ <span id="tsbTeamName">팀</span> 데이터</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:1px"><span id="tsbTeamGames"></span> 공유됨</div>
+    </div>
+    <button onclick="importSharedTeam()" style="padding:7px 14px;border:none;border-radius:7px;background:var(--accent);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent">가져오기</button>
+    <button onclick="document.getElementById('teamSharedBanner').style.display='none'" style="padding:7px 9px;border:1px solid var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:11px;font-family:var(--font);cursor:pointer;flex-shrink:0">✕</button>
+  </div>
+</div>
+
+<!-- ████ 팀 생성 모달 ████ -->
+<div id="teamCreateModal" onclick="if(event.target===this)closeTeamCreate()">
+  <div class="tcm-sheet">
+    <div class="tcm-title">🏟️ 팀 만들기</div>
+    <div class="tcm-sub">팀을 만들면 경기 저장 시 자동으로 기록됩니다</div>
+    <div class="tcm-label">팀명 *</div>
+    <input class="gw-inp" id="tcmName" placeholder="예: 성동 타이거즈" maxlength="15" style="margin-bottom:14px" onkeydown="if(event.key==='Enter')createTeam()">
+    <div class="tcm-label">홈구장 (선택)</div>
+    <input class="gw-inp" id="tcmStadium" placeholder="예: 목동야구장" maxlength="20" style="margin-bottom:14px">
+    <div class="tcm-label">팀 컬러</div>
+    <div class="tcm-color-row" id="tcmColorRow">
+      <div class="tcm-color-dot on" data-c="#4b8cf5" style="background:#4b8cf5" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#2dd4a0" style="background:#2dd4a0" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#f56565" style="background:#f56565" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#f6c23e" style="background:#f6c23e" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#a78bfa" style="background:#a78bfa" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#fb923c" style="background:#fb923c" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#ec4899" style="background:#ec4899" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#64748b" style="background:#64748b" onclick="tcmPickColor(this)"></div>
+    </div>
+    <div class="tcm-btns">
+      <button class="tcm-btn-cancel" onclick="closeTeamCreate()">취소</button>
+      <button class="tcm-btn-ok" onclick="createTeam()">팀 생성</button>
+    </div>
+  </div>
 </div>
 
 <!-- ████ 더보기 바텀시트 ████ -->
@@ -1858,6 +1981,7 @@ body.game-focus #advToggleBtn{display:none!important}
       <div class="tab" id="tab-stat" onclick="swTab('stat',this)" data-help-title="📊 팀통계 탭" data-help="팀 전체 <b>타율·출루율·OPS</b>와 선수별 성적 순위를 비교합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>팀통계</div>
       <div class="tab" id="tab-chart" onclick="swTab('chart',this)" data-help-title="📈 차트 탭" data-help="개인(9:16) · 팀(1:1) <b>성적카드 PNG</b>를 생성해 SNS에 공유합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
       <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)" data-help-title="⚾ 투수 탭" data-help="상대 투수의 <b>구종·코스·결과</b>를 기록하고 분석합니다.<br>구종 비율 도넛차트와 코스 히트맵이 자동 생성됩니다.">⚾ 투수</div>
+      <div class="tab" id="tab-team" onclick="swTab('team',this);renderTeamDashboard()" style="white-space:nowrap">🏟️ 팀</div>
     </div>
     <div class="tab-body">
       <div class="tab-pnl on" id="pnl-rec">
@@ -2078,6 +2202,52 @@ body.game-focus #advToggleBtn{display:none!important}
           <div class="sc-title">투수 통계</div>
           <div id="pitcherStats">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수를 등록하고 투구를 기록하세요</div>
+          </div>
+        </div>
+      </div>
+      <!-- ████ 팀 대시보드 패널 ████ -->
+      <div class="tab-pnl" id="pnl-team">
+        <!-- 역할 스위처 -->
+        <div class="role-sw">
+          <button class="role-sw-btn" data-r="coach" onclick="setRole('coach')">👔 감독</button>
+          <button class="role-sw-btn on" data-r="scorer" onclick="setRole('scorer')">📋 기록원</button>
+          <button class="role-sw-btn" data-r="player" onclick="setRole('player')">⚾ 선수</button>
+        </div>
+        <!-- 팀 헤더 (JS로 렌더) -->
+        <div id="teamPanelHdr"></div>
+        <!-- 시즌 기록 -->
+        <div class="stat-card" id="teamSeasonCard">
+          <div class="sc-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>시즌 기록</span>
+            <div class="flow-bar" id="teamRecentFlow" title="최근 5경기"></div>
+          </div>
+          <div class="team-rec-strip" id="teamRecordStrip">
+            <div style="font-size:11px;color:var(--text3);text-align:center;width:100%;padding:8px 0">경기를 저장하면 자동 집계됩니다</div>
+          </div>
+        </div>
+        <!-- 리더보드 -->
+        <div class="stat-card" id="teamLeaderboardCard">
+          <div class="sc-title">리더보드</div>
+          <div class="ldr-tabs">
+            <button class="ldr-tab on" data-s="ops" onclick="renderTeamLeaderboard('ops')">OPS</button>
+            <button class="ldr-tab" data-s="avg" onclick="renderTeamLeaderboard('avg')">타율</button>
+            <button class="ldr-tab" data-s="hr" onclick="renderTeamLeaderboard('hr')">홈런</button>
+            <button class="ldr-tab" data-s="rbi" onclick="renderTeamLeaderboard('rbi')">타점</button>
+          </div>
+          <div id="teamLeaderboardBody"><div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">팀 경기를 기록하면 자동 집계됩니다</div></div>
+        </div>
+        <!-- 경기 히스토리 -->
+        <div class="stat-card" id="teamHistoryCard">
+          <div class="sc-title">경기 히스토리</div>
+          <div id="teamHistoryBody"><div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">저장된 경기가 없습니다</div></div>
+        </div>
+        <!-- 팀 공유 -->
+        <div class="stat-card" id="teamShareCard">
+          <div class="sc-title">팀 공유</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">팀 정보와 경기 기록을 URL·QR로 공유합니다</div>
+          <div class="team-share-row">
+            <button class="team-share-btn" onclick="shareTeamURL()">🔗 URL 공유</button>
+            <button class="team-share-btn" onclick="shareTeamURL()">📱 QR 코드</button>
           </div>
         </div>
       </div>
@@ -7095,6 +7265,296 @@ function _pgWrapText(ctx,text,x,y,maxW,lineH){
   }
   if(line.trim())ctx.fillText(line,x,y);
 }
+
+// ══════════════════════════════════════════════
+// TEAM SYSTEM — 팀 플랫폼
+// localStorage key: 'sl_teams'
+// teamData = { teams:[], activeTeamId:null }
+// team = { id, name, color, stadium, createdAt, games:[] }
+// game entry = { key, date, th, ta, hs, as, result:'W'|'L'|'D', mvp:{name,num,h,ab,rbi} }
+// Share URL: ?team=z<LZString encoded JSON>
+// ══════════════════════════════════════════════
+
+var _TD_KEY='sl_teams';
+var _TD={teams:[],activeTeamId:null};
+var _tcmColor='#4b8cf5';
+
+function tdLoad(){try{var r=localStorage.getItem(_TD_KEY);if(r)_TD=JSON.parse(r);}catch(e){}if(!_TD.teams)_TD.teams=[];}
+function tdSave(){try{localStorage.setItem(_TD_KEY,JSON.stringify(_TD));}catch(e){}}
+function tdGetActive(){return _TD.teams.find(function(t){return t.id===_TD.activeTeamId;})||null;}
+
+// ── 팀 생성/관리 ──
+function openTeamCreate(){
+  tdLoad();
+  var m=document.getElementById('teamCreateModal');if(m)m.classList.add('on');
+  var n=document.getElementById('tcmName');if(n){n.value='';setTimeout(function(){n.focus();},200);}
+  var s=document.getElementById('tcmStadium');if(s)s.value='';
+  _tcmColor='#4b8cf5';
+  document.querySelectorAll('.tcm-color-dot').forEach(function(d){d.classList.toggle('on',d.dataset.c==='#4b8cf5');});
+}
+function closeTeamCreate(){var m=document.getElementById('teamCreateModal');if(m)m.classList.remove('on');}
+function tcmPickColor(dot){
+  _tcmColor=dot.dataset.c;
+  document.querySelectorAll('.tcm-color-dot').forEach(function(d){d.classList.remove('on');});
+  dot.classList.add('on');
+}
+function createTeam(){
+  var name=(document.getElementById('tcmName').value||'').trim();
+  if(!name){showToast('팀명을 입력하세요',true);return;}
+  var stadium=(document.getElementById('tcmStadium').value||'').trim();
+  tdLoad();
+  var team={id:'t'+Date.now(),name:name,color:_tcmColor,stadium:stadium,
+    createdAt:new Date().toLocaleDateString('ko-KR'),games:[]};
+  _TD.teams.push(team);_TD.activeTeamId=team.id;tdSave();
+  closeTeamCreate();renderTeamSelector();renderTeamDashboard();
+  showToast('🏟️ '+name+' 팀 생성 완료',false);
+}
+
+// ── 팀 셀렉터 (AppWelcome) ──
+function renderTeamSelector(){
+  tdLoad();
+  var sel=document.getElementById('tsbSelect');if(!sel)return;
+  if(!_TD.teams.length){sel.innerHTML='<option value="">팀 없음</option>';return;}
+  sel.innerHTML='<option value="">팀 선택 안함</option>'
+    +_TD.teams.map(function(t){
+      return '<option value="'+t.id+'"'+( t.id===_TD.activeTeamId?' selected':'')+'>'+_escHtml(t.name)+'</option>';
+    }).join('');
+}
+function tsbChange(val){tdLoad();_TD.activeTeamId=val||null;tdSave();renderTeamDashboard();}
+
+// ── 경기 → 팀 연결 ──
+function _computeMVP(abs){
+  if(!abs||!abs.length)return null;
+  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+  var base={안타:1,내야안타:1,'2루타':2,'3루타':3,'홈런':4};
+  var pm={};
+  abs.forEach(function(a){
+    if(a.team!=='home')return;
+    if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,rbi:0,tb:0};
+    var p=pm[a.bid];
+    if(hits.includes(a.res))p.h++;
+    if(!noab.includes(a.res))p.ab++;
+    p.rbi+=(a.rbi||0);p.tb+=(base[a.res]||0);
+  });
+  var best=Object.values(pm).filter(function(p){return p.ab>0;}).sort(function(a,b){
+    return (b.h/(b.ab||1)*100+b.rbi*12+b.tb*4)-(a.h/(a.ab||1)*100+a.rbi*12+a.tb*4);
+  })[0];
+  return (best&&best.h>0)?best:null;
+}
+function linkGameToTeam(key,data){
+  tdLoad();var team=tdGetActive();if(!team)return;
+  if(team.games.find(function(g){return g.key===key;}))return;
+  var hs=data.hs||0,as=data.as||0;
+  team.games.push({key:key,date:data.d||new Date().toLocaleDateString('ko-KR'),
+    th:data.th||'',ta:data.ta||'',hs:hs,as:as,
+    result:hs>as?'W':hs<as?'L':'D',
+    mvp:_computeMVP(data.abs||[])});
+  tdSave();
+}
+
+// ── 팀 대시보드 렌더 ──
+function renderTeamDashboard(){
+  tdLoad();
+  var hdr=document.getElementById('teamPanelHdr');if(!hdr)return;
+  var team=tdGetActive();
+  // 카드 표시/숨김
+  ['teamSeasonCard','teamLeaderboardCard','teamHistoryCard','teamShareCard'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.style.display=team?'':'none';
+  });
+  if(!team){
+    hdr.innerHTML='<div style="text-align:center;padding:20px 0">'
+      +'<div style="font-size:13px;color:var(--text3);margin-bottom:12px">팀을 생성하거나 선택하세요</div>'
+      +'<button class="btn btn-primary" onclick="openTeamCreate()" style="min-width:140px">+ 팀 만들기</button>'
+      +'</div>';
+    return;
+  }
+  hdr.innerHTML='<div class="team-hdr">'
+    +'<div class="team-color-circle" style="background:'+team.color+';color:#fff">'+_escHtml(team.name[0])+'</div>'
+    +'<div class="team-hdr-info">'
+    +'<div class="team-hdr-name">'+_escHtml(team.name)+'</div>'
+    +'<div class="team-hdr-meta">'+(team.stadium?'📍'+_escHtml(team.stadium)+' · ':'')+team.createdAt+'</div>'
+    +'</div>'
+    +'<button class="team-hdr-btn" onclick="openTeamCreate()">+ 팀 추가</button>'
+    +'</div>';
+  // 시즌 기록
+  var games=team.games||[];
+  var W=games.filter(function(g){return g.result==='W';}).length;
+  var L=games.filter(function(g){return g.result==='L';}).length;
+  var D=games.filter(function(g){return g.result==='D';}).length;
+  var rs=games.reduce(function(s,g){return s+g.hs;},0);
+  var ra=games.reduce(function(s,g){return s+g.as;},0);
+  var wp=games.length?(W/games.length*100).toFixed(0)+'%':'—';
+  var strip=document.getElementById('teamRecordStrip');
+  if(strip)strip.innerHTML=
+    '<div class="trs-it"><div class="trs-v" style="color:var(--green)">'+W+'</div><div class="trs-l">승</div></div>'
+    +'<div class="trs-it"><div class="trs-v" style="color:var(--red)">'+L+'</div><div class="trs-l">패</div></div>'
+    +'<div class="trs-it"><div class="trs-v">'+D+'</div><div class="trs-l">무</div></div>'
+    +'<div class="trs-it"><div class="trs-v" style="color:var(--accent)">'+wp+'</div><div class="trs-l">승률</div></div>'
+    +'<div class="trs-it"><div class="trs-v" style="font-size:13px">'+rs+'/'+ra+'</div><div class="trs-l">득/실</div></div>';
+  var flow=document.getElementById('teamRecentFlow');
+  if(flow){
+    var r5=games.slice(-5);
+    flow.innerHTML=r5.length
+      ?r5.map(function(g){return '<div class="flow-dot '+g.result.toLowerCase()+'">'+g.result+'</div>';}).join('')
+      :'<span style="font-size:10px;color:var(--text3)">경기 없음</span>';
+  }
+  renderTeamLeaderboard(_ldrSort||'ops');
+  renderGameHistory();
+}
+
+// ── 리더보드 ──
+var _ldrSort='ops';
+function renderTeamLeaderboard(sort){
+  _ldrSort=sort;
+  document.querySelectorAll('.ldr-tab').forEach(function(t){t.classList.toggle('on',t.dataset.s===sort);});
+  var el=document.getElementById('teamLeaderboardBody');if(!el)return;
+  tdLoad();var team=tdGetActive();if(!team){el.innerHTML='';return;}
+  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+  var base={안타:1,내야안타:1,'2루타':2,'3루타':3,'홈런':4};
+  var pm={};
+  team.games.forEach(function(g){
+    var raw=localStorage.getItem(g.key);if(!raw)return;
+    var d;try{d=JSON.parse(raw);}catch(e){return;}
+    (d.abs||[]).forEach(function(a){
+      if(a.team!=='home')return;
+      if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,bb:0,tb:0,rbi:0,hr:0,gk:new Set()};
+      var p=pm[a.bid];p.gk.add(g.key);
+      if(hits.includes(a.res))p.h++;
+      if(!noab.includes(a.res))p.ab++;
+      if(a.res==='볼넷'||a.res==='사구')p.bb++;
+      p.tb+=(base[a.res]||0);p.rbi+=(a.rbi||0);
+      if(a.res==='홈런')p.hr++;
+    });
+  });
+  var ps=Object.values(pm).filter(function(p){return p.ab>=3;});
+  ps.forEach(function(p){
+    p.avg=p.ab?p.h/p.ab:0;
+    p.obp=(p.ab+p.bb)?(p.h+p.bb)/(p.ab+p.bb):0;
+    p.slg=p.ab?p.tb/p.ab:0;
+    p.ops=p.obp+p.slg;p.g=p.gk.size;
+  });
+  var sf={ops:function(a,b){return b.ops-a.ops;},avg:function(a,b){return b.avg-a.avg;},
+    hr:function(a,b){return b.hr-a.hr;},rbi:function(a,b){return b.rbi-a.rbi;}};
+  ps.sort(sf[sort]||sf.ops);
+  var top=ps.slice(0,5);
+  if(!top.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">최소 3타석 이상 데이터가 없습니다</div>';return;}
+  var vf={ops:function(p){return p.ops.toFixed(3);},avg:function(p){return p.avg.toFixed(3);},
+    hr:function(p){return p.hr;},rbi:function(p){return p.rbi;}};
+  el.innerHTML=top.map(function(p,i){
+    var v=String(vf[sort](p));if(v.length>3&&v.startsWith('0.'))v=v.slice(1);
+    return '<div class="ldr-row">'
+      +'<div class="ldr-rank">'+(['🥇','🥈','🥉'][i]||i+1)+'</div>'
+      +'<div class="ldr-info"><div class="ldr-name">#'+p.num+' '+_escHtml(p.name)+'</div>'
+      +'<div class="ldr-detail">'+p.g+'경기 · '+p.ab+'AB · AVG '+p.avg.toFixed(3).replace('0.','.') +'</div></div>'
+      +'<div class="ldr-stat">'+v+'</div></div>';
+  }).join('');
+}
+
+// ── 경기 히스토리 ──
+function renderGameHistory(){
+  var el=document.getElementById('teamHistoryBody');if(!el)return;
+  tdLoad();var team=tdGetActive();
+  if(!team||!team.games.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">경기를 저장하면 자동으로 기록됩니다</div>';return;
+  }
+  el.innerHTML=[...team.games].reverse().slice(0,20).map(function(g){
+    var rc=g.result==='W'?'w':g.result==='L'?'l':'d';
+    var mv=g.mvp?'⭐ #'+g.mvp.num+' '+_escHtml(g.mvp.name||''):'';
+    return '<div class="gh-item" onclick="loadTeamGame(\''+g.key+'\')">'
+      +'<div class="gh-res '+rc+'">'+g.result+'</div>'
+      +'<div class="gh-info"><div class="gh-vs">vs '+_escHtml(g.ta)+'</div>'
+      +'<div class="gh-date">'+g.date+'</div>'+(mv?'<div class="gh-mvp">'+mv+'</div>':'')+'</div>'
+      +'<div class="gh-score">'+g.hs+':'+g.as+'</div></div>';
+  }).join('');
+}
+function loadTeamGame(key){
+  restoreGame(key);enterFocusMode();
+  swTab('rec',document.getElementById('tab-rec'));
+  showToast('경기를 불러왔습니다 ✓',false);
+}
+
+// ── 팀 URL 공유 ──
+function shareTeamURL(){
+  tdLoad();var team=tdGetActive();
+  if(!team){showToast('공유할 팀이 없습니다',true);return;}
+  var payload={v:1,type:'team',name:team.name,color:team.color,stadium:team.stadium,
+    games:team.games.map(function(g){return {date:g.date,th:g.th,ta:g.ta,hs:g.hs,as:g.as,result:g.result,
+      mvpName:g.mvp?g.mvp.name:null};})};
+  var json=JSON.stringify(payload);
+  var enc=typeof LZString!=='undefined'
+    ?'z'+LZString.compressToEncodedURIComponent(json)
+    :'b'+btoa(unescape(encodeURIComponent(json)));
+  var url=location.origin+location.pathname+'?team='+enc;
+  showShareQR(url);
+}
+
+// ── URL에서 팀 데이터 로드 ──
+(function _loadTeamFromURL(){
+  var sp=new URLSearchParams(location.search);
+  var enc=sp.get('team');if(!enc)return;
+  try{
+    var json=enc[0]==='z'&&typeof LZString!=='undefined'
+      ?LZString.decompressFromEncodedURIComponent(enc.slice(1))
+      :decodeURIComponent(escape(atob(enc[0]==='b'?enc.slice(1):enc)));
+    var p=JSON.parse(json);
+    if(!p||p.type!=='team')return;
+    window._sharedTeamPayload=p;
+    var b=document.getElementById('teamSharedBanner');
+    if(b){
+      document.getElementById('tsbTeamName').textContent=p.name;
+      document.getElementById('tsbTeamGames').textContent=(p.games?p.games.length+'경기':'')+'가 공유됨';
+      b.style.display='block';
+    }
+  }catch(e){console.log('team URL parse fail',e);}
+})();
+
+function importSharedTeam(){
+  var p=window._sharedTeamPayload;if(!p)return;
+  tdLoad();
+  var team={id:'t'+Date.now(),name:p.name,color:p.color||'#4b8cf5',stadium:p.stadium||'',
+    createdAt:new Date().toLocaleDateString('ko-KR'),games:p.games||[]};
+  _TD.teams.push(team);_TD.activeTeamId=team.id;tdSave();
+  var b=document.getElementById('teamSharedBanner');if(b)b.style.display='none';
+  renderTeamSelector();
+  showToast('🏟️ '+p.name+' 팀 데이터를 가져왔습니다',false);
+}
+
+// ── 역할 스위처 ──
+var _role='scorer';
+function setRole(r){
+  _role=r;
+  document.body.className=document.body.className.replace(/\brole-\w+/g,'').trim();
+  document.body.classList.add('role-'+r);
+  document.querySelectorAll('.role-sw-btn').forEach(function(b){b.classList.toggle('on',b.dataset.r===r);});
+  try{localStorage.setItem('sl_role',r);}catch(e){}
+}
+
+// ── saveGame 패치: 저장 후 팀에 자동 연결 ──
+(function _patchSaveForTeam(){
+  var _o=saveGame;
+  saveGame=function(){
+    _o.apply(this,arguments);
+    setTimeout(function(){
+      tdLoad();if(!tdGetActive())return;
+      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+      if(!saves.length)return;
+      var last=saves[saves.length-1];
+      var raw=localStorage.getItem(last.key);if(!raw)return;
+      var d;try{d=JSON.parse(raw);}catch(e){return;}
+      linkGameToTeam(last.key,{hs:d.hs||0,as:d.as||0,d:d.d||'',th:d.th||'',ta:d.ta||'',abs:d.abs||[]});
+    },700);
+  };
+})();
+
+// ── 초기화 ──
+(function _teamInit(){
+  tdLoad();
+  var savedRole=localStorage.getItem('sl_role')||'scorer';
+  setTimeout(function(){
+    renderTeamSelector();
+    setRole(savedRole);
+  },250);
+})();
 
 // ══════════════════════════════════════════════
 // UI 단순화 + 경기 중 UX 최적화

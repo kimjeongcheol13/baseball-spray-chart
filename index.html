@@ -873,6 +873,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .hm-tour-icon{font-size:20px;flex-shrink:0}
 .hm-tour-btn-body{display:flex;flex-direction:column;gap:2px}
 .hm-tour-btn-sub{font-size:10px;color:var(--text3);font-weight:400}
+.hm-new{display:inline-block;background:linear-gradient(90deg,var(--blue),#7c5cfc);color:#fff;font-size:8px;font-weight:900;padding:1px 5px;border-radius:8px;letter-spacing:.6px;vertical-align:middle;margin-left:5px;line-height:1.6}
+.hm-header-meta{display:flex;align-items:center;gap:8px}
+.hm-header-count{font-size:10px;color:var(--text3);font-weight:600;background:var(--bg-raised);border-radius:8px;padding:2px 8px;border:1px solid var(--border)}
+/* 도움말 모드 토글 버튼 */
+.btn-help-mode{padding:4px 8px;font-size:10px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text3);font-family:var(--font);font-weight:700;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.btn-help-mode.active{background:rgba(246,194,62,.12);border-color:#f6c23e;color:#f6c23e}
+.btn-help-mode:active{transform:scale(.94)}
+#helpModeIndicator{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:500;background:#f6c23e;color:#1a1200;font-size:11px;font-weight:800;padding:5px 14px;border-radius:20px;display:none;pointer-events:none;letter-spacing:.3px;box-shadow:0 4px 16px rgba(246,194,62,.35)}
+#helpModeIndicator.show{display:block;animation:fadeIn .2s ease}
+#helpModeTooltip{position:fixed;bottom:0;left:0;right:0;z-index:600;background:var(--bg-card);border-top:2px solid #f6c23e;padding:16px 20px;padding-bottom:max(20px,env(safe-area-inset-bottom,16px));transform:translateY(100%);transition:transform .25s ease}
+#helpModeTooltip.show{transform:translateY(0)}
+.hmt-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px}
+.hmt-title{font-size:13px;font-weight:900;color:#f6c23e}
+.hmt-close{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;padding:0;-webkit-tap-highlight-color:transparent}
+.hmt-desc{font-size:12px;color:var(--text2);line-height:1.85}
+body.help-mode [data-help]{outline:2px dashed rgba(246,194,62,.45);outline-offset:3px;border-radius:6px;cursor:help}
+body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ONBOARDING 개선 (3단계 + 다시 보지 않기)
@@ -1387,7 +1404,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <div class="hm-sheet">
     <div class="hm-handle"></div>
     <div class="hm-header">
-      <div class="hm-header-title">도움말</div>
+      <div class="hm-header-meta">
+        <div class="hm-header-title">도움말</div>
+        <span class="hm-header-count">7개 주제</span>
+      </div>
       <button class="hm-close" onclick="closeHelpModal()">✕</button>
     </div>
     <div class="hm-card">
@@ -1448,6 +1468,31 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
         <p><kbd>Ctrl+Z</kbd> 로 마지막 기록 즉시 취소</p>
       </div>
     </div>
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(5)">
+        <div class="hm-ch-icon">▶</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">경기 운영 모드<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타순·아웃카운트·이닝을 자동으로 진행합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc5">
+        <p>상단 툴바의 <b>▶ 경기운영</b> 버튼을 탭하면 시작됩니다</p>
+        <p>기록을 입력할 때마다 <b>타순이 자동으로 넘어가고</b>, 3아웃 시 이닝이 자동 전환됩니다</p>
+        <p>상단 바에서 실시간 아웃카운트·베이스·이닝·스코어를 확인할 수 있습니다</p>
+        <p><b>경기종료</b> 버튼을 탭하면 최종 요약 카드가 표시됩니다</p>
+      </div>
+    </div>
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(6)">
+        <div class="hm-ch-icon">🤖</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">AI 타격 분석<span class="hm-new">NEW</span></div><div class="hm-ch-sub">2타석 이상 기록하면 자동으로 분석합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc6">
+        <p>타자 탭 하단 <b>🤖 AI 타격 분석</b> 카드에서 확인합니다</p>
+        <p>분석 항목:<br>• 타율 트렌드 (상승·하락·안정)<br>• 출루 스타일 (볼넷형·컨택형·파워형)<br>• 타구 방향 편중 (당겨치기·밀어치기·중앙형)<br>• 강점 코스·경계 구역 자동 감지</p>
+        <p>타석이 늘어날수록 분석이 더 정확해집니다</p>
+      </div>
+    </div>
     <div class="hm-tour-btns">
       <button class="hm-tour-btn" onclick="closeHelpModal();startTour()">
         <span class="hm-tour-icon">🎯</span>
@@ -1470,7 +1515,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
     <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
   </div>
-  <button class="fab-btn" id="fabBtn" onclick="fabToggle()">⚡</button>
+  <button class="fab-btn" id="fabBtn" onclick="fabToggle()" data-help-title="⚡ FAB 퀵 액션" data-help="안타·아웃·삼진·볼넷을 즉시 기록하는 <b>플로팅 퀵 액션</b>입니다.<br>↩ 반복 버튼으로 바로 전 타석 결과를 그대로 반복 입력할 수 있습니다.">⚡</button>
+</div>
+
+<!-- ████ 도움말 모드 인디케이터 & 툴팁 ████ -->
+<div id="helpModeIndicator">💡 도움말 모드 ON</div>
+<div id="helpModeTooltip">
+  <div class="hmt-header">
+    <div class="hmt-title" id="hmtTitle"></div>
+    <button class="hmt-close" onclick="closeHelpModeTooltip()">✕</button>
+  </div>
+  <div class="hmt-desc" id="hmtDesc"></div>
 </div>
 
 <!-- ████ Game Flow 경기 종료 카드 ████ -->
@@ -1506,9 +1561,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
-    <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행">▶ 경기운영</button>
-    <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px">🔗 공유</button>
+    <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
+    <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.<br>팀원이 링크를 열면 배너로 자동 안내됩니다.">🔗 공유</button>
     <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
+    <button class="btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
   </div>
 </header>
@@ -1579,13 +1635,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
       </div>
     </div>
     <!-- 상단 고정 퀵버튼 바 -->
-    <div class="quick-bar" id="quickBar">
+    <div class="quick-bar" id="quickBar" data-help-title="⚡ 퀵버튼 바" data-help="필드를 탭하지 않고 결과만 <b>즉시 1탭으로 기록</b>하는 버튼입니다.<br>타자를 선택한 뒤 버튼을 탭하면 바로 기록됩니다:<br>• 안타(1B) · 아웃(G/O) · 삼진(K) · 볼넷(BB)">
       <button class="qb-btn qb-hit" onclick="recQuick('안타')" title="안타 즉시 기록">안타<small>1B</small></button>
       <button class="qb-btn qb-out" onclick="recQuick('땅볼 아웃')" title="아웃 즉시 기록">아웃<small>G/O</small></button>
       <button class="qb-btn qb-k" onclick="recQuick('삼진')" title="삼진 즉시 기록">삼진<small>K</small></button>
       <button class="qb-btn qb-bb" onclick="recQuick('볼넷')" title="볼넷 즉시 기록">볼넷<small>BB</small></button>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
     <div class="field-hint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="input-bar">
       <div class="ib-row">
@@ -1599,10 +1655,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <div class="pnl-right">
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
-      <div class="tab" id="tab-batter" onclick="swTab('batter',this)">👤 타자</div>
-      <div class="tab" id="tab-stat" onclick="swTab('stat',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>팀통계</div>
-      <div class="tab" id="tab-chart" onclick="swTab('chart',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
-      <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)">⚾ 투수</div>
+      <div class="tab" id="tab-batter" onclick="swTab('batter',this)" data-help-title="👤 타자 탭" data-help="선택한 타자의 <b>타율·출루율·장타율(OPS)</b>과 AI 타격 분석을 봅니다.<br>타격 방향 성향, 삼진·볼넷 비율, 약점 패턴을 자동으로 분석합니다.">👤 타자</div>
+      <div class="tab" id="tab-stat" onclick="swTab('stat',this)" data-help-title="📊 팀통계 탭" data-help="팀 전체 <b>타율·출루율·OPS</b>와 선수별 성적 순위를 비교합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>팀통계</div>
+      <div class="tab" id="tab-chart" onclick="swTab('chart',this)" data-help-title="📈 차트 탭" data-help="개인(9:16) · 팀(1:1) <b>성적카드 PNG</b>를 생성해 SNS에 공유합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
+      <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)" data-help-title="⚾ 투수 탭" data-help="상대 투수의 <b>구종·코스·결과</b>를 기록하고 분석합니다.<br>구종 비율 도넛차트와 코스 히트맵이 자동 생성됩니다.">⚾ 투수</div>
     </div>
     <div class="tab-body">
       <div class="tab-pnl on" id="pnl-rec">
@@ -5883,13 +5939,56 @@ function closeHelpModal(){
   if(el)el.classList.remove('show');
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   도움말 모드 (INTERACTIVE HELP MODE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+var _helpModeActive=false;
+function toggleHelpMode(){
+  _helpModeActive=!_helpModeActive;
+  document.body.classList.toggle('help-mode',_helpModeActive);
+  var btn=document.getElementById('helpModeBtn');
+  var ind=document.getElementById('helpModeIndicator');
+  if(btn)btn.classList.toggle('active',_helpModeActive);
+  if(ind)ind.classList.toggle('show',_helpModeActive);
+  if(_helpModeActive){
+    showToast('💡 도움말 모드 ON — 궁금한 버튼이나 영역을 탭하세요',false,true);
+    document.addEventListener('click',_helpModeClick,true);
+  }else{
+    closeHelpModeTooltip();
+    document.removeEventListener('click',_helpModeClick,true);
+  }
+}
+function _helpModeClick(e){
+  var el=e.target.closest('[data-help]');
+  if(!el)return;
+  e.preventDefault();
+  e.stopPropagation();
+  showHelpModeTooltip(
+    el.getAttribute('data-help-title')||el.getAttribute('title')||'설명',
+    el.getAttribute('data-help')
+  );
+}
+function showHelpModeTooltip(title,desc){
+  var t=document.getElementById('helpModeTooltip');
+  var ti=document.getElementById('hmtTitle');
+  var td=document.getElementById('hmtDesc');
+  if(!t)return;
+  if(ti)ti.textContent=title;
+  if(td)td.innerHTML=desc||'';
+  t.classList.add('show');
+}
+function closeHelpModeTooltip(){
+  var t=document.getElementById('helpModeTooltip');
+  if(t)t.classList.remove('show');
+}
+
 function toggleHelpCard(idx){
   var body=document.getElementById('hmc'+idx);
   if(!body)return;
   var header=body.previousElementSibling;
   var isOpen=body.classList.contains('hm-open');
   // 다른 카드 모두 닫기
-  for(var i=0;i<5;i++){
+  for(var i=0;i<7;i++){
     var b=document.getElementById('hmc'+i);
     if(b){
       b.classList.remove('hm-open');

@@ -1093,6 +1093,59 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gfe-btn:active{transform:scale(.96);opacity:.85}
 /* GF 모드일 때 이닝 셀렉터 흐리게 */
 .gf-on .inn-sel{opacity:.45;pointer-events:none}
+
+/* ══ FOCUS MODE ══ */
+body.game-focus #seasonCard,
+body.game-focus #weaknessCard,
+body.game-focus #aiInsightCard{display:none!important}
+body.game-focus #advSection{display:none!important}
+body.game-focus #advToggleBtn{display:none!important}
+
+/* ══ ADVANCED ANALYTICS COLLAPSIBLE ══ */
+.adv-toggle-btn{width:100%;padding:10px 14px;background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin:5px 0 3px;transition:background .1s;-webkit-tap-highlight-color:transparent;min-height:44px}
+.adv-toggle-btn:active{background:var(--border)}
+.adv-toggle-btn .adv-arr{transition:transform .2s;font-size:9px;opacity:.6}
+.adv-toggle-btn.open .adv-arr{transform:rotate(90deg)}
+#advSection{overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
+#advSection.closed{max-height:0!important;overflow:hidden}
+
+/* ══ HOME: MORE MENU ══ */
+.aw-more-overlay{position:fixed;inset:0;z-index:501;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
+.aw-more-overlay.on{display:flex;animation:fadeSlideUp .15s ease}
+.aw-more-sheet{width:100%;max-width:420px;background:var(--bg-card);border-radius:16px 16px 0 0;padding:12px 14px max(16px,env(safe-area-inset-bottom));border:1px solid var(--border2)}
+.aw-more-item{display:flex;align-items:center;gap:12px;padding:13px 10px;border-radius:9px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:700;-webkit-tap-highlight-color:transparent;transition:background .1s;min-height:48px;font-family:var(--font)}
+.aw-more-item:active{background:var(--bg-raised)}
+.aw-more-item-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0}
+.aw-more-divider{height:1px;background:var(--border);margin:4px 0}
+.aw-more-cancel{width:100%;padding:13px;background:var(--bg-raised);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:6px;min-height:44px;-webkit-tap-highlight-color:transparent}
+
+/* ══ HOME: 시즌·더보기 버튼 ══ */
+.aw-btn-season{width:100%;min-height:56px;padding:14px 20px;border:1.5px solid rgba(246,194,62,.25);border-radius:var(--r2);background:rgba(246,194,62,.07);color:#f6c23e;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.aw-btn-season:active{transform:scale(.97)}
+.aw-btn-season:hover{border-color:rgba(246,194,62,.45)}
+.aw-btn-more{margin-top:6px;width:100%;padding:11px 10px;background:none;border:none;color:var(--text3);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px;letter-spacing:.5px}
+.aw-btn-more:active{color:var(--text2)}
+
+/* ══ RECENT CARD ENHANCEMENTS ══ */
+.aw-ri-mvp{font-size:9px;font-weight:700;color:#f6c23e;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aw-ri-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.aw-ri-meta-score{font-size:16px;font-weight:800;font-family:var(--mono);color:var(--accent)}
+.aw-ri-meta-result{font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.5px}
+
+/* ══ FAB EXTENDED ══ */
+.fab-pop-sep{height:1px;background:var(--border);margin:2px 0;flex-shrink:0}
+.fab-pop-btn.danger{color:#f56565;border-color:rgba(245,101,101,.25)}
+.fab-pop-btn.danger:active{filter:brightness(.85)}
+
+/* ══ TABLET LANDSCAPE ══ */
+@media(min-width:960px) and (orientation:landscape){
+  .pnl-left{min-width:220px;max-width:220px}
+  .pnl-right{min-width:290px;max-width:290px}
+}
+
+/* ══ ANIMATION CLEANUP ══ */
+.feat-card,.stat-card{transition:border-color .1s,opacity .1s}
+@keyframes recDone{0%{transform:scale(1)}30%{transform:scale(1.04)}100%{transform:scale(1)}}
 </style>
 </head>
 <body>
@@ -1416,18 +1469,38 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
       </div>
     </button>
     <button class="aw-btn-load" onclick="hideAppWelcome();openLoad()">
-      <span style="font-size:22px;flex-shrink:0">📋</span>
+      <span style="font-size:20px;flex-shrink:0">📋</span>
       <div class="aw-btn-inner">
-        <span>기록 보기</span>
+        <span>최근 경기 이어하기</span>
         <span class="aw-btn-sub">저장된 경기 불러오기</span>
+      </div>
+    </button>
+    <button class="aw-btn-season" onclick="hideAppWelcome();openPlayerProfile()">
+      <span style="font-size:20px;flex-shrink:0">📅</span>
+      <div class="aw-btn-inner">
+        <span>시즌 보기</span>
+        <span class="aw-btn-sub" style="color:rgba(246,194,62,.6)">선수별 시즌 누적 성적</span>
       </div>
     </button>
   </div>
   <div class="aw-recent" id="awRecent"></div>
-  <div class="aw-bottom">
-    <button class="aw-bottom-btn" onclick="hideAppWelcome();showHelpModal()">❓ 도움말</button>
-    <button class="aw-bottom-btn" onclick="hideAppWelcome();startTour()">🎯 투어</button>
-    <button class="aw-bottom-btn" onclick="goLanding()">← 나가기</button>
+  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 도움말 · 투어 · 설정</button>
+</div>
+
+<!-- ████ 더보기 바텀시트 ████ -->
+<div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
+  <div class="aw-more-sheet">
+    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
+      <span class="aw-more-item-icon">❓</span>도움말
+    </div>
+    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();startTour()">
+      <span class="aw-more-item-icon">🎯</span>투어 시작
+    </div>
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();goLanding()">
+      <span class="aw-more-item-icon">←</span>랜딩 화면으로
+    </div>
+    <button class="aw-more-cancel" onclick="awMoreClose()">취소</button>
   </div>
 </div>
 
@@ -1583,6 +1656,10 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
     <button class="fab-pop-btn" onclick="fabRecord('삼진');fabToggle()">삼진</button>
     <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
     <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
+    <div class="fab-pop-sep"></div>
+    <button class="fab-pop-btn repeat" onclick="undoLast();fabToggle()">⎌ 직전 취소</button>
+    <button class="fab-pop-btn repeat" onclick="fabEditLast();fabToggle()">✏️ 최근 수정</button>
+    <button class="fab-pop-btn danger" onclick="fabToggle();showPostGameReport()">🏁 경기 종료</button>
   </div>
   <button class="fab-btn" id="fabBtn" onclick="fabToggle()" data-help-title="⚡ FAB 퀵 액션" data-help="안타·아웃·삼진·볼넷을 즉시 기록하는 <b>플로팅 퀵 액션</b>입니다.<br>↩ 반복 버튼으로 바로 전 타석 결과를 그대로 반복 입력할 수 있습니다.">⚡</button>
 </div>
@@ -1846,6 +1923,11 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
           <div class="sc-title">코스 × 구종 교차분석</div>
           <div id="zonePitchCross" style="overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
         </div>
+        <button class="adv-toggle-btn" id="advToggleBtn" onclick="toggleAdvanced()">
+          <span>▸ 고급 분석 (시즌·약점·AI)</span>
+          <span class="adv-arr">▶</span>
+        </button>
+        <div id="advSection" class="closed" style="max-height:0">
         <div class="stat-card" id="seasonCard">
           <div class="sc-title">📅 시즌 누적 (저장된 경기)</div>
           <div id="seasonSummary" style="font-size:11px;color:var(--text3);text-align:center;padding:8px">저장된 경기가 없습니다</div>
@@ -1862,6 +1944,7 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
           <div class="sc-title">🤖 AI 타격 분석</div>
           <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
         </div>
+        </div><!-- /advSection -->
       </div>
 
       <div class="tab-pnl" id="pnl-chart">
@@ -7012,6 +7095,149 @@ function _pgWrapText(ctx,text,x,y,maxW,lineH){
   }
   if(line.trim())ctx.fillText(line,x,y);
 }
+
+// ══════════════════════════════════════════════
+// UI 단순화 + 경기 중 UX 최적화
+// ══════════════════════════════════════════════
+
+// ── 더보기 바텀시트 ──
+function awMoreOpen(){
+  var ov=document.getElementById('awMoreOverlay');
+  if(ov){ov.classList.add('on');}
+}
+function awMoreClose(){
+  var ov=document.getElementById('awMoreOverlay');
+  if(ov){ov.classList.remove('on');}
+}
+
+// ── 집중 모드 (경기 시작 시 자동 진입) ──
+function enterFocusMode(){
+  document.body.classList.add('game-focus');
+}
+function exitFocusMode(){
+  document.body.classList.remove('game-focus');
+}
+(function patchFocusMode(){
+  var _orig=startFromWizard;
+  startFromWizard=function(){
+    _orig.apply(this,arguments);
+    enterFocusMode();
+  };
+  var _origShow=showAppWelcome;
+  showAppWelcome=function(){
+    _origShow.apply(this,arguments);
+    exitFocusMode();
+  };
+  var _origLoad=loadRecentGame;
+  loadRecentGame=function(key){
+    _origLoad.apply(this,arguments);
+    enterFocusMode();
+  };
+})();
+
+// ── 고급 분석 접기/펼치기 ──
+function toggleAdvanced(){
+  var sec=document.getElementById('advSection');
+  var btn=document.getElementById('advToggleBtn');
+  if(!sec)return;
+  var isOpen=!sec.classList.contains('closed');
+  if(isOpen){
+    sec.style.maxHeight=sec.scrollHeight+'px';
+    requestAnimationFrame(function(){
+      sec.style.maxHeight='0';
+      sec.classList.add('closed');
+      if(btn){btn.classList.remove('open');btn.querySelector('span:first-child').textContent='▸ 고급 분석 (시즌·약점·AI)';}
+    });
+  } else {
+    sec.classList.remove('closed');
+    sec.style.maxHeight=sec.scrollHeight+'px';
+    if(btn){btn.classList.add('open');btn.querySelector('span:first-child').textContent='▾ 고급 분석 (시즌·약점·AI)';}
+    setTimeout(function(){sec.style.maxHeight='none';},300);
+  }
+}
+
+// ── FAB: 최근 기록 수정 ──
+function fabEditLast(){
+  if(!AS.abs.length){showToast('수정할 기록이 없습니다',true);return;}
+  var last=AS.abs[AS.abs.length-1];
+  openEditRec(last.id);
+}
+
+// ── 자동 다음 타자 이동 ──
+function autoAdvanceBatter(){
+  if(!AS.batter)return;
+  var lu=getActiveLineup();
+  if(!lu.length)return;
+  var idx=lu.findIndex(function(p){return p.id===AS.batter.id;});
+  if(idx===-1)return;
+  var next=lu[(idx+1)%lu.length];
+  if(next&&next.id!==AS.batter.id)selBatter(next.id);
+}
+(function patchAutoNext(){
+  var _orig=fabRecord;
+  fabRecord=function(res){
+    _orig.apply(this,arguments);
+    if(AS.abs.length)setTimeout(autoAdvanceBatter,80);
+  };
+})();
+
+// ── 최근 경기 카드 강화 (MVP + 요약) ──
+var _origRenderAwRecent=renderAwRecent;
+renderAwRecent=function(){
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  var el=document.getElementById('awRecent');
+  if(!el)return;
+  if(!saves.length){
+    el.innerHTML='<div class="aw-empty" style="color:var(--text3);font-size:12px;padding:16px 0;text-align:center">아직 저장된 경기가 없습니다.<br>첫 경기를 기록해보세요 ⚾</div>';
+    return;
+  }
+  var recent=saves.slice(-4).reverse();
+  var html='<div class="aw-recent-title">최근 경기</div>';
+  recent.forEach(function(s){
+    var raw=localStorage.getItem(s.key);
+    if(!raw)return;
+    var d;try{d=JSON.parse(raw);}catch(e){return;}
+    var hs=d.hs||0,as=d.as||0;
+    var th=_escHtml(d.th||'홈팀');
+    var ta=_escHtml(d.ta||'원정팀');
+    var date=_escHtml(d.d||'');
+    var outcome=hs>as?'WIN':hs<as?'LOSE':'DRAW';
+    var outcomeColor=hs>as?'var(--green)':hs<as?'var(--red)':'var(--text3)';
+    // MVP 계산
+    var mvpHtml='';
+    if(d.abs&&d.abs.length){
+      var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
+      var pm={};
+      d.abs.forEach(function(a){
+        if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,rbi:0};
+        if(hits.includes(a.res))pm[a.bid].h++;
+        if(!noab.includes(a.res))pm[a.bid].ab++;
+        pm[a.bid].rbi+=(a.rbi||0);
+      });
+      var best=Object.values(pm).filter(function(p){return p.ab>0;}).sort(function(a,b){
+        return (b.h/b.ab+b.rbi*.15)-(a.h/a.ab+a.rbi*.15);
+      })[0];
+      if(best&&best.h>0){
+        var avg=best.ab?(best.h/best.ab).toFixed(3).replace('0.','.'):'---';
+        mvpHtml='<div class="aw-ri-mvp">⭐ MVP #'+best.num+' '+_escHtml(best.name)+' · '+avg+(best.rbi>0?' · '+best.rbi+'타점':'')+'</div>';
+      }
+    }
+    html+='<div class="aw-recent-item" onclick="loadRecentGame(\''+s.key+'\')">'
+      +'<div class="aw-ri-icon">⚾</div>'
+      +'<div class="aw-ri-body">'
+      +'<div class="aw-ri-label">'+th+' vs '+ta+'</div>'
+      +'<div class="aw-ri-date">'+date+'</div>'
+      +mvpHtml
+      +'</div>'
+      +'<div class="aw-ri-meta">'
+      +'<div class="aw-ri-meta-score">'+hs+' : '+as+'</div>'
+      +'<div class="aw-ri-meta-result" style="color:'+outcomeColor+'">'+outcome+'</div>'
+      +'</div>'
+      +'</div>';
+  });
+  el.innerHTML=html;
+};
+
 </script>
 <script>
 if('serviceWorker' in navigator){

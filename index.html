@@ -949,6 +949,64 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* 기록 완료 피드백 */
 @keyframes recDone{0%{transform:scale(1)}35%{transform:scale(1.06)}100%{transform:scale(1)}}
 .rec-done-anim{animation:recDone .2s ease}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   GAME FLOW MODE — 경기 운영 모드
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 상태 바 */
+#gfBar{display:none;background:linear-gradient(135deg,#07111f,#0b1a30);border-bottom:2px solid rgba(246,194,62,.22);padding:5px 10px;position:sticky;top:0;z-index:60}
+#gfBar.active{display:block}
+.gfb-inner{display:flex;align-items:center;gap:7px;min-height:32px}
+.gfb-inn{font-family:var(--mono);font-size:13px;font-weight:700;color:#f6c23e;min-width:48px;flex-shrink:0}
+.gfb-outs{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.gfb-out-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(245,101,101,.45);background:transparent;transition:background .12s}
+.gfb-out-dot.on{background:#f56565;border-color:#f56565}
+.gfb-out-lbl{font-size:8px;color:var(--text3);letter-spacing:.4px;margin-left:1px}
+/* 다이아몬드 베이스 */
+.gfb-bases{position:relative;width:34px;height:24px;flex-shrink:0}
+.gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s}
+.gfb-base.on{background:#f6c23e;border-color:#f6c23e}
+.gfb-base-2{left:50%;margin-left:-4px;top:0}
+.gfb-base-3{left:0;top:50%;margin-top:-4px}
+.gfb-base-1{right:0;top:50%;margin-top:-4px}
+/* 타자 / 스코어 */
+.gfb-batter{flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);flex-shrink:0}
+/* 경기종료 버튼 */
+.gfb-end{background:rgba(245,101,101,.13);border:1px solid rgba(245,101,101,.3);color:#f56565;border-radius:6px;font-size:9px;font-weight:800;padding:4px 8px;cursor:pointer;flex-shrink:0;font-family:var(--font);min-height:26px;letter-spacing:.3px;transition:all .12s;-webkit-tap-highlight-color:transparent}
+.gfb-end:active{opacity:.7;transform:scale(.94)}
+/* GF 토글 버튼 (헤더) */
+.btn-gf{padding:4px 9px;font-size:10px;font-weight:800;border-radius:6px;border:1px solid rgba(246,194,62,.3);background:rgba(246,194,62,.07);color:#f6c23e;cursor:pointer;font-family:var(--font);transition:all .12s;min-height:30px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.btn-gf.on{background:rgba(246,194,62,.18);border-color:#f6c23e}
+.btn-gf:active{transform:scale(.94)}
+/* 경기 종료 오버레이 */
+#gfEndOv{position:fixed;inset:0;z-index:750;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+#gfEndOv.show{display:flex}
+.gfe-card{background:linear-gradient(160deg,#07111f 0%,#0d1e3a 55%,#08162a 100%);border:1px solid rgba(246,194,62,.22);border-radius:16px;padding:22px 18px;width:min(390px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.9),0 0 36px rgba(246,194,62,.07);animation:cardIn .3s ease}
+.gfe-header{text-align:center;margin-bottom:18px}
+.gfe-badge{display:inline-block;background:rgba(246,194,62,.1);border:1px solid rgba(246,194,62,.28);border-radius:20px;padding:3px 12px;font-size:9px;font-weight:800;color:#f6c23e;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:9px}
+.gfe-title{font-size:16px;font-weight:900;color:var(--text);margin-bottom:4px}
+.gfe-score{font-family:var(--mono);font-size:30px;font-weight:700;color:#f6c23e;margin:6px 0 3px}
+.gfe-teams{font-size:11px;color:var(--text2)}
+.gfe-divider{height:1px;background:rgba(246,194,62,.1);margin:14px 0}
+.gfe-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.gfe-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 5px;text-align:center}
+.gfe-sv{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text)}
+.gfe-sl{font-size:9px;color:var(--text3);margin-top:2px;font-weight:700;letter-spacing:.4px}
+.gfe-mvp{background:linear-gradient(135deg,rgba(246,194,62,.09),rgba(246,194,62,.03));border:1px solid rgba(246,194,62,.18);border-radius:10px;padding:12px 13px;margin-bottom:12px}
+.gfe-mvp-ttl{font-size:9px;font-weight:800;color:#f6c23e;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
+.gfe-mvp-name{font-size:14px;font-weight:800;color:var(--text)}
+.gfe-mvp-stat{font-size:11px;color:var(--text2);margin-top:2px}
+.gfe-mini{display:flex;justify-content:center;margin-bottom:12px}
+#gfeMini{border-radius:50%;display:block}
+.gfe-comment{background:rgba(75,140,245,.06);border:1px solid rgba(75,140,245,.14);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:14px}
+.gfe-btns{display:flex;gap:8px}
+.gfe-btn{flex:1;padding:13px 8px;border-radius:8px;font-size:13px;font-weight:800;font-family:var(--font);cursor:pointer;transition:all .12s;min-height:48px;-webkit-tap-highlight-color:transparent}
+.gfe-btn-close{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text2)}
+.gfe-btn-save{background:var(--blue);border:none;color:#fff}
+.gfe-btn:active{transform:scale(.96);opacity:.85}
+/* GF 모드일 때 이닝 셀렉터 흐리게 */
+.gf-on .inn-sel{opacity:.45;pointer-events:none}
 </style>
 </head>
 <body>
@@ -1415,6 +1473,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <button class="fab-btn" id="fabBtn" onclick="fabToggle()">⚡</button>
 </div>
 
+<!-- ████ Game Flow 경기 종료 카드 ████ -->
+<div id="gfEndOv" onclick="if(event.target===this)gfEndClose()">
+  <div class="gfe-card" id="gfeCard"></div>
+</div>
+
 <!-- ████ 경기 종료 요약 ████ -->
 <div id="gameSummaryOv" onclick="if(event.target===this)closeGameSummary()">
   <div class="gs-card" id="gameSummaryCard"></div>
@@ -1443,6 +1506,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행">▶ 경기운영</button>
     <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px">🔗 공유</button>
     <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
     <button class="app-back" onclick="goHome()">← 홈</button>
@@ -1495,6 +1559,25 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" ontouchend="hideBtnTipDelay()">🌡️</button>
   <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
 </div>
+    <!-- ══════ Game Flow 상태 바 ══════ -->
+    <div id="gfBar">
+      <div class="gfb-inner">
+        <div class="gfb-inn" id="gfbInn">1회초</div>
+        <div class="gfb-outs">
+          <div class="gfb-out-dot" id="gfbO0"></div>
+          <div class="gfb-out-dot" id="gfbO1"></div>
+          <span class="gfb-out-lbl">OUT</span>
+        </div>
+        <div class="gfb-bases">
+          <div class="gfb-base gfb-base-2" id="gfbB2"></div>
+          <div class="gfb-base gfb-base-3" id="gfbB3"></div>
+          <div class="gfb-base gfb-base-1" id="gfbB1"></div>
+        </div>
+        <div class="gfb-batter" id="gfbBatter">타자 선택</div>
+        <div class="gfb-score" id="gfbScore">0:0</div>
+        <button class="gfb-end" onclick="gfEndConfirm()">경기종료</button>
+      </div>
+    </div>
     <!-- 상단 고정 퀵버튼 바 -->
     <div class="quick-bar" id="quickBar">
       <button class="qb-btn qb-hit" onclick="recQuick('안타')" title="안타 즉시 기록">안타<small>1B</small></button>
@@ -2637,6 +2720,7 @@ function recHit(res){
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
+  gfAfterRecord(res,r.rbi);
 }
 function recOther(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
@@ -2644,6 +2728,7 @@ function recOther(res){
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
+  gfAfterRecord(res,0);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
@@ -5974,6 +6059,343 @@ function fabRecord(res){
   updateAll();scheduleAutoSave();
   showToast(res+' 기록됨',false);
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GAME FLOW MODE — 경기 운영 모드
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var GF={
+  active:false,
+  inning:1,        // 현재 이닝 번호
+  half:'top',      // 'top'=초(홈팀 공격), 'bottom'=말(원정팀 공격)
+  outs:0,          // 현재 아웃카운트 0~2
+  batterIdx:0,     // 현재 타순 인덱스 (라인업 내)
+  bases:[false,false,false] // [1루,2루,3루]
+};
+
+// ─── 모드 ON/OFF ───
+function gfToggle(){GF.active?gfDeactivate():gfActivate();}
+
+function gfActivate(){
+  GF.active=true;
+  GF.inning=1;GF.half='top';GF.outs=0;GF.batterIdx=0;
+  GF.bases=[false,false,false];
+  // 현재 공격팀 첫 타자 자동 선택
+  var lu=gfGetLineup();
+  if(lu.length) selBatter(lu[0].id);
+  gfSyncInnSel();
+  var bar=document.getElementById('gfBar');
+  if(bar)bar.classList.add('active');
+  var btn=document.getElementById('gfToggleBtn');
+  if(btn){btn.classList.add('on');btn.textContent='■ 운영중';}
+  // 이닝 셀렉터 비활성화 (GF가 자동 관리)
+  var ap=document.getElementById('app-page');
+  if(ap)ap.classList.add('gf-on');
+  gfUpdateBar();
+  showToast('경기 운영 모드 시작 — 기록 시 타순·아웃카운트가 자동으로 진행됩니다',false,true);
+}
+
+function gfDeactivate(){
+  GF.active=false;
+  var bar=document.getElementById('gfBar');
+  if(bar)bar.classList.remove('active');
+  var btn=document.getElementById('gfToggleBtn');
+  if(btn){btn.classList.remove('on');btn.textContent='▶ 경기운영';}
+  var ap=document.getElementById('app-page');
+  if(ap)ap.classList.remove('gf-on');
+}
+
+// ─── 유틸 ───
+function gfGetLineup(){
+  return GF.half==='top'?AS.home_lineup:AS.away_lineup;
+}
+function gfInnStr(){
+  return GF.inning+'회'+(GF.half==='top'?'초':'말');
+}
+function gfSyncInnSel(){
+  var s=document.getElementById('innSel');
+  if(!s)return;
+  var t=gfInnStr();
+  for(var i=0;i<s.options.length;i++){
+    if(s.options[i].text===t||s.options[i].value===t){s.value=s.options[i].value;break;}
+  }
+  var d=document.getElementById('innDisp');
+  if(d)d.textContent=t;
+}
+
+// ─── 상태 바 갱신 ───
+function gfUpdateBar(){
+  if(!GF.active)return;
+  var inn=document.getElementById('gfbInn');
+  if(inn)inn.textContent=gfInnStr();
+  var o0=document.getElementById('gfbO0'),o1=document.getElementById('gfbO1');
+  if(o0)o0.classList.toggle('on',GF.outs>=1);
+  if(o1)o1.classList.toggle('on',GF.outs>=2);
+  var b1=document.getElementById('gfbB1'),b2=document.getElementById('gfbB2'),b3=document.getElementById('gfbB3');
+  if(b1)b1.classList.toggle('on',GF.bases[0]);
+  if(b2)b2.classList.toggle('on',GF.bases[1]);
+  if(b3)b3.classList.toggle('on',GF.bases[2]);
+  var lu=gfGetLineup();
+  var idx=lu.length?GF.batterIdx%lu.length:0;
+  var bEl=document.getElementById('gfbBatter');
+  if(bEl){
+    var p=lu[idx];
+    bEl.textContent=p?(idx+1)+'번 #'+p.num+' '+p.name:'타자 없음';
+  }
+  var sc=document.getElementById('gfbScore');
+  if(sc)sc.textContent=AS.hs+':'+AS.as;
+}
+
+// ─── 기록 후 자동화 처리 ───
+// recHit / recOther 직후 호출
+function gfAfterRecord(res,rbi){
+  if(!GF.active)return;
+  // 베이스 진루 및 득점 계산
+  var scored=gfUpdateBases(res,rbi);
+  // 득점 스코어 반영
+  if(scored>0){
+    if(GF.half==='top'){AS.hs+=scored;var h=document.getElementById('scH');if(h)h.textContent=AS.hs;}
+    else{AS.as+=scored;var a=document.getElementById('scA');if(a)a.textContent=AS.as;}
+  }
+  // 아웃 처리
+  var outCount=res==='병살'?2:_GF_IS_OUT(res)?1:0;
+  if(outCount>0){
+    GF.outs+=outCount;
+    if(GF.outs>=3){
+      GF.outs=0;
+      GF.bases=[false,false,false];
+      gfNextHalf();
+      return; // gfNextHalf에서 타자 처리
+    }
+  }
+  // 다음 타자 이동
+  gfNextBatter();
+  // UI 갱신 (requestAnimationFrame으로 불필요 중복 렌더 방지)
+  requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});
+}
+
+function _GF_IS_OUT(res){
+  return['삼진','플라이 아웃','땅볼 아웃','희타','희비','병살'].includes(res);
+}
+
+// ─── 아웃 & 이닝 전환 ───
+function gfNextHalf(){
+  if(GF.half==='top'){GF.half='bottom';}
+  else{GF.half='top';GF.inning++;}
+  GF.batterIdx=0;
+  // 공수 전환: 공격팀 탭 자동 전환
+  var nextTeam=GF.half==='top'?'home':'away';
+  AS.curTeam=nextTeam;
+  swLineupTab(nextTeam);
+  var lu=gfGetLineup();
+  if(lu.length)selBatter(lu[0].id);
+  requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});
+  var halfTxt=GF.half==='top'?'초':'말';
+  setTimeout(function(){
+    showToast('3아웃 — '+GF.inning+'회'+halfTxt+' 공격 시작 ⚾',false,true);
+  },80);
+}
+
+// ─── 다음 타자 ───
+function gfNextBatter(){
+  var lu=gfGetLineup();
+  if(!lu.length)return;
+  GF.batterIdx=(GF.batterIdx+1)%lu.length;
+  var p=lu[GF.batterIdx];
+  if(p)selBatter(p.id);
+}
+
+// ─── 베이스 진루 로직 ───
+// 반환값: 이번 플레이로 홈인한 득점 수
+function gfUpdateBases(res,rbi){
+  var b=GF.bases; // [1루,2루,3루]
+  var scored=0;
+
+  if(res==='홈런'){
+    scored=b.filter(Boolean).length+1; // 주자+타자
+    GF.bases=[false,false,false];
+    return scored;
+  }
+  if(res==='3루타'){
+    scored=b.filter(Boolean).length;
+    GF.bases=[false,false,true];
+    return scored;
+  }
+  if(res==='2루타'){
+    if(b[2])scored++;   // 3루 → 홈
+    if(b[1])scored++;   // 2루 → 홈
+    var r3=b[0];        // 1루 → 3루
+    GF.bases=[false,true,r3];
+    return scored;
+  }
+  if(res==='안타'||res==='내야안타'){
+    if(b[2])scored++;   // 3루 → 홈
+    GF.bases=[true,b[0],b[1]]; // 타자→1루, 1루→2루, 2루→3루
+    return scored;
+  }
+  if(res==='볼넷'||res==='사구'){
+    // 밀어내기 볼넷
+    if(b[0]&&b[1]&&b[2])scored=1;
+    var n3=b[0]&&b[1]?true:b[2];
+    var n2=b[0]?true:b[1];
+    GF.bases=[true,n2,n3];
+    return scored;
+  }
+  if(res==='희비'){
+    // 희생플라이: 3루 주자 홈
+    if(b[2]){scored++;GF.bases[2]=false;}
+    return scored;
+  }
+  // 아웃 계열 — 베이스 변화 없음 (사회인야구 단순화)
+  return 0;
+}
+
+// ─── 경기 종료 ───
+function gfEndConfirm(){
+  if(confirm('경기를 종료하고 최종 요약을 확인할까요?'))gfEndGame();
+}
+function gfEndGame(){
+  gfDeactivate();
+  // 약간 딜레이 후 카드 표시 (deactivate 애니메이션 후)
+  setTimeout(gfShowEndCard,200);
+}
+
+// ─── 종료 카드 빌드 ───
+function gfShowEndCard(){
+  var ov=document.getElementById('gfEndOv');
+  var card=document.getElementById('gfeCard');
+  if(!ov||!card)return;
+
+  var abs=AS.abs;
+  var th=document.getElementById('tHome').value||'홈팀';
+  var ta=document.getElementById('tAway').value||'원정팀';
+  var date=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  // 통계 계산 (_NOAB,_HITS,_BASE 재사용)
+  var oab=abs.filter(function(a){return!_NOAB.includes(a.res);}).length||1;
+  var h=abs.filter(function(a){return _HITS.includes(a.res);}).length;
+  var bb=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
+  var k=abs.filter(function(a){return a.res==='삼진';}).length;
+  var hr=abs.filter(function(a){return a.res==='홈런';}).length;
+  var rbi=abs.reduce(function(s,a){return s+a.rbi;},0);
+  var tb=abs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
+  var avg=oab>0?h/oab:0;
+  var obp=abs.length>0?(h+bb)/abs.length:0;
+  var slg=oab>0?tb/oab:0;
+
+  // 주요 타구 방향
+  var dabs=abs.filter(function(a){return a.deg!=null;});
+  var pull=dabs.filter(function(a){return a.deg<72;}).length;
+  var ctr=dabs.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+  var oppo=dabs.filter(function(a){return a.deg>108;}).length;
+  var mainDir=dabs.length?(pull>=ctr&&pull>=oppo?'당겨치기':ctr>=oppo?'센터':'밀어치기'):null;
+
+  // MVP 계산
+  var mvpMap={};
+  abs.forEach(function(a){
+    if(!mvpMap[a.bid])mvpMap[a.bid]={name:a.bname,h:0,rbi:0,hr:0};
+    if(_HITS.includes(a.res))mvpMap[a.bid].h++;
+    mvpMap[a.bid].rbi+=a.rbi;
+    if(a.res==='홈런')mvpMap[a.bid].hr++;
+  });
+  var mvp=Object.values(mvpMap).sort(function(a,b){
+    return(b.h*2+b.rbi*1.5+b.hr*3)-(a.h*2+a.rbi*1.5+a.hr*3);
+  })[0];
+
+  var comment=_gfComment(h,hr,k,bb,avg,mainDir,AS.hs,AS.as);
+  var fmt=function(v){return v.toFixed(3).replace('0.','.');};
+
+  card.innerHTML=
+    '<div class="gfe-header">'
+    +'<div class="gfe-badge">GAME OVER</div>'
+    +'<div class="gfe-title">'+_escHtml(th)+' vs '+_escHtml(ta)+'</div>'
+    +'<div class="gfe-score">'+AS.hs+' : '+AS.as+'</div>'
+    +'<div class="gfe-teams">'+_escHtml(date)+'</div>'
+    +'</div>'
+    +'<div class="gfe-divider"></div>'
+    +'<div class="gfe-stats">'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+fmt(avg)+'</div><div class="gfe-sl">팀 타율</div></div>'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+h+'</div><div class="gfe-sl">안타</div></div>'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+rbi+'</div><div class="gfe-sl">타점</div></div>'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+hr+'</div><div class="gfe-sl">홈런</div></div>'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+k+'</div><div class="gfe-sl">삼진</div></div>'
+    +'<div class="gfe-stat"><div class="gfe-sv">'+bb+'</div><div class="gfe-sl">볼넷</div></div>'
+    +'</div>'
+    +(mvp
+      ?'<div class="gfe-mvp">'
+        +'<div class="gfe-mvp-ttl">🏆 오늘의 MVP</div>'
+        +'<div class="gfe-mvp-name">'+_escHtml(mvp.name)+'</div>'
+        +'<div class="gfe-mvp-stat">'+mvp.h+'안타 · '+mvp.rbi+'타점'+(mvp.hr>0?' · '+mvp.hr+'홈런':'')+'</div>'
+        +'</div>'
+      :'')
+    +'<div class="gfe-mini"><canvas id="gfeMini" width="110" height="110"></canvas></div>'
+    +'<div class="gfe-comment">'+_escHtml(comment)+'</div>'
+    +'<div class="gfe-btns">'
+    +'<button class="gfe-btn gfe-btn-close" onclick="gfEndClose()">닫기</button>'
+    +'<button class="gfe-btn gfe-btn-save" onclick="gfEndClose();saveGame()">💾 저장 & 요약</button>'
+    +'</div>';
+
+  ov.classList.add('show');
+  // 미니 스프레이 차트는 DOM 삽입 후 requestAnimationFrame으로 그리기
+  requestAnimationFrame(function(){requestAnimationFrame(_gfDrawMini);});
+}
+
+// ─── 미니 스프레이 차트 ───
+function _gfDrawMini(){
+  var c=document.getElementById('gfeMini');
+  if(!c)return;
+  var ctx=c.getContext('2d'),S=110,cx=S/2,cy=S;
+  ctx.clearRect(0,0,S,S);
+  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
+  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
+  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=0.7;
+  var br=S*.42,bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
+  ctx.beginPath();bps.forEach(function(p,i){i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);});ctx.stroke();
+  var RC2={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
+  AS.abs.forEach(function(a){
+    if(!a.x||!a.y)return;
+    var x=a.x*S,y=a.y*S,col=RC2[a.res]||'#94a3b8',out=a.res.includes('아웃');
+    ctx.beginPath();ctx.arc(x,y,out?1.8:3,0,Math.PI*2);
+    ctx.fillStyle=col+'aa';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=0.7;ctx.stroke();
+  });
+}
+
+// ─── 한줄 코멘트 생성 (규칙 기반) ───
+function _gfComment(h,hr,k,bb,avg,mainDir,hs,as){
+  var pool=[];
+  if(hr>=2)pool.push('홈런 '+hr+'개! 오늘 타선의 파워가 빛났습니다.');
+  else if(hr===1)pool.push('결정적인 홈런 1개가 경기의 흐름을 바꿨습니다.');
+  if(avg>=0.40)pool.push('팀 타율 '+Math.round(avg*100)+'% — 오늘은 타선이 뜨거웠습니다!');
+  else if(avg>=0.28)pool.push('타율 '+avg.toFixed(3).replace('0.','.')+' — 안정적인 타격 내용이었습니다.');
+  else if(avg<0.15&&h>0)pool.push('타선이 고전했지만, 이 데이터로 다음 경기를 준비하세요!');
+  if(mainDir==='당겨치기')pool.push('오늘은 당겨치기 타구가 집중됐습니다. 외각 공략이 관건이었습니다.');
+  else if(mainDir==='밀어치기')pool.push('밀어치기 비율이 높은 경기 — 반대 방향 공략에 성공했습니다.');
+  else if(mainDir==='센터')pool.push('센터 방향 강타가 돋보였습니다. 중심타선이 힘을 발휘했습니다.');
+  if(bb>=4)pool.push('볼넷 '+bb+'개 — 선구안이 뛰어난 경기였습니다.');
+  if(k>=6)pool.push('삼진 '+k+'개 — 상대 투수 공략이 쉽지 않았습니다.');
+  if(hs>as)pool.push('🎉 우리 팀 승리! 오늘의 데이터가 다음 경기의 무기가 됩니다.');
+  else if(hs<as)pool.push('아쉬운 패배, 하지만 이 스프레이 데이터로 반드시 설욕하세요!');
+  else pool.push('팽팽한 접전! 오늘의 기록이 다음 경기 전략이 됩니다.');
+  if(!pool.length)pool.push('오늘 경기가 SprayLab에 기록되었습니다. 다음 경기도 화이팅!');
+  return pool[Math.floor(Math.random()*Math.min(2,pool.length))];
+}
+
+function gfEndClose(){
+  var ov=document.getElementById('gfEndOv');
+  if(ov)ov.classList.remove('show');
+}
+
+// saveGame 호출 시 GF 상태 함께 저장 (기존 saveGame 오버라이드 없이 확장)
+var _origSaveGame=null;
+(function(){
+  var _orig=saveGame;
+  saveGame=function(){
+    _orig();
+    // GF 상태를 별도 키로 저장 (필요 시 복원)
+  };
+})();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 오프라인 감지

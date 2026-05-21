@@ -4181,15 +4181,38 @@ function saveEditRec(){
   ab.pt=document.getElementById('editPt').value||null;
   ab.zone=document.getElementById('editZone').value||null;
   const dirVal=document.getElementById('editDir').value;
-  if(dirVal){
-    ab.dir=dirVal;
-    const dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150};
-    ab.deg=dirDeg[dirVal]||null;
-  }
+  const dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150};
+  ab.dir=dirVal||null;
+  ab.deg=dirVal?dirDeg[dirVal]||null:null;
   ab.rbi=_editRbi;
   closeOverlay('editRecOverlay');
   updateAll();
-  showToast('타석 기록이 수정되었습니다',false);
+  // 수정 내용을 localStorage에 즉시 영구 반영
+  _saveEditImmediate();
+}
+
+function _saveEditImmediate(){
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  if(!saves.length){
+    // 저장된 게임이 없으면 새 저장 생성
+    saveGame();
+    return;
+  }
+  // 가장 최근 저장 항목을 현재 AS 상태로 덮어씀
+  var latest=saves[saves.length-1];
+  var existing=JSON.parse(localStorage.getItem(latest.key)||'null');
+  if(!existing){saveGame();return;}
+  existing.abs=AS.abs;
+  existing.hs=AS.hs;existing.as=AS.as;
+  existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
+  existing.zoneHistory=AS.zoneHistory;
+  existing.pitchers=AS.pitchers||[];
+  existing.ts=Date.now();
+  localStorage.setItem(latest.key,JSON.stringify(existing));
+  latest.ts=existing.ts;
+  localStorage.setItem('sl_saves',JSON.stringify(saves));
+  triggerSavePulse();
+  showToast('타석 기록 수정 완료 — 저장됨 ✓',false);
 }
 
 // ───── [백업 서브루틴] URL 다이렉트 스트림 복구 시스템 ─────

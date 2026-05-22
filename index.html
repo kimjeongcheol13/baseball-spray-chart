@@ -1965,7 +1965,6 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
-    <button class="btn btn-ghost" onclick="openCloudOverlay()" id="cloudTopBtn" style="padding:4px 8px;font-size:11px" title="클라우드 동기화">☁️</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
     <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.<br>팀원이 링크를 열면 배너로 자동 안내됩니다.">🔗 공유</button>
     <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
@@ -2420,7 +2419,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
     </div>
     <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="closeOverlay('loadOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정 →</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
     </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
@@ -3310,9 +3309,7 @@ function safeRender(){
     if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
     if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
     list.forEach(a=>{if(a.x)drawDot(a);});
-    // _hzMode가 켜진 경우에만 핫존 오버레이 그림
-    // (RAF 안에서 updateHotCold가 먼저 실행되므로 충돌 없음)
-    if(_hzMode)drawHotZoneOverlay();
+    drawHotZoneOverlay();
   });
 }
 
@@ -3650,12 +3647,10 @@ function toggleHotZoneOverlay(mode){
 function drawHotZoneOverlay(){
   var cvs=document.getElementById('ovrCanvas');
   if(!cvs)return;
-  // _hzMode가 꺼져 있으면 오버레이를 건드리지 않음
-  // (updateHotCold가 ovrCanvas 상태를 관리)
-  if(!_hzMode){cvs.classList.remove('show');return;}
   var ctx=cvs.getContext('2d');
   var W=cvs.width,H=cvs.height;
   ctx.clearRect(0,0,W,H);
+  if(!_hzMode)return;
   var hits=['안타','내야안타','2루타','3루타','홈런'],xbh=['2루타','3루타','홈런'];
   var filter={
     hit:function(a){return hits.includes(a.res);},
@@ -3663,18 +3658,16 @@ function drawHotZoneOverlay(){
     hr:function(a){return xbh.includes(a.res);}
   };
   var pts=AS.abs.filter(function(a){return a.x&&a.y&&filter[_hzMode](a);});
-  if(!pts.length){cvs.classList.remove('show');return;}
+  if(!pts.length)return;
   var color={hit:'rgba(45,212,160,',out:'rgba(245,101,101,',hr:'rgba(251,146,60,'};
   var c=color[_hzMode];
-  // kernel density: 각 타구 위치에 가우시안 블롭 (반경 = 캔버스의 10%)
-  var r=W*0.1;
+  var r=Math.max(20,W*0.07);
   pts.forEach(function(a){
-    var px=a.x*W,py=a.y*H;   // ← 수정: a.x*dpr(잘못됨) → a.x*W(올바름)
+    var px=a.x*W,py=a.y*H;
     var grd=ctx.createRadialGradient(px,py,0,px,py,r);
-    grd.addColorStop(0,c+'0.22)');grd.addColorStop(1,c+'0)');
+    grd.addColorStop(0,c+'0.18)');grd.addColorStop(1,c+'0)');
     ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
   });
-  cvs.classList.add('show');
 }
 
 function drawDonut(){
@@ -8334,9 +8327,6 @@ function fieldFeedbackSubmit(){
   }
 
   function _setCloudUI(tc){
-    // 툴바 버튼
-    var topBtn=document.getElementById('cloudTopBtn');
-    if(topBtn)topBtn.textContent=tc?'☁️ '+tc:'☁️';
     // 모달 상태 표시
     var st=document.getElementById('cloudTeamStatus');
     if(st)st.textContent=tc?'현재 팀 코드: '+tc:'팀 코드가 설정되지 않았습니다';

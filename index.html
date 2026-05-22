@@ -1831,11 +1831,11 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(6)">
         <div class="hm-ch-icon">🤖</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">AI 타격 분석<span class="hm-new">NEW</span></div><div class="hm-ch-sub">2타석 이상 기록하면 자동으로 분석합니다</div></div>
+        <div class="hm-ch-body"><div class="hm-ch-title">패턴 분석<span class="hm-new">자동</span></div><div class="hm-ch-sub">2타석 이상 기록하면 규칙 기반으로 자동 분석합니다</div></div>
         <div class="hm-ch-arrow">▶</div>
       </div>
       <div class="hm-body" id="hmc6">
-        <p>타자 탭 하단 <b>🤖 AI 타격 분석</b> 카드에서 확인합니다</p>
+        <p>타자 탭 하단 <b>📊 패턴 분석</b> 카드에서 확인합니다</p>
         <p>분석 항목:<br>• 타율 트렌드 (상승·하락·안정)<br>• 출루 스타일 (볼넷형·컨택형·파워형)<br>• 타구 방향 편중 (당겨치기·밀어치기·중앙형)<br>• 강점 코스·경계 구역 자동 감지</p>
         <p>타석이 늘어날수록 분석이 더 정확해집니다</p>
       </div>
@@ -2147,7 +2147,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
           <div id="weaknessList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">타석을 기록하면 패턴을 분석합니다</div></div>
         </div>
         <div class="stat-card" id="aiInsightCard">
-          <div class="sc-title">🤖 AI 타격 분석</div>
+          <div class="sc-title">📊 패턴 분석 <span style="font-size:9px;color:var(--text3);font-weight:400;margin-left:4px">(규칙 기반 자동 분석)</span></div>
           <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
         </div>
         </div><!-- /advSection -->
@@ -3227,7 +3227,9 @@ function onFClick(e){
   oC.classList.add('show');
   const ang=Math.atan2(dy,dx);const deg=(ang+Math.PI)*180/Math.PI;
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
-  const estFt=Math.round(dist/FS*450);
+  // 방향별 실제 외야 펜스 거리 기준 (ft): LF 330 / LC 375 / CF 400 / RC 375 / RF 330
+  var _wallFt={LF:330,LC:375,CF:400,RC:375,RF:330};
+  const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
   AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};AS.rbi=0;document.getElementById('rbiVal').textContent='0';
   document.getElementById('hitSub').textContent=`방향: ${dir} · 추정거리: ${estFt}ft`;
   openOverlay('hitOverlay');
@@ -3235,7 +3237,7 @@ function onFClick(e){
 
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
-  if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
+  if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
@@ -3243,7 +3245,7 @@ AS.currentPitches=[];
 }
 function recOther(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
-  if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); }
+  if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:null,y:null,deg:null,dir:null,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
@@ -4388,12 +4390,20 @@ function _doAutoSave(){
   if(!AS.abs.length)return;
   var key='sl_auto_'+(AS.curGame||Date.now());
   _autoKey=key;
-  var data=JSON.stringify({abs:AS.abs,hs:AS.hs,as:AS.as,ts:Date.now()});
+  var data=JSON.stringify({
+    abs:AS.abs,hs:AS.hs,as:AS.as,ts:Date.now(),
+    th:document.getElementById('tHome')?document.getElementById('tHome').value:'홈팀',
+    ta:document.getElementById('tAway')?document.getElementById('tAway').value:'원정팀',
+    home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
+    zoneHistory:AS.zoneHistory,pitchers:AS.pitchers,
+    d:new Date().toLocaleDateString('ko-KR'),cond:getGameCond()
+  });
   var ind=document.getElementById('saveInd');
   try{
     localStorage.setItem(key,data);
     _lastAutoLen=data.length;
     _pruneOldAutoSaves(key);
+    _checkStorageQuota();
     if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}
     setTimeout(function(){if(ind)ind.textContent='';},2500);
   }catch(e){
@@ -4403,6 +4413,21 @@ function _doAutoSave(){
       try{localStorage.setItem(key,data);if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}}catch(e2){}
     }
   }
+}
+function _checkStorageQuota(){
+  try{
+    var total=0;
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      total+=(k.length+(localStorage.getItem(k)||'').length)*2;
+    }
+    var mb=total/1024/1024;
+    if(mb>4){
+      var ind=document.getElementById('saveInd');
+      if(ind){ind.textContent='⚠️ 저장 용량 '+mb.toFixed(1)+'MB';ind.className='save-ind fail';}
+      showToast('⚠️ 저장 공간 '+mb.toFixed(1)+'MB 사용 중 — 오래된 경기를 삭제해 주세요',false,true);
+    }
+  }catch(e){}
 }
 function _pruneOldAutoSaves(keepKey){
   var keys=[];
@@ -5399,6 +5424,17 @@ function importExcel(input) {
 _loadSharedGame();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 재방문 랜딩 스킵: 공유 링크가 아닌 재방문이면 바로 앱 홈으로
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function autoSkipLanding(){
+  var sp=new URLSearchParams(location.search);
+  var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
+  if(!hasShare && localStorage.getItem('sl_visited')==='1'){
+    showApp();
+  }
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE 2: WEAKNESS DETECTION
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function renderWeaknessAlerts(abs){
@@ -5516,6 +5552,10 @@ function shareGameLink(){
     url=base+'?game='+encoded;
   }catch(e){
     url=location.href;
+  }
+  // URL이 4KB 초과 시 경고 — 일부 메신저에서 링크가 깨질 수 있음
+  if(url.length>4096){
+    showToast('⚠️ 공유 URL이 깁니다 ('+Math.round(url.length/1024*10)/10+'KB) — 카카오톡 전송 시 파일 공유를 권장합니다',false,true);
   }
   showShareQR(url);
 }

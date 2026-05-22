@@ -15,6 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <style id="landing-css">
 :root{
@@ -2417,6 +2418,17 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       </div>
       <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
     </div>
+    <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">☁️ 클라우드 동기화</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input id="teamCodeInput" type="text" placeholder="팀 코드 입력 (예: tigers2024)"
+          style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:11px;outline:none"
+          oninput="this.value=this.value.replace(/[^a-zA-Z0-9가-힣_-]/g,'')">
+        <button class="btn btn-primary" style="padding:5px 12px;font-size:11px;white-space:nowrap" onclick="setTeamCode()">설정</button>
+      </div>
+      <button class="btn btn-ghost" id="cloudSyncBtn" style="width:100%;justify-content:center;font-size:11px" onclick="cloudSync()">☁️ 동기화</button>
+      <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">같은 팀 코드로 여러 기기에서 경기 공유</div>
+    </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>
@@ -3899,6 +3911,7 @@ function saveGame(){
     saves.push({key,label:`${data.d} ${data.th} ${data.hs}:${data.as} ${data.ta}`,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
+    if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
     showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
     setTimeout(showGameSummary, 400);
@@ -3937,6 +3950,7 @@ function deleteGame(key){
   saves=saves.filter(function(s){return s.key!==key;});
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   localStorage.removeItem(key);
+  if(window.cloudDelete)cloudDelete(key);
   openLoad();
   showToast('삭제되었습니다',false);
 }
@@ -8246,6 +8260,103 @@ function fieldFeedbackSubmit(){
   fieldFeedbackClose();
   showToast('피드백 감사합니다 ✓',false);
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SUPABASE 클라우드 동기화
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function(){
+  var SURL='https://bsmbrngkpsdmbwoqcrps.supabase.co';
+  var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
+  var _sb=null;
+
+  function _init(){
+    if(_sb)return _sb;
+    if(window.supabase&&window.supabase.createClient){
+      _sb=window.supabase.createClient(SURL,SKEY);
+    }
+    return _sb;
+  }
+
+  window.getTeamCode=function(){
+    return localStorage.getItem('sl_team_code')||'';
+  };
+
+  window.setTeamCode=function(){
+    var inp=document.getElementById('teamCodeInput');
+    if(!inp)return;
+    var code=(inp.value||'').trim().toLowerCase();
+    if(!code){showToast('팀 코드를 입력해 주세요',false);return;}
+    localStorage.setItem('sl_team_code',code);
+    inp.value='';
+    inp.placeholder='현재: '+code;
+    var btn=document.getElementById('cloudSyncBtn');
+    if(btn)btn.textContent='☁️ 동기화 ('+code+')';
+    showToast('팀 코드 설정 완료: '+code,false);
+  };
+
+  window.cloudSave=function(key,data,label,ts){
+    if(!_init()||!getTeamCode())return;
+    _sb.from('games').upsert({
+      team_code:getTeamCode(),game_key:key,game_data:data,label:label||key,ts:ts||Date.now()
+    },{onConflict:'team_code,game_key'}).then(function(r){
+      if(r.error)console.warn('[SprayLab] CloudSave error:',r.error);
+    });
+  };
+
+  window.cloudDelete=function(key){
+    if(!_init()||!getTeamCode())return;
+    _sb.from('games').delete()
+      .eq('team_code',getTeamCode()).eq('game_key',key)
+      .then(function(r){if(r.error)console.warn('[SprayLab] CloudDelete error:',r.error);});
+  };
+
+  window.cloudSync=function(){
+    if(!_init()){showToast('☁️ 클라우드 연결 중…',false,true);return;}
+    var tc=getTeamCode();
+    if(!tc){showToast('팀 코드를 먼저 설정해 주세요',false);return;}
+    var btn=document.getElementById('cloudSyncBtn');
+    if(btn){btn.disabled=true;btn.textContent='☁️ 동기화 중…';}
+    _sb.from('games').select('*').eq('team_code',tc).then(function(r){
+      if(btn){btn.disabled=false;btn.textContent='☁️ 동기화 ('+tc+')';}
+      if(r.error){showToast('☁️ 오류: '+r.error.message,false,true);return;}
+      var rows=r.data||[];
+      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+      var existMap={};
+      saves.forEach(function(s){existMap[s.key]=true;});
+      var added=0;
+      rows.forEach(function(row){
+        var k=row.game_key,gd=row.game_data;
+        if(!existMap[k]){
+          saves.push({key:k,label:row.label||k,ts:row.ts||0});
+          localStorage.setItem(k,JSON.stringify(gd));
+          added++;
+        } else {
+          var local=JSON.parse(localStorage.getItem(k)||'null');
+          if(!local||(row.ts&&row.ts>(local.ts||0))){
+            localStorage.setItem(k,JSON.stringify(gd));
+          }
+        }
+      });
+      localStorage.setItem('sl_saves',JSON.stringify(saves));
+      showToast('☁️ 동기화 완료'+(added?' — '+added+'개 새 경기 추가':''),false);
+      // saveList 새로고침
+      if(document.getElementById('saveList'))openLoad();
+    });
+  };
+
+  // 페이지 로드 시 팀코드 상태 표시
+  window.addEventListener('load',function(){
+    var tc=getTeamCode();
+    if(tc){
+      var btn=document.getElementById('cloudSyncBtn');
+      if(btn)btn.textContent='☁️ 동기화 ('+tc+')';
+      var inp=document.getElementById('teamCodeInput');
+      if(inp)inp.placeholder='현재: '+tc;
+    }
+    // Supabase 초기화
+    setTimeout(_init,500);
+  });
+})();
 
 // ─── 8. 리포트 안전 수학 헬퍼 ─────────────────
 var safe=window.safe={

@@ -3283,7 +3283,7 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(_hzMode)setTimeout(drawHotZoneOverlay,0);if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -8348,8 +8348,12 @@ function fieldFeedbackSubmit(){
       });
       localStorage.setItem('sl_saves',JSON.stringify(saves));
       showToast('☁️ 동기화 완료'+(added?' — '+added+'개 새 경기 추가':''),false);
-      // saveList 새로고침
-      if(document.getElementById('saveList'))openLoad();
+      // loadOverlay가 열려 있을 때만 목록 새로고침
+      var lo=document.getElementById('loadOverlay');
+      if(lo&&lo.classList.contains('show')){
+        var sl=document.getElementById('saveList');
+        if(sl){var tmpSaves=JSON.parse(localStorage.getItem('sl_saves')||'[]');sl.innerHTML=tmpSaves.length?[...tmpSaves].reverse().map(function(s){return '<div class="load-item"><div class="load-item-body" onclick="restoreGame(\''+s.key+'\')"><div class="load-item-title">'+s.label+'</div><div class="load-item-date">'+s.ts+'</div></div><div class="load-item-actions"><button class="li-btn" onclick="renameGame(\''+s.key+'\')" title="이름 변경">✏️</button><button class="li-btn" onclick="exportGameToExcel(\''+s.key+'\')" style="color:var(--blue)">📊 엑셀</button><button class="li-btn share-btn" onclick="shareGame(\''+s.key+'\')" style="color:var(--green)">내보내기</button><button class="li-btn load-btn" onclick="restoreGame(\''+s.key+'\')">불러오기</button><button class="li-btn del-btn" onclick="deleteGame(\''+s.key+'\')">삭제</button></div></div>';}).join(''):'<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';}
+      }
     });
   };
 

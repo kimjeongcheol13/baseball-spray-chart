@@ -2482,7 +2482,13 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       <div id="cloudTeamStatus" style="font-size:10px;color:var(--green);margin-top:5px"></div>
     </div>
 
+    <!-- 연결 상태 -->
+    <div id="cloudConnStatus" style="font-size:11px;padding:7px 10px;border-radius:7px;background:var(--bg-raised);margin-bottom:10px;color:var(--text3)">연결 상태 미확인 — 아래 테스트 버튼을 누르세요</div>
+
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+      <button class="btn btn-ghost" id="cloudTestBtn" style="width:100%;justify-content:center;font-size:12px;color:var(--yellow);border-color:rgba(246,194,62,.3)" onclick="cloudTest()">
+        🔌 연결 테스트
+      </button>
       <button class="btn btn-ghost" id="cloudSyncBtn" style="width:100%;justify-content:center;font-size:12px" onclick="cloudSync()">
         ☁️ 동기화 — 클라우드에서 가져오기
       </button>
@@ -2494,8 +2500,33 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <div style="font-size:9px;color:var(--text3);line-height:1.7;margin-bottom:14px">
       • 팀 코드는 영문·숫자·한글·_(언더바)·-(하이픈) 조합<br>
       • 팀 코드를 아는 사람은 누구나 해당 경기를 볼 수 있습니다<br>
-      • 동기화는 수동으로 버튼을 눌러야 실행됩니다
+      • 동기화는 수동으로 버튼을 눌러야 실행됩니다<br>
+      • 연결 안 되면 아래 SQL을 Supabase에서 실행하세요
     </div>
+
+    <!-- Supabase 설정 SQL -->
+    <details style="margin-bottom:10px">
+      <summary style="font-size:10px;color:var(--text3);cursor:pointer;padding:4px 0">🛠 Supabase 설정 SQL (처음 한 번만)</summary>
+      <div style="margin-top:8px;background:var(--bg);border-radius:7px;padding:8px;font-size:10px;font-family:monospace;color:var(--text2);line-height:1.8;white-space:pre-wrap;word-break:break-all">DROP TABLE IF EXISTS games;
+
+CREATE TABLE games (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  team_code text NOT NULL,
+  game_key  text NOT NULL,
+  game_data jsonb NOT NULL DEFAULT '{}',
+  label     text  DEFAULT '',
+  ts        bigint DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(team_code, game_key)
+);
+
+ALTER TABLE games ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "pub_r" ON games FOR SELECT USING (true);
+CREATE POLICY "pub_i" ON games FOR INSERT WITH CHECK (true);
+CREATE POLICY "pub_u" ON games FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "pub_d" ON games FOR DELETE USING (true);</div>
+      <button class="btn btn-ghost" style="width:100%;font-size:10px;margin-top:6px" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.querySelector('#cloudOverlay details div[style*=monospace]').textContent).then(function(){showToast('SQL 복사됨',false)})">📋 복사</button>
+    </details>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('cloudOverlay')">닫기</button>
   </div>
@@ -8451,12 +8482,38 @@ function fieldFeedbackSubmit(){
     showToast('팀 코드 설정 완료: '+code,false);
   };
 
+  // 연결 테스트
+  window.cloudTest=function(){
+    var btn=document.getElementById('cloudTestBtn');
+    var st=document.getElementById('cloudConnStatus');
+    function setStatus(ok,msg){
+      if(st){st.textContent=msg;st.style.color=ok?'var(--green)':'var(--red)';}
+      if(btn){btn.disabled=false;btn.textContent='🔌 연결 테스트';}
+    }
+    if(btn){btn.disabled=true;btn.textContent='테스트 중…';}
+    var db=_init();
+    if(!db){setStatus(false,'❌ Supabase 라이브러리 로딩 실패 — 네트워크 확인');showToast('❌ Supabase 라이브러리가 로드되지 않았습니다',false,true);return;}
+    db.from('games').select('id',{count:'exact',head:true}).then(function(r){
+      if(r.error){
+        var msg=r.error.message||r.error.code||JSON.stringify(r.error);
+        setStatus(false,'❌ 오류: '+msg);
+        showToast('❌ 클라우드 연결 실패 — '+msg,false,true);
+      } else {
+        setStatus(true,'✅ 연결 성공! 저장된 경기 수: '+(r.count||0)+'개');
+        showToast('✅ Supabase 연결 성공!',false);
+      }
+    });
+  };
+
   window.cloudSave=function(key,data,label,ts){
     if(!_init()||!getTeamCode())return;
     _sb.from('games').upsert({
       team_code:getTeamCode(),game_key:key,game_data:data,label:label||key,ts:ts||Date.now()
     },{onConflict:'team_code,game_key'}).then(function(r){
-      if(r.error)console.warn('[SprayLab] CloudSave error:',r.error);
+      if(r.error){
+        console.warn('[SprayLab] CloudSave error:',r.error);
+        showToast('☁️ 저장 실패: '+( r.error.message||r.error.code),false,true);
+      }
     });
   };
 
@@ -8476,7 +8533,13 @@ function fieldFeedbackSubmit(){
     if(btn){btn.disabled=true;btn.textContent='☁️ 동기화 중…';}
     _sb.from('games').select('*').eq('team_code',tc).then(function(r){
       if(btn){btn.disabled=false;btn.textContent='☁️ 동기화 — 클라우드에서 가져오기 ('+tc+')';}
-      if(r.error){showToast('☁️ 오류: '+r.error.message,false,true);return;}
+      if(r.error){
+        var errMsg=r.error.message||r.error.code||JSON.stringify(r.error);
+        var st=document.getElementById('cloudConnStatus');
+        if(st){st.textContent='❌ 동기화 실패: '+errMsg;st.style.color='var(--red)';}
+        showToast('☁️ 동기화 실패 — '+errMsg+'\n👉 Supabase SQL 설정을 확인하세요',false,true);
+        return;
+      }
       var rows=r.data||[];
       var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
       var existMap={};saves.forEach(function(s){existMap[s.key]=true;});
@@ -8498,6 +8561,8 @@ function fieldFeedbackSubmit(){
       if(added)msg+=' — '+added+'개 추가';
       if(updated)msg+=', '+updated+'개 업데이트';
       if(!added&&!updated)msg+=' — 이미 최신 상태';
+      var st=document.getElementById('cloudConnStatus');
+      if(st){st.textContent='✅ '+msg.replace('☁️ ','');st.style.color='var(--green)';}
       showToast(msg,false);
     });
   };

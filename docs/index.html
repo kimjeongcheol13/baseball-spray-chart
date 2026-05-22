@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SprayLab — 기술 문서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --accent: #4b8cf5;
+  --accent2: #2dd4a0;
+  --red: #f56565;
+  --yellow: #f6c23e;
+  --sidebar-w: 260px;
+  --font: 'Noto Sans KR', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh;
+  background: var(--bg2); border-right: 1px solid var(--border);
+  overflow-y: auto; padding: 0 0 40px; z-index: 100;
+  display: flex; flex-direction: column;
+}
+.sb-logo {
+  padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; text-decoration: none;
+  flex-shrink: 0;
+}
+.sb-logo-icon { font-size: 24px; }
+.sb-logo-text { font-size: 17px; font-weight: 900; color: var(--text); }
+.sb-logo-text em { color: var(--accent); font-style: normal; }
+.sb-badge {
+  display: inline-block; background: rgba(75,140,245,.15); color: var(--accent);
+  border: 1px solid rgba(75,140,245,.3); border-radius: 10px; font-size: 9px;
+  font-weight: 700; padding: 1px 7px; margin-left: 6px; letter-spacing: .5px;
+}
+.sb-section { padding: 16px 12px 4px; }
+.sb-section-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text2); padding: 0 8px; margin-bottom: 4px;
+}
+.sb-link {
+  display: block; padding: 6px 8px; border-radius: 7px; font-size: 13px;
+  color: var(--text2); text-decoration: none; transition: all .12s;
+  font-weight: 500; margin-bottom: 1px;
+}
+.sb-link:hover { background: var(--bg3); color: var(--text); }
+.sb-link.active { background: rgba(75,140,245,.12); color: var(--accent); font-weight: 700; }
+.sb-link .sb-icon { margin-right: 7px; font-size: 13px; }
+.sb-divider { height: 1px; background: var(--border); margin: 10px 12px; }
+.sb-ext {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 7px;
+  font-size: 12px; color: var(--text2); text-decoration: none; transition: all .12s;
+}
+.sb-ext:hover { background: var(--bg3); color: var(--accent); }
+.sb-ext-icon { font-size: 13px; }
+
+/* ── TOPBAR (mobile) ── */
+#topbar {
+  display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 0 16px; height: 52px; align-items: center; justify-content: space-between;
+}
+.tb-logo { font-size: 16px; font-weight: 900; color: var(--text); }
+.tb-logo em { color: var(--accent); font-style: normal; }
+#menuBtn {
+  background: none; border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text2); padding: 6px 10px; cursor: pointer; font-size: 14px;
+}
+
+/* ── MAIN CONTENT ── */
+#content {
+  margin-left: var(--sidebar-w); padding: 48px 56px 80px;
+  max-width: calc(var(--sidebar-w) + 780px); min-height: 100vh;
+}
+
+/* ── HERO ── */
+.hero {
+  background: linear-gradient(135deg, #0f1a2e 0%, #0d1117 100%);
+  border: 1px solid var(--border); border-radius: 16px; padding: 40px 40px 36px;
+  margin-bottom: 48px; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 10% 50%, rgba(75,140,245,.08) 0%, transparent 60%);
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 6px; background: rgba(75,140,245,.1);
+  border: 1px solid rgba(75,140,245,.25); border-radius: 20px; padding: 3px 12px;
+  font-size: 10px; font-weight: 800; letter-spacing: 1.2px; color: var(--accent);
+  text-transform: uppercase; margin-bottom: 16px;
+}
+.hero-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
+.hero h1 { font-size: 36px; font-weight: 900; letter-spacing: -.5px; margin-bottom: 8px; position: relative; }
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero-sub { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 24px; position: relative; }
+.hero-badges { display: flex; gap: 8px; flex-wrap: wrap; position: relative; }
+.badge-link {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+  border-radius: 7px; font-size: 11px; font-weight: 700; text-decoration: none;
+  transition: all .12s; border: 1px solid transparent;
+}
+.badge-primary { background: var(--accent); color: #fff; }
+.badge-primary:hover { background: #5d9bff; }
+.badge-ghost { background: var(--bg3); color: var(--text2); border-color: var(--border); }
+.badge-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── SECTION HEADINGS ── */
+.doc-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+h2 {
+  font-size: 24px; font-weight: 900; letter-spacing: -.3px; margin-bottom: 16px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+h2 .h-icon { font-size: 20px; }
+h3 { font-size: 16px; font-weight: 800; margin: 24px 0 12px; color: var(--text); }
+h4 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+p { font-size: 14px; color: var(--text2); line-height: 1.8; margin-bottom: 12px; }
+strong { color: var(--text); font-weight: 700; }
+
+/* ── FEATURE GRID ── */
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 10px; margin-bottom: 16px; }
+.feat-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; transition: border-color .15s;
+}
+.feat-card:hover { border-color: rgba(75,140,245,.4); }
+.feat-card-icon { font-size: 20px; margin-bottom: 8px; }
+.feat-card-title { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+.feat-card-desc { font-size: 11px; color: var(--text2); line-height: 1.6; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; margin-bottom: 16px; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: var(--bg3); }
+th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--text2); }
+td { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+td:first-child { color: var(--text); font-weight: 600; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── CODE ── */
+pre {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; overflow-x: auto; margin-bottom: 16px; font-size: 12.5px;
+  line-height: 1.7;
+}
+code { font-family: var(--mono); font-size: 12.5px; }
+:not(pre) > code {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 6px; font-size: 12px; color: var(--accent);
+}
+.code-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 1px; color: var(--text2);
+  text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.code-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── MERMAID ── */
+.mermaid-wrap {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 24px; margin-bottom: 16px; overflow-x: auto; text-align: center;
+}
+.mermaid svg { max-width: 100%; }
+
+/* ── CALLOUT ── */
+.callout {
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+  border-left: 3px solid; font-size: 13px; line-height: 1.7;
+}
+.callout-info { background: rgba(75,140,245,.07); border-color: var(--accent); }
+.callout-warn { background: rgba(246,194,62,.07); border-color: var(--yellow); }
+.callout-tip { background: rgba(45,212,160,.07); border-color: var(--accent2); }
+.callout-title { font-weight: 800; margin-bottom: 3px; }
+.callout-info .callout-title { color: var(--accent); }
+.callout-warn .callout-title { color: var(--yellow); }
+.callout-tip .callout-title { color: var(--accent2); }
+
+/* ── DECISION CARD ── */
+.decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.decision-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+}
+.dec-q { font-size: 12px; font-weight: 800; color: var(--text2); margin-bottom: 8px; letter-spacing: .3px; }
+.dec-a { font-size: 13px; color: var(--text); line-height: 1.7; }
+
+/* ── STAT CHIPS ── */
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip {
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  border: 1px solid; display: inline-block;
+}
+.chip-blue { background: rgba(75,140,245,.1); color: var(--accent); border-color: rgba(75,140,245,.3); }
+.chip-green { background: rgba(45,212,160,.1); color: var(--accent2); border-color: rgba(45,212,160,.3); }
+.chip-yellow { background: rgba(246,194,62,.1); color: var(--yellow); border-color: rgba(246,194,62,.3); }
+.chip-red { background: rgba(245,101,101,.1); color: var(--red); border-color: rgba(245,101,101,.3); }
+
+/* ── LIMIT TABLE ── */
+.limit-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.limit-row:last-child { border-bottom: none; }
+.limit-icon { font-size: 18px; flex-shrink: 0; width: 28px; text-align: center; }
+.limit-body { flex: 1; }
+.limit-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.limit-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+/* ── MOBILE ── */
+@media (max-width: 860px) {
+  #topbar { display: flex; }
+  #sidebar {
+    transform: translateX(-100%); transition: transform .25s ease;
+    top: 52px; height: calc(100vh - 52px); z-index: 150;
+  }
+  #sidebar.open { transform: translateX(0); }
+  #content { margin-left: 0; padding: 72px 20px 60px; max-width: 100%; }
+  .hero { padding: 28px 20px; }
+  .hero h1 { font-size: 26px; }
+  .decision-grid { grid-template-columns: 1fr; }
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 140; }
+  #overlay.on { display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE OVERLAY -->
+<div id="overlay" onclick="closeMenu()"></div>
+
+<!-- TOPBAR (mobile) -->
+<div id="topbar">
+  <div class="tb-logo">Spray<em>Lab</em> <span style="font-size:11px;color:var(--text2);font-weight:400;margin-left:4px">기술 문서</span></div>
+  <button id="menuBtn" onclick="toggleMenu()">☰ 메뉴</button>
+</div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <a href="#intro" class="sb-logo" onclick="closeMenu()">
+    <span class="sb-logo-icon">⚾</span>
+    <div>
+      <div class="sb-logo-text">Spray<em>Lab</em><span class="sb-badge">DOCS</span></div>
+      <div style="font-size:10px;color:var(--text2);margin-top:1px">기술 문서</div>
+    </div>
+  </a>
+
+  <div class="sb-section">
+    <div class="sb-section-title">시작하기</div>
+    <a href="#intro" class="sb-link" onclick="closeMenu()"><span class="sb-icon">📖</span>서비스 소개</a>
+    <a href="#features" class="sb-link" onclick="closeMenu()"><span class="sb-icon">✨</span>주요 기능</a>
+    <a href="#quickstart" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🚀</span>로컬 실행</a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">아키텍처</div>
+    <a href="#arch" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🏗</span>데이터 흐름</a>
+    <a href="#modules" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🧩</span>모듈 구조</a>
+    <a href="#canvas" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🎨</span>Canvas 레이어</a>
+    <a href="#state" class="sb-link" onclick="closeMenu()"><span class="sb-icon">💾</span>전역 상태</a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">데이터</div>
+    <a href="#erd" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🗂</span>ERD</a>
+    <a href="#storage" class="sb-link" onclick="closeMenu()"><span class="sb-icon">📦</span>localStorage 스키마</a>
+    <a href="#share" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🔗</span>공유 메커니즘</a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">설계 결정</div>
+    <a href="#decisions" class="sb-link" onclick="closeMenu()"><span class="sb-icon">🤔</span>기술적 의사결정</a>
+    <a href="#limits" class="sb-link" onclick="closeMenu()"><span class="sb-icon">⚠️</span>한계 & 로드맵</a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">외부 라이브러리</div>
+    <a href="#deps" class="sb-link" onclick="closeMenu()"><span class="sb-icon">📚</span>의존성</a>
+  </div>
+
+  <div class="sb-divider"></div>
+
+  <div style="padding: 0 12px;">
+    <a href="https://kimjeongcheol13.github.io/baseball-spray-chart/" target="_blank" class="sb-ext">
+      <span class="sb-ext-icon">🌐</span> 라이브 앱 열기
+      <span style="margin-left:auto;font-size:10px">↗</span>
+    </a>
+    <a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" class="sb-ext">
+      <span class="sb-ext-icon">⚙️</span> GitHub 저장소
+      <span style="margin-left:auto;font-size:10px">↗</span>
+    </a>
+    <a href="../README.md" target="_blank" class="sb-ext">
+      <span class="sb-ext-icon">📄</span> README.md
+      <span style="margin-left:auto;font-size:10px">↗</span>
+    </a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main id="content">
+
+  <!-- HERO -->
+  <div class="hero" id="intro">
+    <div class="hero-tag"><span class="hero-dot"></span>Technical Documentation</div>
+    <h1>Spray<em>Lab</em></h1>
+    <p class="hero-sub">
+      야구 타구 기록·분석·공유를 위한 서버 없는 PWA.<br>
+      단일 <code>index.html</code> 파일로 완성된 오프라인 우선 웹 앱입니다.
+    </p>
+    <div class="hero-badges">
+      <a href="https://kimjeongcheol13.github.io/baseball-spray-chart/" target="_blank" class="badge-link badge-primary">🌐 라이브 앱</a>
+      <a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" class="badge-link badge-ghost">⚙️ GitHub</a>
+      <a href="https://github.com/kimjeongcheol13/baseball-spray-chart/blob/main/README.md" target="_blank" class="badge-link badge-ghost">📄 README</a>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="doc-section" id="features">
+    <h2><span class="h-icon">✨</span>주요 기능</h2>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-card-icon">⚾</div><div class="feat-card-title">스프레이 차트</div><div class="feat-card-desc">Canvas 필드를 탭해 타구 착지 위치를 실시간 기록</div></div>
+      <div class="feat-card"><div class="feat-card-icon">📊</div><div class="feat-card-title">자동 통계 계산</div><div class="feat-card-desc">AVG / OBP / SLG / OPS / wOBA / BABIP / BB% / K%</div></div>
+      <div class="feat-card"><div class="feat-card-icon">👥</div><div class="feat-card-title">라인업 관리</div><div class="feat-card-desc">홈·원정팀 선수 등록, 드래그 & 드롭 타순 변경</div></div>
+      <div class="feat-card"><div class="feat-card-icon">🎯</div><div class="feat-card-title">투수 분석 탭</div><div class="feat-card-desc">구종·코스·결과 기록 → 도넛차트 & 히트맵 자동 생성</div></div>
+      <div class="feat-card"><div class="feat-card-icon">▶</div><div class="feat-card-title">경기 운영 모드</div><div class="feat-card-desc">타순 자동 전진, 3아웃 시 이닝 자동 전환</div></div>
+      <div class="feat-card"><div class="feat-card-icon">🤖</div><div class="feat-card-title">AI 타격 분석</div><div class="feat-card-desc">당겨치기 성향·삼진 패턴·강점 코스 자동 감지 (rule-based)</div></div>
+      <div class="feat-card"><div class="feat-card-icon">🔗</div><div class="feat-card-title">QR & URL 공유</div><div class="feat-card-desc">LZ-String 압축 URL로 서버 없이 경기 데이터 공유</div></div>
+      <div class="feat-card"><div class="feat-card-icon">📱</div><div class="feat-card-title">PWA</div><div class="feat-card-desc">홈 화면 추가 가능, Service Worker 오프라인 캐시</div></div>
+      <div class="feat-card"><div class="feat-card-icon">📊</div><div class="feat-card-title">Excel 내보내기</div><div class="feat-card-desc">경기목록 / 통합선수통계 / 전체타석기록 3시트 .xlsx</div></div>
+      <div class="feat-card"><div class="feat-card-icon">🖼</div><div class="feat-card-title">PNG 성적카드</div><div class="feat-card-desc">9:16 개인 카드 · 1:1 팀 카드 이미지 저장 후 SNS 공유</div></div>
+      <div class="feat-card"><div class="feat-card-icon">🔥</div><div class="feat-card-title">핫존 오버레이</div><div class="feat-card-desc">안타 / 아웃 / 장타 밀집 구역 히트맵 시각화</div></div>
+      <div class="feat-card"><div class="feat-card-icon">💬</div><div class="feat-card-title">KakaoTalk 대응</div><div class="feat-card-desc">인앱 브라우저 감지 → JSON 수동 복사 & Chrome 이동 안내</div></div>
+    </div>
+  </section>
+
+  <!-- QUICKSTART -->
+  <section class="doc-section" id="quickstart">
+    <h2><span class="h-icon">🚀</span>로컬 실행 방법</h2>
+
+    <h3>방법 A — 파일 직접 열기</h3>
+    <div class="code-label">Shell</div>
+    <pre><code>git clone https://github.com/kimjeongcheol13/baseball-spray-chart.git
+cd baseball-spray-chart
+
+# macOS
+open index.html
+
+# Windows
+start index.html</code></pre>
+    <div class="callout callout-warn">
+      <div class="callout-title">⚠️ 제한 사항</div>
+      <code>file://</code> 프로토콜에서는 Service Worker가 등록되지 않아 PWA·오프라인 캐시가 비활성화됩니다. 핵심 기능(타구 기록·통계·저장·공유)은 정상 동작합니다.
+    </div>
+
+    <h3>방법 B — 로컬 서버 (전체 기능)</h3>
+    <div class="code-label">Shell</div>
+    <pre><code>python3 -m http.server 8080
+# 브라우저에서 http://localhost:8080 접속</code></pre>
+    <div class="callout callout-tip">
+      <div class="callout-title">✅ 권장</div>
+      Service Worker는 <code>https://</code> 또는 <code>localhost</code>에서만 등록됩니다. 로컬 서버를 사용하면 PWA 설치, 오프라인 캐시, 공유 URL까지 모든 기능이 활성화됩니다.
+    </div>
+  </section>
+
+  <!-- ARCH -->
+  <section class="doc-section" id="arch">
+    <h2><span class="h-icon">🏗</span>데이터 흐름</h2>
+    <p>사용자 입력부터 저장·공유·렌더링까지의 전체 흐름입니다.</p>
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+flowchart TD
+    A["사용자 입력\n필드 탭 / 퀵버튼"] --> B["AS 전역 상태\nconst AS"]
+    B --> C{기록 저장?}
+    C -- saveGame --> D[("localStorage\nsl_saves 인덱스\nsl_&lt;key&gt; 경기 데이터")]
+    C -- 임시 유지 --> B
+    B --> E["Canvas 렌더링\ndrawHits · drawField"]
+    B --> F["통계 계산\nupdStats · updateAll"]
+    F --> G["DOM 업데이트\nAVG · OBP · SLG · OPS"]
+    D -- 공유 --> H["LZ-String 압축\n?game=z&lt;encoded&gt;"]
+    H --> I["QR 코드 생성\nqrcodejs"]
+    D -- 내보내기 --> J["xlsx.js\n.xlsx 파일"]
+    D -- 공유 링크 열기 --> K["디코드 → AS 복원\n_loadSharedGame"]
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULES -->
+  <section class="doc-section" id="modules">
+    <h2><span class="h-icon">🧩</span>모듈 구조</h2>
+    <p>단일 <code>index.html</code> 파일(489 KB) 안에 모든 구성 요소가 포함되어 있습니다.</p>
+    <div class="code-label">구조 트리</div>
+    <pre><code>index.html (489 KB)
+├── &lt;style id="landing-css"&gt;   랜딩 페이지 CSS
+├── &lt;style id="app-css"&gt;       앱 CSS (다크테마, 반응형)
+├── &lt;div id="landing-page"&gt;    랜딩/마케팅 페이지 HTML
+├── &lt;div id="app-page"&gt;        앱 UI HTML
+│   ├── .pnl-left              라인업 패널
+│   ├── .pnl-center            스프레이 차트 (Canvas × 3)
+│   └── .pnl-right             통계 탭 패널
+│       ├── pnl-log            타석 기록 목록
+│       ├── pnl-batter         타자 개인 통계 + AI 분석
+│       ├── pnl-stat           팀 통계
+│       ├── pnl-chart          차트 & 내보내기
+│       └── pnl-pitcher        투수 분석
+└── &lt;script&gt;
+    ├── 카카오 감지             detectKakaoBrowser()
+    ├── 전역 상태               const AS = { ... }
+    ├── 캔버스 엔진             initCanvas, drawField, drawHits, onFClick
+    ├── 선수 관리               addPlayer, delPlayer, selBatter, renderLP
+    ├── 타석 기록               recHit, recOther, fabRecord, undoLast
+    ├── 통계 계산               updStats, updBatterStat, calcWOBA, calcBABIP
+    ├── 차트 렌더               drawDonut, drawTrendChart, drawInningChart
+    ├── 투수 분석               addPitcher, recordPitch, renderPitcherStats
+    ├── 저장/불러오기           saveGame, loadGame, restoreGame, deleteGame
+    ├── 공유 시스템             shareURL, _loadSharedGame, showShareQR
+    ├── Excel 내보내기          exportGameToExcel, exportAllGames
+    ├── PNG 내보내기            exportSprayPNG, exportShareCard
+    ├── 경기 운영 모드          gfToggle, gfNextBatter, gfEndGame
+    ├── AI 타격 분석            renderAIInsight (rule-based heuristic)
+    ├── 인터랙티브 투어         TOUR[], startTour, tourGo
+    └── PWA / SW 등록           navigator.serviceWorker.register('sw.js')</code></pre>
+  </section>
+
+  <!-- CANVAS -->
+  <section class="doc-section" id="canvas">
+    <h2><span class="h-icon">🎨</span>Canvas 레이어 구조</h2>
+    <p>세 개의 <code>&lt;canvas&gt;</code>가 같은 위치에 겹쳐 렌더링됩니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Canvas ID</th><th>역할</th><th>pointer-events</th></tr></thead>
+        <tbody>
+          <tr><td><code>#fldCanvas</code></td><td>야구장 배경 (잔디·흙·파울라인) 정적 렌더. 클릭 이벤트 수신</td><td>all</td></tr>
+          <tr><td><code>#hitCanvas</code></td><td>타구 점 · 방향 선 동적 렌더 (타석 추가 시 갱신)</td><td>none</td></tr>
+          <tr><td><code>#ovrCanvas</code></td><td>핫존 히트맵 오버레이 (토글 가능, opacity transition)</td><td>none</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-info">
+      <div class="callout-title">좌표 시스템</div>
+      타구 위치는 <code>0~1</code> 범위의 정규화된 좌표(<code>x</code>, <code>y</code>)로 저장됩니다. 렌더링 시 <code>x * FS</code>로 픽셀 좌표로 변환합니다. <code>FS</code>는 캔버스 크기(기본 440px)입니다.
+    </div>
+  </section>
+
+  <!-- STATE -->
+  <section class="doc-section" id="state">
+    <h2><span class="h-icon">💾</span>전역 상태 (AS)</h2>
+    <p>앱의 모든 런타임 상태는 <code>const AS</code> 객체 하나에 집중됩니다.</p>
+    <div class="code-label">JavaScript</div>
+    <pre><code>const AS = {
+  hs: 0, as: 0,            // 홈/원정 점수
+  curTeam: 'home',          // 현재 활성 팀
+  home_lineup: [],           // 홈팀 선수 배열
+  away_lineup: [],           // 원정팀 선수 배열
+  batter: null,              // 현재 선택된 타자 객체
+  abs: [],                   // 타석 기록 배열 (최대 300개)
+  pt: null,                  // 현재 구종
+  zone: null,                // 현재 투구 존
+  rbi: 0,                    // 현재 타석 타점
+  pending: null,             // 필드 클릭 임시 좌표
+  zoneHistory: {},           // 존별 투구 히스토리
+  balls: 0, strikes: 0, outs: 0,  // 볼카운트
+  batterFilter: false,
+  teamFilter: null,
+  showHotCold: false,
+  currentPitches: [],        // 현재 타석 투구 목록
+  pitchers: [],              // 투수 목록
+  currentPitcher: null,
+  pitchLog: [],
+  recFilterBid: null
+};
+const MAX_HITS = 300;        // 메모리 내 최대 타석 수</code></pre>
+  </section>
+
+  <!-- ERD -->
+  <section class="doc-section" id="erd">
+    <h2><span class="h-icon">🗂</span>ERD</h2>
+    <p>localStorage에 저장되는 데이터의 엔티티 관계도입니다.</p>
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+erDiagram
+    GAME {
+        string key PK
+        number hs
+        number as
+        string th
+        string ta
+        string d
+        number ts
+        string cond
+    }
+    PLAYER {
+        number id PK
+        string name
+        string num
+        string pos
+        string bh
+        boolean isStarter
+    }
+    ATBAT {
+        number id PK
+        number bid FK
+        string team
+        string res
+        string pt
+        string zone
+        number rbi
+        float x
+        float y
+        string dir
+        string inn
+        object count
+        array pitches
+    }
+    PITCHER {
+        number id PK
+        string name
+        string num
+        array pitchLog
+    }
+    SAVES_INDEX {
+        string key FK
+        string label
+        number ts
+    }
+    GAME ||--o{ PLAYER : "home_lineup / away_lineup"
+    GAME ||--o{ ATBAT : "abs"
+    GAME ||--o{ PITCHER : "pitchers"
+    GAME ||--o{ SAVES_INDEX : "인덱스"
+    PLAYER ||--o{ ATBAT : "bid"
+      </div>
+    </div>
+
+    <h3>타석 결과 값 목록</h3>
+    <div class="chip-row">
+      <span class="chip chip-green">안타</span>
+      <span class="chip chip-green">내야안타</span>
+      <span class="chip chip-blue">2루타</span>
+      <span class="chip chip-yellow">3루타</span>
+      <span class="chip chip-red">홈런</span>
+      <span class="chip chip-red">삼진</span>
+      <span class="chip chip-blue">볼넷</span>
+      <span class="chip chip-yellow">사구</span>
+      <span class="chip chip-yellow">희타</span>
+      <span class="chip chip-yellow">희비</span>
+      <span class="chip chip-yellow">병살</span>
+    </div>
+
+    <h3>구종 값 목록</h3>
+    <div class="chip-row">
+      <span class="chip chip-blue">직구</span>
+      <span class="chip chip-yellow">슬라이더</span>
+      <span class="chip chip-green">체인지업</span>
+      <span class="chip chip-blue">커브</span>
+      <span class="chip chip-red">포크볼</span>
+      <span class="chip chip-yellow">커터</span>
+    </div>
+  </section>
+
+  <!-- STORAGE -->
+  <section class="doc-section" id="storage">
+    <h2><span class="h-icon">📦</span>localStorage 스키마</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>키</th><th>타입</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><code>sl_saves</code></td><td>JSON 배열</td><td>저장 경기 인덱스. <code>[{key, label, ts}, ...]</code> 형태로 목록 관리</td></tr>
+          <tr><td><code>sl_&lt;timestamp&gt;</code></td><td>JSON 객체</td><td>경기 전체 데이터. GAME + 중첩된 PLAYER / ATBAT / PITCHER 배열</td></tr>
+          <tr><td><code>sl_ob3</code></td><td>"1"</td><td>온보딩 완료 플래그. 없으면 신규 사용자로 간주해 튜토리얼 표시</td></tr>
+          <tr><td><code>sl_visited</code></td><td>"1"</td><td>첫 방문 플래그</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-warn">
+      <div class="callout-title">⚠️ 용량 한계</div>
+      브라우저 localStorage 한도는 약 5~10 MB입니다. 경기당 평균 20~100 KB이므로 수십~수백 경기까지는 문제없지만, 장기간 누적 사용 시 저장 실패가 발생할 수 있습니다.
+    </div>
+  </section>
+
+  <!-- SHARE -->
+  <section class="doc-section" id="share">
+    <h2><span class="h-icon">🔗</span>공유 메커니즘</h2>
+    <p>서버 없이 경기 데이터를 URL 한 줄로 공유합니다. <strong>LZ-String</strong> 라이브러리를 사용해 JSON을 URI-safe Base64로 압축합니다.</p>
+
+    <div class="code-label">흐름</div>
+    <pre><code>// 공유 URL 생성
+const json = JSON.stringify(payload);
+const encoded = 'z' + LZString.compressToEncodedURIComponent(json);
+const url = `${location.origin}${location.pathname}?game=${encoded}`;
+
+// 수신자가 링크 열 때 복원
+const json = LZString.decompressFromEncodedURIComponent(encoded.slice(1));
+const payload = JSON.parse(json);
+// → 배너로 "공유된 경기가 있습니다" 안내 후 불러오기</code></pre>
+
+    <p>공유 URL에 포함되는 데이터:</p>
+    <div class="chip-row">
+      <span class="chip chip-blue">홈·원정팀 이름</span>
+      <span class="chip chip-blue">점수</span>
+      <span class="chip chip-green">전체 타석 기록</span>
+      <span class="chip chip-green">타구 좌표</span>
+      <span class="chip chip-yellow">구종·존·이닝</span>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">레거시 지원</div>
+      <code>?game=b...</code> (btoa), <code>#share=...</code> (해시) 형식도 파싱 가능합니다.
+    </div>
+  </section>
+
+  <!-- DECISIONS -->
+  <section class="doc-section" id="decisions">
+    <h2><span class="h-icon">🤔</span>기술적 의사결정</h2>
+
+    <div class="decision-grid">
+      <div class="decision-card">
+        <div class="dec-q">왜 Vanilla JS인가?</div>
+        <div class="dec-a">
+          빌드 단계가 없어 <code>index.html</code> 하나로 GitHub Pages에 즉시 배포 가능합니다.
+          프레임워크 런타임 없이 단일 파일만 로드하므로 불안정한 야구장 LTE 환경에서도 빠릅니다.
+        </div>
+      </div>
+      <div class="decision-card">
+        <div class="dec-q">왜 localStorage인가?</div>
+        <div class="dec-a">
+          계정 없이 즉시 사용 가능합니다. 모든 데이터가 본인 기기에만 저장되어 개인정보를 보호하고,
+          인터넷이 끊겨도 정상 동작합니다. 서버 운영비도 없습니다.
+        </div>
+      </div>
+      <div class="decision-card">
+        <div class="dec-q">왜 단일 index.html인가?</div>
+        <div class="dec-a">
+          파일 하나만 GitHub Pages에 올리면 배포 완료입니다.
+          Service Worker도 단일 URL만 캐시하면 완전한 오프라인 앱이 됩니다.
+        </div>
+      </div>
+      <div class="decision-card">
+        <div class="dec-q">왜 LZ-String인가?</div>
+        <div class="dec-a">
+          서버 없이 공유하려면 데이터를 URL에 담아야 합니다.
+          LZ-String은 일반 JSON 대비 약 60~70% 압축하여 URL 길이를 크게 줄입니다.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIMITS -->
+  <section class="doc-section" id="limits">
+    <h2><span class="h-icon">⚠️</span>한계 & 로드맵</h2>
+
+    <h3>현재 구조의 한계</h3>
+    <div class="limit-row">
+      <div class="limit-icon">💾</div>
+      <div class="limit-body">
+        <div class="limit-title">localStorage 용량 (~5~10 MB)</div>
+        <div class="limit-desc">장기간 대용량 사용 시 저장 실패. 자동 정리 로직이 없어 사용자가 수동으로 삭제해야 합니다.</div>
+      </div>
+    </div>
+    <div class="limit-row">
+      <div class="limit-icon">📱</div>
+      <div class="limit-body">
+        <div class="limit-title">디바이스 단독</div>
+        <div class="limit-desc">기기 간 동기화 불가. 팀원 A의 기록을 팀원 B가 실시간으로 볼 수 없습니다.</div>
+      </div>
+    </div>
+    <div class="limit-row">
+      <div class="limit-icon">🔗</div>
+      <div class="limit-body">
+        <div class="limit-title">공유 URL 길이</div>
+        <div class="limit-desc">300타석에 가까워지면 LZ-String 압축 후에도 URL이 수 KB에 달해 일부 메신저에서 문제가 생길 수 있습니다.</div>
+      </div>
+    </div>
+    <div class="limit-row">
+      <div class="limit-icon">📄</div>
+      <div class="limit-body">
+        <div class="limit-title">단일 HTML 유지보수</div>
+        <div class="limit-desc">489 KB HTML 파일 하나에 CSS·JS·HTML이 전부 존재합니다. 기능 추가 시 파일이 계속 커집니다.</div>
+      </div>
+    </div>
+
+    <h3>실제 서비스 전환 시 설계 방향</h3>
+    <div class="code-label">DB 스키마 (추후 개발 예정)</div>
+    <pre><code>teams          (id, name, color, created_at)
+seasons        (id, team_id, year, label)
+games          (id, home_team_id, away_team_id, season_id, played_at,
+                home_score, away_score)
+players        (id, team_id, name, number, position, batting_hand)
+plate_appearances (id, game_id, player_id, inning, result, rbi,
+                   field_x, field_y, direction, pitch_type, zone,
+                   balls, strikes, outs, created_at)
+pitches        (id, pitcher_id, plate_appearance_id, pitch_type,
+                zone, result)</code></pre>
+
+    <div class="code-label">백엔드 아키텍처 (추후 개발 예정)</div>
+    <pre><code>클라이언트 (React / Vue + Canvas)
+    ↕ REST API / WebSocket
+백엔드 (Node.js / FastAPI)
+    ↕
+PostgreSQL ── Redis (실시간 경기 상태 캐시)
+    ↕
+S3 / GCS (PNG 카드, Excel 임시 저장)</code></pre>
+  </section>
+
+  <!-- DEPS -->
+  <section class="doc-section" id="deps">
+    <h2><span class="h-icon">📚</span>외부 라이브러리</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>라이브러리</th><th>버전</th><th>용도</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://github.com/pieroxy/lz-string" target="_blank" style="color:var(--accent)">LZ-String</a></td><td>1.5.0</td><td>게임 데이터 URL 압축 (공유 기능)</td></tr>
+          <tr><td><a href="https://github.com/SheetJS/sheetjs" target="_blank" style="color:var(--accent)">xlsx.js</a></td><td>0.18.5</td><td>클라이언트 Excel 내보내기</td></tr>
+          <tr><td><a href="https://github.com/davidshimjs/qrcodejs" target="_blank" style="color:var(--accent)">qrcodejs</a></td><td>1.0.0</td><td>QR 코드 클라이언트 생성</td></tr>
+          <tr><td>Noto Sans KR</td><td>—</td><td>한국어 UI 폰트</td></tr>
+          <tr><td>JetBrains Mono</td><td>—</td><td>통계 수치 모노스페이스 폰트</td></tr>
+          <tr><td>Bebas Neue</td><td>—</td><td>디스플레이 헤딩 폰트 (랜딩 페이지)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>파일 구조</h3>
+    <div class="code-label">프로젝트 루트</div>
+    <pre><code>baseball-spray-chart/
+├── index.html      # 앱 전체 (HTML + CSS + JS, 489 KB)
+├── sw.js           # Service Worker (오프라인 캐시, spraylab-v2)
+├── manifest.json   # PWA 매니페스트
+├── icon.svg        # 앱 아이콘
+├── README.md       # 기술 문서 (마크다운)
+└── docs/
+    └── index.html  # 이 문서 페이지</code></pre>
+  </section>
+
+  <footer style="margin-top:40px;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div style="font-size:12px;color:var(--text2)">Made by <a href="https://github.com/kimjeongcheol13" target="_blank" style="color:var(--accent)">kimjeongcheol13</a></div>
+    <div style="display:flex;gap:10px;">
+      <a href="https://kimjeongcheol13.github.io/baseball-spray-chart/" target="_blank" style="font-size:12px;color:var(--text2);text-decoration:none;">🌐 라이브 앱</a>
+      <a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" style="font-size:12px;color:var(--text2);text-decoration:none;">⚙️ GitHub</a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    background: '#161b22',
+    primaryColor: '#1f2937',
+    primaryTextColor: '#e6edf3',
+    primaryBorderColor: '#30363d',
+    lineColor: '#4b8cf5',
+    secondaryColor: '#21262d',
+    tertiaryColor: '#0d1117',
+    edgeLabelBackground: '#161b22',
+    fontFamily: 'Noto Sans KR, sans-serif',
+    fontSize: '13px'
+  }
+});
+
+function toggleMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('on');
+}
+function closeMenu() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('on');
+}
+
+// Active link highlight on scroll
+const sections = document.querySelectorAll('.doc-section, .hero');
+const links = document.querySelectorAll('.sb-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const match = document.querySelector(`.sb-link[href="#${id}"]`);
+      if (match) match.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

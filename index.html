@@ -3277,11 +3277,13 @@ function safeRender(){
     if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
     if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
     list.forEach(a=>{if(a.x)drawDot(a);});
-    drawHotZoneOverlay();
+    // _hzMode가 켜진 경우에만 핫존 오버레이 그림
+    // (RAF 안에서 updateHotCold가 먼저 실행되므로 충돌 없음)
+    if(_hzMode)drawHotZoneOverlay();
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(_hzMode)setTimeout(drawHotZoneOverlay,0);if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -3615,10 +3617,12 @@ function toggleHotZoneOverlay(mode){
 function drawHotZoneOverlay(){
   var cvs=document.getElementById('ovrCanvas');
   if(!cvs)return;
+  // _hzMode가 꺼져 있으면 오버레이를 건드리지 않음
+  // (updateHotCold가 ovrCanvas 상태를 관리)
+  if(!_hzMode){cvs.classList.remove('show');return;}
   var ctx=cvs.getContext('2d');
-  var W=cvs.width,H=cvs.height,dpr=window.devicePixelRatio||1;
+  var W=cvs.width,H=cvs.height;
   ctx.clearRect(0,0,W,H);
-  if(!_hzMode)return;
   var hits=['안타','내야안타','2루타','3루타','홈런'],xbh=['2루타','3루타','홈런'];
   var filter={
     hit:function(a){return hits.includes(a.res);},
@@ -3626,16 +3630,18 @@ function drawHotZoneOverlay(){
     hr:function(a){return xbh.includes(a.res);}
   };
   var pts=AS.abs.filter(function(a){return a.x&&a.y&&filter[_hzMode](a);});
-  if(!pts.length)return;
+  if(!pts.length){cvs.classList.remove('show');return;}
   var color={hit:'rgba(45,212,160,',out:'rgba(245,101,101,',hr:'rgba(251,146,60,'};
   var c=color[_hzMode];
-  // kernel density: draw gaussian blob per point
+  // kernel density: 각 타구 위치에 가우시안 블롭 (반경 = 캔버스의 10%)
+  var r=W*0.1;
   pts.forEach(function(a){
-    var r=28*dpr;
-    var grd=ctx.createRadialGradient(a.x*dpr,a.y*dpr,0,a.x*dpr,a.y*dpr,r);
-    grd.addColorStop(0,c+'0.18)');grd.addColorStop(1,c+'0)');
-    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(a.x*dpr,a.y*dpr,r,0,Math.PI*2);ctx.fill();
+    var px=a.x*W,py=a.y*H;   // ← 수정: a.x*dpr(잘못됨) → a.x*W(올바름)
+    var grd=ctx.createRadialGradient(px,py,0,px,py,r);
+    grd.addColorStop(0,c+'0.22)');grd.addColorStop(1,c+'0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
   });
+  cvs.classList.add('show');
 }
 
 function drawDonut(){

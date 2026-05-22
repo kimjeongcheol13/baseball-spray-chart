@@ -5449,7 +5449,10 @@ _loadSharedGame();
 (function autoSkipLanding(){
   var sp=new URLSearchParams(location.search);
   var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
-  if(!hasShare && localStorage.getItem('sl_visited')==='1'){
+  // 모바일(터치 기기 + 화면 너비 1024px 미만)만 랜딩 스킵
+  // 노트북/데스크톱은 항상 랜딩 페이지 표시
+  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
+  if(!hasShare && isMobile && localStorage.getItem('sl_visited')==='1'){
     showApp();
   }
 })();

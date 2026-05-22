@@ -1101,8 +1101,7 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 
 /* ══ FOCUS MODE ══ */
 body.game-focus #seasonCard,
-body.game-focus #weaknessCard,
-body.game-focus #aiInsightCard{display:none!important}
+body.game-focus #weaknessCard{display:none!important}
 body.game-focus #advSection{display:none!important}
 body.game-focus #advToggleBtn{display:none!important}
 
@@ -2162,8 +2161,12 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
           <div class="sc-title">코스 × 구종 교차분석</div>
           <div id="zonePitchCross" style="overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
         </div>
+        <div class="stat-card" id="aiInsightCard">
+          <div class="sc-title">📊 패턴 분석 <span style="font-size:9px;color:var(--text3);font-weight:400;margin-left:4px">(규칙 기반 자동 분석)</span></div>
+          <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
+        </div>
         <button class="adv-toggle-btn" id="advToggleBtn" onclick="toggleAdvanced()">
-          <span>▸ 고급 분석 (시즌·약점·AI)</span>
+          <span>▸ 고급 분석 (시즌·약점)</span>
           <span class="adv-arr">▶</span>
         </button>
         <div id="advSection" class="closed" style="max-height:0">
@@ -2178,10 +2181,6 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
         <div class="stat-card" id="weaknessCard">
           <div class="sc-title">⚠️ 약점 패턴 감지</div>
           <div id="weaknessList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">타석을 기록하면 패턴을 분석합니다</div></div>
-        </div>
-        <div class="stat-card" id="aiInsightCard">
-          <div class="sc-title">📊 패턴 분석 <span style="font-size:9px;color:var(--text3);font-weight:400;margin-left:4px">(규칙 기반 자동 분석)</span></div>
-          <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
         </div>
         </div><!-- /advSection -->
       </div>

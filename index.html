@@ -8469,6 +8469,8 @@ function fieldFeedbackSubmit(){
   window.openCloudOverlay=function(){
     _setCloudUI(getTeamCode());
     openOverlay('cloudOverlay');
+    // 오버레이 열릴 때 자동으로 연결 상태 확인
+    setTimeout(function(){window.cloudTest&&cloudTest();},300);
   };
 
   window.setTeamCode=function(){
@@ -8480,6 +8482,8 @@ function fieldFeedbackSubmit(){
     inp.value='';
     _setCloudUI(code);
     showToast('팀 코드 설정 완료: '+code,false);
+    // 팀 코드 설정 후 자동 연결 확인
+    setTimeout(function(){window.cloudTest&&cloudTest();},200);
   };
 
   // 연결 테스트
@@ -8487,20 +8491,37 @@ function fieldFeedbackSubmit(){
     var btn=document.getElementById('cloudTestBtn');
     var st=document.getElementById('cloudConnStatus');
     function setStatus(ok,msg){
-      if(st){st.textContent=msg;st.style.color=ok?'var(--green)':'var(--red)';}
+      if(st){st.textContent=msg;st.style.color=ok?'var(--green)':ok===null?'var(--yellow)':'var(--red)';}
       if(btn){btn.disabled=false;btn.textContent='🔌 연결 테스트';}
     }
     if(btn){btn.disabled=true;btn.textContent='테스트 중…';}
+    if(st){st.textContent='⏳ 연결 확인 중…';st.style.color='var(--text3)';}
+
+    // 1단계: 라이브러리 로딩 확인
     var db=_init();
-    if(!db){setStatus(false,'❌ Supabase 라이브러리 로딩 실패 — 네트워크 확인');showToast('❌ Supabase 라이브러리가 로드되지 않았습니다',false,true);return;}
+    if(!db){
+      // CDN 로딩 실패 → 재시도
+      setStatus(null,'⚠️ Supabase 라이브러리 로딩 중… 잠시 후 다시 시도하세요');
+      return;
+    }
+
+    // 2단계: DB 접속 확인
     db.from('games').select('id',{count:'exact',head:true}).then(function(r){
       if(r.error){
-        var msg=r.error.message||r.error.code||JSON.stringify(r.error);
-        setStatus(false,'❌ 오류: '+msg);
-        showToast('❌ 클라우드 연결 실패 — '+msg,false,true);
+        var code=r.error.code||'';
+        var msg=r.error.message||JSON.stringify(r.error);
+        if(code==='42P01'||msg.indexOf('does not exist')>-1){
+          setStatus(false,'❌ 테이블 없음 — SQL 설정이 필요합니다 (아래 펼쳐보세요)');
+        } else if(code==='42501'||msg.indexOf('permission')>-1||msg.indexOf('policy')>-1){
+          setStatus(false,'❌ 접근 권한 없음 — RLS 정책 설정이 필요합니다 (아래 SQL 실행)');
+        } else {
+          setStatus(false,'❌ 오류: '+msg);
+        }
       } else {
-        setStatus(true,'✅ 연결 성공! 저장된 경기 수: '+(r.count||0)+'개');
-        showToast('✅ Supabase 연결 성공!',false);
+        var tc=getTeamCode();
+        var countMsg=tc?'팀['+tc+'] 경기 '+(r.count||0)+'개':'팀 코드를 설정하면 동기화 시작';
+        setStatus(true,'✅ 연결 성공! '+countMsg);
+        if(tc)showToast('✅ 클라우드 연결 확인 — '+countMsg,false);
       }
     });
   };

@@ -31,7 +31,7 @@
 | 9분할 투구 존 | 코스별 피안타·삼진 패턴 추적 |
 | 투수 분석 탭 | 구종·코스·결과 기록 → 도넛차트 & 히트맵 자동 생성 |
 | 경기 운영 모드 | 타순 자동 전진, 3아웃 시 이닝 자동 전환 |
-| AI 타격 분석 | 2타석 이상 시 당겨치기 성향·삼진 패턴·강점 코스 감지 |
+| 패턴 분석 | 2타석 이상 시 당겨치기 성향·삼진 패턴·강점 코스 감지 |
 | 핫존 오버레이 | 안타 / 아웃 / 장타 밀집 구역 히트맵 |
 | 성적카드 PNG | 9:16 개인 카드 · 1:1 팀 카드 이미지 저장 |
 | Excel 내보내기 | 경기목록 / 통합선수통계 / 전체타석기록 3시트 .xlsx |
@@ -91,7 +91,7 @@ index.html (489 KB — 단일 파일)
     ├── Excel 내보내기         exportGameToExcel, exportAllGames
     ├── PNG 내보내기           exportSprayPNG, exportShareCard
     ├── 경기 운영 모드         gfToggle, gfNextBatter, gfEndGame
-    ├── AI 타격 분석           renderAIInsight (rule-based heuristic)
+    ├── 패턴 분석              renderAIInsight (rule-based heuristic)
     ├── 인터랙티브 투어        TOUR[], startTour, tourGo
     └── PWA / SW 등록          navigator.serviceWorker.register('sw.js')
 ```
@@ -311,7 +311,7 @@ python3 -m http.server 8080
 ```
 baseball-spray-chart/
 ├── index.html      # 앱 전체 (HTML + CSS + JS, 489 KB)
-├── sw.js           # Service Worker (오프라인 캐시, spraylab-v2)
+├── sw.js           # Service Worker (오프라인 캐시, spraylab-v6)
 ├── manifest.json   # PWA 매니페스트
 └── icon.svg        # 앱 아이콘
 ```

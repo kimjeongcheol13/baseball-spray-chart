@@ -110,6 +110,10 @@ index.html (489 KB — 단일 파일)
 
 ## 데이터 구조 (ERD)
 
+> 현재 localStorage 기반 구조는 아래 Mermaid 다이어그램을 참조하세요.  
+> **서버 DB 확장 설계** (전체 DDL · 인덱스 · 핵심 쿼리 · 마이그레이션 전략) →  
+> 📄 **[docs/DATABASE_DESIGN.md](./docs/DATABASE_DESIGN.md)**
+
 ```mermaid
 erDiagram
     GAME {

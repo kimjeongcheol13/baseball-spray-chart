@@ -1306,6 +1306,27 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ffm-btns{display:flex;gap:8px}
 .ffm-send{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
 .ffm-cancel{padding:13px 18px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
+
+/* ── 더보기 드롭다운 ── */
+.more-menu-wrap{position:relative}
+.more-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:160px;z-index:400;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.mm-item{width:100%;text-align:left;padding:8px 12px;font-size:12px;background:transparent;border:none;color:var(--text);border-radius:7px;cursor:pointer;white-space:nowrap;font-family:var(--font);-webkit-tap-highlight-color:transparent}
+.mm-item:hover,.mm-item:focus{background:var(--bg-raised);outline:none}
+.mm-divider{height:1px;background:var(--border);margin:3px 0}
+.mm-home{color:var(--text3)}
+
+/* ── 하단 입력 탭 바 ── */
+.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised)}
+.ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
+.ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.ib-tab-pnl{display:none}
+.ib-tab-pnl.on{display:block}
+
+/* ── 우측 분석 패널 토글 ── */
+.pnl-right{transition:opacity .25s ease,min-width .25s ease}
+.pnl-right.panel-collapsed{width:0!important;min-width:0!important;opacity:0;pointer-events:none;overflow:hidden;border-left:none}
+.app-layout.panel-collapsed{grid-template-columns:220px 1fr 0px!important}
+@media(max-width:720px){.pnl-right.panel-collapsed{display:none}}
 </style>
 </head>
 <body>
@@ -1963,14 +1984,22 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <span class="save-ind" id="saveInd">—</span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-ghost" onclick="exportCurrentGameToExcel()" title="현재 경기 엑셀 내보내기"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>엑셀</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
-    <button class="btn btn-ghost" onclick="shareGameLink()" title="경기 링크 공유" style="padding:4px 8px;font-size:10px" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.<br>팀원이 링크를 열면 배너로 자동 안내됩니다.">🔗 공유</button>
-    <button class="btn btn-ghost" onclick="showHelpMenu()" title="투어 or 튜토리얼 선택" style="padding:4px 8px;font-size:10px">❓ 도움말</button>
-    <button class="btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내</button>
-    <button class="btn btn-ghost" onclick="showPostGameReport()" style="padding:4px 8px;font-size:10px;color:#f6c23e;border-color:rgba(246,194,62,.3)" title="경기 리포트 보기">📊 리포트</button>
-    <button class="app-back" onclick="goHome()">← 홈</button>
+    <button class="btn btn-ghost" id="analysisPanelBtn" onclick="toggleAnalysisPanel()" title="분석 패널 열기/닫기" style="padding:4px 8px;font-size:10px" data-help-title="📊 분석 패널" data-help="우측 <b>분석 패널</b>을 열고 닫습니다.<br>차트·통계·투수 탭을 경기 중에 빠르게 확인하세요.">📊 분석</button>
+    <div class="more-menu-wrap" id="moreMenuWrap">
+      <button class="btn btn-ghost" onclick="toggleMoreMenu()" id="moreMenuBtn" style="padding:4px 12px;font-size:15px;letter-spacing:2px;line-height:1" title="더보기">···</button>
+      <div class="more-menu" id="moreMenu">
+        <button class="mm-item" onclick="exportCurrentGameToExcel();closeMoreMenu()">📥 엑셀 내보내기</button>
+        <button class="mm-item" onclick="shareGameLink();closeMoreMenu()" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.">🔗 공유</button>
+        <button class="mm-item" onclick="showPostGameReport();closeMoreMenu()" style="color:#f6c23e">📊 리포트</button>
+        <div class="mm-divider"></div>
+        <button class="mm-item" onclick="showHelpMenu();closeMoreMenu()">❓ 도움말</button>
+        <button class="mm-item btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내 모드</button>
+        <div class="mm-divider"></div>
+        <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -2049,11 +2078,17 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
     <div class="field-hint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="input-bar">
-      <div class="ib-row">
+      <div class="ib-tabs-bar">
+        <button class="ib-tab on" id="ibt-pitch" onclick="swIbTab('pitch',this)">⚾ 투구 입력</button>
+        <button class="ib-tab" id="ibt-result" onclick="swIbTab('result',this)">✅ 타석 결과</button>
+      </div>
+      <div class="ib-tab-pnl on" id="ib-pnl-pitch"><div class="ib-row">
         <div class="ib-sec"><div class="sec-lbl">투구 종류</div><div class="chips" id="ptGroup"><button class="chip pt-chip-F" onclick="selChip(this,'pt','직구')" onmouseenter="showTT(this,'직구 (Fastball)','가장 빠른 기본 구종\n타자를 힘으로 제압하는 구질')" onmouseleave="hideTT()">직구</button><button class="chip pt-chip-C" onclick="selChip(this,'pt','커브')" onmouseenter="showTT(this,'커브 (Curveball)','위→아래로 크게 꺾여 떨어지는 변화구\n속도차와 궤적 변화로 타자를 혼란')" onmouseleave="hideTT()">커브</button><button class="chip pt-chip-S" onclick="selChip(this,'pt','슬라이더')" onmouseenter="showTT(this,'슬라이더 (Slider)','옆으로 꺾이며 떨어지는 변화구\n타자 손을 부수는 구질로 유명')" onmouseleave="hideTT()">슬라이더</button><button class="chip pt-chip-CH" onclick="selChip(this,'pt','체인지업')" onmouseenter="showTT(this,'체인지업 (Changeup)','직구와 같은 폼으로 던지지만 갑자기 느려짐\n타자의 타이밍을 뺏는 구질')" onmouseleave="hideTT()">체인지업</button><button class="chip pt-chip-FK" onclick="selChip(this,'pt','포크볼')" onmouseenter="showTT(this,'포크볼 (Forkball)','홈플레이트 근처에서 뚝 떨어지는 구질\n땅볼 유도에 효과적')" onmouseleave="hideTT()">포크볼</button><button class="chip pt-chip-CT" onclick="selChip(this,'pt','커터')" onmouseenter="showTT(this,'커터 (Cut Fastball)','직구처럼 빠르게 날아오다 안쪽으로 살짝 꺾임\n타자의 배트 손잡이를 공략')" onmouseleave="hideTT()">커터</button></div></div>
         <div class="ib-sec"><div class="sec-lbl">코스 투구 기록</div><div style="display:flex;flex-direction:column;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 위" onclick="selZone(this)" style="width:72px">볼↑</button><div style="display:flex;align-items:center;gap:2px"><button class="zone-ball-btn" data-z="볼 내" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼←</button><div style="display:flex;align-items:center;gap:3px"><div style="font-size:9px;color:var(--text3);line-height:2.6;text-align:right"><div>높</div><div>중</div><div>낮</div></div><div class="zone-grid" id="zoneGrid"><div class="zone-cell" data-z="내각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 높음" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 중간" onclick="selZone(this)"></div><div class="zone-cell" data-z="내각 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="중앙 낮음" onclick="selZone(this)"></div><div class="zone-cell" data-z="외각 낮음" onclick="selZone(this)"></div></div><div style="font-size:9px;color:var(--text3);line-height:2.6"><div>내</div><div>중</div><div>외</div></div></div><button class="zone-ball-btn" data-z="볼 외" onclick="selZone(this)" style="height:72px;writing-mode:vertical-rl;padding:4px 2px">볼→</button></div><button class="zone-ball-btn" data-z="볼 아래" onclick="selZone(this)" style="width:72px">볼↓</button></div><div id="ptPickerArea" style="display:none;width:100%"><div style="font-size:10px;color:var(--text3);margin-bottom:4px">코스: <strong id="ptPickerZone" style="color:var(--text)"></strong> — 구종 선택</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px"><button class="chip" onclick="confirmZonePitch('직구')">직구</button><button class="chip" onclick="confirmZonePitch('커브')">커브</button><button class="chip" onclick="confirmZonePitch('슬라이더')">슬라이더</button><button class="chip" onclick="confirmZonePitch('체인지업')">체인지업</button><button class="chip" onclick="confirmZonePitch('포크볼')">포크볼</button><button class="chip" onclick="confirmZonePitch('커터')">커터</button></div><button class="chip" style="width:100%;justify-content:center;color:var(--text3)" onclick="hidePtPicker()">✕ 취소</button></div></div>
+      </div></div>
+      <div class="ib-tab-pnl" id="ib-pnl-result"><div class="ib-row">
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')" onmouseenter="showTT(this,'볼넷 (BB / 4볼)','투수가 스트라이크존 밖으로 4번 던지면\n타자는 자동으로 1루 진출\n\nBase on Balls')" onmouseleave="hideTT()">볼넷</button><button class="o-btn k" onclick="recOther('삼진')" onmouseenter="showTT(this,'삼진 (K / Strikeout)','스트라이크 3개로 타석 종료\n헛스윙 또는 존 통과로 스트라이크 누적')" onmouseleave="hideTT()">삼진</button><button class="o-btn hbp" onclick="recOther('사구')" onmouseenter="showTT(this,'사구 (HBP)','투수가 던진 공이 타자 몸에 맞은 경우\n볼넷처럼 1루로 자동 진루\n\nHit By Pitch')" onmouseleave="hideTT()">사구</button><button class="o-btn sac" onclick="recOther('희타')" onmouseenter="showTT(this,'희생번트 (SAC)','타자가 아웃되더라도\n주자를 다음 베이스로 진루시키는 번트\n\nSacrifice Bunt')" onmouseleave="hideTT()">희타</button><button class="o-btn sac" onclick="recOther('희비')" onmouseenter="showTT(this,'희생플라이 (SF)','외야 플라이 아웃으로\n3루 주자를 홈으로 불러들이는 타격\n\nSacrifice Fly')" onmouseleave="hideTT()">희비</button><button class="o-btn dp" onclick="recOther('병살')" onmouseenter="showTT(this,'병살 (DP / Double Play)','한 번의 플레이로 두 명이 아웃되는 상황\n주로 땅볼 → 2루 → 1루 순서로 발생')" onmouseleave="hideTT()">병살</button><button class="o-btn dp" onclick="recOther('내야안타')" onmouseenter="showTT(this,'내야안타 (Infield Hit)','내야에서 타구를 잡았지만\n타자가 1루에 먼저 도달한 안타')" onmouseleave="hideTT()">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
-      </div>
+      </div></div>
     </div>
   </div>
 
@@ -2675,6 +2710,50 @@ function showApp(){
 function goHome(){
   // 앱 내에 있으면 홈 화면(welcom)으로 복귀
   showAppWelcome();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UI 정리: 더보기 드롭다운 / 하단 탭 / 분석 패널
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toggleMoreMenu(){
+  var m=document.getElementById('moreMenu');
+  var btn=document.getElementById('moreMenuBtn');
+  if(!m)return;
+  var isOpen=m.style.display==='flex';
+  m.style.display=isOpen?'none':'flex';
+  if(btn)btn.classList.toggle('btn-primary',!isOpen);
+  if(!isOpen){
+    setTimeout(function(){document.addEventListener('click',_closeMoreMenuOutside,{once:true});},0);
+  }
+}
+function closeMoreMenu(){
+  var m=document.getElementById('moreMenu');
+  var btn=document.getElementById('moreMenuBtn');
+  if(m)m.style.display='none';
+  if(btn)btn.classList.remove('btn-primary');
+}
+function _closeMoreMenuOutside(e){
+  var wrap=document.getElementById('moreMenuWrap');
+  if(wrap&&!wrap.contains(e.target))closeMoreMenu();
+}
+
+function swIbTab(id,btn){
+  document.querySelectorAll('.ib-tab').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('.ib-tab-pnl').forEach(function(p){p.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  var pnl=document.getElementById('ib-pnl-'+id);
+  if(pnl)pnl.classList.add('on');
+}
+
+function toggleAnalysisPanel(){
+  var layout=document.querySelector('.app-layout');
+  var panel=document.querySelector('.pnl-right');
+  var btn=document.getElementById('analysisPanelBtn');
+  if(!layout||!panel)return;
+  var collapsed=layout.classList.toggle('panel-collapsed');
+  panel.classList.toggle('panel-collapsed',collapsed);
+  if(btn)btn.classList.toggle('btn-primary',!collapsed);
+  setTimeout(resizeCanvases,280);
 }
 function goLanding(){
   hideAppWelcome();
@@ -3309,11 +3388,12 @@ function safeRender(){
     if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
     if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
     list.forEach(a=>{if(a.x)drawDot(a);});
-    drawHotZoneOverlay();
+    drawHotZoneOverlay(); // ovrCanvas 초기화 후 핫존 블롭 그리기
+    updateHotCold();      // 그 다음 핫/콜드 존 그리기 (덮어씌우기 방지)
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();updateHotCold();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -4454,6 +4534,13 @@ function _doAutoSave(){
     _lastAutoLen=data.length;
     _pruneOldAutoSaves(key);
     _checkStorageQuota();
+    // 팀 코드가 설정된 경우 클라우드에도 반영
+    if(window.cloudSave){
+      var gameObj=JSON.parse(data);
+      var th=gameObj.th||'홈팀',ta=gameObj.ta||'원정팀';
+      var lbl='[자동] '+th+' '+(gameObj.hs||0)+':'+(gameObj.as||0)+' '+ta;
+      cloudSave(key,gameObj,lbl,gameObj.ts);
+    }
     if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}
     setTimeout(function(){if(ind)ind.textContent='';},2500);
   }catch(e){
@@ -5198,10 +5285,11 @@ function importExcelAsGame(input) {
 
       // 새 경기로 저장
       var key='sl_'+Date.now();
-      var gameData={key,hs,as:gameAs,th,ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:new Date().toLocaleString('ko-KR')};
+      var nowTs=Date.now();
+      var gameData={key,hs,as:gameAs,th,ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:nowTs};
       var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
       var lbl=th+' '+hs+':'+gameAs+' '+ta+' ('+gameDate+')';
-      saves.push({key,label:lbl,ts:gameData.ts});
+      saves.push({key,label:lbl,ts:nowTs});
       localStorage.setItem('sl_saves',JSON.stringify(saves));
       localStorage.setItem(key,JSON.stringify(gameData));
       if(window.cloudSave)cloudSave(key,gameData,lbl,gameData.ts);

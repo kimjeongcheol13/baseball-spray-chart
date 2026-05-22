@@ -1,4 +1,4 @@
-const CACHE='spraylab-v4';
+const CACHE='spraylab-v5';
 const URLS=[
   '/baseball-spray-chart/',
   '/baseball-spray-chart/index.html',

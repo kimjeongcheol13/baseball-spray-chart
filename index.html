@@ -54,9 +54,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;height:62px;dis
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 .hero-title{font-size:clamp(52px,8vw,96px);font-family:var(--display);letter-spacing:2px;line-height:.95;color:var(--text);margin-bottom:8px}
 .hero-title .hl{color:var(--blue)}
-.hero-sub{font-size:clamp(16px,2.5vw,22px);font-weight:300;color:var(--text2);line-height:1.6;margin-bottom:36px;letter-spacing:-.3px}
+.hero-sub{font-size:clamp(16px,2.5vw,22px);font-weight:300;color:var(--text2);line-height:1.6;margin-bottom:22px;letter-spacing:-.3px}
 .hero-sub strong{color:var(--text);font-weight:700}
-.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:48px}
+
+/* HERO 3-STEP FLOW */
+.hero-flow{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:0;margin-bottom:28px}
+.hf-step{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 20px;background:rgba(14,16,24,.82);border:1px solid var(--border2);border-radius:12px;min-width:120px;backdrop-filter:blur(12px);transition:border-color .2s,background .2s}
+.hf-step:hover{border-color:rgba(75,140,245,.35);background:rgba(75,140,245,.06)}
+.hf-num{width:28px;height:28px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 0 12px rgba(75,140,245,.4)}
+.hf-label{font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.hf-sub{font-size:10px;color:var(--text2);text-align:center;line-height:1.4}
+.hf-arrow{color:var(--border2);padding:0 6px;flex-shrink:0;font-size:18px;margin-top:-6px}
+@media(max-width:500px){
+  .hero-flow{flex-wrap:wrap;gap:6px}
+  .hf-arrow{display:none}
+  .hf-step{min-width:calc(33% - 4px);padding:10px 8px}
+}
+
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:28px}
 .btn-hero-primary{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:10px;background:var(--blue);color:#fff;font-size:14px;font-weight:800;font-family:var(--font);text-decoration:none;transition:all .15s;border:none;cursor:pointer}
 .btn-hero-primary:hover{background:#5d9bff;transform:translateY(-2px);box-shadow:0 8px 24px rgba(75,140,245,.3)}
 .btn-hero-secondary{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:10px;border:1px solid var(--border2);color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);text-decoration:none;transition:all .15s;background:none;cursor:pointer}
@@ -95,6 +110,49 @@ section{padding:100px 5%}
 .feat-title{font-size:16px;font-weight:800;margin-bottom:8px}
 .feat-desc{font-size:13px;color:var(--text2);line-height:1.7}
 .feat-tag{display:inline-block;margin-top:14px;padding:3px 9px;border-radius:12px;background:var(--blue-dim);color:var(--blue);font-size:10px;font-weight:800;letter-spacing:.5px}
+
+/* PHONE MOCKUPS */
+.mockup-pair{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.mockup-unit{display:flex;flex-direction:column;align-items:center;gap:16px}
+.phone-frame{width:210px;background:#0c0c1a;border:2.5px solid #23233a;border-radius:30px;overflow:hidden;box-shadow:0 28px 60px rgba(0,0,0,.75),inset 0 0 0 1px rgba(255,255,255,.04)}
+.phone-notch{width:56px;height:5px;background:#23233a;border-radius:3px;margin:10px auto 7px}
+.phone-screen{background:var(--bg);overflow:hidden}
+/* shared phone UI atoms */
+.ph-bar{display:flex;align-items:center;justify-content:space-between;padding:5px 11px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
+.ph-brand{font-size:8px;font-weight:900;color:var(--blue);letter-spacing:.3px}
+.ph-time{font-family:var(--mono);font-size:8px;color:var(--text3)}
+.ph-section-lbl{font-size:7px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+/* lineup column */
+.ph-lineup-col{background:var(--card);border-right:1px solid var(--border);padding:7px 6px}
+.ph-player{display:flex;align-items:center;gap:4px;padding:3px 4px;border-radius:4px;margin-bottom:2px;border:1px solid transparent}
+.ph-player.on{background:rgba(75,140,245,.1);border-color:rgba(75,140,245,.3)}
+.ph-av{width:15px;height:15px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:var(--blue);flex-shrink:0}
+.ph-player.on .ph-av{background:var(--blue);color:#fff}
+.ph-pname{font-size:8px;font-weight:700;color:var(--text);white-space:nowrap}
+/* field area */
+.ph-field-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;background:var(--bg)}
+.ph-field-label{font-size:7px;color:var(--blue);font-weight:700;text-align:center}
+.ph-diamond{width:80px;height:80px;position:relative;flex-shrink:0}
+/* input chips */
+.ph-input-bar{background:var(--card);border-top:1px solid var(--border);padding:6px 8px}
+.ph-chips{display:flex;gap:3px;flex-wrap:wrap}
+.ph-chip{padding:2px 6px;border-radius:8px;border:1px solid var(--border2);font-size:7px;font-weight:700;color:var(--text2);font-family:var(--font)}
+.ph-chip.on{background:rgba(45,212,160,.12);border-color:rgba(45,212,160,.35);color:#2dd4a0}
+/* stat cards */
+.ph-stat-card{background:var(--raised);border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:5px}
+.ph-stat-title{font-size:7px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.ph-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;text-align:center}
+.ph-sv{font-family:var(--mono);font-size:13px;font-weight:700}
+.ph-sl{font-size:7px;color:var(--text3);margin-top:1px}
+.ph-dir-bars{display:flex;gap:3px;align-items:flex-end;height:26px;margin:5px 0 3px}
+.ph-dir-bar{flex:1;border-radius:2px 2px 0 0;min-height:2px}
+.ph-dir-lbl{display:flex;justify-content:space-between;font-size:7px;color:var(--text3)}
+.ph-prow{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:8px}
+.ph-prow:last-child{border-bottom:none}
+.mockup-caption{text-align:center}
+.mockup-cap-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--blue-dim);border:1px solid rgba(75,140,245,.3);font-size:11px;font-weight:800;color:var(--blue);margin-bottom:6px}
+.mockup-cap-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px}
+.mockup-cap-sub{font-size:11px;color:var(--text2)}
 
 /* HOW */
 .how{background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
@@ -195,7 +253,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pnl-left{display:none}
   .pnl-center{flex:0 0 auto;max-height:56svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .canvas-wrap{width:min(220px,100%)}
+  .canvas-wrap{width:min(300px,100%)}
   .field-wrap{padding:8px;flex:none}
   .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
   .mob-batter::-webkit-scrollbar{display:none}
@@ -1324,6 +1382,37 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .pnl-right.panel-collapsed{width:0!important;min-width:0!important;opacity:0;pointer-events:none;overflow:hidden;border-left:none}
 .app-layout.panel-collapsed{grid-template-columns:220px 1fr 0px!important}
 @media(max-width:720px){.pnl-right.panel-collapsed{display:none}}
+
+/* ══ FTU ONBOARDING WIZARD ══ */
+#ftuOverlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px;transition:opacity .3s}
+#ftuOverlay.hidden{display:none}
+.ftu-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:28px 24px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.7)}
+.ftu-dots{display:flex;justify-content:center;gap:7px;margin-bottom:22px}
+.ftu-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);transition:background .2s,transform .2s}
+.ftu-dot.on{background:var(--blue);transform:scale(1.2)}
+.ftu-icon{font-size:40px;margin-bottom:12px}
+.ftu-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.3}
+.ftu-sub{font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6}
+.ftu-inp{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text);font-size:14px;font-family:var(--font);outline:none;box-sizing:border-box;transition:border-color .2s;margin-bottom:10px}
+.ftu-inp:focus{border-color:var(--blue)}
+.ftu-btn{width:100%;padding:13px;border-radius:12px;background:var(--blue);color:#fff;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:var(--font);transition:opacity .2s,transform .1s}
+.ftu-btn:active{transform:scale(.97)}
+.ftu-skip{display:block;margin-top:14px;font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:var(--font);text-decoration:underline;text-underline-offset:3px}
+.ftu-canvas{border-radius:12px;cursor:crosshair;display:block;margin:0 auto;border:1px solid var(--border2)}
+.ftu-player-row{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+.ftu-player-row .ftu-inp{margin-bottom:0;flex:1}
+.ftu-player-row .ftu-inp.num{width:56px;flex:none;text-align:center}
+.ftu-add-btn{height:42px;width:42px;flex-shrink:0;border-radius:10px;background:var(--blue);color:#fff;font-size:20px;border:none;cursor:pointer;font-family:var(--font);line-height:1}
+
+/* ══ TAB MODE TOGGLE (mobile only) ══ */
+.tab-mode-bar{display:flex;gap:4px;padding:6px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
+.tmb-btn{flex:1;padding:7px 8px;font-size:11px;font-weight:800;border:none;background:var(--bg-raised);color:var(--text3);cursor:pointer;border-radius:8px;transition:all 150ms;font-family:var(--font)}
+.tmb-btn.on{background:var(--blue);color:#fff}
+@media(min-width:721px){.tab-mode-bar{display:none}}
+
+/* ══ EXCEL TOOLBAR BUTTON ══ */
+.btn-xl{padding:4px 8px;font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;cursor:pointer;font-family:var(--font);font-weight:700;white-space:nowrap;transition:background .15s}
+.btn-xl:active{background:rgba(34,197,94,.22)}
 </style>
 </head>
 <body>
@@ -1382,6 +1471,25 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <div class="hero-badge"><span class="hero-badge-dot"></span>사회인야구 · 아마추어 · 데이터 분석</div>
     <h1 class="hero-title">YOUR<br><span class="hl">SWING</span><br>VISUALIZED</h1>
     <p class="hero-sub">타석을 기록하고, <strong>패턴을 발견하세요.</strong><br>당겨치기 비율부터 타율까지 — 모든 타석이 데이터가 됩니다.</p>
+    <div class="hero-flow">
+      <div class="hf-step">
+        <div class="hf-num">1</div>
+        <div class="hf-label">선수 등록</div>
+        <div class="hf-sub">이름 · 등번호 입력</div>
+      </div>
+      <div class="hf-arrow">→</div>
+      <div class="hf-step">
+        <div class="hf-num">2</div>
+        <div class="hf-label">타석 기록</div>
+        <div class="hf-sub">필드 탭 · 결과 선택</div>
+      </div>
+      <div class="hf-arrow">→</div>
+      <div class="hf-step">
+        <div class="hf-num">3</div>
+        <div class="hf-label">통계 확인</div>
+        <div class="hf-sub">AVG · 스프레이 차트</div>
+      </div>
+    </div>
     <div class="hero-btns">
       <button class="btn-hero-primary" onclick="showApp()">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1511,37 +1619,158 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 <section id="preview" style="background:var(--bg)">
   <div class="section-head centered">
     <span class="section-label fade-up">미리보기</span>
-    <h2 class="section-title fade-up" data-delay="1">실제 화면 그대로</h2>
+    <h2 class="section-title fade-up" data-delay="1">실제 앱 화면</h2>
   </div>
-  <div class="preview-wrap fade-up">
-    <div class="preview-bar">
-      <div class="win-dot" style="background:#f56565"></div>
-      <div class="win-dot" style="background:#f6c23e;margin-left:4px"></div>
-      <div class="win-dot" style="background:#2dd4a0;margin-left:4px"></div>
-      <div class="preview-url">spraylab · Baseball Spray Chart</div>
-      <button class="nav-cta" onclick="showApp()" style="margin-left:auto;padding:5px 12px;font-size:11px">열기 →</button>
+
+  <div class="mockup-pair fade-up">
+
+    <!-- PHONE 1: 라인업 + 필드 입력 -->
+    <div class="mockup-unit">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <!-- 앱 상단 바 -->
+          <div class="ph-bar">
+            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
+            <span class="ph-time">7회말 · 3:2</span>
+          </div>
+          <!-- 라인업 + 필드 그리드 -->
+          <div style="display:grid;grid-template-columns:76px 1fr;min-height:220px">
+            <!-- 라인업 열 -->
+            <div class="ph-lineup-col">
+              <div class="ph-section-lbl">라인업</div>
+              <div class="ph-player on">
+                <div class="ph-av">김</div>
+                <div class="ph-pname">#7 김정철</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">이</div>
+                <div class="ph-pname">#12 이민준</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">박</div>
+                <div class="ph-pname">#3 박성현</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">최</div>
+                <div class="ph-pname">#21 최준혁</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">정</div>
+                <div class="ph-pname">#9 정우성</div>
+              </div>
+            </div>
+            <!-- 필드 영역 -->
+            <div class="ph-field-wrap">
+              <div class="ph-field-label">#7 김정철 타석 준비</div>
+              <!-- SVG 필드 다이어그램 -->
+              <svg width="96" height="96" viewBox="0 0 96 96" fill="none" style="flex-shrink:0">
+                <!-- 잔디 배경 -->
+                <path d="M48 8 L88 88 L8 88 Z" fill="#0c1e0f" stroke="#1a3520" stroke-width="1"/>
+                <!-- 내야 다이아몬드 -->
+                <path d="M48 52 L62 66 L48 80 L34 66 Z" fill="#12280f" stroke="#1d4020" stroke-width="1"/>
+                <!-- 파울 라인 -->
+                <line x1="48" y1="80" x2="10" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
+                <line x1="48" y1="80" x2="86" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
+                <!-- 타구 점들 -->
+                <circle cx="58" cy="38" r="3.5" fill="#2dd4a0" opacity=".9"/>
+                <circle cx="26" cy="48" r="3.5" fill="#f56565" opacity=".9"/>
+                <circle cx="70" cy="55" r="3.5" fill="#2dd4a0" opacity=".9"/>
+                <circle cx="48" cy="30" r="3.5" fill="#4b8cf5" opacity=".9"/>
+                <!-- 홈플레이트 -->
+                <circle cx="48" cy="82" r="2.5" fill="#374151"/>
+              </svg>
+              <div style="font-size:7px;color:#374151">필드를 탭하여 기록</div>
+            </div>
+          </div>
+          <!-- 결과 입력 바 -->
+          <div class="ph-input-bar">
+            <div class="ph-section-lbl">결과 선택</div>
+            <div class="ph-chips">
+              <span class="ph-chip on">안타</span>
+              <span class="ph-chip">2루타</span>
+              <span class="ph-chip">홈런</span>
+              <span class="ph-chip">아웃</span>
+              <span class="ph-chip">볼넷</span>
+              <span class="ph-chip">삼진</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-caption">
+        <div class="mockup-cap-num">1</div>
+        <div class="mockup-cap-title">라인업 · 타석 기록</div>
+        <div class="mockup-cap-sub">선수 선택 후 필드를 탭</div>
+      </div>
     </div>
-    <div class="preview-screen">
-      <div class="pv-left">
-        <div class="pv-title">라인업 · 5명</div>
-        <div class="mk-player on"><div class="mk-av">김</div><div><div class="mk-n">#7 김정철</div><div class="mk-s">3AB .333</div></div></div>
-        <div class="mk-player"><div class="mk-av">이</div><div><div class="mk-n">#12 이민준</div><div class="mk-s">2AB .500</div></div></div>
-        <div class="mk-player"><div class="mk-av">박</div><div><div class="mk-n">#3 박성현</div><div class="mk-s">3AB .000</div></div></div>
-        <div class="mk-player"><div class="mk-av">최</div><div><div class="mk-n">#21 최준혁</div><div class="mk-s">2AB .500</div></div></div>
-        <div class="mk-player"><div class="mk-av">정</div><div><div class="mk-n">#9 정우성</div><div class="mk-s">1AB .000</div></div></div>
+
+    <!-- PHONE 2: 통계 결과 -->
+    <div class="mockup-unit">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <!-- 앱 상단 바 -->
+          <div class="ph-bar">
+            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
+            <span class="ph-time" style="color:#2dd4a0;font-weight:700">STATS</span>
+          </div>
+          <div style="padding:8px">
+            <!-- 팀 타격 지표 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">팀 타격</div>
+              <div class="ph-stat-grid">
+                <div>
+                  <div class="ph-sv" style="color:#2dd4a0">.318</div>
+                  <div class="ph-sl">AVG</div>
+                </div>
+                <div>
+                  <div class="ph-sv" style="color:#4b8cf5">.389</div>
+                  <div class="ph-sl">OBP</div>
+                </div>
+                <div>
+                  <div class="ph-sv" style="color:#f6c23e">.455</div>
+                  <div class="ph-sl">SLG</div>
+                </div>
+              </div>
+            </div>
+            <!-- 타구 방향 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">타구 방향</div>
+              <div class="ph-dir-bars">
+                <div class="ph-dir-bar" style="height:22px;background:#f56565"></div>
+                <div class="ph-dir-bar" style="height:14px;background:#2dd4a0"></div>
+                <div class="ph-dir-bar" style="height:9px;background:#4b8cf5"></div>
+              </div>
+              <div class="ph-dir-lbl">
+                <span>당겨 48%</span><span>센터 32%</span><span>밀어 20%</span>
+              </div>
+            </div>
+            <!-- 선수별 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">선수별 타율</div>
+              <div class="ph-prow">
+                <span>#7 김정철</span>
+                <span style="font-family:var(--mono);color:#2dd4a0">.333</span>
+              </div>
+              <div class="ph-prow">
+                <span>#12 이민준</span>
+                <span style="font-family:var(--mono);color:#4b8cf5">.500</span>
+              </div>
+              <div class="ph-prow">
+                <span>#3 박성현</span>
+                <span style="font-family:var(--mono);color:#374151">.000</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="pv-center" style="background:#09090f;flex-direction:column;gap:8px">
-        <div style="font-size:11px;color:#4b8cf5;font-weight:700">#7 김정철 타석 준비</div>
-        <canvas id="mockCanvas" width="220" height="220"></canvas>
-        <div style="font-size:10px;color:#374151">필드를 탭하여 타구 위치 기록</div>
-      </div>
-      <div class="pv-right">
-        <div class="pv-title">이번 경기</div>
-        <div class="mk-stat"><div class="mk-st">타격</div><div class="mk-nums"><div><div class="mk-v" style="color:#2dd4a0">.318</div><div class="mk-l">AVG</div></div><div><div class="mk-v" style="color:#4b8cf5">.389</div><div class="mk-l">OBP</div></div><div><div class="mk-v" style="color:#f6c23e">.455</div><div class="mk-l">SLG</div></div></div></div>
-        <div class="mk-stat"><div class="mk-st">타구 방향</div><div class="dir-mini"><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:22px;background:#f56565"></div></div><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:14px;background:#2dd4a0"></div></div><div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><div class="db" style="height:10px;background:#4b8cf5"></div></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:#374151"><span>당겨 48%</span><span>센터 32%</span><span>밀어 20%</span></div></div>
-        <div class="mk-stat"><div class="mk-st">선수별</div><div style="font-size:10px"><div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1c1c26"><span>#7 김정철</span><span style="font-family:var(--mono);color:#2dd4a0">.333</span></div><div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1c1c26"><span>#12 이민준</span><span style="font-family:var(--mono);color:#4b8cf5">.500</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span>#3 박성현</span><span style="font-family:var(--mono);color:#374151">.000</span></div></div></div>
+      <div class="mockup-caption">
+        <div class="mockup-cap-num">2</div>
+        <div class="mockup-cap-title">통계 결과</div>
+        <div class="mockup-cap-sub">타율 · 방향 · 선수별 분석</div>
       </div>
     </div>
+
   </div>
 </section>
 
@@ -1581,7 +1810,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <div><div class="foot-links-title">분석 지표</div><ul class="foot-links"><li><a href="#">타율 AVG</a></li><li><a href="#">출루율 OBP</a></li><li><a href="#">장타율 SLG</a></li><li><a href="#">방향 분포 PULL/OPPO%</a></li></ul></div>
   </div>
   <div class="foot-bottom">
-    <span class="foot-copy">© 2025 SprayLab. Built for baseball.</span>
+    <span class="foot-copy">© <span id="footYear">2025</span> SprayLab. Built for baseball.</span>
     <div class="foot-tags"><span class="foot-tag">v1.0</span><span class="foot-tag">사회인야구</span><span class="foot-tag">spray-chart</span></div>
   </div>
 </footer>
@@ -1620,6 +1849,48 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       <button class="btn btn-ghost" onclick="obSkip()" style="padding:10px 14px;flex-shrink:0;font-size:12px">건너뛰기</button>
       <button class="btn btn-primary" style="flex:1;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음 →</button>
     </div>
+  </div>
+</div>
+
+<!-- ████ FTU 온보딩 위저드 ████ -->
+<div id="ftuOverlay" class="hidden">
+  <div class="ftu-card">
+    <div class="ftu-dots">
+      <div class="ftu-dot on" id="ftuD0"></div>
+      <div class="ftu-dot" id="ftuD1"></div>
+      <div class="ftu-dot" id="ftuD2"></div>
+    </div>
+    <!-- Step 0: 팀 이름 -->
+    <div id="ftuStep0">
+      <div class="ftu-icon">⚾</div>
+      <div class="ftu-title">SprayLab에 오신 걸 환영합니다!</div>
+      <div class="ftu-sub">사회인야구 스프레이차트 기록앱<br>3단계로 빠르게 시작해봐요</div>
+      <input class="ftu-inp" id="ftuTeamInp" placeholder="우리 팀 이름을 입력하세요" maxlength="10" onkeydown="if(event.key==='Enter')ftuStep1()">
+      <button class="ftu-btn" onclick="ftuStep1()">다음 →</button>
+    </div>
+    <!-- Step 1: 선수 추가 -->
+    <div id="ftuStep1" style="display:none">
+      <div class="ftu-icon">👤</div>
+      <div class="ftu-title">선수를 등록해봐요</div>
+      <div class="ftu-sub">이름과 등번호를 입력하고<br>+ 버튼으로 추가하세요</div>
+      <div class="ftu-player-row">
+        <input class="ftu-inp" id="ftuPlayerName" placeholder="이름" maxlength="8" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
+        <input class="ftu-inp num" id="ftuPlayerNum" placeholder="#" maxlength="3" type="number" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
+        <button class="ftu-add-btn" onclick="ftuAddPlayer()">+</button>
+      </div>
+      <div id="ftuPlayerAdded" style="display:none;color:#2dd4a0;font-size:13px;text-align:center;margin-bottom:8px">✓ 등록 완료!</div>
+      <button class="ftu-btn" id="ftuStep1Next" style="opacity:.4;pointer-events:none" onclick="ftuStep2()">다음 →</button>
+    </div>
+    <!-- Step 2: 필드 체험 -->
+    <div id="ftuStep2" style="display:none">
+      <div class="ftu-icon">📍</div>
+      <div class="ftu-title">타석을 직접 찍어보세요</div>
+      <div class="ftu-sub">아래 필드에서 공이 떨어진 위치를<br>탭하면 타석이 기록됩니다</div>
+      <canvas id="ftuFieldCanvas" width="220" height="170" class="ftu-canvas" onclick="ftuFieldTap(event)"></canvas>
+      <div id="ftuTapHint" style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">👆 위 필드를 탭해보세요</div>
+      <button class="ftu-btn" id="ftuFinishBtn" style="margin-top:12px;opacity:.4;pointer-events:none" onclick="ftuDone()">완료 — 시작하기! 🚀</button>
+    </div>
+    <button class="ftu-skip" onclick="ftuDone()">건너뛰기</button>
   </div>
 </div>
 
@@ -1775,6 +2046,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       </div>
       <button class="hm-close" onclick="closeHelpModal()">✕</button>
     </div>
+    <!-- ① 타구 기록 -->
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(0)">
         <div class="hm-ch-icon">⚾</div>
@@ -1783,10 +2055,11 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       </div>
       <div class="hm-body" id="hmc0">
         <p>① <b>타자 선택</b> — 라인업에서 타자 이름을 탭<br>② <b>필드 탭</b> — 공이 떨어진 위치를 탭<br>③ <b>결과 선택</b> — 안타 / 2루타 / 아웃 / 삼진 등</p>
-        <p>⚡ <b>퀵버튼 바</b>로 안타·아웃·삼진·볼넷 즉시 기록</p>
-        <p>💡 팝업에서 <b>스와이프</b>하면 더 빠르게:<br><kbd>→</kbd> 안타 &nbsp;<kbd>←</kbd> 아웃 &nbsp;<kbd>↑</kbd> 볼넷 &nbsp;<kbd>↓</kbd> 삼진</p>
+        <p>⚡ 상단 <b>퀵버튼 바</b>로 안타·아웃·삼진·볼넷 즉시 기록</p>
+        <p>💡 팝업 <b>스와이프</b>: <kbd>→</kbd> 안타 &nbsp;<kbd>←</kbd> 아웃 &nbsp;<kbd>↑</kbd> 볼넷 &nbsp;<kbd>↓</kbd> 삼진</p>
       </div>
     </div>
+    <!-- ② 통계 보기 -->
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(1)">
         <div class="hm-ch-icon">📊</div>
@@ -1794,68 +2067,70 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
         <div class="hm-ch-arrow">▶</div>
       </div>
       <div class="hm-body" id="hmc1">
-        <p><b>AVG</b> 타율 = 안타 ÷ 타수 (0.300 = 10타수 3안타)<br><b>OBP</b> 출루율 = 볼넷 포함 출루 비율<br><b>SLG</b> 장타율 = 장타 파워 지표<br><b>OPS</b> = OBP + SLG (종합 타격 지표)</p>
-        <p>오른쪽 <b>타자</b> 탭 → 개인 통계, <b>팀통계</b> 탭 → 팀 전체</p>
+        <p><b>AVG</b> 타율 = 안타 ÷ 타수 &nbsp;·&nbsp; <b>OBP</b> 출루율 = 볼넷 포함 출루 비율<br><b>SLG</b> 장타율 = 장타 파워 지표 &nbsp;·&nbsp; <b>OPS</b> = OBP + SLG</p>
+        <p>오른쪽 <b>타자</b> 탭 → 개인 통계 &nbsp;·&nbsp; <b>팀통계</b> 탭 → 팀 전체</p>
       </div>
     </div>
+    <!-- ③ 경기 운영 모드 -->
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(2)">
-        <div class="hm-ch-icon">⚡</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">약점 감지</div><div class="hm-ch-sub">코스별 아웃률 · 구종 삼진률을 자동 분석합니다</div></div>
-        <div class="hm-ch-arrow">▶</div>
-      </div>
-      <div class="hm-body" id="hmc2">
-        <p><b>⚠️ 약점 카드</b> 표시 조건 (최소 3타석):<br>• 코스 아웃률 70% 이상<br>• 구종 삼진률 60% 이상<br>• 당겨치기 / 밀어치기 편중 80% 이상</p>
-        <p>타자 탭 스크롤 하단에서 확인</p>
-      </div>
-    </div>
-    <div class="hm-card">
-      <div class="hm-ch" onclick="toggleHelpCard(3)">
-        <div class="hm-ch-icon">🎯</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">투수 분석</div><div class="hm-ch-sub">상대 투수의 구종·코스·결과를 기록합니다</div></div>
-        <div class="hm-ch-arrow">▶</div>
-      </div>
-      <div class="hm-body" id="hmc3">
-        <p>오른쪽 패널 <b>투수</b> 탭에서 투수 등록 후 매 투구를 기록하세요</p>
-        <p>구종 비율 도넛차트 &amp; 코스 히트맵이 자동 생성됩니다</p>
-      </div>
-    </div>
-    <div class="hm-card">
-      <div class="hm-ch" onclick="toggleHelpCard(4)">
-        <div class="hm-ch-icon">📤</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">저장 &amp; 공유</div><div class="hm-ch-sub">QR과 링크로 경기 데이터를 공유합니다</div></div>
-        <div class="hm-ch-arrow">▶</div>
-      </div>
-      <div class="hm-body" id="hmc4">
-        <p><b>[저장]</b> 버튼으로 영구 저장하세요 (임시 데이터는 브라우저 재시작 시 사라질 수 있음)</p>
-        <p><b>🔗 공유</b> → QR코드 + 링크 생성. 팀원이 링크를 열면 배너로 자동 안내</p>
-        <p><b>차트 탭</b> → 개인(9:16) · 팀(1:1) 성적카드 PNG 저장 후 SNS 공유</p>
-        <p><kbd>Ctrl+Z</kbd> 로 마지막 기록 즉시 취소</p>
-      </div>
-    </div>
-    <div class="hm-card">
-      <div class="hm-ch" onclick="toggleHelpCard(5)">
         <div class="hm-ch-icon">▶</div>
         <div class="hm-ch-body"><div class="hm-ch-title">경기 운영 모드<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타순·아웃카운트·이닝을 자동으로 진행합니다</div></div>
         <div class="hm-ch-arrow">▶</div>
       </div>
-      <div class="hm-body" id="hmc5">
-        <p>상단 툴바의 <b>▶ 경기운영</b> 버튼을 탭하면 시작됩니다</p>
-        <p>기록을 입력할 때마다 <b>타순이 자동으로 넘어가고</b>, 3아웃 시 이닝이 자동 전환됩니다</p>
-        <p>상단 바에서 실시간 아웃카운트·베이스·이닝·스코어를 확인할 수 있습니다</p>
-        <p><b>경기종료</b> 버튼을 탭하면 최종 요약 카드가 표시됩니다</p>
+      <div class="hm-body" id="hmc2">
+        <p>상단 툴바 <b>▶ 경기운영</b> 버튼을 탭하면 시작됩니다</p>
+        <p>기록할 때마다 <b>타순 자동 전진</b>, 3아웃 시 이닝 자동 전환, 상단 바에서 실시간 아웃카운트·베이스 확인</p>
+        <p><b>경기종료</b> 버튼 → 최종 요약 카드 표시</p>
       </div>
     </div>
+    <!-- ④ 약점 감지 & 패턴 분석 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(3)">
+        <div class="hm-ch-icon">⚡</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">약점 감지 &amp; 패턴 분석<span class="hm-new">자동</span></div><div class="hm-ch-sub">2타석 이상 기록하면 자동 분석합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc3">
+        <p><b>⚠️ 약점 카드</b> (최소 3타석): 코스 아웃률 70%↑ · 구종 삼진률 60%↑ · 방향 편중 80%↑</p>
+        <p><b>📊 패턴 분석</b> (타자 탭 하단): 타율 트렌드 · 출루 스타일 · 타구 방향 편중 · 강점 코스 자동 감지</p>
+        <p>타석이 늘어날수록 분석이 더 정확해집니다</p>
+      </div>
+    </div>
+    <!-- ⑤ 투수 분석 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(4)">
+        <div class="hm-ch-icon">🎯</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">투수 분석</div><div class="hm-ch-sub">상대 투수의 구종·코스·결과를 기록합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc4">
+        <p>오른쪽 패널 <b>투수</b> 탭에서 투수 등록 후 매 투구를 기록하세요</p>
+        <p>구종 비율 도넛차트 &amp; 코스 히트맵 자동 생성 · 피안타율·삼진율·볼 비율 통계 제공</p>
+      </div>
+    </div>
+    <!-- ⑥ 저장 & 공유 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(5)">
+        <div class="hm-ch-icon">📤</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">저장 &amp; 공유</div><div class="hm-ch-sub">QR과 링크로 경기 데이터를 공유합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc5">
+        <p>상단 툴바 <b>[저장]</b> 버튼으로 영구 저장 (가입·클라우드 불필요)</p>
+        <p><b>🔗 공유</b> → QR코드 + 링크 생성 &nbsp;·&nbsp; <b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장</p>
+      </div>
+    </div>
+    <!-- ⑦ 단축키 & 팁 -->
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(6)">
-        <div class="hm-ch-icon">📊</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">패턴 분석<span class="hm-new">자동</span></div><div class="hm-ch-sub">2타석 이상 기록하면 규칙 기반으로 자동 분석합니다</div></div>
+        <div class="hm-ch-icon">⌨️</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">단축키 &amp; 팁</div><div class="hm-ch-sub">빠른 기록을 위한 단축키와 팁</div></div>
         <div class="hm-ch-arrow">▶</div>
       </div>
       <div class="hm-body" id="hmc6">
-        <p>타자 탭 하단 <b>📊 패턴 분석</b> 카드에서 확인합니다</p>
-        <p>분석 항목:<br>• 타율 트렌드 (상승·하락·안정)<br>• 출루 스타일 (볼넷형·컨택형·파워형)<br>• 타구 방향 편중 (당겨치기·밀어치기·중앙형)<br>• 강점 코스·경계 구역 자동 감지</p>
-        <p>타석이 늘어날수록 분석이 더 정확해집니다</p>
+        <p><kbd>Ctrl+Z</kbd> 마지막 기록 취소 &nbsp;·&nbsp; <kbd>Ctrl+S</kbd> 빠른 저장</p>
+        <p>💡 메뉴 → <b>💡 안내 모드</b> — 버튼마다 설명 툴팁 표시<br>🏟️ 필드 탭 → 결과 팝업 자동 표시 &nbsp;·&nbsp; 📸 차트 탭 → PNG 공유</p>
       </div>
     </div>
     <div class="hm-tour-btns">
@@ -1981,6 +2256,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     <span class="save-ind" id="saveInd">—</span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
     <button class="btn btn-ghost btn-primary" id="analysisPanelBtn" onclick="toggleAnalysisPanel()" title="분석 패널 열기/닫기" style="padding:4px 8px;font-size:10px" data-help-title="📊 분석 패널" data-help="우측 <b>분석 패널</b>을 열고 닫습니다.<br>차트·통계·투수 탭을 경기 중에 빠르게 확인하세요.">📊 분석</button>
     <div class="more-menu-wrap" id="moreMenuWrap">
@@ -2089,6 +2365,10 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
   </div>
 
   <div class="pnl-right">
+    <div class="tab-mode-bar" id="tabModeBar">
+      <button class="tmb-btn on" id="tmbGame" onclick="setTabMode('game',this)">⚾ 경기중</button>
+      <button class="tmb-btn" id="tmbPost" onclick="setTabMode('post',this)">📊 경기후</button>
+    </div>
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
       <div class="tab" id="tab-batter" onclick="swTab('batter',this)" data-help-title="👤 타자 탭" data-help="선택한 타자의 <b>타율·출루율·장타율(OPS)</b>과 패턴 분석을 봅니다.<br>타격 방향 성향, 삼진·볼넷 비율, 약점 패턴을 자동으로 분석합니다.">👤 타자</div>
@@ -2114,7 +2394,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
           <div class="stat-card">
             <div class="sc-title">코스 투구 기록</div>
             <div style="display:flex;align-items:flex-start;gap:8px">
-              <div style="font-size:9px;color:var(--text3);line-height:2.8;text-align:right"><div>높</div><div>중</div><div>낙</div></div>
+              <div style="font-size:9px;color:var(--text3);line-height:2.8;text-align:right"><div>높</div><div>중</div><div>낮</div></div>
               <div class="zone-heat" id="bsZoneHeat"></div>
               <div style="font-size:9px;color:var(--text3);line-height:2.8"><div>내</div><div>중</div><div>외</div></div>
             </div>
@@ -2732,12 +3012,181 @@ function showApp(){
   document.body.style.overflowY='hidden';
   document.body.style.overflowX='hidden';
   initApp();
-  showAppWelcome();
+  ftuCheck();
 }
 function goHome(){
   // 앱 내에 있으면 홈 화면(welcom)으로 복귀
   showAppWelcome();
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ① FTU 온보딩 위저드
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function ftuCheck(){
+  if(localStorage.getItem('sl_ftu_done')){showAppWelcome();return;}
+  var ov=document.getElementById('ftuOverlay');
+  ov.classList.remove('hidden');
+  _ftuSetStep(0);
+  setTimeout(ftuDrawField,80);
+}
+function _ftuSetStep(n){
+  for(var i=0;i<3;i++){
+    document.getElementById('ftuStep'+i).style.display=i===n?'':'none';
+    var d=document.getElementById('ftuD'+i);
+    if(d)d.classList.toggle('on',i<=n);
+  }
+}
+function ftuDrawField(){
+  var cv=document.getElementById('ftuFieldCanvas');
+  if(!cv)return;
+  var ctx=cv.getContext('2d');
+  var w=cv.width,h=cv.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0d1117';
+  ctx.fillRect(0,0,w,h);
+  var cx=w/2,by=h-6,r=Math.min(w,h)*0.9;
+  // outfield arc
+  ctx.beginPath();
+  ctx.arc(cx,by,r,Math.PI*1.1,Math.PI*1.9);
+  ctx.strokeStyle='rgba(75,140,245,.4)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  // infield foul lines
+  ctx.beginPath();
+  ctx.moveTo(cx,by);
+  ctx.lineTo(cx-r*0.7,by-r*0.7);
+  ctx.moveTo(cx,by);
+  ctx.lineTo(cx+r*0.7,by-r*0.7);
+  ctx.strokeStyle='rgba(75,140,245,.25)';
+  ctx.lineWidth=1;
+  ctx.stroke();
+  // diamond
+  var ds=h*0.26;
+  ctx.beginPath();
+  ctx.moveTo(cx,by-ds*1.95);
+  ctx.lineTo(cx+ds,by-ds*0.98);
+  ctx.lineTo(cx,by-0.1);
+  ctx.lineTo(cx-ds,by-ds*0.98);
+  ctx.closePath();
+  ctx.strokeStyle='rgba(75,140,245,.55)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  ctx.fillStyle='rgba(75,140,245,.06)';
+  ctx.fill();
+  // home plate
+  ctx.beginPath();
+  ctx.arc(cx,by-2,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(75,140,245,.7)';
+  ctx.fill();
+}
+function ftuStep1(){
+  var nm=(document.getElementById('ftuTeamInp').value||'').trim();
+  if(nm){AS.th=nm;var el=document.getElementById('tHome');if(el)el.value=nm;}
+  _ftuSetStep(1);
+  setTimeout(function(){document.getElementById('ftuPlayerName').focus();},120);
+}
+function ftuAddPlayer(){
+  var nm=(document.getElementById('ftuPlayerName').value||'').trim();
+  if(!nm)return;
+  var num=(document.getElementById('ftuPlayerNum').value||'').trim();
+  if(!AS.home_lineup)AS.home_lineup=[];
+  var p={id:Date.now(),name:nm,num:num||(AS.home_lineup.length+1)+'',pos:'',bh:'',isStarter:true};
+  AS.home_lineup.push(p);
+  if(typeof renderLP==='function')renderLP();
+  if(typeof renderMob==='function')renderMob();
+  if(AS.home_lineup.length===1&&typeof selBatter==='function')selBatter(p.id);
+  document.getElementById('ftuPlayerAdded').style.display='block';
+  var nb=document.getElementById('ftuStep1Next');
+  nb.style.opacity='1';nb.style.pointerEvents='';
+}
+function ftuStep2(){
+  _ftuSetStep(2);
+  setTimeout(ftuDrawField,80);
+}
+function ftuFieldTap(ev){
+  var cv=document.getElementById('ftuFieldCanvas');
+  if(!cv)return;
+  var rect=cv.getBoundingClientRect();
+  var scaleX=cv.width/rect.width,scaleY=cv.height/rect.height;
+  var x=(ev.clientX-rect.left)*scaleX,y=(ev.clientY-rect.top)*scaleY;
+  var ctx=cv.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(x,y,7,0,Math.PI*2);
+  ctx.fillStyle='rgba(75,140,245,.9)';
+  ctx.fill();
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  var fb=document.getElementById('ftuFinishBtn');
+  fb.style.opacity='1';fb.style.pointerEvents='';
+  document.getElementById('ftuTapHint').textContent='✓ 탭 완료! 이제 시작할 수 있어요';
+}
+function ftuDone(){
+  localStorage.setItem('sl_ftu_done','1');
+  var ov=document.getElementById('ftuOverlay');
+  ov.style.opacity='0';
+  setTimeout(function(){ov.classList.add('hidden');ov.style.opacity='';showAppWelcome();},320);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ② 탭 모드 토글 (모바일: 경기중 / 경기후)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _tabMode='game';
+function setTabMode(mode,el){
+  _tabMode=mode;
+  document.querySelectorAll('.tmb-btn').forEach(function(b){b.classList.remove('on');});
+  if(el)el.classList.add('on');
+  var gameTabs=['tab-rec','tab-batter'];
+  var postTabs=['tab-stat','tab-chart','tab-pitcher','tab-team'];
+  if(mode==='game'){
+    postTabs.forEach(function(id){var t=document.getElementById(id);if(t)t.style.display='none';});
+    gameTabs.forEach(function(id){var t=document.getElementById(id);if(t)t.style.display='';});
+    var cur=document.querySelector('.pnl-right .tabs .tab.on');
+    if(cur&&postTabs.indexOf(cur.id)>=0){
+      var recTab=document.getElementById('tab-rec');
+      if(recTab)swTab('rec',recTab);
+    }
+  }else{
+    postTabs.forEach(function(id){var t=document.getElementById(id);if(t)t.style.display='';});
+    gameTabs.forEach(function(id){var t=document.getElementById(id);if(t)t.style.display='';});
+    var statTab=document.getElementById('tab-stat');
+    if(statTab)swTab('stat',statTab);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ③ 데이터 백업 안내
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _gameSaved=true;
+var _saveReminderShown=false;
+var _saveReminderTimer=null;
+function checkSaveReminder(){
+  if(_saveReminderShown||_gameSaved)return;
+  if(AS.abs&&AS.abs.length>=5){
+    _saveReminderShown=true;
+    showToast('💾 지금 저장하세요! (저장 버튼 또는 Ctrl+S)',false,true);
+  }
+}
+function _startSaveReminderTimer(){
+  clearTimeout(_saveReminderTimer);
+  _saveReminderTimer=setTimeout(function(){
+    if(!_gameSaved&&AS.abs&&AS.abs.length>0&&!_saveReminderShown){
+      _saveReminderShown=true;
+      showToast('💾 10분 경과 — 지금 저장하세요!',false,true);
+    }
+  },10*60*1000);
+}
+// 경기 시작 시 타이머 시작 (openGameWizard 이후 호출 포인트에서도 동작하도록 전역 감지)
+document.addEventListener('DOMContentLoaded',function(){
+  window.addEventListener('beforeunload',function(e){
+    if(!_gameSaved&&AS&&AS.abs&&AS.abs.length>0){
+      var msg='저장되지 않은 타석 기록이 있습니다. 페이지를 떠나면 데이터가 사라질 수 있습니다.';
+      e.preventDefault();
+      e.returnValue=msg;
+      return msg;
+    }
+  });
+});
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // UI 정리: 더보기 드롭다운 / 하단 탭 / 분석 패널
@@ -2968,19 +3417,12 @@ function hideTT(){ttHideTimer=setTimeout(()=>document.getElementById('ttBox').cl
 
 /* ===== INTERACTIVE TOUR JS ===== */
 const TOUR=[
-  {sel:null, title:'SprayLab 앱 투어 시작!', desc:'<b>약 1분 30초</b>짜리 빠른 투어입니다.\n각 구역이 어떤 역할을 하는지 하나씩 살펴봅니다.\n\n언제든 <b>투어 종료</b> 버튼으로 닫을 수 있어요.', card:'center', cursor:false},
-  {sel:'.pnl-left', title:'① 라인업 패널', desc:'<b>오늘 경기에 출전하는 선수 명단</b>입니다.\n\n홈팀 / 원정팀 탭을 전환할 수 있고,\n선수를 클릭하면 현재 타자로 선택됩니다.\n\n<span class="t-tag">라인업</span> = 타격 순서대로 나열된 선수 명단', card:'right', cursor:true},
-  {sel:'.add-row', title:'② 선수 추가', desc:'이름과 등번호를 입력한 뒤 <b>+ 버튼</b>을 누르세요.\n\n포지션(투수/포수/1루 등)과 타석(우타/좌타)도 선택할 수 있습니다.\n\n선수를 추가하면 라인업 목록에 자동으로 나타납니다.', card:'right', cursor:true},
-  {sel:'#quickBar', title:'③ 퀵버튼 바', desc:'화면 상단에 항상 고정된 <b>1탭 즉시 기록</b> 버튼입니다.\n\n타자를 선택한 뒤 버튼을 누르면 필드를 탭하지 않아도 바로 기록됩니다:\n• <b>안타 · 아웃 · 삼진 · 볼넷</b>\n\n경기 흐름이 빠를 때 가장 빠른 입력 방법입니다.', card:'bottom', cursor:true},
-  {sel:null, title:'④ FAB 퀵 액션 (모바일)', desc:'화면 우하단 <b>⚡ 플로팅 버튼</b>은 모바일 전용입니다.\n\n탭하면 팝업에서 안타·아웃·삼진·볼넷을 즉시 선택할 수 있습니다.\n\n• <b>↩ 반복</b> — 바로 전 타석 결과를 그대로 다시 입력\n\n한 손으로 빠르게 기록할 때 유용합니다.', card:'center', cursor:false},
-  {sel:'#cwrap', title:'⑤ 스프레이 차트 필드', desc:'타자가 공을 쳤을 때 <b>타구가 떨어진 위치를 탭</b>하세요.\n\n탭하면 결과 입력 창이 나타납니다.\n팝업에서 <b>스와이프</b>하면 더욱 빠르게:\n→ 안타 &nbsp;·&nbsp; ← 아웃 &nbsp;·&nbsp; ↑ 볼넷 &nbsp;·&nbsp; ↓ 삼진', card:'right', cursor:true},
-  {sel:'#ptGroup', title:'⑥ 투구 종류 선택', desc:'투수가 던진 구종을 선택할 수 있습니다.\n<b>선택 사항</b>이므로 건너뛰어도 됩니다.\n\n• <b>직구</b> — 가장 빠른 기본 구질\n• <b>커브</b> — 크게 꺾여 떨어지는 변화구\n• <b>슬라이더</b> — 옆으로 꺾이는 변화구\n• <b>체인지업</b> — 직구처럼 오다 갑자기 느려짐\n\n선택 후 필드를 탭하면 구종과 함께 기록됩니다.', card:'top', cursor:true},
-  {sel:'#zoneGrid', title:'⑦ 투구 코스 (9분할 존)', desc:'타자 입장에서 스트라이크존을 9칸으로 나눈 그리드입니다.\n\n• <b>내각</b> — 타자 몸쪽\n• <b>외각</b> — 타자 바깥쪽\n• <b>높/중/낮</b> — 공의 높이\n\n구종처럼 <b>선택 사항</b>입니다.\n코스별 피안타 패턴을 분석할 때 유용합니다.', card:'top', cursor:false},
-  {sel:'.other-btns', title:'⑧ 즉시 기록 버튼', desc:'필드를 탭하지 않아도 바로 기록하는 버튼들입니다.\n\n• <b>볼넷</b> — 투수가 4번 빗나가 1루 자동 진루\n• <b>삼진</b> — 스트라이크 3개로 타석 종료\n• <b>사구</b> — 공이 타자 몸에 맞은 경우\n• <b>희타/희비</b> — 희생번트 / 희생플라이\n• <b>병살</b> — 한 플레이에서 두 명 아웃', card:'top', cursor:true},
-  {sel:null, title:'⑨ 투수 탭', desc:'상대 투수를 분석하는 전용 탭입니다.\n\n• 투수 등록 및 교체 기록\n• 구종(직구·슬라이더 등) · 코스 · 결과 기록\n• 구종 비율 도넛차트 & 코스 히트맵 자동 생성\n• 피안타율 · 삼진율 · 볼 비율 통계\n\n오른쪽 패널에서 <b>투수</b> 탭을 탭하세요.', card:'center', cursor:false},
-  {sel:'.pnl-right .tabs', title:'⑩ 통계 탭 패널', desc:'오른쪽 패널의 5개 탭입니다:\n\n• <b>타석기록</b> — 이번 경기 기록 목록\n• <b>타자</b> — 선택된 선수의 개인 통계 + 📊 패턴 분석\n• <b>팀통계</b> — 타율·방향 분포·선수별 성적\n• <b>차트</b> — 스프레이 차트·성적카드 PNG 내보내기\n• <b>투수</b> — 상대 투수 구종·코스 분석\n\n탭을 클릭해서 전환하세요.', card:'left', cursor:true},
-  {sel:'#gfToggleBtn', title:'⑪ 경기 운영 모드', desc:'<b>▶ 경기운영</b> 버튼을 탭하면 실전처럼 진행됩니다.\n\n• 기록할 때마다 타순 자동 전진\n• 3아웃 시 이닝 자동 전환\n• 상단 바에서 아웃카운트·베이스 실시간 표시\n• 경기종료 버튼 → 최종 요약 카드\n\n📊 <b>패턴 분석</b>은 타자 탭 하단에서 2타석 이상 기록 시 자동 생성됩니다.', card:'bottom', cursor:true},
-  {sel:null, sels:'button[onclick="saveGame()"]', title:'⑫ 저장 · 공유', desc:'경기가 끝나면 꼭 <b>[저장]</b> 버튼을 눌러 데이터를 보관하세요.\n\n• <b>저장</b> — 기기 내 로컬 저장 (로그인 불필요)\n• <b>불러오기</b> — 저장된 경기 다시 열기\n• <b>🔗 공유</b> — QR·링크로 팀원에게 전송, 수신자 배너로 안내\n• <b>차트 탭</b> → 개인(9:16)·팀(1:1) 성적카드 PNG 저장\n\n⌨️ <b>Ctrl+Z</b> 로 마지막 기록 언제든 취소', card:'center', cursor:false},
+  {sel:'.pnl-left', title:'① 타자 선택', desc:'라인업에서 이름을 탭해 현재 타자를 선택합니다.\n선수가 없으면 이름·등번호를 입력하고 <b>+</b> 버튼으로 추가하세요.', card:'right', cursor:true},
+  {sel:'#cwrap', title:'② 필드 탭', desc:'타자가 친 공이 <b>떨어진 위치를 탭</b>하세요.\n탭하면 결과 입력 팝업이 자동으로 나타납니다.\n⚡ 상단 <b>퀵버튼 바</b>로 필드 탭 없이 바로 기록도 가능합니다.', card:'right', cursor:true},
+  {sel:null, title:'③ 결과 입력', desc:'팝업에서 타격 결과를 선택하세요:\n<b>안타 / 2루타 / 3루타 / 홈런 / 아웃 / 볼넷 / 삼진</b>\n\n스와이프로 빠르게: <kbd>→</kbd> 안타 &nbsp;<kbd>←</kbd> 아웃 &nbsp;<kbd>↑</kbd> 볼넷 &nbsp;<kbd>↓</kbd> 삼진', card:'center', cursor:false},
+  {sel:'.pnl-right .tabs', title:'④ 통계 확인', desc:'오른쪽 패널에서 자동 계산된 통계를 확인하세요.\n• <b>타자</b> 탭 — 개인 타율·OBP·패턴 분석\n• <b>팀통계</b> 탭 — 팀 전체 타율·방향 분포\n• <b>차트</b> 탭 — 스프레이차트 PNG 내보내기', card:'left', cursor:true},
+  {sel:null, title:'⑤ 저장', desc:'경기가 끝나면 상단 툴바의 <b>[저장]</b> 버튼을 꼭 눌러주세요.\n기기에 영구 저장됩니다 — 가입·클라우드 불필요.\n⌨️ <b>Ctrl+S</b> 로도 빠르게 저장할 수 있어요.', card:'center', cursor:false},
+  {sel:null, title:'⑥ 공유', desc:'<b>🔗 공유</b> 버튼을 탭하면 QR코드와 링크가 생성됩니다.\n팀원이 링크를 열면 배너로 자동 안내됩니다.\n<b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장 후 SNS 공유', card:'center', cursor:false},
 ];
 let tourIdx=0,tourActive=false;
 
@@ -3431,7 +3873,7 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;checkSaveReminder();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -4062,6 +4504,7 @@ function saveGame(){
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
     if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
+    _gameSaved=true;
     showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
     setTimeout(showGameSummary, 400);
@@ -4265,6 +4708,7 @@ function restoreGame(key){
   var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
   var hb=document.getElementById('hotColdBtn');if(hb)hb.classList.remove('btn-primary');
   var tb=document.getElementById('teamFilterBtn');if(tb){tb.textContent='전체';tb.classList.remove('btn-primary');}
+  _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
   updateAll();
   showToast('경기 불러오기 완료',false);
 }
@@ -6609,6 +7053,7 @@ function startFromWizard(){
     delete AS._pendingAwayLineup;
   }
   renderLP();renderMob();
+  _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
   var hasLineup=(AS.home_lineup.length||AS.away_lineup.length);
   showToast(hasLineup?'이전 라인업을 불러왔습니다. 바로 기록하세요':'경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
 }
@@ -8250,8 +8695,9 @@ var SL=window.SL={
   state:function(){return AS;}
 };
 
-// ?debug=1 로 자동 활성화
-if(location.search.includes('debug=1'))setTimeout(function(){SL.debug(true);},600);
+// ?debug=1 로 자동 활성화 (localhost 전용)
+if(location.hostname==='localhost'&&location.search.includes('debug=1'))setTimeout(function(){SL.debug(true);},600);
+document.getElementById('footYear').textContent=new Date().getFullYear();
 // 2초마다 자동 갱신
 setInterval(function(){if(_dbgMode)SL.refresh();},2000);
 
@@ -8685,13 +9131,19 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
-<!-- ARCH: Debug Panel -->
-<div id="archDebugPanel">
+<!-- ARCH: Debug Panel (localhost only) -->
+<div id="archDebugPanel" style="display:none">
   <div class="arch-dbg-hdr">
     <span class="arch-dbg-title">SprayLab Debug</span>
     <button class="arch-dbg-close" onclick="SL.debug(false)">✕</button>
   </div>
   <div id="archDebugBody"></div>
 </div>
+<script>
+if(location.hostname!=='localhost'){
+  var _dp=document.getElementById('archDebugPanel');
+  if(_dp)_dp.remove();
+}
+</script>
 </body>
 </html>

@@ -8732,10 +8732,45 @@ function archRecoverAutosave(){
   var ap=document.getElementById('app-page');
   if(ap)ap.style.display='flex';
   updateAll();
-  // updateAll 내부의 _patchAutosave가 sl_autosave를 다시 스케줄링하므로
-  // 타이머를 즉시 취소하고 키도 지워서 재배너 루프를 방지
+  // updateAll의 _patchAutosave가 sl_autosave를 다시 스케줄링 → 루프 방지
   storageManager.cancelPendingAutosave();
+  // 복구된 데이터를 영구 저장소에 저장해 브라우저 재시작 후에도 안전하게 보호
+  _archQuietSave();
   showToast('✓ 마지막 기록을 복구했습니다',false);
+}
+
+function _archQuietSave(){
+  if(!AS.abs||!AS.abs.length)return;
+  try{
+    var th=(document.getElementById('tHome')||{}).value||'홈팀';
+    var ta=(document.getElementById('tAway')||{}).value||'원정팀';
+    var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+    // 기존 저장이 있으면 가장 최근 항목을 복구 데이터로 덮어씀
+    if(saves.length){
+      var latest=saves[saves.length-1];
+      var existing=JSON.parse(localStorage.getItem(latest.key)||'null');
+      if(existing){
+        existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
+        existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
+        existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
+        existing.ts=Date.now();
+        localStorage.setItem(latest.key,JSON.stringify(existing));
+        latest.ts=existing.ts;
+        localStorage.setItem('sl_saves',JSON.stringify(saves));
+        return;
+      }
+    }
+    // 저장 없으면 새로 생성
+    var key='sl_rec_'+Date.now();
+    var data={key,hs:AS.hs,as:AS.as,th:th,ta:ta,
+      home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
+      abs:AS.abs,zoneHistory:AS.zoneHistory,
+      d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
+      pitchers:AS.pitchers||[]};
+    saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
+    localStorage.setItem('sl_saves',JSON.stringify(saves));
+    localStorage.setItem(key,JSON.stringify(data));
+  }catch(e){console.warn('[Recovery] quiet save failed',e);}
 }
 
 function archDismissRecovery(){

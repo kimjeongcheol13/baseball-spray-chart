@@ -9265,7 +9265,7 @@ function _drawZoneCanvas(cvs, dots, isSmall){
   ctx.save();ctx.translate(zx2+3,H/2);ctx.rotate(Math.PI/2);ctx.fillText('볼',0,0);ctx.restore();
   // 투구 점 그리기
   dots.forEach(function(d){
-    var col={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565'}[d.result]||'#94a3b8';
+    var col={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565','직구':'#4b8cf5','슬라이더':'#f6c23e','커브':'#a78bfa','체인지업':'#2dd4a0','포크볼':'#fb923c','커터':'#8892a4','preview':'#e2e8f0'}[d.result]||'#f6c23e';
     ctx.beginPath();ctx.arc(d.cx*W,d.cy*H,isSmall?4:5,0,Math.PI*2);
     ctx.fillStyle=col+'cc';ctx.fill();
     ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
@@ -9305,17 +9305,14 @@ function initIbZoneCanvas(){
       AS.zone=zone;
       var lbl=document.getElementById('ibZoneLabel');
       if(lbl)lbl.textContent=zone;
-      // 마지막 점만 남기기 (현재 투구 위치)
-      _ibZoneDots=[{cx:cx,cy:cy,result:'스트라이크'}];
-      _drawZoneCanvas(cvs,_ibZoneDots,false);
-      // 구종 선택기 표시 (ptGroup에서 선택 or 이미 선택된 경우 바로 저장)
       if(AS.pt){
+        // 구종 선택된 경우: 누적 기록 + 로그
+        _ibZoneDots.push({cx:cx,cy:cy,result:AS.pt});
         logPitchAction();
-        // 기록 후 점 유지 (확인용)
-        var last=_ibZoneDots[_ibZoneDots.length-1];
-        if(last)last.result=AS.pt||'스트라이크';
         _drawZoneCanvas(cvs,_ibZoneDots,false);
-        _ibZoneDots=[];
+      }else{
+        // 구종 미선택: 미리보기 점만 표시 (기록 안 함)
+        _drawZoneCanvas(cvs,_ibZoneDots.concat([{cx:cx,cy:cy,result:'preview'}]),false);
       }
     });
   }

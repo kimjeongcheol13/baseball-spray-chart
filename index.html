@@ -8553,6 +8553,7 @@ var storageManager=(function(){
     hasRecovery:function(){try{return!!localStorage.getItem(AUTOSAVE_KEY);}catch(e){return false;}},
     getRecovery:function(){return this.load(AUTOSAVE_KEY);},
     clearRecovery:function(){try{localStorage.removeItem(AUTOSAVE_KEY);}catch(e){}},
+    cancelPendingAutosave:function(){clearTimeout(_timer);_timer=null;try{localStorage.removeItem(AUTOSAVE_KEY);}catch(e){}},
     getUsage:function(){
       try{
         var t=0;
@@ -8725,13 +8726,15 @@ function archRecoverAutosave(){
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
   if(a&&d.ta)a.value=d.ta;
-  storageManager.clearRecovery();
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.style.display='none';
   hideAppWelcome();
   var ap=document.getElementById('app-page');
   if(ap)ap.style.display='flex';
   updateAll();
+  // updateAll 내부의 _patchAutosave가 sl_autosave를 다시 스케줄링하므로
+  // 타이머를 즉시 취소하고 키도 지워서 재배너 루프를 방지
+  storageManager.cancelPendingAutosave();
   showToast('✓ 마지막 기록을 복구했습니다',false);
 }
 

@@ -2736,6 +2736,10 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
     </div>
     <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="scanHiddenAutosaves()">🔍 숨겨진 자동저장 찾기</button>
+      <div id="hiddenAutoList" style="margin-top:6px"></div>
+    </div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>
 </div>
@@ -8777,6 +8781,69 @@ function archDismissRecovery(){
   storageManager.clearRecovery();
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.style.display='none';
+}
+
+// ─── 숨겨진 자동저장 스캔 ─────────────────────
+function scanHiddenAutosaves(){
+  var el=document.getElementById('hiddenAutoList');
+  if(!el)return;
+  var found=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(!k)continue;
+    if(k.startsWith('sl_auto_')||k==='sl_autosave'){
+      try{
+        var raw=localStorage.getItem(k);
+        if(!raw)continue;
+        var parsed=JSON.parse(raw);
+        var d=k==='sl_autosave'?(parsed.data||parsed):parsed;
+        var abCount=(d.abs||[]).length;
+        var ptCount=(d.pitchers||[]).length;
+        if(abCount>0||ptCount>0){
+          found.push({key:k,d:d,abCount:abCount,ptCount:ptCount,ts:d.ts||parsed._ts||0});
+        }
+      }catch(e){}
+    }
+  }
+  if(!found.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">숨겨진 자동저장이 없습니다</div>';
+    return;
+  }
+  found.sort(function(a,b){return b.ts-a.ts;});
+  el.innerHTML=found.map(function(f){
+    var label=(f.d.th&&f.d.ta)?f.d.th+' vs '+f.d.ta:'자동저장';
+    var timeStr=f.ts?new Date(f.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'날짜 불명';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">'
+      +'<div style="flex:1"><div style="font-weight:600;color:var(--text)">'+label+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+timeStr+' · '+f.abCount+'타석 · 투수 '+f.ptCount+'명</div></div>'
+      +'<button class="btn btn-primary" style="font-size:10px;padding:3px 10px" onclick="recoverHiddenAutosave(\''+f.key+'\')">복구</button>'
+      +'</div>';
+  }).join('');
+}
+function recoverHiddenAutosave(key){
+  try{
+    var raw=localStorage.getItem(key);
+    if(!raw){showToast('데이터를 찾을 수 없습니다',false);return;}
+    var parsed=JSON.parse(raw);
+    var d=key==='sl_autosave'?(parsed.data||parsed):parsed;
+    AS.abs=d.abs||[];
+    AS.home_lineup=d.home_lineup||[];
+    AS.away_lineup=d.away_lineup||[];
+    AS.hs=d.hs||0;AS.as=d.as||0;
+    AS.zoneHistory=d.zoneHistory||{};
+    AS.pitchers=d.pitchers||[];
+    var h=document.getElementById('tHome'),a=document.getElementById('tAway');
+    if(h&&d.th)h.value=d.th;
+    if(a&&d.ta)a.value=d.ta;
+    closeOverlay('loadOverlay');
+    hideAppWelcome();
+    var ap=document.getElementById('app-page');
+    if(ap)ap.style.display='flex';
+    updateAll();
+    storageManager.cancelPendingAutosave();
+    _archQuietSave();
+    showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)',false);
+  }catch(e){showToast('복구 실패: '+e.message,false);}
 }
 
 // ─── Debug Panel ──────────────────────────────

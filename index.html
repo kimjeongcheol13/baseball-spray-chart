@@ -2535,10 +2535,15 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
         <!-- 투수 등록 -->
         <div class="stat-card">
           <div class="sc-title">투수 등록</div>
-          <div style="display:flex;gap:5px;margin-bottom:8px">
+          <div style="display:flex;gap:5px;margin-bottom:6px">
             <input class="inp" id="pitcherName" placeholder="이름" style="flex:2">
             <input class="inp" id="pitcherNum" placeholder="#번" style="flex:1;width:52px">
             <button class="btn btn-primary" style="padding:6px 10px;font-size:12px" onclick="addPitcher()">+</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-bottom:8px" id="pitcherRoleChips">
+            <button class="chip" id="prole-SP" onclick="selPitcherRole(this,'SP')" style="font-size:10px;padding:3px 8px">SP 선발</button>
+            <button class="chip" id="prole-RP" onclick="selPitcherRole(this,'RP')" style="font-size:10px;padding:3px 8px">RP 계투</button>
+            <button class="chip" id="prole-CP" onclick="selPitcherRole(this,'CP')" style="font-size:10px;padding:3px 8px">CP 마무리</button>
           </div>
           <div class="pitcher-roster" id="pitcherRoster">
             <div style="font-size:11px;color:var(--text3)">투수를 등록하세요</div>
@@ -3340,6 +3345,7 @@ const AS={
   currentPitcher:null,
   pitcherZone:null,
   pitcherPt:null,
+  pitcherRole:null,
   pitchLog:[],
   recFilterBid:null
 };
@@ -3612,7 +3618,7 @@ function selBatter(id){
   // 타자 선택 시 타자 탭으로 자동 전환 + 오른쪽 패널 표시
   if(AS.batter){
     var _bt=document.getElementById('tab-batter');
-    if(_bt&&!_bt.classList.contains('on'))swTab('batter',_bt);
+    if(_bt)swTab('batter',_bt);
     // 모바일: 오른쪽 패널 표시
     var _layout=document.querySelector('.app-layout');
     var _rp=document.querySelector('.pnl-right');
@@ -6489,15 +6495,23 @@ function recQuick(res){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE C: 투수 탭
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function selPitcherRole(el,role){
+  document.querySelectorAll('#pitcherRoleChips .chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  AS.pitcherRole=role;
+}
+
 function addPitcher(){
   var name=document.getElementById('pitcherName').value.trim();
   var num=document.getElementById('pitcherNum').value.trim();
   if(!name){showToast('투수 이름을 입력하세요',false,false);return;}
-  var p={id:Date.now(),name:name,num:num,pitches:[]};
+  var p={id:Date.now(),name:name,num:num,role:AS.pitcherRole||null,pitches:[]};
   AS.pitchers.push(p);
   selectPitcher(p.id);
   document.getElementById('pitcherName').value='';
   document.getElementById('pitcherNum').value='';
+  document.querySelectorAll('#pitcherRoleChips .chip').forEach(function(c){c.classList.remove('on');});
+  AS.pitcherRole=null;
   renderPitcherRoster();
 }
 
@@ -6513,10 +6527,12 @@ function renderPitcherRoster(){
   var el=document.getElementById('pitcherRoster');
   if(!el)return;
   if(!AS.pitchers.length){el.innerHTML='<div style="font-size:11px;color:var(--text3)">투수를 등록하세요</div>';return;}
+  var roleColors={SP:'#4b8cf5',RP:'#a78bfa',CP:'#2dd4a0'};
   el.innerHTML=AS.pitchers.map(function(p){
     var on=AS.currentPitcher&&AS.currentPitcher.id===p.id;
+    var roleHtml=p.role?('<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:'+roleColors[p.role]+'33;color:'+roleColors[p.role]+';margin-left:3px">'+p.role+'</span>'):'';
     return '<button class="pitcher-tag'+(on?' on':'')+'" onclick="selectPitcher('+p.id+')">'
-      +(p.num?'#'+p.num+' ':'')+p.name
+      +(p.num?'#'+p.num+' ':'')+p.name+roleHtml
       +' <span style="font-size:9px;color:inherit;opacity:.7">('+p.pitches.length+'구)</span>'
       +'</button>';
   }).join('');
@@ -6559,6 +6575,27 @@ function recordPitch(result){
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result,false,true);
 }
 
+function loadPitchEntry(pt, zone, zoneX, zoneY){
+  if(pt){
+    AS.pitcherPt=pt;
+    document.querySelectorAll('#pitcherPtChips .chip').forEach(function(c){
+      c.classList.toggle('on',c.textContent.trim()===pt);
+    });
+  }
+  if(zone){
+    AS.pitcherZone=zone;
+    AS.pitcherZoneX=zoneX||null;
+    AS.pitcherZoneY=zoneY||null;
+    var lbl=document.getElementById('pitcherZoneLabel');
+    if(lbl)lbl.textContent=zone;
+    var cvs=document.getElementById('pitcherZoneCanvas');
+    if(cvs&&zoneX!=null&&zoneY!=null){
+      _drawZoneCanvas(cvs,[{cx:zoneX,cy:zoneY,result:'스트라이크'}],true);
+    }
+  }
+  showToast((pt||'')+(zone?' · '+zone:'')+'  입력 설정 완료',false,true);
+}
+
 function renderPitchLog(){
   var el=document.getElementById('pitchLog');
   if(!el)return;
@@ -6567,7 +6604,11 @@ function renderPitchLog(){
   var resColor={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565'};
   el.innerHTML=log.map(function(p){
     var col=resColor[p.result]||'#94a3b8';
-    return '<div class="pitch-entry">'
+    var ptE=JSON.stringify(p.pt||'');
+    var zoneE=JSON.stringify(p.zone||'');
+    var zx=p.zoneX!=null?p.zoneX:'null';
+    var zy=p.zoneY!=null?p.zoneY:'null';
+    return '<div class="pitch-entry" style="cursor:pointer" onclick="loadPitchEntry('+ptE+','+zoneE+','+zx+','+zy+')" title="클릭하면 입력값 복원">'
       +'<div class="pe-result" style="background:'+col+'"></div>'
       +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.pt||'—')+(p.zone?' · '+p.zone:'')+' → <strong style="color:'+col+'">'+p.result+'</strong></span>'
       +'<span style="font-size:9px;color:var(--text3)">'+p.ts+'</span>'
@@ -8671,6 +8712,9 @@ function archRecoverAutosave(){
   storageManager.clearRecovery();
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.style.display='none';
+  hideAppWelcome();
+  var ap=document.getElementById('app-page');
+  if(ap)ap.style.display='flex';
   updateAll();
   showToast('✓ 마지막 기록을 복구했습니다',false);
 }

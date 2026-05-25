@@ -8815,6 +8815,7 @@ function scanHiddenAutosaves(){
   }
   if(!found.length){
     el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">숨겨진 자동저장이 없습니다</div>';
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
     return;
   }
   found.sort(function(a,b){return b.ts-a.ts;});
@@ -8827,6 +8828,7 @@ function scanHiddenAutosaves(){
       +'<button class="btn btn-primary" style="font-size:10px;padding:3px 10px" onclick="recoverHiddenAutosave(\''+f.key+'\')">복구</button>'
       +'</div>';
   }).join('');
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function recoverHiddenAutosave(key){
   try{

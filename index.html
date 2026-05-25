@@ -2714,31 +2714,39 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
       <div class="modal-title" style="margin-bottom:0">저장된 경기</div>
       <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
     </div>
-    <div class="import-row">
-      <label class="import-label">📥 파일에서 가져오기 (다른 기기 연계)<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
-    </div>
-    <div style="margin-bottom:10px">
-      <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;gap:5px;font-size:11px;margin-top:0" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 복사한 데이터 붙여넣기 가져오기';})()">📋 복사한 데이터 붙여넣기 가져오기</button>
-      <div id="paste-area" style="display:none;margin-top:6px">
-        <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
-      </div>
-    </div>
-    <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀 내보내기 / 가져오기</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px" onclick="exportAllGamesToExcel()">📋 전체 경기 합치기</button>
-        <label class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px;cursor:pointer">📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
-      </div>
-      <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
-    </div>
-    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
-    </div>
-    <div id="saveList" style="max-height:160px;overflow-y:auto;margin-bottom:12px"></div>
+    <!-- 경기 목록 최상단 -->
+    <div id="saveList" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
+    <!-- 숨겨진 자동저장 -->
     <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
       <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="scanHiddenAutosaves()">🔍 숨겨진 자동저장 찾기</button>
       <div id="hiddenAutoList" style="margin-top:6px"></div>
+    </div>
+    <!-- 가져오기 / 내보내기 (접기 가능) -->
+    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:6px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="(function(){var s=document.getElementById('loadExtras');var on=s.style.display==='none'||!s.style.display;s.style.display=on?'block':'none';this.textContent=on?'▲ 가져오기 / 내보내기 닫기':'⚙️ 가져오기 / 내보내기';}).call(this)">⚙️ 가져오기 / 내보내기</button>
+      <div id="loadExtras" style="display:none;margin-top:8px">
+        <div class="import-row">
+          <label class="import-label">📥 파일에서 가져오기 (다른 기기 연계)<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
+        </div>
+        <div style="margin-bottom:10px">
+          <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;gap:5px;font-size:11px;margin-top:0" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 복사한 데이터 붙여넣기 가져오기';})()">📋 복사한 데이터 붙여넣기 가져오기</button>
+          <div id="paste-area" style="display:none;margin-top:6px">
+            <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀 내보내기 / 가져오기</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px" onclick="exportAllGamesToExcel()">📋 전체 경기 합치기</button>
+            <label class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px;cursor:pointer">📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
+        </div>
+        <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+        </div>
+      </div>
     </div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
   </div>

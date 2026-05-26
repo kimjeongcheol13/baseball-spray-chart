@@ -53,7 +53,9 @@ function _getList() {
       return true;
     });
   }
-  return list.filter(function(a) { return a.x != null && a.y != null; });
+  list = list.filter(function(a) { return a.x != null && a.y != null; });
+  if (typeof window._sfPass === 'function') list = list.filter(window._sfPass);
+  return list;
 }
 
 // ── Main render ───────────────────────────────────────────────

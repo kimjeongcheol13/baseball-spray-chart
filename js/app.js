@@ -4,6 +4,7 @@
 import './features/profile.js';
 import './features/compare.js';
 import './features/scouting.js';
+import './features/heatmap.js';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

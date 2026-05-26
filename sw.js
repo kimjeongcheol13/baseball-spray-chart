@@ -1,5 +1,5 @@
 // SprayLab Service Worker - 자동 업데이트 지원
-const CACHE_NAME = 'spraylab-v5';
+const CACHE_NAME = 'spraylab-v6';
 const ASSETS = [
   '/baseball-spray-chart/',
   '/baseball-spray-chart/index.html',
@@ -11,7 +11,11 @@ const ASSETS = [
   '/baseball-spray-chart/js/app.js',
   '/baseball-spray-chart/js/features/profile.js',
   '/baseball-spray-chart/js/features/compare.js',
-  '/baseball-spray-chart/js/features/scouting.js'
+  '/baseball-spray-chart/js/features/scouting.js',
+  '/baseball-spray-chart/js/features/heatmap.js',
+  '/baseball-spray-chart/js/features/filter.js',
+  '/baseball-spray-chart/js/features/insights.js',
+  '/baseball-spray-chart/js/features/perf.js'
 ];
 
 // 설치: 새 캐시 생성

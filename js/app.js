@@ -7,6 +7,7 @@ import './features/scouting.js';
 import './features/heatmap.js';
 import './features/filter.js';
 import './features/insights.js';
+import './features/perf.js';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

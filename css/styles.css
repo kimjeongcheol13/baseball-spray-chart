@@ -1,4 +1,4 @@
-/* ═══ Landing CSS ═══ */
+﻿/* ?먥븧??Landing CSS ?먥븧??*/
 :root{
   --bg:#07090f;--card:#0e1018;--raised:#141720;--hover:#1a1e2a;
   --blue:#4b8cf5;--blue-dim:rgba(75,140,245,.1);
@@ -181,7 +181,7 @@ section{padding:100px 5%}
 .tgt-list{list-style:none;margin-top:12px;text-align:left}
 .tgt-list li{font-size:11px;color:var(--text2);padding:4px 0;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border)}
 .tgt-list li:last-child{border-bottom:none}
-.tgt-list li::before{content:'·';color:var(--blue);font-weight:800}
+.tgt-list li::before{content:'쨌';color:var(--blue);font-weight:800}
 
 /* CTA */
 .cta-section{text-align:center;padding:120px 5%;background:radial-gradient(ellipse at 50% 0%,rgba(75,140,245,.08) 0%,transparent 70%),var(--bg);position:relative;overflow:hidden}
@@ -245,7 +245,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 }
 @media(min-width:741px){.mob-batter{display:none}}
 
-/* ═══ App CSS ═══ */
+/* ?먥븧??App CSS ?먥븧??*/
 #app-page{
   --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
   --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
@@ -443,7 +443,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ONBOARDING */
 .ob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:flex;align-items:center;justify-content:center}
 .ob-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:28px 24px;width:min(360px,92vw);text-align:center;box-shadow:var(--shadow)}
-.ob-icon{font-size:40px;margin-bottom:12px}.ob-step覆{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.ob-icon{font-size:40px;margin-bottom:12px}.ob-step誤?font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
 .ob-title{font-size:20px;font-weight:900;margin-bottom:10px;line-height:1.3}.ob-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px}
 .ob-dots{display:flex;gap:4px;justify-content:center;margin-bottom:20px}
 .ob-dot{width:5px;height:5px;border-radius:50%;background:var(--border2);transition:all 200ms}.ob-dot.on{background:var(--accent);width:16px;border-radius:3px}
@@ -472,7 +472,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .bs-name{font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px}
 .zone-heat{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:72px;margin-top:2px}
 .zh-cell{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);border:1px solid var(--border2)}
-/* 타구 상세 카드 */
+/* ?援??곸꽭 移대뱶 */
 #hitDetailCard{
   background:var(--card);border:1px solid var(--border2);border-radius:12px;
   padding:12px 14px;min-width:160px;max-width:220px;
@@ -494,7 +494,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 }
 .btt-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px}
 .btt-desc{font-size:11px;color:var(--text2);line-height:1.65}
-/* === 차트 탭 추가 스타일 === */
+/* === 李⑦듃 ??異붽? ?ㅽ???=== */
 .ext-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px}
 .ext-stat-grid .stat-it{background:var(--bg-hover);border-radius:7px;padding:7px 6px}
 .count-heatmap{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
@@ -519,7 +519,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .cl-item{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)}
 .cl-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
-/* ── 중간 화면 크기 대응 (브라우저 반쪽 등) ── */
+/* ?? 以묎컙 ?붾㈃ ?ш린 ???(釉뚮씪?곗? 諛섏そ ?? ?? */
 @media(min-width:721px) and (max-width:960px){
   .app-layout{grid-template-columns:175px 1fr 340px}
   .app-hdr{flex-wrap:wrap;height:auto;padding:6px 10px;row-gap:4px}
@@ -542,35 +542,35 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;padding:10px 10px}
 }
-/* ── 심화지표/구종 필터 탭 ── */
+/* ?? ?ы솕吏??援ъ쥌 ?꾪꽣 ???? */
 .stat-filter{display:flex;gap:3px;margin-bottom:8px;background:var(--bg-hover);border-radius:8px;padding:3px}
 .sf-btn{flex:1;padding:4px 0;border-radius:6px;border:none;background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;text-align:center}
 .sf-btn.on{background:var(--bg-card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}
-/* ── 누적 타율 트렌드 툴팁 ── */
+/* ?? ?꾩쟻 ????몃젋???댄똻 ?? */
 .trend-cvs-wrap{position:relative}
 #trendTip{display:none;position:absolute;background:var(--bg-card);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:10px;min-width:125px;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;z-index:10}
 .tt-avg{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);margin-bottom:3px}
 .tt-row{color:var(--text2);line-height:1.65}
-/* ── 타석 기록 수정 버튼 ── */
+/* ?? ???湲곕줉 ?섏젙 踰꾪듉 ?? */
 .rec-edit{position:absolute;top:7px;right:25px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:1px 4px;border-radius:3px;transition:all 100ms;opacity:0;font-family:var(--font)}
 .rec-item:hover .rec-edit{opacity:1}
 .rec-edit:hover{color:var(--accent);background:var(--accent-dim)}
 .rec-del{position:absolute;top:7px;right:5px}
-/* ── zone 구종 태그 ── */
+/* ?? zone 援ъ쥌 ?쒓렇 ?? */
 .zh-pt-row{display:flex;flex-wrap:wrap;gap:1px;justify-content:center;margin-top:1px}
 .zh-pt{font-size:6.5px;padding:0 2px;border-radius:2px;font-weight:800;line-height:1.4}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    AUTO-SAVE INDICATOR
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .save-ind{font-size:10px;font-family:var(--mono);color:var(--text3);flex-shrink:0;white-space:nowrap;transition:color .4s;letter-spacing:.3px}
 .save-ind.ok{color:var(--green)}
 .save-ind.fail{color:var(--red)}
 .save-ind.saving{color:var(--yellow)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .fab{position:fixed;bottom:20px;right:18px;width:58px;height:58px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:350;display:none;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(75,140,245,.45),0 0 0 4px rgba(75,140,245,.12);transition:all .2s;-webkit-tap-highlight-color:transparent;font-family:var(--font)}
 .fab:active{transform:scale(.91)}
 @media(max-width:720px){.fab{display:flex}}
@@ -586,29 +586,29 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qr-inn-row{display:flex;gap:5px;margin-bottom:8px;flex-shrink:0;align-items:center}
 .qr-inn-lbl{font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text3);text-transform:uppercase;white-space:nowrap}
 .qr-inn-sel{flex:1;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:5px 8px;color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;outline:none}
-/* ── QR 오버레이 그리드 (리디자인) ── */
+/* ?? QR ?ㅻ쾭?덉씠 洹몃━??(由щ뵒?먯씤) ?? */
 .qr-grid{display:grid;gap:8px;flex-shrink:0}
-/* Primary: 2×2 큰 버튼 */
+/* Primary: 2횞2 ??踰꾪듉 */
 .qr-grid-primary{grid-template-columns:repeat(2,1fr)}
-/* Secondary: 3열 작은 버튼 */
+/* Secondary: 3???묒? 踰꾪듉 */
 .qr-grid-secondary{grid-template-columns:repeat(3,1fr);display:none}
 .qr-grid-secondary.open{display:grid}
 
 .qr-btn{border:none;border-radius:16px;font-size:15px;font-weight:900;font-family:var(--font);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:transform .1s,filter .1s;-webkit-tap-highlight-color:transparent;min-height:70px}
-/* Primary 버튼 */
+/* Primary 踰꾪듉 */
 .qr-grid-primary .qr-btn{min-height:76px;font-size:17px;border-radius:18px}
-/* Secondary 버튼: 기존 크기 유지 */
+/* Secondary 踰꾪듉: 湲곗〈 ?ш린 ?좎? */
 .qr-grid-secondary .qr-btn{min-height:64px;max-height:80px;font-size:13px}
 
 .qr-btn:active{transform:scale(.93);filter:brightness(.85)}
 .qr-btn small{font-size:9px;font-weight:600;opacity:.75;letter-spacing:.3px}
 
-/* 더보기 토글 */
+/* ?붾낫湲??좉? */
 .qr-more-toggle{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;font-family:var(--font);padding:7px 0;cursor:pointer;width:100%;margin-top:2px;letter-spacing:.04em;transition:background .12s;flex-shrink:0}
 .qr-more-toggle.open{color:var(--accent);border-color:rgba(75,140,245,.35);background:rgba(75,140,245,.08)}
 .qr-sec-label{font-size:9px;font-weight:800;letter-spacing:1.2px;color:rgba(255,255,255,.25);text-transform:uppercase;text-align:center;padding:4px 0 2px;flex-shrink:0}
 
-/* 공유 QR 모달 */
+/* 怨듭쑀 QR 紐⑤떖 */
 .share-qr-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:800;display:none;align-items:center;justify-content:center;padding:20px}
 .share-qr-ov.show{display:flex}
 .share-qr-box{background:#141c2e;border-radius:22px;padding:24px 20px 20px;width:300px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -621,13 +621,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .share-qr-copy:active{filter:brightness(.85)}
 .share-qr-close{width:100%;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:rgba(255,255,255,.4);font-size:13px;font-family:var(--font);padding:10px;cursor:pointer}
 
-/* 경기 컨디션 태그 */
+/* 寃쎄린 而⑤뵒???쒓렇 */
 .cond-strip{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;flex-shrink:0}
 .cond-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;color:rgba(255,255,255,.5);font-size:11px;padding:4px 10px;cursor:pointer;font-family:var(--font);transition:all .12s;-webkit-tap-highlight-color:transparent}
 .cond-chip.on{background:rgba(75,140,245,.2);border-color:var(--accent);color:var(--accent)}
 .cond-strip-label{font-size:9px;color:rgba(255,255,255,.2);letter-spacing:.8px;text-transform:uppercase;align-self:center;white-space:nowrap}
 
-/* 시즌 통계 강화 */
+/* ?쒖쫵 ?듦퀎 媛뺥솕 */
 .season-month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
 .month-cell{background:rgba(255,255,255,.04);border-radius:8px;padding:7px 5px;text-align:center}
 .month-cell .mc-m{font-size:9px;color:var(--text3);margin-bottom:3px}
@@ -639,17 +639,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qr-field-btn:active{transform:scale(.96)}
 .qr-field-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    PNG EXPORT / SHARE CARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .export-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
 .ex-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .1s;white-space:nowrap}
 .ex-btn:hover{border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.08)}
 .ex-btn.green:hover{border-color:var(--green);color:var(--green);background:rgba(45,212,160,.08)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    STAT VALUE COLOR CODING + OPS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .sv-hot{color:#f56565!important}
 .sv-good{color:#2dd4a0!important}
 .sv-avg{color:#f6c23e!important}
@@ -660,9 +660,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .ops-avg{background:rgba(75,140,245,.15);color:#4b8cf5}
 .ops-low{background:rgba(67,76,94,.2);color:var(--text3)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE SWIPE TAB (CSS scroll-snap)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 @media(max-width:720px){
   .tab-body{
     flex:1;min-height:0;
@@ -685,9 +685,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   }
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    PITCH TYPE QUICK CHIPS (Input Bar)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .pt-chip-F{--c:#4b8cf5}
 .pt-chip-C{--c:#a78bfa}
 .pt-chip-S{--c:#f6c23e}
@@ -701,9 +701,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .chip.on.pt-chip-FK{background:rgba(251,146,60,.2)!important;border-color:#fb923c!important;color:#fb923c!important}
 .chip.on.pt-chip-CT{background:rgba(136,146,164,.2)!important;border-color:#8892a4!important;color:#8892a4!important}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   MOBILE 개선 - 터치 영역 확대
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   MOBILE 媛쒖꽑 - ?곗튂 ?곸뿭 ?뺣?
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 @media(max-width:720px){
   .o-btn{padding:8px 12px;font-size:12px;border-radius:16px}
   .chip{padding:6px 12px;font-size:12px}
@@ -754,9 +754,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tRingPulse{animation:rPulse 1.3s ease-in-out infinite}
 @keyframes rPulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.25);opacity:.2}}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   QUICK BAR (상단 고정 퀵버튼)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   QUICK BAR (?곷떒 怨좎젙 ?듬쾭??
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .quick-bar{display:flex;gap:4px;padding:6px 10px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
 .qb-btn{flex:1;min-height:48px;border:none;border-radius:10px;font-size:13px;font-weight:800;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .1s,filter .1s;-webkit-tap-highlight-color:transparent;line-height:1.2}
 .qb-btn:active{transform:scale(.93);filter:brightness(.85)}
@@ -767,9 +767,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qb-bb{background:rgba(167,139,250,.18);color:#a78bfa;border:1.5px solid rgba(167,139,250,.38)}
 @media(max-width:720px){.quick-bar{padding:4px 6px;gap:4px}.qb-btn{min-height:38px;font-size:13px;border-radius:10px}}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SWIPE HINT (팝업 스와이프 힌트)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   SWIPE HINT (?앹뾽 ?ㅼ??댄봽 ?뚰듃)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .swipe-hints{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--border)}
 .sw-hint{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);font-weight:600;padding:3px 0}
 .sw-arrow{font-size:16px;line-height:1}
@@ -777,9 +777,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .swipe-active-feedback{position:absolute;inset:0;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
 .swipe-active-feedback.show{opacity:1}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    PITCHER TAB
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .pitcher-roster{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
 .pitcher-tag{padding:4px 10px;border-radius:14px;border:1.5px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;display:flex;align-items:center;gap:4px}
 .pitcher-tag.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
@@ -807,9 +807,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .ps-l{font-size:9px;color:var(--text3);margin-top:2px}
 .donut-pitcher{width:80px;height:80px}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    CARD PREVIEW MODAL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .card-preview-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:800;display:none;align-items:center;justify-content:center;padding:16px;flex-direction:column;gap:12px}
 .card-preview-ov.show{display:flex}
 .card-preview-box{background:#0e1018;border:1px solid #252532;border-radius:18px;padding:16px;max-width:min(520px,96vw);width:100%;display:flex;flex-direction:column;gap:10px}
@@ -821,9 +821,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .card-dl-btn:active{filter:brightness(.85)}
 .card-cancel-btn{width:100%;padding:10px;background:none;border:1px solid var(--border2);border-radius:12px;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    SHARED GAME BANNER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #sharedBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:600;background:linear-gradient(135deg,#1a2744,#0f1928);border-bottom:1px solid rgba(75,140,245,.3);padding:12px 16px;animation:slideDown .3s ease}
 #sharedBanner.show{display:block}
 @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
@@ -836,9 +836,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .sb-save{padding:7px 14px;background:rgba(45,212,160,.2);border:1px solid rgba(45,212,160,.4);border-radius:8px;color:#2dd4a0;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap}
 .sb-dismiss{padding:5px 8px;background:none;border:1px solid rgba(255,255,255,.15);border-radius:7px;color:rgba(255,255,255,.4);font-size:11px;font-family:var(--font);cursor:pointer}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   APP WELCOME SCREEN (앱 홈 화면)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   APP WELCOME SCREEN (?????붾㈃)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #appWelcome{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;overflow-y:auto;transition:opacity .2s}
 #appWelcome.hidden{display:none}
 .aw-logo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:32px;flex-shrink:0}
@@ -870,9 +870,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .aw-bottom-btn:active{transform:scale(.95);color:var(--text)}
 .aw-empty{text-align:center;padding:16px 0;color:var(--text3);font-size:11px;line-height:1.7}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   GAME START WIZARD (경기 시작 마법사)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   GAME START WIZARD (寃쎄린 ?쒖옉 留덈쾿??
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #gameWizard{position:fixed;inset:0;z-index:460;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
 #gameWizard.show{display:flex}
 .gw-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:28px 24px;width:min(400px,100%);box-shadow:0 24px 64px rgba(0,0,0,.7);animation:cardIn .2s ease}
@@ -896,9 +896,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .gw-load-recent{width:100%;padding:11px;border:1px dashed var(--border2);border-radius:var(--r);background:none;color:var(--text3);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;margin-top:8px;min-height:44px}
 .gw-load-recent:hover{border-color:var(--accent);color:var(--accent)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   FULL HELP MODAL (아코디언)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   FULL HELP MODAL (?꾩퐫?붿뼵)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #helpModal{position:fixed;inset:0;z-index:480;background:rgba(0,0,0,.82);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
 #helpModal.show{display:flex}
 .hm-sheet{background:var(--bg-card);border-radius:var(--r2) var(--r2) 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;border:1px solid var(--border2);border-bottom:none;animation:slideUp .25s ease;padding-bottom:env(safe-area-inset-bottom,20px)}
@@ -930,7 +930,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .hm-new{display:inline-block;background:linear-gradient(90deg,var(--blue),#7c5cfc);color:#fff;font-size:8px;font-weight:900;padding:1px 5px;border-radius:8px;letter-spacing:.6px;vertical-align:middle;margin-left:5px;line-height:1.6}
 .hm-header-meta{display:flex;align-items:center;gap:8px}
 .hm-header-count{font-size:10px;color:var(--text3);font-weight:600;background:var(--bg-raised);border-radius:8px;padding:2px 8px;border:1px solid var(--border)}
-/* 도움말 모드 토글 버튼 */
+/* ?꾩?留?紐⑤뱶 ?좉? 踰꾪듉 */
 .btn-help-mode{padding:4px 8px;font-size:10px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text3);font-family:var(--font);font-weight:700;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
 .btn-help-mode.active{background:rgba(246,194,62,.12);border-color:#f6c23e;color:#f6c23e}
 .btn-help-mode:active{transform:scale(.94)}
@@ -945,17 +945,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 body.help-mode [data-help]{outline:2px dashed rgba(246,194,62,.45);outline-offset:3px;border-radius:6px;cursor:help}
 body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ONBOARDING 개선 (3단계 + 다시 보지 않기)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   ONBOARDING 媛쒖꽑 (3?④퀎 + ?ㅼ떆 蹂댁? ?딄린)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .ob-highlight{background:var(--accent-dim);border:1px solid rgba(75,140,245,.3);border-radius:8px;padding:8px 14px;font-size:11px;font-weight:800;color:var(--accent);text-align:center;margin-bottom:16px;letter-spacing:.3px}
 .ob-no-show{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:36px}
 .ob-no-show input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
 .ob-no-show span{font-size:11px;color:var(--text3);font-weight:600}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   AI 타격 인사이트 카드
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   AI ?寃??몄궗?댄듃 移대뱶
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .ai-section-head{font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .ai-section-head::after{content:'';flex:1;height:1px;background:var(--border)}
 .ai-card{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg-raised);margin-bottom:5px;border-left-width:3px;animation:fadeSlideUp .3s ease both}
@@ -966,9 +966,9 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .ai-text{font-size:11px;color:var(--text2);line-height:1.65;font-weight:500}
 @keyframes fadeSlideUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   FAB (Floating Action Button, 모바일 전용)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   FAB (Floating Action Button, 紐⑤컮???꾩슜)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .fab-wrap{position:fixed;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 16px));right:14px;z-index:200;display:none}
 @media(max-width:720px){.fab-wrap{display:block}}
 .fab-btn{width:54px;height:54px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(75,140,245,.45);display:flex;align-items:center;justify-content:center;transition:all .15s;-webkit-tap-highlight-color:transparent}
@@ -979,9 +979,9 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .fab-pop-btn.repeat{background:none;border-style:dashed;border-color:var(--border2);color:var(--text3);font-size:11px}
 .fab-pop-btn:active{filter:brightness(.85)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   경기 요약 모달 (GAME SUMMARY)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   寃쎄린 ?붿빟 紐⑤떖 (GAME SUMMARY)
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #gameSummaryOv{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:20px}
 #gameSummaryOv.show{display:flex}
 .gs-card{background:var(--bg-card);border:1px solid rgba(75,140,245,.25);border-radius:var(--r2);padding:24px 20px;width:min(380px,100%);box-shadow:0 24px 64px rgba(0,0,0,.8);animation:cardIn .25s ease}
@@ -999,9 +999,9 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gs-btn-share{flex:1;padding:13px;background:none;border:1.5px solid var(--border2);border-radius:var(--r);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:48px;transition:all .1s}
 .gs-btn-share:active{background:var(--bg-raised)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    POST-GAME REPORT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #pgFade{position:fixed;inset:0;z-index:810;background:#07090f;opacity:0;pointer-events:none;transition:opacity .38s ease}
 #pgFade.fading{opacity:1;pointer-events:all}
 #pgReport{position:fixed;inset:0;z-index:820;display:none;flex-direction:column;background:#09090f;overflow:hidden}
@@ -1060,13 +1060,13 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .pg-sh-btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
 .pg-sh-btn:active{filter:brightness(.88);transform:scale(.97)}
 
-/* 반복 기록 버튼 */
+/* 諛섎났 湲곕줉 踰꾪듉 */
 .repeat-btn{padding:5px 10px;border:1px dashed var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0}
 .repeat-btn:active{border-color:var(--accent);color:var(--accent)}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    VISUAL HIERARCHY & TOUCH POLISH
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .btn{min-height:36px}
 .btn-primary{font-weight:800;letter-spacing:-.2px}
 /* safe area */
@@ -1075,17 +1075,17 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
   .app-hdr{padding:0 10px;gap:6px}
   .btn.btn-ghost{min-height:36px;padding:5px 8px}
 }
-/* 저장 버튼 피드백 애니메이션 */
+/* ???踰꾪듉 ?쇰뱶諛??좊땲硫붿씠??*/
 @keyframes savePulse{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 5px rgba(75,140,245,.3)}80%{box-shadow:0 0 0 10px rgba(75,140,245,0)}}
 .save-pulse-anim{animation:savePulse .55s ease!important}
-/* 기록 완료 피드백 */
+/* 湲곕줉 ?꾨즺 ?쇰뱶諛?*/
 @keyframes recDone{0%{transform:scale(1)}35%{transform:scale(1.06)}100%{transform:scale(1)}}
 .rec-done-anim{animation:recDone .2s ease}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   GAME FLOW MODE — 경기 운영 모드
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 상태 바 */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   GAME FLOW MODE ??寃쎄린 ?댁쁺 紐⑤뱶
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
+/* ?곹깭 諛?*/
 #gfBar{display:none;background:linear-gradient(135deg,#07111f,#0b1a30);border-bottom:2px solid rgba(246,194,62,.22);padding:5px 10px;position:sticky;top:0;z-index:40}
 #gfBar.active{display:block}
 .gfb-inner{display:flex;align-items:center;gap:7px;min-height:32px}
@@ -1094,24 +1094,24 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gfb-out-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(245,101,101,.45);background:transparent;transition:background .12s}
 .gfb-out-dot.on{background:#f56565;border-color:#f56565}
 .gfb-out-lbl{font-size:8px;color:var(--text3);letter-spacing:.4px;margin-left:1px}
-/* 다이아몬드 베이스 */
+/* ?ㅼ씠?꾨が??踰좎씠??*/
 .gfb-bases{position:relative;width:34px;height:24px;flex-shrink:0}
 .gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s}
 .gfb-base.on{background:#f6c23e;border-color:#f6c23e}
 .gfb-base-2{left:50%;margin-left:-4px;top:0}
 .gfb-base-3{left:0;top:50%;margin-top:-4px}
 .gfb-base-1{right:0;top:50%;margin-top:-4px}
-/* 타자 / 스코어 */
+/* ???/ ?ㅼ퐫??*/
 .gfb-batter{flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);flex-shrink:0}
-/* 경기종료 버튼 */
+/* 寃쎄린醫낅즺 踰꾪듉 */
 .gfb-end{background:rgba(245,101,101,.13);border:1px solid rgba(245,101,101,.3);color:#f56565;border-radius:6px;font-size:9px;font-weight:800;padding:4px 8px;cursor:pointer;flex-shrink:0;font-family:var(--font);min-height:26px;letter-spacing:.3px;transition:all .12s;-webkit-tap-highlight-color:transparent}
 .gfb-end:active{opacity:.7;transform:scale(.94)}
-/* GF 토글 버튼 (헤더) */
+/* GF ?좉? 踰꾪듉 (?ㅻ뜑) */
 .btn-gf{padding:4px 9px;font-size:10px;font-weight:800;border-radius:6px;border:1px solid rgba(246,194,62,.3);background:rgba(246,194,62,.07);color:#f6c23e;cursor:pointer;font-family:var(--font);transition:all .12s;min-height:30px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 .btn-gf.on{background:rgba(246,194,62,.18);border-color:#f6c23e}
 .btn-gf:active{transform:scale(.94)}
-/* 경기 종료 오버레이 */
+/* 寃쎄린 醫낅즺 ?ㅻ쾭?덉씠 */
 #gfEndOv{position:fixed;inset:0;z-index:750;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
 #gfEndOv.show{display:flex}
 .gfe-card{background:linear-gradient(160deg,#07111f 0%,#0d1e3a 55%,#08162a 100%);border:1px solid rgba(246,194,62,.22);border-radius:16px;padding:22px 18px;width:min(390px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.9),0 0 36px rgba(246,194,62,.07);animation:cardIn .3s ease}
@@ -1137,16 +1137,16 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gfe-btn-close{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text2)}
 .gfe-btn-save{background:var(--blue);border:none;color:#fff}
 .gfe-btn:active{transform:scale(.96);opacity:.85}
-/* GF 모드일 때 이닝 셀렉터 흐리게 */
+/* GF 紐⑤뱶?????대떇 ??됲꽣 ?먮━寃?*/
 .gf-on .inn-sel{opacity:.45;pointer-events:none}
 
-/* ══ FOCUS MODE ══ */
+/* ?먥븧 FOCUS MODE ?먥븧 */
 body.game-focus #seasonCard,
 body.game-focus #weaknessCard{display:none!important}
 body.game-focus #advSection{display:none!important}
 body.game-focus #advToggleBtn{display:none!important}
 
-/* ══ ADVANCED ANALYTICS COLLAPSIBLE ══ */
+/* ?먥븧 ADVANCED ANALYTICS COLLAPSIBLE ?먥븧 */
 .adv-toggle-btn{width:100%;padding:10px 14px;background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin:5px 0 3px;transition:background .1s;-webkit-tap-highlight-color:transparent;min-height:44px}
 .adv-toggle-btn:active{background:var(--border)}
 .adv-toggle-btn .adv-arr{transition:transform .2s;font-size:9px;opacity:.6}
@@ -1154,7 +1154,7 @@ body.game-focus #advToggleBtn{display:none!important}
 #advSection{overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1)}
 #advSection.closed{max-height:0!important;overflow:hidden}
 
-/* ══ HOME: MORE MENU ══ */
+/* ?먥븧 HOME: MORE MENU ?먥븧 */
 .aw-more-overlay{position:fixed;inset:0;z-index:501;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
 .aw-more-overlay.on{display:flex;animation:fadeSlideUp .15s ease}
 .aw-more-sheet{width:100%;max-width:420px;background:var(--bg-card);border-radius:16px 16px 0 0;padding:12px 14px max(16px,env(safe-area-inset-bottom));border:1px solid var(--border2)}
@@ -1164,37 +1164,37 @@ body.game-focus #advToggleBtn{display:none!important}
 .aw-more-divider{height:1px;background:var(--border);margin:4px 0}
 .aw-more-cancel{width:100%;padding:13px;background:var(--bg-raised);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:6px;min-height:44px;-webkit-tap-highlight-color:transparent}
 
-/* ══ HOME: 시즌·더보기 버튼 ══ */
+/* ?먥븧 HOME: ?쒖쫵쨌?붾낫湲?踰꾪듉 ?먥븧 */
 .aw-btn-season{width:100%;min-height:56px;padding:14px 20px;border:1.5px solid rgba(246,194,62,.25);border-radius:var(--r2);background:rgba(246,194,62,.07);color:#f6c23e;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;-webkit-tap-highlight-color:transparent}
 .aw-btn-season:active{transform:scale(.97)}
 .aw-btn-season:hover{border-color:rgba(246,194,62,.45)}
 .aw-btn-more{margin-top:6px;width:100%;padding:11px 10px;background:none;border:none;color:var(--text3);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px;letter-spacing:.5px}
 .aw-btn-more:active{color:var(--text2)}
 
-/* ══ RECENT CARD ENHANCEMENTS ══ */
+/* ?먥븧 RECENT CARD ENHANCEMENTS ?먥븧 */
 .aw-ri-mvp{font-size:9px;font-weight:700;color:#f6c23e;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .aw-ri-meta{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
 .aw-ri-meta-score{font-size:16px;font-weight:800;font-family:var(--mono);color:var(--accent)}
 .aw-ri-meta-result{font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.5px}
 
-/* ══ FAB EXTENDED ══ */
+/* ?먥븧 FAB EXTENDED ?먥븧 */
 .fab-pop-sep{height:1px;background:var(--border);margin:2px 0;flex-shrink:0}
 .fab-pop-btn.danger{color:#f56565;border-color:rgba(245,101,101,.25)}
 .fab-pop-btn.danger:active{filter:brightness(.85)}
 
-/* ══ TABLET LANDSCAPE ══ */
+/* ?먥븧 TABLET LANDSCAPE ?먥븧 */
 @media(min-width:960px) and (orientation:landscape){
   .pnl-left{min-width:220px;max-width:220px}
   .pnl-right{min-width:290px;max-width:290px}
 }
 
-/* ══ ANIMATION CLEANUP ══ */
+/* ?먥븧 ANIMATION CLEANUP ?먥븧 */
 .feat-card,.stat-card{transition:border-color .1s,opacity .1s}
 @keyframes recDone{0%{transform:scale(1)}30%{transform:scale(1.04)}100%{transform:scale(1)}}
 
-/* ════════════════════════════════════════
+/* ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧
    TEAM SYSTEM
-════════════════════════════════════════ */
+?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧 */
 /* Team Create Modal */
 #teamCreateModal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center}
 #teamCreateModal.on{display:flex;animation:fadeSlideUp .15s ease}
@@ -1269,9 +1269,9 @@ body.game-focus #advToggleBtn{display:none!important}
 body.role-coach .pnl-right [id^="pnl-batter"]{order:99}
 body.role-player #pnl-stat .stat-card:not(.personal){opacity:.7}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ARCH: 안정화 컴포넌트
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   ARCH: ?덉젙??而댄룷?뚰듃
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .arch-state-empty,.arch-state-error,.arch-state-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;gap:7px;text-align:center}
 .arch-state-icon{font-size:22px;opacity:.45}
 .arch-state-msg{font-size:12px;font-weight:700;color:var(--text3)}
@@ -1299,11 +1299,11 @@ body.role-player #pnl-stat .stat-card:not(.personal){opacity:.7}
 .arch-dbg-k{color:var(--text3)}
 .arch-dbg-v{color:var(--text);font-weight:700}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   FIELD v1.0 — 현장 베타 안정화
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
+   FIELD v1.0 ???꾩옣 踰좏? ?덉젙??
+?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 
-/* ── 고대비 모드 ── */
+/* ?? 怨좊?鍮?紐⑤뱶 ?? */
 body.high-contrast{--bg:#000;--bg-card:#0c0c0c;--bg-raised:#141414;--bg-hover:#1c1c1c;--text:#fff;--text2:#d0d0d0;--text3:#808080;--border:#252525;--border2:#333}
 body.high-contrast *{animation-duration:0ms!important;transition-duration:50ms!important}
 body.high-contrast .tab{border-bottom-width:3px}
@@ -1311,7 +1311,7 @@ body.high-contrast .btn,.high-contrast .chip{border-width:2px!important}
 body.high-contrast .rec-item{border-width:2px}
 body.high-contrast .player-row{border-width:2px}
 
-/* ── 집중 모드 강화: 태블릿 가로모드 ── */
+/* ?? 吏묒쨷 紐⑤뱶 媛뺥솕: ?쒕툝由?媛濡쒕え???? */
 @media(min-width:900px) and (orientation:landscape) and (max-height:620px){
   body.game-focus .app-layout{grid-template-columns:160px 1fr 360px}
   body.game-focus .chip{padding:10px 14px;font-size:13px;min-height:42px}
@@ -1319,20 +1319,20 @@ body.high-contrast .player-row{border-width:2px}
   body.game-focus .zone-cell{border-radius:5px}
 }
 
-/* ── 오프라인 배너 ── */
+/* ?? ?ㅽ봽?쇱씤 諛곕꼫 ?? */
 #fieldOfflineBanner{position:fixed;top:0;left:0;right:0;z-index:9001;background:#f59e0b;color:#000;text-align:center;padding:7px 16px;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px}
 #fieldOfflineBanner.show{display:flex}
 body.game-focus.offline-active .app-hdr{margin-top:34px}
 
-/* ── 고대비 토글 버튼 ── */
+/* ?? 怨좊?鍮??좉? 踰꾪듉 ?? */
 #hcToggleBtn{padding:4px 8px;font-size:10px;white-space:nowrap}
 
-/* ── 피드백 버튼 ── */
+/* ?? ?쇰뱶諛?踰꾪듉 ?? */
 #fieldFeedbackBtn{position:fixed;bottom:90px;left:14px;z-index:400;background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:6px 11px;font-size:10px;font-weight:700;font-family:var(--font);color:var(--text3);cursor:pointer;display:none;transition:all .15s;-webkit-tap-highlight-color:transparent}
 @media(max-width:720px){#fieldFeedbackBtn{display:block}}
 #fieldFeedbackBtn:active{background:var(--bg-raised)}
 
-/* ── 피드백 모달 ── */
+/* ?? ?쇰뱶諛?紐⑤떖 ?? */
 #fieldFeedbackModal{position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
 #fieldFeedbackModal.show{display:flex}
 .ffm-sheet{background:var(--bg-card);border-radius:16px 16px 0 0;padding:22px 18px 28px;width:100%;max-width:480px}
@@ -1345,7 +1345,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ffm-send{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
 .ffm-cancel{padding:13px 18px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;min-height:46px;-webkit-tap-highlight-color:transparent}
 
-/* ── 더보기 드롭다운 ── */
+/* ?? ?붾낫湲??쒕∼?ㅼ슫 ?? */
 .more-menu-wrap{position:relative}
 .more-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:160px;z-index:400;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .mm-item{width:100%;text-align:left;padding:8px 12px;font-size:12px;background:transparent;border:none;color:var(--text);border-radius:7px;cursor:pointer;white-space:nowrap;font-family:var(--font);-webkit-tap-highlight-color:transparent}
@@ -1353,20 +1353,20 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .mm-divider{height:1px;background:var(--border);margin:3px 0}
 .mm-home{color:var(--text3)}
 
-/* ── 하단 입력 탭 바 ── */
+/* ?? ?섎떒 ?낅젰 ??諛??? */
 .ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised)}
 .ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
 .ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ib-tab-pnl{display:none}
 .ib-tab-pnl.on{display:block}
 
-/* ── 우측 분석 패널 토글 ── */
+/* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */
 .pnl-right{transition:opacity .25s ease,min-width .25s ease}
 .pnl-right.panel-collapsed{width:0!important;min-width:0!important;opacity:0;pointer-events:none;overflow:hidden;border-left:none}
 .app-layout.panel-collapsed{grid-template-columns:220px 1fr 0px!important}
 @media(max-width:720px){.pnl-right.panel-collapsed{display:none}}
 
-/* ══ FTU ONBOARDING WIZARD ══ */
+/* ?먥븧 FTU ONBOARDING WIZARD ?먥븧 */
 #ftuOverlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px;transition:opacity .3s}
 #ftuOverlay.hidden{display:none}
 .ftu-card{background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:28px 24px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.7)}
@@ -1387,12 +1387,40 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ftu-player-row .ftu-inp.num{width:56px;flex:none;text-align:center}
 .ftu-add-btn{height:42px;width:42px;flex-shrink:0;border-radius:10px;background:var(--blue);color:#fff;font-size:20px;border:none;cursor:pointer;font-family:var(--font);line-height:1}
 
-/* ══ TAB MODE TOGGLE (mobile only) ══ */
+/* ?먥븧 TAB MODE TOGGLE (mobile only) ?먥븧 */
 .tab-mode-bar{display:flex;gap:4px;padding:6px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
 .tmb-btn{flex:1;padding:7px 8px;font-size:11px;font-weight:800;border:none;background:var(--bg-raised);color:var(--text3);cursor:pointer;border-radius:8px;transition:all 150ms;font-family:var(--font)}
 .tmb-btn.on{background:var(--blue);color:#fff}
 @media(min-width:721px){.tab-mode-bar{display:none}}
 
-/* ══ EXCEL TOOLBAR BUTTON ══ */
+/* ?먥븧 EXCEL TOOLBAR BUTTON ?먥븧 */
 .btn-xl{padding:4px 8px;font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;cursor:pointer;font-family:var(--font);font-weight:700;white-space:nowrap;transition:background .15s}
 .btn-xl:active{background:rgba(34,197,94,.22)}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   UI OVERLAP FIXES
+   — 제공된 코드를 실제 셀렉터로 변환 적용
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* 스코어보드: app-hdr 내 stacking context 명시 */
+.scoreboard{position:relative;z-index:10}
+
+/* 타구 상세 카드: inline z-index:500 → 9000 오버라이드
+   (app-hdr z-50, savant-nav z-100 위에 확실히 올라오게) */
+#hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
+
+/* 모바일 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media(max-width:720px){
+  /* 가로 스크롤 방지 */
+  body{overflow-x:hidden}
+
+  /* 스코어보드 축소 (헤더 공간 확보) */
+  .scoreboard{transform:scale(.92);transform-origin:top center}
+
+  /* 하단 savant-nav(48px) 가림 방지
+     tab-pnl은 overflow-y:auto 스크롤 컨테이너 */
+  .tab-pnl{padding-bottom:56px}
+
+  /* 타구 카드: 화면 밖으로 나가지 않게 중앙 고정 */
+  #hitDetailCard{left:50%!important;transform:translateX(-50%);top:90px!important}
+}

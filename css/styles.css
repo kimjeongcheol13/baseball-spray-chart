@@ -234,7 +234,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pnl-left{display:none}
   .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .canvas-wrap{width:min(300px,100%)}
+  .canvas-wrap{width:min(260px,100%)}
   .field-wrap{padding:8px;flex:none}
   .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
   .mob-batter::-webkit-scrollbar{display:none}

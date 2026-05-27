@@ -42,8 +42,8 @@
 .savant-nav-btn.active svg { stroke: var(--blue); }
 .savant-nav-btn:hover { color: var(--text2); }
 
-/* Add bottom padding to app for nav bar */
-#app-page { padding-bottom: 50px; }
+/* savant-nav is position:fixed — no layout padding needed */
+/* #app-page { padding-bottom: 50px; } */
 
 /* ── Savant Views ── */
 .savant-view {

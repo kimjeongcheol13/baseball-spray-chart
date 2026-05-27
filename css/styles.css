@@ -1398,26 +1398,37 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .btn-xl:active{background:rgba(34,197,94,.22)}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   z-index 계층 재정렬 (핵심 수정)
-   ─ 해결 전략 ─
-   overlay를 헤더(52px) 아래에서 시작 → 스코어보드 항상 노출
-   app-hdr 원래 z-50 그대로 유지
-   savant-nav(150) < overlay(200) → 모달 하단 안 가려짐
+   타구 입력 모달 위치 + z-index 정렬
+   ─ 데스크톱: 오른쪽 패널에 모달 표시 (배경 투명)
+   ─ 모바일:   헤더 아래(52px)에서 중앙 표시
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/* overlay: 헤더 아래에서만 열림 — 스코어보드 항상 노출, 모달 완전 표시 */
-#hitOverlay{top:52px!important}
-
-/* savant-nav: overlay(200) 아래 — 타구 입력 모달 완전 노출 */
+/* savant-nav: overlay(200) 아래 */
 .savant-nav{z-index:150!important}
 
-/* 스코어보드: app-hdr 내 stacking context */
+/* 스코어보드 stacking context */
 .scoreboard{position:relative;z-index:10}
 
-/* 타구 상세 카드(hover popup): overlay 위에 */
+/* 타구 상세 카드(hover popup): 최상위 */
 #hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
 
-/* 모바일 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ─── 데스크톱: 오른쪽에 타구 입력 모달 표시 ─── */
+@media(min-width:721px){
+  #hitOverlay{
+    align-items:flex-start!important;
+    justify-content:flex-end!important;
+    background:transparent!important;
+    top:52px!important;
+    padding:16px 16px 0 0!important;
+  }
+  #hitModal{
+    width:340px!important;
+    max-width:340px!important;
+    box-shadow:0 8px 32px rgba(0,0,0,.55)!important;
+  }
+}
+
+/* ─── 모바일: 헤더 아래 중앙 표시 ─── */
 @media(max-width:720px){
   body{overflow-x:hidden}
   #hitOverlay{top:52px!important}

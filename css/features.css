@@ -506,3 +506,62 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .savant-view.active { animation: fadeInUp 0.3s ease-out; }
+
+/* ═══════════════════════════════════════════
+   BASEBALL SAVANT THEME (override layer)
+   red/orange accent · compact cards · low hover
+   — additive only: no structural change —
+   ═══════════════════════════════════════════ */
+
+/* ── 1. Analysis views: primary accent → Savant red ──
+   savant views are siblings of #app-page, so they need their
+   own --orange + a red --blue. Cascades to all child rules
+   (nav active, filter chips, profile buttons, strategy cards…) */
+.savant-view, .savant-nav, #sfPanel, #sprayFilterBar {
+  --blue: #ef4444;
+  --blue-dim: rgba(239,68,68,.12);
+  --orange: #fb923c;
+}
+.profile-player-btn:hover, .profile-player-btn.active,
+.scout-export-btn:hover { background: rgba(239,68,68,.08); }
+
+/* low severity stays a neutral "info" tone (not red) */
+.scout-finding .sf-severity.low { background: rgba(120,134,156,.18); color: #94a3b8; }
+
+/* ── 2. App-scope hardcoded blues → red/orange ── */
+.bh-badge { background: rgba(239,68,68,.15); color: #ef4444; border-color: rgba(239,68,68,.3); }
+.b-2b { background: rgba(251,146,60,.14); color: #fb923c; }   /* 2루타 stays distinct (orange) */
+.hb-2b { border-color: #fb923c; }
+.fab { background: #ef4444; box-shadow: 0 4px 18px rgba(239,68,68,.45),0 0 0 4px rgba(239,68,68,.12); }
+.ops-avg { background: rgba(239,68,68,.15); color: #ef4444; }
+.cond-chip.on { background: rgba(239,68,68,.18); }
+.qr-more-toggle.open { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }
+
+/* ── 3. Direction bars: pull=red · center=green · oppo=orange ── */
+.dir-oppo { background: #fb923c; }
+.dir-seg.pull { background: rgba(239,68,68,.3); }
+.dir-seg.oppo { background: rgba(251,146,60,.3); }
+
+/* ── 4. Compact dashboard spacing (간격 단순화) ── */
+.savant-view { padding: 12px 12px 68px; }
+.savant-view-header { padding: 12px 0 10px; }
+.profile-section, .scout-section { padding: 11px 12px; margin-bottom: 8px; border-radius: 9px; }
+.profile-section-title, .scout-section-title { margin-bottom: 8px; }
+.career-stat-grid { gap: 6px; margin-bottom: 8px; }
+.filter-bar { margin: 6px 0; padding: 7px 10px; }
+.strategy-card, .scout-finding { padding: 9px 10px; margin-bottom: 5px; }
+
+/* ── 5. Savant KPI tiles: thin top accent strip ── */
+.career-card { padding: 11px 6px; border-radius: 9px; border-top: 2px solid var(--border2); }
+.career-card.accent-yellow { border-top-color: var(--yellow); }
+.career-card.accent-green  { border-top-color: var(--green); }
+.career-card.accent-blue   { border-top-color: #ef4444; }
+.career-card.accent-blue .cc-val { color: #ef4444; }
+.career-card.accent-purple { border-top-color: #fb923c; }
+.career-card.accent-purple .cc-val { color: #fb923c; }
+
+/* ── 6. Hover restraint on touch devices (mobile-first) ──
+   prevent sticky tap-hover highlight from lingering */
+@media (hover: none) {
+  .profile-player-btn:hover, .scout-export-btn:hover { background: var(--card); }
+}

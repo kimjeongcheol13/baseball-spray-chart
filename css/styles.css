@@ -248,7 +248,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ═══ App CSS ═══ */
 #app-page{
   --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
-  --accent:#4b8cf5;--accent-dim:rgba(75,140,245,.12);--accent-dim2:rgba(75,140,245,.06);
+  --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
   --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;
   --text:#eef0f8;--text2:#8892a4;--text3:#434c5e;
   --border:#1c1c26;--border2:#252532;--shadow:0 8px 32px rgba(0,0,0,.5);
@@ -284,7 +284,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;border:none;outline:none;white-space:nowrap}
 .btn:active{transform:scale(.95)}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#5d9bff}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#f87171}
 .btn-ghost{background:none;border:1px solid var(--border2);color:var(--text2)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim2)}
 .btn-red{background:none;border:1px solid var(--red);color:var(--red)}.btn-red:hover{background:rgba(245,101,101,.1)}
 .btn-icon{padding:7px;border-radius:8px}

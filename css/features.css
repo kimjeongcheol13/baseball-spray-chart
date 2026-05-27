@@ -10,7 +10,7 @@
   right: 0;
   z-index: 200;
   display: none;
-  height: 56px;
+  height: 48px;
   background: rgba(14,16,24,0.95);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border2);
@@ -26,7 +26,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px;
+  padding: 4px 6px;
   background: none;
   border: none;
   color: var(--text3);
@@ -43,13 +43,13 @@
 .savant-nav-btn:hover { color: var(--text2); }
 
 /* Add bottom padding to app for nav bar */
-#app-page { padding-bottom: 64px; }
+#app-page { padding-bottom: 50px; }
 
 /* ── Savant Views ── */
 .savant-view {
   display: none;
   flex-direction: column;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - 48px);
   background: var(--bg);
   padding: 16px 16px 72px;
 }
@@ -543,7 +543,7 @@
 .dir-seg.oppo { background: rgba(251,146,60,.3); }
 
 /* ── 4. Compact dashboard spacing (간격 단순화) ── */
-.savant-view { padding: 12px 12px 68px; }
+.savant-view { padding: 12px 12px 58px; }
 .savant-view-header { padding: 12px 0 10px; }
 .profile-section, .scout-section { padding: 11px 12px; margin-bottom: 8px; border-radius: 9px; }
 .profile-section-title, .scout-section-title { margin-bottom: 8px; }

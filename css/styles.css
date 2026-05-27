@@ -269,7 +269,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .app-back:hover{border-color:var(--accent);color:var(--accent)}
 
 /* SCOREBOARD */
-.scoreboard{display:flex;align-items:center;gap:10px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:var(--r);padding:6px 12px;flex-shrink:0}
+.scoreboard{display:flex;align-items:center;gap:10px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:var(--r);padding:6px 12px;flex-shrink:0;order:99;margin-left:auto}
 .team-blk{display:flex;align-items:center;gap:6px}
 .team-inp{background:none;border:none;color:var(--text);font-family:var(--font);font-size:12px;font-weight:700;width:56px;text-align:center;outline:none;cursor:pointer}
 .team-inp:focus{background:var(--bg-hover);border-radius:4px}

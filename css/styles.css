@@ -1399,15 +1399,14 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    z-index 계층 재정렬 (핵심 수정)
-   ─ 문제 원인 ─
-   overlay(z-200) > app-hdr(z-50) → 스코어보드 가려짐
-   nav(z-1000)    > overlay(z-200) → 타구 카드 가려짐
-   ─ 해결 ─
-   app-hdr(210) > overlay(200) > savant-nav(150)
+   ─ 해결 전략 ─
+   overlay를 헤더(52px) 아래에서 시작 → 스코어보드 항상 노출
+   app-hdr 원래 z-50 그대로 유지
+   savant-nav(150) < overlay(200) → 모달 하단 안 가려짐
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/* 헤더: overlay(200) 위에 위치 — 스코어보드 항상 노출 */
-.app-hdr{z-index:210!important}
+/* overlay: 헤더 아래에서만 열림 — 스코어보드 항상 노출, 모달 완전 표시 */
+#hitOverlay{top:52px!important}
 
 /* savant-nav: overlay(200) 아래 — 타구 입력 모달 완전 노출 */
 .savant-nav{z-index:150!important}
@@ -1415,12 +1414,13 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 /* 스코어보드: app-hdr 내 stacking context */
 .scoreboard{position:relative;z-index:10}
 
-/* 타구 상세 카드(hover popup): app-hdr(210) 위에 */
+/* 타구 상세 카드(hover popup): overlay 위에 */
 #hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
 
 /* 모바일 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media(max-width:720px){
   body{overflow-x:hidden}
+  #hitOverlay{top:52px!important}
   .scoreboard{transform:scale(.92);transform-origin:top center}
   .tab-pnl{padding-bottom:56px}
   #hitDetailCard{left:50%!important;transform:translateX(-50%);top:90px!important}
@@ -1588,3 +1588,7 @@ nav i {
 .player-card {
   box-shadow: 0 2px 10px rgba(0,0,0,0.18) !important;
 }
+
+/* ━━ savant-nav 최종 보장 (nav 룰 이후 재선언) ━━ */
+/* nav{z-index:1000} 보다 나중에 위치 → overlay(200) 아래 확정 */
+.savant-nav{z-index:150!important}

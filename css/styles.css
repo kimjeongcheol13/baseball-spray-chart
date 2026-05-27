@@ -1398,30 +1398,31 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .btn-xl:active{background:rgba(34,197,94,.22)}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   UI OVERLAP FIXES
-   — 제공된 코드를 실제 셀렉터로 변환 적용
+   z-index 계층 재정렬 (핵심 수정)
+   ─ 문제 원인 ─
+   overlay(z-200) > app-hdr(z-50) → 스코어보드 가려짐
+   nav(z-1000)    > overlay(z-200) → 타구 카드 가려짐
+   ─ 해결 ─
+   app-hdr(210) > overlay(200) > savant-nav(150)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/* 스코어보드: app-hdr 내 stacking context 명시 */
+/* 헤더: overlay(200) 위에 위치 — 스코어보드 항상 노출 */
+.app-hdr{z-index:210!important}
+
+/* savant-nav: overlay(200) 아래 — 타구 입력 모달 완전 노출 */
+.savant-nav{z-index:150!important}
+
+/* 스코어보드: app-hdr 내 stacking context */
 .scoreboard{position:relative;z-index:10}
 
-/* 타구 상세 카드: inline z-index:500 → 9000 오버라이드
-   (app-hdr z-50, savant-nav z-100 위에 확실히 올라오게) */
+/* 타구 상세 카드(hover popup): app-hdr(210) 위에 */
 #hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
 
 /* 모바일 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media(max-width:720px){
-  /* 가로 스크롤 방지 */
   body{overflow-x:hidden}
-
-  /* 스코어보드 축소 (헤더 공간 확보) */
   .scoreboard{transform:scale(.92);transform-origin:top center}
-
-  /* 하단 savant-nav(48px) 가림 방지
-     tab-pnl은 overflow-y:auto 스크롤 컨테이너 */
   .tab-pnl{padding-bottom:56px}
-
-  /* 타구 카드: 화면 밖으로 나가지 않게 중앙 고정 */
   #hitDetailCard{left:50%!important;transform:translateX(-50%);top:90px!important}
 }
 

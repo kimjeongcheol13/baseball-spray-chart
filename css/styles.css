@@ -1424,3 +1424,166 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
   /* 타구 카드: 화면 밖으로 나가지 않게 중앙 고정 */
   #hitDetailCard{left:50%!important;transform:translateX(-50%);top:90px!important}
 }
+
+/* =========================================
+   UI LAYER FIX
+========================================= */
+
+/* 부모 영역에서 카드 안 잘리게 */
+.field-container,
+.baseball-field,
+.spray-chart-container,
+.main-content {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* =========================================
+   SCOREBOARD
+========================================= */
+
+.scoreboard,
+.score-board,
+.game-scoreboard {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* =========================================
+   HIT CARD FIX
+========================================= */
+
+.hit-card,
+.hit-info-card,
+.player-card,
+.spray-card,
+.info-popup {
+  position: fixed !important;
+
+  z-index: 99999 !important;
+
+  top: 90px !important;
+  left: 50% !important;
+
+  transform: translateX(-50%) !important;
+
+  width: min(320px, calc(100vw - 24px)) !important;
+
+  max-height: 70vh !important;
+
+  overflow-y: auto !important;
+
+  border-radius: 14px;
+
+  box-sizing: border-box;
+}
+
+/* =========================================
+   MOBILE SAFE AREA
+========================================= */
+
+@media (max-width: 768px) {
+
+  body {
+    overflow-x: hidden !important;
+  }
+
+  .field-container,
+  .baseball-field,
+  .spray-chart-container {
+    padding-bottom: 72px !important;
+  }
+
+}
+
+/* =========================================
+   BOTTOM NAV FIX
+========================================= */
+
+.bottom-nav,
+.bottom-menu,
+.mobile-nav,
+nav {
+  position: fixed !important;
+
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
+
+  height: 54px !important;
+  min-height: 54px !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  padding: 0 6px !important;
+
+  z-index: 1000 !important;
+
+  box-sizing: border-box;
+}
+
+/* 버튼 크기 축소 */
+.bottom-nav button,
+.bottom-menu button,
+.mobile-nav button,
+nav button {
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+}
+
+/* 아이콘 크기 */
+.bottom-nav i,
+.bottom-menu i,
+.mobile-nav i,
+nav i {
+  font-size: 17px !important;
+}
+
+/* =========================================
+   ABSOLUTE 충돌 제거
+========================================= */
+
+.scoreboard *,
+.hit-card *,
+.bottom-nav * {
+  transform-style: flat !important;
+}
+
+/* 부모 transform 제거 */
+.app,
+.container,
+.main-content,
+.field-container {
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
+/* =========================================
+   SPRAY POINT
+========================================= */
+
+.spray-point,
+.hit-point {
+  z-index: 5 !important;
+}
+
+/* =========================================
+   PERFORMANCE
+========================================= */
+
+/* 모바일 blur 제거 */
+.hit-card,
+.player-card,
+.scoreboard {
+  backdrop-filter: none !important;
+}
+
+/* shadow 가볍게 */
+.hit-card,
+.player-card {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18) !important;
+}

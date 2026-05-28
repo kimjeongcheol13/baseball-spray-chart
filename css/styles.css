@@ -1412,20 +1412,42 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 /* 타구 상세 카드(hover popup): 최상위 */
 #hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
 
-/* ─── 데스크톱: 오른쪽에 타구 입력 모달 표시 ─── */
+/* ─── 데스크톱: 네비게이션 → 오른쪽 패널 상단 고정 ─── */
 @media(min-width:721px){
+  /* savant-nav: 오른쪽 패널(420px) 상단에 가로 배치 */
+  #savantNav{
+    top:52px!important;
+    right:0!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:420px!important;
+    height:48px!important;
+    min-height:48px!important;
+    padding:0 4px!important;
+    border-top:none!important;
+    border-bottom:1px solid var(--border)!important;
+    border-left:1px solid var(--border)!important;
+    z-index:49!important;
+  }
+  /* 오른쪽 패널: nav 높이만큼 위에서 시작 */
+  .pnl-right{padding-top:48px!important;box-sizing:border-box!important}
+  /* 타구 입력 모달: 오른쪽 패널 영역 */
   #hitOverlay{
     align-items:flex-start!important;
     justify-content:flex-end!important;
     background:transparent!important;
     top:52px!important;
-    padding:16px 16px 0 0!important;
+    padding:64px 16px 0 0!important;
   }
   #hitModal{
     width:340px!important;
     max-width:340px!important;
     box-shadow:0 8px 32px rgba(0,0,0,.55)!important;
   }
+}
+/* 중간 해상도 (721~960px): 오른쪽 패널 340px */
+@media(min-width:721px) and (max-width:960px){
+  #savantNav{width:340px!important}
 }
 
 /* ─── 모바일: 헤더 아래 중앙 표시 ─── */

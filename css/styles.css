@@ -1412,25 +1412,8 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 /* 타구 상세 카드(hover popup): 최상위 */
 #hitDetailCard{z-index:9000!important;overflow-wrap:break-word;word-break:keep-all}
 
-/* ─── 데스크톱: 네비게이션 → 오른쪽 패널 상단 고정 ─── */
+/* ─── 데스크톱: 네비게이션 → 오른쪽 끝 세로 플로팅 ─── */
 @media(min-width:721px){
-  /* savant-nav: 오른쪽 패널(420px) 상단에 가로 배치 */
-  #savantNav{
-    top:52px!important;
-    right:0!important;
-    bottom:auto!important;
-    left:auto!important;
-    width:420px!important;
-    height:48px!important;
-    min-height:48px!important;
-    padding:0 4px!important;
-    border-top:none!important;
-    border-bottom:1px solid var(--border)!important;
-    border-left:1px solid var(--border)!important;
-    z-index:49!important;
-  }
-  /* 오른쪽 패널: nav 높이만큼 위에서 시작 */
-  .pnl-right{padding-top:48px!important;box-sizing:border-box!important}
   /* 타구 입력 모달: 오른쪽 패널 영역 */
   #hitOverlay{
     align-items:flex-start!important;
@@ -1444,10 +1427,6 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
     max-width:340px!important;
     box-shadow:0 8px 32px rgba(0,0,0,.55)!important;
   }
-}
-/* 중간 해상도 (721~960px): 오른쪽 패널 340px */
-@media(min-width:721px) and (max-width:960px){
-  #savantNav{width:340px!important}
 }
 
 /* ─── 모바일: 헤더 아래 중앙 표시 ─── */
@@ -1623,5 +1602,30 @@ nav i {
 }
 
 /* ━━ savant-nav 최종 보장 (nav 룰 이후 재선언) ━━ */
-/* nav{z-index:1000} 보다 나중에 위치 → overlay(200) 아래 확정 */
+/* nav{...} 보다 나중에 위치 → 데스크톱 오른쪽 끝 세로 플로팅 확정 */
 .savant-nav{z-index:150!important}
+
+/* 데스크톱: 오른쪽 끝 세로 플로팅 (nav 광범위 룰 이후 최종 오버라이드) */
+@media(min-width:721px){
+  #savantNav{
+    position:fixed!important;
+    right:0!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:54px!important;
+    height:auto!important;
+    min-height:auto!important;
+    flex-direction:column!important;
+    padding:6px 0!important;
+    gap:2px!important;
+    background:rgba(14,16,24,0.95)!important;
+    border-top:1px solid var(--border2)!important;
+    border-bottom:1px solid var(--border2)!important;
+    border-left:1px solid var(--border2)!important;
+    border-right:none!important;
+    border-radius:10px 0 0 10px!important;
+    z-index:150!important;
+  }
+}

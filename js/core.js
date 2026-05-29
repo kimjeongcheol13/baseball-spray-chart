@@ -904,6 +904,7 @@ function _showNearDot(cx,cy){
   const r=fC.getBoundingClientRect();
   const x=(cx-r.left)*(FS/r.width),y=(cy-r.top)*(FS/r.height);
   let visList=AS.abs.filter(a=>a.x!=null);
+  if(visList.length)console.log('[NearDot] abs:',visList.length,'mouse:',Math.round(x),Math.round(y),'FS:',FS);
   if(AS.batterFilter&&AS.batter)visList=visList.filter(a=>a.bid===AS.batter.id);
   if(AS.teamFilter)visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
   const THR=Math.max(30,FS*0.07);
@@ -2585,7 +2586,8 @@ const RC_COLOR={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5',
 const DIR_KO={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
 
 function showHitDetail(ab, clientX, clientY) {
-  const el=document.getElementById('hitDetailCard'); if(!el)return;
+  const el=document.getElementById('hitDetailCard'); if(!el){console.warn('[HDC] element not found');return;}
+  console.log('[HDC] show',ab.res,clientX,clientY);
   const col=RC_COLOR[ab.res]||'#94a3b8';
   const teamLbl=ab.team==='home'
     ?(document.getElementById('tHome')||{value:'홈'}).value

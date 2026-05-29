@@ -282,6 +282,12 @@ function _startSaveReminderTimer(){
 }
 // 경기 시작 시 타이머 시작 (openGameWizard 이후 호출 포인트에서도 동작하도록 전역 감지)
 document.addEventListener('DOMContentLoaded',function(){
+  console.log('[BOOT] core.js DOMContentLoaded, fldCanvas=',!!document.getElementById('fldCanvas'));
+  document.addEventListener('mousemove',function(e){
+    var tag=e.target?e.target.id||e.target.tagName:'?';
+    if(tag==='fldCanvas'||tag==='hitCanvas'||tag==='ovrCanvas')
+      console.log('[DOC-MV] target:',tag,e.clientX,e.clientY);
+  },{passive:true});
   window.addEventListener('beforeunload',function(e){
     if(!_gameSaved&&AS&&AS.abs&&AS.abs.length>0){
       var msg='저장되지 않은 타석 기록이 있습니다. 페이지를 떠나면 데이터가 사라질 수 있습니다.';

@@ -897,6 +897,15 @@ function initCanvas(){
   },{passive:false});
   fC.addEventListener('mousemove',function(e){_showNearDot(e.clientX,e.clientY);});
   fC.addEventListener('mouseleave',closeHitDetail);
+  // document-level fallback: catches mousemove even when invisible overlay steals events
+  document.addEventListener('pointermove',function(e){
+    if(!fC)return;
+    var r=fC.getBoundingClientRect();
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom){
+      closeHitDetail();return;
+    }
+    _showNearDot(e.clientX,e.clientY);
+  },{passive:true});
 }
 
 function _showNearDot(cx,cy){

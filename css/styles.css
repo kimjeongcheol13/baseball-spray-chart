@@ -1435,7 +1435,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
   #hitOverlay{top:52px!important}
   .scoreboard{transform:scale(.92);transform-origin:top center}
   .tab-pnl{padding-bottom:56px}
-  #hitDetailCard{left:50%!important;transform:translateX(-50%);top:90px!important}
+  #hitDetailCard{max-width:calc(100vw - 24px)}
 }
 
 /* =========================================

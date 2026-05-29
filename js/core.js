@@ -282,12 +282,6 @@ function _startSaveReminderTimer(){
 }
 // 경기 시작 시 타이머 시작 (openGameWizard 이후 호출 포인트에서도 동작하도록 전역 감지)
 document.addEventListener('DOMContentLoaded',function(){
-  console.log('[BOOT] core.js DOMContentLoaded, fldCanvas=',!!document.getElementById('fldCanvas'));
-  document.addEventListener('mousemove',function(e){
-    var tag=e.target?e.target.id||e.target.tagName:'?';
-    if(tag==='fldCanvas'||tag==='hitCanvas'||tag==='ovrCanvas')
-      console.log('[DOC-MV] target:',tag,e.clientX,e.clientY);
-  },{passive:true});
   window.addEventListener('beforeunload',function(e){
     if(!_gameSaved&&AS&&AS.abs&&AS.abs.length>0){
       var msg='저장되지 않은 타석 기록이 있습니다. 페이지를 떠나면 데이터가 사라질 수 있습니다.';
@@ -901,7 +895,7 @@ function initCanvas(){
     const r=fC.getBoundingClientRect();
     onFClick({clientX:_t.clientX,clientY:_t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
   },{passive:false});
-  fC.addEventListener('mousemove',function(e){console.log('[MV]',e.clientX,e.clientY,'abs:',AS.abs.length);_showNearDot(e.clientX,e.clientY);});
+  fC.addEventListener('mousemove',function(e){_showNearDot(e.clientX,e.clientY);});
   fC.addEventListener('mouseleave',closeHitDetail);
 }
 
@@ -910,7 +904,6 @@ function _showNearDot(cx,cy){
   const r=fC.getBoundingClientRect();
   const x=(cx-r.left)*(FS/r.width),y=(cy-r.top)*(FS/r.height);
   let visList=AS.abs.filter(a=>a.x!=null);
-  if(visList.length)console.log('[NearDot] abs:',visList.length,'mouse:',Math.round(x),Math.round(y),'FS:',FS);
   if(AS.batterFilter&&AS.batter)visList=visList.filter(a=>a.bid===AS.batter.id);
   if(AS.teamFilter)visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
   const THR=Math.max(30,FS*0.07);
@@ -2592,8 +2585,7 @@ const RC_COLOR={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5',
 const DIR_KO={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
 
 function showHitDetail(ab, clientX, clientY) {
-  const el=document.getElementById('hitDetailCard'); if(!el){console.warn('[HDC] element not found');return;}
-  console.log('[HDC] show',ab.res,clientX,clientY);
+  const el=document.getElementById('hitDetailCard'); if(!el)return;
   const col=RC_COLOR[ab.res]||'#94a3b8';
   const teamLbl=ab.team==='home'
     ?(document.getElementById('tHome')||{value:'홈'}).value

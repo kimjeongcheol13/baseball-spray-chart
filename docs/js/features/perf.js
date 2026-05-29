@@ -124,7 +124,7 @@
   // 이 모듈은 app.js에서 heatmap.js 보다 나중에 import → 항상 최상위 래퍼가 됨
   function _init() {
     _patchSafeRender();
-    _patchShowNearDot();
+    // _patchShowNearDot 제거: 원본 _showNearDot이 showHitDetail을 직접 호출하도록
   }
 
   if (document.readyState === 'loading') {

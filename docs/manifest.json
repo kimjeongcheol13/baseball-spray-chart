@@ -1,0 +1,13 @@
+{
+  "name": "SprayLab — 야구 스프레이차트",
+  "short_name": "SprayLab",
+  "description": "야구 타구 기록 및 분석 앱",
+  "start_url": "/baseball-spray-chart/",
+  "scope": "/baseball-spray-chart/",
+  "display": "standalone",
+  "background_color": "#09090f",
+  "theme_color": "#4b8cf5",
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

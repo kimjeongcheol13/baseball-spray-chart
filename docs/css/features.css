@@ -1,0 +1,567 @@
+/* ═══════════════════════════════════════════
+   Amateur Baseball Savant — New Feature Styles
+   ═══════════════════════════════════════════ */
+
+/* ── Bottom Navigation ── */
+.savant-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: none;
+  height: 48px;
+  background: rgba(14,16,24,0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border2);
+  padding: 0 4px;
+  justify-content: space-around;
+  align-items: center;
+}
+/* Show nav when app-page is visible (landing hidden) */
+.savant-nav { display: none; }
+
+.savant-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.savant-nav-btn svg { transition: stroke 0.15s; }
+.savant-nav-btn.active { color: var(--blue); }
+.savant-nav-btn.active svg { stroke: var(--blue); }
+.savant-nav-btn:hover { color: var(--text2); }
+
+/* savant-nav is position:fixed — no layout padding needed */
+/* #app-page { padding-bottom: 50px; } */
+
+/* ── Savant Views ── */
+.savant-view {
+  display: none;
+  flex-direction: column;
+  min-height: calc(100vh - 48px);
+  background: var(--bg);
+  padding: 16px 16px 72px;
+}
+.savant-view.active { display: flex; }
+
+.savant-view-header {
+  text-align: center;
+  padding: 20px 0 16px;
+}
+.svh-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.svh-sub {
+  font-size: 12px;
+  color: var(--text3);
+}
+
+/* ── Filter Bar (Heatmap Filters) ── */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  background: var(--card);
+  border-radius: 10px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.filter-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.filter-chip {
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--blue); color: var(--text); }
+.filter-chip.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* ── Profile View ── */
+.profile-player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 12px;
+  overflow-x: auto;
+}
+.profile-player-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.profile-player-btn:hover,
+.profile-player-btn.active {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(75,140,245,0.08);
+}
+
+.profile-content { padding: 0; }
+
+.profile-header {
+  text-align: center;
+  padding: 16px 0 12px;
+}
+.profile-name {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text);
+}
+.profile-meta {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+/* Career stat grid */
+.career-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.career-stat-grid.small {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.career-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 6px;
+  text-align: center;
+}
+.career-card .cc-val {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+.career-stat-grid.small .cc-val {
+  font-size: 15px;
+}
+.career-card .cc-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.career-card.accent-yellow .cc-val { color: var(--yellow); }
+.career-card.accent-green .cc-val { color: var(--green); }
+.career-card.accent-blue .cc-val { color: var(--blue); }
+.career-card.accent-purple .cc-val { color: var(--purple); }
+
+/* Profile sections */
+.profile-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.profile-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+/* Direction distribution bar */
+.direction-bar {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 48px;
+  gap: 2px;
+}
+.dir-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 40px;
+}
+.dir-seg span {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.7;
+  font-family: var(--font);
+}
+.dir-seg.pull { background: rgba(75,140,245,0.3); }
+.dir-seg.center { background: rgba(45,212,160,0.3); }
+.dir-seg.oppo { background: rgba(246,194,62,0.3); }
+
+/* Profile records grid */
+.profile-records {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.pr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pr-val {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pr-lbl {
+  font-size: 9px;
+  color: var(--text3);
+  font-weight: 600;
+}
+
+/* ── Compare View ── */
+.compare-selects {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 16px;
+  justify-content: center;
+}
+.compare-select {
+  flex: 1;
+  max-width: 160px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+}
+.compare-vs {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text3);
+  letter-spacing: 1px;
+}
+
+.compare-result { padding: 0; }
+
+.compare-table {
+  margin-top: 16px;
+}
+.compare-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.compare-row .cr-val {
+  flex: 1;
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text2);
+}
+.compare-row .cr-val:first-child { text-align: left; }
+.compare-row .cr-val:last-child { text-align: right; }
+.compare-row .cr-label {
+  flex: 0 0 60px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+}
+.compare-row .cr-val.compare-better {
+  color: var(--green);
+  font-weight: 800;
+}
+
+/* ── Scout View ── */
+.scout-player-select {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 12px;
+}
+.scout-content { padding: 0; }
+
+.scout-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.scout-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+/* Weakness/Strength zone grid */
+.zone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  max-width: 200px;
+  margin: 0 auto;
+}
+.zone-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  border: 1px solid var(--border2);
+  background: var(--raised);
+}
+.zone-cell .zc-label {
+  font-size: 7px;
+  font-weight: 600;
+  color: var(--text3);
+  font-family: var(--font);
+}
+.zone-cell.hot { background: rgba(245,101,101,0.25); border-color: rgba(245,101,101,0.4); }
+.zone-cell.warm { background: rgba(246,194,62,0.2); border-color: rgba(246,194,62,0.3); }
+.zone-cell.cold { background: rgba(45,212,160,0.2); border-color: rgba(45,212,160,0.3); }
+
+/* Strategy cards */
+.strategy-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--raised);
+  border-radius: 8px;
+  border-left: 3px solid var(--blue);
+  margin-bottom: 6px;
+}
+.strategy-card .sc-zone {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue);
+  min-width: 50px;
+}
+.strategy-card .sc-pitch {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.strategy-card .sc-reason {
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+/* Scout findings list */
+.scout-finding {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--raised);
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.scout-finding .sf-severity {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.scout-finding .sf-severity.high { background: rgba(245,101,101,0.2); color: var(--red); }
+.scout-finding .sf-severity.med { background: rgba(246,194,62,0.15); color: var(--yellow); }
+.scout-finding .sf-severity.low { background: rgba(75,140,245,0.15); color: var(--blue); }
+.scout-finding .sf-text {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Scout export button */
+.scout-export-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 8px;
+}
+.scout-export-btn:hover {
+  border-color: var(--blue);
+  background: rgba(75,140,245,0.08);
+}
+
+/* ── Empty states ── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text3);
+  font-size: 13px;
+}
+
+/* ── Responsive ── */
+@media (min-width: 768px) {
+  .savant-nav {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 16px 16px 0 0;
+  }
+  .savant-view {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px 24px 72px;
+  }
+  .career-stat-grid { gap: 12px; }
+  .career-card { padding: 16px 8px; }
+  .career-card .cc-val { font-size: 24px; }
+}
+
+/* ── AI Insight severity colors ── */
+.ai-card.ai-pos { border-left-color: var(--green); }
+.ai-card.ai-warn { border-left-color: var(--yellow); }
+.ai-card.ai-neu { border-left-color: var(--border2); }
+.ai-card[data-severity="critical"] { border-left-width: 4px; }
+
+/* ── Animation ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.savant-view.active { animation: fadeInUp 0.3s ease-out; }
+
+/* ═══════════════════════════════════════════
+   BASEBALL SAVANT THEME (override layer)
+   red/orange accent · compact cards · low hover
+   — additive only: no structural change —
+   ═══════════════════════════════════════════ */
+
+/* ── 1. Analysis views: primary accent → Savant red ──
+   savant views are siblings of #app-page, so they need their
+   own --orange + a red --blue. Cascades to all child rules
+   (nav active, filter chips, profile buttons, strategy cards…) */
+.savant-view, .savant-nav, #sfPanel, #sprayFilterBar {
+  --blue: #ef4444;
+  --blue-dim: rgba(239,68,68,.12);
+  --orange: #fb923c;
+}
+.profile-player-btn:hover, .profile-player-btn.active,
+.scout-export-btn:hover { background: rgba(239,68,68,.08); }
+
+/* low severity stays a neutral "info" tone (not red) */
+.scout-finding .sf-severity.low { background: rgba(120,134,156,.18); color: #94a3b8; }
+
+/* ── 2. App-scope hardcoded blues → red/orange ── */
+.bh-badge { background: rgba(239,68,68,.15); color: #ef4444; border-color: rgba(239,68,68,.3); }
+.b-2b { background: rgba(251,146,60,.14); color: #fb923c; }   /* 2루타 stays distinct (orange) */
+.hb-2b { border-color: #fb923c; }
+.fab { background: #ef4444; box-shadow: 0 4px 18px rgba(239,68,68,.45),0 0 0 4px rgba(239,68,68,.12); }
+.ops-avg { background: rgba(239,68,68,.15); color: #ef4444; }
+.cond-chip.on { background: rgba(239,68,68,.18); }
+.qr-more-toggle.open { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }
+
+/* ── 3. Direction bars: pull=red · center=green · oppo=orange ── */
+.dir-oppo { background: #fb923c; }
+.dir-seg.pull { background: rgba(239,68,68,.3); }
+.dir-seg.oppo { background: rgba(251,146,60,.3); }
+
+/* ── 4. Compact dashboard spacing (간격 단순화) ── */
+.savant-view { padding: 12px 12px 58px; }
+.savant-view-header { padding: 12px 0 10px; }
+.profile-section, .scout-section { padding: 11px 12px; margin-bottom: 8px; border-radius: 9px; }
+.profile-section-title, .scout-section-title { margin-bottom: 8px; }
+.career-stat-grid { gap: 6px; margin-bottom: 8px; }
+.filter-bar { margin: 6px 0; padding: 7px 10px; }
+.strategy-card, .scout-finding { padding: 9px 10px; margin-bottom: 5px; }
+
+/* ── 5. Savant KPI tiles: thin top accent strip ── */
+.career-card { padding: 11px 6px; border-radius: 9px; border-top: 2px solid var(--border2); }
+.career-card.accent-yellow { border-top-color: var(--yellow); }
+.career-card.accent-green  { border-top-color: var(--green); }
+.career-card.accent-blue   { border-top-color: #ef4444; }
+.career-card.accent-blue .cc-val { color: #ef4444; }
+.career-card.accent-purple { border-top-color: #fb923c; }
+.career-card.accent-purple .cc-val { color: #fb923c; }
+
+/* ── 6. Hover restraint on touch devices (mobile-first) ──
+   prevent sticky tap-hover highlight from lingering */
+@media (hover: none) {
+  .profile-player-btn:hover, .scout-export-btn:hover { background: var(--card); }
+}

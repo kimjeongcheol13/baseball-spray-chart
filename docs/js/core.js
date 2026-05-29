@@ -895,7 +895,7 @@ function initCanvas(){
     const r=fC.getBoundingClientRect();
     onFClick({clientX:_t.clientX,clientY:_t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
   },{passive:false});
-  fC.addEventListener('mousemove',function(e){_showNearDot(e.clientX,e.clientY);});
+  fC.addEventListener('mousemove',function(e){console.log('[MV]',e.clientX,e.clientY,'abs:',AS.abs.length);_showNearDot(e.clientX,e.clientY);});
   fC.addEventListener('mouseleave',closeHitDetail);
 }
 

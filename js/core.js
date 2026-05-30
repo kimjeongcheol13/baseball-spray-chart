@@ -467,11 +467,14 @@ const AS={
   pitcherPt:null,
   pitcherRole:null,
   pitchLog:[],
-  recFilterBid:null
+  recFilterBid:null,
+  pendingQuickRes:null
 };
 const MAX_HITS = 300; 
 let saveTimer; 
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
+let _nearbyHitId=null,_nearbyCloseTimer=null;
+let _FORCE_SHOW_HITDETAIL_DEBUG=false;
 
 const OB=[
   {icon:'🏟️',step:'STEP 1 · 타구 기록',title:'필드를 터치해\n타구 위치를 기록하세요',desc:'공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.\n<b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.',highlight:'안타 · 2루타 · 아웃 · 삼진 · 볼넷'},
@@ -670,6 +673,17 @@ function showTutorial(){
 function initApp(){
   if(appInited)return;appInited=true;
   initCanvas();drawDonut();
+  // Debug: force-show hit detail card to verify visibility (temporary)
+  try{
+    if(_FORCE_SHOW_HITDETAIL_DEBUG){
+      const hc=document.getElementById('hitDetailCard');
+      if(hc){
+        hc.innerHTML='<button class="hdc-close" onclick="closeHitDetail()">✕</button><div class="hdc-res" style="color:#2dd4a0">DEBUG MODE</div><div class="hdc-player">강제 표시 중</div><div class="hdc-row">🧭 좌표/이벤트 디버깅</div>';
+        hc.style.display='block'; hc.style.left='16px'; hc.style.top='80px'; hc.style.zIndex='99999'; hc.style.pointerEvents='auto';
+        console.log('[debug] hitDetailCard forced visible for debug');
+      }
+    }
+  }catch(e){}
   // 온보딩: sl_ob3 키가 없으면 신규/업데이트 사용자로 간주해 안내 표시
   if(!localStorage.getItem('sl_ob3')){
     document.getElementById('obOverlay').style.display='flex';
@@ -767,7 +781,7 @@ function renderLP(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
-  if(!targetLineup.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;line-height:1.6">아래에서 선수를 추가하고<br>타자를 선택하세요</div>';return;}
+  if(!targetLineup.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">아래에서 선수를 추가하세요 ↓</div>';return;}
   const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
   el.innerHTML=targetLineup.map((p,idx)=>{
     const pAbs=AS.abs.filter(a=>a.bid===p.id);
@@ -867,23 +881,37 @@ function refreshZoneDisplay(){
 }
 
 function initCanvas(){
-  const w=document.getElementById('cwrap');FS=w.clientWidth;
+  const w=document.getElementById('cwrap');
+  FS=w.clientWidth||w.offsetWidth||440;
   [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS;c.height=FS;return c;});
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
+  fC.style.touchAction='none';
+  fC.style.userSelect='none';
   drawField();
+  // Retry draw on next frame in case layout wasn't ready
+  requestAnimationFrame(function(){
+    var nw=w.clientWidth||w.offsetWidth;
+    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}
+    else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();}
+  });
   new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}).observe(w);
 
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
+  let _lastPointerX=null,_lastPointerY=null;
   fC.onclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
   fC.ondblclick=function(e){if(Date.now()-_lastTouch<600)return;onFClick(e);};
   fC.addEventListener('touchstart',function(e){
+    e.preventDefault();
     if(e.touches.length>0){_touchStartX=e.touches[0].clientX;_touchStartY=e.touches[0].clientY;}
     closeHitDetail();
-  },{passive:true});
+  },{passive:false});
   fC.addEventListener('touchmove',function(e){
+    e.preventDefault();
     if(e.touches.length!==1)return;
-    _showNearDot(e.touches[0].clientX,e.touches[0].clientY);
-  },{passive:true});
+    const t=e.touches[0];
+    _lastPointerX=t.clientX; _lastPointerY=t.clientY;
+    _showNearDot(t);
+  },{passive:false});
   fC.addEventListener('touchend',function(e){
     if(!e.changedTouches||e.changedTouches.length===0)return;
     const _t=e.changedTouches[0];
@@ -893,9 +921,26 @@ function initCanvas(){
     e.preventDefault();
     _lastTouch=Date.now();
     const r=fC.getBoundingClientRect();
-    onFClick({clientX:_t.clientX,clientY:_t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});
+    const eventObj={clientX:_t.clientX,clientY:_t.clientY,rect:r,sx:FS/r.width,sy:FS/r.height};
+    onFClick(eventObj);
   },{passive:false});
-  fC.addEventListener('mousemove',function(e){_showNearDot(e.clientX,e.clientY);});
+  fC.addEventListener('mousemove',function(e){_lastPointerX=e.clientX; _lastPointerY=e.clientY; _showNearDot(e);});
+  fC.addEventListener('pointermove',function(e){_lastPointerX=e.clientX; _lastPointerY=e.clientY; _showNearDot(e);});
+  const wheelHandler=function(e){
+    try{
+      const rect=fC.getBoundingClientRect();
+      const cx = _lastPointerX!=null? _lastPointerX : (e.clientX!=null? e.clientX : rect.left + rect.width/2);
+      const cy = _lastPointerY!=null? _lastPointerY : (e.clientY!=null? e.clientY : rect.top + rect.height/2);
+      const eventObj={clientX:cx, clientY:cy, rect:rect, sx:FS/rect.width, sy:FS/rect.height, offsetX:cx-rect.left, offsetY:cy-rect.top};
+      if(_lastPointerX==null && (e.clientX==null || e.clientY==null)) console.log('[debug] wheel fallback to canvas center', {cx,cy});
+      _showNearDot(eventObj);
+    }catch(err){
+      _showNearDot({clientX:_lastPointerX!=null? _lastPointerX : e.clientX, clientY:_lastPointerY!=null? _lastPointerY : e.clientY, offsetX:e.offsetX, offsetY:e.offsetY});
+    }
+  };
+  fC.addEventListener('wheel',wheelHandler,{passive:true});
+  w.addEventListener('pointermove',function(e){_lastPointerX=e.clientX; _lastPointerY=e.clientY; _showNearDot(e);});
+  w.addEventListener('wheel',wheelHandler,{passive:true});
   fC.addEventListener('mouseleave',closeHitDetail);
   // document-level fallback: catches mousemove even when invisible overlay steals events
   document.addEventListener('pointermove',function(e){
@@ -908,18 +953,61 @@ function initCanvas(){
   },{passive:true});
 }
 
-function _showNearDot(cx,cy){
-  if(!hCtx)return;
+function _getNearestHit(src){
   const r=fC.getBoundingClientRect();
-  const x=(cx-r.left)*(FS/r.width),y=(cy-r.top)*(FS/r.height);
+  const rawX = src.offsetX!=null ? src.offsetX : (src.clientX-r.left);
+  const rawY = src.offsetY!=null ? src.offsetY : (src.clientY-r.top);
+  const x = rawX*(FS/r.width);
+  const y = rawY*(FS/r.height);
   let visList=AS.abs.filter(a=>a.x!=null);
-  if(AS.batterFilter&&AS.batter)visList=visList.filter(a=>a.bid===AS.batter.id);
-  if(AS.teamFilter)visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
-  const THR=Math.max(30,FS*0.07);
-  let closest=null,closestD=Infinity;
-  visList.forEach(a=>{const d=Math.hypot(x-a.x*FS,y-a.y*FS);if(d<THR&&d<closestD){closestD=d;closest=a;}});
-  if(closest)showHitDetail(closest,cx,cy);
-  else closeHitDetail();
+  if(AS.batterFilter&&AS.batter) visList=visList.filter(a=>a.bid===AS.batter.id);
+  if(AS.teamFilter) visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
+  const THR=Math.max(40,FS*0.1);
+  let closest=null, closestD=Infinity;
+  visList.forEach(a=>{const d=Math.hypot(x-a.x*FS,y-a.y*FS); if(d<THR && d<closestD){closestD=d; closest=a;}});
+  return closest?{hit:closest,x:x,y:y}:null;
+}
+
+function _showNearDot(event){
+  if(!hCtx)return;
+  const nearest=_getNearestHit(event);
+  if(nearest){
+    clearTimeout(_nearbyCloseTimer);
+    try{console.log('[debug] nearest hit', nearest.hit.id, nearest);}catch(e){}
+    // if same hit already shown, just refresh ring; otherwise show detail
+    if(_nearbyHitId!==nearest.hit.id){
+      _nearbyHitId=nearest.hit.id;
+      try{
+        const rect=fC.getBoundingClientRect();
+        const cx = (event && event.clientX!=null)? event.clientX : (rect.left + nearest.hit.x * rect.width);
+        const cy = (event && event.clientY!=null)? event.clientY : (rect.top + nearest.hit.y * rect.height);
+        console.log('[debug] showHitDetail using coords', {cx,cy});
+        showHitDetail(nearest.hit, cx, cy);
+        // ensure card is on top for debug cases
+        try{const hc=document.getElementById('hitDetailCard'); if(hc) hc.style.zIndex='99999';}catch(e){}
+      }catch(e){
+        showHitDetail(nearest.hit,event.clientX,event.clientY);
+      }
+    }
+    // visual debug ring on overlay canvas
+    try{
+      if(oCtx){
+        if(typeof _debugRingTimer!=='undefined' && _debugRingTimer)clearTimeout(_debugRingTimer);
+        oCtx.clearRect(0,0,FS,FS);
+        oCtx.beginPath();
+        oCtx.arc(nearest.hit.x*FS, nearest.hit.y*FS, 14, 0, Math.PI*2);
+        oCtx.strokeStyle='rgba(45,212,160,0.95)'; oCtx.lineWidth=3; oCtx.stroke();
+        oC.classList.add('show');
+        _debugRingTimer=setTimeout(function(){
+          if(oCtx){ oCtx.clearRect(0,0,FS,FS); if(AS.showHotCold&&AS.batter){_drawHotColdOnCtx(); oC&&oC.classList.add('show');}else{oC&&oC.classList.remove('show');}}
+        },900);
+      }
+    }catch(e){}
+  } else {
+    // delay closing so brief wheel/pointer noise doesn't immediately hide the card
+    clearTimeout(_nearbyCloseTimer);
+    _nearbyCloseTimer=setTimeout(function(){ _nearbyHitId=null; closeHitDetail(); }, 300);
+  }
 }
 
 function drawField(){
@@ -963,10 +1051,18 @@ function onFClick(e){
   oC.classList.add('show');
   const ang=Math.atan2(dy,dx);const deg=(ang+Math.PI)*180/Math.PI;
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
-  // 방향별 실제 외야 펜스 거리 기준 (ft): LF 330 / LC 375 / CF 400 / RC 375 / RF 330
   var _wallFt={LF:330,LC:375,CF:400,RC:375,RF:330};
   const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
-  AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};AS.rbi=0;document.getElementById('rbiVal').textContent='0';
+  AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};
+  // Quick-button hit: position captured → record immediately without overlay
+  if(AS.pendingQuickRes){
+    var res=AS.pendingQuickRes;
+    _clearFieldTapPrompt();
+    AS.rbi=0;document.getElementById('rbiVal').textContent='0';
+    recHit(res);
+    return;
+  }
+  AS.rbi=0;document.getElementById('rbiVal').textContent='0';
   document.getElementById('hitSub').textContent=`방향: ${dir} · 추정거리: ${estFt}ft`;
   openOverlay('hitOverlay');
 }
@@ -1022,7 +1118,7 @@ function renderRecs(){
   }
   const list=AS.recFilterBid?AS.abs.filter(a=>a.bid===AS.recFilterBid):AS.abs;
   document.getElementById('recCnt').textContent=list.length+'개 기록';
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'타석을 기록하면<br>여기에 표시됩니다')+'</div>';return;}
+  if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'필드를 탭해 타석을 기록하세요 →')+'</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
   el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
@@ -1642,7 +1738,7 @@ function saveGame(){
     const key='sl_'+Date.now();
     const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),cond:getGameCond(),pitchers:AS.pitchers};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-    saves.push({key,label:`${data.d} ${data.th} ${data.hs}:${data.as} ${data.ta}`,ts:data.ts});
+    saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
     if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
@@ -2137,7 +2233,7 @@ function updBatterStat(){
 }
 
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeHit();closeOverlay('loadOverlay');closeOverlay('editRecOverlay');}
+  if(e.key==='Escape'){if(AS.pendingQuickRes)_clearFieldTapPrompt();closeHit();closeOverlay('loadOverlay');closeOverlay('editRecOverlay');}
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undoLast();}
 });
 
@@ -3559,10 +3655,28 @@ function runGameCompare(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE A: 퀵버튼 바 (상단 고정)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const _QUICK_HITS=['안타','2루타','3루타','홈런'];
 function recQuick(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
-  // 볼넷/삼진 같은 non-hit은 recOther, 안타류는 recOther로 위치 없이 기록
+  if(_QUICK_HITS.includes(res)){
+    AS.pendingQuickRes=res;
+    _showFieldTapPrompt(res);
+    return;
+  }
   recOther(res);
+}
+function _showFieldTapPrompt(res){
+  var hint=document.getElementById('fieldHint');
+  if(hint){hint._origText=hint.textContent;hint.textContent='👆 공이 떨어진 위치를 필드에서 탭하세요 (취소: ESC)';}
+  var fw=document.querySelector('.field-wrap');
+  if(fw){fw.classList.add('field-tap-pending');}
+}
+function _clearFieldTapPrompt(){
+  AS.pendingQuickRes=null;
+  var hint=document.getElementById('fieldHint');
+  if(hint&&hint._origText){hint.textContent=hint._origText;delete hint._origText;}
+  var fw=document.querySelector('.field-wrap');
+  if(fw){fw.classList.remove('field-tap-pending');}
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3760,7 +3874,7 @@ function renderPitcherStats(){
   var el=document.getElementById('pitcherStats');
   if(!el)return;
   if(!AS.currentPitcher||!AS.currentPitcher.pitches.length){
-    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수를 선택하고 투구를 기록하세요</div>';
+    el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">위에서 투수를 추가하세요 ↑</div>';
     return;
   }
   var pitches=AS.currentPitcher.pitches;
@@ -4182,12 +4296,11 @@ function renderAwRecent(){
     if(!raw)return;
     var d=JSON.parse(raw);
     var score=(d.hs||0)+' : '+(d.as||0);
-    var th=_escHtml(d.th||'홈팀');
-    var ta=_escHtml(d.ta||'원정팀');
+    var title=_escHtml(_gameTitle(d.th,d.ta,d.ts));
     var date=_escHtml(d.d||'');
     html+='<div class="aw-recent-item" onclick="loadRecentGame(\''+s.key+'\')">'
       +'<div class="aw-ri-icon">⚾</div>'
-      +'<div class="aw-ri-body"><div class="aw-ri-label">'+th+' vs '+ta+'</div><div class="aw-ri-date">'+date+'</div></div>'
+      +'<div class="aw-ri-body"><div class="aw-ri-label">'+title+'</div><div class="aw-ri-date">'+date+'</div></div>'
       +'<div class="aw-ri-score">'+score+'</div>'
       +'</div>';
   });
@@ -4201,6 +4314,14 @@ function loadRecentGame(key){
 }
 
 function _escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _gameTitle(th,ta,ts){
+  var h=(th||'').trim(),a=(ta||'').trim();
+  if((!h||h==='홈팀')&&(!a||a==='원정팀')){
+    var dt=ts?new Date(ts):new Date();
+    return dt.getFullYear()+'.'+(('0'+(dt.getMonth()+1)).slice(-2))+'.'+(('0'+dt.getDate()).slice(-2))+' 경기';
+  }
+  return (h||'홈팀')+' vs '+(a||'원정팀');
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    경기 시작 마법사 (GAME START WIZARD)
@@ -4250,6 +4371,14 @@ function startFromWizard(){
     delete AS._pendingAwayLineup;
   }
   renderLP();renderMob();
+  // Ensure field canvas is drawn after overlays are dismissed
+  requestAnimationFrame(function(){
+    var w=document.getElementById('cwrap');
+    if(!w)return;
+    var nw=w.clientWidth||w.offsetWidth;
+    if(nw&&nw!==FS){FS=nw;if(fC){fC.width=FS;fC.height=FS;}if(hC){hC.width=FS;hC.height=FS;}if(oC){oC.width=FS;oC.height=FS;}}
+    drawField();safeRender();
+  });
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
   var hasLineup=(AS.home_lineup.length||AS.away_lineup.length);
   showToast(hasLineup?'이전 라인업을 불러왔습니다. 바로 기록하세요':'경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);

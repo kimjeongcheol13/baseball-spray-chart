@@ -323,7 +323,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 #ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
 #ovrCanvas.show{opacity:1}
 #hitCanvas{pointer-events:none}
-.field-hint{text-align:center;font-size:11px;color:var(--text3);padding:4px 14px;letter-spacing:.3px;flex-shrink:0}
+.field-hint{text-align:center;font-size:11px;color:var(--text3);padding:4px 14px;letter-spacing:.3px;flex-shrink:0;transition:color .2s}
+.field-tap-pending .field-hint{color:var(--green);font-weight:700}
+.field-tap-pending .canvas-wrap{outline:2px solid var(--green);outline-offset:4px;border-radius:50%;animation:tap-pulse 1s ease-in-out infinite}
+@keyframes tap-pulse{0%,100%{outline-color:var(--green)}50%{outline-color:rgba(45,212,160,.3)}}
 
 /* INPUT BAR */
 .input-bar{background:var(--bg-card);border-top:1px solid var(--border);padding:10px 14px;flex-shrink:0}

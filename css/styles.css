@@ -234,7 +234,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pnl-left{display:none}
   .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .canvas-wrap{width:min(260px,100%)}
+  .canvas-wrap{width:min(240px,100%);height:min(240px,36svh)}
   .field-wrap{padding:8px;flex:none}
   .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
   .mob-batter::-webkit-scrollbar{display:none}
@@ -290,7 +290,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .btn-icon{padding:7px;border-radius:8px}
 
 /* LAYOUT */
-.app-layout{display:grid;grid-template-columns:220px 1fr 420px;flex:1;overflow:hidden}
+.app-layout{display:grid;grid-template-columns:220px 1fr 420px;grid-template-rows:1fr;flex:1;min-height:0;overflow:hidden}
 
 /* LEFT */
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
@@ -317,8 +317,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .batter-display{font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
 .batter-empty{font-size:12px;color:var(--text3)}
 .batter-hint{font-size:11px;color:var(--text3)}
-.field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden;min-height:0}
-.canvas-wrap{position:relative;width:min(440px,calc(100% - 24px));max-width:calc(100% - 24px);aspect-ratio:1;max-height:calc(100% - 24px);cursor:crosshair}
+.field-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;position:relative;overflow:hidden;min-height:160px}
+.canvas-wrap{position:relative;width:min(440px,calc(100% - 24px));max-width:calc(100% - 24px);aspect-ratio:1;cursor:crosshair}
 #fldCanvas,#hitCanvas,#ovrCanvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #ovrCanvas{pointer-events:none;opacity:0;transition:opacity 150ms}
 #ovrCanvas.show{opacity:1}

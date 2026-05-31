@@ -26,12 +26,12 @@ export function openScoutView() {
       const c1 = document.getElementById('scoutStrengthCanvas');
       const c2 = document.getElementById('scoutWeaknessCanvas');
       const c3 = document.getElementById('scoutZoneCanvas');
-      // canvas가 존재하고 분석 데이터가 캐시돼 있으면 재드로우
-      if (c1 && _lastAnalysis) {
+      // canvas가 존재하면 재드로우 (_lastAnalysis 체크 제거)
+      if (c1) {
         _drawZoneCanvas('scoutStrengthCanvas', _lastAnalysis, 'strength');
         _drawZoneCanvas('scoutWeaknessCanvas', _lastAnalysis, 'weakness');
         _drawZoneCanvas('scoutZoneCanvas', _lastAnalysis, 'all');
-        _drawDirCanvas(_lastAnalysis);
+        if (_lastAnalysis) _drawDirCanvas(_lastAnalysis);
         if (_lastAllAbs) _drawScoutFieldCanvas(_lastAllAbs);
       }
     }, 50);
@@ -75,6 +75,13 @@ export function generateScoutReport(playerName) {
 
   _renderScoutReport(playerName, analysis, findings, strategy, allAbs);
   _currentReportText = _buildTextReport(playerName, analysis, findings, strategy);
+
+  // _renderScoutReport 내 setTimeout(50)과 별개로, view가 아직 hidden일 때를 대비한 추가 드로우
+  setTimeout(() => {
+    _drawZoneCanvas('scoutStrengthCanvas', _lastAnalysis, 'strength');
+    _drawZoneCanvas('scoutWeaknessCanvas', _lastAnalysis, 'weakness');
+    _drawZoneCanvas('scoutZoneCanvas', _lastAnalysis, 'all');
+  }, 50);
 }
 
 export function exportScoutReport() {
@@ -601,6 +608,7 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
 
 // ── 존 히트맵 캔버스 (3×3) ──
 function _drawZoneCanvas(canvasId, analysis, mode) {
+  if (!analysis) return; // null 가드
   const c = document.getElementById(canvasId);
   if (!c) return;
   const dpr = window.devicePixelRatio || 1;

@@ -142,24 +142,10 @@
   width: 100%;
   min-height: 48px;
   display: flex;
-  flex-wrap: nowrap;
-  position: relative;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  height: auto;
   gap: 8px;
-  padding: 8px 16px 8px 16px;
-  padding-right: 40px;   /* 마지막 버튼 잘림 방지 + fade 공간 */
-  scrollbar-width: none;
-}
-.profile-player-list::-webkit-scrollbar { display: none; }
-/* 오른쪽 끝 fade — 더 있음 힌트 */
-.profile-player-list::after {
-  content: '';
-  position: sticky;
-  right: 0;
-  flex-shrink: 0;
-  width: 32px;
-  background: linear-gradient(to right, transparent, var(--bg) 80%);
-  pointer-events: none;
+  padding: 8px 16px;
 }
 .profile-player-btn {
   flex-shrink: 0;

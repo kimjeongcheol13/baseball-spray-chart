@@ -44,14 +44,13 @@ export function selectProfilePlayer(id, name, num, btn) {
   _renderProfileCard(data);
 }
 
-// ── 선수 목록: name+'||'+num 키로 완전 dedup ──────────────
+// ── 선수 목록: name 기준 dedup, 최신 저장순 우선 ──────────
 function _getAllPlayers() {
   const map = {};
 
   const _add = p => {
     if (!p || !p.name) return;
-    // 키: name+'||'+num 으로 정규화 (타입 불일치 방지)
-    const key = p.name + '||' + String(p.num ?? '');
+    const key = p.name; // name 기준 dedup
     if (!map[key]) map[key] = { id: p.id, name: p.name, num: p.num };
   };
 
@@ -59,9 +58,9 @@ function _getAllPlayers() {
   // 현재 경기 라인업
   [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
 
-  // 저장 경기 라인업 — 동일 map으로 중복 제거
+  // 저장 경기 라인업 — 최신순 정렬 후 없을 때만 추가
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.forEach(s => {
+  saves.slice().reverse().forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;

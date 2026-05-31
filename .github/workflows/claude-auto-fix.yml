@@ -1,0 +1,108 @@
+name: 🤖 Claude Code Auto Fix
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  claude-fix:
+    if: |
+      github.event.action == 'opened' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'claude')
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🤖 Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: ⚙️ Run Claude Code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          claude --print \
+            "SprayLab 프로젝트의 GitHub 이슈를 해결해줘.
+
+            이슈 제목: $ISSUE_TITLE
+            이슈 내용: $ISSUE_BODY
+
+            작업 규칙:
+            1. 관련 파일을 먼저 분석해
+            2. 최소한의 변경으로 문제를 해결해
+            3. 수정한 내용을 한국어로 요약해줘
+            4. 새 파일을 만들지 말고 기존 파일을 수정해
+            5. 절대 package.json, README.md는 건드리지 마" \
+            --allowedTools "Edit,Write,Read,Bash" \
+            --output-format text > claude_output.txt 2>&1
+
+          cat claude_output.txt
+
+      - name: 🔍 Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Commit changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "claude-bot"
+          git config user.email "claude-bot@users.noreply.github.com"
+          BRANCH_NAME="claude/fix-issue-${{ github.event.issue.number }}"
+          git checkout -b $BRANCH_NAME
+          git add -A
+          git commit -m "🤖 fix: #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
+          git push origin $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: 🚀 Create Pull Request
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const claudeOutput = require('fs').readFileSync('claude_output.txt', 'utf8');
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 [Claude] #${context.issue.number} ${context.payload.issue.title}`,
+              head: process.env.BRANCH_NAME,
+              base: 'main',
+              body: `## 🤖 Claude Code 자동 수정\n\n**연관 이슈:** #${context.issue.number}\n\n### 📋 수정 내용\n${claudeOutput.slice(0, 2000)}\n\n---\n> 이 PR은 Claude Code가 자동으로 생성했습니다.`
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🤖 Claude Code가 수정을 완료했습니다!\n\nPR을 확인해주세요: ${pr.data.html_url}`
+            });
+
+      - name: 💬 Comment if no changes
+        if: steps.check_changes.outputs.changed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🤖 Claude Code가 분석했지만 코드 변경이 필요하지 않거나 추가 정보가 필요합니다.`
+            });

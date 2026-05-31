@@ -11,12 +11,31 @@ const ZONE_LABELS = [
 const SEVERITY = { HIGH: 'high', MED: 'med', LOW: 'low' };
 
 let _currentReportText = '';
+let _lastAnalysis = null;   // openScoutView 재진입 시 canvas 재드로우용
+let _lastAllAbs = null;
 
 export function openScoutView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
   document.getElementById('scoutView').classList.add('active');
   _currentReportText = '';
   renderScoutPlayerSelect();
+  // 이미 선수가 선택되어 canvas가 생성된 상태라면 view 활성화 후 재드로우
+  const sel = document.getElementById('scoutPlayerSelect');
+  if (sel && sel.value) {
+    setTimeout(() => {
+      const c1 = document.getElementById('scoutStrengthCanvas');
+      const c2 = document.getElementById('scoutWeaknessCanvas');
+      const c3 = document.getElementById('scoutZoneCanvas');
+      // canvas가 존재하고 분석 데이터가 캐시돼 있으면 재드로우
+      if (c1 && _lastAnalysis) {
+        _drawZoneCanvas('scoutStrengthCanvas', _lastAnalysis, 'strength');
+        _drawZoneCanvas('scoutWeaknessCanvas', _lastAnalysis, 'weakness');
+        _drawZoneCanvas('scoutZoneCanvas', _lastAnalysis, 'all');
+        _drawDirCanvas(_lastAnalysis);
+        if (_lastAllAbs) _drawScoutFieldCanvas(_lastAllAbs);
+      }
+    }, 50);
+  }
 }
 
 export function renderScoutPlayerSelect() {
@@ -49,6 +68,10 @@ export function generateScoutReport(playerName) {
   const analysis = _analyzePlayer(playerName, allAbs);
   const findings = _generateFindings(analysis);
   const strategy = _generateStrategy(analysis, findings);
+
+  // 재진입 시 canvas 재드로우를 위해 캐시
+  _lastAnalysis = analysis;
+  _lastAllAbs = allAbs;
 
   _renderScoutReport(playerName, analysis, findings, strategy, allAbs);
   _currentReportText = _buildTextReport(playerName, analysis, findings, strategy);
@@ -566,21 +589,29 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
     </div>
   `;
 
-  requestAnimationFrame(() => {
+  // display:none 상태에서 canvas.width=0 방지 → 50ms 후 실행
+  setTimeout(() => {
     _drawZoneCanvas('scoutStrengthCanvas', analysis, 'strength');
     _drawZoneCanvas('scoutWeaknessCanvas', analysis, 'weakness');
     _drawZoneCanvas('scoutZoneCanvas', analysis, 'all');
     _drawDirCanvas(analysis);
     _drawScoutFieldCanvas(allAbs);
-  });
+  }, 50);
 }
 
 // ── 존 히트맵 캔버스 (3×3) ──
 function _drawZoneCanvas(canvasId, analysis, mode) {
   const c = document.getElementById(canvasId);
   if (!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  const LOGICAL = 138; // display:none 상태에서도 크기 고정
+  c.width = LOGICAL * dpr;
+  c.height = LOGICAL * dpr;
+  c.style.width = LOGICAL + 'px';
+  c.style.height = LOGICAL + 'px';
   const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
+  ctx.scale(dpr, dpr);
+  const W = LOGICAL, H = LOGICAL;
   const cw = W / 3, ch = H / 3;
 
   ctx.clearRect(0, 0, W, H);

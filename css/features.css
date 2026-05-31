@@ -62,10 +62,14 @@
   display: flex;
   position: fixed;
   inset: 0;
-  bottom: 48px;       /* savantNav 높이 */
+  bottom: 54px;       /* 모바일: savantNav 높이(54px) */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   z-index: 390;       /* appWelcome(400) 아래, 일반 UI 위 */
+}
+/* 데스크톱: nav가 오른쪽 세로 사이드바이므로 bottom:0, right:54px */
+@media(min-width:721px){
+  .savant-view.active { bottom: 0; right: 54px; }
 }
 
 .savant-view-header {
@@ -518,7 +522,15 @@
 
 /* ── Desktop: nav becomes vertical right sidebar ── */
 @media(min-width:721px){
-  .savant-nav{top:52px;bottom:0;right:0;left:auto;height:auto;width:44px;max-width:44px;transform:none;border-radius:0;border-top:none;border-left:1px solid var(--border2);flex-direction:column;justify-content:flex-start;padding:6px 0;gap:2px}
+  .savant-nav{
+    position:fixed;top:52px;right:0;bottom:0;left:auto;
+    width:54px;max-width:54px;height:auto;
+    transform:none;border-radius:0;border-top:none;
+    border-left:1px solid var(--border2);
+    flex-direction:column;justify-content:flex-start;
+    padding:6px 0;gap:2px;
+    overflow-x:hidden;overflow-y:auto;
+  }
 }
 
 /* ── AI Insight severity colors ── */

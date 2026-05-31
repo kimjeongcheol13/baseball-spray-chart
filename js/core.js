@@ -1967,6 +1967,8 @@ function restoreGame(key){
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
   AS.pitchers=d.pitchers||[];AS.currentPitcher=null;AS.pitchLog=[];
+  // 투수 목록 UI 갱신
+  if(typeof renderPitcherRoster==='function')renderPitcherRoster();
   AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;AS.advFilter=null;
   var afBtns=document.querySelectorAll('#advStatFilter .sf-btn');if(afBtns.length){afBtns.forEach(function(b,i){b.classList.toggle('on',i===0);});}
   closeOverlay('loadOverlay');

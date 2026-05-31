@@ -40,22 +40,27 @@ export function selectProfilePlayer(id, name, num, btn) {
 
 function _getAllPlayers() {
   const map = {};
-  // Current game
   const AS = window.AS;
-  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
-    map[p.name+'_'+p.num] = {id: p.id, name: p.name, num: p.num};
-  });
-  // Saved games
+
+  // 현재 경기 라인업 + 저장경기 라인업을 하나의 map에서 dedup
+  // 키: name+'_'+String(num) 으로 정규화해 타입 불일치 방지
+  const _add = p => {
+    if (!p || !p.name) return;
+    const key = p.name + '_' + String(p.num ?? '');
+    if (!map[key]) map[key] = { id: p.id, name: p.name, num: p.num };
+  };
+
+  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
+
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;
-      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(p => {
-        map[p.name+'_'+p.num] = {id: p.id, name: p.name, num: p.num};
-      });
+      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(_add);
     } catch(e) {}
   });
+
   return Object.values(map);
 }
 

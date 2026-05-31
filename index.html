@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <link rel="stylesheet" href="css/styles.css?v=19">
-<link rel="stylesheet" href="css/features.css?v=18">
+<link rel="stylesheet" href="css/features.css?v=19">
 </head>
 <body>
 <!-- 공유 경기 데이터 감지 배너 -->
@@ -594,6 +594,10 @@
     </div>
     <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();startTour()">
       <span class="aw-more-item-icon">🎯</span>투어 시작
+    </div>
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();exportFullReport()">
+      <span class="aw-more-item-icon">📊</span>전체 리포트 내보내기
     </div>
     <div class="aw-more-divider"></div>
     <div class="aw-more-item" onclick="awMoreClose();goLanding()">
@@ -1645,7 +1649,7 @@ CREATE POLICY "pub_d" ON games FOR DELETE USING (true);</div>
   </button>
 </nav>
 
-<script defer src="js/core.js?v=19"></script>
+<script defer src="js/core.js?v=20"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

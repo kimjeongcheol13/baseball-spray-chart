@@ -12,46 +12,54 @@ export function openProfileView() {
 export function renderProfilePlayerList() {
   const el = document.getElementById('profilePlayerList');
   if (!el) return;
-  // Collect all unique players across all saved games + current
   const players = _getAllPlayers();
   if (!players.length) {
     el.innerHTML = '<div class="empty-state">저장된 선수 데이터가 없습니다</div>';
     return;
   }
-  el.innerHTML = players.map(p =>
-    `<button class="profile-player-btn" data-name="${_esc(p.name)}" onclick="window.selectProfilePlayer('${p.id}','${_esc(p.name)}','${p.num}',this)">#${p.num} ${_esc(p.name)}</button>`
-  ).join('');
+  // data-key="name||num" 으로 식별, onclick에서 this 전달
+  el.innerHTML = players.map(p => {
+    const key = _esc(p.name) + '||' + _esc(String(p.num ?? ''));
+    return `<button class="profile-player-btn" data-key="${key}" data-name="${_esc(p.name)}"
+      onclick="(function(btn){
+        btn.closest('.profile-player-list').querySelectorAll('.profile-player-btn').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        window.selectProfilePlayer('${_esc(String(p.id))}','${_esc(p.name)}','${_esc(String(p.num ?? ''))}',btn);
+      })(this)">#${_esc(String(p.num ?? ''))} ${_esc(p.name)}</button>`;
+  }).join('');
 }
 
 export function selectProfilePlayer(id, name, num, btn) {
-  // 모든 active 제거 후 클릭된 버튼에 active 추가
-  const list = document.getElementById('profilePlayerList');
-  if (list) list.querySelectorAll('.profile-player-btn').forEach(b => b.classList.remove('active'));
-  if (btn) {
-    btn.classList.add('active');
-  } else {
-    // data-name 속성으로 찾기 (indirect 호출 시 fallback)
-    const found = list && list.querySelector(`.profile-player-btn[data-name="${name}"]`);
-    if (found) found.classList.add('active');
+  // btn이 전달된 경우 active는 이미 renderProfilePlayerList의 onclick에서 처리됨
+  // fallback: data-name 으로 버튼을 찾아 active 처리
+  if (!btn) {
+    const list = document.getElementById('profilePlayerList');
+    if (list) {
+      list.querySelectorAll('.profile-player-btn').forEach(b => b.classList.remove('active'));
+      const found = list.querySelector(`.profile-player-btn[data-name="${name}"]`);
+      if (found) found.classList.add('active');
+    }
   }
   const data = _aggregatePlayerStats(id, name);
   _renderProfileCard(data);
 }
 
+// ── 선수 목록: name+'||'+num 키로 완전 dedup ──────────────
 function _getAllPlayers() {
   const map = {};
-  const AS = window.AS;
 
-  // 현재 경기 라인업 + 저장경기 라인업을 하나의 map에서 dedup
-  // 키: name+'_'+String(num) 으로 정규화해 타입 불일치 방지
   const _add = p => {
     if (!p || !p.name) return;
-    const key = p.name + '_' + String(p.num ?? '');
+    // 키: name+'||'+num 으로 정규화 (타입 불일치 방지)
+    const key = p.name + '||' + String(p.num ?? '');
     if (!map[key]) map[key] = { id: p.id, name: p.name, num: p.num };
   };
 
+  const AS = window.AS;
+  // 현재 경기 라인업
   [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
 
+  // 저장 경기 라인업 — 동일 map으로 중복 제거
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
@@ -68,7 +76,6 @@ function _aggregatePlayerStats(id, name) {
   const allAbs = [];
   const gameStats = [];
 
-  // Current game
   const AS = window.AS;
   const currentAbs = (AS.abs||[]).filter(a => a.bname === name);
   if (currentAbs.length) {
@@ -76,7 +83,6 @@ function _aggregatePlayerStats(id, name) {
     gameStats.push({ date: '현재 경기', abs: currentAbs });
   }
 
-  // Saved games
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
@@ -114,13 +120,11 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const bbRate = pa ? bb / pa : 0;
   const isoP = slg - avg;
 
-  // Direction distribution
   const dabs = allAbs.filter(a => a.deg != null);
   const pull = dabs.filter(a => a.deg < 72).length;
   const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108).length;
   const oppo = dabs.length - pull - center;
 
-  // wOBA (simplified)
   const wBB = 0.69, wHBP = 0.72, w1B = 0.87, w2B = 1.22, w3B = 1.56, wHR = 1.95;
   const singles = allAbs.filter(a => a.res === '안타' || a.res === '내야안타').length;
   const doubles = allAbs.filter(a => a.res === '2루타').length;
@@ -129,7 +133,6 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const woba = (ab + bb + sf + hbp) ?
     (wBB*bb + wHBP*hbp + w1B*singles + w2B*doubles + w3B*triples + wHR*hr) / (ab + bb + sf + hbp) : 0;
 
-  // Game-by-game trend
   const trend = gameStats.map(g => {
     const gab = g.abs.filter(a => !NOAB.includes(a.res)).length;
     const gh = g.abs.filter(a => HITS.includes(a.res)).length;
@@ -210,11 +213,9 @@ function _drawTrendChart(trend) {
   c.style.width = W + 'px'; c.style.height = H + 'px';
   ctx.scale(dpr, dpr);
 
-  // Background
   ctx.fillStyle = '#0e1018';
   ctx.fillRect(0, 0, W, H);
 
-  // Grid lines
   ctx.strokeStyle = 'rgba(255,255,255,0.05)';
   ctx.lineWidth = 0.5;
   [0.2, 0.3, 0.4].forEach(v => {
@@ -226,7 +227,6 @@ function _drawTrendChart(trend) {
     ctx.fillText(v.toFixed(3).replace('0.','.'), 28, y + 3);
   });
 
-  // Line chart
   const n = trend.length;
   const xStep = (W - 50) / Math.max(n - 1, 1);
 
@@ -240,7 +240,6 @@ function _drawTrendChart(trend) {
   });
   ctx.stroke();
 
-  // Dots
   trend.forEach((t, i) => {
     const x = 35 + i * xStep;
     const y = H - 10 - (t.avg / 0.5) * (H - 25);
@@ -253,7 +252,6 @@ function _drawTrendChart(trend) {
 
 function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Expose to window for onclick handlers
 if (typeof window !== 'undefined') {
   window.openProfileView = openProfileView;
   window.selectProfilePlayer = selectProfilePlayer;

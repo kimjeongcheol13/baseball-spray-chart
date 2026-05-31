@@ -4151,11 +4151,20 @@ function showAppWelcome(){
   if(!el)return;
   el.classList.remove('hidden');
   renderAwRecent();
+  setTimeout(function(){
+    var banner=document.getElementById('archRecoveryBanner');
+    if(!banner)return;
+    if(storageManager.hasRecovery()&&!(AS.abs&&AS.abs.length>0)){
+      banner.classList.remove('arch-rec-hidden');
+    }
+  },200);
 }
 
 function hideAppWelcome(){
   var el=document.getElementById('appWelcome');
   if(el)el.classList.add('hidden');
+  var banner=document.getElementById('archRecoveryBanner');
+  if(banner)banner.classList.add('arch-rec-hidden');
 }
 
 function renderAwRecent(){
@@ -5853,6 +5862,7 @@ var uiStates={
     var sub=document.getElementById('archRecoveryCount');
     if(banner){
       if(sub)sub.textContent=rec.data.abs.length+'타석 기록을 복구할 수 있습니다';
+      banner.classList.remove('arch-rec-hidden');
       banner.style.display='block';
     }
   },900);
@@ -5920,8 +5930,12 @@ function _archQuietSave(){
 
 function archDismissRecovery(){
   storageManager.clearRecovery();
+  storageManager.cancelPendingAutosave();
   var banner=document.getElementById('archRecoveryBanner');
-  if(banner)banner.style.display='none';
+  if(banner){
+    banner.style.display='none';
+    banner.classList.add('arch-rec-hidden');
+  }
 }
 
 // ─── 숨겨진 자동저장 스캔 ─────────────────────

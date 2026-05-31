@@ -50,7 +50,7 @@ export function generateScoutReport(playerName) {
   const findings = _generateFindings(analysis);
   const strategy = _generateStrategy(analysis, findings);
 
-  _renderScoutReport(playerName, analysis, findings, strategy);
+  _renderScoutReport(playerName, analysis, findings, strategy, allAbs);
   _currentReportText = _buildTextReport(playerName, analysis, findings, strategy);
 }
 
@@ -428,7 +428,7 @@ function _generateStrategy(analysis, findings) {
   return strategies;
 }
 
-function _renderScoutReport(name, analysis, findings, strategy) {
+function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
   const el = document.getElementById('scoutContent');
   if (!el) return;
 
@@ -496,6 +496,28 @@ function _renderScoutReport(name, analysis, findings, strategy) {
       <div class="so-item"><span class="so-val">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
       <div class="so-item"><span class="so-val">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
       <div class="so-item"><span class="so-val">${analysis.goAo.toFixed(1)}</span><span class="so-lbl">GO/AO</span></div>
+    </div>
+
+    <div class="scout-section">
+      <div class="scout-section-title">🎯 스트라이크존 히트맵</div>
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <canvas id="scoutZoneCanvas" width="210" height="210" style="flex-shrink:0;border-radius:8px;border:1px solid var(--border)"></canvas>
+        <div style="flex:1;min-width:110px">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-weight:700">색상 범례</div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:10px">
+            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(220,38,38,0.7);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≥.350 위험</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(251,146,60,0.6);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≥.250 주의</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(75,140,245,0.3);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG 보통</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(45,212,160,0.55);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≤.200 취약</div>
+            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(100,116,139,0.25);border-radius:3px;margin-right:5px;vertical-align:middle"></span>데이터 부족</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scout-section">
+      <div class="scout-section-title">🏟️ 타구 분포 (필드 오버레이)</div>
+      <canvas id="scoutFieldCanvas" width="240" height="220" style="display:block;margin:0 auto;border-radius:10px"></canvas>
     </div>
 
     <div class="scout-section">
@@ -583,6 +605,130 @@ function _renderScoutReport(name, analysis, findings, strategy) {
       </div>
     </div>
   `;
+
+  // 캔버스 그리기 (innerHTML 설정 후 DOM 업데이트 대기)
+  requestAnimationFrame(() => {
+    _drawScoutZoneCanvas(analysis);
+    _drawScoutFieldCanvas(allAbs);
+  });
+}
+
+// ── 스트라이크존 히트맵 캔버스 ──────────────────
+function _drawScoutZoneCanvas(analysis) {
+  const c = document.getElementById('scoutZoneCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const cw = W / 3, ch = H / 3;
+  ctx.clearRect(0, 0, W, H);
+
+  for (let i = 0; i < 9; i++) {
+    const row = Math.floor(i / 3), col = i % 3;
+    const x = col * cw, y = row * ch;
+    const avg = analysis.zoneAvg[i];
+    const total = analysis.zoneTotal[i];
+
+    // 배경색
+    let bg;
+    if (total < 2) {
+      bg = 'rgba(100,116,139,0.2)';
+    } else if (avg >= 0.350) {
+      bg = 'rgba(220,38,38,0.65)';
+    } else if (avg >= 0.300) {
+      bg = 'rgba(239,68,68,0.4)';
+    } else if (avg >= 0.250) {
+      bg = 'rgba(251,146,60,0.5)';
+    } else if (avg >= 0.200) {
+      bg = 'rgba(75,140,245,0.25)';
+    } else {
+      bg = 'rgba(45,212,160,0.5)';
+    }
+    ctx.fillStyle = bg;
+    ctx.fillRect(x + 1, y + 1, cw - 2, ch - 2);
+
+    // 격자선
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
+
+    // 텍스트
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = `bold ${cw * 0.22}px "JetBrains Mono",monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const avgStr = total > 0 ? avg.toFixed(3).replace('0.', '.') : '-';
+    ctx.fillText(avgStr, x + cw / 2, y + ch / 2 - 6);
+
+    // PA 수
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `${cw * 0.15}px sans-serif`;
+    ctx.fillText(total + 'PA', x + cw / 2, y + ch / 2 + 10);
+  }
+}
+
+// ── 미니 필드 + 타구 분포 캔버스 ──────────────────
+function _drawScoutFieldCanvas(allAbs) {
+  const c = document.getElementById('scoutFieldCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 필드 배경
+  const cx = W / 2, cy = H * 0.88;
+  const R = W * 0.46;
+
+  // 외야 잔디
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, -Math.PI, 0);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(22,40,30,0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(45,212,120,0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 내야
+  const sqR = R * 0.38;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - sqR);
+  ctx.lineTo(cx + sqR, cy);
+  ctx.lineTo(cx, cy + sqR);
+  ctx.lineTo(cx - sqR, cy);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(180,130,60,0.3)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 파울라인
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx - R,cy - 0.05);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx + R,cy - 0.05);ctx.stroke();
+
+  // 타구 점
+  const HITS = ['안타','내야안타','2루타','3루타','홈런'];
+  const RC = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
+    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
+    '삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd'};
+
+  allAbs.forEach(ab => {
+    if (ab.x == null || ab.y == null) return;
+    // 저장 좌표는 0~1 범위 (캔버스 크기 440 기준으로 저장됨)
+    const px = ab.x * W;
+    const py = ab.y * H * (220 / 440);
+    const isOut = !HITS.includes(ab.res);
+    const col = RC[ab.res] || '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(px, py, isOut ? 2.5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = col + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
 }
 
 function _buildTextReport(name, analysis, findings, strategy) {

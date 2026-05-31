@@ -4353,24 +4353,32 @@ function switchSavantView(view, btn){
   var nav=document.getElementById('savantNav');
   if(nav)nav.querySelectorAll('.savant-nav-btn').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
-  if(view==='record'){
+  var ap=document.getElementById('app-page');
+
+  if(view==='record'||view==='spray'){
+    // 기록/스프레이: app-page 보이기, savant view 모두 숨김, body 스크롤 복구
     document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
-    var ap=document.getElementById('app-page');if(ap)ap.style.display='';
+    if(ap)ap.style.display='flex';
+    document.body.style.overflowY='hidden';
+    if(view==='spray'){
+      var sprayTab=(window.AS&&window.AS.batter)?'batter':'stat';
+      var sprayEl=document.getElementById('tab-'+sprayTab);
+      if(window.swTab&&sprayEl)window.swTab(sprayTab,sprayEl);
+      if(window.drawField)window.drawField();
+      if(window.safeRender)window.safeRender();
+    }
     return;
   }
-  var ap=document.getElementById('app-page');if(ap)ap.style.display='none';
+
+  // 프로필/비교/스카우트: app-page 숨김, 해당 view 활성화, body 스크롤 허용
+  if(ap)ap.style.display='none';
+  document.body.style.overflowY='';
   document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
   var viewEl=document.getElementById(view+'View');if(viewEl)viewEl.classList.add('active');
   switch(view){
     case 'profile': if(window.openProfileView)window.openProfileView();break;
     case 'compare': if(window.openCompareView)window.openCompareView();break;
     case 'scout':   if(window.openScoutView)window.openScoutView();break;
-    case 'spray':
-      var ap2=document.getElementById('app-page');if(ap2)ap2.style.display='';
-      document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
-      if(window.drawField)window.drawField();
-      if(window.safeRender)window.safeRender();
-      break;
   }
 }
 

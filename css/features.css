@@ -49,11 +49,18 @@
 .savant-view {
   display: none;
   flex-direction: column;
-  min-height: calc(100vh - 48px);
   background: var(--bg);
   padding: 16px 16px 72px;
 }
-.savant-view.active { display: flex; }
+.savant-view.active {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  bottom: 48px;       /* savantNav 높이 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 390;       /* appWelcome(400) 아래, 일반 UI 위 */
+}
 
 .savant-view-header {
   text-align: center;

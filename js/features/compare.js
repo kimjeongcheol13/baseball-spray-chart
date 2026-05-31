@@ -31,8 +31,8 @@ export function renderComparePlayerSelects() {
   sel1.innerHTML = opts;
   sel2.innerHTML = opts;
 
-  sel1.onchange = () => { _selectedPlayer1 = sel1.value || null; };
-  sel2.onchange = () => { _selectedPlayer2 = sel2.value || null; };
+  sel1.onchange = () => { _selectedPlayer1 = sel1.value || null; runPlayerCompare(); };
+  sel2.onchange = () => { _selectedPlayer2 = sel2.value || null; runPlayerCompare(); };
 }
 
 export function runPlayerCompare() {

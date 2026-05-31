@@ -535,13 +535,132 @@
 .savant-view.active { animation: fadeInUp 0.3s ease-out; }
 
 /* ── Finding severity border-left ── */
-.finding-high { border-left: 4px solid #f56565; }
-.finding-med  { border-left: 4px solid #f6c23e; }
-.finding-low  { border-left: 4px solid #4b8cf5; }
+.finding-high { border-left: 3px solid #f56565; }
+.finding-med  { border-left: 3px solid #f6c23e; }
+.finding-low  { border-left: 3px solid #4b8cf5; }
 
 /* ── Scout zone data-attr overrides ── */
 .scout-zone[data-danger] { background: rgba(245,101,101,0.55) !important; color: #fff; }
 .scout-zone[data-weak]   { background: rgba(45,212,160,0.45)  !important; color: #fff; }
+
+/* ── Scout zone grid ── */
+.scout-zone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  max-width: 220px;
+  margin: 0 auto;
+}
+.scout-zone {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.scout-zone .sz-avg    { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.scout-zone .sz-detail { font-size: 9px; opacity: .65; }
+.scout-zone .sz-label  { font-size: 8px; opacity: .6; font-family: var(--font); }
+
+/* ── Scout zone canvas layout ── */
+.scout-zone-canvases {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.szc-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.szc-label { font-size: 9px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
+.szc-wrap canvas { border-radius: 6px; border: 1px solid var(--border); }
+.scout-zone-legend {
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 6px;
+}
+.szl-item {
+  font-size: 9px; color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: 700;
+}
+
+/* ── Scout direction labels ── */
+.scout-dir-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 5px;
+  padding: 0 2px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── Scout count grid ── */
+.scout-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.sc-item {
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.07);
+}
+.sc-label { font-size: 9px; color: var(--text3); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.sc-val   { font-size: 18px; font-weight: 800; font-family: var(--mono); }
+.sc-pa    { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* ── Scout recent abs ── */
+.scout-recent-abs { display: flex; flex-direction: column; gap: 3px; }
+.sra-item {
+  display: flex; gap: 8px; align-items: center;
+  padding: 5px 8px; border-radius: 6px;
+  background: var(--raised); font-size: 11px;
+}
+.sra-res  { font-weight: 700; min-width: 54px; }
+.sra-dir  { color: var(--text3); flex: 1; }
+.sra-inn  { color: var(--text3); font-size: 10px; }
+
+/* ── Compare enhancements ── */
+.compare-better { color: #2dd4a0 !important; font-weight: 800; }
+.compare-worse  { color: #f56565 !important; }
+
+.compare-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.csh-player { flex: 1; text-align: center; }
+.csh-name   { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.csh-stats  { display: flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.csh-stat   { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.csh-sep    { font-size: 9px; color: var(--text3); }
+.csh-vs     { font-size: 11px; font-weight: 900; color: var(--text3); letter-spacing: 1px; flex-shrink: 0; }
+
+.compare-section { margin-top: 12px; }
+.compare-section-title {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.compare-dir-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cdr-name   { font-size: 10px; font-weight: 700; color: var(--text3); margin-bottom: 4px; }
+.cdr-legend { font-size: 9px; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+.compare-trend-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.compare-trend-row canvas { border-radius: 6px; border: 1px solid var(--border); }
 
 /* ═══════════════════════════════════════════
    BASEBALL SAVANT THEME (override layer)

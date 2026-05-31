@@ -435,56 +435,18 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
   const f3 = v => v.toFixed(3).replace('0.','.');
   const pct = v => Math.round(v * 100) + '%';
   const sevClass = s => s === SEVERITY.HIGH ? 'finding-high' : s === SEVERITY.MED ? 'finding-med' : 'finding-low';
-  const sevLabel = s => s === SEVERITY.HIGH ? '주의' : s === SEVERITY.MED ? '참고' : '정보';
-  const sevEmoji = s => s === SEVERITY.HIGH ? '⚠️ ' : s === SEVERITY.MED ? '📌 ' : 'ℹ️ ';
+  const sevLabel = s => s === SEVERITY.HIGH ? '⚠️ 주의' : s === SEVERITY.MED ? '📌 참고' : 'ℹ️ 정보';
   const prioClass = p => p === 'high' ? 'strat-high' : p === 'med' ? 'strat-med' : 'strat-low';
 
-  // Zone grid HTML — data-danger/data-weak attribute 추가
-  const zoneGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    const hits = analysis.zoneHits[i];
-    const outs = analysis.zoneOuts[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    let dataAttr = '';
-    if (total >= 2) {
-      if (avg >= 0.350) { bg = 'rgba(245,101,101,0.3)'; dataAttr = ' data-danger'; }
-      else if (avg >= 0.250) bg = 'rgba(246,194,62,0.2)';
-      else if (avg < 0.150) { bg = 'rgba(45,212,160,0.3)'; dataAttr = ' data-weak'; }
-      else bg = 'rgba(75,140,245,0.15)';
-    }
-    return `<div class="scout-zone"${dataAttr} style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-detail">${hits}H/${outs}O/${total}PA</div>
-    </div>`;
-  }).join('');
+  // 카운트 위험도 배경색
+  const countBg = avg => avg > 0.350 ? 'rgba(220,38,38,0.25)' : avg > 0.250 ? 'rgba(251,146,60,0.2)' : 'rgba(45,212,160,0.15)';
+  const countColor = avg => avg > 0.350 ? '#f87171' : avg > 0.250 ? '#fb923c' : '#2dd4a0';
 
-  // Strength zone grid
-  const strengthGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    if (total >= 2 && avg >= 0.300) {
-      const intensity = Math.min((avg - 0.200) / 0.300, 1);
-      bg = `rgba(245,101,101,${0.1 + intensity * 0.4})`;
-    }
-    return `<div class="scout-zone" style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-label">${ZONE_LABELS[i]}</div>
-    </div>`;
-  }).join('');
-
-  // Weakness zone grid
-  const weaknessGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    if (total >= 2 && avg < 0.250) {
-      const intensity = Math.min((0.250 - avg) / 0.250, 1);
-      bg = `rgba(45,212,160,${0.1 + intensity * 0.4})`;
-    }
-    return `<div class="scout-zone" style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-label">${ZONE_LABELS[i]}</div>
-    </div>`;
-  }).join('');
+  // 최근 타구 10개 (위치 있는 것)
+  const recent10 = [...allAbs].reverse().filter(a => a.res).slice(0, 10);
+  const RES_COLOR = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
+    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
+    '삼진':'#94a3b8','볼넷':'#60a5fa','사구':'#93c5fd','병살':'#dc2626','희타':'#fb923c','희비':'#fb923c'};
 
   el.innerHTML = `
     <div class="scout-header">
@@ -502,82 +464,78 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
 
     <div class="scout-section">
       <div class="scout-section-title">🎯 스트라이크존 히트맵</div>
-      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-        <canvas id="scoutZoneCanvas" width="210" height="210" style="flex-shrink:0;border-radius:8px;border:1px solid var(--border)"></canvas>
-        <div style="flex:1;min-width:110px">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;font-weight:700">색상 범례</div>
-          <div style="display:flex;flex-direction:column;gap:4px;font-size:10px">
-            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(220,38,38,0.7);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≥.350 위험</div>
-            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(251,146,60,0.6);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≥.250 주의</div>
-            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(75,140,245,0.3);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG 보통</div>
-            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(45,212,160,0.55);border-radius:3px;margin-right:5px;vertical-align:middle"></span>AVG≤.200 취약</div>
-            <div><span style="display:inline-block;width:12px;height:12px;background:rgba(100,116,139,0.25);border-radius:3px;margin-right:5px;vertical-align:middle"></span>데이터 부족</div>
-          </div>
+      <div class="scout-zone-canvases">
+        <div class="szc-wrap">
+          <div class="szc-label">강점 존</div>
+          <canvas id="scoutStrengthCanvas" width="138" height="138"></canvas>
+        </div>
+        <div class="szc-wrap">
+          <div class="szc-label">약점 존</div>
+          <canvas id="scoutWeaknessCanvas" width="138" height="138"></canvas>
+        </div>
+        <div class="szc-wrap">
+          <div class="szc-label">종합</div>
+          <canvas id="scoutZoneCanvas" width="138" height="138"></canvas>
+        </div>
+      </div>
+      <div class="scout-zone-legend">
+        <span class="szl-item" style="background:rgba(220,38,38,0.65)">≥.350 위험</span>
+        <span class="szl-item" style="background:rgba(251,146,60,0.5)">≥.250</span>
+        <span class="szl-item" style="background:rgba(75,140,245,0.25)">보통</span>
+        <span class="szl-item" style="background:rgba(45,212,160,0.5)">≤.200 취약</span>
+        <span class="szl-item" style="background:rgba(100,116,139,0.2)">데이터 없음</span>
+      </div>
+    </div>
+
+    <div class="scout-section">
+      <div class="scout-section-title">📐 타구 방향 분포</div>
+      <canvas id="scoutDirCanvas" width="300" height="60" style="width:100%;max-width:300px;display:block;margin:0 auto;border-radius:8px"></canvas>
+      <div class="scout-dir-labels">
+        <span style="color:#ef4444">당김 ${pct(analysis.pullPct)} · AVG ${f3(analysis.pullAvg)}</span>
+        <span style="color:#2dd4a0">중앙 ${pct(analysis.centerPct)} · AVG ${f3(analysis.centerAvg)}</span>
+        <span style="color:#fb923c">밀어 ${pct(analysis.oppoPct)} · AVG ${f3(analysis.oppoAvg)}</span>
+      </div>
+    </div>
+
+    <div class="scout-section">
+      <div class="scout-section-title">📊 카운트별 타율</div>
+      <div class="scout-count-grid">
+        <div class="sc-item" style="background:${countBg(analysis.aheadAvg)}">
+          <div class="sc-label">투수 유리</div>
+          <div class="sc-val" style="color:${countColor(analysis.aheadAvg)}">${f3(analysis.aheadAvg)}</div>
+          <div class="sc-pa">${analysis.aheadCount}PA</div>
+        </div>
+        <div class="sc-item" style="background:${countBg(analysis.evenAvg)}">
+          <div class="sc-label">이븐</div>
+          <div class="sc-val" style="color:${countColor(analysis.evenAvg)}">${f3(analysis.evenAvg)}</div>
+          <div class="sc-pa">${analysis.evenCount}PA</div>
+        </div>
+        <div class="sc-item" style="background:${countBg(analysis.behindAvg)}">
+          <div class="sc-label">타자 유리</div>
+          <div class="sc-val" style="color:${countColor(analysis.behindAvg)}">${f3(analysis.behindAvg)}</div>
+          <div class="sc-pa">${analysis.behindCount}PA</div>
         </div>
       </div>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">🏟️ 타구 분포 (필드 오버레이)</div>
+      <div class="scout-section-title">🏟️ 타구 분포 (필드)</div>
       <canvas id="scoutFieldCanvas" width="240" height="220" style="display:block;margin:0 auto;border-radius:10px"></canvas>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">강점 존 (빨간색 = 높은 타율)</div>
-      <div class="scout-zone-grid">${strengthGrid}</div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">약점 존 (초록색 = 낮은 타율)</div>
-      <div class="scout-zone-grid">${weaknessGrid}</div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">종합 존 분석</div>
-      <div class="scout-zone-grid">${zoneGrid}</div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">타구 방향 성향</div>
-      <div class="scout-direction">
-        <div class="sd-bar">
-          <div class="sd-seg pull" style="flex:${analysis.pullCount||1}">
-            <div class="sd-pct">${pct(analysis.pullPct)}</div>
-            <div class="sd-avg">${f3(analysis.pullAvg)}</div>
-            <div class="sd-lbl">당김</div>
-          </div>
-          <div class="sd-seg center" style="flex:${analysis.centerCount||1}">
-            <div class="sd-pct">${pct(analysis.centerPct)}</div>
-            <div class="sd-avg">${f3(analysis.centerAvg)}</div>
-            <div class="sd-lbl">중앙</div>
-          </div>
-          <div class="sd-seg oppo" style="flex:${analysis.oppoCount||1}">
-            <div class="sd-pct">${pct(analysis.oppoPct)}</div>
-            <div class="sd-avg">${f3(analysis.oppoAvg)}</div>
-            <div class="sd-lbl">밀어</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">카운트별 분석</div>
-      <div class="scout-count-grid">
-        <div class="sc-item ${analysis.aheadAvg > 0.300 ? 'sc-danger' : 'sc-safe'}">
-          <div class="sc-label">투수 유리</div>
-          <div class="sc-val">${f3(analysis.aheadAvg)}</div>
-          <div class="sc-pa">${analysis.aheadCount}타석</div>
-        </div>
-        <div class="sc-item ${analysis.evenAvg > 0.300 ? 'sc-danger' : 'sc-neutral'}">
-          <div class="sc-label">이븐</div>
-          <div class="sc-val">${f3(analysis.evenAvg)}</div>
-          <div class="sc-pa">${analysis.evenCount}타석</div>
-        </div>
-        <div class="sc-item ${analysis.behindAvg > 0.300 ? 'sc-danger' : 'sc-safe'}">
-          <div class="sc-label">타자 유리</div>
-          <div class="sc-val">${f3(analysis.behindAvg)}</div>
-          <div class="sc-pa">${analysis.behindCount}타석</div>
-        </div>
+      <div class="scout-section-title">🕐 최근 타석 기록</div>
+      <div class="scout-recent-abs">
+        ${recent10.length ? recent10.map(a => {
+          const col = RES_COLOR[a.res] || '#94a3b8';
+          const dirTxt = a.deg != null ? (a.deg < 72 ? '당김' : a.deg <= 108 ? '중앙' : '밀어') : '-';
+          const angTxt = a.deg != null ? Math.round(a.deg)+'°' : '';
+          return `<div class="sra-item">
+            <span class="sra-res" style="color:${col}">${_esc(a.res)}</span>
+            <span class="sra-dir">${dirTxt}${angTxt ? ' ' + angTxt : ''}</span>
+            <span class="sra-inn">${a.inn||''}</span>
+          </div>`;
+        }).join('') : '<div class="empty-state" style="padding:8px">타석 기록 없음</div>'}
       </div>
     </div>
 
@@ -587,8 +545,8 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
         ${findings.map(f => `
           <div class="scout-finding ${sevClass(f.severity)}">
             <span class="sf-badge">${sevLabel(f.severity)}</span>
-            <span class="sf-cat">[${f.category}]</span>
-            ${sevEmoji(f.severity)}${_esc(f.text)}
+            <span class="sf-cat">[${_esc(f.category)}]</span>
+            ${_esc(f.text)}
           </div>
         `).join('')}
       </div>
@@ -608,21 +566,27 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
     </div>
   `;
 
-  // 캔버스 그리기 (innerHTML 설정 후 DOM 업데이트 대기)
   requestAnimationFrame(() => {
-    _drawScoutZoneCanvas(analysis);
+    _drawZoneCanvas('scoutStrengthCanvas', analysis, 'strength');
+    _drawZoneCanvas('scoutWeaknessCanvas', analysis, 'weakness');
+    _drawZoneCanvas('scoutZoneCanvas', analysis, 'all');
+    _drawDirCanvas(analysis);
     _drawScoutFieldCanvas(allAbs);
   });
 }
 
-// ── 스트라이크존 히트맵 캔버스 ──────────────────
-function _drawScoutZoneCanvas(analysis) {
-  const c = document.getElementById('scoutZoneCanvas');
+// ── 존 히트맵 캔버스 (3×3) ──
+function _drawZoneCanvas(canvasId, analysis, mode) {
+  const c = document.getElementById(canvasId);
   if (!c) return;
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
   const cw = W / 3, ch = H / 3;
+
   ctx.clearRect(0, 0, W, H);
+  // 배경
+  ctx.fillStyle = 'rgba(14,16,24,0.6)';
+  ctx.fillRect(0, 0, W, H);
 
   for (let i = 0; i < 9; i++) {
     const row = Math.floor(i / 3), col = i % 3;
@@ -630,45 +594,89 @@ function _drawScoutZoneCanvas(analysis) {
     const avg = analysis.zoneAvg[i];
     const total = analysis.zoneTotal[i];
 
-    // 배경색
     let bg;
     if (total < 2) {
       bg = 'rgba(100,116,139,0.2)';
-    } else if (avg >= 0.350) {
-      bg = 'rgba(220,38,38,0.65)';
-    } else if (avg >= 0.300) {
-      bg = 'rgba(239,68,68,0.4)';
-    } else if (avg >= 0.250) {
-      bg = 'rgba(251,146,60,0.5)';
-    } else if (avg >= 0.200) {
-      bg = 'rgba(75,140,245,0.25)';
+    } else if (mode === 'strength') {
+      // 강점존: 타율 높을수록 빨강
+      if (avg >= 0.350) bg = 'rgba(220,38,38,0.70)';
+      else if (avg >= 0.300) bg = 'rgba(239,68,68,0.45)';
+      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.30)';
+      else bg = 'rgba(100,116,139,0.15)';
+    } else if (mode === 'weakness') {
+      // 약점존: 타율 낮을수록 초록
+      if (avg < 0.150) bg = 'rgba(45,212,160,0.70)';
+      else if (avg < 0.200) bg = 'rgba(45,212,160,0.45)';
+      else if (avg < 0.250) bg = 'rgba(45,212,160,0.25)';
+      else bg = 'rgba(100,116,139,0.15)';
     } else {
-      bg = 'rgba(45,212,160,0.5)';
+      // 종합
+      if (avg >= 0.350) bg = 'rgba(220,38,38,0.65)';
+      else if (avg >= 0.300) bg = 'rgba(239,68,68,0.40)';
+      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.50)';
+      else if (avg >= 0.200) bg = 'rgba(75,140,245,0.25)';
+      else bg = 'rgba(45,212,160,0.50)';
     }
+
     ctx.fillStyle = bg;
     ctx.fillRect(x + 1, y + 1, cw - 2, ch - 2);
 
-    // 격자선
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 0.5;
     ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
 
-    // 텍스트
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = `bold ${cw * 0.22}px "JetBrains Mono",monospace`;
+    // AVG 텍스트
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = `bold ${Math.round(cw * 0.21)}px "JetBrains Mono",monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const avgStr = total > 0 ? avg.toFixed(3).replace('0.', '.') : '-';
-    ctx.fillText(avgStr, x + cw / 2, y + ch / 2 - 6);
+    ctx.fillText(total > 0 ? avg.toFixed(3).replace('0.','.') : '-', x + cw/2, y + ch/2 - 7);
 
-    // PA 수
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = `${cw * 0.15}px sans-serif`;
-    ctx.fillText(total + 'PA', x + cw / 2, y + ch / 2 + 10);
+    // PA 텍스트
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = `${Math.round(cw * 0.14)}px sans-serif`;
+    ctx.fillText(total + 'PA', x + cw/2, y + ch/2 + 9);
   }
 }
 
-// ── 미니 필드 + 타구 분포 캔버스 ──────────────────
+// ── 타구 방향 바차트 캔버스 ──
+function _drawDirCanvas(analysis) {
+  const c = document.getElementById('scoutDirCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 300, H = 60;
+  c.width = W * dpr; c.height = H * dpr;
+  c.style.width = W + 'px'; c.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = 'rgba(14,16,24,0.4)';
+  ctx.fillRect(0, 0, W, H);
+
+  const total = analysis.pullCount + analysis.centerCount + analysis.oppoCount || 1;
+  const segs = [
+    { count: analysis.pullCount,   avg: analysis.pullAvg,   color: 'rgba(239,68,68,0.75)',   label: '당김' },
+    { count: analysis.centerCount, avg: analysis.centerAvg, color: 'rgba(45,212,160,0.75)',   label: '중앙' },
+    { count: analysis.oppoCount,   avg: analysis.oppoAvg,   color: 'rgba(251,146,60,0.75)',   label: '밀어' },
+  ];
+
+  const BAR_H = 24, BAR_Y = 14;
+  let xOff = 0;
+  segs.forEach(seg => {
+    const w = Math.max((seg.count / total) * W, seg.count > 0 ? 2 : 0);
+    ctx.fillStyle = seg.color;
+    ctx.fillRect(xOff, BAR_Y, w - 1, BAR_H);
+    if (w > 28) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 10px "JetBrains Mono",monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(seg.avg.toFixed(3).replace('0.','.'), xOff + w/2, BAR_Y + BAR_H/2 + 4);
+    }
+    xOff += w;
+  });
+}
+
+// ── 미니 필드 캔버스 ──
 function _drawScoutFieldCanvas(allAbs) {
   const c = document.getElementById('scoutFieldCanvas');
   if (!c) return;
@@ -676,11 +684,9 @@ function _drawScoutFieldCanvas(allAbs) {
   const W = c.width, H = c.height;
   ctx.clearRect(0, 0, W, H);
 
-  // 필드 배경
   const cx = W / 2, cy = H * 0.88;
   const R = W * 0.46;
 
-  // 외야 잔디
   ctx.beginPath();
   ctx.arc(cx, cy, R, -Math.PI, 0);
   ctx.closePath();
@@ -690,7 +696,6 @@ function _drawScoutFieldCanvas(allAbs) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // 내야
   const sqR = R * 0.38;
   ctx.beginPath();
   ctx.moveTo(cx, cy - sqR);
@@ -704,25 +709,22 @@ function _drawScoutFieldCanvas(allAbs) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // 파울라인
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 1;
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx - R,cy - 0.05);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx + R,cy - 0.05);ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx - R, cy - 0.05); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + R, cy - 0.05); ctx.stroke();
 
-  // 타구 점
-  const HITS = ['안타','내야안타','2루타','3루타','홈런'];
-  const RC = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
+  const RES_COL = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
     '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
     '삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd'};
+  const HITS_SET = new Set(['안타','내야안타','2루타','3루타','홈런']);
 
   allAbs.forEach(ab => {
     if (ab.x == null || ab.y == null) return;
-    // 저장 좌표는 0~1 범위 (캔버스 크기 440 기준으로 저장됨)
     const px = ab.x * W;
     const py = ab.y * H * (220 / 440);
-    const isOut = !HITS.includes(ab.res);
-    const col = RC[ab.res] || '#94a3b8';
+    const isOut = !HITS_SET.has(ab.res);
+    const col = RES_COL[ab.res] || '#94a3b8';
     ctx.beginPath();
     ctx.arc(px, py, isOut ? 2.5 : 3.5, 0, Math.PI * 2);
     ctx.fillStyle = col + 'cc';

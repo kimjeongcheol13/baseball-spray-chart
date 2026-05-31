@@ -19,15 +19,21 @@ export function renderProfilePlayerList() {
     return;
   }
   el.innerHTML = players.map(p =>
-    `<button class="profile-player-btn" onclick="window.selectProfilePlayer('${p.id}','${_esc(p.name)}','${p.num}',this)">#${p.num} ${_esc(p.name)}</button>`
+    `<button class="profile-player-btn" data-name="${_esc(p.name)}" onclick="window.selectProfilePlayer('${p.id}','${_esc(p.name)}','${p.num}',this)">#${p.num} ${_esc(p.name)}</button>`
   ).join('');
 }
 
 export function selectProfilePlayer(id, name, num, btn) {
-  // active 버튼 토글
+  // 모든 active 제거 후 클릭된 버튼에 active 추가
   const list = document.getElementById('profilePlayerList');
   if (list) list.querySelectorAll('.profile-player-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    // data-name 속성으로 찾기 (indirect 호출 시 fallback)
+    const found = list && list.querySelector(`.profile-player-btn[data-name="${name}"]`);
+    if (found) found.classList.add('active');
+  }
   const data = _aggregatePlayerStats(id, name);
   _renderProfileCard(data);
 }

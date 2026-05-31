@@ -31,7 +31,7 @@ export function renderComparePlayerSelects() {
   sel1.innerHTML = opts;
   sel2.innerHTML = opts;
 
-  // onchange: 값 저장 후 즉시 비교 실행
+  // 두 선수 모두 선택되면 자동 비교
   sel1.onchange = () => { _selectedPlayer1 = sel1.value || null; runPlayerCompare(); };
   sel2.onchange = () => { _selectedPlayer2 = sel2.value || null; runPlayerCompare(); };
 }
@@ -42,15 +42,16 @@ export function runPlayerCompare() {
   const name1 = (sel1 && sel1.value) || _selectedPlayer1;
   const name2 = (sel2 && sel2.value) || _selectedPlayer2;
 
-  // compareResult 사용 (compareContent → compareResult)
+  // compareContent → compareResult
   const el = document.getElementById('compareResult');
+  if (!el) return;
 
   if (!name1 || !name2) {
-    if (el) el.innerHTML = '<div class="empty-state">두 선수를 모두 선택하세요</div>';
+    el.innerHTML = '<div class="empty-state">두 선수를 모두 선택하세요</div>';
     return;
   }
   if (name1 === name2) {
-    if (el) el.innerHTML = '<div class="empty-state">서로 다른 선수를 선택하세요</div>';
+    el.innerHTML = '<div class="empty-state">서로 다른 선수를 선택하세요</div>';
     return;
   }
 
@@ -59,18 +60,16 @@ export function runPlayerCompare() {
   _renderComparison(stats1, stats2);
 }
 
-// _getAllPlayers: name+'_'+num 키로 홈/원정/저장경기 통합 dedup
+// _getAllPlayers: name+'_'+num 키로 통합 dedup
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
 
-  // 현재 경기 라인업
   [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
     if (p && p.name && p.num != null)
       map[p.name + '_' + p.num] = { id: p.id, name: p.name, num: p.num };
   });
 
-  // 저장된 경기 라인업
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
@@ -88,20 +87,19 @@ function _getAllPlayers() {
 
 function _aggregateStats(name) {
   const allAbs = [];
+  const gameAbs = []; // [[...abs per game]]
 
-  // Current game
   const AS = window.AS;
-  const currentAbs = (AS.abs||[]).filter(a => a.bname === name);
-  if (currentAbs.length) allAbs.push(...currentAbs);
+  const curAbs = (AS.abs||[]).filter(a => a.bname === name);
+  if (curAbs.length) { allAbs.push(...curAbs); gameAbs.push(curAbs); }
 
-  // Saved games
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d || !d.abs) return;
       const pAbs = d.abs.filter(a => a.bname === name);
-      if (pAbs.length) allAbs.push(...pAbs);
+      if (pAbs.length) { allAbs.push(...pAbs); gameAbs.push(pAbs); }
     } catch(e) {}
   });
 
@@ -140,11 +138,19 @@ function _aggregateStats(name) {
   const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108).length;
   const oppo = dabs.length - pull - center;
 
-  return { name, pa, ab, h, bb, k, hr, xbh, rbi, tb, avg, obp, slg, ops, babip, kRate, bbRate, isoP, woba, pull, center, oppo, dabs: dabs.length, sf, hbp };
+  // 최근 5경기 타율 추이 (gameAbs 기반)
+  const recent5 = gameAbs.slice(-5).map(gAbs => {
+    const gab = gAbs.filter(a => !NOAB.includes(a.res)).length;
+    const gh = gAbs.filter(a => HITS.includes(a.res)).length;
+    return gab ? gh / gab : 0;
+  });
+
+  return { name, pa, ab, h, bb, k, hr, xbh, rbi, tb, avg, obp, slg, ops,
+    babip, kRate, bbRate, isoP, woba, pull, center, oppo, dabs: dabs.length,
+    sf, hbp, recent5 };
 }
 
 function _renderComparison(s1, s2) {
-  // compareContent → compareResult
   const el = document.getElementById('compareResult');
   if (!el) return;
 
@@ -152,23 +158,23 @@ function _renderComparison(s1, s2) {
   const pct = v => Math.round(v * 100) + '%';
 
   const rows = [
-    { label: '타석 (PA)', v1: s1.pa, v2: s2.pa, fmt: 'int' },
-    { label: '타수 (AB)', v1: s1.ab, v2: s2.ab, fmt: 'int' },
-    { label: '안타 (H)', v1: s1.h, v2: s2.h, fmt: 'int' },
-    { label: '홈런 (HR)', v1: s1.hr, v2: s2.hr, fmt: 'int' },
-    { label: '장타 (XBH)', v1: s1.xbh, v2: s2.xbh, fmt: 'int' },
-    { label: '타점 (RBI)', v1: s1.rbi, v2: s2.rbi, fmt: 'int' },
-    { label: '타율 (AVG)', v1: s1.avg, v2: s2.avg, fmt: 'f3' },
-    { label: '출루율 (OBP)', v1: s1.obp, v2: s2.obp, fmt: 'f3' },
-    { label: '장타율 (SLG)', v1: s1.slg, v2: s2.slg, fmt: 'f3' },
-    { label: 'OPS', v1: s1.ops, v2: s2.ops, fmt: 'f3' },
-    { label: 'wOBA', v1: s1.woba, v2: s2.woba, fmt: 'f3' },
-    { label: 'BABIP', v1: s1.babip, v2: s2.babip, fmt: 'f3' },
-    { label: 'ISO', v1: s1.isoP, v2: s2.isoP, fmt: 'f3' },
-    { label: 'K%', v1: s1.kRate, v2: s2.kRate, fmt: 'pct', lower: true },
-    { label: 'BB%', v1: s1.bbRate, v2: s2.bbRate, fmt: 'pct' },
-    { label: '볼넷 (BB)', v1: s1.bb, v2: s2.bb, fmt: 'int' },
-    { label: '삼진 (K)', v1: s1.k, v2: s2.k, fmt: 'int', lower: true },
+    { label: '타석 (PA)',   v1: s1.pa,      v2: s2.pa,      fmt: 'int' },
+    { label: '타수 (AB)',   v1: s1.ab,      v2: s2.ab,      fmt: 'int' },
+    { label: '안타 (H)',    v1: s1.h,       v2: s2.h,       fmt: 'int' },
+    { label: '홈런 (HR)',   v1: s1.hr,      v2: s2.hr,      fmt: 'int' },
+    { label: '장타 (XBH)',  v1: s1.xbh,     v2: s2.xbh,     fmt: 'int' },
+    { label: '타점 (RBI)',  v1: s1.rbi,     v2: s2.rbi,     fmt: 'int' },
+    { label: '타율 (AVG)',  v1: s1.avg,     v2: s2.avg,     fmt: 'f3' },
+    { label: '출루율 (OBP)',v1: s1.obp,     v2: s2.obp,     fmt: 'f3' },
+    { label: '장타율 (SLG)',v1: s1.slg,     v2: s2.slg,     fmt: 'f3' },
+    { label: 'OPS',         v1: s1.ops,     v2: s2.ops,     fmt: 'f3' },
+    { label: 'wOBA',        v1: s1.woba,    v2: s2.woba,    fmt: 'f3' },
+    { label: 'BABIP',       v1: s1.babip,   v2: s2.babip,   fmt: 'f3' },
+    { label: 'ISO',         v1: s1.isoP,    v2: s2.isoP,    fmt: 'f3' },
+    { label: 'K%',          v1: s1.kRate,   v2: s2.kRate,   fmt: 'pct', lower: true },
+    { label: 'BB%',         v1: s1.bbRate,  v2: s2.bbRate,  fmt: 'pct' },
+    { label: '볼넷 (BB)',   v1: s1.bb,      v2: s2.bb,      fmt: 'int' },
+    { label: '삼진 (K)',    v1: s1.k,       v2: s2.k,       fmt: 'int', lower: true },
   ];
 
   const fmtVal = (v, fmt) => {
@@ -181,16 +187,35 @@ function _renderComparison(s1, s2) {
     const better1 = r.lower ? r.v1 < r.v2 : r.v1 > r.v2;
     const better2 = r.lower ? r.v2 < r.v1 : r.v2 > r.v1;
     const equal = r.v1 === r.v2;
-    const cls1 = !equal && better1 ? ' class="compare-better"' : '';
-    const cls2 = !equal && better2 ? ' class="compare-better"' : '';
+    const cls1 = !equal ? (better1 ? ' class="compare-better"' : ' class="compare-worse"') : '';
+    const cls2 = !equal ? (better2 ? ' class="compare-better"' : ' class="compare-worse"') : '';
     return `<tr><td${cls1}>${fmtVal(r.v1, r.fmt)}</td><td class="compare-label">${r.label}</td><td${cls2}>${fmtVal(r.v2, r.fmt)}</td></tr>`;
   }).join('');
 
+  const tot1 = s1.dabs || 1;
+  const tot2 = s2.dabs || 1;
+
   el.innerHTML = `
-    <div class="compare-header">
-      <div class="compare-player p1">${_esc(s1.name)}</div>
-      <div class="compare-vs">VS</div>
-      <div class="compare-player p2">${_esc(s2.name)}</div>
+    <div class="compare-summary-header">
+      <div class="csh-player">
+        <div class="csh-name">${_esc(s1.name)}</div>
+        <div class="csh-stats">
+          <span class="csh-stat" style="color:#f6c23e">${f3(s1.avg)}</span>
+          <span class="csh-sep">AVG</span>
+          <span class="csh-stat" style="color:#4b8cf5">${f3(s1.ops)}</span>
+          <span class="csh-sep">OPS</span>
+        </div>
+      </div>
+      <div class="csh-vs">VS</div>
+      <div class="csh-player">
+        <div class="csh-name">${_esc(s2.name)}</div>
+        <div class="csh-stats">
+          <span class="csh-stat" style="color:#f6c23e">${f3(s2.avg)}</span>
+          <span class="csh-sep">AVG</span>
+          <span class="csh-stat" style="color:#4b8cf5">${f3(s2.ops)}</span>
+          <span class="csh-sep">OPS</span>
+        </div>
+      </div>
     </div>
 
     <div class="compare-radar-wrap">
@@ -206,14 +231,40 @@ function _renderComparison(s1, s2) {
       <tbody>${tableRows}</tbody>
     </table>
 
-    <div class="compare-direction-section">
-      <div class="compare-direction-title">타구 방향 비교</div>
-      <div class="compare-direction-row">
-        <div class="compare-dir-col">
-          ${_dirBar(s1)}
+    <div class="compare-section">
+      <div class="compare-section-title">타구 방향 비교</div>
+      <div class="compare-dir-row">
+        <div>
+          <div class="cdr-name">${_esc(s1.name)}</div>
+          <div class="direction-bar">
+            <div class="dir-seg pull" style="flex:${s1.pull||1}">${Math.round(s1.pull/tot1*100)}%</div>
+            <div class="dir-seg center" style="flex:${s1.center||1}">${Math.round(s1.center/tot1*100)}%</div>
+            <div class="dir-seg oppo" style="flex:${s1.oppo||1}">${Math.round(s1.oppo/tot1*100)}%</div>
+          </div>
+          <div class="cdr-legend"><span style="color:#ef4444">당김</span> · <span style="color:#2dd4a0">중앙</span> · <span style="color:#fb923c">밀어</span></div>
         </div>
-        <div class="compare-dir-col">
-          ${_dirBar(s2)}
+        <div>
+          <div class="cdr-name">${_esc(s2.name)}</div>
+          <div class="direction-bar">
+            <div class="dir-seg pull" style="flex:${s2.pull||1}">${Math.round(s2.pull/tot2*100)}%</div>
+            <div class="dir-seg center" style="flex:${s2.center||1}">${Math.round(s2.center/tot2*100)}%</div>
+            <div class="dir-seg oppo" style="flex:${s2.oppo||1}">${Math.round(s2.oppo/tot2*100)}%</div>
+          </div>
+          <div class="cdr-legend"><span style="color:#ef4444">당김</span> · <span style="color:#2dd4a0">중앙</span> · <span style="color:#fb923c">밀어</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-section">
+      <div class="compare-section-title">최근 경기 타율 추이</div>
+      <div class="compare-trend-row">
+        <div>
+          <div class="cdr-name">${_esc(s1.name)}</div>
+          <canvas id="compareTrend1" width="140" height="70" style="width:100%;max-width:140px"></canvas>
+        </div>
+        <div>
+          <div class="cdr-name">${_esc(s2.name)}</div>
+          <canvas id="compareTrend2" width="140" height="70" style="width:100%;max-width:140px"></canvas>
         </div>
       </div>
     </div>
@@ -221,19 +272,63 @@ function _renderComparison(s1, s2) {
 
   requestAnimationFrame(() => {
     _drawRadarChart('compareRadarCanvas', s1, s2);
+    _drawTrendMini('compareTrend1', s1.recent5, '#4b8cf5');
+    _drawTrendMini('compareTrend2', s2.recent5, '#2dd4a0');
   });
 }
 
-function _dirBar(stats) {
-  const tot = stats.dabs || 1;
-  return `
-    <div class="dir-label">${_esc(stats.name)}</div>
-    <div class="direction-bar compact">
-      <div class="dir-seg pull" style="flex:${stats.pull||1}">${Math.round(stats.pull/tot*100)}%</div>
-      <div class="dir-seg center" style="flex:${stats.center||1}">${Math.round(stats.center/tot*100)}%</div>
-      <div class="dir-seg oppo" style="flex:${stats.oppo||1}">${Math.round(stats.oppo/tot*100)}%</div>
-    </div>
-  `;
+function _drawTrendMini(canvasId, data, color) {
+  const c = document.getElementById(canvasId);
+  if (!c || !data || data.length < 2) return;
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 140, H = 70;
+  c.width = W * dpr; c.height = H * dpr;
+  c.style.width = W + 'px'; c.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#0e1018';
+  ctx.fillRect(0, 0, W, H);
+
+  // 기준선 .300
+  const ref = H - 8 - (0.3 / 0.5) * (H - 16);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(4, ref); ctx.lineTo(W - 4, ref); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.font = '7px monospace';
+  ctx.fillText('.300', W - 24, ref - 2);
+
+  const n = data.length;
+  const xStep = (W - 16) / Math.max(n - 1, 1);
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  data.forEach((v, i) => {
+    const x = 8 + i * xStep;
+    const y = H - 8 - Math.min(v / 0.5, 1) * (H - 16);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  data.forEach((v, i) => {
+    const x = 8 + i * xStep;
+    const y = H - 8 - Math.min(v / 0.5, 1) * (H - 16);
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = v >= 0.3 ? '#2dd4a0' : v >= 0.2 ? '#f6c23e' : '#f56565';
+    ctx.fill();
+  });
+
+  // 마지막 값 표시
+  const lastV = data[data.length - 1];
+  const lastX = 8 + (n - 1) * xStep;
+  const lastY = H - 8 - Math.min(lastV / 0.5, 1) * (H - 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '7px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(lastV.toFixed(3).replace('0.','.'), lastX + 2, lastY - 4);
 }
 
 export function _drawRadarChart(canvasId, s1, s2) {
@@ -267,8 +362,7 @@ export function _drawRadarChart(canvasId, s1, s2) {
   ctx.fillStyle = '#0e1018';
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  const rings = [0.2, 0.4, 0.6, 0.8, 1.0];
-  rings.forEach(r => {
+  [0.2, 0.4, 0.6, 0.8, 1.0].forEach(r => {
     ctx.beginPath();
     for (let i = 0; i < axes; i++) {
       const angle = startAngle + i * angleStep;
@@ -313,15 +407,12 @@ export function _drawRadarChart(canvasId, s1, s2) {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.closePath();
-
     const rgb = _hexToRgb(color);
     ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${fillAlpha})`;
     ctx.fill();
-
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
-
     for (let i = 0; i < axes; i++) {
       const angle = startAngle + i * angleStep;
       const r = norm(vals[i], i) * radius;
@@ -339,17 +430,12 @@ export function _drawRadarChart(canvasId, s1, s2) {
 }
 
 function _hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 255, g: 255, b: 255 };
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : {r:255,g:255,b:255};
 }
 
 function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Expose to window for onclick handlers
 if (typeof window !== 'undefined') {
   window.openCompareView = openCompareView;
   window.renderComparePlayerSelects = renderComparePlayerSelects;

@@ -291,7 +291,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 /* LAYOUT */
 .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) 280px;grid-template-rows:1fr;flex:1;min-height:0;overflow:hidden}
-@media(min-width:721px){#app-page{padding-right:44px}}
+@media(min-width:721px){.app-layout{margin-right:44px}}
 
 /* LEFT */
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}

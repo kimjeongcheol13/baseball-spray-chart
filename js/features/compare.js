@@ -60,25 +60,23 @@ export function runPlayerCompare() {
   _renderComparison(stats1, stats2);
 }
 
-// _getAllPlayers: name+'_'+num 키로 통합 dedup
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
 
-  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
-    if (p && p.name && p.num != null)
-      map[p.name + '_' + p.num] = { id: p.id, name: p.name, num: p.num };
-  });
+  const _add = p => {
+    if (!p || !p.name) return;
+    if (!map[p.name]) map[p.name] = { id: p.id, name: p.name, num: p.num };
+  };
+
+  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
 
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.forEach(s => {
+  saves.slice().reverse().forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;
-      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(p => {
-        if (p && p.name && p.num != null)
-          map[p.name + '_' + p.num] = { id: p.id, name: p.name, num: p.num };
-      });
+      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(_add);
     } catch(e) {}
   });
 

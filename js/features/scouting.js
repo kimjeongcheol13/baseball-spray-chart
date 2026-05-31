@@ -117,19 +117,23 @@ export function exportScoutReport() {
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
-  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
-    map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
-  });
+
+  const _add = p => {
+    if (!p || !p.name) return;
+    if (!map[p.name]) map[p.name] = { id: p.id, name: p.name, num: p.num };
+  };
+
+  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
+
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.forEach(s => {
+  saves.slice().reverse().forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;
-      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(p => {
-        map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
-      });
+      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(_add);
     } catch(e) {}
   });
+
   return Object.values(map);
 }
 

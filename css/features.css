@@ -69,7 +69,11 @@
 }
 /* 데스크톱: nav가 오른쪽 세로 사이드바이므로 bottom:0, right:54px */
 @media(min-width:721px){
-  .savant-view.active { bottom: 0; right: 54px; }
+  .savant-view.active {
+    left: 0 !important;
+    right: 54px !important;
+    bottom: 0 !important;
+  }
 }
 
 .savant-view-header {
@@ -140,10 +144,11 @@
 /* ── Profile View ── */
 .profile-player-list {
   width: 100%;
-  min-height: 48px;
+  min-height: auto;
   display: flex;
   flex-wrap: wrap;
   height: auto;
+  overflow: visible;
   gap: 8px;
   padding: 8px 16px;
 }

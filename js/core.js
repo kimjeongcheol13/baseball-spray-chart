@@ -3599,7 +3599,7 @@ function openPlayerProfile(){
   }
   var list=Object.values(players).filter(function(p){return p.ab>=1;});
   list.sort(function(a,b){return(b.ab?b.h/b.ab:0)-(a.ab?a.h/a.ab:0);});
-  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--text3);padding:24px">기록이 없습니다</div>';document.getElementById('playerProfileOverlay').style.display='flex';return;}
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--text3);padding:24px">기록이 없습니다</div>';openOverlay('playerProfileOverlay');return;}
   el.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
     +'<thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">'
     +'<th style="padding:6px 4px;text-align:left">선수</th><th style="padding:6px 4px">PA</th><th style="padding:6px 4px">AB</th><th style="padding:6px 4px">H</th><th style="padding:6px 4px">HR</th><th style="padding:6px 4px">RBI</th><th style="padding:6px 4px">AVG</th><th style="padding:6px 4px">OBP</th><th style="padding:6px 4px">OPS</th></tr></thead>'
@@ -3619,7 +3619,7 @@ function openPlayerProfile(){
         +'<td style="padding:6px 4px;text-align:center;font-weight:800;color:'+opsColor+'">'+f3(ops)+'</td>'
         +'</tr>';
     }).join('')+'</tbody></table></div>';
-  document.getElementById('playerProfileOverlay').style.display='flex';
+  openOverlay('playerProfileOverlay');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

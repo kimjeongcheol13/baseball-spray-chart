@@ -1177,7 +1177,17 @@ function shiftRecPlayer(dir){
   renderRecs();
 }
 function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
-function undoLast(){if(!AS.abs.length)return;AS.abs.pop();updateAll();hideToast();}
+function undoLast(){
+  if(!AS.abs.length)return;
+  AS.abs.pop();
+  if(AS.zoneHistory&&Object.keys(AS.zoneHistory).length){
+    var _zk=Object.keys(AS.zoneHistory).pop();
+    if(_zk)delete AS.zoneHistory[_zk];
+  }
+  updateAll();
+  hideToast();
+  showToast('직전 타구를 취소했습니다',false);
+}
 function clearAll(){if(!confirm('모든 타석 기록을 삭제할까요?'))return;AS.abs=[];AS.zoneHistory={};AS.currentPitches=[];hidePtPicker();refreshZoneDisplay();updateAll();}
 
 function updStats(){
@@ -2868,13 +2878,43 @@ function exportAllGamesToExcel() {
     });
   });
 
+  // === Sheet 4: 투수 분석 (전체 경기) ===
+  var allPitcherRows=[['경기','투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진']];
+  allGames.forEach(function(d){
+    (d.pitchers||[]).forEach(function(p){
+      var pitches=p.pitches||[];
+      var total=pitches.length||1;
+      var ptCount={};
+      pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
+      var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+      var ball=pitches.filter(function(px){return px.result==='볼';}).length;
+      var strike=pitches.filter(function(px){return['스트라이크','파울','헛스윙'].includes(px.result);}).length;
+      var hit=pitches.filter(function(px){return['안타','2루타','3루타','홈런','내야안타'].includes(px.result);}).length;
+      var k=pitches.filter(function(px){return px.result==='삼진';}).length;
+      allPitcherRows.push([
+        d.d||'',p.name,p.role||'',total,
+        +((ptCount['직구']||0)/total*100).toFixed(1),
+        +((ptCount['슬라이더']||0)/total*100).toFixed(1),
+        +((ptCount['커브']||0)/total*100).toFixed(1),
+        +((ptCount['체인지업']||0)/total*100).toFixed(1),
+        +((ptCount['포크볼']||0)/total*100).toFixed(1),
+        +((total-ptTotal)/total*100).toFixed(1),
+        +(ball/total*100).toFixed(1),
+        +(strike/total*100).toFixed(1),
+        hit,k
+      ]);
+    });
+  });
+
   var wb=XLSX.utils.book_new();
   var ws1=XLSX.utils.aoa_to_sheet(gameRows); ws1['!cols']=[{wch:4},{wch:12},{wch:10},{wch:6},{wch:10},{wch:6},{wch:6},{wch:8},{wch:8}];
   var ws2=XLSX.utils.aoa_to_sheet(aggRows); ws2['!cols']=[{wch:10},{wch:5},{wch:7},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:9}];
   var ws3=XLSX.utils.aoa_to_sheet(allAbRows); ws3['!cols']=[{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:5},{wch:10},{wch:8},{wch:5},{wch:7},{wch:8},{wch:4},{wch:7}];
+  var ws4=XLSX.utils.aoa_to_sheet(allPitcherRows); ws4['!cols']=[{wch:10},{wch:10},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6}];
   XLSX.utils.book_append_sheet(wb, ws1, '경기목록');
   XLSX.utils.book_append_sheet(wb, ws2, '통합선수별통계');
   XLSX.utils.book_append_sheet(wb, ws3, '전체타석기록');
+  XLSX.utils.book_append_sheet(wb, ws4, '투수분석');
 
   var d=new Date(),ds=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
   XLSX.writeFile(wb, 'SprayLab_전체경기_'+ds+'.xlsx');
@@ -3282,6 +3322,7 @@ function exportCurrentGameToExcel() {
     home_lineup: AS.home_lineup,
     away_lineup: AS.away_lineup,
     abs: AS.abs,
+    pitchers: AS.pitchers || [],
     d: new Date().toLocaleDateString('ko-KR')
   });
 }
@@ -3381,6 +3422,35 @@ function _doExportToExcel(data) {
   XLSX.utils.book_append_sheet(wb, ws1, '경기요약');
   XLSX.utils.book_append_sheet(wb, ws2, '선수별통계');
   XLSX.utils.book_append_sheet(wb, ws3, '타석기록');
+
+  // === Sheet 4: 투수 분석 ===
+  var pitcherRows=[['투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진']];
+  (data.pitchers||[]).forEach(function(p){
+    var pitches=p.pitches||[];
+    var total=pitches.length||1;
+    var ptCount={};
+    pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
+    var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+    var ball=pitches.filter(function(px){return px.result==='볼';}).length;
+    var strike=pitches.filter(function(px){return['스트라이크','파울','헛스윙'].includes(px.result);}).length;
+    var hit=pitches.filter(function(px){return['안타','2루타','3루타','홈런','내야안타'].includes(px.result);}).length;
+    var k=pitches.filter(function(px){return px.result==='삼진';}).length;
+    pitcherRows.push([
+      p.name, p.role||'', total,
+      +((ptCount['직구']||0)/total*100).toFixed(1),
+      +((ptCount['슬라이더']||0)/total*100).toFixed(1),
+      +((ptCount['커브']||0)/total*100).toFixed(1),
+      +((ptCount['체인지업']||0)/total*100).toFixed(1),
+      +((ptCount['포크볼']||0)/total*100).toFixed(1),
+      +((total-ptTotal)/total*100).toFixed(1),
+      +(ball/total*100).toFixed(1),
+      +(strike/total*100).toFixed(1),
+      hit, k
+    ]);
+  });
+  var ws4=XLSX.utils.aoa_to_sheet(pitcherRows);
+  ws4['!cols']=[{wch:10},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6}];
+  XLSX.utils.book_append_sheet(wb, ws4, '투수분석');
 
   var safe=function(s){return(s||'').replace(/[\/\:*?"<>|\s]/g,'_');};
   XLSX.writeFile(wb, safe(th)+'_vs_'+safe(ta)+'_'+(data.d||'').replace(/\./g,'').replace(/\s/g,'')+'_SprayLab.xlsx');
@@ -6176,20 +6246,16 @@ var undoManager=(function(){
   };
 })();
 
-// undoLast 교체
-(function(){
-  var _orig=undoLast;
-  undoLast=function(){undoManager.undo();};
-})();
+// undoLast는 위에서 정의된 pop 기반 버전 사용
 
 // ─── 기록 조작 전 스냅샷 push ─────────────────
 (function _patchRecordOps(){
   // 캔버스 클릭 → 히트 오버레이 경로
   var _rh=recHit;
-  recHit=function(res){undoManager.push();_rh.apply(this,arguments);};
+  recHit=function(res){_rh.apply(this,arguments);};
   // 볼넷·삼진 등 기타 결과 경로
   var _ro=recOther;
-  recOther=function(res){undoManager.push();_ro.apply(this,arguments);};
+  recOther=function(res){_ro.apply(this,arguments);};
   // FAB 빠른 기록 (patchAutoNext가 이미 감싼 버전)
   var _f=fabRecord;
   fabRecord=function(res){undoManager.push();_f.apply(this,arguments);};
@@ -6601,7 +6667,7 @@ function toggleHighContrast(){
 // ─── 6. Ctrl+Z / Ctrl+Y 키보드 단축키 ──────────
 document.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key==='z'){
-    e.preventDefault();undoManager.undo();
+    e.preventDefault();undoLast();
   }
   if(((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Z')||
      ((e.ctrlKey||e.metaKey)&&e.key==='y')){

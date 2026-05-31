@@ -1784,7 +1784,7 @@ function openLoad(){
       return '<div class="load-item">' +
         '<div class="load-item-body" onclick="restoreGame(\'' + s.key + '\')">' +
           '<div class="load-item-title">' + s.label + '</div>' +
-          '<div class="load-item-date">' + s.ts + '</div>' +
+          '<div class="load-item-date">' + _fmtTs(s.ts) + '</div>' +
         '</div>' +
         '<div class="load-item-actions">' +
           // 💡 일반 '다운로드' 대신 전용 '앱 파일 내보내기' 형태로 UI 전면 패치
@@ -4314,8 +4314,8 @@ function renderAwRecent(){
     el.innerHTML='<div class="aw-empty">아직 저장된 경기가 없습니다.<br>첫 경기를 기록해보세요!</div>';
     return;
   }
-  var recent=saves.slice(-3).reverse();
-  var html='<div class="aw-recent-title">최근 경기</div>';
+  var recent=[...saves].reverse();
+  var html='<div class="aw-recent-title">최근 경기</div><div class="aw-recent-scroll">';
   recent.forEach(function(s){
     var raw=localStorage.getItem(s.key);
     if(!raw)return;
@@ -4329,6 +4329,7 @@ function renderAwRecent(){
       +'<div class="aw-ri-score">'+score+'</div>'
       +'</div>';
   });
+  html+='</div>';
   el.innerHTML=html;
 }
 
@@ -4342,10 +4343,17 @@ function _escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function _gameTitle(th,ta,ts){
   var h=(th||'').trim(),a=(ta||'').trim();
   if((!h||h==='홈팀')&&(!a||a==='원정팀')){
-    var dt=ts?new Date(ts):new Date();
+    var dt=typeof ts==='number'?new Date(ts):(ts?new Date(ts):new Date());
+    if(isNaN(dt.getTime()))return (ts?String(ts)+' ':'')+'경기';
     return dt.getFullYear()+'.'+(('0'+(dt.getMonth()+1)).slice(-2))+'.'+(('0'+dt.getDate()).slice(-2))+' 경기';
   }
   return (h||'홈팀')+' vs '+(a||'원정팀');
+}
+function _fmtTs(ts){
+  if(!ts)return '';
+  var dt=new Date(typeof ts==='number'?ts:ts);
+  if(isNaN(dt.getTime()))return typeof ts==='string'?ts:'';
+  return dt.getFullYear()+'.'+(('0'+(dt.getMonth()+1)).slice(-2))+'.'+(('0'+dt.getDate()).slice(-2));
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5752,8 +5760,8 @@ renderAwRecent=function(){
     el.innerHTML='<div class="aw-empty" style="color:var(--text3);font-size:12px;padding:16px 0;text-align:center">아직 저장된 경기가 없습니다.<br>첫 경기를 기록해보세요 ⚾</div>';
     return;
   }
-  var recent=saves.slice(-4).reverse();
-  var html='<div class="aw-recent-title">최근 경기</div>';
+  var recent=[...saves].reverse();
+  var html='<div class="aw-recent-title">최근 경기</div><div class="aw-recent-scroll">';
   recent.forEach(function(s){
     var raw=localStorage.getItem(s.key);
     if(!raw)return;
@@ -5796,6 +5804,7 @@ renderAwRecent=function(){
       +'</div>'
       +'</div>';
   });
+  html+='</div>';
   el.innerHTML=html;
 };
 

@@ -854,6 +854,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .aw-btn-inner{display:flex;flex-direction:column;align-items:flex-start;gap:3px;flex:1}
 .aw-btn-sub{font-size:11px;font-weight:400;opacity:.65}
 .aw-recent{width:100%;max-width:380px;flex-shrink:0}
+.aw-recent-scroll{max-height:260px;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.aw-recent-scroll::-webkit-scrollbar{width:3px}
+.aw-recent-scroll::-webkit-scrollbar-track{background:transparent}
+.aw-recent-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.aw-recent-scroll::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 .aw-recent-title{font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .aw-recent-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .aw-recent-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent}

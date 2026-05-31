@@ -1,0 +1,48 @@
+name: 🐛 버그 수정 요청 (Claude 자동 처리)
+description: 버그를 설명하면 Claude Code가 자동으로 수정합니다
+title: "[BUG] "
+labels: ["bug", "claude"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🤖 이 이슈는 Claude Code가 자동으로 처리합니다
+        최대한 구체적으로 작성할수록 정확하게 수정됩니다!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 🐛 버그 설명
+      description: 어떤 문제가 발생했나요?
+      placeholder: |
+        예) 모바일에서 스프레이 차트 필드를 탭해도 타구가 기록되지 않음
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ 기대하는 동작
+      placeholder: |
+        예) 필드를 탭하면 해당 위치에 점이 찍혀야 함
+    validations:
+      required: true
+
+  - type: textarea
+    id: file_hint
+    attributes:
+      label: 📁 관련 파일 힌트 (선택)
+      description: 어떤 파일/함수가 관련된 것 같나요?
+      placeholder: |
+        예) app.js의 handleFieldTap 함수
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 우선순위
+      options:
+        - 🔴 높음 (앱이 동작하지 않음)
+        - 🟡 중간 (기능 일부 오류)
+        - 🟢 낮음 (UI/UX 개선)
+    validations:
+      required: true

@@ -5860,10 +5860,25 @@ var undoManager=(function(){
     return{
       abs:JSON.parse(JSON.stringify(AS.abs||[])),
       zoneHistory:JSON.parse(JSON.stringify(AS.zoneHistory||{})),
-      currentPitches:JSON.parse(JSON.stringify(AS.currentPitches||[]))
+      currentPitches:JSON.parse(JSON.stringify(AS.currentPitches||[])),
+      hs:AS.hs,
+      as:AS.as
     };
   }
-  function _apply(s){AS.abs=s.abs;AS.zoneHistory=s.zoneHistory;AS.currentPitches=s.currentPitches;}
+  function _apply(s){
+    AS.abs=s.abs;
+    AS.zoneHistory=s.zoneHistory;
+    AS.currentPitches=s.currentPitches;
+    if(typeof s.hs==='number'){AS.hs=s.hs;var scH=document.getElementById('scH');if(scH)scH.textContent=s.hs;}
+    if(typeof s.as==='number'){AS.as=s.as;var scA=document.getElementById('scA');if(scA)scA.textContent=s.as;}
+  }
+  function _rerender(){
+    try{updStats();}catch(e){console.warn('[Undo] updStats error',e);}
+    try{renderRecs();}catch(e){console.warn('[Undo] renderRecs error',e);}
+    try{renderLP();}catch(e){console.warn('[Undo] renderLP error',e);}
+    try{updBatterStat();}catch(e){}
+    safeRender();
+  }
   function _ui(){
     var u=document.getElementById('archUndoBtn');
     var r=document.getElementById('archRedoBtn');
@@ -5874,11 +5889,18 @@ var undoManager=(function(){
     push:function(){_future=[];_stack.push(_snap());if(_stack.length>MAX)_stack.shift();},
     undo:function(){
       if(!_stack.length){showToast('더 되돌릴 수 없습니다',false);return;}
-      _future.push(_snap());_apply(_stack.pop());updateAll();hideToast();_ui();
+      _future.push(_snap());
+      _apply(_stack.pop());
+      _rerender();
+      hideToast();
+      _ui();
     },
     redo:function(){
       if(!_future.length){showToast('다시 실행할 항목이 없습니다',false);return;}
-      _stack.push(_snap());_apply(_future.pop());updateAll();_ui();
+      _stack.push(_snap());
+      _apply(_future.pop());
+      _rerender();
+      _ui();
     },
     canUndo:function(){return _stack.length>0;},
     canRedo:function(){return _future.length>0;},
@@ -6334,15 +6356,19 @@ function fieldFeedbackClose(){
 }
 function fieldFeedbackSubmit(){
   var text=(document.getElementById('ffmText')||{}).value||'';
-  var entry={ts:Date.now(),tags:_ffmTags.slice(),text:text.trim(),
+  var tags=_ffmTags.slice();
+  var entry={ts:Date.now(),tags:tags,text:text.trim(),
     abs:(AS.abs||[]).length,ver:'1.2.0',ua:navigator.userAgent.slice(0,80)};
   try{
     var list=JSON.parse(localStorage.getItem('sl_feedback')||'[]');
     list.push(entry);if(list.length>50)list=list.slice(-50);
     localStorage.setItem('sl_feedback',JSON.stringify(list));
   }catch(e){}
+  var subject='SprayLab 피드백'+(tags.length?' ['+tags.join(',')+']':'');
+  var body='[태그] '+(tags.join(', ')||'없음')+'\n\n[내용]\n'+(text.trim()||'(내용 없음)')+'\n\n---\n타석 수: '+entry.abs+'\n버전: '+entry.ver;
+  window.open('mailto:jeongcheol13@naver.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body));
   fieldFeedbackClose();
-  showToast('피드백 감사합니다 ✓',false);
+  showToast('메일 앱이 열립니다 ✓',false);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

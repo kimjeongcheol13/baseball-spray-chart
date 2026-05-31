@@ -869,6 +869,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .aw-ri-label{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .aw-ri-date{font-size:10px;color:var(--text3);margin-top:2px}
 .aw-ri-score{font-size:15px;font-weight:800;font-family:var(--mono);color:var(--accent);flex-shrink:0}
+.aw-ri-del{background:none;border:none;color:var(--text3);font-size:13px;padding:4px 6px;cursor:pointer;flex-shrink:0;border-radius:6px;transition:color .1s,background .1s;min-height:36px;min-width:32px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;font-family:var(--font);font-weight:700;margin-left:4px}
+.aw-ri-del:hover,.aw-ri-del:active{color:var(--red);background:rgba(245,101,101,.12)}
 .aw-bottom{display:flex;gap:7px;margin-top:20px;width:100%;max-width:380px;flex-shrink:0}
 .aw-bottom-btn{flex:1;padding:12px 6px;border:1px solid var(--border2);border-radius:var(--r);background:none;color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent;min-height:44px}
 .aw-bottom-btn:active{transform:scale(.95);color:var(--text)}

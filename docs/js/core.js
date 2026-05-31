@@ -469,8 +469,11 @@ const AS={
   pitchLog:[],
   recFilterBid:null
 };
-const MAX_HITS = 300; 
-let saveTimer; 
+// feature 모듈(profile.js, compare.js, scouting.js)이 window.AS로 접근하므로 노출
+window.AS = AS;
+
+const MAX_HITS = 300;
+let saveTimer;
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
 
 const OB=[
@@ -4189,10 +4192,46 @@ function renderAwRecent(){
       +'<div class="aw-ri-icon">⚾</div>'
       +'<div class="aw-ri-body"><div class="aw-ri-label">'+th+' vs '+ta+'</div><div class="aw-ri-date">'+date+'</div></div>'
       +'<div class="aw-ri-score">'+score+'</div>'
+      +'<button class="aw-ri-del" onclick="event.stopPropagation();deleteRecentGame(\''+s.key+'\')" title="삭제">✕</button>'
       +'</div>';
   });
   html+='</div>';
   el.innerHTML=html;
+}
+
+// ── Savant 탭 전환 ──
+function switchSavantView(view, btn){
+  var nav=document.getElementById('savantNav');
+  if(nav)nav.querySelectorAll('.savant-nav-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  if(view==='record'){
+    document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
+    var ap=document.getElementById('app-page');if(ap)ap.style.display='';
+    return;
+  }
+  var ap=document.getElementById('app-page');if(ap)ap.style.display='none';
+  document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
+  var viewEl=document.getElementById(view+'View');if(viewEl)viewEl.classList.add('active');
+  switch(view){
+    case 'profile': if(window.openProfileView)window.openProfileView();break;
+    case 'compare': if(window.openCompareView)window.openCompareView();break;
+    case 'scout':   if(window.openScoutView)window.openScoutView();break;
+    case 'spray':
+      var ap2=document.getElementById('app-page');if(ap2)ap2.style.display='';
+      document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
+      if(window.drawField)window.drawField();if(window.safeRender)window.safeRender();break;
+  }
+}
+
+// ── 최근 경기 삭제 ──
+function deleteRecentGame(key){
+  if(!confirm('이 경기를 삭제할까요?'))return;
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  saves=saves.filter(function(s){return s.key!==key;});
+  localStorage.setItem('sl_saves',JSON.stringify(saves));
+  localStorage.removeItem(key);
+  if(window.cloudDelete)cloudDelete(key);
+  renderAwRecent();
 }
 
 function loadRecentGame(key){
@@ -5647,6 +5686,7 @@ renderAwRecent=function(){
       +'<div class="aw-ri-meta-score">'+hs+' : '+as+'</div>'
       +'<div class="aw-ri-meta-result" style="color:'+outcomeColor+'">'+outcome+'</div>'
       +'</div>'
+      +'<button class="aw-ri-del" onclick="event.stopPropagation();deleteRecentGame(\''+s.key+'\')" title="삭제">✕</button>'
       +'</div>';
   });
   html+='</div>';

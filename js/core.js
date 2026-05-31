@@ -1090,6 +1090,30 @@ AS.currentPitches=[];
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
 function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');if(!ib)return;var open=ib.classList.toggle('open');if(btn)btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';}
+(function initLpResize(){
+  var handle=document.getElementById('lpResizeHandle');
+  var al=document.querySelector('.app-layout');
+  if(!handle||!al)return;
+  function setW(w){
+    w=Math.min(320,Math.max(180,Math.round(w)));
+    al.style.setProperty('--lp-w',w+'px');
+    localStorage.setItem('sl_lp_w',w);
+  }
+  handle.addEventListener('mousedown',function(e){
+    if(window.innerWidth<721)return;
+    var startX=e.clientX;
+    var startW=al.getBoundingClientRect().left+parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
+    startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
+    handle.classList.add('dragging');
+    function onMove(e){setW(startW+e.clientX-startX);}
+    function onUp(){handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    e.preventDefault();
+  });
+  var saved=+localStorage.getItem('sl_lp_w');
+  if(saved>=180&&saved<=320&&window.innerWidth>=721)setW(saved);
+})();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
 const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};

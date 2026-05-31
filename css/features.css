@@ -494,6 +494,11 @@
   .career-card .cc-val { font-size: 24px; }
 }
 
+/* ── Desktop: nav becomes vertical right sidebar ── */
+@media(min-width:721px){
+  .savant-nav{top:52px;bottom:0;right:0;left:auto;height:auto;width:44px;max-width:44px;transform:none;border-radius:0;border-top:none;border-left:1px solid var(--border2);flex-direction:column;justify-content:flex-start;padding:6px 0;gap:2px}
+}
+
 /* ── AI Insight severity colors ── */
 .ai-card.ai-pos { border-left-color: var(--green); }
 .ai-card.ai-warn { border-left-color: var(--yellow); }

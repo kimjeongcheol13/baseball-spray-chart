@@ -1089,10 +1089,11 @@ AS.currentPitches=[];
   gfAfterRecord(res,0);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
+function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');if(!ib)return;var open=ib.classList.toggle('open');if(btn)btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';}
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
-const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','플라이 아웃':'#374151','땅볼 아웃':'#2a3040'};
-function drawDot(r){if(!r.x)return;const x=r.x*FS,y=r.y*FS;const col=RC[r.res]||'#94a3b8';const out=r.res.includes('아웃');hCtx.beginPath();hCtx.arc(x,y,out?4:6.5,0,Math.PI*2);hCtx.fillStyle=col+'bb';hCtx.fill();hCtx.strokeStyle=col;hCtx.lineWidth=1.5;hCtx.stroke();if(!out){hCtx.beginPath();hCtx.arc(x,y,11,0,Math.PI*2);hCtx.strokeStyle=col+'33';hCtx.lineWidth=2;hCtx.stroke();}}
+const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};
+function drawDot(r){if(!r.x)return;const x=r.x*FS,y=r.y*FS;const col=RC[r.res]||'#94a3b8';const out=r.res.includes('아웃')||r.res==='삼진';hCtx.beginPath();hCtx.arc(x,y,out?3:4.5,0,Math.PI*2);hCtx.fillStyle=col+'cc';hCtx.fill();hCtx.strokeStyle=col;hCtx.lineWidth=1.2;hCtx.stroke();if(!out){hCtx.beginPath();hCtx.arc(x,y,7.5,0,Math.PI*2);hCtx.strokeStyle=col+'44';hCtx.lineWidth=1.5;hCtx.stroke();}}
 
 function safeRender(){
   requestAnimationFrame(()=>{

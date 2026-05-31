@@ -1629,23 +1629,23 @@ nav i {
 @media(min-width:721px){
   #savantNav{
     position:fixed!important;
+    top:52px!important;
     right:0!important;
-    top:50%!important;
-    transform:translateY(-50%)!important;
-    bottom:auto!important;
+    bottom:0!important;
     left:auto!important;
+    transform:none!important;
     width:54px!important;
     height:auto!important;
     min-height:auto!important;
     flex-direction:column!important;
+    justify-content:flex-start!important;
     padding:6px 0!important;
     gap:2px!important;
     background:rgba(14,16,24,0.95)!important;
-    border-top:1px solid var(--border2)!important;
-    border-bottom:1px solid var(--border2)!important;
+    border-top:none!important;
     border-left:1px solid var(--border2)!important;
     border-right:none!important;
-    border-radius:10px 0 0 10px!important;
+    border-radius:0!important;
     z-index:150!important;
   }
 }

@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   z-index: 100;
-  display: none;
+  display: flex;
   height: 44px;
   background: rgba(14,16,24,0.95);
   backdrop-filter: blur(16px);
@@ -21,8 +21,6 @@
   scrollbar-width: none;
 }
 .savant-nav::-webkit-scrollbar { display: none; }
-/* Show nav when app-page is visible (landing hidden) */
-.savant-nav { display: none; }
 
 .savant-nav-btn {
   flex: 1 0 auto;
@@ -66,6 +64,10 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   z-index: 390;       /* appWelcome(400) 아래, 일반 UI 위 */
+}
+/* 모바일: 하단 nav 높이만큼 여백 */
+@media(max-width:720px){
+  .savant-view.active { inset: 0 0 54px 0; }
 }
 /* 데스크톱: nav가 오른쪽 세로 사이드바이므로 bottom:0, right:54px */
 @media(min-width:721px){

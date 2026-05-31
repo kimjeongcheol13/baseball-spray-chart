@@ -27,11 +27,11 @@ export function openScoutView() {
       const c2 = document.getElementById('scoutWeaknessCanvas');
       const c3 = document.getElementById('scoutZoneCanvas');
       // canvas가 존재하면 재드로우 (_lastAnalysis 체크 제거)
-      if (c1) {
-        _drawZoneCanvas('scoutStrengthCanvas', _lastAnalysis, 'strength');
-        _drawZoneCanvas('scoutWeaknessCanvas', _lastAnalysis, 'weakness');
-        _drawZoneCanvas('scoutZoneCanvas', _lastAnalysis, 'all');
-        if (_lastAnalysis) _drawDirCanvas(_lastAnalysis);
+      if (c1 && _lastAnalysis) {
+        _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
+        _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
+        _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
+        _drawDirCanvas(_lastAnalysis);
         if (_lastAllAbs) _drawScoutFieldCanvas(_lastAllAbs);
       }
     }, 50);
@@ -78,9 +78,10 @@ export function generateScoutReport(playerName) {
 
   // _renderScoutReport 내 setTimeout(50)과 별개로, view가 아직 hidden일 때를 대비한 추가 드로우
   setTimeout(() => {
-    _drawZoneCanvas('scoutStrengthCanvas', _lastAnalysis, 'strength');
-    _drawZoneCanvas('scoutWeaknessCanvas', _lastAnalysis, 'weakness');
-    _drawZoneCanvas('scoutZoneCanvas', _lastAnalysis, 'all');
+    if (!_lastAnalysis) return;
+    _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
+    _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
+    _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
   }, 50);
 }
 
@@ -602,12 +603,50 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
 
   // display:none 상태에서 canvas.width=0 방지 → 50ms 후 실행
   setTimeout(() => {
-    _drawZoneCanvas('scoutStrengthCanvas', analysis, 'strength');
-    _drawZoneCanvas('scoutWeaknessCanvas', analysis, 'weakness');
-    _drawZoneCanvas('scoutZoneCanvas', analysis, 'all');
+    _paintZoneHeatmap('scoutStrengthCanvas', analysis.zoneAvg, analysis.zoneTotal, 'strength');
+    _paintZoneHeatmap('scoutWeaknessCanvas', analysis.zoneAvg, analysis.zoneTotal, 'weakness');
+    _paintZoneHeatmap('scoutZoneCanvas', analysis.zoneAvg, analysis.zoneTotal, 'all');
     _drawDirCanvas(analysis);
     _drawScoutFieldCanvas(allAbs);
   }, 50);
+}
+
+// ── 타자 존별 타율 히트맵 (독립 draw 함수) ──
+function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = 138 * dpr; c.height = 138 * dpr;
+  c.style.width = '138px'; c.style.height = '138px';
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const cellW = 138 / 3, cellH = 138 / 3;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const i = row * 3 + col;
+      const avg = zoneAvg[i] || 0;
+      const total = zoneTotal[i] || 0;
+      let bg;
+      if (total < 2)       bg = 'rgba(255,255,255,0.05)';
+      else if (avg >= 0.350) bg = 'rgba(239,68,68,0.75)';
+      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.60)';
+      else if (avg >= 0.150) bg = 'rgba(75,140,245,0.45)';
+      else                   bg = 'rgba(45,212,160,0.65)';
+      ctx.fillStyle = bg;
+      ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = `bold ${11 * dpr}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const label = total >= 2 ? avg.toFixed(3).replace('0.', '.') : '-';
+      ctx.save(); ctx.scale(1 / dpr, 1 / dpr);
+      ctx.fillText(label, (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.45) * dpr);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = `${9 * dpr}px sans-serif`;
+      ctx.fillText(total + 'PA', (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.72) * dpr);
+      ctx.restore();
+    }
+  }
 }
 
 // ── 존 히트맵 캔버스 (3×3) ──

@@ -6315,13 +6315,17 @@ function fieldFeedbackSubmit(){
 
   window.cloudSave=function(key,data,label,ts){
     if(!_init()||!getTeamCode())return;
+    if(typeof navigator!=='undefined'&&!navigator.onLine)return; // 오프라인 시 조기 리턴
     _sb.from('games').upsert({
       team_code:getTeamCode(),game_key:key,game_data:data,label:label||key,ts:ts||Date.now()
     },{onConflict:'team_code,game_key'}).then(function(r){
       if(r.error){
         console.warn('[SprayLab] CloudSave error:',r.error);
-        showToast('☁️ 저장 실패: '+( r.error.message||r.error.code),false,true);
+        // 로컬 저장이 이미 완료됐으므로 에러 토스트 표시 안 함
       }
+    }).catch(function(e){
+      console.warn('[SprayLab] CloudSave network error:',e);
+      // 네트워크 오류도 조용히 무시 (로컬 저장 성공)
     });
   };
 

@@ -17,24 +17,30 @@
   padding: 0 4px;
   justify-content: space-around;
   align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.savant-nav::-webkit-scrollbar { display: none; }
 /* Show nav when app-page is visible (landing hidden) */
 .savant-nav { display: none; }
 
 .savant-nav-btn {
+  flex: 1 0 auto;
+  min-width: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 4px 6px;
+  padding: 6px 4px;
   background: none;
   border: none;
   color: var(--text3);
-  font-size: 0;
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--font);
   cursor: pointer;
   transition: color 0.15s;
+  white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 .savant-nav-btn svg { transition: stroke 0.15s; }
@@ -129,14 +135,20 @@
 
 /* ── Profile View ── */
 .profile-player-list {
+  width: 100%;
+  min-height: 48px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 0 12px;
+  flex-wrap: nowrap;
   overflow-x: auto;
+  gap: 8px;
+  padding: 8px 16px;
+  scrollbar-width: none;
 }
+.profile-player-list::-webkit-scrollbar { display: none; }
 .profile-player-btn {
-  padding: 6px 14px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 8px 14px;
   border-radius: 20px;
   border: 1px solid var(--border2);
   background: var(--card);
@@ -146,13 +158,16 @@
   font-family: var(--font);
   cursor: pointer;
   transition: all 0.15s;
-  white-space: nowrap;
 }
-.profile-player-btn:hover,
-.profile-player-btn.active {
+.profile-player-btn:hover {
   border-color: var(--blue);
   color: var(--blue);
   background: rgba(75,140,245,0.08);
+}
+.profile-player-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
 }
 
 .profile-content { padding: 0; }
@@ -518,6 +533,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .savant-view.active { animation: fadeInUp 0.3s ease-out; }
+
+/* ── Finding severity border-left ── */
+.finding-high { border-left: 4px solid #f56565; }
+.finding-med  { border-left: 4px solid #f6c23e; }
+.finding-low  { border-left: 4px solid #4b8cf5; }
+
+/* ── Scout zone data-attr overrides ── */
+.scout-zone[data-danger] { background: rgba(245,101,101,0.55) !important; color: #fff; }
+.scout-zone[data-weak]   { background: rgba(45,212,160,0.45)  !important; color: #fff; }
 
 /* ═══════════════════════════════════════════
    BASEBALL SAVANT THEME (override layer)

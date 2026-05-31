@@ -436,21 +436,23 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
   const pct = v => Math.round(v * 100) + '%';
   const sevClass = s => s === SEVERITY.HIGH ? 'finding-high' : s === SEVERITY.MED ? 'finding-med' : 'finding-low';
   const sevLabel = s => s === SEVERITY.HIGH ? '주의' : s === SEVERITY.MED ? '참고' : '정보';
+  const sevEmoji = s => s === SEVERITY.HIGH ? '⚠️ ' : s === SEVERITY.MED ? '📌 ' : 'ℹ️ ';
   const prioClass = p => p === 'high' ? 'strat-high' : p === 'med' ? 'strat-med' : 'strat-low';
 
-  // Zone grid HTML
+  // Zone grid HTML — data-danger/data-weak attribute 추가
   const zoneGrid = analysis.zoneAvg.map((avg, i) => {
     const total = analysis.zoneTotal[i];
     const hits = analysis.zoneHits[i];
     const outs = analysis.zoneOuts[i];
     let bg = 'rgba(255,255,255,0.03)';
+    let dataAttr = '';
     if (total >= 2) {
-      if (avg >= 0.350) bg = 'rgba(245,101,101,0.3)';       // danger - red
-      else if (avg >= 0.250) bg = 'rgba(246,194,62,0.2)';    // caution - yellow
-      else if (avg < 0.150) bg = 'rgba(45,212,160,0.3)';     // weak - green (good for pitcher)
-      else bg = 'rgba(75,140,245,0.15)';                     // neutral
+      if (avg >= 0.350) { bg = 'rgba(245,101,101,0.3)'; dataAttr = ' data-danger'; }
+      else if (avg >= 0.250) bg = 'rgba(246,194,62,0.2)';
+      else if (avg < 0.150) { bg = 'rgba(45,212,160,0.3)'; dataAttr = ' data-weak'; }
+      else bg = 'rgba(75,140,245,0.15)';
     }
-    return `<div class="scout-zone" style="background:${bg}">
+    return `<div class="scout-zone"${dataAttr} style="background:${bg}">
       <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
       <div class="sz-detail">${hits}H/${outs}O/${total}PA</div>
     </div>`;
@@ -491,10 +493,10 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
     </div>
 
     <div class="scout-overview">
-      <div class="so-item"><span class="so-val">${f3(analysis.avg)}</span><span class="so-lbl">AVG</span></div>
-      <div class="so-item"><span class="so-val">${pct(analysis.kRate)}</span><span class="so-lbl">K%</span></div>
-      <div class="so-item"><span class="so-val">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
-      <div class="so-item"><span class="so-val">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
+      <div class="so-item"><span class="so-val" style="color:#f6c23e">${f3(analysis.avg)}</span><span class="so-lbl">AVG</span></div>
+      <div class="so-item"><span class="so-val" style="color:#f56565">${pct(analysis.kRate)}</span><span class="so-lbl">K%</span></div>
+      <div class="so-item"><span class="so-val" style="color:#2dd4a0">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
+      <div class="so-item"><span class="so-val" style="color:#4b8cf5">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
       <div class="so-item"><span class="so-val">${analysis.goAo.toFixed(1)}</span><span class="so-lbl">GO/AO</span></div>
     </div>
 
@@ -586,7 +588,7 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
           <div class="scout-finding ${sevClass(f.severity)}">
             <span class="sf-badge">${sevLabel(f.severity)}</span>
             <span class="sf-cat">[${f.category}]</span>
-            ${_esc(f.text)}
+            ${sevEmoji(f.severity)}${_esc(f.text)}
           </div>
         `).join('')}
       </div>

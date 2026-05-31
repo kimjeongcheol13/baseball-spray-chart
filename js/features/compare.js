@@ -31,6 +31,7 @@ export function renderComparePlayerSelects() {
   sel1.innerHTML = opts;
   sel2.innerHTML = opts;
 
+  // onchange: 값 저장 후 즉시 비교 실행
   sel1.onchange = () => { _selectedPlayer1 = sel1.value || null; runPlayerCompare(); };
   sel2.onchange = () => { _selectedPlayer2 = sel2.value || null; runPlayerCompare(); };
 }
@@ -41,13 +42,14 @@ export function runPlayerCompare() {
   const name1 = (sel1 && sel1.value) || _selectedPlayer1;
   const name2 = (sel2 && sel2.value) || _selectedPlayer2;
 
+  // compareResult 사용 (compareContent → compareResult)
+  const el = document.getElementById('compareResult');
+
   if (!name1 || !name2) {
-    const el = document.getElementById('compareContent');
     if (el) el.innerHTML = '<div class="empty-state">두 선수를 모두 선택하세요</div>';
     return;
   }
   if (name1 === name2) {
-    const el = document.getElementById('compareContent');
     if (el) el.innerHTML = '<div class="empty-state">서로 다른 선수를 선택하세요</div>';
     return;
   }
@@ -57,22 +59,30 @@ export function runPlayerCompare() {
   _renderComparison(stats1, stats2);
 }
 
+// _getAllPlayers: name+'_'+num 키로 홈/원정/저장경기 통합 dedup
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
+
+  // 현재 경기 라인업
   [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
-    map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
+    if (p && p.name && p.num != null)
+      map[p.name + '_' + p.num] = { id: p.id, name: p.name, num: p.num };
   });
+
+  // 저장된 경기 라인업
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   saves.forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;
       [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(p => {
-        map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
+        if (p && p.name && p.num != null)
+          map[p.name + '_' + p.num] = { id: p.id, name: p.name, num: p.num };
       });
     } catch(e) {}
   });
+
   return Object.values(map);
 }
 
@@ -134,7 +144,8 @@ function _aggregateStats(name) {
 }
 
 function _renderComparison(s1, s2) {
-  const el = document.getElementById('compareContent');
+  // compareContent → compareResult
+  const el = document.getElementById('compareResult');
   if (!el) return;
 
   const f3 = v => v.toFixed(3).replace('0.','.');
@@ -240,26 +251,22 @@ export function _drawRadarChart(canvasId, s1, s2) {
   const labels = ['AVG', 'OBP', 'SLG', 'K%', 'BB%', 'ISO'];
   const axes = 6;
   const angleStep = (Math.PI * 2) / axes;
-  const startAngle = -Math.PI / 2; // Start from top
+  const startAngle = -Math.PI / 2;
 
-  // Normalization maxima for each axis
   const maxVals = [0.400, 0.500, 0.700, 0.400, 0.200, 0.300];
 
-  // Normalize values (K% is inverted: lower is better)
   const norm = (val, idx) => {
     const clamped = Math.min(val, maxVals[idx]);
     const ratio = clamped / maxVals[idx];
-    return idx === 3 ? (1 - ratio) : ratio; // Invert K%
+    return idx === 3 ? (1 - ratio) : ratio;
   };
 
   const vals1 = [s1.avg, s1.obp, s1.slg, s1.kRate, s1.bbRate, s1.isoP];
   const vals2 = [s2.avg, s2.obp, s2.slg, s2.kRate, s2.bbRate, s2.isoP];
 
-  // Background
   ctx.fillStyle = '#0e1018';
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  // Grid rings (hexagons)
   const rings = [0.2, 0.4, 0.6, 0.8, 1.0];
   rings.forEach(r => {
     ctx.beginPath();
@@ -275,7 +282,6 @@ export function _drawRadarChart(canvasId, s1, s2) {
     ctx.stroke();
   });
 
-  // Axis lines
   for (let i = 0; i < axes; i++) {
     const angle = startAngle + i * angleStep;
     ctx.beginPath();
@@ -286,7 +292,6 @@ export function _drawRadarChart(canvasId, s1, s2) {
     ctx.stroke();
   }
 
-  // Axis labels
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -298,7 +303,6 @@ export function _drawRadarChart(canvasId, s1, s2) {
     ctx.fillText(labels[i], lx, ly);
   }
 
-  // Draw player polygon
   const _drawPoly = (vals, color, fillAlpha) => {
     ctx.beginPath();
     for (let i = 0; i < axes; i++) {
@@ -310,17 +314,14 @@ export function _drawRadarChart(canvasId, s1, s2) {
     }
     ctx.closePath();
 
-    // Fill
     const rgb = _hexToRgb(color);
     ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${fillAlpha})`;
     ctx.fill();
 
-    // Stroke
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Dots
     for (let i = 0; i < axes; i++) {
       const angle = startAngle + i * angleStep;
       const r = norm(vals[i], i) * radius;

@@ -19,11 +19,15 @@ export function renderProfilePlayerList() {
     return;
   }
   el.innerHTML = players.map(p =>
-    `<button class="profile-player-btn" onclick="window.selectProfilePlayer('${p.id}','${_esc(p.name)}','${p.num}')">#${p.num} ${_esc(p.name)}</button>`
+    `<button class="profile-player-btn" onclick="window.selectProfilePlayer('${p.id}','${_esc(p.name)}','${p.num}',this)">#${p.num} ${_esc(p.name)}</button>`
   ).join('');
 }
 
-export function selectProfilePlayer(id, name, num) {
+export function selectProfilePlayer(id, name, num, btn) {
+  // active 버튼 토글
+  const list = document.getElementById('profilePlayerList');
+  if (list) list.querySelectorAll('.profile-player-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   const data = _aggregatePlayerStats(id, name);
   _renderProfileCard(data);
 }

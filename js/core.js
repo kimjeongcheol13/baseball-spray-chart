@@ -1772,7 +1772,7 @@ function closeOverlay(id){document.getElementById(id).classList.remove('show');i
 function closeHit(){closeOverlay('hitOverlay');}
 
 let _tt;
-function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,3000);}
+function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,6000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
 function saveGame(){
@@ -5052,7 +5052,7 @@ function fabRecord(res){
     count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[]};
   AS.abs.push(ab);
   updateAll();scheduleAutoSave();
-  showToast(res+' 기록됨',false);
+  showToast(res+' 기록됨',true);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

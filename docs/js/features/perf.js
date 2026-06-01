@@ -22,7 +22,8 @@
     if (!as) return '';
     return as.abs.length
       + '|' + (as.batterFilter ? (as.batter ? as.batter.id : 'bf') : '')
-      + '|' + (as.teamFilter || '');
+      + '|' + (as.teamFilter || '')
+      + '|' + (as.advFilter ? JSON.stringify(as.advFilter) : '');
   }
 
   function _getVis() {

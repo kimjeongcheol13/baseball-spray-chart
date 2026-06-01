@@ -1,7 +1,4 @@
-// Scouting report generator: analyzes weaknesses and generates pitch strategy
-const HITS = ['안타','내야안타','2루타','3루타','홈런'];
-const NOAB = ['볼넷','사구','희타','희비'];
-const BASE = {'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
 const OUTS = ['플라이 아웃','땅볼 아웃','삼진','병살'];
 const ZONE_LABELS = [
   '내각 높음', '중앙 높음', '외각 높음',
@@ -698,77 +695,6 @@ function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
 }
 
 // ── 존 히트맵 캔버스 (3×3) ──
-function _drawZoneCanvas(canvasId, analysis, mode) {
-  if (!analysis) return; // null 가드
-  const c = document.getElementById(canvasId);
-  if (!c) return;
-  const dpr = window.devicePixelRatio || 1;
-  const LOGICAL = 138; // display:none 상태에서도 크기 고정
-  c.width = LOGICAL * dpr;
-  c.height = LOGICAL * dpr;
-  c.style.width = LOGICAL + 'px';
-  c.style.height = LOGICAL + 'px';
-  const ctx = c.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const W = LOGICAL, H = LOGICAL;
-  const cw = W / 3, ch = H / 3;
-
-  ctx.clearRect(0, 0, W, H);
-  // 배경
-  ctx.fillStyle = 'rgba(14,16,24,0.6)';
-  ctx.fillRect(0, 0, W, H);
-
-  for (let i = 0; i < 9; i++) {
-    const row = Math.floor(i / 3), col = i % 3;
-    const x = col * cw, y = row * ch;
-    const avg = analysis.zoneAvg[i];
-    const total = analysis.zoneTotal[i];
-
-    let bg;
-    if (total < 2) {
-      bg = 'rgba(100,116,139,0.2)';
-    } else if (mode === 'strength') {
-      // 강점존: 타율 높을수록 빨강
-      if (avg >= 0.350) bg = 'rgba(220,38,38,0.70)';
-      else if (avg >= 0.300) bg = 'rgba(239,68,68,0.45)';
-      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.30)';
-      else bg = 'rgba(100,116,139,0.15)';
-    } else if (mode === 'weakness') {
-      // 약점존: 타율 낮을수록 초록
-      if (avg < 0.150) bg = 'rgba(45,212,160,0.70)';
-      else if (avg < 0.200) bg = 'rgba(45,212,160,0.45)';
-      else if (avg < 0.250) bg = 'rgba(45,212,160,0.25)';
-      else bg = 'rgba(100,116,139,0.15)';
-    } else {
-      // 종합
-      if (avg >= 0.350) bg = 'rgba(220,38,38,0.65)';
-      else if (avg >= 0.300) bg = 'rgba(239,68,68,0.40)';
-      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.50)';
-      else if (avg >= 0.200) bg = 'rgba(75,140,245,0.25)';
-      else bg = 'rgba(45,212,160,0.50)';
-    }
-
-    ctx.fillStyle = bg;
-    ctx.fillRect(x + 1, y + 1, cw - 2, ch - 2);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
-
-    // AVG 텍스트
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.font = `bold ${Math.round(cw * 0.21)}px "JetBrains Mono",monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(total > 0 ? avg.toFixed(3).replace('0.','.') : '-', x + cw/2, y + ch/2 - 7);
-
-    // PA 텍스트
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = `${Math.round(cw * 0.14)}px sans-serif`;
-    ctx.fillText(total + 'PA', x + cw/2, y + ch/2 + 9);
-  }
-}
-
 // ── 타구 방향 바차트 캔버스 ──
 function _drawDirCanvas(analysis) {
   const c = document.getElementById('scoutDirCanvas');
@@ -922,7 +848,7 @@ function _buildTextReport(name, analysis, findings, strategy) {
   return lines.join('\n');
 }
 
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// _esc imported from constants.js
 
 // Expose to window for onclick handlers
 if (typeof window !== 'undefined') {

@@ -1,7 +1,4 @@
-// Career profile: aggregates a player's stats across all saved games
-const HITS = ['안타','내야안타','2루타','3루타','홈런'];
-const NOAB = ['볼넷','사구','희타','희비'];
-const BASE = {'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
 
 export function openProfileView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
@@ -249,7 +246,7 @@ function _drawTrendChart(trend) {
   });
 }
 
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// _esc imported from constants.js
 
 if (typeof window !== 'undefined') {
   window.openProfileView = openProfileView;

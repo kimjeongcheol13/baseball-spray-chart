@@ -1,22 +1,38 @@
-// Scouting report generator: analyzes weaknesses and generates pitch strategy
-const HITS = ['안타','내야안타','2루타','3루타','홈런'];
-const NOAB = ['볼넷','사구','희타','희비'];
-const BASE = {'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
 const OUTS = ['플라이 아웃','땅볼 아웃','삼진','병살'];
 const ZONE_LABELS = [
-  '높은 안쪽', '높은 중앙', '높은 바깥',
-  '중간 안쪽', '중간 중앙', '중간 바깥',
-  '낮은 안쪽', '낮은 중앙', '낮은 바깥'
+  '내각 높음', '중앙 높음', '외각 높음',
+  '내각 중간', '중앙 중간', '외각 중간',
+  '내각 낮음', '중앙 낮음', '외각 낮음'
 ];
 const SEVERITY = { HIGH: 'high', MED: 'med', LOW: 'low' };
 
 let _currentReportText = '';
+let _lastAnalysis = null;   // openScoutView 재진입 시 canvas 재드로우용
+let _lastAllAbs = null;
 
 export function openScoutView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
   document.getElementById('scoutView').classList.add('active');
   _currentReportText = '';
   renderScoutPlayerSelect();
+  // 이미 선수가 선택되어 canvas가 생성된 상태라면 view 활성화 후 재드로우
+  const sel = document.getElementById('scoutPlayerSelect');
+  if (sel && sel.value) {
+    setTimeout(() => {
+      const c1 = document.getElementById('scoutStrengthCanvas');
+      const c2 = document.getElementById('scoutWeaknessCanvas');
+      const c3 = document.getElementById('scoutZoneCanvas');
+      // canvas가 존재하면 재드로우 (_lastAnalysis 체크 제거)
+      if (c1 && _lastAnalysis) {
+        _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
+        _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
+        _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
+        _drawDirCanvas(_lastAnalysis);
+        if (_lastAllAbs) _drawScoutFieldCanvas(_lastAllAbs);
+      }
+    }, 50);
+  }
 }
 
 export function renderScoutPlayerSelect() {
@@ -50,8 +66,20 @@ export function generateScoutReport(playerName) {
   const findings = _generateFindings(analysis);
   const strategy = _generateStrategy(analysis, findings);
 
-  _renderScoutReport(playerName, analysis, findings, strategy);
+  // 재진입 시 canvas 재드로우를 위해 캐시
+  _lastAnalysis = analysis;
+  _lastAllAbs = allAbs;
+
+  _renderScoutReport(playerName, analysis, findings, strategy, allAbs);
   _currentReportText = _buildTextReport(playerName, analysis, findings, strategy);
+
+  // _renderScoutReport 내 setTimeout(50)과 별개로, view가 아직 hidden일 때를 대비한 추가 드로우
+  setTimeout(() => {
+    if (!_lastAnalysis) return;
+    _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
+    _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
+    _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
+  }, 50);
 }
 
 export function exportScoutReport() {
@@ -87,19 +115,23 @@ export function exportScoutReport() {
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
-  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(p => {
-    map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
-  });
+
+  const _add = p => {
+    if (!p || !p.name) return;
+    if (!map[p.name]) map[p.name] = { id: p.id, name: p.name, num: p.num };
+  };
+
+  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
+
   const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.forEach(s => {
+  saves.slice().reverse().forEach(s => {
     try {
       const d = JSON.parse(localStorage.getItem(s.key));
       if (!d) return;
-      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(p => {
-        map[p.name+'_'+p.num] = { id: p.id, name: p.name, num: p.num };
-      });
+      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(_add);
     } catch(e) {}
   });
+
   return Object.values(map);
 }
 
@@ -149,16 +181,18 @@ function _analyzePlayer(name, allAbs) {
   const zoneAvg = Array(9).fill(0);
 
   allAbs.forEach(a => {
-    if (a.zone && a.zone >= 1 && a.zone <= 9) {
-      const idx = a.zone - 1;
-      zoneTotal[idx]++;
-      if (HITS.includes(a.res)) zoneHits[idx]++;
-      if (OUTS.includes(a.res)) zoneOuts[idx]++;
+    if (a.zone) {
+      const idx = ZONE_LABELS.indexOf(a.zone);
+      if (idx !== -1) {
+        zoneTotal[idx]++;
+        if (HITS.includes(a.res)) zoneHits[idx]++;
+        if (OUTS.includes(a.res)) zoneOuts[idx]++;
+      }
     }
   });
 
   for (let i = 0; i < 9; i++) {
-    const zab = zoneTotal[i] - allAbs.filter(a => a.zone === i+1 && NOAB.includes(a.res)).length;
+    const zab = zoneTotal[i] - allAbs.filter(a => a.zone === ZONE_LABELS[i] && NOAB.includes(a.res)).length;
     zoneAvg[i] = zab > 0 ? zoneHits[i] / zab : 0;
   }
 
@@ -428,61 +462,25 @@ function _generateStrategy(analysis, findings) {
   return strategies;
 }
 
-function _renderScoutReport(name, analysis, findings, strategy) {
+function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
   const el = document.getElementById('scoutContent');
   if (!el) return;
 
   const f3 = v => v.toFixed(3).replace('0.','.');
   const pct = v => Math.round(v * 100) + '%';
   const sevClass = s => s === SEVERITY.HIGH ? 'finding-high' : s === SEVERITY.MED ? 'finding-med' : 'finding-low';
-  const sevLabel = s => s === SEVERITY.HIGH ? '주의' : s === SEVERITY.MED ? '참고' : '정보';
+  const sevLabel = s => s === SEVERITY.HIGH ? '⚠️ 주의' : s === SEVERITY.MED ? '📌 참고' : 'ℹ️ 정보';
   const prioClass = p => p === 'high' ? 'strat-high' : p === 'med' ? 'strat-med' : 'strat-low';
 
-  // Zone grid HTML
-  const zoneGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    const hits = analysis.zoneHits[i];
-    const outs = analysis.zoneOuts[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    if (total >= 2) {
-      if (avg >= 0.350) bg = 'rgba(245,101,101,0.3)';       // danger - red
-      else if (avg >= 0.250) bg = 'rgba(246,194,62,0.2)';    // caution - yellow
-      else if (avg < 0.150) bg = 'rgba(45,212,160,0.3)';     // weak - green (good for pitcher)
-      else bg = 'rgba(75,140,245,0.15)';                     // neutral
-    }
-    return `<div class="scout-zone" style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-detail">${hits}H/${outs}O/${total}PA</div>
-    </div>`;
-  }).join('');
+  // 카운트 위험도 배경색
+  const countBg = avg => avg > 0.350 ? 'rgba(220,38,38,0.25)' : avg > 0.250 ? 'rgba(251,146,60,0.2)' : 'rgba(45,212,160,0.15)';
+  const countColor = avg => avg > 0.350 ? '#f87171' : avg > 0.250 ? '#fb923c' : '#2dd4a0';
 
-  // Strength zone grid
-  const strengthGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    if (total >= 2 && avg >= 0.300) {
-      const intensity = Math.min((avg - 0.200) / 0.300, 1);
-      bg = `rgba(245,101,101,${0.1 + intensity * 0.4})`;
-    }
-    return `<div class="scout-zone" style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-label">${ZONE_LABELS[i]}</div>
-    </div>`;
-  }).join('');
-
-  // Weakness zone grid
-  const weaknessGrid = analysis.zoneAvg.map((avg, i) => {
-    const total = analysis.zoneTotal[i];
-    let bg = 'rgba(255,255,255,0.03)';
-    if (total >= 2 && avg < 0.250) {
-      const intensity = Math.min((0.250 - avg) / 0.250, 1);
-      bg = `rgba(45,212,160,${0.1 + intensity * 0.4})`;
-    }
-    return `<div class="scout-zone" style="background:${bg}">
-      <div class="sz-avg">${total > 0 ? f3(avg) : '-'}</div>
-      <div class="sz-label">${ZONE_LABELS[i]}</div>
-    </div>`;
-  }).join('');
+  // 최근 타구 10개 (위치 있는 것)
+  const recent10 = [...allAbs].reverse().filter(a => a.res).slice(0, 10);
+  const RES_COLOR = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
+    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
+    '삼진':'#94a3b8','볼넷':'#60a5fa','사구':'#93c5fd','병살':'#dc2626','희타':'#fb923c','희비':'#fb923c'};
 
   el.innerHTML = `
     <div class="scout-header">
@@ -491,69 +489,87 @@ function _renderScoutReport(name, analysis, findings, strategy) {
     </div>
 
     <div class="scout-overview">
-      <div class="so-item"><span class="so-val">${f3(analysis.avg)}</span><span class="so-lbl">AVG</span></div>
-      <div class="so-item"><span class="so-val">${pct(analysis.kRate)}</span><span class="so-lbl">K%</span></div>
-      <div class="so-item"><span class="so-val">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
-      <div class="so-item"><span class="so-val">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
+      <div class="so-item"><span class="so-val" style="color:#f6c23e">${f3(analysis.avg)}</span><span class="so-lbl">AVG</span></div>
+      <div class="so-item"><span class="so-val" style="color:#f56565">${pct(analysis.kRate)}</span><span class="so-lbl">K%</span></div>
+      <div class="so-item"><span class="so-val" style="color:#2dd4a0">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
+      <div class="so-item"><span class="so-val" style="color:#4b8cf5">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
       <div class="so-item"><span class="so-val">${analysis.goAo.toFixed(1)}</span><span class="so-lbl">GO/AO</span></div>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">강점 존 (빨간색 = 높은 타율)</div>
-      <div class="scout-zone-grid">${strengthGrid}</div>
+      <div class="scout-section-title">🎯 스트라이크존 히트맵</div>
+      <div class="scout-zone-canvases">
+        <div class="szc-wrap">
+          <div class="szc-label">강점 존</div>
+          <canvas id="scoutStrengthCanvas" width="138" height="138"></canvas>
+        </div>
+        <div class="szc-wrap">
+          <div class="szc-label">약점 존</div>
+          <canvas id="scoutWeaknessCanvas" width="138" height="138"></canvas>
+        </div>
+        <div class="szc-wrap">
+          <div class="szc-label">종합</div>
+          <canvas id="scoutZoneCanvas" width="138" height="138"></canvas>
+        </div>
+      </div>
+      <div class="scout-zone-legend">
+        <span class="szl-item" style="background:rgba(220,38,38,0.65)">≥.350 위험</span>
+        <span class="szl-item" style="background:rgba(251,146,60,0.5)">≥.250</span>
+        <span class="szl-item" style="background:rgba(75,140,245,0.25)">보통</span>
+        <span class="szl-item" style="background:rgba(45,212,160,0.5)">≤.200 취약</span>
+        <span class="szl-item" style="background:rgba(100,116,139,0.2)">데이터 없음</span>
+      </div>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">약점 존 (초록색 = 낮은 타율)</div>
-      <div class="scout-zone-grid">${weaknessGrid}</div>
+      <div class="scout-section-title">📐 타구 방향 분포</div>
+      <canvas id="scoutDirCanvas" width="300" height="60" style="width:100%;max-width:300px;display:block;margin:0 auto;border-radius:8px"></canvas>
+      <div class="scout-dir-labels">
+        <span style="color:#ef4444">당김 ${pct(analysis.pullPct)} · AVG ${f3(analysis.pullAvg)}</span>
+        <span style="color:#2dd4a0">중앙 ${pct(analysis.centerPct)} · AVG ${f3(analysis.centerAvg)}</span>
+        <span style="color:#fb923c">밀어 ${pct(analysis.oppoPct)} · AVG ${f3(analysis.oppoAvg)}</span>
+      </div>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">종합 존 분석</div>
-      <div class="scout-zone-grid">${zoneGrid}</div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">타구 방향 성향</div>
-      <div class="scout-direction">
-        <div class="sd-bar">
-          <div class="sd-seg pull" style="flex:${analysis.pullCount||1}">
-            <div class="sd-pct">${pct(analysis.pullPct)}</div>
-            <div class="sd-avg">${f3(analysis.pullAvg)}</div>
-            <div class="sd-lbl">당김</div>
-          </div>
-          <div class="sd-seg center" style="flex:${analysis.centerCount||1}">
-            <div class="sd-pct">${pct(analysis.centerPct)}</div>
-            <div class="sd-avg">${f3(analysis.centerAvg)}</div>
-            <div class="sd-lbl">중앙</div>
-          </div>
-          <div class="sd-seg oppo" style="flex:${analysis.oppoCount||1}">
-            <div class="sd-pct">${pct(analysis.oppoPct)}</div>
-            <div class="sd-avg">${f3(analysis.oppoAvg)}</div>
-            <div class="sd-lbl">밀어</div>
-          </div>
+      <div class="scout-section-title">📊 카운트별 타율</div>
+      <div class="scout-count-grid">
+        <div class="sc-item" style="background:${countBg(analysis.aheadAvg)}">
+          <div class="sc-label">투수 유리</div>
+          <div class="sc-val" style="color:${countColor(analysis.aheadAvg)}">${f3(analysis.aheadAvg)}</div>
+          <div class="sc-pa">${analysis.aheadCount}PA</div>
+        </div>
+        <div class="sc-item" style="background:${countBg(analysis.evenAvg)}">
+          <div class="sc-label">이븐</div>
+          <div class="sc-val" style="color:${countColor(analysis.evenAvg)}">${f3(analysis.evenAvg)}</div>
+          <div class="sc-pa">${analysis.evenCount}PA</div>
+        </div>
+        <div class="sc-item" style="background:${countBg(analysis.behindAvg)}">
+          <div class="sc-label">타자 유리</div>
+          <div class="sc-val" style="color:${countColor(analysis.behindAvg)}">${f3(analysis.behindAvg)}</div>
+          <div class="sc-pa">${analysis.behindCount}PA</div>
         </div>
       </div>
     </div>
 
     <div class="scout-section">
-      <div class="scout-section-title">카운트별 분석</div>
-      <div class="scout-count-grid">
-        <div class="sc-item ${analysis.aheadAvg > 0.300 ? 'sc-danger' : 'sc-safe'}">
-          <div class="sc-label">투수 유리</div>
-          <div class="sc-val">${f3(analysis.aheadAvg)}</div>
-          <div class="sc-pa">${analysis.aheadCount}타석</div>
-        </div>
-        <div class="sc-item ${analysis.evenAvg > 0.300 ? 'sc-danger' : 'sc-neutral'}">
-          <div class="sc-label">이븐</div>
-          <div class="sc-val">${f3(analysis.evenAvg)}</div>
-          <div class="sc-pa">${analysis.evenCount}타석</div>
-        </div>
-        <div class="sc-item ${analysis.behindAvg > 0.300 ? 'sc-danger' : 'sc-safe'}">
-          <div class="sc-label">타자 유리</div>
-          <div class="sc-val">${f3(analysis.behindAvg)}</div>
-          <div class="sc-pa">${analysis.behindCount}타석</div>
-        </div>
+      <div class="scout-section-title">🏟️ 타구 분포 (필드)</div>
+      <canvas id="scoutFieldCanvas" width="240" height="220" style="display:block;margin:0 auto;border-radius:10px"></canvas>
+    </div>
+
+    <div class="scout-section">
+      <div class="scout-section-title">🕐 최근 타석 기록</div>
+      <div class="scout-recent-abs">
+        ${recent10.length ? recent10.map(a => {
+          const col = RES_COLOR[a.res] || '#94a3b8';
+          const dirTxt = a.deg != null ? (a.deg < 72 ? '당김' : a.deg <= 108 ? '중앙' : '밀어') : '-';
+          const angTxt = a.deg != null ? Math.round(a.deg)+'°' : '';
+          return `<div class="sra-item">
+            <span class="sra-res" style="color:${col}">${_esc(a.res)}</span>
+            <span class="sra-dir">${dirTxt}${angTxt ? ' ' + angTxt : ''}</span>
+            <span class="sra-inn">${a.inn||''}</span>
+          </div>`;
+        }).join('') : '<div class="empty-state" style="padding:8px">타석 기록 없음</div>'}
       </div>
     </div>
 
@@ -563,7 +579,7 @@ function _renderScoutReport(name, analysis, findings, strategy) {
         ${findings.map(f => `
           <div class="scout-finding ${sevClass(f.severity)}">
             <span class="sf-badge">${sevLabel(f.severity)}</span>
-            <span class="sf-cat">[${f.category}]</span>
+            <span class="sf-cat">[${_esc(f.category)}]</span>
             ${_esc(f.text)}
           </div>
         `).join('')}
@@ -582,7 +598,197 @@ function _renderScoutReport(name, analysis, findings, strategy) {
         ${strategy.length === 0 ? '<div class="empty-state">충분한 데이터가 없어 전략 제안이 어렵습니다.</div>' : ''}
       </div>
     </div>
+    ${_buildPitcherSection(name)}
   `;
+
+  // display:none 상태에서 canvas.width=0 방지 → 50ms 후 실행
+  setTimeout(() => {
+    _paintZoneHeatmap('scoutStrengthCanvas', analysis.zoneAvg, analysis.zoneTotal, 'strength');
+    _paintZoneHeatmap('scoutWeaknessCanvas', analysis.zoneAvg, analysis.zoneTotal, 'weakness');
+    _paintZoneHeatmap('scoutZoneCanvas', analysis.zoneAvg, analysis.zoneTotal, 'all');
+    _drawDirCanvas(analysis);
+    _drawScoutFieldCanvas(allAbs);
+  }, 50);
+}
+
+// ── 타자 존별 타율 히트맵 (독립 draw 함수) ──
+// ── 투수 분석 섹션 빌더 (pitchLog 기반, 자동 집계) ──
+function _buildPitcherSection(name) {
+  try {
+    const log = (window.AS && window.AS.pitchLog || []).filter(function(p){return p.batter===name;});
+    if (!log.length) return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수 탭에서 투구를 기록하면 자동 분석됩니다</div></div>';
+    const total = log.length;
+    const HIT_RES = ['안타','2루타','3루타','홈런','타격됨'];
+    const ptCnts = {};
+    log.forEach(function(p){if(p.pt)ptCnts[p.pt]=(ptCnts[p.pt]||0)+1;});
+    const ptEntries = Object.entries(ptCnts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    const ptBars = ptEntries.map(function(e){
+      const pt=e[0],n=e[1];
+      const c=(window._PT_COL&&window._PT_COL[pt])||'#7c8898';
+      const pct=Math.round(n/total*100);
+      return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:10px">'
+        +'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+c+';flex-shrink:0"></span>'
+        +'<span style="flex:1;color:var(--text2)">'+pt+'</span>'
+        +'<div style="flex:2;background:rgba(255,255,255,.08);border-radius:2px;height:5px;overflow:hidden"><div style="width:'+pct+'%;background:'+c+';height:5px"></div></div>'
+        +'<span style="font-family:var(--mono);font-size:9px;min-width:22px;text-align:right;color:var(--text3)">'+pct+'%</span></div>';
+    }).join('');
+    const zH=Array(9).fill(0),zT=Array(9).fill(0);
+    log.forEach(function(p){const i=ZONE_LABELS.indexOf(p.zone);if(i!==-1){zT[i]++;if(HIT_RES.includes(p.result))zH[i]++;}});
+    const zGrid=ZONE_LABELS.map(function(_,i){
+      const n=zT[i];const bg=n<1?'rgba(255,255,255,.05)':zH[i]/n>=0.4?'rgba(239,68,68,.65)':zH[i]>0?'rgba(251,146,60,.45)':'rgba(45,212,160,.40)';
+      return '<div style="aspect-ratio:1;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:#fff">'+(n||'')+'</div>';
+    }).join('');
+    const kCnt=log.filter(function(p){return p.result==='삼진';}).length;
+    const hitCnt=log.filter(function(p){return HIT_RES.includes(p.result);}).length;
+    const hitRate=Math.round(hitCnt/total*100);
+    const strat=[];
+    if(kCnt>=2)strat.push('✓ 삼진 '+kCnt+'개 — 현재 투구 패턴 유효.');
+    if(hitRate>30)strat.push('⚠ 피안타율 '+hitRate+'% — 구종·코스 변화 필요.');
+    if(ptEntries.length)strat.push('주 투구: '+ptEntries[0][0]+' ('+Math.round(ptEntries[0][1]/total*100)+'%).');
+    return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석 ('+total+'구)</div>'
+      +'<div style="margin-bottom:8px">'+ptBars+'</div>'
+      +'<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">코스별 피안타</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:108px;margin-bottom:8px">'+zGrid+'</div>'
+      +(strat.length?'<div style="font-size:9px;color:var(--text2);line-height:1.8">'+strat.join('<br>')+'</div>':'')
+      +'</div>';
+  } catch(e) {
+    console.warn('[Scout] 투수분석 오류',e);
+    return '';
+  }
+}
+
+function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = 138 * dpr; c.height = 138 * dpr;
+  c.style.width = '138px'; c.style.height = '138px';
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const cellW = 138 / 3, cellH = 138 / 3;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const i = row * 3 + col;
+      const avg = zoneAvg[i] || 0;
+      const total = zoneTotal[i] || 0;
+      let bg;
+      if (total < 2)       bg = 'rgba(255,255,255,0.05)';
+      else if (avg >= 0.350) bg = 'rgba(239,68,68,0.75)';
+      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.60)';
+      else if (avg >= 0.150) bg = 'rgba(75,140,245,0.45)';
+      else                   bg = 'rgba(45,212,160,0.65)';
+      ctx.fillStyle = bg;
+      ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = `bold ${11 * dpr}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const label = total >= 2 ? avg.toFixed(3).replace('0.', '.') : '-';
+      ctx.save(); ctx.scale(1 / dpr, 1 / dpr);
+      ctx.fillText(label, (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.45) * dpr);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = `${9 * dpr}px sans-serif`;
+      ctx.fillText(total + 'PA', (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.72) * dpr);
+      ctx.restore();
+    }
+  }
+}
+
+// ── 존 히트맵 캔버스 (3×3) ──
+// ── 타구 방향 바차트 캔버스 ──
+function _drawDirCanvas(analysis) {
+  const c = document.getElementById('scoutDirCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 300, H = 60;
+  c.width = W * dpr; c.height = H * dpr;
+  c.style.width = W + 'px'; c.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = 'rgba(14,16,24,0.4)';
+  ctx.fillRect(0, 0, W, H);
+
+  const total = analysis.pullCount + analysis.centerCount + analysis.oppoCount || 1;
+  const segs = [
+    { count: analysis.pullCount,   avg: analysis.pullAvg,   color: 'rgba(239,68,68,0.75)',   label: '당김' },
+    { count: analysis.centerCount, avg: analysis.centerAvg, color: 'rgba(45,212,160,0.75)',   label: '중앙' },
+    { count: analysis.oppoCount,   avg: analysis.oppoAvg,   color: 'rgba(251,146,60,0.75)',   label: '밀어' },
+  ];
+
+  const BAR_H = 24, BAR_Y = 14;
+  let xOff = 0;
+  segs.forEach(seg => {
+    const w = Math.max((seg.count / total) * W, seg.count > 0 ? 2 : 0);
+    ctx.fillStyle = seg.color;
+    ctx.fillRect(xOff, BAR_Y, w - 1, BAR_H);
+    if (w > 28) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold 10px "JetBrains Mono",monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(seg.avg.toFixed(3).replace('0.','.'), xOff + w/2, BAR_Y + BAR_H/2 + 4);
+    }
+    xOff += w;
+  });
+}
+
+// ── 미니 필드 캔버스 ──
+function _drawScoutFieldCanvas(allAbs) {
+  const c = document.getElementById('scoutFieldCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H * 0.88;
+  const R = W * 0.46;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, -Math.PI, 0);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(22,40,30,0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(45,212,120,0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const sqR = R * 0.38;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - sqR);
+  ctx.lineTo(cx + sqR, cy);
+  ctx.lineTo(cx, cy + sqR);
+  ctx.lineTo(cx - sqR, cy);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(180,130,60,0.3)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx - R, cy - 0.05); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + R, cy - 0.05); ctx.stroke();
+
+  const RES_COL = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
+    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
+    '삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd'};
+  const HITS_SET = new Set(['안타','내야안타','2루타','3루타','홈런']);
+
+  allAbs.forEach(ab => {
+    if (ab.x == null || ab.y == null) return;
+    const px = ab.x * W;
+    const py = ab.y * H * (220 / 440);
+    const isOut = !HITS_SET.has(ab.res);
+    const col = RES_COL[ab.res] || '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(px, py, isOut ? 2.5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = col + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
 }
 
 function _buildTextReport(name, analysis, findings, strategy) {
@@ -642,7 +848,7 @@ function _buildTextReport(name, analysis, findings, strategy) {
   return lines.join('\n');
 }
 
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// _esc imported from constants.js
 
 // Expose to window for onclick handlers
 if (typeof window !== 'undefined') {

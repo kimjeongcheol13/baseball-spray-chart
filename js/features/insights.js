@@ -124,15 +124,6 @@ function _renderTendencies(bAbs) {
   }).join('');
 }
 
-// ── 기존 renderAIInsights 래핑 (구조 변경 없이 확장) ─────────
-var _origRenderAI = window.renderAIInsights;
-if (typeof _origRenderAI === 'function') {
-  window.renderAIInsights = function(bAbs) {
-    _origRenderAI.apply(this, arguments);
-    _renderTendencies(bAbs);
-  };
-}
-
 // ── 카드 DOM 주입 (#aiInsightCard 바로 아래) ─────────────────
 function _build() {
   if (document.getElementById('tendencyCard')) return;
@@ -148,7 +139,15 @@ function _build() {
     + '3타석 이상 기록하면 성향을 분석합니다</div></div>';
   aiCard.parentElement.insertBefore(card, aiCard.nextSibling);
 
-  // 이미 타자 통계가 떠 있으면 즉시 1회 분석
+  // DOMContentLoaded 이후에 패치 — 이 시점에 renderAIInsights가 정의되어 있음
+  var orig = window.renderAIInsights;
+  if (typeof orig === 'function') {
+    window.renderAIInsights = function(bAbs) {
+      orig.apply(this, arguments);
+      _renderTendencies(bAbs);
+    };
+  }
+
   if (window.AS && window.AS.batter && window.AS.abs) {
     _renderTendencies(window.AS.abs.filter(function(a) { return a.bid === window.AS.batter.id; }));
   }

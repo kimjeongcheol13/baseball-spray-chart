@@ -1,7 +1,4 @@
-// Player comparison: side-by-side radar chart and stat table
-const HITS = ['안타','내야안타','2루타','3루타','홈런'];
-const NOAB = ['볼넷','사구','희타','희비'];
-const BASE = {'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
 
 let _selectedPlayer1 = null;
 let _selectedPlayer2 = null;
@@ -432,7 +429,7 @@ function _hexToRgb(hex) {
   return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : {r:255,g:255,b:255};
 }
 
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// _esc imported from constants.js
 
 if (typeof window !== 'undefined') {
   window.openCompareView = openCompareView;

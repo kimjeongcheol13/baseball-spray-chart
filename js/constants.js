@@ -37,7 +37,6 @@ export const PITCH_RESULT_COLORS = {
 // Severity levels for enhanced AI insights
 export const SEVERITY = { info: 'info', warn: 'warn', critical: 'critical', positive: 'pos' };
 
-// Scouting report pitch strategies
 export const PITCH_STRATEGIES = {
   pull_heavy: { zone: '외각', pitch: '슬라이더/커브', reason: '당겨치기 편중 타자 — 외각 변화구 공략' },
   oppo_heavy: { zone: '내각', pitch: '직구/커터', reason: '밀어치기 타자 — 내각 강공 유효' },
@@ -45,3 +44,12 @@ export const PITCH_STRATEGIES = {
   good_eye: { zone: '스트라이크 존', pitch: '직구/커터', reason: '선구안 좋은 타자 — 존 안 승부' },
   power: { zone: '외각 낮음', pitch: '슬라이더', reason: '장타력 높은 타자 — 외각 낮은 변화구' }
 };
+
+/** HTML 이스케이프 — compare/profile/scouting/insights 공용 */
+export function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}

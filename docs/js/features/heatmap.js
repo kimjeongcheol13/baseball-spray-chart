@@ -175,6 +175,17 @@ function _init() {
       if (_hmOn) requestAnimationFrame(_render);
     };
   }
+
+  // 경기 리셋 시 히트맵 자동 OFF
+  if (window.AS && typeof window.AS.on === 'function') {
+    window.AS.on('reset', function() {
+      _hmOn = false;
+      var btn = document.getElementById('hmDensityBtn');
+      if (btn) { btn.style.opacity = '0.5'; btn.style.borderColor = ''; btn.style.color = ''; }
+      var cvs = document.getElementById('hmCanvas');
+      if (cvs) { var ctx = cvs.getContext('2d'); ctx.clearRect(0, 0, cvs.width, cvs.height); }
+    });
+  }
 }
 
 if (document.readyState === 'loading') {

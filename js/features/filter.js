@@ -33,13 +33,23 @@ function _isActive() {
 // 외부 노출 (heatmap.js 등에서 사용)
 window._sfPass = _pass;
 
-// ── drawDot 패치: 필터 미통과 레코드 스킵 ────────────────────
-var _origDrawDot = window.drawDot;
-if (_origDrawDot) {
-  window.drawDot = function(r) {
-    if (_isActive() && !_pass(r)) return;
-    _origDrawDot.call(this, r);
-  };
+// ── 함수 패치: _build() 안에서 DOMContentLoaded 이후 호출 ─────
+function _applyPatches() {
+  var origDrawDot = window.drawDot;
+  if (typeof origDrawDot === 'function') {
+    window.drawDot = function(r) {
+      if (_isActive() && !_pass(r)) return;
+      origDrawDot.call(this, r);
+    };
+  }
+  ['recHit', 'recOther'].forEach(function(fn) {
+    var orig = window[fn];
+    if (typeof orig !== 'function') return;
+    window[fn] = function() {
+      orig.apply(this, arguments);
+      _stampHand();
+    };
+  });
 }
 
 // ── recHit / recOther 패치: 투수 손 스탬프 ───────────────────
@@ -49,15 +59,6 @@ function _stampHand() {
   var last = abs[abs.length - 1];
   if (last && last.hand === undefined) last.hand = _pitcherHand;
 }
-['recHit', 'recOther'].forEach(function(fn) {
-  var orig = window[fn];
-  if (!orig) return;
-  window[fn] = function() {
-    orig.apply(this, arguments);
-    _stampHand();
-  };
-});
-
 // ── 배지 업데이트 ─────────────────────────────────────────────
 function _updateBadge() {
   var cnt = _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0);
@@ -262,6 +263,9 @@ function _build() {
   bdrop.id = 'sfBdrop';
   bdrop.onclick = _sfClose;
   document.body.appendChild(bdrop);
+
+  // DOMContentLoaded 이후 패치 — 인라인 drawDot/recHit/recOther가 모두 정의된 시점
+  _applyPatches();
 }
 
 // ── 초기화 ───────────────────────────────────────────────────

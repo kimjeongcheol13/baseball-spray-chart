@@ -105,6 +105,8 @@ function showDataModal(jsonStr, fileName) {
 
 // ───── PAGE ROUTING ─────
 function showApp(){
+  // 히어로 캔버스 애니메이션 루프 중단
+  if(window._cancelHeroAnim){window._cancelHeroAnim();window._cancelHeroAnim=null;}
   document.getElementById('landing-page').style.display='none';
   var isMob=window.innerWidth<=720;
   var ap=document.getElementById('app-page');
@@ -352,6 +354,8 @@ function goLanding(){
   document.getElementById('landing-page').style.display='block';
   document.body.style.overflowY='';
   document.body.style.overflowX='';
+  var nav=document.getElementById('savantNav');
+  if(nav)nav.style.display='none';
   window.scrollTo(0,0);
 }
 
@@ -399,6 +403,7 @@ function goLanding(){
     });
     af=requestAnimationFrame(draw);
   }
+  window._cancelHeroAnim=function(){cancelAnimationFrame(af);af=null;};
   draw();
 
   const mc=document.getElementById('mockCanvas');
@@ -4626,13 +4631,17 @@ function renderAwRecent(){
 
 // ── Savant 탭 전환 (nav 버튼 onclick 핸들러) ──
 function switchSavantView(view, btn){
+  // 이중 클릭(onclick + initSavantNav 이벤트 리스너) 방지
+  if(switchSavantView._lock)return;
+  switchSavantView._lock=true;
+  setTimeout(function(){delete switchSavantView._lock;},300);
+
   var nav=document.getElementById('savantNav');
   if(nav)nav.querySelectorAll('.savant-nav-btn').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
   var ap=document.getElementById('app-page');
 
   if(view==='record'||view==='spray'){
-    // 기록/스프레이: app-page 보이기, savant view 모두 숨김, body 스크롤 복구
     document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
     if(ap)ap.style.display='flex';
     document.body.style.overflowY='hidden';
@@ -4646,16 +4655,20 @@ function switchSavantView(view, btn){
     return;
   }
 
-  // 프로필/비교/스카우트: app-page 숨김, 해당 view 활성화, body 스크롤 허용
+  // 프로필/비교/스카우트: app-page 숨김, 해당 view 활성화 후 비동기로 데이터 로드
   if(ap)ap.style.display='none';
   document.body.style.overflowY='';
   document.querySelectorAll('.savant-view').forEach(function(v){v.classList.remove('active');});
   var viewEl=document.getElementById(view+'View');if(viewEl)viewEl.classList.add('active');
-  switch(view){
-    case 'profile': if(window.openProfileView)window.openProfileView();break;
-    case 'compare': if(window.openCompareView)window.openCompareView();break;
-    case 'scout':   if(window.openScoutView)window.openScoutView();break;
-  }
+  // 탭 전환이 즉시 반응하도록 데이터 로드는 다음 태스크로 defer
+  var _v=view;
+  setTimeout(function(){
+    switch(_v){
+      case 'profile': if(window.openProfileView)window.openProfileView();break;
+      case 'compare': if(window.openCompareView)window.openCompareView();break;
+      case 'scout':   if(window.openScoutView)window.openScoutView();break;
+    }
+  },0);
 }
 
 // ── 최근 경기 삭제 ──
@@ -6342,6 +6355,9 @@ var uiStates={
 // ─── Autosave 복구 ────────────────────────────
 (function _checkRecovery(){
   setTimeout(function(){
+    // 앱 페이지가 활성화된 경우에만 복구 배너 표시
+    var ap=document.getElementById('app-page');
+    if(!ap||ap.style.display!=='flex')return;
     if(!storageManager.hasRecovery())return;
     var rec=storageManager.getRecovery();
     if(!rec||!rec.data||!rec.data.abs||!rec.data.abs.length){storageManager.clearRecovery();return;}

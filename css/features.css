@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   z-index: 100;
-  display: flex;
+  display: none;   /* showApp()에서 inline flex로 켬 */
   height: 44px;
   background: rgba(14,16,24,0.95);
   backdrop-filter: blur(16px);

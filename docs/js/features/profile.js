@@ -1,4 +1,4 @@
-import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
+import { HITS, NOAB, BASE, WOBA_W, esc as _esc } from '../constants.js';
 
 export function openProfileView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
@@ -99,7 +99,9 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const pa = allAbs.length;
   const ab = allAbs.filter(a => !NOAB.includes(a.res)).length;
   const h = allAbs.filter(a => HITS.includes(a.res)).length;
-  const bb = allAbs.filter(a => a.res === '볼넷' || a.res === '사구').length;
+  // bb = 볼넷만 (사구 제외) — wOBA/OBP 이중계산 방지
+  const bb = allAbs.filter(a => a.res === '볼넷').length;
+  const hbp = allAbs.filter(a => a.res === '사구').length;
   const k = allAbs.filter(a => a.res === '삼진').length;
   const hr = allAbs.filter(a => a.res === '홈런').length;
   const xbh = allAbs.filter(a => ['2루타','3루타','홈런'].includes(a.res)).length;
@@ -108,12 +110,13 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const sf = allAbs.filter(a => a.res === '희비').length;
 
   const avg = ab ? h / ab : 0;
-  const obp = (ab + bb + sf) ? (h + bb) / (ab + bb + sf) : 0;
+  // 표준 OBP: (H + BB + HBP) / (AB + BB + HBP + SF)
+  const obp = (ab + bb + hbp + sf) ? (h + bb + hbp) / (ab + bb + hbp + sf) : 0;
   const slg = ab ? tb / ab : 0;
   const ops = obp + slg;
   const babip = (ab - k - hr + sf) ? (h - hr) / (ab - k - hr + sf) : 0;
   const kRate = pa ? k / pa : 0;
-  const bbRate = pa ? bb / pa : 0;
+  const bbRate = pa ? bb / pa : 0; // 볼넷% (사구 제외)
   const isoP = slg - avg;
 
   const dabs = allAbs.filter(a => a.deg != null);
@@ -121,13 +124,13 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108).length;
   const oppo = dabs.length - pull - center;
 
-  const wBB = 0.69, wHBP = 0.72, w1B = 0.87, w2B = 1.22, w3B = 1.56, wHR = 1.95;
+  // wOBA (constants.js WOBA_W 통일)
   const singles = allAbs.filter(a => a.res === '안타' || a.res === '내야안타').length;
   const doubles = allAbs.filter(a => a.res === '2루타').length;
   const triples = allAbs.filter(a => a.res === '3루타').length;
-  const hbp = allAbs.filter(a => a.res === '사구').length;
-  const woba = (ab + bb + sf + hbp) ?
-    (wBB*bb + wHBP*hbp + w1B*singles + w2B*doubles + w3B*triples + wHR*hr) / (ab + bb + sf + hbp) : 0;
+  const wobaDen = ab + bb + hbp + sf;
+  const woba = wobaDen ?
+    (WOBA_W.bb*bb + WOBA_W.hbp*hbp + WOBA_W.s1*singles + WOBA_W.s2*doubles + WOBA_W.s3*triples + WOBA_W.hr*hr) / wobaDen : 0;
 
   const trend = gameStats.map(g => {
     const gab = g.abs.filter(a => !NOAB.includes(a.res)).length;
@@ -135,7 +138,7 @@ function _calcCareerStats(name, allAbs, gameStats) {
     return { date: g.date, avg: gab ? gh/gab : 0, pa: g.abs.length };
   });
 
-  return { name, pa, ab, h, bb, k, hr, xbh, rbi, tb, avg, obp, slg, ops, babip, kRate, bbRate, isoP, woba, pull, center, oppo, dabs: dabs.length, trend, games: gameStats.length };
+  return { name, pa, ab, h, bb, hbp, k, hr, xbh, rbi, tb, avg, obp, slg, ops, babip, kRate, bbRate, isoP, woba, pull, center, oppo, dabs: dabs.length, trend, games: gameStats.length };
 }
 
 function _renderProfileCard(data) {

@@ -157,7 +157,9 @@ function _analyzePlayer(name, allAbs) {
   const pa = allAbs.length;
   const ab = allAbs.filter(a => !NOAB.includes(a.res)).length;
   const h = allAbs.filter(a => HITS.includes(a.res)).length;
-  const bb = allAbs.filter(a => a.res === '볼넷' || a.res === '사구').length;
+  // bb = 볼넷만 (사구 제외) — OBP 이중계산 방지
+  const bb = allAbs.filter(a => a.res === '볼넷').length;
+  const hbp = allAbs.filter(a => a.res === '사구').length;
   const k = allAbs.filter(a => a.res === '삼진').length;
   const hr = allAbs.filter(a => a.res === '홈런').length;
   const tb = allAbs.reduce((s, a) => s + (BASE[a.res]||0), 0);
@@ -167,10 +169,11 @@ function _analyzePlayer(name, allAbs) {
   const groundout = allAbs.filter(a => a.res === '땅볼 아웃').length;
 
   const avg = ab ? h / ab : 0;
-  const obp = (ab + bb + sf) ? (h + bb) / (ab + bb + sf) : 0;
+  // 표준 OBP: (H + BB + HBP) / (AB + BB + HBP + SF)
+  const obp = (ab + bb + hbp + sf) ? (h + bb + hbp) / (ab + bb + hbp + sf) : 0;
   const slg = ab ? tb / ab : 0;
   const kRate = pa ? k / pa : 0;
-  const bbRate = pa ? bb / pa : 0;
+  const bbRate = pa ? bb / pa : 0; // 볼넷% (사구 제외)
   const isoP = slg - avg;
   const goAo = flyout ? groundout / flyout : groundout;
 

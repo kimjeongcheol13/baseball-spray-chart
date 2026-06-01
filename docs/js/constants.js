@@ -45,6 +45,12 @@ export const PITCH_STRATEGIES = {
   power: { zone: '외각 낮음', pitch: '슬라이더', reason: '장타력 높은 타자 — 외각 낮은 변화구' }
 };
 
+/**
+ * wOBA 가중치 (core.js renderExtStats 기준 통일)
+ * bb = 볼넷만 (사구 제외), hbp = 사구만
+ */
+export const WOBA_W = { bb: 0.69, hbp: 0.72, s1: 0.89, s2: 1.27, s3: 1.62, hr: 2.10 };
+
 /** HTML 이스케이프 — compare/profile/scouting/insights 공용 */
 export function esc(s) {
   return String(s)

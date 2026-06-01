@@ -2280,6 +2280,35 @@ function updBatterStat(){
       }).join('');
     }
   }
+  // 구종별 타율 카드
+  var ptTypesEl=document.getElementById('bsPitchTypes');
+  if(ptTypesEl){
+    var allPts={};
+    var _ptColMap={'직구':'#4b8cf5','슬라이더':'#f6c23e','커브':'#a78bfa','체인지업':'#2dd4a0','포크볼':'#fb923c','커터':'#8892a4','스위퍼':'#06b6d4','싱커':'#f97316','스플리터':'#84cc16','너클볼':'#e879f9','너클커브':'#6366f1','스크류볼':'#14b8a6','슬러브':'#ec4899','이퓨스볼':'#f43f5e','슬로우커브':'#78716c','팝볼':'#7c3aed'};
+    bAbs.forEach(function(ab){
+      var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{pt:ab.pt}]:[]);
+      if(!ps.length)return;
+      var lp=ps[ps.length-1];if(!lp||!lp.pt)return;
+      var pt=lp.pt;if(!allPts[pt])allPts[pt]={n:0,k:0,h:0,hr:0};
+      allPts[pt].n++;
+      if(ab.res==='삼진')allPts[pt].k++;
+      if(_HITS.includes(ab.res))allPts[pt].h++;
+      if(ab.res==='홈런')allPts[pt].hr++;
+    });
+    var entries=Object.entries(allPts).sort(function(a,b){return b[1].n-a[1].n;});
+    ptTypesEl.innerHTML=entries.length?entries.map(function(e){
+      var pt=e[0],st=e[1],col=_ptColMap[pt]||'#7c8898';
+      var avg=st.n?(st.h/st.n).toFixed(3).replace('0.','.'):'.---';
+      return'<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px">'
+        +'<div style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0"></div>'
+        +'<span style="flex:1;color:var(--text2)">'+pt+'</span>'
+        +'<span style="color:var(--text3);font-size:9px">'+st.n+'구</span>'
+        +'<span style="font-family:var(--mono);font-weight:700;min-width:32px;text-align:right;color:'+col+'">'+avg+'</span>'
+        +(st.k?'<span style="font-size:9px;color:#94a3b8;margin-left:2px">K'+st.k+'</span>':'')
+        +(st.hr?'<span style="font-size:9px;color:#f56565;margin-left:2px">HR'+st.hr+'</span>':'')
+        +'</div>';
+    }).join(''):'<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px">구종 기록 없음</div>';
+  }
   renderAIInsights(bAbs);
   // 저장된 투구 위치 캔버스
   var bsPitchCvs=document.getElementById('bsPitchCanvas');
@@ -4135,6 +4164,7 @@ function recordPitch(result){
   var hitResults=['안타','2루타','3루타','홈런'];
   var entry={
     id:Date.now(),
+    inning:document.getElementById('innSel')?document.getElementById('innSel').value:null,
     zone:AS.pitcherZone,
     zoneX:AS.pitcherZoneX||null,
     zoneY:AS.pitcherZoneY||null,
@@ -4190,7 +4220,7 @@ function renderPitchLog(){
     var zy=p.zoneY!=null?p.zoneY:'null';
     return '<div class="pitch-entry" style="cursor:pointer" onclick="loadPitchEntry('+ptE+','+zoneE+','+zx+','+zy+')" title="클릭하면 입력값 복원">'
       +'<div class="pe-result" style="background:'+col+'"></div>'
-      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.pt||'—')+(p.zone?' · '+p.zone:'')+' → <strong style="color:'+col+'">'+p.result+'</strong></span>'
+      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+p.inning+'</span> ':'')+(p.pt||'—')+(p.zone?' · '+p.zone:'')+' → <strong style="color:'+col+'">'+p.result+'</strong></span>'
       +'<span style="font-size:9px;color:var(--text3)">'+p.ts+'</span>'
       +'</div>';
   }).join('');
@@ -4219,8 +4249,8 @@ function renderPitcherStats(){
     +'</div>';
 
   // 구종 비율 도넛
-  var ptTypes=['직구','슬라이더','커브','체인지업','포크볼','커터'];
-  var ptColors=['#4b8cf5','#f6c23e','#a78bfa','#2dd4a0','#fb923c','#8892a4'];
+  var ptTypes=['직구','슬라이더','커브','체인지업','포크볼','커터','스위퍼','싱커','스플리터','너클볼','너클커브','스크류볼','슬러브','이퓨스볼','슬로우커브','팝볼'];
+  var ptColors=['#4b8cf5','#f6c23e','#a78bfa','#2dd4a0','#fb923c','#8892a4','#06b6d4','#f97316','#84cc16','#e879f9','#6366f1','#14b8a6','#ec4899','#f43f5e','#78716c','#7c3aed'];
   var ptCounts=ptTypes.map(function(pt){return pitches.filter(function(p){return p.pt===pt;}).length;});
   var ptUsed=ptTypes.filter(function(pt,i){return ptCounts[i]>0;});
   var ptCountsUsed=ptCounts.filter(function(c){return c>0;});
@@ -4258,13 +4288,28 @@ function renderPitcherStats(){
       bg=hitRate>=0.4?'rgba(245,101,101,.5)':hitRate>0?'rgba(246,194,62,.35)':'rgba(45,212,160,.3)';
       txt=n;
     }
-    html+='<div style="aspect-ratio:1;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:var(--text);border:1px solid var(--border2)">'+txt+'</div>';
+    var zpJson=JSON.stringify(zp.map(function(p){return{pt:p.pt||'',result:p.result,inning:p.inning||''};}));
+    html+='<div style="aspect-ratio:1;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:var(--text);border:1px solid var(--border2);cursor:'+(n?'pointer':'default')+'" title="'+z+'" onclick="_showPzCard(event,'+JSON.stringify(z)+','+zpJson+')">'+txt+'</div>';
   });
   html+='</div>'
     +'<div style="font-size:8px;color:var(--text3);line-height:2.6;margin-left:2px"><div>내</div><div>중</div><div>외</div></div>'
     +'</div>'
     +'<div style="font-size:8px;color:var(--text3);margin-top:3px">🔴=피안타≥40% 🟡=피안타있음 🟢=피안타없음</div>'
     +'</div>';
+
+  // 전략 텍스트
+  var strategy=[];
+  var hitAbs2=pitches.filter(function(p){return['안타','2루타','3루타','홈런','타격됨'].includes(p.result);});
+  var kAbs=pitches.filter(function(p){return p.result==='삼진';});
+  if(total>0){
+    if(strikePct>=65)strategy.push('✓ 스트라이크율 '+strikePct+'% — 제구 안정적.');
+    else if(strikePct<50)strategy.push('⚠ 스트라이크율 '+strikePct+'% — 초구 스트라이크 집중 필요.');
+    if(kAbs.length>=2)strategy.push('✓ 삼진 '+kAbs.length+'개 — 결정구 효과적.');
+    var hitRate=Math.round(hitAbs2.length/total*100);
+    if(hitRate>30)strategy.push('⚠ 피안타율 '+hitRate+'% — 구위·코스 조정 필요.');
+    if(ptUsed.length){var topI=ptCountsUsed.indexOf(Math.max.apply(null,ptCountsUsed));strategy.push('주력구: '+ptUsed[topI]+' ('+Math.round(ptCountsUsed[topI]/total*100)+'%).');}
+  }
+  if(strategy.length)html+='<div style="margin-top:6px;font-size:9px;line-height:1.8;color:var(--text2)">'+strategy.join('<br>')+'</div>';
 
   el.innerHTML=html;
 
@@ -4288,6 +4333,36 @@ function renderPitcherStats(){
     ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);ctx.fillStyle='#18181f';ctx.fill();
   }
 }
+
+// ── 존 팝업 카드 ──
+var _pzCardEl=null;
+function _showPzCard(e,zone,pitches){
+  _hidePzCard();
+  if(!pitches||!pitches.length)return;
+  var resCol={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565','삼진':'#94a3b8'};
+  var rows=pitches.map(function(p,i){
+    var col=resCol[p.result]||'#94a3b8';
+    return'<div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px">'
+      +'<span style="color:var(--text3);min-width:14px;text-align:right">'+(i+1)+'</span>'
+      +(p.inning?'<span style="font-size:9px;color:var(--text3)">'+p.inning+'</span>':'')
+      +'<span style="flex:1;color:var(--text2)">'+(p.pt||'—')+'</span>'
+      +'<span style="color:'+col+';font-weight:700">'+p.result+'</span>'
+      +'</div>';
+  }).join('');
+  var d=document.createElement('div');
+  d.id='_pzCard';
+  d.style.cssText='position:fixed;z-index:9999;background:#18181f;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 12px;min-width:180px;max-width:220px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:var(--font)';
+  d.innerHTML='<div style="font-size:10px;font-weight:800;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">'+zone+' ('+pitches.length+'구)</div>'+rows;
+  document.body.appendChild(d);
+  _pzCardEl=d;
+  var r=e.target.getBoundingClientRect();
+  var left=r.right+6,top=r.top;
+  if(left+220>window.innerWidth-8)left=r.left-226;
+  if(top+260>window.innerHeight-8)top=window.innerHeight-268;
+  d.style.left=Math.max(8,left)+'px';d.style.top=Math.max(8,top)+'px';
+  setTimeout(function(){document.addEventListener('click',_hidePzCard,{once:true});},0);
+}
+function _hidePzCard(){if(_pzCardEl){_pzCardEl.remove();_pzCardEl=null;}}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE D: 성적 카드 PNG (개인 9:16 / 팀 1:1)

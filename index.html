@@ -1027,6 +1027,8 @@
           <div class="stat-card">
             <div class="sc-title">타구 유형</div>
             <div id="bsTypeList"></div>
+            <div style="font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:8px 0 4px">구종별 타율</div>
+            <div id="bsPitchTypes"></div>
           </div>
         </div>
       </div>
@@ -1187,6 +1189,16 @@
                 <button class="chip pt-chip-CH" onclick="selPitcherPt(this,'체인지업')">체인지업</button>
                 <button class="chip pt-chip-FK" onclick="selPitcherPt(this,'포크볼')">포크볼</button>
                 <button class="chip pt-chip-CT" onclick="selPitcherPt(this,'커터')">커터</button>
+                <button class="chip" onclick="selPitcherPt(this,'스위퍼')">스위퍼</button>
+                <button class="chip" onclick="selPitcherPt(this,'싱커')">싱커</button>
+                <button class="chip" onclick="selPitcherPt(this,'스플리터')">스플리터</button>
+                <button class="chip" onclick="selPitcherPt(this,'너클볼')">너클볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'너클커브')">너클커브</button>
+                <button class="chip" onclick="selPitcherPt(this,'스크류볼')">스크류볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'슬러브')">슬러브</button>
+                <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')">이퓨스볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'슬로우커브')">슬로우커브</button>
+                <button class="chip" onclick="selPitcherPt(this,'팝볼')">팝볼</button>
               </div>
               <div style="font-size:9px;color:var(--text3);margin-top:8px;margin-bottom:3px">결과</div>
               <div class="pt-result-chips">
@@ -1197,6 +1209,7 @@
                 <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
                 <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
                 <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+                <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
               </div>
             </div>
           </div>

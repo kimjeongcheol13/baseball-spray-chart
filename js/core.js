@@ -3085,11 +3085,14 @@ function exportFullReport() {
 
   // ── Sheet 1: 선수별 통산 성적 ──
   var hdr1=['이름','번호','경기수','타석','타수','안타','2루타','3루타','홈런','타점','볼넷','삼진','타율','출루율','장타율','OPS','wOBA','BABIP','ISO','K%','BB%','당김%','중앙%','밀어%'];
-  var wBB=0.69,wHBP=0.72,w1B=0.87,w2B=1.22,w3B=1.56,wHR=1.95;
+  // wOBA 가중치 — renderExtStats 및 constants.js WOBA_W 통일
+  var wBB=0.69,wHBP=0.72,w1B=0.89,w2B=1.27,w3B=1.62,wHR=2.10;
   var profileRows=[hdr1];
   players.forEach(function(m){
-    var t=m.fdN||1,denom=m.ab+m.bb+m.sf+m.hbp,
-      avg=m.ab?m.h/m.ab:0,obp=(m.ab+m.bb+m.sf)?(m.h+m.bb)/(m.ab+m.bb+m.sf):0,
+    var t=m.fdN||1,denom=m.ab+m.bb+m.hbp+m.sf,
+      avg=m.ab?m.h/m.ab:0,
+      // 표준 OBP: (H+BB+HBP)/(AB+BB+HBP+SF)
+      obp=(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0,
       slg=m.ab?m.tb/m.ab:0,ops=obp+slg,
       singles=m.h-m.dbl-m.tpl-m.hr,
       woba=denom?(wBB*m.bb+wHBP*m.hbp+w1B*singles+w2B*m.dbl+w3B*m.tpl+wHR*m.hr)/denom:0,
@@ -3107,9 +3110,9 @@ function exportFullReport() {
   ];
   var metrics=[
     {k:'AVG',fn:function(m){return m.ab?m.h/m.ab:0},f:f3},
-    {k:'OBP',fn:function(m){return(m.ab+m.bb+m.sf)?(m.h+m.bb)/(m.ab+m.bb+m.sf):0},f:f3},
+    {k:'OBP',fn:function(m){return(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0},f:f3},
     {k:'SLG',fn:function(m){return m.ab?m.tb/m.ab:0},f:f3},
-    {k:'OPS',fn:function(m){var ob=(m.ab+m.bb+m.sf)?(m.h+m.bb)/(m.ab+m.bb+m.sf):0,sl=m.ab?m.tb/m.ab:0;return ob+sl;},f:f3},
+    {k:'OPS',fn:function(m){var ob=(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0,sl=m.ab?m.tb/m.ab:0;return ob+sl;},f:f3},
     {k:'ISO',fn:function(m){var sl=m.ab?m.tb/m.ab:0,av=m.ab?m.h/m.ab:0;return sl-av;},f:f3},
     {k:'K%',fn:function(m){return m.pa?m.k/m.pa:0},f:fpct},
     {k:'BB%',fn:function(m){return m.pa?m.bb/m.pa:0},f:fpct},

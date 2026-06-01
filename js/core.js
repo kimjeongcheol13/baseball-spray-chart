@@ -2318,11 +2318,27 @@ function updBatterStat(){
   if(bsPitchCvs&&typeof _drawZoneCanvas==='function'){
     var allDots=[];
     bAbs.forEach(function(ab){
-      if(ab.pitches)ab.pitches.forEach(function(p){
-        if(p.x!=null&&p.y!=null)allDots.push({cx:p.x,cy:p.y,result:p.pt||'스트라이크'});
+      if(ab.pitches)ab.pitches.forEach(function(p,pi){
+        if(p.x!=null&&p.y!=null)allDots.push({
+          cx:p.x,cy:p.y,result:p.pt||'스트라이크',
+          pitchType:p.pt||'',zone:p.zone||'',
+          abResult:pi===ab.pitches.length-1?ab.res:'—',
+          inn:ab.inn||''
+        });
       });
     });
     _drawZoneCanvas(bsPitchCvs,allDots,false);
+    // 점 클릭 시 투구 카드 팝업
+    bsPitchCvs._dots=allDots;
+    bsPitchCvs.style.cursor=allDots.length?'pointer':'default';
+    bsPitchCvs.onclick=function(e){
+      var dots=bsPitchCvs._dots;if(!dots||!dots.length)return;
+      var rect=this.getBoundingClientRect();
+      var px=(e.clientX-rect.left)/rect.width,py=(e.clientY-rect.top)/rect.height;
+      var nearest=null,minD=0.07;
+      dots.forEach(function(d){var dist=Math.sqrt(Math.pow(d.cx-px,2)+Math.pow(d.cy-py,2));if(dist<minD){minD=dist;nearest=d;}});
+      if(nearest)_showPzCard(e,nearest.zone||'?',[{pt:nearest.pitchType,result:nearest.abResult,inning:nearest.inn}]);
+    };
   }
 }
 

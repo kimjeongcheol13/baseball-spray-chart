@@ -1998,7 +1998,11 @@ function restoreGame(key){
   // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
-  AS.pitchers=d.pitchers||[];AS.currentPitcher=null;AS.pitchLog=[];
+  AS.pitchers=d.pitchers||[];AS.currentPitcher=null;
+  // pitchLog 복원: 모든 투수의 pitches 배열에서 재구성
+  AS.pitchLog=[];
+  AS.pitchers.forEach(function(p){if(p.pitches)p.pitches.slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
+  AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
   // 투수 목록 UI 갱신
   if(typeof renderPitcherRoster==='function')renderPitcherRoster();
   AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;AS.advFilter=null;
@@ -2328,17 +2332,30 @@ function updBatterStat(){
       });
     });
     _drawZoneCanvas(bsPitchCvs,allDots,false);
-    // 점 클릭 시 투구 카드 팝업
+    // 투구 점 hover/touch 시 카드 팝업
     bsPitchCvs._dots=allDots;
-    bsPitchCvs.style.cursor=allDots.length?'pointer':'default';
-    bsPitchCvs.onclick=function(e){
-      var dots=bsPitchCvs._dots;if(!dots||!dots.length)return;
-      var rect=this.getBoundingClientRect();
-      var px=(e.clientX-rect.left)/rect.width,py=(e.clientY-rect.top)/rect.height;
-      var nearest=null,minD=0.07;
+    bsPitchCvs.style.cursor=allDots.length?'crosshair':'default';
+    var _bsNear=function(e,touch){
+      var dots=bsPitchCvs._dots;if(!dots||!dots.length)return null;
+      var rect=bsPitchCvs.getBoundingClientRect();
+      var src=touch||e;
+      var px=(src.clientX-rect.left)/rect.width,py=(src.clientY-rect.top)/rect.height;
+      var nearest=null,minD=0.08;
       dots.forEach(function(d){var dist=Math.sqrt(Math.pow(d.cx-px,2)+Math.pow(d.cy-py,2));if(dist<minD){minD=dist;nearest=d;}});
-      if(nearest)_showPzCard(e,nearest.zone||'?',[{pt:nearest.pitchType,result:nearest.abResult,inning:nearest.inn}]);
+      return nearest;
     };
+    bsPitchCvs.onmousemove=function(e){
+      var n=_bsNear(e);
+      if(n){this.style.cursor='pointer';_showPzCard(e,n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn}]);}
+      else{this.style.cursor='crosshair';_hidePzCard();}
+    };
+    bsPitchCvs.onmouseleave=function(){_hidePzCard();};
+    bsPitchCvs.ontouchmove=function(e){
+      e.preventDefault();
+      var t=e.touches[0],n=_bsNear(null,t);
+      if(n)_showPzCard({target:this,clientX:t.clientX,clientY:t.clientY},n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn}]);
+    };
+    bsPitchCvs.ontouchend=function(){_hidePzCard();};
   }
 }
 

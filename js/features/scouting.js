@@ -601,28 +601,7 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
         ${strategy.length === 0 ? '<div class="empty-state">충분한 데이터가 없어 전략 제안이 어렵습니다.</div>' : ''}
       </div>
     </div>
-    ${(() => {
-      const log = (window.AS && window.AS.pitchLog || []).filter(p => p.batter === name);
-      if (!log.length) return '<div class="scout-section"><div class="scout-section-title">🎯 투수 분석</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수 탭에서 투구를 기록하면 분석이 표시됩니다</div></div>';
-      const total = log.length;
-      const ptCnts = {};
-      log.forEach(p => { if (p.pt) ptCnts[p.pt] = (ptCnts[p.pt]||0)+1; });
-      const ptBars = Object.entries(ptCnts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([pt,n]) => {
-        const c = (window._PT_COL && window._PT_COL[pt])||'#7c8898';
-        const pct = Math.round(n/total*100);
-        return `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="flex:1;color:var(--text2)">${pt}</span><div style="flex:2;background:rgba(255,255,255,.08);border-radius:2px;height:5px;overflow:hidden"><div style="width:${pct}%;background:${c};height:5px"></div></div><span style="font-family:var(--mono);font-size:9px;min-width:22px;text-align:right;color:var(--text3)">${pct}%</span></div>`;
-      }).join('');
-      const zH = Array(9).fill(0), zT = Array(9).fill(0);
-      log.forEach(p => { const i=ZONE_LABELS.indexOf(p.zone); if(i!==-1){zT[i]++;if(['안타','2루타','3루타','홈런','타격됨'].includes(p.result))zH[i]++;} });
-      const zGrid = ZONE_LABELS.map((_,i) => {
-        const n=zT[i]; const bg=n<1?'rgba(255,255,255,.05)':zH[i]/n>=0.4?'rgba(239,68,68,.65)':zH[i]>0?'rgba(251,146,60,.45)':'rgba(45,212,160,.40)';
-        return `<div style="aspect-ratio:1;border-radius:3px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:#fff">${n||''}</div>`;
-      }).join('');
-      const kCnt = log.filter(p=>p.result==='삼진').length;
-      const hitRate = Math.round(log.filter(p=>['안타','2루타','3루타','홈런','타격됨'].includes(p.result)).length/total*100);
-      const strat = [kCnt>=2?`✓ 삼진 ${kCnt}개 — 현재 투구 패턴 유효.`:'', hitRate>30?`⚠ 피안타율 ${hitRate}% — 구종·코스 변화 필요.`:'', ptCnts&&Object.keys(ptCnts).length?`주 투구: ${Object.entries(ptCnts).sort((a,b)=>b[1]-a[1])[0][0]}`:'' ].filter(Boolean).join('<br>');
-      return `<div class="scout-section"><div class="scout-section-title">🎯 투수 분석 (${total}구)</div><div style="margin-bottom:8px">${ptBars}</div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">코스별 피안타</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:108px;margin-bottom:8px">${zGrid}</div>${strat?`<div style="font-size:9px;color:var(--text2);line-height:1.8">${strat}</div>`:''}</div>`;
-    })()}
+    ${_buildPitcherSection(name)}
   `;
 
   // display:none 상태에서 canvas.width=0 방지 → 50ms 후 실행
@@ -636,6 +615,51 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
 }
 
 // ── 타자 존별 타율 히트맵 (독립 draw 함수) ──
+// ── 투수 분석 섹션 빌더 (pitchLog 기반, 자동 집계) ──
+function _buildPitcherSection(name) {
+  try {
+    const log = (window.AS && window.AS.pitchLog || []).filter(function(p){return p.batter===name;});
+    if (!log.length) return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수 탭에서 투구를 기록하면 자동 분석됩니다</div></div>';
+    const total = log.length;
+    const HIT_RES = ['안타','2루타','3루타','홈런','타격됨'];
+    const ptCnts = {};
+    log.forEach(function(p){if(p.pt)ptCnts[p.pt]=(ptCnts[p.pt]||0)+1;});
+    const ptEntries = Object.entries(ptCnts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+    const ptBars = ptEntries.map(function(e){
+      const pt=e[0],n=e[1];
+      const c=(window._PT_COL&&window._PT_COL[pt])||'#7c8898';
+      const pct=Math.round(n/total*100);
+      return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:10px">'
+        +'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+c+';flex-shrink:0"></span>'
+        +'<span style="flex:1;color:var(--text2)">'+pt+'</span>'
+        +'<div style="flex:2;background:rgba(255,255,255,.08);border-radius:2px;height:5px;overflow:hidden"><div style="width:'+pct+'%;background:'+c+';height:5px"></div></div>'
+        +'<span style="font-family:var(--mono);font-size:9px;min-width:22px;text-align:right;color:var(--text3)">'+pct+'%</span></div>';
+    }).join('');
+    const zH=Array(9).fill(0),zT=Array(9).fill(0);
+    log.forEach(function(p){const i=ZONE_LABELS.indexOf(p.zone);if(i!==-1){zT[i]++;if(HIT_RES.includes(p.result))zH[i]++;}});
+    const zGrid=ZONE_LABELS.map(function(_,i){
+      const n=zT[i];const bg=n<1?'rgba(255,255,255,.05)':zH[i]/n>=0.4?'rgba(239,68,68,.65)':zH[i]>0?'rgba(251,146,60,.45)':'rgba(45,212,160,.40)';
+      return '<div style="aspect-ratio:1;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:#fff">'+(n||'')+'</div>';
+    }).join('');
+    const kCnt=log.filter(function(p){return p.result==='삼진';}).length;
+    const hitCnt=log.filter(function(p){return HIT_RES.includes(p.result);}).length;
+    const hitRate=Math.round(hitCnt/total*100);
+    const strat=[];
+    if(kCnt>=2)strat.push('✓ 삼진 '+kCnt+'개 — 현재 투구 패턴 유효.');
+    if(hitRate>30)strat.push('⚠ 피안타율 '+hitRate+'% — 구종·코스 변화 필요.');
+    if(ptEntries.length)strat.push('주 투구: '+ptEntries[0][0]+' ('+Math.round(ptEntries[0][1]/total*100)+'%).');
+    return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석 ('+total+'구)</div>'
+      +'<div style="margin-bottom:8px">'+ptBars+'</div>'
+      +'<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">코스별 피안타</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:108px;margin-bottom:8px">'+zGrid+'</div>'
+      +(strat.length?'<div style="font-size:9px;color:var(--text2);line-height:1.8">'+strat.join('<br>')+'</div>':'')
+      +'</div>';
+  } catch(e) {
+    console.warn('[Scout] 투수분석 오류',e);
+    return '';
+  }
+}
+
 function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
   const c = document.getElementById(canvasId);
   if (!c) return;

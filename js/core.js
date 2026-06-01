@@ -2256,7 +2256,9 @@ function updBatterStat(){
       var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
       var ptCts={};(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
       var ptTagsHtml=Object.keys(ptCts).map(function(pt){var c=_PT_COL[pt]||'#7c8898';return'<span class="zh-pt" style="background:'+c+'33;color:'+c+'">'+(_PT_ABR[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
-      var zpJ=JSON.stringify((zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||''};}));
+      var _zpBase=(zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||''};});
+      var _zpLog=(AS.pitchLog||[]).filter(function(p){return p.batter===b.name&&p.zone===z;}).map(function(p){return{pt:p.pt||'',result:p.result||'',inning:p.inning||''};});
+      var zpJ=JSON.stringify(_zpBase.length?_zpBase:_zpLog);
       return'<div class="zh-cell" title="'+z+': '+tips+'" onclick="_showPzCard(event,'+JSON.stringify(z)+','+zpJ+')" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0;padding:1px;cursor:'+(zd.n?'pointer':'default')+'">'+(zd.n?'<span style="font-size:9px;font-weight:800">'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span><div class="zh-pt-row">'+ptTagsHtml+'</div>':'')+'</div>';
     }).join('');
   }

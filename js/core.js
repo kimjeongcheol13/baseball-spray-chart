@@ -1044,8 +1044,14 @@ function drawField(){
   ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
   const bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
   ctx.beginPath();bps.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));ctx.stroke();
+  // ── 거리 링 50m/80m/100m (CF 400ft≈122m → FS*.97 기준) ──
+  ctx.setLineDash([3,6]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
+  ctx.fillStyle='rgba(255,255,255,0.38)';ctx.font=Math.floor(S2*.022)+'px sans-serif';ctx.textAlign='left';
+  [50,80,100].forEach(function(m){var r=S2*m/122;ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI,0);ctx.stroke();ctx.fillText(m+'m',cx+r*.35+2,cy-r*.93+4);});
+  ctx.setLineDash([]);
 }
 
+var _ftLabelTimer;
 function onFClick(e){
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
@@ -1061,6 +1067,16 @@ function onFClick(e){
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
   var _wallFt={LF:330,LC:375,CF:400,RC:375,RF:330};
   const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
+  // ── 클릭 위치 거리 말풍선 (2초 후 자동 소거) ──
+  clearTimeout(_ftLabelTimer);
+  var _estM=Math.round(estFt*0.3048);
+  oCtx.save();oCtx.font='bold '+Math.floor(FS*.042)+'px monospace';oCtx.fillStyle='rgba(255,255,255,.9)';oCtx.textAlign='left';
+  oCtx.fillText(_estM+'m',Math.min(x+14,FS-46),Math.max(y-14,14));oCtx.restore();
+  _ftLabelTimer=setTimeout(function(){
+    oCtx.clearRect(0,0,FS,FS);if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
+    oCtx.beginPath();oCtx.arc(x,y,10,0,Math.PI*2);oCtx.fillStyle='rgba(255,255,255,.2)';oCtx.fill();
+    oCtx.beginPath();oCtx.arc(x,y,4.5,0,Math.PI*2);oCtx.fillStyle='#fff';oCtx.fill();
+  },2000);
   AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
@@ -1071,7 +1087,7 @@ function onFClick(e){
     return;
   }
   AS.rbi=0;document.getElementById('rbiVal').textContent='0';
-  document.getElementById('hitSub').textContent=`방향: ${dir} · 추정거리: ${estFt}ft`;
+  document.getElementById('hitSub').textContent=`방향: ${dir} · ${Math.round(estFt*0.3048)}m (${estFt}ft)`;
   openOverlay('hitOverlay');
 }
 

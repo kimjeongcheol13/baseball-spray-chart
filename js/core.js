@@ -1153,6 +1153,7 @@ function renderRecs(){
   document.getElementById('recCnt').textContent=list.length+'개 기록';
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'필드를 탭해 타석을 기록하세요 →')+'</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
+  var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
 var _dragRecId=null;

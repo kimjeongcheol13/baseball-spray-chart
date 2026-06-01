@@ -865,6 +865,7 @@
     <span class="save-ind" id="saveInd">—</span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
     <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
     <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
     <button class="btn btn-ghost btn-primary" id="analysisPanelBtn" onclick="toggleAnalysisPanel()" title="분석 패널 열기/닫기" style="padding:4px 8px;font-size:10px" data-help-title="📊 분석 패널" data-help="우측 <b>분석 패널</b>을 열고 닫습니다.<br>차트·통계·투수 탭을 경기 중에 빠르게 확인하세요.">📊 분석</button>

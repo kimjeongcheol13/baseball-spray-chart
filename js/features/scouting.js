@@ -603,7 +603,7 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
     </div>
     ${(() => {
       const log = (window.AS && window.AS.pitchLog || []).filter(p => p.batter === name);
-      if (!log.length) return '';
+      if (!log.length) return '<div class="scout-section"><div class="scout-section-title">🎯 투수 분석</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수 탭에서 투구를 기록하면 분석이 표시됩니다</div></div>';
       const total = log.length;
       const ptCnts = {};
       log.forEach(p => { if (p.pt) ptCnts[p.pt] = (ptCnts[p.pt]||0)+1; });

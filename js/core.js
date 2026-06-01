@@ -2182,6 +2182,9 @@ function toggleStarter(id,e){
 
 // ─── PER-BATTER STAT ───
 var _NOAB=['볼넷','사구','희타','희비'],_HITS=['안타','내야안타','2루타','3루타','홈런'],_BASE={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+// 구종 컬러맵 (전역 공유)
+var _PT_COL={'직구':'#e53935','싱커':'#ff7043','커터':'#795548','체인지업':'#43a047','스플리터':'#2e7d32','포크볼':'#aeea00','스크류볼':'#7cb9a8','커브':'#29b6f6','너클커브':'#7b1fa2','슬로우커브':'#1565c0','슬라이더':'#fdd835','스위퍼':'#ffc400','슬러브':'#4e6b8c','너클볼':'#006994','이퓨스볼':'#555555','팝볼':'#888888'};
+var _PT_ABR={'직구':'F','싱커':'SK','커터':'CT','체인지업':'CH','스플리터':'SP','포크볼':'FK','스크류볼':'SC','커브':'C','너클커브':'KC','슬로우커브':'LC','슬라이더':'S','스위퍼':'SW','슬러브':'SL','너클볼':'KN','이퓨스볼':'EP','팝볼':'PB'};
 function updBatterStat(){
   var ph=document.getElementById('batter-analysis-placeholder');
   var pc=document.getElementById('batter-analysis-content');
@@ -2247,10 +2250,9 @@ function updBatterStat(){
       if(zd.n>0){if(zd.rate>=0.4){bg='rgba(45,212,160,'+(0.2+zd.n/maxZ*.4)+')';col='#2dd4a0';}else{bg='rgba(245,101,101,'+(0.15+zd.n/maxZ*.4)+')';col='#f56565';}}
       var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
       var ptCts={};(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
-      var ptColMap={'직구':'#4b8cf5','커터':'#8892a4','커브':'#a78bfa','슬라이더':'#f6c23e','체인지업':'#2dd4a0','포크볼':'#fb923c'};
-      var ptAbrMap={'직구':'F','커터':'CT','커브':'C','슬라이더':'S','체인지업':'CH','포크볼':'FK'};
-      var ptTagsHtml=Object.keys(ptCts).map(function(pt){return'<span class="zh-pt" style="background:'+ptColMap[pt]+'33;color:'+ptColMap[pt]+'">'+(ptAbrMap[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
-      return'<div class="zh-cell" title="'+z+': '+tips+'" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0;padding:1px">'+(zd.n?'<span style="font-size:9px;font-weight:800">'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span><div class="zh-pt-row">'+ptTagsHtml+'</div>':'')+'</div>';
+      var ptTagsHtml=Object.keys(ptCts).map(function(pt){var c=_PT_COL[pt]||'#7c8898';return'<span class="zh-pt" style="background:'+c+'33;color:'+c+'">'+(_PT_ABR[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
+      var zpJ=JSON.stringify((zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||''};}));
+      return'<div class="zh-cell" title="'+z+': '+tips+'" onclick="_showPzCard(event,'+JSON.stringify(z)+','+zpJ+')" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0;padding:1px;cursor:'+(zd.n?'pointer':'default')+'">'+(zd.n?'<span style="font-size:9px;font-weight:800">'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span><div class="zh-pt-row">'+ptTagsHtml+'</div>':'')+'</div>';
     }).join('');
   }
   var bzEl=document.getElementById('bsBallZone');
@@ -2284,7 +2286,7 @@ function updBatterStat(){
   var ptTypesEl=document.getElementById('bsPitchTypes');
   if(ptTypesEl){
     var allPts={};
-    var _ptColMap={'직구':'#4b8cf5','슬라이더':'#f6c23e','커브':'#a78bfa','체인지업':'#2dd4a0','포크볼':'#fb923c','커터':'#8892a4','스위퍼':'#06b6d4','싱커':'#f97316','스플리터':'#84cc16','너클볼':'#e879f9','너클커브':'#6366f1','스크류볼':'#14b8a6','슬러브':'#ec4899','이퓨스볼':'#f43f5e','슬로우커브':'#78716c','팝볼':'#7c3aed'};
+    var _ptColMap=_PT_COL;
     bAbs.forEach(function(ab){
       var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{pt:ab.pt}]:[]);
       if(!ps.length)return;
@@ -4249,8 +4251,8 @@ function renderPitcherStats(){
     +'</div>';
 
   // 구종 비율 도넛
-  var ptTypes=['직구','슬라이더','커브','체인지업','포크볼','커터','스위퍼','싱커','스플리터','너클볼','너클커브','스크류볼','슬러브','이퓨스볼','슬로우커브','팝볼'];
-  var ptColors=['#4b8cf5','#f6c23e','#a78bfa','#2dd4a0','#fb923c','#8892a4','#06b6d4','#f97316','#84cc16','#e879f9','#6366f1','#14b8a6','#ec4899','#f43f5e','#78716c','#7c3aed'];
+  var ptTypes=Object.keys(_PT_COL);
+  var ptColors=ptTypes.map(function(pt){return _PT_COL[pt];});
   var ptCounts=ptTypes.map(function(pt){return pitches.filter(function(p){return p.pt===pt;}).length;});
   var ptUsed=ptTypes.filter(function(pt,i){return ptCounts[i]>0;});
   var ptCountsUsed=ptCounts.filter(function(c){return c>0;});
@@ -4339,12 +4341,13 @@ var _pzCardEl=null;
 function _showPzCard(e,zone,pitches){
   _hidePzCard();
   if(!pitches||!pitches.length)return;
-  var resCol={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565','삼진':'#94a3b8'};
+  var resCol={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565','삼진':'#94a3b8','볼넷':'#a78bfa','병살':'#9ca3af','삼중살':'#9ca3af'};
   var rows=pitches.map(function(p,i){
-    var col=resCol[p.result]||'#94a3b8';
-    return'<div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px">'
-      +'<span style="color:var(--text3);min-width:14px;text-align:right">'+(i+1)+'</span>'
-      +(p.inning?'<span style="font-size:9px;color:var(--text3)">'+p.inning+'</span>':'')
+    var col=resCol[p.result]||'#94a3b8';var ptCol=_PT_COL[p.pt]||'#7c8898';
+    return'<div style="display:flex;gap:5px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px">'
+      +'<span style="color:var(--text3);min-width:12px;text-align:right;font-size:9px">'+(i+1)+'</span>'
+      +(p.inning?'<span style="font-size:8px;color:var(--text3);min-width:28px">'+p.inning+'</span>':'')
+      +'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+ptCol+';flex-shrink:0"></span>'
       +'<span style="flex:1;color:var(--text2)">'+(p.pt||'—')+'</span>'
       +'<span style="color:'+col+';font-weight:700">'+p.result+'</span>'
       +'</div>';

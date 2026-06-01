@@ -1183,22 +1183,27 @@
             <div style="flex:1">
               <div style="font-size:9px;color:var(--text3);margin-bottom:4px">구종</div>
               <div class="pitch-type-chips" id="pitcherPtChips">
-                <button class="chip pt-chip-F" onclick="selPitcherPt(this,'직구')">직구</button>
-                <button class="chip pt-chip-S" onclick="selPitcherPt(this,'슬라이더')">슬라이더</button>
-                <button class="chip pt-chip-C" onclick="selPitcherPt(this,'커브')">커브</button>
-                <button class="chip pt-chip-CH" onclick="selPitcherPt(this,'체인지업')">체인지업</button>
-                <button class="chip pt-chip-FK" onclick="selPitcherPt(this,'포크볼')">포크볼</button>
-                <button class="chip pt-chip-CT" onclick="selPitcherPt(this,'커터')">커터</button>
-                <button class="chip" onclick="selPitcherPt(this,'스위퍼')">스위퍼</button>
-                <button class="chip" onclick="selPitcherPt(this,'싱커')">싱커</button>
-                <button class="chip" onclick="selPitcherPt(this,'스플리터')">스플리터</button>
-                <button class="chip" onclick="selPitcherPt(this,'너클볼')">너클볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'너클커브')">너클커브</button>
-                <button class="chip" onclick="selPitcherPt(this,'스크류볼')">스크류볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'슬러브')">슬러브</button>
-                <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')">이퓨스볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'슬로우커브')">슬로우커브</button>
-                <button class="chip" onclick="selPitcherPt(this,'팝볼')">팝볼</button>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%">패스트볼</div>
+                <button class="chip" onclick="selPitcherPt(this,'직구')" style="border-left:3px solid #e53935">직구</button>
+                <button class="chip" onclick="selPitcherPt(this,'싱커')" style="border-left:3px solid #ff7043">싱커</button>
+                <button class="chip" onclick="selPitcherPt(this,'커터')" style="border-left:3px solid #795548">커터</button>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">오프스피드</div>
+                <button class="chip" onclick="selPitcherPt(this,'체인지업')" style="border-left:3px solid #43a047">체인지업</button>
+                <button class="chip" onclick="selPitcherPt(this,'스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
+                <button class="chip" onclick="selPitcherPt(this,'포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">브레이킹볼</div>
+                <button class="chip" onclick="selPitcherPt(this,'커브')" style="border-left:3px solid #29b6f6">커브</button>
+                <button class="chip" onclick="selPitcherPt(this,'너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
+                <button class="chip" onclick="selPitcherPt(this,'슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">슬라이더</div>
+                <button class="chip" onclick="selPitcherPt(this,'슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
+                <button class="chip" onclick="selPitcherPt(this,'스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
+                <button class="chip" onclick="selPitcherPt(this,'슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">기타</div>
+                <button class="chip" onclick="selPitcherPt(this,'너클볼')" style="border-left:3px solid #006994">너클볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
+                <button class="chip" onclick="selPitcherPt(this,'팝볼')" style="border-left:3px solid #888888">팝볼</button>
               </div>
               <div style="font-size:9px;color:var(--text3);margin-top:8px;margin-bottom:3px">결과</div>
               <div class="pt-result-chips">
@@ -1210,6 +1215,9 @@
                 <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
                 <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
                 <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
+                <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+                <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+                <button class="ptr-btn" onclick="recordPitch('삼중살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">삼중살</button>
               </div>
             </div>
           </div>

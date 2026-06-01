@@ -2005,6 +2005,7 @@ function restoreGame(key){
   AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
   // 투수 목록 UI 갱신
   if(typeof renderPitcherRoster==='function')renderPitcherRoster();
+  if(typeof renderPitchLog==='function')setTimeout(renderPitchLog,50);
   AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;AS.advFilter=null;
   var afBtns=document.querySelectorAll('#advStatFilter .sf-btn');if(afBtns.length){afBtns.forEach(function(b,i){b.classList.toggle('on',i===0);});}
   closeOverlay('loadOverlay');
@@ -4245,7 +4246,7 @@ function loadPitchEntry(pt, zone, zoneX, zoneY){
 function renderPitchLog(){
   var el=document.getElementById('pitchLog');
   if(!el)return;
-  var log=AS.currentPitcher?AS.currentPitcher.pitches.slice().reverse().slice(0,8):[];
+  var log=AS.currentPitcher?AS.currentPitcher.pitches.slice().reverse().slice(0,15):AS.pitchLog.slice(0,15);
   if(!log.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>';return;}
   var resColor={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565'};
   el.innerHTML=log.map(function(p){

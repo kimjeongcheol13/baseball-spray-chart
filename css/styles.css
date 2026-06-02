@@ -243,10 +243,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   /* app-layout: flex:1로 남은 공간 채움 — 명시적 height 제거 */
   .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
-  .pnl-center{max-height:none;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
-  .pnl-right{flex:0 0 auto;min-height:40svh;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
-  .canvas-wrap{width:min(280px,calc(100vw - 16px));height:min(280px,calc(100vw - 16px));aspect-ratio:1/1}
-  .field-wrap{padding:6px;flex:0 0 auto;min-height:0}
+  /* pnl-center: flex 컬럼, 필드가 남은 공간 차지 */
+  .pnl-center{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  /* pnl-right: 고정 35svh — 탭·기록 영역 */
+  .pnl-right{flex:0 0 35svh;overflow:hidden;display:flex;flex-direction:column;border-left:none;border-top:1px solid var(--border)}
+  /* field-wrap: base의 flex:1 복원, 스크롤 없이 공간 채움 */
+  .field-wrap{flex:1;min-height:0;padding:4px;overflow:hidden}
+  /* canvas-wrap: field-wrap 안에서 aspect-ratio:1 정사각형 */
+  .canvas-wrap{width:min(100%,calc(100vw - 8px));max-height:100%;height:auto;aspect-ratio:1}
+  /* 필드 아래 비필수 요소 숨김 (퀵바로 대체) */
+  .field-hint{display:none}
+  .spray-legend{display:none}
   /* mob-batter: 가로 스크롤 보장 */
   .mob-batter{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:6px 10px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x}
   .mob-batter::-webkit-scrollbar{display:none}

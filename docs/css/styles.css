@@ -1336,8 +1336,8 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 #hcToggleBtn{padding:4px 8px;font-size:10px;white-space:nowrap}
 
 /* ?? ?쇰뱶諛?踰꾪듉 ?? */
-#fieldFeedbackBtn{position:fixed;bottom:90px;left:14px;z-index:400;background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:6px 11px;font-size:10px;font-weight:700;font-family:var(--font);color:var(--text3);cursor:pointer;display:none;transition:all .15s;-webkit-tap-highlight-color:transparent}
-@media(max-width:720px){#fieldFeedbackBtn{display:block}}
+#fieldFeedbackBtn{position:fixed;bottom:90px;left:14px;z-index:400;background:var(--bg-card);border:1px solid var(--border2);border-radius:20px;padding:6px 11px;font-size:10px;font-weight:700;font-family:var(--font);color:var(--text3);cursor:pointer;display:block;transition:all .15s;-webkit-tap-highlight-color:transparent}
+#fieldFeedbackBtn:hover{border-color:rgba(75,140,245,.5);color:var(--text)}
 #fieldFeedbackBtn:active{background:var(--bg-raised)}
 
 /* ?? ?쇰뱶諛?紐⑤떖 ?? */

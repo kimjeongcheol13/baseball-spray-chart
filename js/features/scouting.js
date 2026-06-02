@@ -501,18 +501,20 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
 
     <div class="scout-section">
       <div class="scout-section-title">🎯 스트라이크존 히트맵</div>
-      <div class="scout-zone-canvases">
-        <div class="szc-wrap">
-          <div class="szc-label">강점 존</div>
-          <canvas id="scoutStrengthCanvas" width="138" height="138"></canvas>
+      <div class="scout-heatmap-tabs">
+        <button class="sht-btn active" onclick="switchScoutHeatmapTab('strength',this)">강점 존</button>
+        <button class="sht-btn" onclick="switchScoutHeatmapTab('weakness',this)">약점 존</button>
+        <button class="sht-btn" onclick="switchScoutHeatmapTab('all',this)">종합</button>
+      </div>
+      <div class="scout-zone-canvases" style="justify-content:center">
+        <div class="szc-wrap" id="scoutHmPanel-strength">
+          <canvas id="scoutStrengthCanvas" width="200" height="200"></canvas>
         </div>
-        <div class="szc-wrap">
-          <div class="szc-label">약점 존</div>
-          <canvas id="scoutWeaknessCanvas" width="138" height="138"></canvas>
+        <div class="szc-wrap" id="scoutHmPanel-weakness" style="display:none">
+          <canvas id="scoutWeaknessCanvas" width="200" height="200"></canvas>
         </div>
-        <div class="szc-wrap">
-          <div class="szc-label">종합</div>
-          <canvas id="scoutZoneCanvas" width="138" height="138"></canvas>
+        <div class="szc-wrap" id="scoutHmPanel-all" style="display:none">
+          <canvas id="scoutZoneCanvas" width="200" height="200"></canvas>
         </div>
       </div>
       <div class="scout-zone-legend">
@@ -664,11 +666,13 @@ function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
   const c = document.getElementById(canvasId);
   if (!c) return;
   const dpr = window.devicePixelRatio || 1;
-  c.width = 138 * dpr; c.height = 138 * dpr;
-  c.style.width = '138px'; c.style.height = '138px';
+  const SIZE = c.parentElement && c.parentElement.offsetWidth > 50
+    ? Math.min(c.parentElement.offsetWidth - 8, 200) : 200;
+  c.width = SIZE * dpr; c.height = SIZE * dpr;
+  c.style.width = SIZE + 'px'; c.style.height = SIZE + 'px';
   const ctx = c.getContext('2d');
   ctx.scale(dpr, dpr);
-  const cellW = 138 / 3, cellH = 138 / 3;
+  const cellW = SIZE / 3, cellH = SIZE / 3;
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
       const i = row * 3 + col;
@@ -851,6 +855,23 @@ function _buildTextReport(name, analysis, findings, strategy) {
   return lines.join('\n');
 }
 
+function switchScoutHeatmapTab(tab, btn) {
+  ['strength','weakness','all'].forEach(t => {
+    const panel = document.getElementById('scoutHmPanel-' + t);
+    if (panel) panel.style.display = t === tab ? '' : 'none';
+  });
+  const tabBar = btn && btn.closest('.scout-heatmap-tabs');
+  if (tabBar) {
+    tabBar.querySelectorAll('.sht-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  // 탭 전환 시 canvas 재드로우 (display:none → 보이기 직후 크기 정상화)
+  if (_lastAnalysis) {
+    const idMap = { strength: 'scoutStrengthCanvas', weakness: 'scoutWeaknessCanvas', all: 'scoutZoneCanvas' };
+    requestAnimationFrame(() => _paintZoneHeatmap(idMap[tab], _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, tab));
+  }
+}
+
 // _esc imported from constants.js
 
 // Expose to window for onclick handlers
@@ -859,4 +880,5 @@ if (typeof window !== 'undefined') {
   window.renderScoutPlayerSelect = renderScoutPlayerSelect;
   window.generateScoutReport = generateScoutReport;
   window.exportScoutReport = exportScoutReport;
+  window.switchScoutHeatmapTab = switchScoutHeatmapTab;
 }

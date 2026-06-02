@@ -4071,7 +4071,7 @@ function openPlayerProfile(){
   var players={};
   // current game
   AS.abs.forEach(function(a){
-    var key=a.bname+'#'+a.bnum;
+    var key=a.bname;
     if(!players[key])players[key]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
     var p=players[key];p.pa++;
     if(!noab.includes(a.res))p.ab++;
@@ -4091,7 +4091,7 @@ function openPlayerProfile(){
       var d=JSON.parse(localStorage.getItem(key2));
       if(!d||!d.abs)continue;
       d.abs.forEach(function(a){
-        var pk=a.bname+'#'+a.bnum;
+        var pk=a.bname;
         if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
         var p=players[pk];p.pa++;
         if(!noab.includes(a.res))p.ab++;

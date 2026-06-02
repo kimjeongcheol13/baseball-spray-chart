@@ -22,7 +22,7 @@ export function renderProfilePlayerList() {
         btn.closest('.profile-player-list').querySelectorAll('.profile-player-btn').forEach(function(b){b.classList.remove('active');});
         btn.classList.add('active');
         window.selectProfilePlayer('${_esc(String(p.id))}','${_esc(p.name)}','${_esc(String(p.num ?? ''))}',btn);
-      })(this)">#${_esc(String(p.num ?? ''))} ${_esc(p.name)}</button>`;
+      })(this)">${_esc(p.name)}<span class="ppb-num">#${_esc(String(p.num ?? ''))}</span></button>`;
   }).join('');
 }
 
@@ -246,6 +246,16 @@ function _drawTrendChart(trend) {
     ctx.arc(x, y, 3, 0, Math.PI * 2);
     ctx.fillStyle = t.avg >= 0.3 ? '#2dd4a0' : t.avg >= 0.2 ? '#f6c23e' : '#f56565';
     ctx.fill();
+
+    // X축 레이블 (날짜 또는 경기번호)
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '7px monospace';
+    ctx.textAlign = 'center';
+    const raw = t.date || '';
+    // 날짜 형식(YYYY-MM-DD 또는 YYYY.MM.DD) → MM/DD, 아니면 경기N
+    const dateMatch = raw.match(/\d{4}[.\-](\d{1,2})[.\-](\d{1,2})/);
+    const lbl = dateMatch ? dateMatch[1] + '/' + dateMatch[2] : (raw === '현재 경기' ? '현재' : `G${i+1}`);
+    ctx.fillText(lbl, x, H - 1);
   });
 }
 

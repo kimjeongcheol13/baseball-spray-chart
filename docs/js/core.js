@@ -540,6 +540,8 @@ const TOUR=[
   {sel:'.pnl-right .tabs', title:'④ 통계 확인', desc:'오른쪽 패널에서 자동 계산된 통계를 확인하세요.\n• <b>타자</b> 탭 — 개인 타율·OBP·패턴 분석\n• <b>팀통계</b> 탭 — 팀 전체 타율·방향 분포\n• <b>차트</b> 탭 — 스프레이차트 PNG 내보내기', card:'left', cursor:true},
   {sel:null, title:'⑤ 저장', desc:'경기가 끝나면 상단 툴바의 <b>[저장]</b> 버튼을 꼭 눌러주세요.\n기기에 영구 저장됩니다 — 가입·클라우드 불필요.\n⌨️ <b>Ctrl+S</b> 로도 빠르게 저장할 수 있어요.', card:'center', cursor:false},
   {sel:null, title:'⑥ 공유', desc:'<b>🔗 공유</b> 버튼을 탭하면 QR코드와 링크가 생성됩니다.\n팀원이 링크를 열면 배너로 자동 안내됩니다.\n<b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장 후 SNS 공유', card:'center', cursor:false},
+  {sel:'#savantNav', title:'⑦ Savant 분석 뷰', desc:'하단 탭으로 고급 분석 뷰를 전환합니다.\n👤 <b>프로필</b> — 통산 성적 (wOBA·BABIP·ISO 포함)\n⚡ <b>비교</b> — 두 선수 레이더 차트 & 지표 비교\n🔍 <b>스카우트</b> — 약점 존 히트맵 & 투구 전략 자동 제안', card:'top', cursor:true},
+  {sel:null, title:'⑧ 스프레이 필터', desc:'필드 아래 <b>필터</b> 버튼으로 타구를 세분화해 분석합니다.\n구종 · 결과 · 투수 손 · 카운트 조건을 선택하면\n스프레이차트와 통계가 실시간으로 반영됩니다.', card:'center', cursor:false},
 ];
 let tourIdx=0,tourActive=false;
 

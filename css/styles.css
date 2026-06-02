@@ -230,18 +230,28 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 }
 @media(max-width:720px){
   #app-page{overflow:hidden;height:100svh}
-  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+  /* 헤더: 1줄 고정, 오버플로 클리핑 */
+  .app-hdr{height:46px;flex-wrap:nowrap;overflow:hidden;padding:0 8px;gap:6px}
+  /* 헤더에서 모바일 불필요 버튼 숨김 (액션바로 대체) */
+  .app-hdr .btn-xl,
+  .app-hdr .btn-gf,
+  .app-hdr .btn.btn-ghost.btn-primary,
+  .app-hdr .more-menu-wrap{display:none}
+  /* 스코어보드 축소 */
+  .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
+  /* 레이아웃: 헤더(46px) + mob-batter(~42px) 제외 */
+  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;height:calc(100svh - 88px)}
   .pnl-left{display:none}
-  .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .pnl-center{flex:0 0 auto;max-height:55svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
   .canvas-wrap{width:min(240px,100%);height:min(240px,36svh)}
   .field-wrap{padding:8px;flex:none}
-  .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+  /* mob-batter: 가로 스크롤 보장 */
+  .mob-batter{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:6px 10px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x}
   .mob-batter::-webkit-scrollbar{display:none}
   .mob-chip{flex-shrink:0;padding:5px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all 100ms;white-space:nowrap;font-family:var(--font)}
   .mob-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}.mob-chip:active{transform:scale(.95)}
   .app-brand-tag{display:none}
-  .scoreboard{padding:3px 8px;gap:5px}.sc-val{font-size:17px}.inn-sel{display:none}
 }
 @media(min-width:741px){.mob-batter{display:none}}
 
@@ -749,7 +759,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .tab{padding:8px 5px;font-size:11px}
   .rec-item{padding:10px 10px}
   .player-row{padding:10px 12px}
-  .app-hdr{height:46px}
   .batter-bar{padding:5px 10px}
   .tab-mode-bar{padding:4px 6px}.tmb-btn{padding:5px 8px}
 }

@@ -3820,20 +3820,37 @@ function shareGameLink(){
     cond:getGameCond(),
     abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,t:a.team};})
   };
+
+  // Supabase short link 시도
+  if(typeof pushSharedLink==='function'){
+    showToast('🔗 링크 생성 중…',false,true);
+    pushSharedLink(payload,
+      function(id){
+        var url=location.origin+location.pathname+'?gid='+id;
+        showShareQR(url);
+      },
+      function(err){
+        console.warn('[SprayLab] pushSharedLink failed, fallback:',err);
+        _shareGameLinkLegacy(payload);
+      }
+    );
+  }else{
+    _shareGameLinkLegacy(payload);
+  }
+}
+
+// LZString 폴백 (Supabase 불가 시)
+function _shareGameLinkLegacy(payload){
   var url;
   try{
     var json=JSON.stringify(payload);
     var encoded=typeof LZString!=='undefined'
-      ? 'z'+LZString.compressToEncodedURIComponent(json)
-      : 'b'+btoa(unescape(encodeURIComponent(json)));
-    var base=location.origin+location.pathname;
-    url=base+'?game='+encoded;
-  }catch(e){
-    url=location.href;
-  }
-  // URL이 4KB 초과 시 경고 — 일부 메신저에서 링크가 깨질 수 있음
+      ?'z'+LZString.compressToEncodedURIComponent(json)
+      :'b'+btoa(unescape(encodeURIComponent(json)));
+    url=location.origin+location.pathname+'?game='+encoded;
+  }catch(e){url=location.href;}
   if(url.length>4096){
-    showToast('⚠️ 공유 URL이 깁니다 ('+Math.round(url.length/1024*10)/10+'KB) — 카카오톡 전송 시 파일 공유를 권장합니다',false,true);
+    showToast('⚠️ URL이 깁니다('+Math.round(url.length/1024*10)/10+'KB) — Supabase 미연결 상태',false,true);
   }
   showShareQR(url);
 }
@@ -3845,9 +3862,39 @@ function _fallbackCopy(text){
 }
 var _sharedPayload=null;
 function _loadSharedGame(){
-  // ?game= 파라미터 우선, 레거시 #share= 도 지원
-  var encoded='';
   var sp=new URLSearchParams(location.search);
+
+  // ── 신규: ?gid= 짧은 링크 ──
+  if(sp.has('gid')){
+    var gid=sp.get('gid');
+    if(typeof fetchSharedLink==='function'){
+      fetchSharedLink(gid,
+        function(payload){
+          if(!payload||!payload.abs)return;
+          _sharedPayload=payload;
+          _showSharedBanner(payload);
+        },
+        function(err){
+          console.warn('[SprayLab] fetchSharedLink failed:',err);
+          showToast('공유 링크를 불러올 수 없습니다',false);
+        }
+      );
+    }else{
+      // Supabase 아직 초기화 전 — 잠시 후 재시도
+      setTimeout(function(){
+        if(typeof fetchSharedLink==='function'){
+          fetchSharedLink(gid,
+            function(payload){if(!payload||!payload.abs)return;_sharedPayload=payload;_showSharedBanner(payload);},
+            function(){showToast('공유 링크를 불러올 수 없습니다',false);}
+          );
+        }
+      },1200);
+    }
+    return;
+  }
+
+  // ── 레거시: ?game= LZString ──
+  var encoded='';
   if(sp.has('game')){
     encoded=sp.get('game');
   }else if(location.hash&&location.hash.includes('#share=')){
@@ -7070,6 +7117,45 @@ function fieldFeedbackSubmit(){
       if(r.error){showToast('☁️ 업로드 오류: '+r.error.message,false,true);return;}
       showToast('⬆️ '+rows.length+'개 경기 업로드 완료',false);
     });
+  };
+
+  // ── URL 단축 공유: shared_links 테이블 ──
+  // 필요 SQL (Supabase SQL Editor에서 1회 실행):
+  // CREATE TABLE IF NOT EXISTS shared_links (
+  //   id TEXT PRIMARY KEY,
+  //   payload JSONB NOT NULL,
+  //   created_at TIMESTAMPTZ DEFAULT NOW()
+  // );
+  // ALTER TABLE shared_links ENABLE ROW LEVEL SECURITY;
+  // CREATE POLICY "public read"   ON shared_links FOR SELECT USING (true);
+  // CREATE POLICY "public insert" ON shared_links FOR INSERT WITH CHECK (true);
+
+  function _genId(){
+    // 8자 랜덤 alphanumeric
+    return Math.random().toString(36).slice(2,6)+Math.random().toString(36).slice(2,6);
+  }
+
+  window.pushSharedLink=function(payload,onOk,onFail){
+    var db=_init();
+    if(!db){onFail('no_client');return;}
+    var id=_genId();
+    db.from('shared_links').insert({id:id,payload:payload})
+      .then(function(r){
+        if(r.error){onFail(r.error);return;}
+        onOk(id);
+      })
+      .catch(onFail);
+  };
+
+  window.fetchSharedLink=function(id,onOk,onFail){
+    var db=_init();
+    if(!db){onFail('no_client');return;}
+    db.from('shared_links').select('payload').eq('id',id).single()
+      .then(function(r){
+        if(r.error||!r.data){onFail(r.error);return;}
+        onOk(r.data.payload);
+      })
+      .catch(onFail);
   };
 
   // 페이지 로드 시 팀코드 상태 표시

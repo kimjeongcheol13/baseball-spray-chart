@@ -229,7 +229,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pv-center{height:280px}
 }
 @media(max-width:720px){
-  #app-page{overflow:hidden;height:100svh}
+  /* #app-page: 하단 고정 바(액션바 42px + savantNav 44px = 86px) 제외 */
+  #app-page{overflow:hidden;height:calc(100svh - 86px)}
   /* 헤더: 1줄 고정, 오버플로 클리핑 */
   .app-hdr{height:46px;flex-wrap:nowrap;overflow:hidden;padding:0 8px;gap:6px}
   /* 헤더에서 모바일 불필요 버튼 숨김 (액션바로 대체) */
@@ -239,8 +240,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .app-hdr .more-menu-wrap{display:none}
   /* 스코어보드 축소 */
   .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
-  /* 레이아웃: 헤더(46px) + mob-batter(~42px) 제외 */
-  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;height:calc(100svh - 88px)}
+  /* app-layout: flex:1로 남은 공간 채움 — 명시적 height 제거 */
+  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
   .pnl-center{flex:0 0 auto;max-height:55svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
@@ -1682,9 +1683,7 @@ nav i {
     gap: 2px;
     backdrop-filter: blur(12px);
   }
-  /* app-page가 mobileActionBar + savantNav(44px) 높이만큼 패딩 */
-  #app-page { padding-bottom: 86px; }
-  /* tab-pnl도 동일하게 패딩 확보 */
+  /* tab-pnl 하단 여백: 액션바(42px) + savantNav(44px) */
   .tab-pnl { padding-bottom: 86px; }
 }
 .mab-btn {

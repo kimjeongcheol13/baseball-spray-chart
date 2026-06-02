@@ -1162,7 +1162,7 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;checkSaveReminder();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(true);checkSaveReminder();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -1798,10 +1798,30 @@ let _tt;
 function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,6000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
+// ── 저장 상태 UI 헬퍼 ──
+function _updateSaveUI(unsaved){
+  var ind=document.getElementById('saveInd');
+  var btn=document.getElementById('saveBtn');
+  if(unsaved){
+    if(ind){ind.textContent='● 미저장';ind.className='save-ind unsaved';}
+    if(btn){btn.classList.add('btn-primary');btn.classList.remove('btn-ghost');}
+  }else{
+    if(ind){ind.textContent='저장됨 ✓';ind.className='save-ind ok';}
+    if(btn){btn.classList.remove('btn-primary');btn.classList.add('btn-ghost');}
+    setTimeout(function(){
+      if(ind&&ind.className==='save-ind ok'){ind.textContent='';ind.className='save-ind';}
+    },3000);
+  }
+}
+
 function saveGame(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
-    const key='sl_'+Date.now();
+    // 팀명+날짜 기반 키 (가독성 향상)
+    var th=(document.getElementById('tHome').value||'홈팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'홈팀';
+    var ta=(document.getElementById('tAway').value||'원정팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'원정팀';
+    var ds=new Date().toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\. /g,'').replace(/\./g,'');
+    const key='sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
     const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),cond:getGameCond(),pitchers:AS.pitchers};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
     saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
@@ -1809,6 +1829,7 @@ function saveGame(){
     localStorage.setItem(key,JSON.stringify(data));
     if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
     _gameSaved=true;
+    _updateSaveUI(false);
     showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
     setTimeout(showGameSummary, 400);
@@ -2081,6 +2102,7 @@ function restoreGame(key){
   var hb=document.getElementById('hotColdBtn');if(hb)hb.classList.remove('btn-primary');
   var tb=document.getElementById('teamFilterBtn');if(tb){tb.textContent='전체';tb.classList.remove('btn-primary');}
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
+  _updateSaveUI(false);
   updateAll();
   showToast('경기 불러오기 완료',false);
 }
@@ -2441,8 +2463,6 @@ var _autoTimer=null,_autoKey=null,_lastAutoLen=0;
 function scheduleAutoSave(){
   clearTimeout(_autoTimer);
   _autoTimer=setTimeout(_doAutoSave,10000);
-  var ind=document.getElementById('saveInd');
-  if(ind){ind.textContent='저장 대기…';ind.className='save-ind';}
 }
 function _doAutoSave(){
   if(!AS.abs.length)return;
@@ -2463,8 +2483,10 @@ function _doAutoSave(){
     _pruneOldAutoSaves(key);
     _checkStorageQuota();
     // 자동저장은 로컬만 저장 (클라우드는 수동 저장 시에만 동기화)
-    if(ind){ind.textContent='자동저장 ✓';ind.className='save-ind ok';}
-    setTimeout(function(){if(ind)ind.textContent='';},2500);
+    if(ind){ind.textContent='자동저장됨';ind.className='save-ind ok';}
+    setTimeout(function(){
+      if(ind&&ind.className==='save-ind ok'){ind.textContent='';ind.className='save-ind';}
+    },4000);
   }catch(e){
     if(ind){ind.textContent='저장 실패!';ind.className='save-ind fail';}
     if(e.name==='QuotaExceededError'){
@@ -7018,15 +7040,12 @@ function fieldFeedbackSubmit(){
   }
 
   function _setCloudUI(tc){
-    // 모달 상태 표시
     var st=document.getElementById('cloudTeamStatus');
-    if(st)st.textContent=tc?'현재 팀 코드: '+tc:'팀 코드가 설정되지 않았습니다';
-    // 입력창 placeholder
+    if(st){st.textContent=tc?'✅ 팀 코드: '+tc:'팀 코드가 설정되지 않았습니다';st.style.color=tc?'var(--green)':'var(--text3)';}
     var inp=document.getElementById('teamCodeInput');
-    if(inp)inp.placeholder=tc?'현재: '+tc:'예: tigers2024';
-    // 동기화 버튼
-    var syncBtn=document.getElementById('cloudSyncBtn');
-    if(syncBtn)syncBtn.textContent='☁️ 동기화 — 클라우드에서 가져오기'+(tc?' ('+tc+')':'');
+    if(inp)inp.placeholder=tc?'현재: '+tc:'팀 코드 입력 (예: tigers2024)';
+    var cst=document.getElementById('cloudConnStatus');
+    if(cst&&!tc){cst.textContent='팀 코드를 설정하면 동기화가 시작됩니다';cst.style.color='var(--text3)';}
   }
 
   window.getTeamCode=function(){
@@ -7190,6 +7209,55 @@ function fieldFeedbackSubmit(){
   // ALTER TABLE shared_links ENABLE ROW LEVEL SECURITY;
   // CREATE POLICY "public read"   ON shared_links FOR SELECT USING (true);
   // CREATE POLICY "public insert" ON shared_links FOR INSERT WITH CHECK (true);
+
+  // ── 통합 동기화: 업로드 + 다운로드 자동 판단 ──
+  window.cloudSyncSmart=function(){
+    var db=_init();
+    if(!db){showToast('☁️ 연결 중…',false,true);return;}
+    var tc=getTeamCode();
+    if(!tc){showToast('먼저 팀 코드를 설정해 주세요',false);openCloudOverlay();return;}
+    var btn=document.getElementById('cloudSyncBtn');
+    var st=document.getElementById('cloudConnStatus');
+    if(btn){btn.disabled=true;btn.textContent='☁️ 동기화 중…';}
+    function _done(msg,ok){
+      if(btn){btn.disabled=false;btn.textContent='☁️ 동기화';}
+      if(st){st.textContent=ok?'✅ '+msg:'❌ '+msg;st.style.color=ok?'var(--green)':'var(--red)';}
+      showToast((ok?'✅ ':'❌ ')+msg,false);
+    }
+    // 1. 로컬 → 클라우드 업로드
+    var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+    var rows=saves.map(function(s){
+      try{var gd=JSON.parse(localStorage.getItem(s.key));if(!gd)return null;
+        return{team_code:tc,game_key:s.key,game_data:gd,label:s.label||s.key,ts:s.ts||0};}
+      catch(e){return null;}
+    }).filter(Boolean);
+    var upProm=rows.length?db.from('games').upsert(rows,{onConflict:'team_code,game_key'}):Promise.resolve({error:null});
+    // 2. 클라우드 → 로컬 다운로드
+    upProm.then(function(r){
+      if(r.error)console.warn('[cloud] upload:',r.error);
+      return db.from('games').select('*').eq('team_code',tc);
+    }).then(function(r){
+      if(r.error)throw r.error;
+      var remote=r.data||[];
+      var saves2=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+      var existMap={};saves2.forEach(function(s){existMap[s.key]=true;});
+      var added=0,updated=0;
+      remote.forEach(function(row){
+        var k=row.game_key,gd=row.game_data;
+        if(!existMap[k]){saves2.push({key:k,label:row.label||k,ts:row.ts||0});localStorage.setItem(k,JSON.stringify(gd));added++;}
+        else{var loc=JSON.parse(localStorage.getItem(k)||'null');if(!loc||(row.ts&&row.ts>(loc.ts||0))){localStorage.setItem(k,JSON.stringify(gd));updated++;}}
+      });
+      localStorage.setItem('sl_saves',JSON.stringify(saves2));
+      var msg='동기화 완료';
+      if(added)msg+=' — '+added+'개 추가됨';
+      if(updated)msg+=', '+updated+'개 업데이트됨';
+      if(!added&&!updated)msg+=' — 최신 상태';
+      _done(msg,true);
+    }).catch(function(err){
+      var m=(err&&(err.message||err.code))||'오류';
+      _done('오류: '+m,false);
+    });
+  };
 
   function _genId(){
     // 8자 랜덤 alphanumeric

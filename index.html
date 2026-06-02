@@ -902,9 +902,9 @@
   </div>
   <div style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
-    <span class="save-ind" id="saveInd">—</span>
+    <span class="save-ind" id="saveInd"></span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-primary" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn btn-ghost" id="saveBtn" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
     <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
@@ -1484,43 +1484,29 @@
 <!-- ☁️ CLOUD OVERLAY -->
 <div class="overlay" id="cloudOverlay">
   <div class="modal" style="width:min(360px,96vw)">
-    <div class="modal-title" style="margin-bottom:14px">☁️ 클라우드 동기화</div>
+    <div class="modal-title" style="margin-bottom:4px">☁️ 팀 코드로 경기 공유</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px">같은 팀 코드를 쓰는 기기끼리 경기 기록을 자동으로 나눕니다</div>
 
-    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.6">
-      팀 코드를 설정하면 같은 코드를 사용하는 모든 기기에서 경기 기록을 공유할 수 있습니다.
-    </div>
-
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:5px">팀 코드</div>
+    <div style="margin-bottom:14px">
       <div style="display:flex;gap:6px">
-        <input id="teamCodeInput" type="text" placeholder="예: tigers2024"
+        <input id="teamCodeInput" type="text" placeholder="팀 코드 입력 (예: tigers2024)"
           style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"
           oninput="this.value=this.value.replace(/[^a-zA-Z0-9가-힣_-]/g,'').toLowerCase()"
           onkeydown="if(event.key==='Enter')setTeamCode()">
         <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;white-space:nowrap" onclick="setTeamCode()">설정</button>
       </div>
-      <div id="cloudTeamStatus" style="font-size:10px;color:var(--green);margin-top:5px"></div>
+      <div id="cloudTeamStatus" style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600"></div>
     </div>
 
     <!-- 연결 상태 -->
-    <div id="cloudConnStatus" style="font-size:11px;padding:7px 10px;border-radius:7px;background:var(--bg-raised);margin-bottom:10px;color:var(--text3)">연결 상태 미확인 — 아래 테스트 버튼을 누르세요</div>
+    <div id="cloudConnStatus" style="font-size:11px;padding:9px 12px;border-radius:8px;background:var(--bg-raised);margin-bottom:12px;color:var(--text3)">팀 코드를 설정하면 동기화가 시작됩니다</div>
 
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-      <button class="btn btn-ghost" id="cloudTestBtn" style="width:100%;justify-content:center;font-size:12px;color:var(--yellow);border-color:rgba(246,194,62,.3)" onclick="cloudTest()">
-        🔌 연결 테스트
-      </button>
-      <button class="btn btn-ghost" id="cloudSyncBtn" style="width:100%;justify-content:center;font-size:12px" onclick="cloudSync()">
-        ☁️ 동기화 — 클라우드에서 가져오기
-      </button>
-      <button class="btn btn-ghost" id="cloudUploadAllBtn" style="width:100%;justify-content:center;font-size:12px;color:var(--blue);border-color:rgba(75,140,245,.3)" onclick="cloudUploadAll()">
-        ⬆️ 전체 업로드 — 내 기기 경기를 클라우드에 올리기
-      </button>
-    </div>
+    <button class="btn btn-ghost" id="cloudSyncBtn" style="width:100%;justify-content:center;font-size:13px;padding:11px;margin-bottom:12px" onclick="cloudSyncSmart()">
+      ☁️ 동기화
+    </button>
 
-    <div style="font-size:9px;color:var(--text3);line-height:1.7;margin-bottom:14px">
-      • 팀 코드는 영문·숫자·한글·_(언더바)·-(하이픈) 조합<br>
-      • 팀 코드를 아는 사람은 누구나 해당 경기를 볼 수 있습니다<br>
-      • 동기화는 수동으로 버튼을 눌러야 실행됩니다
+    <div style="font-size:9px;color:var(--text3);line-height:1.8;margin-bottom:14px">
+      팀 코드를 아는 사람 누구나 경기를 볼 수 있습니다
     </div>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('cloudOverlay')">닫기</button>

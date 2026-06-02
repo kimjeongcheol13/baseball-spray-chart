@@ -598,10 +598,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    AUTO-SAVE INDICATOR
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
-.save-ind{font-size:10px;font-family:var(--mono);color:var(--text3);flex-shrink:0;white-space:nowrap;transition:color .4s;letter-spacing:.3px}
+.save-ind{font-size:10px;font-family:var(--mono);color:var(--text3);flex-shrink:0;white-space:nowrap;transition:color .3s;letter-spacing:.3px;min-width:0}
 .save-ind.ok{color:var(--green)}
 .save-ind.fail{color:var(--red)}
 .save-ind.saving{color:var(--yellow)}
+.save-ind.unsaved{color:var(--yellow);font-weight:700}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD

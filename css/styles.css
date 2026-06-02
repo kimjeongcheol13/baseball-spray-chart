@@ -229,31 +229,26 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pv-center{height:280px}
 }
 @media(max-width:720px){
-  /* #app-page: 하단 고정 바(액션바 42px + savantNav 44px = 86px) 제외 */
-  #app-page{overflow:hidden;height:calc(100svh - 86px)}
-  /* 헤더: 1줄 고정, 오버플로 클리핑 */
+  /* ── app-page: 세로 스택, 전체 높이 ── */
+  #app-page{overflow:hidden;height:100svh;display:flex;flex-direction:column}
+  /* ── 헤더: 1줄 고정 ── */
   .app-hdr{height:46px;flex-wrap:nowrap;overflow:hidden;padding:0 8px;gap:6px}
-  /* 헤더에서 모바일 불필요 버튼 숨김 (액션바로 대체) */
   .app-hdr .btn-xl,
   .app-hdr .btn-gf,
   .app-hdr .btn.btn-ghost.btn-primary,
   .app-hdr .more-menu-wrap{display:none}
-  /* 스코어보드 축소 */
   .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
-  /* app-layout: flex:1로 남은 공간 채움 — 명시적 height 제거 */
+  /* ── 레이아웃: 세로 스택 ── */
   .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
-  /* pnl-center: flex 컬럼, 필드가 남은 공간 차지 */
-  .pnl-center{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
-  /* pnl-right: 고정 35svh — 탭·기록 영역 */
-  .pnl-right{flex:0 0 35svh;overflow:hidden;display:flex;flex-direction:column;border-left:none;border-top:1px solid var(--border)}
-  /* field-wrap: base의 flex:1 복원, 스크롤 없이 공간 채움 */
-  .field-wrap{flex:1;min-height:0;padding:4px;overflow:hidden}
-  /* canvas-wrap: field-wrap 안에서 aspect-ratio:1 정사각형 */
-  .canvas-wrap{width:min(100%,calc(100vw - 8px));max-height:100%;height:auto;aspect-ratio:1}
-  /* 필드 아래 비필수 요소 숨김 (퀵바로 대체) */
-  .field-hint{display:none}
-  .spray-legend{display:none}
+  /* 위쪽: 필드 영역 — content 크기에 맞춰 고정 */
+  .pnl-center{flex:0 0 auto;max-height:none;overflow:visible;display:flex;flex-direction:column;align-items:center}
+  .field-wrap{padding:6px;flex:0 0 auto}
+  .canvas-wrap{width:min(300px,calc(100vw - 20px));height:min(300px,calc(100vw - 20px));aspect-ratio:1/1}
+  /* 아래쪽: 타석기록 패널 — 나머지 공간 전부 + 스크롤 */
+  .pnl-right{flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--border);border-left:none;display:flex;flex-direction:column}
+  .tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:none}
+  .tab-pnl{width:100%;height:auto;min-height:0}
   /* mob-batter: 가로 스크롤 보장 */
   .mob-batter{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:6px 10px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x}
   .mob-batter::-webkit-scrollbar{display:none}

@@ -900,7 +900,7 @@
     <span class="vs">VS</span> 
     <div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.as=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
   </div>
-  <div style="display:flex;gap:6px;align-items:center">
+  <div id="appToolbar" style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <span class="save-ind" id="saveInd"></span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
@@ -924,6 +924,30 @@
     </div>
   </div>
 </header>
+
+<!-- 모바일 액션바: 저장/불러오기/실행취소/더보기 — savant-nav 위에 고정 -->
+<div id="mobileActionBar">
+  <button class="mab-btn" onclick="openLoad()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>
+    불러오기
+  </button>
+  <button class="mab-btn mab-save" id="mabSaveBtn" onclick="saveGame()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+    저장
+  </button>
+  <button class="mab-btn" id="mabUndoBtn" onclick="undoLast()" disabled>
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 5.17 7"/></svg>
+    취소
+  </button>
+  <button class="mab-btn" onclick="exportCurrentGameToExcel()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    엑셀
+  </button>
+  <button class="mab-btn" onclick="toggleMoreMenu()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    더보기
+  </button>
+</div>
 
 <div class="mob-batter" id="mobBar"></div>
 

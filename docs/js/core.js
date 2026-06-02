@@ -6848,6 +6848,7 @@ function fieldFeedbackClose(){
 function fieldFeedbackSubmit(){
   var text=(document.getElementById('ffmText')||{}).value||'';
   var tags=_ffmTags.slice();
+  if(!text.trim()&&!tags.length){showToast('내용을 입력해주세요',false);return;}
   var entry={ts:Date.now(),tags:tags,text:text.trim(),
     abs:(AS.abs||[]).length,ver:'1.2.0',ua:navigator.userAgent.slice(0,80)};
   try{
@@ -6855,11 +6856,37 @@ function fieldFeedbackSubmit(){
     list.push(entry);if(list.length>50)list=list.slice(-50);
     localStorage.setItem('sl_feedback',JSON.stringify(list));
   }catch(e){}
-  var subject='SprayLab 피드백'+(tags.length?' ['+tags.join(',')+']':'');
-  var body='[태그] '+(tags.join(', ')||'없음')+'\n\n[내용]\n'+(text.trim()||'(내용 없음)')+'\n\n---\n타석 수: '+entry.abs+'\n버전: '+entry.ver;
-  window.open('mailto:jeongcheol13@naver.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body));
-  fieldFeedbackClose();
-  showToast('메일 앱이 열립니다 ✓',false);
+  var btn=document.querySelector('#fieldFeedbackModal .ffm-submit, #fieldFeedbackModal button[onclick*="Submit"]');
+  if(btn){btn.disabled=true;btn.textContent='전송 중...';}
+  fetch('https://formspree.io/f/xnjrevge',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify({
+      태그: tags.join(', ')||'없음',
+      내용: text.trim()||'(내용 없음)',
+      타석수: entry.abs,
+      버전: entry.ver,
+      ua: entry.ua
+    })
+  })
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if(res.ok){
+      fieldFeedbackClose();
+      showToast('피드백이 전송되었습니다 ✓',false);
+    }else{throw new Error('fail');}
+  })
+  .catch(function(){
+    // Formspree 실패 시 mailto 폴백
+    var subject='SprayLab 피드백'+(tags.length?' ['+tags.join(',')+']':'');
+    var body='[태그] '+(tags.join(', ')||'없음')+'\n\n[내용]\n'+(text.trim()||'(내용 없음)')+'\n\n---\n타석 수: '+entry.abs+'\n버전: '+entry.ver;
+    window.open('mailto:jeongcheol13@naver.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body));
+    fieldFeedbackClose();
+    showToast('메일 앱으로 전송합니다',false);
+  })
+  .then(function(){
+    if(btn){btn.disabled=false;btn.textContent='전송';}
+  });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

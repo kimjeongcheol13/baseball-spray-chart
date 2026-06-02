@@ -449,11 +449,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .rbi-lbl{font-size:11px;color:var(--text2);font-weight:700}.rbi-val{font-family:var(--mono);font-size:16px;font-weight:700;min-width:24px;text-align:center}
 .rbi-btn{width:26px;height:26px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 90ms;font-family:var(--mono)}
 .rbi-btn:hover{border-color:var(--accent);color:var(--accent)}.rbi-btn:active{transform:scale(.88)}
-.load-item{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--bg-raised);transition:border-color 100ms;overflow:hidden}
-.load-item:hover{border-color:var(--accent)}.load-item-body{flex:1;padding:9px 11px;cursor:pointer}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
-.load-item-actions{display:flex;flex-direction:column;border-left:1px solid var(--border);flex-shrink:0}
+/* 경기 카드 — 탭=불러오기, 꾹=컨텍스트 메뉴 */
+.load-card{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:6px;background:var(--bg-raised);cursor:pointer;transition:border-color .12s,background .12s;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.load-card:hover{border-color:var(--accent);background:var(--bg-hover)}
+.load-card:active{background:var(--bg-hover);transform:scale(.99)}
+.lc-info{flex:1;min-width:0}
+.lc-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-meta{font-size:10px;color:var(--text3);margin-top:2px}
+.lc-hint{font-size:9px;color:var(--text3);flex-shrink:0;margin-left:8px;opacity:.6}
+/* 컨텍스트 메뉴 버튼 */
+.ctx-btn{display:block;width:100%;padding:13px 4px;background:none;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:var(--font);color:var(--text);text-align:left;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent}
+.ctx-btn:hover{background:var(--bg-raised)}
+.ctx-btn.ctx-del{color:var(--red)}
+.ctx-btn.ctx-cancel{color:var(--text3);margin-top:6px;border-top:1px solid var(--border2);padding-top:14px}
+/* 레거시 유지 (다른 곳에서 혹시 참조) */
+.load-item{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;background:var(--bg-raised);overflow:hidden}
+.load-item-body{flex:1;padding:9px 11px;cursor:pointer}.load-item-title{font-size:12px;font-weight:700}.load-item-date{font-size:10px;color:var(--text3);margin-top:2px}
 .li-btn{padding:5px 9px;font-size:10px;font-weight:700;font-family:var(--font);border:none;background:none;cursor:pointer;color:var(--text2);transition:all 90ms;white-space:nowrap}
-.li-btn:hover{background:var(--bg-hover)}.li-btn.share-btn:hover{color:var(--green)}.li-btn.load-btn:hover{color:var(--accent)}.li-btn.del-btn:hover{color:var(--red);background:rgba(245,101,101,.1)}
 .li-btn+.li-btn{border-top:1px solid var(--border)}
 .import-row{margin-bottom:10px}
 .import-label{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;border:1px dashed var(--border2);border-radius:7px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;transition:all 100ms;width:100%}

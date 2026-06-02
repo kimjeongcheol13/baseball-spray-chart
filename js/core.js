@@ -1819,26 +1819,87 @@ function openLoad(){
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
   var el=document.getElementById('saveList');
   if(!saves.length){
-    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';
+    el.innerHTML='<div style="text-align:center;padding:24px 16px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';
   }else{
     el.innerHTML=[...saves].reverse().map(function(s){
-      return '<div class="load-item">' +
-        '<div class="load-item-body" onclick="restoreGame(\'' + s.key + '\')">' +
-          '<div class="load-item-title">' + s.label + '</div>' +
-          '<div class="load-item-date">' + _fmtTs(s.ts) + '</div>' +
-        '</div>' +
-        '<div class="load-item-actions">' +
-          // 💡 일반 '다운로드' 대신 전용 '앱 파일 내보내기' 형태로 UI 전면 패치
-          '<button class="li-btn" onclick="renameGame(\'' + s.key + '\')" title="이름 변경">✏️</button>' +
-          '<button class="li-btn" onclick="exportGameToExcel(\'' + s.key + '\')" style="color:var(--blue)">📊 엑셀</button>' +
-          '<button class="li-btn share-btn" onclick="shareGame(\'' + s.key + '\')" style="color:var(--green)">내보내기</button>' +
-          '<button class="li-btn load-btn" onclick="restoreGame(\'' + s.key + '\')">불러오기</button>' +
-          '<button class="li-btn del-btn" onclick="deleteGame(\'' + s.key + '\')">삭제</button>' +
-        '</div>' +
-      '</div>';
+      var k=s.key.replace(/'/g,"\\'");
+      return '<div class="load-card"'
+        +' onclick="_lpClick(\''+k+'\')"'
+        +' onmousedown="_lpStart(event,\''+k+'\')"'
+        +' onmouseup="_lpEnd()"'
+        +' onmouseleave="_lpEnd()"'
+        +' ontouchstart="_lpStart(event,\''+k+'\')"'
+        +' ontouchend="_lpEnd(event)"'
+        +' ontouchcancel="_lpEnd()">'
+        +'<div class="lc-info">'
+          +'<div class="lc-title">'+s.label+'</div>'
+          +'<div class="lc-meta">'+_fmtTs(s.ts)+'</div>'
+        +'</div>'
+        +'<div class="lc-hint">꾹 ···</div>'
+        +'</div>';
     }).join('');
   }
   openOverlay('loadOverlay');
+}
+
+// ── 카드 꾹 누르기 (long-press) ──
+var _lpTimer=null,_lpFired=false,_ctxActiveKey=null;
+
+function _lpStart(e,key){
+  _lpFired=false;
+  _ctxActiveKey=key;
+  _lpTimer=setTimeout(function(){
+    _lpFired=true;
+    _lpTimer=null;
+    _ctxOpen(key);
+  },500);
+}
+function _lpEnd(e){
+  if(_lpTimer){clearTimeout(_lpTimer);_lpTimer=null;}
+  // touchend: 스크롤 허용
+}
+function _lpClick(key){
+  if(!_lpFired){
+    closeOverlay('loadOverlay');
+    restoreGame(key);
+  }
+  _lpFired=false;
+}
+
+// ── 컨텍스트 메뉴 ──
+function _ctxOpen(key){
+  _ctxActiveKey=key;
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  var s=saves.find(function(x){return x.key===key;});
+  var titleEl=document.getElementById('cardCtxTitle');
+  if(titleEl)titleEl.textContent=s?s.label:key;
+  var bdrop=document.getElementById('cardCtxBdrop');
+  var sheet=document.getElementById('cardCtxSheet');
+  if(bdrop)bdrop.style.display='block';
+  if(sheet)sheet.style.bottom='0';
+}
+function _ctxClose(){
+  var bdrop=document.getElementById('cardCtxBdrop');
+  var sheet=document.getElementById('cardCtxSheet');
+  if(bdrop)bdrop.style.display='none';
+  if(sheet)sheet.style.bottom='-100%';
+  _ctxActiveKey=null;
+}
+function _ctxRename(){
+  var key=_ctxActiveKey;_ctxClose();
+  if(key)setTimeout(function(){renameGame(key);},200);
+}
+function _ctxExcel(){
+  var key=_ctxActiveKey;_ctxClose();
+  if(key)setTimeout(function(){exportGameToExcel(key);},200);
+}
+function _ctxShare(){
+  var key=_ctxActiveKey;_ctxClose();
+  if(key)setTimeout(function(){shareGame(key);},200);
+}
+function _ctxDelete(){
+  var key=_ctxActiveKey;_ctxClose();
+  if(key)setTimeout(function(){deleteGame(key);},200);
 }
 
 function deleteGame(key){

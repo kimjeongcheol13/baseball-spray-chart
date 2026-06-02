@@ -1421,45 +1421,63 @@
 
 <div class="overlay" id="loadOverlay">
   <div class="modal" style="width:min(380px,96vw);max-height:88vh;overflow-y:auto;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="modal-title" style="margin-bottom:0">저장된 경기</div>
-      <button class="btn btn-ghost" style="padding:4px 9px;font-size:10px;gap:4px" onclick="exportAllGames()">전체 내보내기</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="modal-title" style="margin-bottom:0">경기 불러오기</div>
+      <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;gap:4px" onclick="closeOverlay('loadOverlay');openOverlay('dataSettingsOverlay')" title="데이터 관리">⚙️ 데이터 관리</button>
     </div>
-    <!-- 경기 목록 최상단 -->
-    <div id="saveList" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
-    <!-- 숨겨진 자동저장 -->
-    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="scanHiddenAutosaves()">🔍 숨겨진 자동저장 찾기</button>
+    <div id="saveList" style="max-height:340px;overflow-y:auto;margin-bottom:8px"></div>
+    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:8px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="scanHiddenAutosaves()">⏱ 임시저장 복구</button>
       <div id="hiddenAutoList" style="margin-top:6px"></div>
     </div>
-    <!-- 가져오기 / 내보내기 (접기 가능) -->
-    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:6px">
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="(function(){var s=document.getElementById('loadExtras');var on=s.style.display==='none'||!s.style.display;s.style.display=on?'block':'none';this.textContent=on?'▲ 가져오기 / 내보내기 닫기':'⚙️ 가져오기 / 내보내기';}).call(this)">⚙️ 가져오기 / 내보내기</button>
-      <div id="loadExtras" style="display:none;margin-top:8px">
-        <div class="import-row">
-          <label class="import-label">📥 파일에서 가져오기 (다른 기기 연계)<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
-        </div>
-        <div style="margin-bottom:10px">
-          <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;gap:5px;font-size:11px;margin-top:0" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 복사한 데이터 붙여넣기 가져오기';})()">📋 복사한 데이터 붙여넣기 가져오기</button>
-          <div id="paste-area" style="display:none;margin-top:6px">
-            <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
-            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--border2);padding-top:10px;margin-bottom:10px">
-          <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:6px">📊 엑셀 내보내기 / 가져오기</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px" onclick="exportAllGamesToExcel()">📋 전체 경기 합치기</button>
-            <label class="btn btn-ghost" style="flex:1;min-width:130px;justify-content:center;font-size:11px;cursor:pointer">📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
-          </div>
-          <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.5">서식: SprayLab에서 내보낸 엑셀 파일 또는 <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a> 후 작성</div>
-        </div>
-        <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:10px">
-          <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
-        </div>
-      </div>
-    </div>
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- 카드 컨텍스트 메뉴 (꾹 누르기) -->
+<div id="cardCtxBdrop" onclick="_ctxClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9199"></div>
+<div id="cardCtxSheet" style="position:fixed;bottom:-100%;left:0;right:0;max-width:480px;margin:0 auto;z-index:9200;background:var(--bg-card);border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));transition:bottom .24s cubic-bezier(.4,0,.2,1)">
+  <div id="cardCtxTitle" style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <button class="ctx-btn" onclick="_ctxRename()">✏️ 이름 변경</button>
+  <button class="ctx-btn" onclick="_ctxExcel()">📊 엑셀 내보내기</button>
+  <button class="ctx-btn" onclick="_ctxShare()">📤 파일 내보내기</button>
+  <button class="ctx-btn ctx-del" onclick="_ctxDelete()">🗑️ 삭제</button>
+  <button class="ctx-btn ctx-cancel" onclick="_ctxClose()">취소</button>
+</div>
+
+<!-- ⚙️ 데이터 관리 오버레이 -->
+<div class="overlay" id="dataSettingsOverlay">
+  <div class="modal" style="width:min(380px,96vw)">
+    <div class="modal-title" style="margin-bottom:14px">⚙️ 데이터 관리</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">가져오기</div>
+      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
+        📥 파일에서 가져오기<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)">
+      </label>
+      <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;font-size:12px" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 붙여넣기로 가져오기';})()">📋 붙여넣기로 가져오기</button>
+      <div id="paste-area" style="display:none;margin-top:2px">
+        <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+      </div>
+      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
+        📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)">
+      </label>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding-top:10px;border-top:1px solid var(--border2)">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">내보내기</div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGames()">📤 전체 경기 파일로 내보내기</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGamesToExcel()">📊 전체 경기 엑셀로 내보내기</button>
+      <div style="font-size:9px;color:var(--text3);line-height:1.5">엑셀 서식: <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a></div>
+    </div>
+
+    <div style="padding-top:10px;border-top:1px solid var(--border2);margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">클라우드</div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+    </div>
+
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('dataSettingsOverlay')">닫기</button>
   </div>
 </div>
 
@@ -1502,33 +1520,8 @@
     <div style="font-size:9px;color:var(--text3);line-height:1.7;margin-bottom:14px">
       • 팀 코드는 영문·숫자·한글·_(언더바)·-(하이픈) 조합<br>
       • 팀 코드를 아는 사람은 누구나 해당 경기를 볼 수 있습니다<br>
-      • 동기화는 수동으로 버튼을 눌러야 실행됩니다<br>
-      • 연결 안 되면 아래 SQL을 Supabase에서 실행하세요
+      • 동기화는 수동으로 버튼을 눌러야 실행됩니다
     </div>
-
-    <!-- Supabase 설정 SQL -->
-    <details style="margin-bottom:10px">
-      <summary style="font-size:10px;color:var(--text3);cursor:pointer;padding:4px 0">🛠 Supabase 설정 SQL (처음 한 번만)</summary>
-      <div style="margin-top:8px;background:var(--bg);border-radius:7px;padding:8px;font-size:10px;font-family:monospace;color:var(--text2);line-height:1.8;white-space:pre-wrap;word-break:break-all">DROP TABLE IF EXISTS games;
-
-CREATE TABLE games (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  team_code text NOT NULL,
-  game_key  text NOT NULL,
-  game_data jsonb NOT NULL DEFAULT '{}',
-  label     text  DEFAULT '',
-  ts        bigint DEFAULT 0,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(team_code, game_key)
-);
-
-ALTER TABLE games ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "pub_r" ON games FOR SELECT USING (true);
-CREATE POLICY "pub_i" ON games FOR INSERT WITH CHECK (true);
-CREATE POLICY "pub_u" ON games FOR UPDATE USING (true) WITH CHECK (true);
-CREATE POLICY "pub_d" ON games FOR DELETE USING (true);</div>
-      <button class="btn btn-ghost" style="width:100%;font-size:10px;margin-top:6px" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.querySelector('#cloudOverlay details div[style*=monospace]').textContent).then(function(){showToast('SQL 복사됨',false)})">📋 복사</button>
-    </details>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('cloudOverlay')">닫기</button>
   </div>

@@ -315,7 +315,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
 /* CENTER */
-.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;min-height:0;min-width:0}
+.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;min-height:0;min-width:0;position:relative}
 .batter-bar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-card);flex-shrink:0}
 .batter-display{font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
 .batter-empty{font-size:12px;color:var(--text3)}
@@ -331,11 +331,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .field-tap-pending .canvas-wrap{outline:2px solid var(--green);outline-offset:4px;border-radius:50%;animation:tap-pulse 1s ease-in-out infinite}
 @keyframes tap-pulse{0%,100%{outline-color:var(--green)}50%{outline-color:rgba(45,212,160,.3)}}
 
-/* INPUT BAR */
-.input-bar{background:var(--bg-card);border-top:1px solid var(--border);padding:10px 14px;flex-shrink:0;display:none}
+/* INPUT BAR — position:absolute로 field 위에 overlay, 필드 크기 유지 */
+.input-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  background:var(--bg-card);
+  border-top:2px solid var(--border2);
+  padding:10px 14px;
+  display:none;
+  z-index:30;
+  max-height:60%;
+  overflow-y:auto;
+  box-shadow:0 -6px 24px rgba(0,0,0,.45);
+  border-radius:12px 12px 0 0;
+}
 .input-bar.open{display:block}
-.ib-drawer-toggle{width:100%;background:var(--bg-card);border:none;border-top:1px solid var(--border);color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);padding:5px 14px;cursor:pointer;text-align:left;flex-shrink:0;transition:color .15s}
+.ib-drawer-toggle{width:100%;background:var(--bg-card);border:none;border-top:1px solid var(--border);color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);padding:5px 14px;cursor:pointer;text-align:left;flex-shrink:0;transition:color .15s;position:relative;z-index:31}
 .ib-drawer-toggle:hover{color:var(--text2)}
+.ib-drawer-toggle.open{color:var(--accent);border-top-color:var(--accent)}
 .spray-legend{display:flex;gap:10px;justify-content:center;padding:3px 14px;flex-shrink:0}
 .spray-legend span{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)}
 .spray-legend i{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}

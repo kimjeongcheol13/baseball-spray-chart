@@ -1119,7 +1119,7 @@ AS.currentPitches=[];
   gfAfterRecord(res,0);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
-function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');if(!ib)return;var open=ib.classList.toggle('open');if(btn)btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';}
+function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');if(!ib)return;var open=ib.classList.toggle('open');if(btn){btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';btn.classList.toggle('open',open);}}
 (function initLpResize(){
   var handle=document.getElementById('lpResizeHandle');
   var al=document.querySelector('.app-layout');

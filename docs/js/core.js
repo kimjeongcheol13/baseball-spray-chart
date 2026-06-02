@@ -1053,6 +1053,8 @@ function drawField(){
 
 var _ftLabelTimer;
 function onFClick(e){
+  // 팝업 열린 상태에서 field 클릭 이벤트 차단
+  if(document.querySelector('.overlay.show'))return;
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);

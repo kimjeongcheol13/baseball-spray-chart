@@ -1720,6 +1720,15 @@ nav i {
 .mab-btn:disabled { opacity: 0.35; pointer-events: none; }
 .mab-save { color: var(--green); }
 .mab-save svg { stroke: var(--green); }
+.mab-sheet-btn {
+  display: block; width: 100%;
+  padding: 14px 20px; text-align: left;
+  background: none; border: none;
+  color: var(--text); font-size: 15px; font-weight: 600;
+  font-family: var(--font); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mab-sheet-btn:active { background: var(--bg-raised); }
 
 /* ━━ savant-nav 최종 보장 (nav 룰 이후 재선언) ━━ */
 /* nav{...} 보다 나중에 위치 → 데스크톱 오른쪽 끝 세로 플로팅 확정 */

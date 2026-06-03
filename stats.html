@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SprayLab — 방문 통계</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0f17;color:#eef0f8;font-family:'Segoe UI',sans-serif;padding:24px 16px;min-height:100vh}
+  h1{font-size:20px;font-weight:800;color:#4b8cf5;margin-bottom:4px}
+  .sub{font-size:12px;color:#6b7280;margin-bottom:24px}
+  .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+  .card{background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:18px 22px;flex:1;min-width:130px}
+  .card-label{font-size:11px;color:#6b7280;margin-bottom:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+  .card-val{font-size:28px;font-weight:800;color:#eef0f8}
+  .section{background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:20px;margin-bottom:20px}
+  .section-title{font-size:13px;font-weight:700;color:#9ca3af;margin-bottom:16px;letter-spacing:.5px}
+  .chart-wrap{position:relative;height:220px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{color:#6b7280;font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid #2a2a3a}
+  td{padding:7px 8px;border-bottom:1px solid #1e1e2a;color:#d1d5db}
+  tr:last-child td{border-bottom:none}
+  .loading{color:#6b7280;font-size:13px;text-align:center;padding:40px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#1e2a3a;color:#4b8cf5}
+</style>
+</head>
+<body>
+<h1>⚾ SprayLab 방문 통계</h1>
+<div class="sub" id="lastUpdated">불러오는 중...</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-label">총 방문</div>
+    <div class="card-val" id="totalVisits">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">순 방문자</div>
+    <div class="card-val" id="uniqueVisitors">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">오늘</div>
+    <div class="card-val" id="todayVisits">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">이번 주</div>
+    <div class="card-val" id="weekVisits">—</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">일별 방문자 (최근 30일)</div>
+  <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+</div>
+
+<div class="section">
+  <div class="section-title">최근 방문 기록</div>
+  <div id="recentTable"><div class="loading">불러오는 중...</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function load() {
+  const { data, error } = await sb.from('visits').select('*').order('ts', { ascending: false });
+  if (error || !data) { document.getElementById('lastUpdated').textContent = '데이터를 불러올 수 없습니다.'; return; }
+
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const weekStart = new Date(now - 7 * 86400000);
+
+  document.getElementById('totalVisits').textContent = data.length.toLocaleString();
+  document.getElementById('uniqueVisitors').textContent = new Set(data.map(r => r.uid)).size.toLocaleString();
+  document.getElementById('todayVisits').textContent = data.filter(r => r.ts >= todayStart.getTime()).length.toLocaleString();
+  document.getElementById('weekVisits').textContent = data.filter(r => r.ts >= weekStart.getTime()).length.toLocaleString();
+  document.getElementById('lastUpdated').textContent = '마지막 업데이트: ' + new Date().toLocaleString('ko-KR');
+
+  // 일별 차트 (최근 30일)
+  const days = [];
+  const counts = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now - i * 86400000);
+    d.setHours(0, 0, 0, 0);
+    const next = new Date(d.getTime() + 86400000);
+    days.push((d.getMonth()+1) + '/' + d.getDate());
+    counts.push(data.filter(r => r.ts >= d.getTime() && r.ts < next.getTime()).length);
+  }
+  new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{
+        label: '방문',
+        data: counts,
+        backgroundColor: '#4b8cf5',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { size: 10 }, maxRotation: 45 }, grid: { color: '#1e1e2a' } },
+        y: { ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1e1e2a' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 최근 방문 테이블
+  const recent = data.slice(0, 50);
+  const rows = recent.map(r => {
+    const d = new Date(r.ts);
+    const timeStr = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    const ua = r.ua || '';
+    const device = ua.includes('Mobile') || ua.includes('Android') ? '📱 모바일' : '🖥️ 데스크톱';
+    return `<tr><td>${timeStr}</td><td><span class="badge">${r.uid ? r.uid.slice(0,8) : '—'}</span></td><td>${device}</td></tr>`;
+  }).join('');
+  document.getElementById('recentTable').innerHTML = `
+    <table>
+      <thead><tr><th>시간</th><th>방문자 ID</th><th>기기</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+load();
+</script>
+</body>
+</html>

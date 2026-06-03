@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=35">
+<link rel="stylesheet" href="css/styles.css?v=36">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -1007,6 +1007,11 @@
   <div class="pnl-left">
     <!-- 모바일 전용 투구입력 패널 -->
     <div id="mobPitchPanel">
+      <!-- 너비 조절 버튼 -->
+      <div style="display:flex;width:100%;justify-content:space-between;padding:2px 2px 0">
+        <button onclick="mobPanelNarrow()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">◀</button>
+        <button onclick="mobPanelWide()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">▶</button>
+      </div>
       <button id="mobPitchOpenBtn" onclick="mobPitchSheetOpen()">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span>투구<br>입력</span>
@@ -1829,6 +1834,36 @@
 </nav>
 
 <script>
+// 왼쪽 패널 너비 조절
+var _mobPanelWidths = [55, 80, 110, 150];
+function _getMobPanelW() {
+  return parseInt(localStorage.getItem('sl_lp_w_mob')) || 90;
+}
+function _setMobPanelW(w) {
+  var al = document.querySelector('.app-layout');
+  if (al) al.style.setProperty('--lp-w', w + 'px');
+  try { localStorage.setItem('sl_lp_w_mob', w); } catch(e) {}
+}
+function mobPanelNarrow() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.slice().reverse().find(function(w){ return w < cur; });
+  if (!next) next = _mobPanelWidths[0];
+  _setMobPanelW(next);
+}
+function mobPanelWide() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.find(function(w){ return w > cur; });
+  if (!next) next = _mobPanelWidths[_mobPanelWidths.length - 1];
+  _setMobPanelW(next);
+}
+// 저장값 복원
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.innerWidth <= 720) {
+    var saved = parseInt(localStorage.getItem('sl_lp_w_mob'));
+    if (saved >= 55 && saved <= 150) _setMobPanelW(saved);
+  }
+});
+
 // 모바일 투구입력 바텀시트
 function mobPitchSheetOpen() {
   var m = document.getElementById('mobPitchModal');

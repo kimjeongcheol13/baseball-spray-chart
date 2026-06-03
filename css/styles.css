@@ -341,17 +341,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .pnl-resize-handle{position:absolute;top:0;right:0;bottom:0;width:8px;cursor:col-resize;z-index:20;transition:background .15s;touch-action:none}
 .pnl-resize-handle:hover,.pnl-resize-handle.dragging{background:var(--accent-dim)}
 @media(max-width:720px){
-  .pnl-resize-handle{
-    width:20px;right:-10px;
-    background:rgba(255,255,255,.04);
-    display:flex;align-items:center;justify-content:center;
-    border-radius:0 4px 4px 0;
-  }
-  .pnl-resize-handle::after{
-    content:'';display:block;width:3px;height:28px;
-    border-radius:2px;background:rgba(255,255,255,.3);
-  }
-  .pnl-resize-handle.dragging{background:var(--accent-dim)}
+  /* 모바일에서 드래그 핸들 숨김 — ◀▶ 버튼으로 대체 */
+  .pnl-resize-handle{display:none}
 }
 .pnl-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .pnl-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3)}

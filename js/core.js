@@ -1130,40 +1130,38 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
   var handle=document.getElementById('lpResizeHandle');
   var al=document.querySelector('.app-layout');
   if(!handle||!al)return;
-  var isMob=function(){return window.innerWidth<=720;};
+  var mob=function(){return window.innerWidth<=720;};
   function setW(w){
-    var min=isMob()?60:180, max=isMob()?200:320;
+    var min=mob()?55:180, max=mob()?220:320;
     w=Math.min(max,Math.max(min,Math.round(w)));
     al.style.setProperty('--lp-w',w+'px');
-    localStorage.setItem(isMob()?'sl_lp_w_mob':'sl_lp_w',w);
+    try{localStorage.setItem(mob()?'sl_lp_w_mob':'sl_lp_w',w);}catch(e){}
+    return w;
   }
-  function startDrag(clientX){
-    var startX=clientX;
-    var startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||(isMob()?90:180);
+  // pointer events 방식 (mouse + touch 통합)
+  handle.style.touchAction='none';
+  handle.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    var startX=e.clientX;
+    var startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||(mob()?90:180);
     handle.classList.add('dragging');
-    function onMove(e){
-      var cx=e.touches?e.touches[0].clientX:e.clientX;
-      setW(startW+cx-startX);
-    }
+    function onMove(ev){setW(startW+ev.clientX-startX);}
     function onUp(){
       handle.classList.remove('dragging');
-      document.removeEventListener('mousemove',onMove);
-      document.removeEventListener('mouseup',onUp);
-      document.removeEventListener('touchmove',onMove);
-      document.removeEventListener('touchend',onUp);
+      handle.removeEventListener('pointermove',onMove);
+      handle.removeEventListener('pointerup',onUp);
     }
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
-    document.addEventListener('touchmove',onMove,{passive:false});
-    document.addEventListener('touchend',onUp);
-  }
-  handle.addEventListener('mousedown',function(e){e.preventDefault();startDrag(e.clientX);});
-  handle.addEventListener('touchstart',function(e){e.preventDefault();startDrag(e.touches[0].clientX);},{passive:false});
+    handle.addEventListener('pointermove',onMove);
+    handle.addEventListener('pointerup',onUp);
+  });
   // 저장값 복원
-  var savedMob=+localStorage.getItem('sl_lp_w_mob');
-  var savedDesk=+localStorage.getItem('sl_lp_w');
-  if(isMob()&&savedMob>=60&&savedMob<=200)setW(savedMob);
-  else if(!isMob()&&savedDesk>=180&&savedDesk<=320)setW(savedDesk);
+  document.addEventListener('DOMContentLoaded',function(){
+    var sm=+localStorage.getItem('sl_lp_w_mob');
+    var sd=+localStorage.getItem('sl_lp_w');
+    if(mob()&&sm>=55&&sm<=220)setW(sm);
+    else if(!mob()&&sd>=180&&sd<=320)setW(sd);
+  });
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 

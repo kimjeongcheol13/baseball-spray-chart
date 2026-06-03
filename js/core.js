@@ -7058,7 +7058,8 @@ function fieldFeedbackSubmit(){
         tags: entry.tags,
         text: entry.text,
         abs:  entry.abs,
-        ver:  entry.ver
+        ver:  entry.ver,
+        ua:   entry.ua
       }]).then(function(res){
         if(res.error) console.warn('[Feedback] Supabase error', res.error);
         else console.log('[Feedback] Supabase OK');

@@ -245,12 +245,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pnl-center{display:flex;flex-direction:column;width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;position:relative}
   .field-wrap{padding:4px;flex:0 0 auto}
   .canvas-wrap{width:min(240px,calc(100vw - 20px));height:min(240px,calc(100vw - 20px));aspect-ratio:1/1}
-  /* 필드 아래: hint/legend 숨김, 투구결과입력 버튼 + input-bar 복원 */
+  /* 필드 아래 비필수 요소 숨김 */
   .field-hint{display:none!important}
   .spray-legend{display:none!important}
-  .ib-drawer-toggle{display:block!important;width:100%;align-self:stretch}
-  /* input-bar: 모바일에서 position:relative로 전환 (absolute 오작동 방지) */
-  .input-bar{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;width:100%!important;align-self:stretch}
+  /* 원래 drawer 토글 숨기고 왼쪽 고정 탭 버튼으로 대체 */
+  .ib-drawer-toggle{display:none!important}
+  /* input-bar: position:absolute 유지, pnl-center(position:relative)가 containing block */
+  /* 모바일 왼쪽 고정 투구입력 탭 */
+  #mobileInputTab{
+    display:flex;position:fixed;left:0;top:50%;transform:translateY(-50%);
+    z-index:300;writing-mode:vertical-rl;text-orientation:mixed;
+    background:var(--bg-card);border:1px solid var(--border2);
+    border-left:none;border-radius:0 8px 8px 0;
+    padding:12px 6px;font-size:11px;font-weight:800;color:var(--text2);
+    font-family:var(--font);cursor:pointer;gap:6px;align-items:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #mobileInputTab.open{color:var(--accent);border-color:var(--accent);background:var(--accent-dim)}
   /* 아래쪽: 타석기록 패널 */
   /* padding-bottom을 pnl-right 에 쓰면 overflow:hidden 이 잘라냄 → tab-pnl 에 이동 */
   .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:160px;overflow:hidden;border-top:1px solid var(--border);border-left:none}

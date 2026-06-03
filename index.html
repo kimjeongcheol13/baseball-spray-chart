@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=30">
+<link rel="stylesheet" href="css/styles.css?v=31">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -1554,7 +1554,8 @@
   </div>
 </div>
 
-<!-- qrFab 제거 — fabWrap으로 통합 -->
+<!-- 모바일 투구입력 왼쪽 고정 탭 -->
+<button id="mobileInputTab" onclick="toggleInputBar();this.classList.toggle('open')" style="display:none">⚾<span>투구입력</span></button>
 
 <!-- 빠른 기록 오버레이 -->
 <div class="qr-ov" id="qrOv">

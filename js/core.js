@@ -122,6 +122,9 @@ function showApp(){
   // Show mobile action bar (CSS media query limits to ≤720px)
   var mab=document.getElementById('mobileActionBar');
   if(mab)mab.style.display='';
+  // Show mobile input tab (모바일 전용)
+  var mit=document.getElementById('mobileInputTab');
+  if(mit&&isMob)mit.style.display='';
 }
 function goHome(){
   // 앱 내에 있으면 홈 화면(welcom)으로 복귀

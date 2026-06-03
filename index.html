@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=31">
+<link rel="stylesheet" href="css/styles.css?v=32">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -970,6 +970,29 @@
 
 <div class="app-layout">
   <div class="pnl-left">
+    <!-- 모바일 전용 구종+스트라이크존 패널 -->
+    <div id="mobPitchPanel">
+      <div class="mpp-lbl">구종</div>
+      <button class="mpp-btn" data-pt="직구" onclick="mobSelPt(this,'직구')">직구</button>
+      <button class="mpp-btn" data-pt="싱커" onclick="mobSelPt(this,'싱커')">싱커</button>
+      <button class="mpp-btn" data-pt="커터" onclick="mobSelPt(this,'커터')">커터</button>
+      <button class="mpp-btn" data-pt="슬라이더" onclick="mobSelPt(this,'슬라이더')">SL</button>
+      <button class="mpp-btn" data-pt="스위퍼" onclick="mobSelPt(this,'스위퍼')">스위퍼</button>
+      <button class="mpp-btn" data-pt="슬러브" onclick="mobSelPt(this,'슬러브')">슬러브</button>
+      <button class="mpp-btn" data-pt="커브" onclick="mobSelPt(this,'커브')">커브</button>
+      <button class="mpp-btn" data-pt="너클커브" onclick="mobSelPt(this,'너클커브')">NK커브</button>
+      <button class="mpp-btn" data-pt="슬로우커브" onclick="mobSelPt(this,'슬로우커브')">SC</button>
+      <button class="mpp-btn" data-pt="체인지업" onclick="mobSelPt(this,'체인지업')">CH</button>
+      <button class="mpp-btn" data-pt="포크볼" onclick="mobSelPt(this,'포크볼')">포크</button>
+      <button class="mpp-btn" data-pt="스플리터" onclick="mobSelPt(this,'스플리터')">스플</button>
+      <button class="mpp-btn" data-pt="스크류볼" onclick="mobSelPt(this,'스크류볼')">스크류</button>
+      <button class="mpp-btn" data-pt="너클볼" onclick="mobSelPt(this,'너클볼')">너클볼</button>
+      <button class="mpp-btn" data-pt="이퓨스볼" onclick="mobSelPt(this,'이퓨스볼')">이퓨스</button>
+      <button class="mpp-btn" data-pt="팜볼" onclick="mobSelPt(this,'팜볼')">팜볼</button>
+      <div class="mpp-lbl" style="margin-top:6px">코스</div>
+      <canvas id="mobZoneCanvas" width="80" height="80" style="cursor:crosshair;border-radius:4px;display:block;margin:0 auto"></canvas>
+      <div id="mobZoneLbl" style="font-size:8px;color:var(--text3);text-align:center;margin-top:2px">탭→코스</div>
+    </div>
     <div class="pnl-resize-handle" id="lpResizeHandle"></div>
     <div class="tabs" style="border-bottom: 1px solid var(--border); flex-shrink: 0;">
       <div class="tab on" id="subtab-home" onclick="swLineupTab('home')" style="font-size:11px; padding:10px 4px; font-weight:700;">홈 라인업</div>
@@ -1786,6 +1809,42 @@
 </nav>
 
 <script>
+// 모바일 구종 선택 (pnl-left 패널)
+function mobSelPt(btn, pt) {
+  var prev = window.AS && window.AS.pt;
+  if (window.AS) window.AS.pt = (prev === pt) ? null : pt;
+  var newPt = window.AS && window.AS.pt;
+  document.querySelectorAll('#mobPitchPanel .mpp-btn').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pt === newPt);
+  });
+  // 데스크톱 ptGroup 동기화
+  document.querySelectorAll('#ptGroup .chip').forEach(function(c){
+    var on = c.getAttribute('onclick') && c.getAttribute('onclick').indexOf("'"+newPt+"'") !== -1;
+    c.classList.toggle('on', !!on && !!newPt);
+  });
+}
+// 모바일 코스(zone) 캔버스 초기화
+function initMobZoneCanvas() {
+  var c = document.getElementById('mobZoneCanvas');
+  if (!c || typeof _drawZoneCanvas !== 'function') return;
+  _drawZoneCanvas(c, [], true);
+  c.addEventListener('click', function(e) {
+    if (typeof _zoneCanvasClick === 'function') {
+      _zoneCanvasClick(e, c, function(zone) {
+        if (window.AS) window.AS.zone = zone;
+        var lbl = document.getElementById('mobZoneLbl');
+        if (lbl) lbl.textContent = zone || '탭→코스';
+        _drawZoneCanvas(c, [], true);
+        if (typeof ibZoneRedraw === 'function') ibZoneRedraw();
+      });
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', function(){
+  // 앱 진입 후 초기화 (core.js 로드 대기)
+  setTimeout(initMobZoneCanvas, 800);
+});
+
 // 모바일 더보기 바텀시트
 function mabMoreOpen() {
   var m = document.getElementById('mabMoreModal');

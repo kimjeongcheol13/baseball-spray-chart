@@ -238,33 +238,41 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .app-hdr .btn.btn-ghost.btn-primary,
   .app-hdr .more-menu-wrap{display:none}
   .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
-  /* ── 레이아웃: 세로 스택 ── */
-  .app-layout{display:flex!important;flex-direction:column!important;flex:1;min-height:0;overflow:hidden}
-  .pnl-left{display:none!important}
-  /* 위쪽: 필드 영역 */
-  .pnl-center{display:flex;flex-direction:column;width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;position:relative}
+  /* ── 레이아웃: 왼쪽=구종패널 / 오른쪽=필드 / 아래=기록 그리드 ── */
+  .app-layout{
+    display:grid!important;
+    grid-template-columns:90px 1fr!important;
+    grid-template-rows:auto minmax(160px,1fr)!important;
+    flex:1;min-height:0;overflow:hidden;
+  }
+  /* 왼쪽: 구종 패널 */
+  .pnl-left{
+    display:flex!important;flex-direction:column;
+    grid-column:1;grid-row:1;
+    overflow-y:auto;overflow-x:hidden;
+    background:var(--bg-card);border-right:1px solid var(--border);
+  }
+  /* pnl-left 기존 데스크톱 컨텐츠 숨김 */
+  .pnl-left > *:not(#mobPitchPanel){display:none!important}
+  /* 위쪽 오른쪽: 필드 */
+  .pnl-center{
+    display:flex;flex-direction:column;
+    grid-column:2;grid-row:1;
+    width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;
+  }
   .field-wrap{padding:4px;flex:0 0 auto}
-  .canvas-wrap{width:min(240px,calc(100vw - 20px));height:min(240px,calc(100vw - 20px));aspect-ratio:1/1}
-  /* 필드 아래 비필수 요소 숨김 */
+  .canvas-wrap{width:min(220px,calc(100vw - 100px));height:min(220px,calc(100vw - 100px));aspect-ratio:1/1}
   .field-hint{display:none!important}
   .spray-legend{display:none!important}
-  /* 원래 drawer 토글 숨기고 왼쪽 고정 탭 버튼으로 대체 */
   .ib-drawer-toggle{display:none!important}
-  /* input-bar: position:absolute 유지, pnl-center(position:relative)가 containing block */
-  /* 모바일 왼쪽 고정 투구입력 탭 */
-  #mobileInputTab{
-    display:flex;position:fixed;left:0;top:50%;transform:translateY(-50%);
-    z-index:300;writing-mode:vertical-rl;text-orientation:mixed;
-    background:var(--bg-card);border:1px solid var(--border2);
-    border-left:none;border-radius:0 8px 8px 0;
-    padding:12px 6px;font-size:11px;font-weight:800;color:var(--text2);
-    font-family:var(--font);cursor:pointer;gap:6px;align-items:center;
-    -webkit-tap-highlight-color:transparent;
+  #mobileInputTab{display:none!important}
+  /* 아래: 타석기록 패널 (양쪽 열 전체) */
+  .pnl-right{
+    display:flex;flex-direction:column;
+    grid-column:1/-1;grid-row:2;
+    width:100%;min-height:160px;overflow:hidden;
+    border-top:1px solid var(--border);border-left:none;
   }
-  #mobileInputTab.open{color:var(--accent);border-color:var(--accent);background:var(--accent-dim)}
-  /* 아래쪽: 타석기록 패널 */
-  /* padding-bottom을 pnl-right 에 쓰면 overflow:hidden 이 잘라냄 → tab-pnl 에 이동 */
-  .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:160px;overflow:hidden;border-top:1px solid var(--border);border-left:none}
   .tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .tab-pnl{width:100%;height:auto;min-height:0;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   /* mob-batter: 선수 버튼 목록 가로 스크롤 */
@@ -1733,6 +1741,38 @@ nav i {
 .mab-btn:disabled { opacity: 0.35; pointer-events: none; }
 .mab-save { color: var(--green); }
 .mab-save svg { stroke: var(--green); }
+/* 모바일 구종 패널 */
+#mobPitchPanel{
+  display:none; /* 모바일에서만 표시 */
+  flex-direction:column;
+  padding:6px 4px;
+  gap:2px;
+  overflow-y:auto;
+}
+.mpp-lbl{
+  font-size:8px;font-weight:800;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.6px;
+  padding:2px 2px 1px;
+}
+.mpp-btn{
+  width:100%;padding:5px 3px;
+  border-radius:5px;border:1px solid var(--border2);
+  background:var(--bg-raised);color:var(--text2);
+  font-size:10px;font-weight:700;font-family:var(--font);
+  cursor:pointer;text-align:center;
+  -webkit-tap-highlight-color:transparent;
+  transition:all 100ms;
+}
+.mpp-btn:active{transform:scale(.95)}
+.mpp-btn.on{
+  background:var(--accent-dim);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+@media(max-width:720px){
+  #mobPitchPanel{display:flex}
+}
+
 .mab-sheet-btn {
   display: block; width: 100%;
   padding: 14px 20px; text-align: left;

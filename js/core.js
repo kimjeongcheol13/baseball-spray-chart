@@ -1130,25 +1130,40 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
   var handle=document.getElementById('lpResizeHandle');
   var al=document.querySelector('.app-layout');
   if(!handle||!al)return;
+  var isMob=function(){return window.innerWidth<=720;};
   function setW(w){
-    w=Math.min(320,Math.max(180,Math.round(w)));
+    var min=isMob()?60:180, max=isMob()?200:320;
+    w=Math.min(max,Math.max(min,Math.round(w)));
     al.style.setProperty('--lp-w',w+'px');
-    localStorage.setItem('sl_lp_w',w);
+    localStorage.setItem(isMob()?'sl_lp_w_mob':'sl_lp_w',w);
   }
-  handle.addEventListener('mousedown',function(e){
-    if(window.innerWidth<721)return;
-    var startX=e.clientX;
-    var startW=al.getBoundingClientRect().left+parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
-    startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
+  function startDrag(clientX){
+    var startX=clientX;
+    var startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||(isMob()?90:180);
     handle.classList.add('dragging');
-    function onMove(e){setW(startW+e.clientX-startX);}
-    function onUp(){handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+    function onMove(e){
+      var cx=e.touches?e.touches[0].clientX:e.clientX;
+      setW(startW+cx-startX);
+    }
+    function onUp(){
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+      document.removeEventListener('touchmove',onMove);
+      document.removeEventListener('touchend',onUp);
+    }
     document.addEventListener('mousemove',onMove);
     document.addEventListener('mouseup',onUp);
-    e.preventDefault();
-  });
-  var saved=+localStorage.getItem('sl_lp_w');
-  if(saved>=180&&saved<=320&&window.innerWidth>=721)setW(saved);
+    document.addEventListener('touchmove',onMove,{passive:false});
+    document.addEventListener('touchend',onUp);
+  }
+  handle.addEventListener('mousedown',function(e){e.preventDefault();startDrag(e.clientX);});
+  handle.addEventListener('touchstart',function(e){e.preventDefault();startDrag(e.touches[0].clientX);},{passive:false});
+  // 저장값 복원
+  var savedMob=+localStorage.getItem('sl_lp_w_mob');
+  var savedDesk=+localStorage.getItem('sl_lp_w');
+  if(isMob()&&savedMob>=60&&savedMob<=200)setW(savedMob);
+  else if(!isMob()&&savedDesk>=180&&savedDesk<=320)setW(savedDesk);
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 

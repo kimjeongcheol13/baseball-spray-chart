@@ -246,7 +246,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .field-wrap{padding:6px;flex:0 0 auto}
   .canvas-wrap{width:min(300px,calc(100vw - 20px));height:min(300px,calc(100vw - 20px));aspect-ratio:1/1}
   /* 아래쪽: 타석기록 패널 — 나머지 공간 전부, 하단 바(86px) 여백 확보 */
-  .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--border);border-left:none;padding-bottom:86px}
+  .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--border);border-left:none;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:none}
   .tab-pnl{width:100%;height:auto;min-height:0;padding-bottom:0}
   /* mob-batter: 선수 버튼 목록 가로 스크롤 */

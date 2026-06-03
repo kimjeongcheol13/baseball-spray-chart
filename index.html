@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=22">
+<link rel="stylesheet" href="css/styles.css?v=23">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -1756,6 +1756,39 @@
   </button>
 </nav>
 
+<script>
+// FAB 드래그 이동 (#fabWrap)
+document.addEventListener('DOMContentLoaded', function() {
+  var wrap = document.getElementById('fabWrap');
+  if (!wrap) return;
+  wrap.style.cursor = 'move';
+  var dragging = false, ox = 0, oy = 0;
+  wrap.addEventListener('pointerdown', function(e) {
+    // 팝업 버튼 클릭은 드래그 아님
+    if (e.target.closest('.fab-pop')) return;
+    dragging = true;
+    var r = wrap.getBoundingClientRect();
+    ox = e.clientX - r.left;
+    oy = e.clientY - r.top;
+    wrap.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  wrap.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    var x = e.clientX - ox;
+    var y = e.clientY - oy;
+    // 화면 경계 안으로 제한
+    x = Math.max(0, Math.min(window.innerWidth - wrap.offsetWidth, x));
+    y = Math.max(0, Math.min(window.innerHeight - wrap.offsetHeight, y));
+    wrap.style.left   = x + 'px';
+    wrap.style.top    = y + 'px';
+    wrap.style.right  = 'auto';
+    wrap.style.bottom = 'auto';
+  });
+  wrap.addEventListener('pointerup', function() { dragging = false; });
+  wrap.addEventListener('pointercancel', function() { dragging = false; });
+});
+</script>
 <script defer src="js/core.js?v=20"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>

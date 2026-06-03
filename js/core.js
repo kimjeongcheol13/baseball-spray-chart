@@ -6750,6 +6750,10 @@ function _archQuietSave(){
 function archDismissRecovery(){
   storageManager.clearRecovery();
   storageManager.cancelPendingAutosave(); // dismiss 직후 재기록 방지
+  // sl_auto_* 임시저장 키 전부 삭제
+  var toRemove=[];
+  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.startsWith('sl_auto_'))toRemove.push(k);}
+  toRemove.forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
   var banner=document.getElementById('archRecoveryBanner');
   if(banner){
     banner.style.display='none';

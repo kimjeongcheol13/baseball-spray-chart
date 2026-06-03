@@ -7024,6 +7024,50 @@ function fieldFeedbackSubmit(){
     list.push(entry);if(list.length>50)list=list.slice(-50);
     localStorage.setItem('sl_feedback',JSON.stringify(list));
   }catch(e){}
+
+  // ── 1. Google Forms 전송 (CORS 우회 가능 — no-cors mode) ──
+  // Google Forms 폼 응답 URL 및 entry ID를 실제 값으로 교체하세요.
+  // (Google Forms → 미리보기 → 개발자도구 Network에서 formResponse URL 확인)
+  (function(){
+    var GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_FORM_ID/formResponse';
+    var params = new URLSearchParams({
+      'entry.REPLACE_TAGS_ENTRY':  tags.join(', ') || '없음',
+      'entry.REPLACE_TEXT_ENTRY':  text.trim()     || '(내용 없음)',
+      'entry.REPLACE_ABS_ENTRY':   String(entry.abs),
+      'entry.REPLACE_VER_ENTRY':   entry.ver
+    });
+    fetch(GOOGLE_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',                         // CORS 우회 — 응답 확인 불가하지만 전송됨
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: params.toString()
+    }).catch(function(){});
+  })();
+
+  // ── 2. Supabase 전송 (추천 — 응답 확인 가능) ──
+  // Supabase 대시보드에서 아래 테이블 생성 후 URL·KEY 교체:
+  // CREATE TABLE feedback (
+  //   id bigint generated always as identity primary key,
+  //   ts bigint, tags text[], text text,
+  //   abs int, ver text, created_at timestamptz default now()
+  // );
+  (function(){
+    var SUPABASE_URL = 'https://REPLACE_PROJECT_ID.supabase.co';  // 실제 Project URL로 교체
+    var SUPABASE_KEY = 'REPLACE_ANON_KEY';                         // 실제 anon key로 교체
+    if(SUPABASE_URL.indexOf('REPLACE')!==-1) return;               // 미설정 시 건너뜀
+    try{
+      var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      sb.from('feedback').insert([{
+        ts:   entry.ts,
+        tags: entry.tags,
+        text: entry.text,
+        abs:  entry.abs,
+        ver:  entry.ver
+      }]).then(function(res){
+        if(res.error) console.warn('[Feedback] Supabase error', res.error);
+      });
+    }catch(e){ console.warn('[Feedback] Supabase init error', e); }
+  })();
   var btn=document.querySelector('#fieldFeedbackModal .ffm-submit, #fieldFeedbackModal button[onclick*="Submit"]');
   if(btn){btn.disabled=true;btn.textContent='전송 중...';}
   fetch('https://formspree.io/f/xnjrevge',{

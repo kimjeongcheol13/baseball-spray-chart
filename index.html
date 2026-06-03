@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=27">
+<link rel="stylesheet" href="css/styles.css?v=28">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -950,18 +950,20 @@
   </button>
 </div>
 
-<!-- 모바일 더보기 바텀시트 -->
-<div id="mabMoreOverlay" onclick="mabMoreClose()" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.55)"></div>
-<div id="mabMoreSheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--bg-card);border-radius:16px 16px 0 0;border-top:1px solid var(--border2);padding:12px 0 max(24px,env(safe-area-inset-bottom));animation:slideUp .22s ease">
-  <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 14px"></div>
-  <button class="mab-sheet-btn" onclick="exportCurrentGameToExcel();mabMoreClose()">📥 엑셀 내보내기</button>
-  <button class="mab-sheet-btn" onclick="shareGameLink();mabMoreClose()">🔗 공유</button>
-  <button class="mab-sheet-btn" onclick="showPostGameReport();mabMoreClose()">📊 리포트</button>
-  <div style="height:1px;background:var(--border);margin:6px 16px"></div>
-  <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
-  <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
-  <div style="height:1px;background:var(--border);margin:6px 16px"></div>
-  <button class="mab-sheet-btn" style="color:var(--text3)" onclick="goHome();mabMoreClose()">← 홈으로</button>
+<!-- 모바일 더보기 바텀시트 (단일 모달) -->
+<div id="mabMoreModal" onclick="if(event.target===this)mabMoreClose()"
+  style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);flex-direction:column;justify-content:flex-end;align-items:stretch">
+  <div style="background:#1a1a24;border-radius:16px 16px 0 0;border-top:1px solid #2a2a3a;padding:10px 0 max(28px,env(safe-area-inset-bottom))">
+    <div style="width:36px;height:4px;border-radius:2px;background:#2a2a3a;margin:0 auto 12px"></div>
+    <button class="mab-sheet-btn" onclick="exportCurrentGameToExcel();mabMoreClose()">📥 엑셀 내보내기</button>
+    <button class="mab-sheet-btn" onclick="shareGameLink();mabMoreClose()">🔗 공유</button>
+    <button class="mab-sheet-btn" onclick="showPostGameReport();mabMoreClose()">📊 리포트</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
+    <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" style="color:#6b7280" onclick="goHome();mabMoreClose()">← 홈으로</button>
+  </div>
 </div>
 
 <div class="mob-batter" id="mobBar"></div>
@@ -1773,16 +1775,13 @@
 <script>
 // 모바일 더보기 바텀시트
 function mabMoreOpen() {
-  var ov = document.getElementById('mabMoreOverlay');
-  var sh = document.getElementById('mabMoreSheet');
-  if (ov) ov.style.display = 'block';
-  if (sh) sh.style.display = 'block';
+  var m = document.getElementById('mabMoreModal');
+  if (!m) return;
+  m.style.display = 'flex';
 }
 function mabMoreClose() {
-  var ov = document.getElementById('mabMoreOverlay');
-  var sh = document.getElementById('mabMoreSheet');
-  if (ov) ov.style.display = 'none';
-  if (sh) sh.style.display = 'none';
+  var m = document.getElementById('mabMoreModal');
+  if (m) m.style.display = 'none';
 }
 
 // FAB 자유 드래그 — #fabWrap, #qrFab 공통 적용

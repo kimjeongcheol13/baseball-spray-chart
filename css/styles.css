@@ -239,7 +239,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .app-hdr .more-menu-wrap{display:none}
   .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
   /* ── 레이아웃: 세로 스택 ── */
-  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+  .app-layout{display:flex!important;flex-direction:column!important;flex:1;min-height:0;overflow:hidden}
+  .pnl-left{display:none!important}
   .pnl-left{display:none}
   /* 위쪽: 필드 영역 — content 크기에 맞춰 고정 */
   .pnl-center{flex:0 0 auto;max-height:none;overflow:visible;display:flex;flex-direction:column;align-items:center}

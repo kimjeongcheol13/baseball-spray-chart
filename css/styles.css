@@ -241,12 +241,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   /* ── 레이아웃: 세로 스택 ── */
   .app-layout{display:flex!important;flex-direction:column!important;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none!important}
-  /* 위쪽: 필드 영역 */
+  /* 위쪽: 필드 영역 — 캔버스 240px로 축소해 기록 패널 공간 확보 */
   .pnl-center{display:flex;flex-direction:column;width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center}
-  .field-wrap{padding:6px;flex:0 0 auto}
-  .canvas-wrap{width:min(300px,calc(100vw - 20px));height:min(300px,calc(100vw - 20px));aspect-ratio:1/1}
-  /* 아래쪽: 타석기록 패널 — 나머지 공간 전부, 하단 바(86px) 여백 확보 */
-  .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--border);border-left:none;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+  .field-wrap{padding:4px;flex:0 0 auto}
+  .canvas-wrap{width:min(240px,calc(100vw - 20px));height:min(240px,calc(100vw - 20px));aspect-ratio:1/1}
+  /* 필드 아래 비필수 요소 숨김 — 공간 절약 */
+  .field-hint{display:none!important}
+  .spray-legend{display:none!important}
+  .ib-drawer-toggle{display:none!important}
+  .input-bar{display:none!important}
+  /* 아래쪽: 타석기록 패널 — 나머지 공간 전부, 최소 높이 보장 */
+  .pnl-right{display:flex;flex-direction:column;width:100%;flex:1;min-height:180px;overflow:hidden;border-top:1px solid var(--border);border-left:none;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   .tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-snap-type:none}
   .tab-pnl{width:100%;height:auto;min-height:0;padding-bottom:0}
   /* mob-batter: 선수 버튼 목록 가로 스크롤 */

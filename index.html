@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=25">
+<link rel="stylesheet" href="css/styles.css?v=26">
 <link rel="stylesheet" href="css/features.css?v=22">
 </head>
 <body>
@@ -804,6 +804,7 @@
     <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
     <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
     <div class="fab-pop-sep"></div>
+    <button class="fab-pop-btn repeat" onclick="fabToggle();openQR()">📱 전체화면 기록</button>
     <button class="fab-pop-btn repeat" onclick="undoLast();fabToggle()">⎌ 직전 취소</button>
     <button class="fab-pop-btn repeat" onclick="fabEditLast();fabToggle()">✏️ 최근 수정</button>
     <button class="fab-pop-btn danger" onclick="fabToggle();showPostGameReport()">🏁 경기 종료</button>
@@ -1537,8 +1538,7 @@
   </div>
 </div>
 
-<!-- ⚡ MOBILE FAB -->
-<button class="fab" id="qrFab" onclick="openQR()" title="빠른 기록">⚡</button>
+<!-- qrFab 제거 — fabWrap으로 통합 -->
 
 <!-- 빠른 기록 오버레이 -->
 <div class="qr-ov" id="qrOv">
@@ -1809,7 +1809,6 @@ function _makeDraggable(el, ignoreSelector) {
 
 document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
-  _makeDraggable(document.getElementById('qrFab'),   null);
 });
 </script>
 <script defer src="js/core.js?v=20"></script>

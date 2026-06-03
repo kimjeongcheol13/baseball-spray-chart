@@ -1,4 +1,16 @@
 // ═══ SprayLab Core ═══
+// 방문 로그 — SUPABASE_URL, SUPABASE_KEY 를 실제 값으로 교체
+(function logVisit() {
+  const SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
+  if (SUPABASE_URL.includes('XXXX') || SUPABASE_KEY.includes('XXXX')) return;
+  try {
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let uid = localStorage.getItem('sl_uid');
+    if (!uid) { uid = crypto.randomUUID(); localStorage.setItem('sl_uid', uid); }
+    sb.from('visits').insert([{ uid, ts: Date.now(), ua: navigator.userAgent.slice(0, 80) }]).catch(() => {});
+  } catch (e) {}
+})();
 // ─────────────────────────────────────────────────────────
 // 카카오톡 인앱 브라우저 감지 — 강제 이동 대신 경고 배너 표시
 // ─────────────────────────────────────────────────────────

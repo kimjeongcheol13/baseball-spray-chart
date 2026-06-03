@@ -7044,19 +7044,15 @@ function fieldFeedbackSubmit(){
     }).catch(function(){});
   })();
 
-  // ── 2. Supabase 전송 (추천 — 응답 확인 가능) ──
-  // Supabase 대시보드에서 아래 테이블 생성 후 URL·KEY 교체:
-  // CREATE TABLE feedback (
-  //   id bigint generated always as identity primary key,
-  //   ts bigint, tags text[], text text,
-  //   abs int, ver text, created_at timestamptz default now()
-  // );
+  // ── 2. Supabase 전송 (기존 프로젝트 재사용) ──
   (function(){
-    var SUPABASE_URL = 'https://REPLACE_PROJECT_ID.supabase.co';  // 실제 Project URL로 교체
-    var SUPABASE_KEY = 'REPLACE_ANON_KEY';                         // 실제 anon key로 교체
-    if(SUPABASE_URL.indexOf('REPLACE')!==-1) return;               // 미설정 시 건너뜀
+    var SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
     try{
-      var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      var sb = (window.supabase&&window.supabase.createClient)
+               ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+               : null;
+      if(!sb) return;
       sb.from('feedback').insert([{
         ts:   entry.ts,
         tags: entry.tags,
@@ -7065,6 +7061,7 @@ function fieldFeedbackSubmit(){
         ver:  entry.ver
       }]).then(function(res){
         if(res.error) console.warn('[Feedback] Supabase error', res.error);
+        else console.log('[Feedback] Supabase OK');
       });
     }catch(e){ console.warn('[Feedback] Supabase init error', e); }
   })();

@@ -18,15 +18,14 @@ const ASSETS = [
   '/baseball-spray-chart/js/features/perf.js'
 ];
 
-// 설치: 새 캐시 생성
+// 설치: 새 캐시 생성 후 즉시 활성화 (대기 없이)
 self.addEventListener('install', function(e) {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ASSETS).catch(function(){});
     })
   );
-  // SKIP_WAITING 메시지 받으면 즉시 활성화
-  // (index.html에서 postMessage로 요청)
 });
 
 // 활성화: 구버전 캐시 삭제 (localStorage는 건드리지 않음)

@@ -1,9 +1,9 @@
 // ═══ SprayLab Core ═══
-// 방문 로그 — SUPABASE_URL, SUPABASE_KEY 를 실제 값으로 교체
+
+// 방문 로그
 (function logVisit() {
   const SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
-  if (SUPABASE_URL.includes('XXXX') || SUPABASE_KEY.includes('XXXX')) return;
   try {
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let uid = localStorage.getItem('sl_uid');
@@ -11,6 +11,18 @@
     sb.from('visits').insert([{ uid, ts: Date.now(), ua: navigator.userAgent.slice(0, 80) }]).catch(() => {});
   } catch (e) {}
 })();
+
+// ── 좌타/우타 당겨치기·밀어치기 헬퍼 ──
+function _isPull(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg>108:a.deg<72;}
+function _isOppo(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg<72:a.deg>108;}
+function _isCtr(a){if(!a||a.deg==null)return false;return !_isPull(a)&&!_isOppo(a);}
+function _dirLbl(dir,bats){
+  if(!dir)return '';
+  var rh={LF:'당겨치기',LC:'좌중간',CF:'센터',RC:'우중간',RF:'밀어치기'};
+  var lh={LF:'밀어치기',LC:'우중간',CF:'센터',RC:'좌중간',RF:'당겨치기'};
+  return (bats==='L'?lh:rh)[dir]||dir;
+}
+window._isPull=_isPull;window._isOppo=_isOppo;window._isCtr=_isCtr;window._dirLbl=_dirLbl;
 // ─────────────────────────────────────────────────────────
 // 카카오톡 인앱 브라우저 감지 — 강제 이동 대신 경고 배너 표시
 // ─────────────────────────────────────────────────────────
@@ -131,6 +143,12 @@ function showApp(){
   // Show savant bottom nav
   var nav=document.getElementById('savantNav');
   if(nav)nav.style.display='flex';
+  // Show mobile action bar (CSS media query limits to ≤720px)
+  var mab=document.getElementById('mobileActionBar');
+  if(mab)mab.style.display='';
+  // Show mobile input tab (모바일 전용)
+  var mit=document.getElementById('mobileInputTab');
+  if(mit&&isMob)mit.style.display='';
 }
 function goHome(){
   // 앱 내에 있으면 홈 화면(welcom)으로 복귀
@@ -1112,7 +1130,7 @@ function onFClick(e){
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
   gfAfterRecord(res,r.rbi);
@@ -1125,7 +1143,7 @@ function recOther(res){
   var _infieldDir=res==='내야안타'?'CF':null;
   var _infieldX=res==='내야안타'?0.5:null;
   var _infieldY=res==='내야안타'?0.55:null;
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
   gfAfterRecord(res,0);
@@ -1136,25 +1154,38 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
   var handle=document.getElementById('lpResizeHandle');
   var al=document.querySelector('.app-layout');
   if(!handle||!al)return;
+  var mob=function(){return window.innerWidth<=720;};
   function setW(w){
-    w=Math.min(320,Math.max(180,Math.round(w)));
+    var min=mob()?55:180, max=mob()?220:320;
+    w=Math.min(max,Math.max(min,Math.round(w)));
     al.style.setProperty('--lp-w',w+'px');
-    localStorage.setItem('sl_lp_w',w);
+    try{localStorage.setItem(mob()?'sl_lp_w_mob':'sl_lp_w',w);}catch(e){}
+    return w;
   }
-  handle.addEventListener('mousedown',function(e){
-    if(window.innerWidth<721)return;
-    var startX=e.clientX;
-    var startW=al.getBoundingClientRect().left+parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
-    startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||180;
-    handle.classList.add('dragging');
-    function onMove(e){setW(startW+e.clientX-startX);}
-    function onUp(){handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
+  // pointer events 방식 (mouse + touch 통합)
+  handle.style.touchAction='none';
+  handle.addEventListener('pointerdown',function(e){
     e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    var startX=e.clientX;
+    var startW=parseInt(getComputedStyle(document.querySelector('.pnl-left')).width)||(mob()?90:180);
+    handle.classList.add('dragging');
+    function onMove(ev){setW(startW+ev.clientX-startX);}
+    function onUp(){
+      handle.classList.remove('dragging');
+      handle.removeEventListener('pointermove',onMove);
+      handle.removeEventListener('pointerup',onUp);
+    }
+    handle.addEventListener('pointermove',onMove);
+    handle.addEventListener('pointerup',onUp);
   });
-  var saved=+localStorage.getItem('sl_lp_w');
-  if(saved>=180&&saved<=320&&window.innerWidth>=721)setW(saved);
+  // 저장값 복원
+  document.addEventListener('DOMContentLoaded',function(){
+    var sm=+localStorage.getItem('sl_lp_w_mob');
+    var sd=+localStorage.getItem('sl_lp_w');
+    if(mob()&&sm>=55&&sm<=220)setW(sm);
+    else if(!mob()&&sd>=180&&sd<=320)setW(sd);
+  });
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
@@ -1188,6 +1219,7 @@ function renderRecs(){
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'필드를 탭해 타석을 기록하세요 →')+'</div>';return;}
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
+  var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
   el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
 var _dragRecId=null;
@@ -1243,7 +1275,7 @@ function updStats(){
   document.getElementById('sOPS').textContent=ops!=null?ops.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('sAB').textContent=oab;document.getElementById('sH').textContent=h;document.getElementById('sRBI').textContent=rbi;
   const fd=abs.filter(a=>a.deg!=null),tot=fd.length||1;
-  const pull=fd.filter(a=>a.deg<72).length,ctr=fd.filter(a=>a.deg>=72&&a.deg<=108).length,oppo=fd.filter(a=>a.deg>108).length;
+  const pull=fd.filter(a=>_isPull(a)).length,ctr=fd.filter(a=>_isCtr(a)).length,oppo=fd.filter(a=>_isOppo(a)).length;
   const pp=Math.round(pull/tot*100),pc=Math.round(ctr/tot*100),po=Math.round(oppo/tot*100);
   document.getElementById('dPull').textContent=pp+'%';document.getElementById('dCtr').textContent=pc+'%';document.getElementById('dOppo').textContent=po+'%';
   document.getElementById('bPull').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bCtr').style.height=Math.max(3,pc*.44)+'px';document.getElementById('bOppo').style.height=Math.max(3,po*.44)+'px';
@@ -1783,7 +1815,7 @@ function _initTrendInteraction(c){
       +'<div class="tt-row">#'+d.cumAB+'번째 타수 · '+(ab.bname||'?')+'</div>'
       +'<div class="tt-row" style="color:'+rCol+'">→ '+ab.res+'</div>'
       +(ab.pt?'<div class="tt-row">구종: '+ab.pt+'</div>':'')
-      +(ab.dir?'<div class="tt-row">방향: '+(dirK[ab.dir]||ab.dir)+'</div>':'')
+      +(ab.dir?'<div class="tt-row">방향: '+(_dirLbl(ab.dir,ab.bats)||ab.dir)+'</div>':'')
       +'<div class="tt-row">누적 '+d.cumH+'안타 / '+d.cumAB+'타수</div>'
       +(ab.inn?'<div class="tt-row" style="color:var(--text3)">'+ab.inn+'</div>':'');
     tip.style.display='block';
@@ -2313,9 +2345,9 @@ function updBatterStat(){
   document.getElementById('bsH').textContent=h;
   document.getElementById('bsRBI').textContent=rbi;
   var fd=bAbs.filter(function(a){return a.deg!=null;}),tot=fd.length||1;
-  var pull=fd.filter(function(a){return a.deg<72;}).length;
-  var ctr=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
-  var oppo=fd.filter(function(a){return a.deg>108;}).length;
+  var pull=fd.filter(function(a){return _isPull(a);}).length;
+  var ctr=fd.filter(function(a){return _isCtr(a);}).length;
+  var oppo=fd.filter(function(a){return _isOppo(a);}).length;
   var pp=Math.round(pull/tot*100),pc2=Math.round(ctr/tot*100),po=Math.round(oppo/tot*100);
   document.getElementById('bdPull').textContent=pp+'%';document.getElementById('bdCtr').textContent=pc2+'%';document.getElementById('bdOppo').textContent=po+'%';
   document.getElementById('bdPullBar').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bdCtrBar').style.height=Math.max(3,pc2*.44)+'px';document.getElementById('bdOppoBar').style.height=Math.max(3,po*.44)+'px';
@@ -2747,8 +2779,8 @@ function exportShareCard(){
   ctx.fillText('원정 AVG '+fmt(as3.avg)+'  OPS '+fmt(as3.ops)+'  '+as3.h+'H/'+as3.ab+'AB', 24, 155);
   // direction
   var allAbs=AS.abs, fd=allAbs.filter(function(a){return a.deg!=null;}), tot=fd.length||1;
-  var pullP=Math.round(fd.filter(function(a){return a.deg<72;}).length/tot*100);
-  var ctrP=Math.round(fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length/tot*100);
+  var pullP=Math.round(fd.filter(function(a){return _isPull(a);}).length/tot*100);
+  var ctrP=Math.round(fd.filter(function(a){return _isCtr(a);}).length/tot*100);
   var oppoP=100-pullP-ctrP;
   ctx.font='13px sans-serif'; ctx.fillStyle='#8892a4';
   ctx.fillText('방향: 당겨 '+pullP+'%  중앙 '+ctrP+'%  밀어 '+oppoP+'%', 24, 178);
@@ -2928,7 +2960,7 @@ function showHitDetail(ab, clientX, clientY) {
     :(document.getElementById('tAway')||{value:'원정'}).value;
   let rows='';
   if(ab.inn) rows+=`<div class="hdc-row">📍 <span>${ab.inn} · ${teamLbl}</span></div>`;
-  if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${DIR_KO[ab.dir]||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
+  if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${_dirLbl(ab.dir,ab.bats)||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
   // 카운트 (볼·스트라이크·아웃)
   if(ab.count!=null){
     const c=ab.count;
@@ -3045,9 +3077,9 @@ function exportAllGamesToExcel() {
       m.tb+=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
       m.reach+=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
       var fd=pa.filter(function(a){return a.deg!=null;});
-      m.fdN+=fd.length; m.pull+=fd.filter(function(a){return a.deg<72;}).length;
-      m.ctr+=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
-      m.oppo+=fd.filter(function(a){return a.deg>108;}).length;
+      m.fdN+=fd.length; m.pull+=fd.filter(function(a){return _isPull(a);}).length;
+      m.ctr+=fd.filter(function(a){return _isCtr(a);}).length;
+      m.oppo+=fd.filter(function(a){return _isOppo(a);}).length;
     });
   });
   var aggRows=[['선수','번호','경기수','타석','타수','안타','2루타','3루타','홈런','볼넷','사구','희생','삼진','타점','타율','출루율','장타율','당겨치기%','센터%','밀어치기%']];
@@ -3065,7 +3097,7 @@ function exportAllGamesToExcel() {
     (d.abs||[]).forEach(function(a){
       var team=a.team||'home';
       allAbRows.push([d.d||'',th,ta,a.inn||'',team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
-        a.dir?(DIRLBL[a.dir]||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+        a.dir?(_dirLbl(a.dir,a.bats)||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
     });
   });
 
@@ -3167,9 +3199,9 @@ function exportFullReport() {
       m.reach+=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
       var fd=pa.filter(function(a){return a.deg!=null;});
       m.fdN+=fd.length;
-      m.pull+=fd.filter(function(a){return a.deg<72;}).length;
-      m.ctr+=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
-      m.oppo+=fd.filter(function(a){return a.deg>108;}).length;
+      m.pull+=fd.filter(function(a){return _isPull(a);}).length;
+      m.ctr+=fd.filter(function(a){return _isCtr(a);}).length;
+      m.oppo+=fd.filter(function(a){return _isOppo(a);}).length;
       pa.forEach(function(a){
         if(a.zone>=1&&a.zone<=9){var zi=a.zone-1;m.zT[zi]++;if(HITS.includes(a.res))m.zH[zi]++;if(OUTS.includes(a.res))m.zO[zi]++;}
         if(a.count){var b=a.count.b||0,s2=a.count.s||0;var notNoAB=!NOAB.includes(a.res),isH=HITS.includes(a.res);
@@ -3548,9 +3580,9 @@ function _doExportToExcel(data) {
     var reach=pa.filter(function(a){return hits.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
     var fd=pa.filter(function(a){return a.deg!=null;});
     var tot=fd.length||1;
-    var pull=fd.filter(function(a){return a.deg<72;}).length;
-    var ctr=fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
-    var oppo=fd.filter(function(a){return a.deg>108;}).length;
+    var pull=fd.filter(function(a){return _isPull(a);}).length;
+    var ctr=fd.filter(function(a){return _isCtr(a);}).length;
+    var oppo=fd.filter(function(a){return _isOppo(a);}).length;
     return {
       pa:pa.length,oab:oab,h:h,dbl:dbl,tpl:tpl,hr:hr,bb:bb,hbp:hbp,sac:sac,k:k,rbi:rbi,tb:tb,
       avg:oab?h/oab:null, obp:pa.length?reach/pa.length:null, slg:oab?tb/oab:null,
@@ -3603,7 +3635,7 @@ function _doExportToExcel(data) {
   var abRows=[['이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간']];
   abs.forEach(function(a){
     abRows.push([a.inn||'',a.team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
-      a.dir?(dirLabel[a.dir]||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+      a.dir?(_dirLbl(a.dir,a.bats)||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
   });
 
   var wb=XLSX.utils.book_new();
@@ -3861,8 +3893,8 @@ function renderWeaknessAlerts(abs){
   // ③ 당겨/밀어 편중 80% 이상
   var fd=abs.filter(function(a){return a.deg!=null;});
   if(fd.length>=5){
-    var pull=fd.filter(function(a){return a.deg<72;}).length/fd.length;
-    var oppo=fd.filter(function(a){return a.deg>108;}).length/fd.length;
+    var pull=fd.filter(function(a){return _isPull(a);}).length/fd.length;
+    var oppo=fd.filter(function(a){return _isOppo(a);}).length/fd.length;
     if(pull>=0.8)alerts.push({level:'warn',icon:'⚠️',msg:'"당겨치기 편중 '+Math.round(pull*100)+'% — 외각 공 대처 및 밀어치기 연습 권장"'});
     else if(oppo>=0.8)alerts.push({level:'warn',icon:'⚠️',msg:'"밀어치기 편중 '+Math.round(oppo*100)+'% — 내각 공 당겨치기 연습 권장"'});
   }
@@ -4083,7 +4115,7 @@ function openPlayerProfile(){
   var players={};
   // current game
   AS.abs.forEach(function(a){
-    var key=a.bname+'#'+a.bnum;
+    var key=a.bname;
     if(!players[key])players[key]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
     var p=players[key];p.pa++;
     if(!noab.includes(a.res))p.ab++;
@@ -4103,7 +4135,7 @@ function openPlayerProfile(){
       var d=JSON.parse(localStorage.getItem(key2));
       if(!d||!d.abs)continue;
       d.abs.forEach(function(a){
-        var pk=a.bname+'#'+a.bnum;
+        var pk=a.bname;
         if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
         var p=players[pk];p.pa++;
         if(!noab.includes(a.res))p.ab++;
@@ -4687,8 +4719,8 @@ function _drawPersonalCard(){
   // 방향 분포
   var fd=abs.filter(function(a){return a.deg!=null;});
   var tot=fd.length||1;
-  var pullP=Math.round(fd.filter(function(a){return a.deg<72;}).length/tot*100);
-  var ctrP=Math.round(fd.filter(function(a){return a.deg>=72&&a.deg<=108;}).length/tot*100);
+  var pullP=Math.round(fd.filter(function(a){return _isPull(a);}).length/tot*100);
+  var ctrP=Math.round(fd.filter(function(a){return _isCtr(a);}).length/tot*100);
   var oppoP=100-pullP-ctrP;
   ctx.fillStyle='rgba(255,255,255,.06)';
   _roundRect(ctx,20,450,W-40,100,12);ctx.fill();
@@ -5180,8 +5212,8 @@ function generateBattingInsights(bAbs){
   var bb=bAbs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
   var xbh=bAbs.filter(function(a){return['2루타','3루타','홈런'].includes(a.res);}).length;
   var fd=bAbs.filter(function(a){return a.deg!=null;}),tot=fd.length||1;
-  var pull=fd.filter(function(a){return a.deg<72;}).length;
-  var oppo=fd.filter(function(a){return a.deg>108;}).length;
+  var pull=fd.filter(function(a){return _isPull(a);}).length;
+  var oppo=fd.filter(function(a){return _isOppo(a);}).length;
   var pullR=pull/tot,oppoR=oppo/tot;
 
   // 타율 평가
@@ -5561,9 +5593,9 @@ function gfShowEndCard(){
 
   // 주요 타구 방향
   var dabs=abs.filter(function(a){return a.deg!=null;});
-  var pull=dabs.filter(function(a){return a.deg<72;}).length;
-  var ctr=dabs.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
-  var oppo=dabs.filter(function(a){return a.deg>108;}).length;
+  var pull=dabs.filter(function(a){return _isPull(a);}).length;
+  var ctr=dabs.filter(function(a){return _isCtr(a);}).length;
+  var oppo=dabs.filter(function(a){return _isOppo(a);}).length;
   var mainDir=dabs.length?(pull>=ctr&&pull>=oppo?'당겨치기':ctr>=oppo?'센터':'밀어치기'):null;
 
   // MVP 계산
@@ -5748,8 +5780,8 @@ function _pgBuild(){
   // 방향 분포
   var dabs=abs.filter(function(a){return a.deg!=null;});
   var tot=dabs.length||1;
-  var pull=dabs.filter(function(a){return a.deg<72;}).length;
-  var ctr=dabs.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+  var pull=dabs.filter(function(a){return _isPull(a);}).length;
+  var ctr=dabs.filter(function(a){return _isCtr(a);}).length;
   var oppo=dabs.length-pull-ctr;
   var pP=Math.round(pull/tot*100),cP=Math.round(ctr/tot*100),oP=100-pP-cP;
   var dp=document.getElementById('pgDP'),dc=document.getElementById('pgDC'),ddo=document.getElementById('pgDO');
@@ -5763,9 +5795,9 @@ function _pgBuild(){
   // 인사이트 (HOT ZONE / WEAKNESS / MVP)
   var mainDir=dabs.length?(pull>=ctr&&pull>=oppo?'당겨치기':ctr>=oppo?'센터':'밀어치기'):null;
   var dirG=[
-    {name:'당겨치기',list:dabs.filter(function(a){return a.deg<72;})},
-    {name:'센터',list:dabs.filter(function(a){return a.deg>=72&&a.deg<=108;})},
-    {name:'밀어치기',list:dabs.filter(function(a){return a.deg>108;})}
+    {name:'당겨치기',list:dabs.filter(function(a){return _isPull(a);})},
+    {name:'센터',list:dabs.filter(function(a){return _isCtr(a);})},
+    {name:'밀어치기',list:dabs.filter(function(a){return _isOppo(a);})}
   ];
   var ins=[];
 
@@ -5928,8 +5960,8 @@ function pgExport(W,H,mode){
     y+=mode==='story'?H*.11:H*.13;
     var dabs2=abs.filter(function(a){return a.deg!=null;});
     var tot2=dabs2.length||1;
-    var pull2=dabs2.filter(function(a){return a.deg<72;}).length;
-    var ctr2=dabs2.filter(function(a){return a.deg>=72&&a.deg<=108;}).length;
+    var pull2=dabs2.filter(function(a){return _isPull(a);}).length;
+    var ctr2=dabs2.filter(function(a){return _isCtr(a);}).length;
     var oppo2=dabs2.length-pull2-ctr2;
     var bw=W-pad*2,bh=Math.round(H*.012);
     var pw2=Math.round(bw*pull2/tot2),cw2=Math.round(bw*ctr2/tot2),ow2=bw-pw2-cw2;
@@ -7002,6 +7034,48 @@ function fieldFeedbackSubmit(){
     list.push(entry);if(list.length>50)list=list.slice(-50);
     localStorage.setItem('sl_feedback',JSON.stringify(list));
   }catch(e){}
+
+  // ── 1. Google Forms 전송 (CORS 우회 가능 — no-cors mode) ──
+  // Google Forms 폼 응답 URL 및 entry ID를 실제 값으로 교체하세요.
+  // (Google Forms → 미리보기 → 개발자도구 Network에서 formResponse URL 확인)
+  (function(){
+    var GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_FORM_ID/formResponse';
+    var params = new URLSearchParams({
+      'entry.REPLACE_TAGS_ENTRY':  tags.join(', ') || '없음',
+      'entry.REPLACE_TEXT_ENTRY':  text.trim()     || '(내용 없음)',
+      'entry.REPLACE_ABS_ENTRY':   String(entry.abs),
+      'entry.REPLACE_VER_ENTRY':   entry.ver
+    });
+    fetch(GOOGLE_FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',                         // CORS 우회 — 응답 확인 불가하지만 전송됨
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: params.toString()
+    }).catch(function(){});
+  })();
+
+  // ── 2. Supabase 전송 (기존 프로젝트 재사용) ──
+  (function(){
+    var SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
+    try{
+      var sb = (window.supabase&&window.supabase.createClient)
+               ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+               : null;
+      if(!sb) return;
+      sb.from('feedback').insert([{
+        ts:   entry.ts,
+        tags: entry.tags,
+        text: entry.text,
+        abs:  entry.abs,
+        ver:  entry.ver,
+        ua:   entry.ua
+      }]).then(function(res){
+        if(res.error) console.warn('[Feedback] Supabase error', res.error);
+        else console.log('[Feedback] Supabase OK');
+      });
+    }catch(e){ console.warn('[Feedback] Supabase init error', e); }
+  })();
   var btn=document.querySelector('#fieldFeedbackModal .ffm-submit, #fieldFeedbackModal button[onclick*="Submit"]');
   if(btn){btn.disabled=true;btn.textContent='전송 중...';}
   fetch('https://formspree.io/f/xnjrevge',{

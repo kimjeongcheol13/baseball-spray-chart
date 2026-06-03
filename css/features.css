@@ -8,7 +8,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 400 !important;
   display: none;   /* showApp()에서 inline flex로 켬 */
   height: 44px;
   background: rgba(14,16,24,0.95);
@@ -736,4 +736,87 @@
    prevent sticky tap-hover highlight from lingering */
 @media (hover: none) {
   .profile-player-btn:hover, .scout-export-btn:hover { background: var(--card); }
+}
+
+/* ── 7. Profile player button: name first, number secondary ── */
+.profile-player-btn .ppb-num {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* ── 8. Compare radar legend ── */
+.compare-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.compare-radar-wrap { text-align: center; }
+
+/* ── 9. Scout overview: card layout (value on top, label below) ── */
+.scout-overview {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.so-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--raised);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 4px 6px;
+  gap: 3px;
+}
+.so-val {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+.so-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── 10. Scout heatmap tab switcher ── */
+.scout-heatmap-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.sht-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 7px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sht-btn.active {
+  background: var(--blue-dim, rgba(239,68,68,.12));
+  border-color: var(--blue, #ef4444);
+  color: var(--blue, #ef4444);
 }

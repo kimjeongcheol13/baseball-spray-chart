@@ -1,69 +1,45 @@
-// SprayLab Service Worker - 자동 업데이트 지원
-const CACHE_NAME = 'spraylab-v10';
-const ASSETS = [
-  '/baseball-spray-chart/',
-  '/baseball-spray-chart/index.html',
-  '/baseball-spray-chart/manifest.json',
-  '/baseball-spray-chart/icon.svg',
-  '/baseball-spray-chart/css/styles.css',
-  '/baseball-spray-chart/css/features.css',
-  '/baseball-spray-chart/js/core.js',
-  '/baseball-spray-chart/js/app.js',
-  '/baseball-spray-chart/js/features/profile.js',
-  '/baseball-spray-chart/js/features/compare.js',
-  '/baseball-spray-chart/js/features/scouting.js',
-  '/baseball-spray-chart/js/features/heatmap.js',
-  '/baseball-spray-chart/js/features/filter.js',
-  '/baseball-spray-chart/js/features/insights.js',
-  '/baseball-spray-chart/js/features/perf.js'
-];
+// SprayLab Service Worker v14
+// 새로고침만으로 최신 파일 반영 — HTML은 항상 no-cache, 나머지는 stale-while-revalidate
+const CACHE_NAME = 'spraylab-v14';
 
-// 설치: 새 캐시 생성
 self.addEventListener('install', function(e) {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(ASSETS).catch(function(){});
-    })
-  );
-  // SKIP_WAITING 메시지 받으면 즉시 활성화
-  // (index.html에서 postMessage로 요청)
+  self.skipWaiting(); // 즉시 활성화
 });
 
-// 활성화: 구버전 캐시 삭제 (localStorage는 건드리지 않음)
 self.addEventListener('activate', function(e) {
+  // 구버전 캐시 전체 삭제
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(
-        keys.filter(function(k) { return k !== CACHE_NAME; })
-            .map(function(k) { return caches.delete(k); })
-      );
-    }).then(function() {
-      return self.clients.claim();
-    })
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    }).then(function() { return self.clients.claim(); })
   );
 });
 
-// fetch: 캐시 우선, 없으면 네트워크
 self.addEventListener('fetch', function(e) {
+  var req = e.request;
+  // GET 요청만 처리
+  if (req.method !== 'GET') return;
+
+  // HTML(네비게이션) 요청: 항상 네트워크에서 no-cache로 가져옴
+  // → 새로고침 한 번으로 최신 index.html 반영
+  if (req.mode === 'navigate' || req.headers.get('accept').includes('text/html')) {
+    e.respondWith(
+      fetch(new Request(req, {cache: 'no-cache'}))
+        .catch(function() { return caches.match(req); })
+    );
+    return;
+  }
+
+  // CSS/JS/이미지: stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
   e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      var fetchPromise = fetch(e.request).then(function(response) {
-        if(response && response.status === 200 && e.request.method === 'GET') {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(e.request, clone);
-          });
-        }
-        return response;
-      }).catch(function() { return cached; });
-      return cached || fetchPromise;
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.match(req).then(function(cached) {
+        var fetchPromise = fetch(req).then(function(res) {
+          if (res && res.status === 200) cache.put(req, res.clone());
+          return res;
+        }).catch(function() { return cached; });
+        return cached || fetchPromise;
+      });
     })
   );
-});
-
-// SKIP_WAITING 메시지 처리 → 즉시 새 SW 활성화
-self.addEventListener('message', function(e) {
-  if(e.data && e.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });

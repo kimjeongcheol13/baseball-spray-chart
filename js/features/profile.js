@@ -120,8 +120,8 @@ function _calcCareerStats(name, allAbs, gameStats) {
   const isoP = slg - avg;
 
   const dabs = allAbs.filter(a => a.deg != null);
-  const pull = dabs.filter(a => a.deg < 72).length;
-  const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108).length;
+  const pull = dabs.filter(a => _isPull(a)).length;
+  const center = dabs.filter(a => _isCtr(a)).length;
   const oppo = dabs.length - pull - center;
 
   // wOBA (constants.js WOBA_W 통일)

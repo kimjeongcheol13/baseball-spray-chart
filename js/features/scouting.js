@@ -201,9 +201,9 @@ function _analyzePlayer(name, allAbs) {
 
   // Direction analysis
   const dabs = allAbs.filter(a => a.deg != null);
-  const pull = dabs.filter(a => a.deg < 72);
-  const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108);
-  const oppo = dabs.filter(a => a.deg >= 108);
+  const pull = dabs.filter(a => _isPull(a));
+  const center = dabs.filter(a => _isCtr(a));
+  const oppo = dabs.filter(a => _isOppo(a));
 
   const dirAvg = (arr) => {
     const dab = arr.filter(a => !NOAB.includes(a.res)).length;
@@ -567,7 +567,7 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
       <div class="scout-recent-abs">
         ${recent10.length ? recent10.map(a => {
           const col = RES_COLOR[a.res] || '#94a3b8';
-          const dirTxt = a.deg != null ? (a.deg < 72 ? '당김' : a.deg <= 108 ? '중앙' : '밀어') : '-';
+          const dirTxt = a.deg != null ? (_isPull(a) ? '당김' : a.deg <= 108 ? '중앙' : '밀어') : '-';
           const angTxt = a.deg != null ? Math.round(a.deg)+'°' : '';
           return `<div class="sra-item">
             <span class="sra-res" style="color:${col}">${_esc(a.res)}</span>

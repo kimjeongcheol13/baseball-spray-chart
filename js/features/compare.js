@@ -131,8 +131,8 @@ function _aggregateStats(name) {
 
   // Direction
   const dabs = allAbs.filter(a => a.deg != null);
-  const pull = dabs.filter(a => a.deg < 72).length;
-  const center = dabs.filter(a => a.deg >= 72 && a.deg <= 108).length;
+  const pull = dabs.filter(a => _isPull(a)).length;
+  const center = dabs.filter(a => _isCtr(a)).length;
   const oppo = dabs.length - pull - center;
 
   // 최근 5경기 타율 추이 (gameAbs 기반)

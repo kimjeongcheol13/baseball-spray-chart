@@ -283,7 +283,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .mob-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}.mob-chip:active{transform:scale(.95)}
   .app-brand-tag{display:none}
 }
-@media(min-width:741px){.mob-batter{display:none}}
+@media(min-width:741px){.mob-batter{display:none}.mob-batter-wrap{display:none!important}}
 
 /* ?먥븧??App CSS ?먥븧??*/
 #app-page{

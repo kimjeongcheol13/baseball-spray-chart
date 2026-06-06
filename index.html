@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=37">
+<link rel="stylesheet" href="css/styles.css?v=38">
 <link rel="stylesheet" href="css/features.css?v=22">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M0XVPN7YC1"></script>
@@ -1009,7 +1009,10 @@
   </div>
 </div>
 
-<div class="mob-batter" id="mobBar"></div>
+<div style="display:flex;align-items:center;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 4px 0 0;flex-shrink:0" class="mob-batter-wrap">
+  <button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:5px 10px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:900;cursor:pointer;margin:4px 4px;line-height:1;-webkit-tap-highlight-color:transparent">＋</button>
+  <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
+</div>
 
 <div id="mobPlayerModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center">
   <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px">
@@ -2011,7 +2014,7 @@ document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
 });
 </script>
-<script defer src="js/core.js?v=22"></script>
+<script defer src="js/core.js?v=23"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

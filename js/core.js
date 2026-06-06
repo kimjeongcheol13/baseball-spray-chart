@@ -854,7 +854,15 @@ function renderMob(){
   b.innerHTML=targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
     return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')">#${p.num} ${p.name}</div>`;
-  }).join('');
+  }).join('')+'<button onclick="openMobAddPlayer()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
+}
+function openMobAddPlayer(){
+  var name=prompt('선수 이름');
+  if(!name||!name.trim())return;
+  var num=prompt('등번호 (숫자)');
+  document.getElementById('pName').value=name.trim();
+  document.getElementById('pNum').value=(num||'').trim();
+  addPlayer();
 }
 
 function selChip(el,k,v){

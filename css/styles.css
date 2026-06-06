@@ -388,6 +388,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   z-index:30;
   max-height:60%;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
   box-shadow:0 -6px 24px rgba(0,0,0,.45);
   border-radius:12px 12px 0 0;
 }
@@ -1273,7 +1275,6 @@ body.game-focus #advToggleBtn{display:none!important}
 
 /* ?먥븧 TABLET LANDSCAPE ?먥븧 */
 @media(min-width:960px) and (orientation:landscape){
-  .pnl-left{min-width:220px;max-width:220px}
   .pnl-right{min-width:290px;max-width:290px}
 }
 

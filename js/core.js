@@ -853,8 +853,25 @@ function renderMob(){
   const b=document.getElementById('mobBar');if(!b)return;
   b.innerHTML=targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
-    return`<div class="mob-chip${on?' on':''}" style="display:flex;align-items:center;gap:4px;padding-right:4px"><span onclick="selBatter('${p.id}')" style="flex:1">#${p.num} ${p.name}</span><button onclick="delPlayer('${p.id}',event)" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0 2px;line-height:1;-webkit-tap-highlight-color:transparent">✕</button></div>`;
+    return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')" oncontextmenu="delPlayer('${p.id}',event);return false;" data-pid="${p.id}" data-pname="${p.name}">#${p.num} ${p.name}</div>`;
   }).join('')+'<button onclick="openMobAddPlayer()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
+  initMobBarLongPress();
+}
+function initMobBarLongPress(){
+  var b=document.getElementById('mobBar');if(!b)return;
+  var _t=null,_el=null;
+  b.addEventListener('touchstart',function(e){
+    var chip=e.target.closest('[data-pid]');if(!chip)return;
+    _el=chip;
+    _t=setTimeout(function(){
+      _t=null;
+      if(confirm('#'+(_el.dataset.pname||'')+'을(를) 삭제할까요?')){
+        delPlayer(_el.dataset.pid,{stopPropagation:function(){}});
+      }
+    },600);
+  },{passive:true});
+  b.addEventListener('touchend',function(){if(_t){clearTimeout(_t);_t=null;}},{passive:true});
+  b.addEventListener('touchmove',function(){if(_t){clearTimeout(_t);_t=null;}},{passive:true});
 }
 function openMobAddPlayer(){
   var name=prompt('선수 이름');

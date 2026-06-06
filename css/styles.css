@@ -386,7 +386,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   padding:10px 14px;
   display:none;
   z-index:30;
-  max-height:55vh;
+  max-height:220px;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;

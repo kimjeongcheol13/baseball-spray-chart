@@ -1897,3 +1897,72 @@ nav i {
   .qb-btn { min-height: 54px !important; font-size: 14px !important; }
   .qb-btn small { font-size: 10px !important; }
 }
+
+/* ━━ 투수 탭 모바일 UX ━━ */
+
+/* 데스크톱: 모바일 전용 요소 숨기기, 접힘 해제 */
+@media(min-width:721px){
+  .mobile-pitch-quick-bar{display:none}
+  .mobile-pitch-result-panel{display:none}
+  .mobile-pitch-collapse-toggle{display:none}
+  .mobile-pitch-collapse{display:block!important}
+  .mobile-pitch-group-btns{display:none}
+}
+
+/* 모바일 */
+@media(max-width:720px){
+  /* 퀵 입력 바 */
+  .mobile-pitch-quick-bar{
+    display:flex;gap:6px;margin-bottom:8px;
+  }
+  .mobile-pitch-qbtn{
+    flex:1;height:56px;border:none;border-radius:10px;
+    font-size:12px;font-weight:800;font-family:var(--font);
+    cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mobile-pitch-qbtn:active{transform:scale(.94);filter:brightness(.85)}
+  .mobile-pitch-qbtn small{font-size:10px;font-weight:500;opacity:.75}
+  .mobile-pitch-qbtn-strike{background:rgba(245,101,101,.2);color:#f56565;border:1px solid rgba(245,101,101,.4)}
+  .mobile-pitch-qbtn-ball{background:rgba(75,140,245,.2);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)}
+  .mobile-pitch-qbtn-result{background:rgba(45,212,160,.15);color:#2dd4a0;border:1px solid rgba(45,212,160,.4)}
+
+  /* 타격결과 확장 패널 */
+  .mobile-pitch-result-panel{display:none;margin-bottom:8px;padding:8px;background:var(--bg-raised);border-radius:10px;border:1px solid var(--border2)}
+  .mobile-pitch-result-panel.open{display:block}
+
+  /* 구종·코스 토글 버튼 */
+  .mobile-pitch-collapse-toggle{
+    display:block;width:100%;padding:8px 12px;margin-bottom:6px;
+    background:none;border:1px dashed var(--border2);border-radius:8px;
+    color:var(--text3);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;text-align:left;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* 구종·코스 접힘 */
+  .mobile-pitch-collapse{display:none}
+  .mobile-pitch-collapse.open{display:block}
+
+  /* 기존 구종 칩 숨기기 */
+  #pnl-pitcher .pitch-type-chips{display:none!important}
+
+  /* 5개 그룹 버튼 */
+  .mobile-pitch-group-btns{
+    display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;
+  }
+  .mobile-pitch-grp{
+    flex:1;min-width:calc(50% - 5px);
+    padding:8px 6px;border-radius:8px;
+    background:var(--bg-raised);border:1px solid var(--border2);
+    color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);
+    cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;
+    -webkit-tap-highlight-color:transparent;transition:all .12s;
+  }
+  .mobile-pitch-grp:active{transform:scale(.95)}
+  .mobile-pitch-grp small{font-size:9px;font-weight:400;color:var(--text3)}
+  .mobile-pitch-grp.on{background:rgba(75,140,245,.15);border-color:#4b8cf5;color:#4b8cf5}
+  .mobile-pitch-grp.on small{color:rgba(75,140,245,.7)}
+}

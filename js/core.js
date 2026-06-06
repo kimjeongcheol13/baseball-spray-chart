@@ -854,37 +854,46 @@ function renderMob(){
   b.innerHTML=targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
     return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')" oncontextmenu="delPlayer('${p.id}',event);return false;" data-pid="${p.id}" data-pname="${p.name}">#${p.num} ${p.name}</div>`;
-  }).join('')+'<button onclick="openMobAddPlayer()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
-  initMobBarLongPress();
+  }).join('')+'<button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
 }
-function initMobBarLongPress(){
-  var b=document.getElementById('mobBar');if(!b)return;
-  var _t=null,_pid=null,_pname=null;
-  b.addEventListener('touchstart',function(e){
-    var chip=e.target.closest('[data-pid]');if(!chip)return;
-    _pid=chip.dataset.pid;_pname=chip.dataset.pname;
-    _t=setTimeout(function(){
-      _t=null;
-      if(!confirm('#'+(_pname||'선수')+'을(를) 삭제할까요?'))return;
-      if(AS.curTeam==='home'){
-        AS.home_lineup=AS.home_lineup.filter(function(p){return String(p.id)!==String(_pid);});
-      }else{
-        AS.away_lineup=AS.away_lineup.filter(function(p){return String(p.id)!==String(_pid);});
-      }
-      if(AS.batter&&String(AS.batter.id)===String(_pid))AS.batter=null;
-      renderLP();renderMob();
-    },600);
-  },{passive:true});
-  b.addEventListener('touchend',function(){if(_t){clearTimeout(_t);_t=null;}},{passive:true});
-  b.addEventListener('touchmove',function(){if(_t){clearTimeout(_t);_t=null;}},{passive:true});
+function openMobPlayerModal(){
+  var m=document.getElementById('mobPlayerModal');if(!m)return;
+  m.style.display='flex';
+  renderMobPlayerList();
 }
-function openMobAddPlayer(){
-  var name=prompt('선수 이름');
-  if(!name||!name.trim())return;
-  var num=prompt('등번호 (숫자)');
-  document.getElementById('pName').value=name.trim();
-  document.getElementById('pNum').value=(num||'').trim();
+function closeMobPlayerModal(){
+  var m=document.getElementById('mobPlayerModal');if(m)m.style.display='none';
+}
+function renderMobPlayerList(){
+  var list=document.getElementById('mobPlayerList');if(!list)return;
+  var lineup=getActiveLineup();
+  if(!lineup.length){list.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">선수가 없습니다</div>';return;}
+  list.innerHTML=lineup.map(function(p){
+    return'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-raised);border-radius:8px">'
+      +'<span style="font-size:13px;color:var(--text)">#'+p.num+' '+p.name+'</span>'
+      +'<button onclick="mobDelPlayer(\''+p.id+'\')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">삭제</button>'
+      +'</div>';
+  }).join('');
+}
+function mobDelPlayer(id){
+  if(AS.curTeam==='home'){
+    AS.home_lineup=AS.home_lineup.filter(function(p){return String(p.id)!==String(id);});
+  }else{
+    AS.away_lineup=AS.away_lineup.filter(function(p){return String(p.id)!==String(id);});
+  }
+  if(AS.batter&&String(AS.batter.id)===String(id))AS.batter=null;
+  renderLP();renderMob();renderMobPlayerList();
+}
+function mobAddPlayerFromModal(){
+  var name=document.getElementById('mobPName').value.trim();
+  var num=document.getElementById('mobPNum').value.trim();
+  if(!name)return;
+  document.getElementById('pName').value=name;
+  document.getElementById('pNum').value=num;
   addPlayer();
+  document.getElementById('mobPName').value='';
+  document.getElementById('mobPNum').value='';
+  renderMobPlayerList();
 }
 
 function selChip(el,k,v){

@@ -1011,6 +1011,21 @@
 
 <div class="mob-batter" id="mobBar"></div>
 
+<div id="mobPlayerModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">선수 관리</span>
+      <button onclick="closeMobPlayerModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <div id="mobPlayerList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input id="mobPName" class="inp" placeholder="선수 이름" maxlength="10" style="flex:1">
+      <input id="mobPNum" class="inp" placeholder="#번" maxlength="3" style="width:54px;text-align:center">
+      <button onclick="mobAddPlayerFromModal()" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px">추가</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-layout">
   <div class="pnl-left">
     <!-- 모바일 전용 투구입력 패널 -->

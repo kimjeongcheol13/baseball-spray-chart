@@ -1099,6 +1099,7 @@
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
     <button class="ib-drawer-toggle" id="ibToggleBtn" onclick="toggleInputBar()">▼ 투구·결과 입력</button>
+    <div id="ibBackdrop" onclick="toggleInputBar()" style="display:none;position:fixed;inset:0;z-index:199"></div>
     <div class="input-bar">
       <div class="ib-tabs-bar">
         <button class="ib-tab on" id="ibt-pitch" onclick="swIbTab('pitch',this)">⚾ 투구 입력</button>

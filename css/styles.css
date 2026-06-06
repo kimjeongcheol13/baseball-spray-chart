@@ -383,15 +383,18 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   position:absolute;bottom:0;left:0;right:0;
   background:var(--bg-card);
   border-top:2px solid var(--border2);
+  padding:10px 14px;
   display:none;
   z-index:30;
   max-height:55vh;
-  overflow:hidden;
-  flex-direction:column;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
   box-shadow:0 -6px 24px rgba(0,0,0,.45);
   border-radius:12px 12px 0 0;
 }
-.input-bar.open{display:flex}
+.input-bar.open{display:block}
 .ib-drawer-toggle{width:100%;background:var(--bg-card);border:none;border-top:1px solid var(--border);color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);padding:5px 14px;cursor:pointer;text-align:left;flex-shrink:0;transition:color .15s;position:relative;z-index:31}
 .ib-drawer-toggle:hover{color:var(--text2)}
 .ib-drawer-toggle.open{color:var(--accent);border-top-color:var(--accent)}
@@ -1444,11 +1447,11 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .mm-home{color:var(--text3)}
 
 /* ?? ?섎떒 ?낅젰 ??諛??? */
-.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised);padding:0 14px}
+.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised);margin:-10px -14px 10px;padding:0 14px}
 .ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
 .ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ib-tab-pnl{display:none}
-.ib-tab-pnl.on{display:block;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:10px 14px;min-height:0}
+.ib-tab-pnl.on{display:block}
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */
 .pnl-right{transition:opacity .25s ease,min-width .25s ease}

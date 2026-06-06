@@ -1457,12 +1457,13 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ib-tab-pnl{display:none}
 .ib-tab-pnl.on{
   display:block;
-  max-height:180px;
-  overflow-y:auto;
+  max-height:55vh;
+  overflow-y:scroll;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-y;
   padding:10px 14px;
+  overscroll-behavior:contain;
 }
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */

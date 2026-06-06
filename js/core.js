@@ -7655,6 +7655,16 @@ var _origRecordPitch=recordPitch;
 document.addEventListener('DOMContentLoaded',function(){
   initIbZoneCanvas();
   initPitcherZoneCanvas();
+  // 뒤로가기 → 홈 화면
+  history.pushState({page:'game'},'','');
+  window.addEventListener('popstate',function(){
+    var ap=document.getElementById('app-page');
+    var welcome=document.getElementById('appWelcome');
+    if(ap&&ap.style.display==='flex'&&welcome&&(welcome.style.display==='none'||welcome.classList.contains('hidden'))){
+      goHome();
+      history.pushState({page:'game'},'','');
+    }
+  });
   // 이전 세션 자동 복구: autosave 있고 현재 기록 없으면 바로 게임 화면으로
   setTimeout(function(){
     if(!storageManager.hasRecovery())return;

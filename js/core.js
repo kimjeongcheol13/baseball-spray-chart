@@ -6706,19 +6706,35 @@ document.addEventListener('visibilitychange',function(){
       },0);
     }
   } else {
-    // 백그라운드 복귀 시 캔버스 컨텍스트 재복구
-    try{
-      if(fC&&hC&&oC){
-        var w=document.getElementById('cwrap');
-        var nw=w?w.clientWidth:0;
-        if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});}
-        fCtx=fC.getContext('2d');
-        hCtx=hC.getContext('2d');
-        oCtx=oC.getContext('2d');
-        drawField();
-        safeRender();
+    // 백그라운드 복귀: 웰컴 화면이면 자동 복구 시도
+    setTimeout(function(){
+      var welcome=document.getElementById('appWelcome');
+      var isWelcomeVisible=welcome&&welcome.style.display!=='none'&&!welcome.classList.contains('hidden');
+      if(isWelcomeVisible&&storageManager.hasRecovery()){
+        var rec=storageManager.getRecovery();
+        if(rec&&rec.data){
+          var d=rec.data;
+          var hasData=(d.abs&&d.abs.length>0)||(d.home_lineup&&d.home_lineup.length>0)||(d.away_lineup&&d.away_lineup.length>0);
+          if(hasData&&!(AS.abs&&AS.abs.length>0)){
+            archRecoverAutosave();
+            return;
+          }
+        }
       }
-    }catch(e){}
+      // 캔버스 컨텍스트 재복구
+      try{
+        if(fC&&hC&&oC){
+          var w=document.getElementById('cwrap');
+          var nw=w?w.clientWidth:0;
+          if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});}
+          fCtx=fC.getContext('2d');
+          hCtx=hC.getContext('2d');
+          oCtx=oC.getContext('2d');
+          drawField();
+          safeRender();
+        }
+      }catch(e){}
+    },200);
   }
 });
 

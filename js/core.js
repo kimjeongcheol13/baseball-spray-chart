@@ -713,6 +713,7 @@ function showTutorial(){
 function initApp(){
   if(appInited)return;appInited=true;
   initCanvas();drawDonut();
+  renderLP();renderMob();
   // Debug: force-show hit detail card to verify visibility (temporary)
   try{
     if(_FORCE_SHOW_HITDETAIL_DEBUG){

@@ -1150,40 +1150,6 @@ AS.currentPitches=[];
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
 function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');if(!ib)return;var open=ib.classList.toggle('open');if(btn){btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';btn.classList.toggle('open',open);}}
-(function initIbResize(){
-  var btn=document.getElementById('ibToggleBtn');
-  var ib=document.querySelector('.input-bar');
-  if(!btn||!ib)return;
-  var dragging=false,moved=false,startY=0,startH=0;
-  btn.style.touchAction='none';
-  btn.addEventListener('pointerdown',function(e){
-    if(!ib.classList.contains('open'))return;
-    dragging=true;
-    moved=false;
-    startY=e.clientY;
-    startH=ib.offsetHeight;
-    btn.setPointerCapture(e.pointerId);
-  });
-  btn.addEventListener('pointermove',function(e){
-    if(!dragging)return;
-    var diff=startY-e.clientY;
-    if(!moved&&Math.abs(diff)<5)return;
-    moved=true;
-    btn.classList.add('ib-dragging');
-    var newH=Math.min(Math.max(80,startH+diff),window.innerHeight*0.85);
-    ib.style.maxHeight=newH+'px';
-    ib.style.height=newH+'px';
-  });
-  function endDrag(e){
-    if(!dragging)return;
-    dragging=false;
-    btn.classList.remove('ib-dragging');
-    if(moved&&e)e.preventDefault();
-    moved=false;
-  }
-  btn.addEventListener('pointerup',endDrag);
-  btn.addEventListener('pointercancel',endDrag);
-})();
 (function initLpResize(){
   var handle=document.getElementById('lpResizeHandle');
   var al=document.querySelector('.app-layout');

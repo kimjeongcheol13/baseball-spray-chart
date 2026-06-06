@@ -851,10 +851,11 @@ function renderLP(){
 function renderMob(){
   const targetLineup = getActiveLineup();
   const b=document.getElementById('mobBar');if(!b)return;
-  b.innerHTML=targetLineup.map(p=>{
+  b.innerHTML='<button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px solid var(--accent);background:var(--accent-dim);color:var(--accent);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>'
+  +targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
-    return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')" oncontextmenu="delPlayer('${p.id}',event);return false;" data-pid="${p.id}" data-pname="${p.name}">#${p.num} ${p.name}</div>`;
-  }).join('')+'<button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
+    return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')" data-pid="${p.id}" data-pname="${p.name}">#${p.num} ${p.name}</div>`;
+  }).join('');
 }
 function openMobPlayerModal(){
   var m=document.getElementById('mobPlayerModal');if(!m)return;

@@ -362,7 +362,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
 /* CENTER */
-.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:visible;min-height:0;min-width:0;position:relative}
+.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:clip;min-height:0;min-width:0;position:relative}
 .batter-bar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-card);flex-shrink:0}
 .batter-display{font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
 .batter-empty{font-size:12px;color:var(--text3)}
@@ -380,12 +380,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 /* INPUT BAR — position:absolute로 field 위에 overlay, 필드 크기 유지 */
 .input-bar{
-  position:absolute;bottom:0;left:0;right:0;
+  position:fixed;bottom:0;left:0;right:0;
   background:var(--bg-card);
   border-top:2px solid var(--border2);
   padding:0;
   display:none;
-  z-index:30;
+  z-index:200;
   max-height:75vh;
   overflow-y:auto;
   overflow-x:hidden;

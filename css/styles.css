@@ -382,14 +382,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .input-bar{
   background:var(--bg-card);
   border-top:2px solid var(--border2);
-  padding:0;
   display:none;
   flex-shrink:0;
-  max-height:220px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
   box-shadow:0 -6px 24px rgba(0,0,0,.45);
   border-radius:12px 12px 0 0;
 }
@@ -1450,7 +1444,15 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
 .ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ib-tab-pnl{display:none}
-.ib-tab-pnl.on{display:block;padding:10px 14px}
+.ib-tab-pnl.on{
+  display:block;
+  max-height:180px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  padding:10px 14px;
+}
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */
 .pnl-right{transition:opacity .25s ease,min-width .25s ease}

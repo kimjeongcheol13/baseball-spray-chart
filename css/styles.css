@@ -925,7 +925,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
    APP WELCOME SCREEN (?????붾㈃)
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #appWelcome{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;overflow-y:auto;transition:opacity .2s}
-#appWelcome.hidden{display:none}
+#appWelcome.hidden{display:none;pointer-events:none}
 .aw-logo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:32px;flex-shrink:0}
 .aw-logo-icon{width:60px;height:60px;filter:drop-shadow(0 0 16px rgba(75,140,245,.4))}
 .aw-logo-name{font-size:30px;font-weight:900;letter-spacing:-.5px;color:var(--text)}

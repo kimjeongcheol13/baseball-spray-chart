@@ -7639,6 +7639,20 @@ var _origRecordPitch=recordPitch;
 document.addEventListener('DOMContentLoaded',function(){
   initIbZoneCanvas();
   initPitcherZoneCanvas();
+  // 이전 세션 자동 복구: autosave 있고 현재 기록 없으면 바로 게임 화면으로
+  setTimeout(function(){
+    if(!storageManager.hasRecovery())return;
+    var rec=storageManager.getRecovery();
+    if(!rec||!rec.data)return;
+    var d=rec.data;
+    var hasData=(d.abs&&d.abs.length>0)||(d.home_lineup&&d.home_lineup.length>0)||(d.away_lineup&&d.away_lineup.length>0);
+    if(!hasData)return;
+    if(AS.abs&&AS.abs.length>0)return;
+    // 앱 화면이 이미 열려 있거나 랜딩 페이지에 있을 때 자동 복구
+    var lp=document.getElementById('landing-page');
+    if(lp&&lp.style.display!=='none')showApp();
+    archRecoverAutosave();
+  },300);
 });
 // swTab 후에도 초기화
 var _origSwTab=swTab;

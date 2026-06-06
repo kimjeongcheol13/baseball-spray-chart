@@ -859,15 +859,20 @@ function renderMob(){
 }
 function initMobBarLongPress(){
   var b=document.getElementById('mobBar');if(!b)return;
-  var _t=null,_el=null;
+  var _t=null,_pid=null,_pname=null;
   b.addEventListener('touchstart',function(e){
     var chip=e.target.closest('[data-pid]');if(!chip)return;
-    _el=chip;
+    _pid=chip.dataset.pid;_pname=chip.dataset.pname;
     _t=setTimeout(function(){
       _t=null;
-      if(confirm('#'+(_el.dataset.pname||'')+'을(를) 삭제할까요?')){
-        delPlayer(_el.dataset.pid,{stopPropagation:function(){}});
+      if(!confirm('#'+(_pname||'선수')+'을(를) 삭제할까요?'))return;
+      if(AS.curTeam==='home'){
+        AS.home_lineup=AS.home_lineup.filter(function(p){return String(p.id)!==String(_pid);});
+      }else{
+        AS.away_lineup=AS.away_lineup.filter(function(p){return String(p.id)!==String(_pid);});
       }
+      if(AS.batter&&String(AS.batter.id)===String(_pid))AS.batter=null;
+      renderLP();renderMob();
     },600);
   },{passive:true});
   b.addEventListener('touchend',function(){if(_t){clearTimeout(_t);_t=null;}},{passive:true});

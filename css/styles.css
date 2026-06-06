@@ -383,7 +383,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   position:absolute;bottom:0;left:0;right:0;
   background:var(--bg-card);
   border-top:2px solid var(--border2);
-  padding:10px 14px;
+  padding:0;
   display:none;
   z-index:30;
   max-height:220px;
@@ -1447,11 +1447,11 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .mm-home{color:var(--text3)}
 
 /* ?? ?섎떒 ?낅젰 ??諛??? */
-.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised);margin:-10px -14px 10px;padding:0 14px}
+.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg-raised);padding:0 14px}
 .ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
 .ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ib-tab-pnl{display:none}
-.ib-tab-pnl.on{display:block}
+.ib-tab-pnl.on{display:block;padding:10px 14px}
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */
 .pnl-right{transition:opacity .25s ease,min-width .25s ease}

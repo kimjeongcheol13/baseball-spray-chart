@@ -396,7 +396,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   border-radius:12px 12px 0 0;
 }
 .input-bar.open{display:block}
-@media(max-width:859px){#ib-pnl-pitch > div{flex-direction:column}}
+#ib-pnl-pitch > div > div:first-child{overflow-y:auto;max-height:140px;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-right:4px}
 .ib-drawer-toggle{width:100%;background:var(--bg-card);border:none;border-top:1px solid var(--border);color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);padding:5px 14px;cursor:ns-resize;text-align:left;flex-shrink:0;transition:color .15s;position:relative;z-index:31;user-select:none;-webkit-user-select:none}
 .ib-drawer-toggle::after{content:'';display:block;width:32px;height:3px;background:var(--border2);border-radius:2px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
 .ib-drawer-toggle.ib-dragging{cursor:ns-resize;color:var(--accent)}
@@ -1457,13 +1457,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ib-tab-pnl{display:none}
 .ib-tab-pnl.on{
   display:block;
-  max-height:55vh;
-  overflow-y:scroll;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
   padding:10px 14px;
-  overscroll-behavior:contain;
 }
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */

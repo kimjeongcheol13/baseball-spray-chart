@@ -1827,3 +1827,73 @@ nav i {
     z-index:150!important;
   }
 }
+
+/* ━━ 모바일 UX 개선 5종 ━━ */
+
+/* Item 1: 홈 화면 스마트 버튼 */
+.mobile-aw-links { display: none; }
+@media(max-width:720px) {
+  .mobile-aw-links {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 16px 0;
+  }
+  .mobile-aw-links button {
+    width: 100%; padding: 14px 16px;
+    background: var(--bg-raised); border: 1px solid var(--border2);
+    border-radius: 12px; color: var(--text);
+    font-size: 15px; font-weight: 700; font-family: var(--font);
+    cursor: pointer; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-aw-links button:active { background: var(--bg-card2); }
+  /* 저장 경기 없을 때 새경기만 강조 */
+  #appWelcome.mobile-no-saves .mobile-aw-links button:not(:first-child) { display: none; }
+  /* 데스크톱 큰 버튼 숨기기 (모바일 전용 링크로 대체) */
+  #appWelcome .aw-main-btns { display: none; }
+}
+
+/* Item 2: 게임 위자드 힌트 */
+.mobile-gw-hint { display: none; }
+@media(max-width:720px) {
+  .mobile-gw-hint {
+    display: block;
+    padding: 6px 12px; margin: -4px 0 8px;
+    background: rgba(45,212,160,.1); border-radius: 8px;
+    color: #2dd4a0; font-size: 12px; font-weight: 600;
+  }
+}
+
+/* Item 3: 선수 추가 상세 설정 토글 */
+.mobile-detail-toggle { display: none; }
+.mobile-quick-add { display: none; }
+@media(max-width:720px) {
+  .mobile-detail-toggle {
+    display: block; width: 100%;
+    padding: 7px 12px; margin-top: 4px;
+    background: none; border: 1px dashed var(--border2);
+    border-radius: 8px; color: var(--text3);
+    font-size: 12px; font-weight: 600; font-family: var(--font);
+    cursor: pointer; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-detail-row { display: none !important; }
+  .mobile-detail-row.open { display: flex !important; }
+  .mobile-detail-add { display: none !important; }
+  .mobile-quick-add { display: flex !important; }
+}
+
+/* Item 4: 탭 단순화 — 투수/팀 탭 숨기고 더보기 탭 표시 */
+.mobile-more-tab { display: none; }
+@media(max-width:720px) {
+  #tab-pitcher, #tab-team { display: none !important; }
+  .mobile-more-tab {
+    display: flex !important; align-items: center; justify-content: center;
+    white-space: nowrap;
+  }
+}
+
+/* Item 5: 퀵 버튼 크기 키우기 */
+@media(max-width:720px) {
+  .qb-btn { min-height: 54px !important; font-size: 14px !important; }
+  .qb-btn small { font-size: 10px !important; }
+}

@@ -4953,12 +4953,30 @@ function exportShareCard(){openCardPreview();}
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    앱 홈 화면 (APP WELCOME SCREEN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function _updateMobAwLinks(){
+  var el=document.getElementById('appWelcome');
+  if(!el)return;
+  var saves=[];try{saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');}catch(e){}
+  if(saves.length===0){el.classList.add('mobile-no-saves');el.classList.remove('mobile-has-saves');}
+  else{el.classList.add('mobile-has-saves');el.classList.remove('mobile-no-saves');}
+}
+
+function openMobMoreSheet(){
+  var s=document.getElementById('mobMoreSheet');
+  if(s){s.style.display='flex';}
+}
+function closeMobMoreSheet(){
+  var s=document.getElementById('mobMoreSheet');
+  if(s){s.style.display='none';}
+}
+
 function showAppWelcome(){
   var el=document.getElementById('appWelcome');
   if(!el)return;
   el.classList.remove('hidden');
   el.style.display='';
   el.style.pointerEvents='';
+  _updateMobAwLinks();
   renderAwRecent();
   // 홈으로 돌아왔을 때 복구 배너 재확인
   setTimeout(function(){

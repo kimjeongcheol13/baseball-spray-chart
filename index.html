@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=38">
+<link rel="stylesheet" href="css/styles.css?v=39">
 <link rel="stylesheet" href="css/features.css?v=22">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M0XVPN7YC1"></script>
@@ -544,6 +544,11 @@
       </div>
     </button>
   </div>
+  <div class="mobile-aw-links">
+    <button onclick="hideAppWelcome();openGameWizard()">새 경기 시작</button>
+    <button onclick="hideAppWelcome();openLoad()">경기 불러오기</button>
+    <button onclick="hideAppWelcome();openPlayerProfile()">시즌 보기</button>
+  </div>
   <div class="team-sel-bar">
     <span class="tsb-label">현재 팀</span>
     <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
@@ -619,6 +624,7 @@
 <div id="gameWizard" onclick="if(event.target===this)closeGameWizard()">
   <div class="gw-card">
     <div class="gw-title">⚾ 새 경기 시작</div>
+    <div class="mobile-gw-hint">이름 없이 바로 시작해도 돼요 ✓</div>
     <div class="gw-sub">팀 이름을 입력하고 바로 기록을 시작하세요</div>
     <div class="gw-field">
       <div class="gw-label">우리 팀</div>
@@ -1014,6 +1020,18 @@
   <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
 </div>
 
+<!-- 더보기 바텀시트 (모바일 전용) -->
+<div id="mobMoreSheet" style="display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMobMoreSheet()">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;padding:16px 16px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
+      <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('pitcher',document.getElementById('tab-pitcher'))">⚾ 투수 분석</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+  </div>
+</div>
+
 <div id="mobPlayerModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center">
   <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1064,11 +1082,13 @@
       <div style="display:flex;gap:5px">
         <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
         <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:54px;flex-shrink:0;text-align:center" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="btn btn-primary btn-icon mobile-quick-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       </div>
-      <div style="display:flex;gap:5px">
+      <button class="mobile-detail-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ 상세 설정 접기':'+ 상세 설정 (포지션·타석)'>+ 상세 설정 (포지션·타석)</button>
+      <div class="mobile-detail-row" style="display:flex;gap:5px">
         <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
         <select class="inp" id="pBH" style="flex:1;padding:7px 6px;font-size:12px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-        <button class="btn btn-primary btn-icon" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="btn btn-primary btn-icon mobile-detail-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       </div>
     </div>
   </div>
@@ -1185,6 +1205,7 @@
       <div class="tab" id="tab-chart" onclick="swTab('chart',this)" data-help-title="📈 차트 탭" data-help="개인(9:16) · 팀(1:1) <b>성적카드 PNG</b>를 생성해 SNS에 공유합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
       <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)" data-help-title="⚾ 투수 탭" data-help="상대 투수의 <b>구종·코스·결과</b>를 기록하고 분석합니다.<br>구종 비율 도넛차트와 코스 히트맵이 자동 생성됩니다.">⚾ 투수</div>
       <div class="tab" id="tab-team" onclick="swTab('team',this);renderTeamDashboard()" style="white-space:nowrap">🏟️ 팀</div>
+      <div class="tab mobile-more-tab" id="tab-more" onclick="openMobMoreSheet()">··· 더보기</div>
     </div>
     <div class="tab-body">
       <div class="tab-pnl on" id="pnl-rec">
@@ -2018,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
 });
 </script>
-<script defer src="js/core.js?v=29"></script>
+<script defer src="js/core.js?v=30"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

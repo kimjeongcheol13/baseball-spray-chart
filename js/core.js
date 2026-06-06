@@ -4973,6 +4973,7 @@ function showAppWelcome(){
 function hideAppWelcome(){
   var el=document.getElementById('appWelcome');
   if(el){el.classList.add('hidden');el.style.display='none';el.style.pointerEvents='none';}
+  history.pushState({page:'game'},'','');
   // 게임 화면으로 전환 시 복구 배너를 즉시 숨김
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.classList.add('arch-rec-hidden');
@@ -7656,11 +7657,10 @@ document.addEventListener('DOMContentLoaded',function(){
   initIbZoneCanvas();
   initPitcherZoneCanvas();
   // 뒤로가기 → 홈 화면
-  history.pushState({page:'game'},'','');
   window.addEventListener('popstate',function(){
-    var ap=document.getElementById('app-page');
     var welcome=document.getElementById('appWelcome');
-    if(ap&&ap.style.display==='flex'&&welcome&&(welcome.style.display==='none'||welcome.classList.contains('hidden'))){
+    var isHidden=!welcome||welcome.style.display==='none'||welcome.classList.contains('hidden');
+    if(isHidden){
       goHome();
       history.pushState({page:'game'},'','');
     }

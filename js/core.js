@@ -889,12 +889,18 @@ function mobDelPlayer(id){
 function mobAddPlayerFromModal(){
   var name=document.getElementById('mobPName').value.trim();
   var num=document.getElementById('mobPNum').value.trim();
+  var pos=document.getElementById('mobPPos').value;
+  var bh=document.getElementById('mobPBH').value;
   if(!name)return;
   document.getElementById('pName').value=name;
   document.getElementById('pNum').value=num;
+  document.getElementById('pPos').value=pos;
+  document.getElementById('pBH').value=bh;
   addPlayer();
   document.getElementById('mobPName').value='';
   document.getElementById('mobPNum').value='';
+  document.getElementById('mobPPos').value='';
+  document.getElementById('mobPBH').value='';
   renderMobPlayerList();
 }
 
@@ -1092,6 +1098,7 @@ function _showNearDot(event){
 }
 
 function drawField(){
+  if(!fCtx||!fC||FS<=0)return;
   const ctx=fCtx,S2=FS,cx=S2/2,cy=S2;ctx.clearRect(0,0,S2,S2);
   const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S2);bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#112b14');
   ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=bg;ctx.fill();

@@ -1018,9 +1018,14 @@
       <button onclick="closeMobPlayerModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
     </div>
     <div id="mobPlayerList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700">선수 추가</div>
     <div style="display:flex;gap:6px;margin-bottom:6px">
-      <input id="mobPName" class="inp" placeholder="선수 이름" maxlength="10" style="flex:1">
+      <input id="mobPName" class="inp" placeholder="이름" maxlength="10" style="flex:1">
       <input id="mobPNum" class="inp" placeholder="#번" maxlength="3" style="width:54px;text-align:center">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <select id="mobPPos" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+      <select id="mobPBH" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
       <button onclick="mobAddPlayerFromModal()" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px">추가</button>
     </div>
   </div>
@@ -2006,7 +2011,7 @@ document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
 });
 </script>
-<script defer src="js/core.js?v=21"></script>
+<script defer src="js/core.js?v=22"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

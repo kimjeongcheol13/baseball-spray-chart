@@ -871,7 +871,7 @@ function mobUpdateTeamBtns(){
   if(a){a.style.background=!isHome?'var(--accent)':'none';a.style.color=!isHome?'#fff':'var(--text3)';a.style.borderColor=!isHome?'var(--accent)':'var(--border2)';}
 }
 function mobSwitchTeam(team){
-  switchTeam(team);
+  swLineupTab(team);
   mobUpdateTeamBtns();
   renderMobPlayerList();
 }

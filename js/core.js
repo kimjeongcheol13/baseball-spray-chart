@@ -4897,6 +4897,7 @@ function showAppWelcome(){
   var el=document.getElementById('appWelcome');
   if(!el)return;
   el.classList.remove('hidden');
+  el.style.display='';
   el.style.pointerEvents='';
   renderAwRecent();
   // 홈으로 돌아왔을 때 복구 배너 재확인
@@ -4911,7 +4912,7 @@ function showAppWelcome(){
 
 function hideAppWelcome(){
   var el=document.getElementById('appWelcome');
-  if(el){el.classList.add('hidden');el.style.pointerEvents='none';}
+  if(el){el.classList.add('hidden');el.style.display='none';el.style.pointerEvents='none';}
   // 게임 화면으로 전환 시 복구 배너를 즉시 숨김
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.classList.add('arch-rec-hidden');

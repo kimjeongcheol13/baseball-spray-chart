@@ -860,6 +860,19 @@ function renderMob(){
 function openMobPlayerModal(){
   var m=document.getElementById('mobPlayerModal');if(!m)return;
   m.style.display='flex';
+  mobUpdateTeamBtns();
+  renderMobPlayerList();
+}
+function mobUpdateTeamBtns(){
+  var isHome=AS.curTeam!=='away';
+  var h=document.getElementById('mobTeamHome');
+  var a=document.getElementById('mobTeamAway');
+  if(h){h.style.background=isHome?'var(--accent)':'none';h.style.color=isHome?'#fff':'var(--text3)';h.style.borderColor=isHome?'var(--accent)':'var(--border2)';}
+  if(a){a.style.background=!isHome?'var(--accent)':'none';a.style.color=!isHome?'#fff':'var(--text3)';a.style.borderColor=!isHome?'var(--accent)':'var(--border2)';}
+}
+function mobSwitchTeam(team){
+  switchTeam(team);
+  mobUpdateTeamBtns();
   renderMobPlayerList();
 }
 function closeMobPlayerModal(){

@@ -6635,14 +6635,30 @@ var undoManager=(function(){
 
 // ─── 페이지 숨김 시 즉시 autosave ─────────────
 document.addEventListener('visibilitychange',function(){
-  if(document.hidden&&AS&&AS.abs&&AS.abs.length>0){
-    storageManager.scheduleAutosave({
-      abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
-      hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-      pitchers:AS.pitchers||[],
-      th:(document.getElementById('tHome')||{}).value||'',
-      ta:(document.getElementById('tAway')||{}).value||''
-    },0);
+  if(document.hidden){
+    if(AS&&AS.abs&&AS.abs.length>0){
+      storageManager.scheduleAutosave({
+        abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
+        hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
+        pitchers:AS.pitchers||[],
+        th:(document.getElementById('tHome')||{}).value||'',
+        ta:(document.getElementById('tAway')||{}).value||''
+      },0);
+    }
+  } else {
+    // 백그라운드 복귀 시 캔버스 컨텍스트 재복구
+    try{
+      if(fC&&hC&&oC){
+        var w=document.getElementById('cwrap');
+        var nw=w?w.clientWidth:0;
+        if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});}
+        fCtx=fC.getContext('2d');
+        hCtx=hC.getContext('2d');
+        oCtx=oC.getContext('2d');
+        drawField();
+        safeRender();
+      }
+    }catch(e){}
   }
 });
 

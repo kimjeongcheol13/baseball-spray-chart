@@ -853,7 +853,7 @@ function renderMob(){
   const b=document.getElementById('mobBar');if(!b)return;
   b.innerHTML=targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
-    return`<div class="mob-chip${on?' on':''}" onclick="selBatter('${p.id}')">#${p.num} ${p.name}</div>`;
+    return`<div class="mob-chip${on?' on':''}" style="display:flex;align-items:center;gap:4px;padding-right:4px"><span onclick="selBatter('${p.id}')" style="flex:1">#${p.num} ${p.name}</span><button onclick="delPlayer('${p.id}',event)" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:0 2px;line-height:1;-webkit-tap-highlight-color:transparent">✕</button></div>`;
   }).join('')+'<button onclick="openMobAddPlayer()" style="flex-shrink:0;padding:4px 10px;border-radius:16px;border:1px dashed var(--border2);background:none;color:var(--text3);font-size:13px;cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent">＋</button>';
 }
 function openMobAddPlayer(){

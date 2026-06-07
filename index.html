@@ -1863,8 +1863,8 @@
 <!-- FIELD: Feedback Button & Modal -->
 <button id="fieldFeedbackBtn" onclick="fieldFeedbackOpen()">💬 피드백</button>
 
-<div id="fieldFeedbackModal">
-  <div class="ffm-sheet">
+<div id="fieldFeedbackModal" onclick="fieldFeedbackClose()">
+  <div class="ffm-sheet" onclick="event.stopPropagation()">
     <div class="ffm-title">💬 현장 피드백</div>
     <div class="ffm-tags" id="ffmTags">
       <button class="ffm-tag" data-v="bug" onclick="ffmToggle(this)">🐛 오류</button>
@@ -2076,9 +2076,10 @@ function _makeDraggable(el, ignoreSelector) {
 document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
   _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
+
 });
 </script>
-<script defer src="js/core.js?v=30"></script>
+<script defer src="js/core.js?v=31"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

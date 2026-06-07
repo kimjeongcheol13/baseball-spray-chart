@@ -98,7 +98,14 @@
   }
 
   // ─── Text parser ──────────────────────────────
-  var SKIP_RE = /^(타순|위치|성명|배.?번|선발|라인업|lineup|line.?up|gyeryong|구장|감독|코치|vs\b)/i;
+  var SKIP_RE = /^(타순|위치|성명|배.?번|선발|라인업|lineup|line.?up|gyeryong|감독|코치|vs\b)/i;
+
+  // 선수 이름으로 쓸 수 없는 한국어 단어 차단 목록
+  var BLOCKED = {
+    '구장':1,'감독':1,'코치':1,'타순':1,'위치':1,'성명':1,'배번':1,
+    '선발':1,'팀명':1,'홈팀':1,'원정':1,'주심':1,'선심':1,'루심':1,
+    '경기':1,'날짜':1,'시간':1,'기록':1,'점수':1,'구단':1,'심판':1,'라인업':1,
+  };
 
   // 셀 노이즈 제거 (: ! 등 뒤따라오는 노이즈)
   function _cleanCell(s) {
@@ -113,11 +120,11 @@
       var cell = _cleanCell(raw);
       if (!cell) return;
 
-      // 한글 이름 후보
+      // 한글 이름 후보 (포지션 단어 + 차단 단어 제외)
       var koM = cell.match(/[가-힣]{2,4}/g);
       if (koM) {
         koM.forEach(function(m) {
-          if (!POS_MAP[m] && m.length > name.length) name = m;
+          if (!POS_MAP[m] && !BLOCKED[m] && m.length > name.length) name = m;
         });
       }
 

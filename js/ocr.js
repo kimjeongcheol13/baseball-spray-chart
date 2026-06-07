@@ -99,36 +99,90 @@
   }
 
   // ─── Image preprocessing ──────────────────────
+  // 1) 2400px 이상으로 확대 (작은 셀 텍스트 인식률 향상)
+  // 2) 표 격자선 제거 (세로/가로 선이 OCR을 방해하는 문제 해결)
   function preprocessImage(file, cb) {
     var url = URL.createObjectURL(file);
     var img = new Image();
     img.onload = function() {
-      var MAX = 2000;
-      var scale = img.width > MAX ? MAX / img.width : 1;
+      // 항상 2400px 너비로 확대 (작은 사진도 포함)
+      var TARGET = 2400;
+      var scale = img.width < TARGET ? TARGET / img.width : 1;
       var w = Math.round(img.width * scale);
       var h = Math.round(img.height * scale);
+
       var cvs = document.createElement('canvas');
       cvs.width = w; cvs.height = h;
       var ctx = cvs.getContext('2d');
-      // 흰 배경 먼저 깔기 (투명 PNG 대비)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
 
-      var id = ctx.getImageData(0, 0, w, h);
-      var d  = id.data;
-      for (var i = 0; i < d.length; i += 4) {
-        var g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-        // 대비 강화 (1.8배)
-        g = Math.min(255, Math.max(0, (g - 128) * 1.8 + 138));
-        d[i] = d[i+1] = d[i+2] = g;
-      }
-      ctx.putImageData(id, 0, 0);
+      // 표 격자선 제거
+      _removeTableLines(ctx, w, h);
+
       cb(cvs.toDataURL('image/png'));
     };
     img.onerror = function(){ URL.revokeObjectURL(url); cb(null); };
     img.src = url;
+  }
+
+  // 긴 수직·수평 검정 선 → 흰색으로 교체 (표 격자선 제거)
+  function _removeTableLines(ctx, w, h) {
+    var id = ctx.getImageData(0, 0, w, h);
+    var d  = id.data;
+
+    // 그레이스케일 맵
+    var gray = new Uint8Array(w * h);
+    for (var i = 0; i < w * h; i++) {
+      gray[i] = (77*d[i*4] + 150*d[i*4+1] + 29*d[i*4+2]) >> 8;
+    }
+
+    var DARK = 110;           // 이 밝기 이하 = 어두운 픽셀
+    var V_MIN = h * 0.20;     // 세로선 최소 길이 (높이의 20%)
+    var H_MIN = w * 0.20;     // 가로선 최소 길이 (너비의 20%)
+    var PAD   = 3;            // 선 주변 여백 (px)
+
+    // 수직선 제거
+    for (var x = 0; x < w; x++) {
+      var maxRun = 0, run = 0;
+      for (var y = 0; y < h; y++) {
+        if (gray[y*w+x] < DARK) { if(++run > maxRun) maxRun = run; }
+        else run = 0;
+      }
+      if (maxRun >= V_MIN) {
+        for (var y2 = 0; y2 < h; y2++) {
+          for (var dx = -PAD; dx <= PAD; dx++) {
+            var xx = x+dx; if (xx<0||xx>=w) continue;
+            var p = (y2*w+xx)*4;
+            d[p]=d[p+1]=d[p+2]=255;
+          }
+        }
+      }
+    }
+
+    // 수평선 제거
+    for (var yr = 0; yr < h; yr++) {
+      var maxRunH = 0, runH = 0;
+      for (var xr = 0; xr < w; xr++) {
+        if (gray[yr*w+xr] < DARK) { if(++runH > maxRunH) maxRunH = runH; }
+        else runH = 0;
+      }
+      if (maxRunH >= H_MIN) {
+        for (var xr2 = 0; xr2 < w; xr2++) {
+          for (var dy = -PAD; dy <= PAD; dy++) {
+            var yy = yr+dy; if (yy<0||yy>=h) continue;
+            var p2 = (yy*w+xr2)*4;
+            d[p2]=d[p2+1]=d[p2+2]=255;
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(id, 0, 0);
   }
 
   // ─── Tesseract loader (경로 오버라이드 없음) ────
@@ -172,7 +226,8 @@
           }
         }).then(function(w) {
           worker = w;
-          return w.recognize(dataUrl);
+          // PSM 6: 균일 텍스트 블록 — 표 형태 인식에 적합
+          return w.setParameters({ tessedit_pageseg_mode: '6' }).then(function(){ return w.recognize(dataUrl); });
         }).then(function(result) {
           if (worker) worker.terminate();
           doneCb(null, result.data.text);

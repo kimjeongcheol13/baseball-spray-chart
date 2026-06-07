@@ -116,6 +116,10 @@
   function _parseCells(cells) {
     var name='', pos='', order=null, allNums=[];
 
+    // 첫 셀이 숫자인지 확인 (타순 열 존재 여부 판단)
+    var firstClean = _cleanCell(cells[0] || '');
+    var firstIsNum = /^\d+$/.test(firstClean);
+
     cells.forEach(function(raw) {
       var cell = _cleanCell(raw);
       if (!cell) return;
@@ -148,12 +152,19 @@
 
     if (!name) return null;
 
-    // order(1~9), num(등번호) 분리
-    var num='';
-    allNums.forEach(function(n) {
-      if (n >= 1 && n <= 9 && order === null) order = n;
-      else if (n > 0 && !num) num = String(n);
-    });
+    var num = '';
+    if (!firstIsNum && allNums.length === 1) {
+      // 첫 셀이 포지션 → 타순 열 없음 → 숫자는 배번(jersey)
+      // 타순은 sequential fill이 채워줌
+      num = String(allNums[0]);
+      order = null;
+    } else {
+      // 첫 셀이 숫자 → 타순 + 배번 구분
+      allNums.forEach(function(n) {
+        if (n >= 1 && n <= 9 && order === null) order = n;
+        else if (n > 0 && !num) num = String(n);
+      });
+    }
 
     return { order:order, name:name, pos:pos||'', num:num||'', bh:'' };
   }

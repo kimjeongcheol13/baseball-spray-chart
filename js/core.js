@@ -5147,6 +5147,31 @@ function startFromWizard(){
   var awayInp=document.getElementById('gwAway');
   var home=(homeInp&&homeInp.value.trim())||homeInp.placeholder||'홈팀';
   var away=(awayInp&&awayInp.value.trim())||awayInp.placeholder||'원정팀';
+
+  // ── 새 경기: AS 상태 완전 초기화 ──
+  AS.hs=0; AS.as=0;
+  AS.home_lineup=[]; AS.away_lineup=[];
+  AS.abs=[]; AS.batter=null; AS.batterFilter=false;
+  AS.pt=null; AS.zone=null; AS.zoneX=null; AS.zoneY=null;
+  AS.rbi=0; AS.pending=null; AS.zoneHistory={};
+  AS.balls=0; AS.strikes=0; AS.outs=0;
+  AS.currentPitches=[]; AS.teamFilter=null; AS.showHotCold=false;
+  AS.advFilter=null; AS.pitchers=[]; AS.currentPitcher=null;
+  AS.pitcherZone=null; AS.pitcherPt=null; AS.pitcherRole=null;
+  AS.pitchLog=[]; AS.recFilterBid=null; AS.pendingQuickRes=null;
+  if(typeof _ibZoneDots!=='undefined')_ibZoneDots=[];
+  // GF(경기운영) 초기화
+  if(window.GF){GF.on=false;GF.half='top';GF.inn=1;GF.outs=0;GF.order={home:0,away:0};}
+  // 스코어보드 초기화
+  var scH=document.getElementById('scH'),scA=document.getElementById('scA');
+  if(scH)scH.textContent='0'; if(scA)scA.textContent='0';
+  // 이닝 초기화
+  var innSel=document.getElementById('innSel');
+  if(innSel){innSel.value='1회초';var innD=document.getElementById('innDisp');if(innD)innD.textContent='1회초';}
+  // 타자 표시 초기화
+  var bd=document.getElementById('batterDisp');
+  if(bd)bd.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+
   document.getElementById('tHome').value=home;
   document.getElementById('tAway').value=away;
   closeGameWizard();

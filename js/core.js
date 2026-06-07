@@ -965,7 +965,12 @@ function logPitchAction(){
   var symMap={'커브':'Ｃ','커터':'CT','직구':'Ｆ','슬라이더':'Ｓ','체인지업':'CH','포크볼':'FK'};
   var symbol=symMap[AS.pt]||'•';
   AS.zoneHistory[AS.zone].push({pt:AS.pt,symbol:symbol});
-  AS.currentPitches.push({zone:AS.zone,pt:AS.pt,x:AS.zoneX||null,y:AS.zoneY||null});
+  AS.currentPitches.push({
+    zone:AS.zone, pt:AS.pt, x:AS.zoneX||null, y:AS.zoneY||null,
+    balls:AS.balls||0, strikes:AS.strikes||0, outs:AS.outs||0,
+    pitcher: AS.currentPitcher ? (AS.currentPitcher.name||'') : '',
+    ts: new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+  });
   refreshZoneDisplay();
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
 }

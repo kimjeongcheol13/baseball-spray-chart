@@ -978,8 +978,8 @@
     </div>
     <!-- 투구 기록 로그 -->
     <div id="mobPitchLog" style="display:none;margin-bottom:12px;background:#111118;border-radius:10px;padding:8px 10px">
-      <div style="font-size:9px;font-weight:800;color:#6b7280;letter-spacing:.5px;margin-bottom:6px">이번 타석 투구 기록</div>
-      <div id="mobPitchLogList" style="display:flex;flex-direction:column;gap:4px"></div>
+      <div class="mob-pitch-log-hdr" style="font-size:9px;font-weight:800;color:#6b7280;letter-spacing:.5px;margin-bottom:6px">이번 타석 투구 기록</div>
+      <div id="mobPitchLogList" style="display:flex;flex-direction:column;gap:2px"></div>
     </div>
     <!-- 구종 -->
     <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">구종</div>
@@ -1983,11 +1983,19 @@ function _renderMobPitchLog() {
   if (!logWrap || !logList) return;
   if (!pitches || !pitches.length) { logWrap.style.display = 'none'; return; }
   logWrap.style.display = 'block';
+  // 헤더: 현재 투수명
+  var pitcher = window.AS && window.AS.currentPitcher ? window.AS.currentPitcher.name : '';
+  var hdrEl = logWrap.querySelector('.mob-pitch-log-hdr');
+  if (hdrEl) hdrEl.textContent = pitcher ? ('이번 타석 (' + pitcher + ' 상대)') : '이번 타석 투구 기록';
   logList.innerHTML = pitches.map(function(p, i) {
-    return '<div style="display:flex;align-items:center;gap:8px">'
-      + '<span style="font-size:10px;font-weight:800;color:#434c5e;min-width:20px">' + (i+1) + '구</span>'
-      + '<span style="font-size:12px;font-weight:700;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px">' + p.pt + '</span>'
-      + (p.zone ? '<span style="font-size:10px;color:#6b7280">존 ' + p.zone + '</span>' : '')
+    var countStr = p.balls !== undefined ? (p.balls + 'B ' + p.strikes + 'S ' + p.outs + 'O') : '';
+    var zoneStr = p.zone || '';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #1e1e2a">'
+      + '<span style="font-size:10px;font-weight:800;color:#434c5e;min-width:18px">' + (i+1) + '구</span>'
+      + '<span style="font-size:12px;font-weight:800;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px;flex-shrink:0">' + p.pt + '</span>'
+      + '<span style="font-size:10px;color:#8892a4;flex:1">' + zoneStr + '</span>'
+      + (countStr ? '<span style="font-size:9px;color:#434c5e;font-family:monospace">' + countStr + '</span>' : '')
+      + (p.ts ? '<span style="font-size:9px;color:#434c5e">' + p.ts + '</span>' : '')
       + '</div>';
   }).join('');
 }
@@ -2006,22 +2014,27 @@ function mobPitchSheetOpen() {
   setTimeout(function(){
     var c = document.getElementById('mobZoneCanvas');
     if (c && typeof _drawZoneCanvas === 'function') {
-      _drawZoneCanvas(c, [], true);
+      var dots = (window.AS && window.AS.currentPitches || []).filter(function(p){return p.x!=null;}).map(function(p){return {cx:p.x,cy:p.y,result:p.pt};});
+      _drawZoneCanvas(c, dots, true);
       if (!c._mobZoneInited) {
         c._mobZoneInited = true;
         c.addEventListener('click', function(e){
           if (typeof _zoneCanvasClick !== 'function') return;
-          _zoneCanvasClick(e, c, function(zone){
-            if (window.AS) window.AS.zone = zone;
+          _zoneCanvasClick(e, c, function(cx, cy){
+            var zone = typeof _getZoneFromPos === 'function' ? _getZoneFromPos(cx, cy) : (cx.toFixed(2)+','+cy.toFixed(2));
+            if (window.AS) { window.AS.zone = zone; window.AS.zoneX = cx; window.AS.zoneY = cy; }
             var lbl = document.getElementById('mobZoneLbl');
-            if (lbl) lbl.textContent = zone ? '선택: ' + zone : '존을 탭해서 코스 기록';
-            _drawZoneCanvas(c, [], true);
             if (typeof ibZoneRedraw === 'function') ibZoneRedraw();
             // 구종이 선택된 상태에서 존을 탭하면 투구 자동 기록
-            if (window.AS && window.AS.pt && zone) {
+            if (window.AS && window.AS.pt) {
               logPitchAction();
-              if (lbl) lbl.textContent = window.AS.currentPitches.length + '구 기록됨 · 다음 구종을 선택하세요';
+              if (lbl) lbl.textContent = window.AS.currentPitches.length + '구 기록됨 · 다음 구종 선택';
+            } else {
+              if (lbl) lbl.textContent = '선택: ' + zone + ' (구종 먼저 선택하세요)';
             }
+            // 존 캔버스에 누적 투구 표시
+            var dots = (window.AS && window.AS.currentPitches || []).filter(function(p){return p.x!=null;}).map(function(p){return {cx:p.x,cy:p.y,result:p.pt};});
+            _drawZoneCanvas(c, dots, true);
             _updateCurPitchBadge();
           });
         });

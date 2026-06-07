@@ -796,8 +796,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .sc-btn{width:28px;height:28px;font-size:15px}
   .hit-btn{padding:16px 8px;font-size:13px;min-height:58px}
   .zone-cell{min-width:26px;min-height:26px}
-  .tabs{width:100%}
-  .tab{flex:1;padding:8px 2px;font-size:10px;white-space:nowrap;min-width:0}
+  .tab{padding:8px 5px;font-size:11px}
   .rec-item{padding:10px 10px}
   .player-row{padding:10px 12px}
   .batter-bar{padding:5px 10px}

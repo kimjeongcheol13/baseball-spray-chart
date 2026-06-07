@@ -349,6 +349,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     max-width:calc(100% - 24px);
     max-height:none;
   }
+  /* 모바일 전용 선수 추가 행 숨김 */
+  .mobile-detail-toggle{display:none!important}
+  .mobile-detail-row{display:none!important}
 }
 
 /* LEFT */
@@ -1291,7 +1294,7 @@ body.game-focus #advToggleBtn{display:none!important}
 
 /* ?먥븧 TABLET LANDSCAPE ?먥븧 */
 @media(min-width:960px) and (orientation:landscape){
-  .pnl-right{min-width:290px;max-width:290px}
+  .pnl-right{min-width:290px;max-width:none}
 }
 
 /* ?먥븧 ANIMATION CLEANUP ?먥븧 */

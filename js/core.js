@@ -1,4 +1,12 @@
 // ═══ SprayLab Core ═══
+// pnl-center, pnl-right가 app-layout 안에 있어야 grid가 적용됨
+document.addEventListener('DOMContentLoaded', function() {
+  var al = document.querySelector('.app-layout');
+  var pc = document.querySelector('.pnl-center');
+  var pr = document.querySelector('.pnl-right');
+  if (al && pc && pc.parentElement !== al) al.appendChild(pc);
+  if (al && pr && pr.parentElement !== al) al.appendChild(pr);
+});
 
 // 방문 로그
 (function logVisit() {

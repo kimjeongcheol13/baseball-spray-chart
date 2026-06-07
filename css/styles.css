@@ -349,10 +349,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     max-width:calc(100% - 24px);
     max-height:none;
   }
-  /* 선수 추가 행: 데스크톱에서 토글 버튼 숨기고 포지션/타석 항상 표시 */
+  /* 선수 추가 행: 데스크톱에서 토글 버튼 숨기고 포지션/타석+추가버튼 항상 표시 */
   .mobile-detail-toggle{display:none!important}
   .mobile-detail-row{display:flex!important}
-  .mobile-detail-add{display:none!important}
+  .mobile-detail-add{display:flex!important}
 }
 
 /* LEFT */

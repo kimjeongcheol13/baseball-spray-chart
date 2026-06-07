@@ -2013,6 +2013,11 @@ function mobPitchSheetOpen() {
             if (lbl) lbl.textContent = zone ? '선택: ' + zone : '존을 탭해서 코스 기록';
             _drawZoneCanvas(c, [], true);
             if (typeof ibZoneRedraw === 'function') ibZoneRedraw();
+            // 구종이 선택된 상태에서 존을 탭하면 투구 자동 기록
+            if (window.AS && window.AS.pt && zone) {
+              logPitchAction();
+              if (lbl) lbl.textContent = window.AS.currentPitches.length + '구 기록됨 · 다음 구종을 선택하세요';
+            }
             _updateCurPitchBadge();
           });
         });

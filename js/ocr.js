@@ -98,104 +98,76 @@
   }
 
   // ─── Text parser ──────────────────────────────
-  var SKIP_RE = /타순|위치|성명|배번|선발|라인업|lineup|line.?up|gyeryong|구장|감독|vs\s/i;
+  var SKIP_RE = /^(타순|위치|성명|배.?번|선발|라인업|lineup|line.?up|gyeryong|구장|감독|코치|vs\b)/i;
 
-  function _clean(text) {
-    return text
-      .replace(/[←↵↩⏎＜]/g, ' ')
-      .replace(/[—–]{2,}/g, ' ')
-      .replace(/[{}()\[\]™®©°]/g, ' ')
-      .replace(/[_~`^*%#@!$&=+\\]/g, ' ')
-      .replace(/\s{2,}/g, ' ');
+  // 셀 노이즈 제거 (: ! 등 뒤따라오는 노이즈)
+  function _cleanCell(s) {
+    return (s||'').replace(/[←↵↩⏎＜—–{}()\[\]™®©°_~`^*%#@!$&=+\\:;,]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  // 셀 배열 → 선수 정보 (타입 기반, 컬럼 인덱스 불의존)
+  function _parseCells(cells) {
+    var name='', pos='', order=null, allNums=[];
+
+    cells.forEach(function(raw) {
+      var cell = _cleanCell(raw);
+      if (!cell) return;
+
+      // 한글 이름 후보
+      var koM = cell.match(/[가-힣]{2,4}/g);
+      if (koM) {
+        koM.forEach(function(m) {
+          if (!POS_MAP[m] && m.length > name.length) name = m;
+        });
+      }
+
+      // 포지션: 영문 코드 (DHA→DH 등 노이즈 처리)
+      if (!pos) {
+        var eng = cell.replace(/[^A-Za-z]/g,'').toUpperCase();
+        var pn = normalizePos(eng);
+        if (pn && pn !== eng) pos = pn;
+      }
+      // 포지션: 한글
+      if (!pos) {
+        var kor = cell.replace(/[^가-힣]/g,'');
+        var pn2 = normalizePos(kor);
+        if (pn2 && pn2 !== kor) pos = pn2;
+      }
+
+      // 숫자 수집
+      var ns = cell.match(/\d+/g);
+      if (ns) ns.forEach(function(n){ allNums.push(parseInt(n)); });
+    });
+
+    if (!name) return null;
+
+    // order(1~9), num(등번호) 분리
+    var num='';
+    allNums.forEach(function(n) {
+      if (n >= 1 && n <= 9 && order === null) order = n;
+      else if (n > 0 && !num) num = String(n);
+    });
+
+    return { order:order, name:name, pos:pos||'', num:num||'', bh:'' };
   }
 
   function parseOcrText(rawText) {
-    var text = _clean(rawText);
-    var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+    var lines = rawText.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
     var players = [];
 
-    // 헤더 행 감지 → 컬럼 인덱스 파악 (탭 구분 테이블 모드)
-    var colOrder=-1, colPos=-1, colName=-1, colNum=-1;
-    var headerFound = false;
-    var dataLines = [];
-
     lines.forEach(function(line) {
-      if (SKIP_RE.test(line) && !headerFound) {
-        // 헤더 행 — 컬럼 위치 감지
-        var cells = line.split(/[\t|]/).map(function(c){ return c.trim().toLowerCase(); });
-        cells.forEach(function(c, i) {
-          if (/타순|순번|no\.?$/.test(c)) colOrder = i;
-          if (/위치|포지션|pos/.test(c)) colPos = i;
-          if (/성명|이름|name/.test(c)) colName = i;
-          if (/배번|등번|num/.test(c)) colNum = i;
-        });
-        headerFound = true;
-        return;
-      }
-      dataLines.push(line);
-    });
+      var firstToken = line.split(/[\t|]/)[0].trim();
+      // 헤더/메타 행 스킵
+      if (SKIP_RE.test(firstToken)) return;
+      // 숫자만인 행 스킵 (빈 데이터 행)
+      if (/^\d{1,2}\s*$/.test(line.replace(/\t/g,''))) return;
+      // 영문+숫자만인 행 스킵 (GYERYONG, LINE-UP 등)
+      if (/^[A-Z0-9\s\-–:.\/]+$/.test(line) && !/[가-힣]/.test(line)) return;
 
-    // 탭/파이프 구분 셀 파싱
-    dataLines.forEach(function(line) {
-      if (SKIP_RE.test(line)) return;
-
-      var sep = line.indexOf('\t') >= 0 ? '\t' : '|';
-      if (line.indexOf(sep) >= 0) {
-        var cells = line.split(sep).map(function(c){ return c.trim(); });
-        var name='', pos='', num='', order=null;
-
-        if (colName >= 0 && cells[colName]) {
-          var nm = cells[colName].match(/[가-힣]{2,4}/);
-          if (nm) name = nm[0];
-        }
-        if (colPos >= 0 && cells[colPos]) pos = normalizePos(cells[colPos]);
-        if (colNum >= 0 && cells[colNum]) num = cells[colNum].match(/\d+/) ? cells[colNum].match(/\d+/)[0] : '';
-        if (colOrder >= 0 && cells[colOrder]) order = parseInt(cells[colOrder]) || null;
-
-        // 컬럼 감지 실패 시 → 셀에서 자동 추출
-        if (!name) {
-          cells.forEach(function(cell) {
-            var koM = cell.match(/[가-힣]{2,4}/);
-            if (koM && !POS_MAP[koM[0]] && koM[0].length > name.length) name = koM[0];
-            var ep = cell.match(/^(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B|C|P)$/i);
-            if (ep && !pos) pos = normalizePos(ep[0].toUpperCase());
-            if (!pos) { var pn = normalizePos(cell); if (pn && pn !== cell.trim()) pos = pn; }
-            var nMatch = cell.match(/^\d{1,3}$/);
-            if (nMatch) {
-              var nv = parseInt(nMatch[0]);
-              if (nv >= 1 && nv <= 9 && order === null) order = nv;
-              else if (nv > 0 && !num) num = nMatch[0];
-            }
-          });
-        }
-        if (name) players.push({ order:order, name:name, pos:pos||'', num:num||'', bh:'' });
-        return;
-      }
-
-      // 파이프/탭 없는 일반 행
-      var nameMatches = line.match(/[가-힣]{2,4}/g);
-      if (!nameMatches) return;
-      var name2 = '';
-      nameMatches.forEach(function(m) {
-        if (!POS_MAP[m] && m.length > name2.length) name2 = m;
-      });
-      if (!name2 || name2.length < 2) return;
-
-      var nums = line.match(/\d+/g) || [];
-      var o2=null, n2='';
-      if (nums.length===1){ var v=parseInt(nums[0]); if(v>=1&&v<=9)o2=v; else n2=nums[0]; }
-      else if(nums.length>=2){ o2=parseInt(nums[0]); n2=nums[nums.length-1]; }
-
-      var p2='';
-      var ep2 = line.match(/\b(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B|[CP])\b/);
-      if (ep2) p2 = normalizePos(ep2[0].toUpperCase());
-      if (!p2) {
-        line.split(/\s+/).forEach(function(tok){
-          if(!tok||tok===name2||/^\d+$/.test(tok)) return;
-          var pn=normalizePos(tok); if(pn&&pn!==tok) p2=pn;
-        });
-      }
-      players.push({ order:o2, name:name2, pos:p2||'', num:n2||'', bh:'' });
+      var sep = line.indexOf('\t') >= 0 ? '\t' : (line.indexOf('|') >= 0 ? '|' : null);
+      var cells = sep ? line.split(sep) : [line];
+      var player = _parseCells(cells);
+      if (player) players.push(player);
     });
 
     players.sort(function(a,b){

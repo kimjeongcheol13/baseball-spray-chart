@@ -333,7 +333,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .app-layout{flex:1;min-height:0;overflow:hidden}
 /* grid + margin은 태블릿/PC 전용 */
 @media(min-width:721px){
-  .app-layout{display:grid;grid-template-columns:var(--lp-w,280px) minmax(0,1fr) 360px;grid-template-rows:1fr;margin-right:54px}
+  .app-layout{display:grid;grid-template-columns:var(--lp-w,350px) minmax(0,1fr) 360px;grid-template-rows:1fr;margin-right:54px}
 }
 
 /* LEFT */

@@ -113,9 +113,12 @@
 
   // 선수 이름으로 쓸 수 없는 한국어 단어 차단 목록
   var BLOCKED = {
-    '구장':1,'감독':1,'코치':1,'타순':1,'위치':1,'성명':1,'배번':1,
+    // 구장 및 OCR 오독 변형 (구장→구정, 구당, 구일 등)
+    '구장':1,'구정':1,'구당':1,'구일':1,'구간':1,'구청':1,
+    '감독':1,'코치':1,'타순':1,'위치':1,'성명':1,'배번':1,
     '선발':1,'팀명':1,'홈팀':1,'원정':1,'주심':1,'선심':1,'루심':1,
     '경기':1,'날짜':1,'시간':1,'기록':1,'점수':1,'구단':1,'심판':1,'라인업':1,
+    '상대':1,'팀장':1,'대표':1,'작성':1,'확인':1,'서명':1,'기타':1,
   };
 
   // 셀 노이즈 제거 (: ! 등 뒤따라오는 노이즈)
@@ -200,21 +203,32 @@
       if (player) players.push(player);
     });
 
+    // ── 1. 이름 없는 항목 제거 ───────────────────
+    players = players.filter(function(p){ return p.name && p.name.length >= 2; });
+
+    // ── 2. 순서 배정 (null은 앞 번호+1) ─────────
     players.sort(function(a,b){
       if(a.order!=null&&b.order!=null) return a.order-b.order; return 0;
     });
-
-    // order가 null인 선수는 앞 선수 다음 번호로 채움
-    // (OCR이 타순 열을 빠뜨렸을 때 대비)
     var seq = 0;
     players.forEach(function(p) {
-      if (p.order != null) { seq = p.order; }
-      else { seq++; p.order = seq; }
-      // 배번이 없고 타순과 같은 숫자인 경우 배번도 채움 (ex: 타순2=배번2)
-      // → 이미 num에 값이 있으면 그대로 유지
+      if (p.order != null && p.order >= 1 && p.order <= 9) { seq = p.order; }
+      else { seq = Math.min(seq + 1, 9); p.order = seq; }
     });
 
-    return players;
+    // ── 3. 슬롯 1~9 보장 (인식된 선수 + 빈 칸) ──
+    var slots = {};
+    players.forEach(function(p) {
+      if (p.order >= 1 && p.order <= 9) {
+        // 같은 슬롯에 이름 있는 것 우선
+        if (!slots[p.order] || (!slots[p.order].name && p.name)) slots[p.order] = p;
+      }
+    });
+    var result = [];
+    for (var i = 1; i <= 9; i++) {
+      result.push(slots[i] || { order:i, name:'', pos:'', num:'', bh:'' });
+    }
+    return result;
   }
 
   // ─── Document parsers (txt / csv / xlsx) ──────
@@ -258,15 +272,18 @@
     var posOpts=['','투수','포수','1루','2루','3루','유격','좌익','중견','우익','DH'];
     var bhOpts=[['','타석'],['R','우타'],['L','좌타'],['S','스위치']];
     list.innerHTML=players.map(function(p,i){
+      var isEmpty = !p.name;
+      var rowStyle = isEmpty
+        ? 'display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #1e1e2a;opacity:0.45'
+        : 'display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #1e1e2a';
       var po=posOpts.map(function(o){ return '<option value="'+o+'"'+(o===p.pos?' selected':'')+'>'+(o||'포지션')+'</option>'; }).join('');
       var bo=bhOpts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.bh?' selected':'')+'>'+ o[1]+'</option>'; }).join('');
-      return '<div style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #1e1e2a">'
-        +'<span style="font-size:10px;color:#434c5e;min-width:18px;text-align:center;font-weight:700">'+(p.order||i+1)+'</span>'
-        +'<input style="flex:1;min-width:0;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 6px" value="'+esc(p.name)+'" data-field="name" data-idx="'+i+'" oninput="window._ocrUp(this)">'
+      return '<div style="'+rowStyle+'">'
+        +'<span style="font-size:10px;color:#434c5e;min-width:18px;text-align:center;font-weight:700">'+p.order+'</span>'
+        +'<input style="flex:1;min-width:0;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 6px" value="'+esc(p.name)+'" placeholder="이름" data-field="name" data-idx="'+i+'" oninput="window._ocrUp(this)">'
         +'<input style="width:36px;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 3px;text-align:center" value="'+esc(p.num)+'" placeholder="#" data-field="num" data-idx="'+i+'" oninput="window._ocrUp(this)">'
         +'<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="pos" data-idx="'+i+'" onchange="window._ocrUp(this)">'+po+'</select>'
         +'<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="bh" data-idx="'+i+'" onchange="window._ocrUp(this)">'+bo+'</select>'
-        +'<button onclick="window._ocrDel('+i+')" style="background:none;border:none;color:#6b7280;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0">✕</button>'
         +'</div>';
     }).join('');
     if(wrap) wrap.style.display='block'; if(applyBtn) applyBtn.style.display='block'; if(rawBtn) rawBtn.style.display='block';

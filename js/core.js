@@ -1244,7 +1244,7 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
     var sm=+localStorage.getItem('sl_lp_w_mob');
     var sd=+localStorage.getItem('sl_lp_w');
     if(mob()&&sm>=55&&sm<=220)setW(sm);
-    else if(!mob()&&sd>=200&&sd<=500)setW(sd);
+    else if(!mob())setW((sd>=300&&sd<=500)?sd:350);
   });
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}

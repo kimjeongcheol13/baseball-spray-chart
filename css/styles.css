@@ -342,6 +342,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .sc-ctrl{gap:3px}
   .sc-val{font-size:15px;min-width:22px}
   .sc-btn{font-size:12px;padding:0 3px}
+  /* 캔버스: 세로 기준으로 꽉 채우기 — 가로 여백 최소화 */
+  .field-wrap{padding:8px;align-items:stretch;justify-content:center}
+  .canvas-wrap{
+    width:auto;
+    height:calc(100% - 16px);
+    max-height:calc(100vh - 260px);
+    max-width:calc(100% - 16px);
+    aspect-ratio:1;
+    margin:auto;
+  }
 }
 
 /* LEFT */

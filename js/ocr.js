@@ -1,20 +1,13 @@
 /**
- * OCR + Document Lineup Import — SprayLab v2
- * - 사진: Tesseract.js v4 (kor+eng) + 이미지 전처리
+ * OCR + Document Lineup Import — SprayLab v3
+ * - 사진: Tesseract.js v4 (경로 오버라이드 없음 → CDN 자동 해결)
  * - 문서: txt / csv / xlsx 직접 파싱
  */
 
 (function(){
-  // ─── State ────────────────────────────────────
   var _team = 'home';
   var _parsedPlayers = [];
   var _tessLoading = false;
-
-  // ─── CDN URLs (v4 명시적 경로) ─────────────────
-  var TESS_SCRIPT  = 'https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js';
-  var TESS_WORKER  = 'https://unpkg.com/tesseract.js@4.1.1/dist/worker.min.js';
-  var TESS_CORE    = 'https://unpkg.com/tesseract.js-core@4.0.4/tesseract-core.wasm.js';
-  var TESS_LANG    = 'https://tessdata.projectnaptha.com/4.0.0';
 
   // ─── Position map ─────────────────────────────
   var POS_MAP = {
@@ -32,19 +25,17 @@
 
   function normalizePos(raw) {
     if (!raw) return '';
-    var trimmed = raw.trim();
-    var upper = trimmed.toUpperCase();
-    if (POS_MAP[trimmed]) return POS_MAP[trimmed];
-    if (POS_MAP[upper])   return POS_MAP[upper];
+    var t = raw.trim(), u = t.toUpperCase();
+    if (POS_MAP[t]) return POS_MAP[t];
+    if (POS_MAP[u]) return POS_MAP[u];
     for (var k in POS_MAP) {
-      if (trimmed.startsWith(k) || upper.startsWith(k.toUpperCase())) return POS_MAP[k];
+      if (t.startsWith(k) || u.startsWith(k.toUpperCase())) return POS_MAP[k];
     }
-    return trimmed;
+    return t;
   }
 
-  // ─── Parser: raw text → player list ───────────
-  var KO_NAME_RE = /[가-힣]{2,4}/;
-  var SKIP_RE    = /타순|위치|성명|배번|선발|라인업|lineup|line.?up|홈팀|원정팀|팀명|team/i;
+  // ─── Text parser ──────────────────────────────
+  var SKIP_RE = /타순|위치|성명|배번|선발|라인업|lineup|line.?up|gyeryong|gyeong|구장|감독|감덕/i;
 
   function parseOcrText(text) {
     var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
@@ -53,23 +44,18 @@
     lines.forEach(function(line) {
       if (SKIP_RE.test(line)) return;
 
-      // must contain a Korean name
-      var nameMatch = line.match(/[가-힣]{2,4}/g);
-      if (!nameMatch) return;
+      var nameMatches = line.match(/[가-힣]{2,4}/g);
+      if (!nameMatches) return;
 
-      // pick the longest Korean chunk that isn't a known position word
+      // 포지션 단어 제외하고 이름 후보 선택
       var name = '';
-      nameMatch.forEach(function(m) {
-        if (POS_MAP[m]) return; // skip position keywords like '투수'
-        if (m.length >= (name.length || 2) && m.length <= 4) name = m;
+      nameMatches.forEach(function(m) {
+        if (POS_MAP[m]) return;
+        if (m.length > (name.length)) name = m;
       });
-      if (!name) {
-        // fallback: longest match regardless
-        name = nameMatch.reduce(function(a,b){ return b.length>a.length?b:a; },'');
-      }
+      if (!name && nameMatches.length) name = nameMatches[0];
       if (!name || name.length < 2) return;
 
-      // numbers in line
       var nums = line.match(/\d+/g) || [];
       var order = null, num = '';
       if (nums.length === 1) {
@@ -77,18 +63,23 @@
         if (n >= 1 && n <= 9) order = n; else num = nums[0];
       } else if (nums.length >= 2) {
         order = parseInt(nums[0]);
-        num   = nums[nums.length - 1];
-        if (num === nums[0] && nums.length > 1) num = nums[1];
+        num = nums[nums.length - 1];
+        if (nums.length === 2 && nums[0] === nums[1]) num = '';
       }
 
-      // position: token that isn't name/number
       var posRaw = '';
-      line.split(/\s+/).forEach(function(tok) {
-        if (!tok || tok === name || /^\d+$/.test(tok)) return;
-        var n2 = normalizePos(tok);
-        if (n2 && n2 !== tok) posRaw = n2;
-      });
-      // fallback: chars before name
+      // 영문 포지션 코드 먼저 찾기 (DH, C, SS, LF, CF, RF, SP 등)
+      var engPos = line.match(/\b(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B)\b/i);
+      if (engPos) { posRaw = normalizePos(engPos[0].toUpperCase()); }
+      // 한글 포지션
+      if (!posRaw) {
+        line.split(/\s+/).forEach(function(tok) {
+          if (!tok || tok === name || /^\d+$/.test(tok)) return;
+          var n2 = normalizePos(tok);
+          if (n2 && n2 !== tok) posRaw = n2;
+        });
+      }
+      // 이름 앞 텍스트에서 포지션 추출
       if (!posRaw) {
         var idx = line.indexOf(name);
         if (idx > 0) {
@@ -108,41 +99,39 @@
   }
 
   // ─── Image preprocessing ──────────────────────
-  // 리사이즈 + 그레이스케일 + 대비 강화 → OCR 정확도 향상
   function preprocessImage(file, cb) {
     var url = URL.createObjectURL(file);
     var img = new Image();
     img.onload = function() {
-      var MAX = 1800;
+      var MAX = 2000;
       var scale = img.width > MAX ? MAX / img.width : 1;
       var w = Math.round(img.width * scale);
       var h = Math.round(img.height * scale);
-
       var cvs = document.createElement('canvas');
       cvs.width = w; cvs.height = h;
       var ctx = cvs.getContext('2d');
+      // 흰 배경 먼저 깔기 (투명 PNG 대비)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
 
-      // grayscale + contrast
       var id = ctx.getImageData(0, 0, w, h);
       var d  = id.data;
       for (var i = 0; i < d.length; i += 4) {
         var g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-        // contrast factor 1.6, brightness +10
-        g = Math.min(255, Math.max(0, (g - 128) * 1.6 + 138));
+        // 대비 강화 (1.8배)
+        g = Math.min(255, Math.max(0, (g - 128) * 1.8 + 138));
         d[i] = d[i+1] = d[i+2] = g;
-        // alpha unchanged
       }
       ctx.putImageData(id, 0, 0);
-
       cb(cvs.toDataURL('image/png'));
     };
     img.onerror = function(){ URL.revokeObjectURL(url); cb(null); };
     img.src = url;
   }
 
-  // ─── Tesseract loader ─────────────────────────
+  // ─── Tesseract loader (경로 오버라이드 없음) ────
   function loadTesseract(cb) {
     if (window.Tesseract) { cb(null); return; }
     if (_tessLoading) {
@@ -150,82 +139,101 @@
       return;
     }
     _tessLoading = true;
-    setStatus('OCR 엔진 로딩 중 (최초 1회, 약 3~5초)...', 3);
+    setStatus('OCR 엔진 로딩 중 (최초 1회)...', 5);
     var s = document.createElement('script');
-    s.src = TESS_SCRIPT;
+    // v4 안정 버전 — 경로를 스스로 해결함
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4.1.4/dist/tesseract.min.js';
     s.onload  = function(){ _tessLoading = false; cb(null); };
-    s.onerror = function(){ _tessLoading = false; cb(new Error('Tesseract.js 로딩 실패')); };
+    s.onerror = function(){
+      _tessLoading = false;
+      // fallback: unpkg
+      var s2 = document.createElement('script');
+      s2.src = 'https://unpkg.com/tesseract.js@4.1.4/dist/tesseract.min.js';
+      s2.onload  = function(){ cb(null); };
+      s2.onerror = function(){ cb(new Error('OCR 라이브러리 로딩 실패. 인터넷 연결을 확인하세요.')); };
+      document.head.appendChild(s2);
+    };
     document.head.appendChild(s);
   }
 
-  function runTesseract(dataUrl, cb) {
+  function runTesseract(dataUrl, progressCb, doneCb) {
     loadTesseract(function(err) {
-      if (err) { cb(err, null); return; }
-      setStatus('언어 데이터 로딩 중... (kor+eng)', 10);
-      Tesseract.recognize(dataUrl, 'kor+eng', {
-        workerPath : TESS_WORKER,
-        corePath   : TESS_CORE,
-        langPath   : TESS_LANG,
-        logger: function(m) {
-          if (m.status === 'loading tesseract core')    setStatus('OCR 코어 로딩 중...', 12);
-          if (m.status === 'initializing tesseract')    setStatus('OCR 초기화 중...', 20);
-          if (m.status === 'loading language traineddata') setStatus('한국어 데이터 로딩 중...', 30);
-          if (m.status === 'recognizing text') {
-            var pct = 40 + Math.round(m.progress * 55);
-            setStatus('글자 인식 중... ' + Math.round(m.progress * 100) + '%', pct);
+      if (err) { doneCb(err, null); return; }
+      setStatus('한국어 언어팩 다운로드 중... (~10MB, 최초 1회)', 12);
+
+      // ★ createWorker 방식 사용 (v4 권장, 경로 자동)
+      var worker;
+      try {
+        Tesseract.createWorker('kor+eng', 1, {
+          logger: function(m) {
+            if (m.status === 'loading tesseract core')        setStatus('OCR 코어 초기화...', 15);
+            if (m.status === 'loading language traineddata')  setStatus('언어팩 로딩 중... ' + Math.round((m.progress||0)*100) + '%', 15 + Math.round((m.progress||0)*60));
+            if (m.status === 'recognizing text')              setStatus('글자 인식 중... ' + Math.round((m.progress||0)*100) + '%', 75 + Math.round((m.progress||0)*20));
           }
-        }
-      }).then(function(r){ cb(null, r.data.text); })
-        .catch(function(e){ cb(e, null); });
+        }).then(function(w) {
+          worker = w;
+          return w.recognize(dataUrl);
+        }).then(function(result) {
+          if (worker) worker.terminate();
+          doneCb(null, result.data.text);
+        }).catch(function(e) {
+          if (worker) try{ worker.terminate(); }catch(x){}
+          // fallback: 구형 API
+          _fallbackRecognize(dataUrl, doneCb);
+        });
+      } catch(e2) {
+        _fallbackRecognize(dataUrl, doneCb);
+      }
     });
   }
 
-  // ─── Document parsers ─────────────────────────
-  // TXT / CSV: 한 줄에 선수 정보 (탭/콤마/공백 구분)
-  function parseTextDoc(text) {
-    return parseOcrText(text);  // 같은 파서 재사용
+  // createWorker 실패 시 구형 API 폴백
+  function _fallbackRecognize(dataUrl, doneCb) {
+    setStatus('OCR 재시도 중...', 30);
+    try {
+      Tesseract.recognize(dataUrl, 'kor+eng', {
+        logger: function(m) {
+          if (m.status === 'recognizing text') {
+            setStatus('글자 인식 중... ' + Math.round((m.progress||0)*100) + '%', 40 + Math.round((m.progress||0)*55));
+          }
+        }
+      }).then(function(r){ doneCb(null, r.data.text); })
+        .catch(function(e){ doneCb(e, null); });
+    } catch(e) {
+      doneCb(e, null);
+    }
   }
 
+  // ─── Document parsers ─────────────────────────
   function parseCsv(text) {
-    // CSV: 열 순서 자동 감지 (헤더가 있으면 사용)
     var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
     if (!lines.length) return [];
-
-    // detect delimiter
     var delim = lines[0].includes('\t') ? '\t' : ',';
-    var headers = lines[0].split(delim).map(function(h){ return h.trim().toLowerCase(); });
+    var headers = lines[0].split(delim).map(function(h){ return h.trim().toLowerCase().replace(/\s/g,''); });
 
-    // find column indices
-    var iOrder = _findCol(headers, ['타순','order','no','번호']);
-    var iName  = _findCol(headers, ['성명','이름','name','선수']);
-    var iPos   = _findCol(headers, ['위치','포지션','pos','position']);
-    var iNum   = _findCol(headers, ['배번','등번호','num','#','번호']);
-    var iBH    = _findCol(headers, ['타석','타격','bh','bat']);
-
-    var hasHeader = iName >= 0 || iOrder >= 0;
-    var startLine = hasHeader ? 1 : 0;
-
-    if (!hasHeader) {
-      // no header → fall back to text parser
-      return parseOcrText(text);
+    function fc(candidates) {
+      for (var i=0;i<candidates.length;i++){ var x=headers.indexOf(candidates[i]); if(x>=0) return x; }
+      return -1;
     }
+    var iOrder = fc(['타순','order','no','순번']);
+    var iName  = fc(['성명','이름','name','선수명','선수']);
+    var iPos   = fc(['위치','포지션','pos','position']);
+    var iNum   = fc(['배번','등번호','num','#','번호']);
+    var iBH    = fc(['타석','타격방향','bh','bat']);
+
+    if (iName < 0) return parseOcrText(text);
 
     var players = [];
-    for (var i = startLine; i < lines.length; i++) {
+    for (var i = 1; i < lines.length; i++) {
       var cols = lines[i].split(delim).map(function(c){ return c.trim(); });
-      var name = iName >= 0 ? cols[iName] : '';
-      if (!name || !(/[가-힣]{2,4}/.test(name))) {
-        // try OCR text fallback on this line
-        var fallback = parseOcrText(lines[i]);
-        if (fallback.length) players = players.concat(fallback);
-        continue;
-      }
+      var name = cols[iName] || '';
+      if (!name) continue;
       players.push({
-        order: iOrder >= 0 ? parseInt(cols[iOrder])||null : null,
+        order: iOrder>=0 ? parseInt(cols[iOrder])||null : null,
         name : name,
-        pos  : iPos >= 0 ? normalizePos(cols[iPos]) : '',
-        num  : iNum >= 0 ? cols[iNum] : '',
-        bh   : iBH  >= 0 ? _normBH(cols[iBH]) : '',
+        pos  : iPos>=0  ? normalizePos(cols[iPos]) : '',
+        num  : iNum>=0  ? cols[iNum] : '',
+        bh   : iBH>=0   ? _normBH(cols[iBH]) : '',
       });
     }
     return players;
@@ -235,19 +243,8 @@
     try {
       var wb = XLSX.read(arrayBuf, {type:'array'});
       var ws = wb.Sheets[wb.SheetNames[0]];
-      var csv = XLSX.utils.sheet_to_csv(ws, {FS:','});
-      return parseCsv(csv);
-    } catch(e) {
-      return [];
-    }
-  }
-
-  function _findCol(headers, candidates) {
-    for (var ci = 0; ci < candidates.length; ci++) {
-      var idx = headers.indexOf(candidates[ci]);
-      if (idx >= 0) return idx;
-    }
-    return -1;
+      return parseCsv(XLSX.utils.sheet_to_csv(ws, {FS:','}));
+    } catch(e) { return []; }
   }
 
   function _normBH(s) {
@@ -259,236 +256,199 @@
     return '';
   }
 
-  // ─── UI helpers ───────────────────────────────
+  // ─── UI ───────────────────────────────────────
   function setStatus(msg, pct) {
-    var wrap = document.getElementById('ocrStatus');
-    var el   = document.getElementById('ocrStatusText');
-    var bar  = document.getElementById('ocrProgressBar');
-    if (wrap) wrap.style.display = 'block';
-    if (el)  el.textContent = msg;
-    if (bar && pct != null) bar.style.width = Math.min(100, pct) + '%';
+    var wrap=document.getElementById('ocrStatus');
+    var el=document.getElementById('ocrStatusText');
+    var bar=document.getElementById('ocrProgressBar');
+    if (wrap) wrap.style.display='block';
+    if (el)   el.textContent=msg;
+    if (bar && pct!=null) bar.style.width=Math.min(100,pct)+'%';
   }
   function hideStatus() {
-    var w = document.getElementById('ocrStatus');
-    if (w) w.style.display = 'none';
+    var w=document.getElementById('ocrStatus'); if(w) w.style.display='none';
   }
 
   function renderPlayerList(players) {
-    var wrap    = document.getElementById('ocrResultWrap');
-    var list    = document.getElementById('ocrPlayerList');
-    var applyBtn= document.getElementById('ocrApplyBtn');
-    var rawBtn  = document.getElementById('ocrRawToggleBtn');
+    var wrap    =document.getElementById('ocrResultWrap');
+    var list    =document.getElementById('ocrPlayerList');
+    var applyBtn=document.getElementById('ocrApplyBtn');
+    var rawBtn  =document.getElementById('ocrRawToggleBtn');
     if (!list) return;
 
     if (!players.length) {
-      list.innerHTML = '<div style="color:#ef4444;font-size:12px;padding:8px 4px">인식된 선수가 없습니다.<br>원문 보기에서 텍스트를 직접 확인·수정한 뒤 재파싱해 보세요.</div>';
-      if (wrap) wrap.style.display = 'block';
-      if (rawBtn) rawBtn.style.display = 'block';
-      if (applyBtn) applyBtn.style.display = 'none';
+      list.innerHTML='<div style="color:#ef4444;font-size:12px;padding:8px 0">인식된 선수가 없습니다.<br>아래 <b>원문 보기</b>로 OCR 결과를 확인·수정 후 재파싱 해보세요.</div>';
+      if (wrap) wrap.style.display='block';
+      if (rawBtn) rawBtn.style.display='block';
+      if (applyBtn) applyBtn.style.display='none';
       return;
     }
 
-    var posOpts = ['','투수','포수','1루','2루','3루','유격','좌익','중견','우익','DH'];
-    var bhOpts  = [['','타석'],['R','우타'],['L','좌타'],['S','스위치']];
+    var posOpts=['','투수','포수','1루','2루','3루','유격','좌익','중견','우익','DH'];
+    var bhOpts=[['','타석'],['R','우타'],['L','좌타'],['S','스위치']];
 
-    list.innerHTML = players.map(function(p, i) {
-      var po = posOpts.map(function(o){ return '<option value="'+o+'"'+(o===p.pos?' selected':'')+'>'+(o||'포지션')+'</option>'; }).join('');
-      var bo = bhOpts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.bh?' selected':'')+'>'+ o[1]+'</option>'; }).join('');
+    list.innerHTML=players.map(function(p,i){
+      var po=posOpts.map(function(o){ return '<option value="'+o+'"'+(o===p.pos?' selected':'')+'>'+(o||'포지션')+'</option>'; }).join('');
+      var bo=bhOpts.map(function(o){ return '<option value="'+o[0]+'"'+(o[0]===p.bh?' selected':'')+'>'+ o[1]+'</option>'; }).join('');
       return '<div style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #1e1e2a">'
-        + '<span style="font-size:10px;color:#434c5e;min-width:18px;font-weight:700;text-align:center">'+(p.order||i+1)+'</span>'
-        + '<input style="flex:1;min-width:0;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 6px" value="'+esc(p.name)+'" data-field="name" data-idx="'+i+'" oninput="window._ocrUp(this)">'
-        + '<input style="width:36px;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 3px;text-align:center" value="'+esc(p.num)+'" placeholder="#" data-field="num" data-idx="'+i+'" oninput="window._ocrUp(this)">'
-        + '<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="pos" data-idx="'+i+'" onchange="window._ocrUp(this)">'+po+'</select>'
-        + '<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="bh" data-idx="'+i+'" onchange="window._ocrUp(this)">'+bo+'</select>'
-        + '<button onclick="window._ocrDel('+i+')" style="background:none;border:none;color:#6b7280;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0">✕</button>'
-        + '</div>';
+        +'<span style="font-size:10px;color:#434c5e;min-width:18px;text-align:center;font-weight:700">'+(p.order||i+1)+'</span>'
+        +'<input style="flex:1;min-width:0;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 6px" value="'+esc(p.name)+'" data-field="name" data-idx="'+i+'" oninput="window._ocrUp(this)">'
+        +'<input style="width:36px;background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#c9d1d9;font-size:12px;padding:4px 3px;text-align:center" value="'+esc(p.num)+'" placeholder="#" data-field="num" data-idx="'+i+'" oninput="window._ocrUp(this)">'
+        +'<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="pos" data-idx="'+i+'" onchange="window._ocrUp(this)">'+po+'</select>'
+        +'<select style="background:#0d1117;border:1px solid #2a2a3a;border-radius:6px;color:#9ca3af;font-size:11px;padding:3px 1px" data-field="bh" data-idx="'+i+'" onchange="window._ocrUp(this)">'+bo+'</select>'
+        +'<button onclick="window._ocrDel('+i+')" style="background:none;border:none;color:#6b7280;font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0">✕</button>'
+        +'</div>';
     }).join('');
 
-    if (wrap)    wrap.style.display = 'block';
-    if (applyBtn) applyBtn.style.display = 'block';
-    if (rawBtn)  rawBtn.style.display = 'block';
+    if (wrap) wrap.style.display='block';
+    if (applyBtn) applyBtn.style.display='block';
+    if (rawBtn) rawBtn.style.display='block';
   }
 
-  function esc(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function resetUI() {
+    ['ocrImgWrap','ocrStatus','ocrResultWrap','ocrRawWrap'].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; });
+    ['ocrApplyBtn','ocrRawToggleBtn'].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; });
+    var bar=document.getElementById('ocrProgressBar'); if(bar) bar.style.width='0%';
   }
 
-  function resetResultUI() {
-    ['ocrImgWrap','ocrStatus','ocrResultWrap','ocrRawWrap'].forEach(function(id){
-      var e=document.getElementById(id); if(e) e.style.display='none';
-    });
-    ['ocrApplyBtn','ocrRawToggleBtn'].forEach(function(id){
-      var e=document.getElementById(id); if(e) e.style.display='none';
-    });
-    var bar = document.getElementById('ocrProgressBar');
-    if (bar) bar.style.width = '0%';
-  }
-
-  function finishWithPlayers(players, rawText) {
-    var rawArea = document.getElementById('ocrRawText');
-    if (rawArea && rawText != null) rawArea.value = rawText;
-    _parsedPlayers = players;
+  function finish(players, rawText) {
+    var ra=document.getElementById('ocrRawText');
+    if (ra && rawText!=null) ra.value=rawText;
+    _parsedPlayers=players;
     hideStatus();
     renderPlayerList(players);
   }
 
-  // ─── Public API ───────────────────────────────
+  // ─── Public ───────────────────────────────────
   window.ocrModalOpen = function() {
-    var lpSel = document.getElementById('lpSel');
-    _team = (lpSel && lpSel.value === 'away') ? 'away' : 'home';
-    _ocrSyncTeamBtns();
-    var modal = document.getElementById('ocrModal');
-    if (modal) { modal.style.display = 'block'; document.body.style.overflow = 'hidden'; }
-    _parsedPlayers = [];
-    resetResultUI();
-    var fi = document.getElementById('ocrFileInput'); if(fi) fi.value='';
+    var lpSel=document.getElementById('lpSel');
+    _team=(lpSel && lpSel.value==='away')?'away':'home';
+    _syncTeamBtns();
+    var modal=document.getElementById('ocrModal');
+    if (modal){ modal.style.display='block'; document.body.style.overflow='hidden'; }
+    _parsedPlayers=[];
+    resetUI();
+    var fi=document.getElementById('ocrFileInput'); if(fi) fi.value='';
   };
 
   window.ocrModalClose = function() {
-    var modal = document.getElementById('ocrModal');
-    if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+    var modal=document.getElementById('ocrModal');
+    if (modal){ modal.style.display='none'; document.body.style.overflow=''; }
   };
 
-  window.ocrSetTeam = function(t) { _team = t; _ocrSyncTeamBtns(); };
+  window.ocrSetTeam = function(t){ _team=t; _syncTeamBtns(); };
 
-  function _ocrSyncTeamBtns() {
-    var hB = document.getElementById('ocrTeamHome');
-    var aB = document.getElementById('ocrTeamAway');
-    if (!hB || !aB) return;
-    var sel = '#4b8cf5', selBg = '#0f1729', unsel = '#2a2a3a', unselC = '#6b7280', unselBg = '#111118';
-    if (_team === 'home') {
-      hB.style.cssText += ';border-color:'+sel+';color:'+sel+';background:'+selBg;
-      aB.style.cssText += ';border-color:'+unsel+';color:'+unselC+';background:'+unselBg;
+  function _syncTeamBtns() {
+    var hB=document.getElementById('ocrTeamHome'), aB=document.getElementById('ocrTeamAway');
+    if (!hB||!aB) return;
+    if (_team==='home') {
+      hB.style.borderColor='#4b8cf5'; hB.style.color='#4b8cf5'; hB.style.background='#0f1729';
+      aB.style.borderColor='#2a2a3a'; aB.style.color='#6b7280'; aB.style.background='#111118';
     } else {
-      aB.style.cssText += ';border-color:'+sel+';color:'+sel+';background:'+selBg;
-      hB.style.cssText += ';border-color:'+unsel+';color:'+unselC+';background:'+unselBg;
+      aB.style.borderColor='#4b8cf5'; aB.style.color='#4b8cf5'; aB.style.background='#0f1729';
+      hB.style.borderColor='#2a2a3a'; hB.style.color='#6b7280'; hB.style.background='#111118';
     }
   }
 
   window.ocrHandleFile = function(file) {
     if (!file) return;
-    resetResultUI();
-    _parsedPlayers = [];
+    resetUI();
+    _parsedPlayers=[];
 
-    var ext = (file.name || '').split('.').pop().toLowerCase();
-    var type = file.type || '';
+    var ext=(file.name||'').split('.').pop().toLowerCase();
+    var type=file.type||'';
 
-    // ── 이미지 파일 ──────────────────────────────
-    if (type.startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','heic','heif'].includes(ext)) {
-      // 미리보기
-      var rd0 = new FileReader();
-      rd0.onload = function(e) {
-        var pi = document.getElementById('ocrPreviewImg');
-        var pw = document.getElementById('ocrImgWrap');
-        if (pi) pi.src = e.target.result;
-        if (pw) pw.style.display = 'block';
+    // ── 이미지 ────────────────────────────────
+    if (type.startsWith('image/') || /^(jpg|jpeg|png|gif|bmp|webp|heic|heif|tiff?)$/.test(ext)) {
+      var rd=new FileReader();
+      rd.onload=function(e){
+        var pi=document.getElementById('ocrPreviewImg'), pw=document.getElementById('ocrImgWrap');
+        if(pi) pi.src=e.target.result; if(pw) pw.style.display='block';
       };
-      rd0.readAsDataURL(file);
+      rd.readAsDataURL(file);
 
       setStatus('이미지 전처리 중...', 5);
       preprocessImage(file, function(dataUrl) {
-        if (!dataUrl) { setStatus('이미지 로딩 실패', 100); return; }
-        setStatus('OCR 엔진 준비 중...', 8);
-        runTesseract(dataUrl, function(err, rawText) {
-          if (err) { setStatus('오류: ' + err.message, 100); return; }
-          setStatus('파싱 중...', 97);
-          finishWithPlayers(parseOcrText(rawText), rawText);
+        if (!dataUrl){ setStatus('이미지 로딩 실패', 100); return; }
+        runTesseract(dataUrl, null, function(err, rawText) {
+          if (err){ setStatus('OCR 오류: '+err.message, 100); return; }
+          setStatus('파싱 중...', 98);
+          finish(parseOcrText(rawText), rawText);
         });
       });
       return;
     }
 
-    // ── 텍스트 / CSV ─────────────────────────────
-    if (type === 'text/plain' || type === 'text/csv' || ['txt','csv'].includes(ext)) {
-      var rd1 = new FileReader();
-      rd1.onload = function(e) {
-        var text = e.target.result;
-        var players = ext === 'csv' ? parseCsv(text) : parseTextDoc(text);
-        finishWithPlayers(players, text);
-      };
-      rd1.readAsText(file, 'UTF-8');
+    // ── 텍스트 / CSV ──────────────────────────
+    if (type==='text/plain'||type==='text/csv'||ext==='txt'||ext==='csv') {
+      var rd2=new FileReader();
+      rd2.onload=function(e){ finish(ext==='csv'?parseCsv(e.target.result):parseOcrText(e.target.result), e.target.result); };
+      rd2.readAsText(file,'UTF-8');
       return;
     }
 
-    // ── Excel ────────────────────────────────────
-    if (type.includes('spreadsheet') || type.includes('excel') || ['xlsx','xls'].includes(ext)) {
-      if (typeof XLSX === 'undefined') {
-        setStatus('Excel 라이브러리 없음', 100); return;
-      }
-      setStatus('Excel 파일 읽는 중...', 20);
-      var rd2 = new FileReader();
-      rd2.onload = function(e) {
-        var players = parseXlsx(new Uint8Array(e.target.result));
-        // generate CSV text for raw view
-        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-        var csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
-        finishWithPlayers(players, csv);
+    // ── Excel ─────────────────────────────────
+    if (type.includes('spreadsheet')||type.includes('excel')||ext==='xlsx'||ext==='xls') {
+      if (typeof XLSX==='undefined'){ setStatus('Excel 라이브러리 없음',100); return; }
+      setStatus('Excel 읽는 중...', 20);
+      var rd3=new FileReader();
+      rd3.onload=function(e){
+        var buf=new Uint8Array(e.target.result);
+        var players=parseXlsx(buf);
+        var wb=XLSX.read(buf,{type:'array'});
+        var csv=XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]);
+        finish(players, csv);
       };
-      rd2.readAsArrayBuffer(file);
+      rd3.readAsArrayBuffer(file);
       return;
     }
 
-    // ── 지원 안 하는 형식 ─────────────────────────
-    setStatus('지원하지 않는 파일 형식입니다. (이미지/txt/csv/xlsx)', 100);
+    setStatus('지원하지 않는 형식 (이미지/txt/csv/xlsx)', 100);
   };
 
   window.ocrToggleRaw = function() {
-    var w = document.getElementById('ocrRawWrap');
+    var w=document.getElementById('ocrRawWrap');
     if (!w) return;
-    w.style.display = (w.style.display === 'none' || !w.style.display) ? 'block' : 'none';
+    w.style.display=(w.style.display==='none'||!w.style.display)?'block':'none';
   };
 
   window.ocrReparse = function() {
-    var ra = document.getElementById('ocrRawText');
-    if (!ra) return;
-    _parsedPlayers = parseOcrText(ra.value);
+    var ra=document.getElementById('ocrRawText'); if(!ra) return;
+    _parsedPlayers=parseOcrText(ra.value);
     renderPlayerList(_parsedPlayers);
   };
 
   window._ocrUp = function(el) {
-    var idx = parseInt(el.getAttribute('data-idx'));
-    var fld = el.getAttribute('data-field');
-    if (isNaN(idx) || !fld || !_parsedPlayers[idx]) return;
-    _parsedPlayers[idx][fld] = el.value;
+    var idx=parseInt(el.getAttribute('data-idx')), fld=el.getAttribute('data-field');
+    if (!isNaN(idx) && fld && _parsedPlayers[idx]) _parsedPlayers[idx][fld]=el.value;
   };
-  window._ocrDel = function(idx) {
-    _parsedPlayers.splice(idx, 1);
-    renderPlayerList(_parsedPlayers);
-  };
+  window._ocrDel = function(idx) { _parsedPlayers.splice(idx,1); renderPlayerList(_parsedPlayers); };
 
   window.ocrApply = function() {
     if (!_parsedPlayers.length) return;
-    var lpSel = document.getElementById('lpSel');
-    if (lpSel) {
-      lpSel.value = _team;
-      if (typeof renderLP === 'function') renderLP();
-      if (typeof renderMob === 'function') renderMob();
-    }
-    var added = 0;
+    var lpSel=document.getElementById('lpSel');
+    if (lpSel){ lpSel.value=_team; if(typeof renderLP==='function')renderLP(); if(typeof renderMob==='function')renderMob(); }
+    var added=0;
     _parsedPlayers.forEach(function(p) {
       if (!p.name) return;
-      var pName = document.getElementById('pName');
-      var pNum  = document.getElementById('pNum');
-      var pPos  = document.getElementById('pPos');
-      var pBH   = document.getElementById('pBH');
-      if (pName) pName.value = p.name;
-      if (pNum)  pNum.value  = p.num  || '';
-      if (pPos)  pPos.value  = p.pos  || '';
-      if (pBH)   pBH.value   = p.bh   || '';
-      if (typeof addPlayer === 'function') addPlayer();
+      var n=document.getElementById('pName'), nu=document.getElementById('pNum'), po=document.getElementById('pPos'), bh=document.getElementById('pBH');
+      if(n) n.value=p.name; if(nu) nu.value=p.num||''; if(po) po.value=p.pos||''; if(bh) bh.value=p.bh||'';
+      if (typeof addPlayer==='function') addPlayer();
       added++;
     });
     ocrModalClose();
-    _ocrToast(added + '명이 라인업에 추가됐습니다! 🎉');
+    _toast(added+'명이 라인업에 추가됐습니다! 🎉');
   };
 
-  function _ocrToast(msg) {
-    var t = document.createElement('div');
-    t.textContent = msg;
-    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#4b8cf5;color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;font-weight:700;z-index:99999;pointer-events:none;box-shadow:0 4px 20px rgba(75,140,245,.4);white-space:nowrap';
+  function _toast(msg) {
+    var t=document.createElement('div');
+    t.textContent=msg;
+    t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#4b8cf5;color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;font-weight:700;z-index:99999;pointer-events:none;box-shadow:0 4px 20px rgba(75,140,245,.4);white-space:nowrap';
     document.body.appendChild(t);
-    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .5s'; }, 2200);
-    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 2800);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .5s'; },2200);
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },2800);
   }
 
 })();

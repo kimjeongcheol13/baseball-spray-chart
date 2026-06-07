@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4b8cf5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SprayLab">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>SprayLab — Your Swing, Visualized</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<link rel="stylesheet" href="css/styles.css?v=41">
+<link rel="stylesheet" href="css/features.css?v=22">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-M0XVPN7YC1"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js',new Date());
+  gtag('config','G-M0XVPN7YC1');
+</script>
+</head>
+<body>
+<!-- 공유 경기 데이터 감지 배너 -->
+<div id="sharedBanner">
+  <div class="sb-inner">
+    <div class="sb-text">
+      <div class="sb-title">⚾ 공유된 경기 데이터가 있습니다</div>
+      <div class="sb-desc" id="sharedBannerDesc">불러올까요?</div>
+    </div>
+    <div class="sb-btns">
+      <button class="sb-load" onclick="loadSharedGame()">불러오기</button>
+      <button class="sb-save" onclick="saveSharedGameLocal()">내 기기에 저장</button>
+      <button class="sb-dismiss" onclick="dismissSharedBanner()">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- 카카오톡 인앱 브라우저 경고 배너 -->
+<div id="kakao-warn" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#f6c23e;color:#07090f;padding:10px 16px;font-size:12px;font-family:sans-serif;text-align:center;line-height:1.6">
+  <strong>⚠️ 카카오톡 내부 브라우저</strong> — 여기서 저장한 데이터는 Chrome/Safari와 <strong>공유되지 않습니다</strong>.<br>
+  <button onclick="kakaoExportThenOpen()" style="margin:4px 4px 0;padding:5px 12px;background:#07090f;color:#f6c23e;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">📤 데이터 백업 후 Chrome으로 열기</button>
+  <button onclick="kakaoOpenOnly()" style="margin:4px 4px 0;padding:5px 12px;background:none;border:1px solid #07090f;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">그냥 Chrome으로 열기</button>
+  <button onclick="document.getElementById('kakao-warn').style.display='none'" style="margin:4px 4px 0;padding:5px 10px;background:none;border:1px solid #888;border-radius:6px;font-size:11px;cursor:pointer">✕ 계속 사용</button>
+</div>
+
+<div id="landing-page">
+
+<nav id="mainNav">
+  <a class="nav-brand" onclick="goHome()">
+    <svg class="nav-logo" viewBox="0 0 30 30" fill="none">
+      <circle cx="15" cy="15" r="13" stroke="#4b8cf5" stroke-width="1.3"/>
+      <path d="M7 23 Q15 4 23 23" stroke="#4b8cf5" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <circle cx="15" cy="14" r="2" fill="#4b8cf5"/>
+      <circle cx="8" cy="21" r="1.3" fill="#2dd4a0" opacity=".9"/>
+      <circle cx="22" cy="21" r="1.3" fill="#f56565" opacity=".9"/>
+      <circle cx="15" cy="7.5" r="1.3" fill="#f6c23e" opacity=".9"/>
+    </svg>
+    <span class="nav-name">Spray<em>Lab</em></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">기능</a></li>
+    <li><a href="#howto">사용법</a></li>
+    <li><a href="#preview">미리보기</a></li>
+    <li><a href="#target">대상</a></li>
+  </ul>
+  <button class="nav-cta" onclick="showApp()">
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    앱 시작하기
+  </button>
+</nav>
+
+<section class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-badge"><span class="hero-badge-dot"></span>사회인야구 · 아마추어 · 데이터 분석</div>
+    <h1 class="hero-title">YOUR<br><span class="hl">SWING</span><br>VISUALIZED</h1>
+    <p class="hero-sub">타석을 기록하고, <strong>패턴을 발견하세요.</strong><br>당겨치기 비율부터 타율까지 — 모든 타석이 데이터가 됩니다.</p>
+    <div class="hero-flow">
+      <div class="hf-step">
+        <div class="hf-num">1</div>
+        <div class="hf-label">선수 등록</div>
+        <div class="hf-sub">이름 · 등번호 입력</div>
+      </div>
+      <div class="hf-arrow">→</div>
+      <div class="hf-step">
+        <div class="hf-num">2</div>
+        <div class="hf-label">타석 기록</div>
+        <div class="hf-sub">필드 탭 · 결과 선택</div>
+      </div>
+      <div class="hf-arrow">→</div>
+      <div class="hf-step">
+        <div class="hf-num">3</div>
+        <div class="hf-label">통계 확인</div>
+        <div class="hf-sub">AVG · 스프레이 차트</div>
+      </div>
+    </div>
+    <div class="hero-btns">
+      <button class="btn-hero-primary" onclick="showApp()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        무료로 시작하기
+      </button>
+      <a class="btn-hero-secondary" href="#preview">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
+        미리보기
+      </a>
+    </div>
+    <div class="hero-feat-badges">
+      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>무료</div>
+      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>광고 없음</div>
+      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>로그인 불필요</div>
+    </div>
+  </div>
+  <div class="scroll-hint"><span>스크롤</span><div class="scroll-arrow"></div></div>
+</section>
+
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
+    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
+    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
+    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
+    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
+    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
+    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
+    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
+    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
+    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
+    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
+    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
+    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
+    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
+    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
+    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
+  </div>
+</div>
+
+<section id="features" style="background:var(--bg)">
+  <div class="section-head centered">
+    <span class="section-label fade-up">기능</span>
+    <h2 class="section-title fade-up" data-delay="1">프로처럼 분석하세요</h2>
+    <p class="section-sub fade-up" data-delay="2">Baseball Savant에서 영감을 받은 기능들을<br>사회인야구 환경에 맞게 재설계했습니다.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div><div class="feat-title">실시간 스프레이 차트</div><div class="feat-desc">필드를 탭하는 순간 타구 위치가 차트에 기록됩니다. 색상으로 구분된 점이 경기 내내 쌓입니다.</div><span class="feat-tag">CORE</span></div>
+    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#2dd4a0" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="feat-title">자동 통계 계산</div><div class="feat-desc">타율(AVG), 출루율(OBP), 장타율(SLG)이 기록과 동시에 자동으로 계산됩니다. 수작업 불필요.</div><span class="feat-tag">AUTO</span></div>
+    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f6c23e" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="feat-title">방향 분포 분석</div><div class="feat-desc">당겨치기 / 센터 / 밀어치기 비율을 시각화합니다. 타격 패턴의 약점과 강점을 직관적으로 파악.</div><span class="feat-tag">ANALYTICS</span></div>
+    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div><div class="feat-title">9분할 투구 코스</div><div class="feat-desc">내각/중앙/외각 × 높음/중간/낮음 9개 존을 클릭 한 번으로 선택. 코스별 타격 경향을 분석.</div><span class="feat-tag">DETAIL</span></div>
+    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f56565" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="feat-title">선수별 개인 통계</div><div class="feat-desc">라인업 전체 선수의 타석을 각각 관리합니다. 선수별 타율, 안타수, 타점을 한눈에 비교.</div><span class="feat-tag">ROSTER</span></div>
+    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div><div class="feat-title">경기 저장 · 불러오기</div><div class="feat-desc">경기 데이터를 저장하고 언제든 불러올 수 있습니다. 시즌 내내 누적 데이터를 관리하세요.</div><span class="feat-tag">PERSIST</span></div>
+  </div>
+</section>
+
+<section id="howto" class="how">
+  <div class="section-head centered">
+    <span class="section-label fade-up">사용법</span>
+    <h2 class="section-title fade-up" data-delay="1">야구를 몰라도 5분이면 시작</h2>
+    <p class="section-sub fade-up" data-delay="2">야구 경험이 없어도 괜찮습니다. 타석마다 탭 하나로 기록하세요.</p>
+  </div>
+  <div class="steps">
+    <div class="step fade-up" data-delay="1">
+      <div class="step-num">01</div>
+      <div class="step-title">앱 열기</div>
+      <div class="step-desc">상단 <strong>[앱 시작하기]</strong> 버튼을 누르세요. 가입·설치·로그인 없이 바로 사용 가능합니다.</div>
+      <div class="step-sub">✓ 모바일·태블릿·PC 모두 지원 &nbsp;·&nbsp; ✓ 완전 무료</div>
+    </div>
+    <div class="step fade-up" data-delay="2">
+      <div class="step-num">02</div>
+      <div class="step-title">라인업 구성</div>
+      <div class="step-desc"><strong>라인업</strong>이란 오늘 경기에서 타격 순서대로 나열된 선수 명단입니다. 왼쪽 패널에서 이름과 등번호를 입력해 홈팀 / 원정팀을 각각 만드세요.</div>
+      <div class="step-sub">이름 첫 글자가 자동으로 아바타 생성 · 선수 클릭 → 타자 선택</div>
+    </div>
+    <div class="step fade-up" data-delay="3">
+      <div class="step-num">03</div>
+      <div class="step-title">타석 기록</div>
+      <div class="step-desc">타자를 선택하고 <strong>공이 떨어진 위치를 필드에서 탭</strong>한 뒤 결과를 고르세요. <strong>안타</strong>(베이스 도달) · <strong>아웃</strong>(수비에게 잡힘) · <strong>홈런</strong> 중 선택합니다. <strong>볼넷</strong>(4번 빗나감) · <strong>삼진</strong>(스트라이크 3개)은 하단 버튼으로 기록.</div>
+      <div class="step-sub">투구 종류·코스 선택은 선택 사항 — 건너뛰어도 됩니다</div>
+    </div>
+    <div class="step fade-up" data-delay="4">
+      <div class="step-num">04</div>
+      <div class="step-title">통계 확인</div>
+      <div class="step-desc">오른쪽 탭에서 자동 계산된 통계를 확인하세요. <strong>타율(AVG)</strong>은 안타÷타석 수(0.300 = 10번 중 3안타), <strong>출루율(OBP)</strong>은 볼넷 포함 출루 빈도, <strong>장타율(SLG)</strong>은 홈런·장타가 많을수록 높아집니다.</div>
+      <div class="step-sub">차트 탭 → 스프레이 차트 · 히트맵 · PNG 내보내기</div>
+    </div>
+    <div class="step fade-up" data-delay="5">
+      <div class="step-num">05</div>
+      <div class="step-title">저장 · 공유</div>
+      <div class="step-desc">경기 종료 후 <strong>[저장]</strong> 버튼으로 데이터를 기기에 보관하세요. QR코드·링크로 팀원과 공유하거나 PNG 이미지·엑셀 파일로 내보낼 수 있습니다.</div>
+      <div class="step-sub">Ctrl+Z — 마지막 기록 취소 &nbsp;·&nbsp; Ctrl+S — 빠른 저장</div>
+    </div>
+  </div>
+  <div style="margin-top:44px;max-width:760px;margin-left:auto;margin-right:auto;display:flex;flex-direction:column;gap:16px">
+    <div class="fade-up" style="background:var(--raised);border:1px solid var(--border2);border-radius:12px;padding:22px 24px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:16px">야구 용어 한눈에 보기</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 28px;font-size:12.5px">
+        <div><strong style="color:var(--blue)">안타 (Hit / H)</strong><span style="color:var(--text2);margin-left:6px">공을 쳐서 베이스에 안전히 도달</span></div>
+        <div><strong style="color:var(--blue)">2루타 / 3루타</strong><span style="color:var(--text2);margin-left:6px">2번째 / 3번째 베이스까지 도달</span></div>
+        <div><strong style="color:var(--blue)">홈런 (HR)</strong><span style="color:var(--text2);margin-left:6px">담장 밖으로 넘어가 바로 득점</span></div>
+        <div><strong style="color:var(--blue)">볼넷 (BB / 4볼)</strong><span style="color:var(--text2);margin-left:6px">투수가 4번 빗나가 1루 자동 진루</span></div>
+        <div><strong style="color:var(--blue)">삼진 (K)</strong><span style="color:var(--text2);margin-left:6px">스트라이크 3개로 타석 종료</span></div>
+        <div><strong style="color:var(--blue)">타석 (At-bat)</strong><span style="color:var(--text2);margin-left:6px">타자가 공을 치는 한 번의 차례</span></div>
+        <div><strong style="color:var(--blue)">당겨치기 (Pull)</strong><span style="color:var(--text2);margin-left:6px">우타자 기준 왼쪽(3루 방향)으로 친 타구</span></div>
+        <div><strong style="color:var(--blue)">밀어치기 (Oppo)</strong><span style="color:var(--text2);margin-left:6px">반대 방향(1루 쪽)으로 보내는 기술</span></div>
+        <div><strong style="color:var(--blue)">타율 AVG</strong><span style="color:var(--text2);margin-left:6px">안타 ÷ 타석 수 (0.300 = 10번 중 3안타)</span></div>
+        <div><strong style="color:var(--blue)">출루율 OBP</strong><span style="color:var(--text2);margin-left:6px">볼넷 포함, 얼마나 자주 베이스에 나가는지</span></div>
+        <div><strong style="color:var(--blue)">장타율 SLG</strong><span style="color:var(--text2);margin-left:6px">홈런·장타가 많을수록 높아지는 파워 지표</span></div>
+        <div><strong style="color:var(--blue)">스프레이 차트</strong><span style="color:var(--text2);margin-left:6px">타구 위치를 필드 위에 점으로 표시한 지도</span></div>
+      </div>
+    </div>
+    <div class="fade-up" style="background:var(--raised);border:1px solid var(--border2);border-radius:12px;padding:20px 24px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px">단축키 &amp; 팁</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;font-size:12px;color:var(--text2)">
+        <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+Z</span>&nbsp; 마지막 기록 취소</div>
+        <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+S</span>&nbsp; 경기 빠른 저장</div>
+        <div>🏟️ 필드 탭 → 결과 팝업이 자동으로 표시</div>
+        <div>📸 차트 탭 → PNG로 카카오톡·SNS 공유</div>
+        <div>📊 투구 코스 선택은 선택 사항 — 건너뛰기 가능</div>
+        <div>🔗 공유 버튼 → QR코드 즉시 생성</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="preview" style="background:var(--bg)">
+  <div class="section-head centered">
+    <span class="section-label fade-up">미리보기</span>
+    <h2 class="section-title fade-up" data-delay="1">실제 앱 화면</h2>
+  </div>
+
+  <div class="mockup-pair fade-up">
+
+    <!-- PHONE 1: 라인업 + 필드 입력 -->
+    <div class="mockup-unit">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <!-- 앱 상단 바 -->
+          <div class="ph-bar">
+            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
+            <span class="ph-time">7회말 · 3:2</span>
+          </div>
+          <!-- 라인업 + 필드 그리드 -->
+          <div style="display:grid;grid-template-columns:76px 1fr;min-height:220px">
+            <!-- 라인업 열 -->
+            <div class="ph-lineup-col">
+              <div class="ph-section-lbl">라인업</div>
+              <div class="ph-player on">
+                <div class="ph-av">김</div>
+                <div class="ph-pname">#7 김정철</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">이</div>
+                <div class="ph-pname">#12 이민준</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">박</div>
+                <div class="ph-pname">#3 박성현</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">최</div>
+                <div class="ph-pname">#21 최준혁</div>
+              </div>
+              <div class="ph-player">
+                <div class="ph-av">정</div>
+                <div class="ph-pname">#9 정우성</div>
+              </div>
+            </div>
+            <!-- 필드 영역 -->
+            <div class="ph-field-wrap">
+              <div class="ph-field-label">#7 김정철 타석 준비</div>
+              <!-- SVG 필드 다이어그램 -->
+              <svg width="96" height="96" viewBox="0 0 96 96" fill="none" style="flex-shrink:0">
+                <!-- 잔디 배경 -->
+                <path d="M48 8 L88 88 L8 88 Z" fill="#0c1e0f" stroke="#1a3520" stroke-width="1"/>
+                <!-- 내야 다이아몬드 -->
+                <path d="M48 52 L62 66 L48 80 L34 66 Z" fill="#12280f" stroke="#1d4020" stroke-width="1"/>
+                <!-- 파울 라인 -->
+                <line x1="48" y1="80" x2="10" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
+                <line x1="48" y1="80" x2="86" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
+                <!-- 타구 점들 -->
+                <circle cx="58" cy="38" r="3.5" fill="#2dd4a0" opacity=".9"/>
+                <circle cx="26" cy="48" r="3.5" fill="#f56565" opacity=".9"/>
+                <circle cx="70" cy="55" r="3.5" fill="#2dd4a0" opacity=".9"/>
+                <circle cx="48" cy="30" r="3.5" fill="#4b8cf5" opacity=".9"/>
+                <!-- 홈플레이트 -->
+                <circle cx="48" cy="82" r="2.5" fill="#374151"/>
+              </svg>
+              <div style="font-size:7px;color:#374151">필드를 탭하여 기록</div>
+            </div>
+          </div>
+          <!-- 결과 입력 바 -->
+          <div class="ph-input-bar">
+            <div class="ph-section-lbl">결과 선택</div>
+            <div class="ph-chips">
+              <span class="ph-chip on">안타</span>
+              <span class="ph-chip">2루타</span>
+              <span class="ph-chip">홈런</span>
+              <span class="ph-chip">아웃</span>
+              <span class="ph-chip">볼넷</span>
+              <span class="ph-chip">삼진</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-caption">
+        <div class="mockup-cap-num">1</div>
+        <div class="mockup-cap-title">라인업 · 타석 기록</div>
+        <div class="mockup-cap-sub">선수 선택 후 필드를 탭</div>
+      </div>
+    </div>
+
+    <!-- PHONE 2: 통계 결과 -->
+    <div class="mockup-unit">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <!-- 앱 상단 바 -->
+          <div class="ph-bar">
+            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
+            <span class="ph-time" style="color:#2dd4a0;font-weight:700">STATS</span>
+          </div>
+          <div style="padding:8px">
+            <!-- 팀 타격 지표 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">팀 타격</div>
+              <div class="ph-stat-grid">
+                <div>
+                  <div class="ph-sv" style="color:#2dd4a0">.318</div>
+                  <div class="ph-sl">AVG</div>
+                </div>
+                <div>
+                  <div class="ph-sv" style="color:#4b8cf5">.389</div>
+                  <div class="ph-sl">OBP</div>
+                </div>
+                <div>
+                  <div class="ph-sv" style="color:#f6c23e">.455</div>
+                  <div class="ph-sl">SLG</div>
+                </div>
+              </div>
+            </div>
+            <!-- 타구 방향 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">타구 방향</div>
+              <div class="ph-dir-bars">
+                <div class="ph-dir-bar" style="height:22px;background:#f56565"></div>
+                <div class="ph-dir-bar" style="height:14px;background:#2dd4a0"></div>
+                <div class="ph-dir-bar" style="height:9px;background:#4b8cf5"></div>
+              </div>
+              <div class="ph-dir-lbl">
+                <span>당겨 48%</span><span>센터 32%</span><span>밀어 20%</span>
+              </div>
+            </div>
+            <!-- 선수별 -->
+            <div class="ph-stat-card">
+              <div class="ph-stat-title">선수별 타율</div>
+              <div class="ph-prow">
+                <span>#7 김정철</span>
+                <span style="font-family:var(--mono);color:#2dd4a0">.333</span>
+              </div>
+              <div class="ph-prow">
+                <span>#12 이민준</span>
+                <span style="font-family:var(--mono);color:#4b8cf5">.500</span>
+              </div>
+              <div class="ph-prow">
+                <span>#3 박성현</span>
+                <span style="font-family:var(--mono);color:#374151">.000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mockup-caption">
+        <div class="mockup-cap-num">2</div>
+        <div class="mockup-cap-title">통계 결과</div>
+        <div class="mockup-cap-sub">타율 · 방향 · 선수별 분석</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="target" class="targets">
+  <div class="section-head centered">
+    <span class="section-label fade-up">대상</span>
+    <h2 class="section-title fade-up" data-delay="1">누구를 위한 앱인가요?</h2>
+  </div>
+  <div class="tgt-grid">
+    <div class="tgt-card fade-up" data-delay="1"><span class="tgt-emoji">⚾</span><div class="tgt-title">사회인야구 선수</div><div class="tgt-desc">경기 중 빠르게 기록하고, 시즌이 끝난 후 나의 타격 패턴을 분석하세요.</div><ul class="tgt-list"><li>내 당겨치기 비율이 얼마나 되지?</li><li>외각 슬라이더에서 자꾸 아웃되는 이유</li><li>안타 방향이 한쪽으로 몰려있지 않나?</li></ul></div>
+    <div class="tgt-card fade-up" data-delay="2"><span class="tgt-emoji">📋</span><div class="tgt-title">감독 · 코치</div><div class="tgt-desc">팀 전체 타석을 경기 중 실시간으로 기록하고, 선수별 통계를 즉시 파악하세요.</div><ul class="tgt-list"><li>누가 오늘 컨디션이 좋은지 데이터로 확인</li><li>상대 투수 패턴에 팀이 어떻게 반응하는지</li><li>이닝별 타석 기록으로 흐름 파악</li></ul></div>
+    <div class="tgt-card fade-up" data-delay="3"><span class="tgt-emoji">📊</span><div class="tgt-title">야구 데이터 팬</div><div class="tgt-desc">Baseball Savant 스타일로 직접 데이터를 만들어보고 싶은 분들을 위한 도구입니다.</div><ul class="tgt-list"><li>직접 기록한 스프레이 차트 시각화</li><li>세이버메트릭스 지표를 일상에서 경험</li><li>경기별 데이터 누적 및 비교</li></ul></div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <span class="section-label fade-up" style="display:block;margin-bottom:12px">지금 시작하세요</span>
+  <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
+  <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
+  <div class="fade-up" data-delay="3">
+    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      SprayLab 시작하기
+    </button>
+    <div class="cta-free"><strong>✓ 완전 무료</strong> &nbsp;·&nbsp; <strong>✓ 광고 없음</strong> &nbsp;·&nbsp; <strong>✓ 로그인 불필요</strong></div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <div class="foot-brand-name">Spray<em>Lab</em></div>
+      <div class="foot-desc">사회인야구와 아마추어 야구를 위한<br>스프레이 차트 & 타석 분석 도구.<br>야구를 데이터로 즐기세요.</div>
+    </div>
+    <div><div class="foot-links-title">서비스</div><ul class="foot-links"><li><a onclick="showApp()">앱 시작하기</a></li><li><a href="#features">주요 기능</a></li><li><a href="#howto">사용법</a></li></ul></div>
+    <div><div class="foot-links-title">분석 지표</div><ul class="foot-links"><li><a href="#">타율 AVG</a></li><li><a href="#">출루율 OBP</a></li><li><a href="#">장타율 SLG</a></li><li><a href="#">방향 분포 PULL/OPPO%</a></li></ul></div>
+  </div>
+  <div class="foot-bottom">
+    <span class="foot-copy">© <span id="footYear">2025</span> SprayLab. Built for baseball.</span>
+    <div class="foot-tags"><span class="foot-tag">v1.0</span><span class="foot-tag">사회인야구</span><span class="foot-tag">spray-chart</span></div>
+  </div>
+</footer>
+
+</div><div id="app-page">
+
+<div class="tt-box" id="ttBox"></div>
+
+<div id="tourOv">
+  <div id="tourSpot" class="pulse"></div>
+  <div id="tourCard">
+    <div id="tourProg"><span id="tourProgTxt">1 / 9</span><div id="tourProgBar"><div id="tourProgFill" style="width:11%"></div></div></div>
+    <div id="tourTitle"></div>
+    <div id="tourDesc"></div>
+    <div class="tour-btns">
+      <button id="tourSkipBtn" onclick="tourSkip()">투어 종료</button>
+      <button id="tourNextBtn" onclick="tourNext()">다음 →</button>
+    </div>
+  </div>
+  <div id="tourCursor">👆</div>
+  <div id="tourRing"></div>
+</div>
+
+<div class="ob-overlay" id="obOverlay" style="display:none">
+  <div class="ob-card">
+    <div class="ob-icon" id="obIcon">🏟️</div>
+    <div class="ob-step" id="obStep">STEP 1 · 타구 기록</div>
+    <div class="ob-title" id="obTitle">필드를 터치해<br>타구 위치를 기록하세요</div>
+    <div class="ob-desc" id="obDesc">공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.<br><b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.</div>
+    <div class="ob-highlight" id="obHighlight">안타 · 2루타 · 아웃 · 삼진 · 볼넷</div>
+    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div><div class="ob-dot" id="d3"></div><div class="ob-dot" id="d4"></div></div>
+    <label class="ob-no-show">
+      <input type="checkbox" id="obNoShow"><span>다시 보지 않기</span>
+    </label>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="obSkip()" style="padding:10px 14px;flex-shrink:0;font-size:12px">건너뛰기</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ FTU 온보딩 위저드 ████ -->
+<div id="ftuOverlay" class="hidden">
+  <div class="ftu-card">
+    <div class="ftu-dots">
+      <div class="ftu-dot on" id="ftuD0"></div>
+      <div class="ftu-dot" id="ftuD1"></div>
+      <div class="ftu-dot" id="ftuD2"></div>
+    </div>
+    <!-- Step 0: 팀 이름 -->
+    <div id="ftuStep0">
+      <div class="ftu-icon">⚾</div>
+      <div class="ftu-title">SprayLab에 오신 걸 환영합니다!</div>
+      <div class="ftu-sub">사회인야구 스프레이차트 기록앱<br>3단계로 빠르게 시작해봐요</div>
+      <input class="ftu-inp" id="ftuTeamInp" placeholder="우리 팀 이름을 입력하세요" maxlength="10" onkeydown="if(event.key==='Enter')ftuStep1()">
+      <button class="ftu-btn" onclick="ftuStep1()">다음 →</button>
+    </div>
+    <!-- Step 1: 선수 추가 -->
+    <div id="ftuStep1" style="display:none">
+      <div class="ftu-icon">👤</div>
+      <div class="ftu-title">선수를 등록해봐요</div>
+      <div class="ftu-sub">이름과 등번호를 입력하고<br>+ 버튼으로 추가하세요</div>
+      <div class="ftu-player-row">
+        <input class="ftu-inp" id="ftuPlayerName" placeholder="이름" maxlength="8" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
+        <input class="ftu-inp num" id="ftuPlayerNum" placeholder="#" maxlength="3" type="number" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
+        <button class="ftu-add-btn" onclick="ftuAddPlayer()">+</button>
+      </div>
+      <div id="ftuPlayerAdded" style="display:none;color:#2dd4a0;font-size:13px;text-align:center;margin-bottom:8px">✓ 등록 완료!</div>
+      <button class="ftu-btn" id="ftuStep1Next" style="opacity:.4;pointer-events:none" onclick="ftuStep2()">다음 →</button>
+    </div>
+    <!-- Step 2: 필드 체험 -->
+    <div id="ftuStep2" style="display:none">
+      <div class="ftu-icon">📍</div>
+      <div class="ftu-title">타석을 직접 찍어보세요</div>
+      <div class="ftu-sub">아래 필드에서 공이 떨어진 위치를<br>탭하면 타석이 기록됩니다</div>
+      <canvas id="ftuFieldCanvas" width="220" height="170" class="ftu-canvas" onclick="ftuFieldTap(event)"></canvas>
+      <div id="ftuTapHint" style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">👆 위 필드를 탭해보세요</div>
+      <button class="ftu-btn" id="ftuFinishBtn" style="margin-top:12px;opacity:.4;pointer-events:none" onclick="ftuDone()">완료 — 시작하기! 🚀</button>
+    </div>
+    <button class="ftu-skip" onclick="ftuDone()">건너뛰기</button>
+  </div>
+</div>
+
+<!-- ████ 앱 홈 화면 ████ -->
+<div id="appWelcome" class="hidden">
+  <div class="aw-logo">
+    <svg class="aw-logo-icon" viewBox="0 0 56 56" fill="none">
+      <circle cx="28" cy="28" r="25" stroke="#4b8cf5" stroke-width="2"/>
+      <path d="M11 44 Q28 6 45 44" stroke="#4b8cf5" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="28" cy="25" r="4" fill="#4b8cf5"/>
+      <circle cx="13" cy="41" r="2.5" fill="#2dd4a0" opacity=".9"/>
+      <circle cx="43" cy="41" r="2.5" fill="#f56565" opacity=".9"/>
+      <circle cx="28" cy="10" r="2.5" fill="#f6c23e" opacity=".9"/>
+    </svg>
+    <div class="aw-logo-name">Spray<em>Lab</em></div>
+    <div class="aw-logo-tag">YOUR SWING, VISUALIZED</div>
+  </div>
+  <div class="aw-main-btns">
+    <button class="aw-btn-start" onclick="hideAppWelcome();openGameWizard()">
+      <span style="font-size:26px;flex-shrink:0">⚾</span>
+      <div class="aw-btn-inner">
+        <span>경기 시작</span>
+        <span class="aw-btn-sub">새 경기 기록 시작</span>
+      </div>
+    </button>
+    <button class="aw-btn-load" onclick="hideAppWelcome();openLoad()">
+      <span style="font-size:20px;flex-shrink:0">📋</span>
+      <div class="aw-btn-inner">
+        <span>최근 경기 이어하기</span>
+        <span class="aw-btn-sub">저장된 경기 불러오기</span>
+      </div>
+    </button>
+    <button class="aw-btn-season" onclick="hideAppWelcome();openPlayerProfile()">
+      <span style="font-size:20px;flex-shrink:0">📅</span>
+      <div class="aw-btn-inner">
+        <span>시즌 보기</span>
+        <span class="aw-btn-sub" style="color:rgba(246,194,62,.6)">선수별 시즌 누적 성적</span>
+      </div>
+    </button>
+  </div>
+  <div class="mobile-aw-links">
+    <button onclick="hideAppWelcome();openGameWizard()">새 경기 시작</button>
+    <button onclick="hideAppWelcome();openLoad()">경기 불러오기</button>
+    <button onclick="hideAppWelcome();openPlayerProfile()">시즌 보기</button>
+  </div>
+  <div class="team-sel-bar">
+    <span class="tsb-label">현재 팀</span>
+    <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
+      <option value="">팀 없음</option>
+    </select>
+    <button class="tsb-new" onclick="openTeamCreate()">+ 팀 만들기</button>
+  </div>
+  <div class="aw-recent" id="awRecent"></div>
+  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 도움말 · 투어 · 설정</button>
+</div>
+
+<!-- ████ 공유된 팀 배너 ████ -->
+<div id="teamSharedBanner">
+  <div class="tsb-inner">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">🏟️ <span id="tsbTeamName">팀</span> 데이터</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:1px"><span id="tsbTeamGames"></span> 공유됨</div>
+    </div>
+    <button onclick="importSharedTeam()" style="padding:7px 14px;border:none;border-radius:7px;background:var(--accent);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent">가져오기</button>
+    <button onclick="document.getElementById('teamSharedBanner').style.display='none'" style="padding:7px 9px;border:1px solid var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:11px;font-family:var(--font);cursor:pointer;flex-shrink:0">✕</button>
+  </div>
+</div>
+
+<!-- ████ 팀 생성 모달 ████ -->
+<div id="teamCreateModal" onclick="if(event.target===this)closeTeamCreate()">
+  <div class="tcm-sheet">
+    <div class="tcm-title">🏟️ 팀 만들기</div>
+    <div class="tcm-sub">팀을 만들면 경기 저장 시 자동으로 기록됩니다</div>
+    <div class="tcm-label">팀명 *</div>
+    <input class="gw-inp" id="tcmName" placeholder="예: 성동 타이거즈" maxlength="15" style="margin-bottom:14px" onkeydown="if(event.key==='Enter')createTeam()">
+    <div class="tcm-label">홈구장 (선택)</div>
+    <input class="gw-inp" id="tcmStadium" placeholder="예: 목동야구장" maxlength="20" style="margin-bottom:14px">
+    <div class="tcm-label">팀 컬러</div>
+    <div class="tcm-color-row" id="tcmColorRow">
+      <div class="tcm-color-dot on" data-c="#4b8cf5" style="background:#4b8cf5" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#2dd4a0" style="background:#2dd4a0" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#f56565" style="background:#f56565" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#f6c23e" style="background:#f6c23e" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#a78bfa" style="background:#a78bfa" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#fb923c" style="background:#fb923c" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#ec4899" style="background:#ec4899" onclick="tcmPickColor(this)"></div>
+      <div class="tcm-color-dot" data-c="#64748b" style="background:#64748b" onclick="tcmPickColor(this)"></div>
+    </div>
+    <div class="tcm-btns">
+      <button class="tcm-btn-cancel" onclick="closeTeamCreate()">취소</button>
+      <button class="tcm-btn-ok" onclick="createTeam()">팀 생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ 더보기 바텀시트 ████ -->
+<div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
+  <div class="aw-more-sheet">
+    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
+      <span class="aw-more-item-icon">❓</span>도움말
+    </div>
+    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();startTour()">
+      <span class="aw-more-item-icon">🎯</span>투어 시작
+    </div>
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();exportFullReport()">
+      <span class="aw-more-item-icon">📊</span>전체 리포트 내보내기
+    </div>
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();goLanding()">
+      <span class="aw-more-item-icon">←</span>랜딩 화면으로
+    </div>
+    <button class="aw-more-cancel" onclick="awMoreClose()">취소</button>
+  </div>
+</div>
+
+<!-- ████ 경기 시작 마법사 ████ -->
+<div id="gameWizard" onclick="if(event.target===this)closeGameWizard()">
+  <div class="gw-card">
+    <div class="gw-title">⚾ 새 경기 시작</div>
+    <div class="mobile-gw-hint">이름 없이 바로 시작해도 돼요 ✓</div>
+    <div class="gw-sub">팀 이름을 입력하고 바로 기록을 시작하세요</div>
+    <div class="gw-field">
+      <div class="gw-label">우리 팀</div>
+      <div style="position:relative">
+        <input class="gw-inp" id="gwHome" placeholder="우리팀" maxlength="10"
+          oninput="gwAutoComplete('home',this.value)"
+          onblur="setTimeout(function(){var l=document.getElementById('gwHomeAc');if(l)l.classList.remove('show');},200)"
+          onkeydown="if(event.key==='Enter')document.getElementById('gwAway').focus()">
+        <div class="gw-ac-list" id="gwHomeAc"></div>
+      </div>
+    </div>
+    <div class="gw-field">
+      <div class="gw-label">상대 팀</div>
+      <div style="position:relative">
+        <input class="gw-inp" id="gwAway" placeholder="상대팀" maxlength="10"
+          oninput="gwAutoComplete('away',this.value)"
+          onblur="setTimeout(function(){var l=document.getElementById('gwAwayAc');if(l)l.classList.remove('show');},200)"
+          onkeydown="if(event.key==='Enter')startFromWizard()">
+        <div class="gw-ac-list" id="gwAwayAc"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="gw-load-recent" style="flex:1" onclick="closeGameWizard();showAppWelcome();openLoad()">📋 이전 경기 불러오기</button>
+      <button class="gw-load-recent" style="flex:1" onclick="applyLastLineup()">👥 이전 라인업</button>
+    </div>
+    <div class="gw-divider"></div>
+    <div class="gw-btns">
+      <button class="gw-btn-cancel" onclick="closeGameWizard();showAppWelcome()">← 취소</button>
+      <button class="gw-btn-start" onclick="startFromWizard()">기록 시작 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ 도움말 모달 ████ -->
+<div id="helpModal" onclick="if(event.target===this)closeHelpModal()">
+  <div class="hm-sheet">
+    <div class="hm-handle"></div>
+    <div class="hm-header">
+      <div class="hm-header-meta">
+        <div class="hm-header-title">도움말</div>
+        <span class="hm-header-count">10개 주제</span>
+      </div>
+      <button class="hm-close" onclick="closeHelpModal()">✕</button>
+    </div>
+    <!-- ① 타구 기록 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(0)">
+        <div class="hm-ch-icon">⚾</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">타구 기록</div><div class="hm-ch-sub">필드를 눌러 타구 방향을 저장합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc0">
+        <p>① <b>타자 선택</b> — 라인업에서 타자 이름을 탭<br>② <b>필드 탭</b> — 공이 떨어진 위치를 탭<br>③ <b>결과 선택</b> — 안타 / 2루타 / 아웃 / 삼진 등</p>
+        <p>⚡ 상단 <b>퀵버튼 바</b>로 안타·아웃·삼진·볼넷 즉시 기록</p>
+        <p>💡 팝업 <b>스와이프</b>: <kbd>→</kbd> 안타 &nbsp;<kbd>←</kbd> 아웃 &nbsp;<kbd>↑</kbd> 볼넷 &nbsp;<kbd>↓</kbd> 삼진</p>
+      </div>
+    </div>
+    <!-- ② 통계 보기 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(1)">
+        <div class="hm-ch-icon">📊</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">통계 보기</div><div class="hm-ch-sub">타율 / 출루율 / OPS를 자동 계산합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc1">
+        <p><b>AVG</b> 타율 = 안타 ÷ 타수 &nbsp;·&nbsp; <b>OBP</b> 출루율 = 볼넷 포함 출루 비율<br><b>SLG</b> 장타율 = 장타 파워 지표 &nbsp;·&nbsp; <b>OPS</b> = OBP + SLG</p>
+        <p>오른쪽 <b>타자</b> 탭 → 개인 통계 &nbsp;·&nbsp; <b>팀통계</b> 탭 → 팀 전체</p>
+      </div>
+    </div>
+    <!-- ③ 경기 운영 모드 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(2)">
+        <div class="hm-ch-icon">▶</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">경기 운영 모드<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타순·아웃카운트·이닝을 자동으로 진행합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc2">
+        <p>상단 툴바 <b>▶ 경기운영</b> 버튼을 탭하면 시작됩니다</p>
+        <p>기록할 때마다 <b>타순 자동 전진</b>, 3아웃 시 이닝 자동 전환, 상단 바에서 실시간 아웃카운트·베이스 확인</p>
+        <p><b>경기종료</b> 버튼 → 최종 요약 카드 표시</p>
+      </div>
+    </div>
+    <!-- ④ 약점 감지 & 패턴 분석 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(3)">
+        <div class="hm-ch-icon">⚡</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">약점 감지 &amp; 패턴 분석<span class="hm-new">자동</span></div><div class="hm-ch-sub">2타석 이상 기록하면 자동 분석합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc3">
+        <p><b>⚠️ 약점 카드</b> (최소 3타석): 코스 아웃률 70%↑ · 구종 삼진률 60%↑ · 방향 편중 80%↑</p>
+        <p><b>📊 패턴 분석</b> (타자 탭 하단): 타율 트렌드 · 출루 스타일 · 타구 방향 편중 · 강점 코스 자동 감지</p>
+        <p>타석이 늘어날수록 분석이 더 정확해집니다</p>
+      </div>
+    </div>
+    <!-- ⑤ 투수 분석 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(4)">
+        <div class="hm-ch-icon">🎯</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">투수 분석</div><div class="hm-ch-sub">상대 투수의 구종·코스·결과를 기록합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc4">
+        <p>오른쪽 패널 <b>투수</b> 탭에서 투수 등록 후 매 투구를 기록하세요</p>
+        <p>구종 비율 도넛차트 &amp; 코스 히트맵 자동 생성 · 피안타율·삼진율·볼 비율 통계 제공</p>
+      </div>
+    </div>
+    <!-- ⑥ 저장 & 공유 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(5)">
+        <div class="hm-ch-icon">📤</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">저장 &amp; 공유</div><div class="hm-ch-sub">QR과 링크로 경기 데이터를 공유합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc5">
+        <p>상단 툴바 <b>[저장]</b> 버튼으로 영구 저장 (가입·클라우드 불필요)</p>
+        <p><b>🔗 공유</b> → QR코드 + 링크 생성 &nbsp;·&nbsp; <b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장</p>
+      </div>
+    </div>
+    <!-- ⑦ 단축키 & 팁 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(6)">
+        <div class="hm-ch-icon">⌨️</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">단축키 &amp; 팁</div><div class="hm-ch-sub">빠른 기록을 위한 단축키와 팁</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc6">
+        <p><kbd>Ctrl+Z</kbd> 마지막 기록 취소 &nbsp;·&nbsp; <kbd>Ctrl+S</kbd> 빠른 저장</p>
+        <p>💡 메뉴 → <b>💡 안내 모드</b> — 버튼마다 설명 툴팁 표시<br>🏟️ 필드 탭 → 결과 팝업 자동 표시 &nbsp;·&nbsp; 📸 차트 탭 → PNG 공유</p>
+      </div>
+    </div>
+    <!-- ⑧ Savant 분석 뷰 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(7)">
+        <div class="hm-ch-icon">📱</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">Savant 분석 뷰<span class="hm-new">NEW</span></div><div class="hm-ch-sub">프로필 · 비교 · 스카우팅 리포트</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc7">
+        <p>하단 네비게이션으로 뷰를 전환합니다</p>
+        <p>👤 <b>프로필</b> — 선수 통산 AVG·OBP·SLG·OPS·wOBA·BABIP·ISO·K%·BB% + 경기별 타율 추이</p>
+        <p>⚡ <b>비교</b> — 두 선수 레이더 차트 + 17개 지표 나란히 비교 + 타구 방향 분포</p>
+        <p>🔍 <b>스카우트</b> — 존별 타율 히트맵 · 카운트별 성적 · 약점 분석 · 투구 전략 자동 제안 · 텍스트 리포트 복사</p>
+      </div>
+    </div>
+    <!-- ⑨ 스프레이 필터 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(8)">
+        <div class="hm-ch-icon">🔽</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">스프레이 필터<span class="hm-new">NEW</span></div><div class="hm-ch-sub">구종·결과·투수·카운트로 타구를 필터링합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc8">
+        <p>필드 아래 <b>필터</b> 버튼을 탭하면 필터 패널이 열립니다</p>
+        <p>• <b>구종</b> — 직구·슬라이더·커브·체인지업 등<br>• <b>결과</b> — 안타·홈런·삼진·땅볼 등<br>• <b>투수 손</b> — 우투·좌투<br>• <b>카운트</b> — 초구·투수 유리·타자 유리·풀카운트</p>
+        <p>복수 선택 가능, 필터 적용 시 스프레이차트와 통계가 실시간 반영됩니다</p>
+      </div>
+    </div>
+    <!-- ⑩ 타구 밀도 히트맵 -->
+    <div class="hm-card">
+      <div class="hm-ch" onclick="toggleHelpCard(9)">
+        <div class="hm-ch-icon">🌡️</div>
+        <div class="hm-ch-body"><div class="hm-ch-title">타구 밀도 히트맵<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타구가 몰리는 구역을 열지도로 시각화합니다</div></div>
+        <div class="hm-ch-arrow">▶</div>
+      </div>
+      <div class="hm-body" id="hmc9">
+        <p>우측 패널 <b>핫존 분석</b> 카드 아래 <b>🌡️ 타구 밀도 히트맵</b> 버튼을 탭하세요</p>
+        <p>타구가 집중된 구역일수록 빨간색으로 표시됩니다</p>
+        <p>필터와 함께 사용하면 특정 구종·카운트에서의 타구 패턴을 분석할 수 있습니다</p>
+      </div>
+    </div>
+    <div class="hm-tour-btns">
+      <button class="hm-tour-btn" onclick="closeHelpModal();startTour()">
+        <span class="hm-tour-icon">🎯</span>
+        <div class="hm-tour-btn-body"><div>앱 투어 시작</div><div class="hm-tour-btn-sub">화살표 가이드로 각 구역을 직접 설명</div></div>
+      </button>
+      <button class="hm-tour-btn" onclick="closeHelpModal();showTutorial()">
+        <span class="hm-tour-icon">📖</span>
+        <div class="hm-tour-btn-body"><div>슬라이드 튜토리얼</div><div class="hm-tour-btn-sub">3단계 입문 가이드 다시 보기</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ FAB 퀵 액션 ████ -->
+<div class="fab-wrap" id="fabWrap">
+  <div class="fab-pop" id="fabPop">
+    <button class="fab-pop-btn" onclick="fabRecord('안타');fabToggle()">안타</button>
+    <button class="fab-pop-btn" onclick="fabRecord('아웃');fabToggle()">아웃</button>
+    <button class="fab-pop-btn" onclick="fabRecord('삼진');fabToggle()">삼진</button>
+    <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
+    <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
+    <div class="fab-pop-sep"></div>
+    <button class="fab-pop-btn repeat" onclick="fabToggle();openQR()">📱 전체화면 기록</button>
+    <button class="fab-pop-btn repeat" onclick="undoLast();fabToggle()">⎌ 직전 취소</button>
+    <button class="fab-pop-btn repeat" onclick="fabEditLast();fabToggle()">✏️ 최근 수정</button>
+    <button class="fab-pop-btn danger" onclick="fabToggle();showPostGameReport()">🏁 경기 종료</button>
+  </div>
+  <button class="fab-btn" id="fabBtn" onclick="fabToggle()" data-help-title="⚡ FAB 퀵 액션" data-help="안타·아웃·삼진·볼넷을 즉시 기록하는 <b>플로팅 퀵 액션</b>입니다.<br>↩ 반복 버튼으로 바로 전 타석 결과를 그대로 반복 입력할 수 있습니다.">⚡</button>
+</div>
+
+<!-- ████ 도움말 모드 인디케이터 & 툴팁 ████ -->
+<div id="helpModeIndicator">💡 도움말 모드 ON</div>
+<div id="helpModeTooltip">
+  <div class="hmt-header">
+    <div class="hmt-title" id="hmtTitle"></div>
+    <button class="hmt-close" onclick="closeHelpModeTooltip()">✕</button>
+  </div>
+  <div class="hmt-desc" id="hmtDesc"></div>
+</div>
+
+<!-- ████ Game Flow 경기 종료 카드 ████ -->
+<div id="gfEndOv" onclick="if(event.target===this)gfEndClose()">
+  <div class="gfe-card" id="gfeCard"></div>
+</div>
+
+<!-- ████ 경기 종료 요약 ████ -->
+<div id="gameSummaryOv" onclick="if(event.target===this)closeGameSummary()">
+  <div class="gs-card" id="gameSummaryCard"></div>
+</div>
+
+<!-- ████ POST-GAME REPORT ████ -->
+<div id="pgFade"></div>
+<div id="pgReport">
+  <div id="pgSkeleton">
+    <div class="pg-skel" style="width:110px;height:11px"></div>
+    <div class="pg-skel" style="width:90px;height:46px;border-radius:10px;margin:2px 0"></div>
+    <div style="display:flex;gap:7px;margin-top:2px">
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+      <div class="pg-skel" style="width:66px;height:58px;border-radius:10px"></div>
+    </div>
+    <div class="pg-skel" style="width:220px;height:7px;border-radius:4px;margin-top:4px"></div>
+    <div class="pg-loading-txt">경기 분석 중...</div>
+  </div>
+  <div id="pgCard">
+    <div class="pg-hdr">
+      <button class="pg-hdr-close" onclick="closePgReport()">✕</button>
+      <div class="pg-badge-gold">GAME REPORT</div>
+      <div class="pg-teams" id="pgTeams"></div>
+      <div class="pg-score" id="pgScore"></div>
+      <div class="pg-date" id="pgDate"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-sec-lbl">팀 타격 성적</div>
+      <div class="pg-sg" id="pgStatGrid"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-sec-lbl">타구 방향 분포</div>
+      <div class="pg-dir" id="pgDirBar">
+        <div class="pg-dp" id="pgDP" style="flex:1"></div>
+        <div class="pg-dc" id="pgDC" style="flex:1"></div>
+        <div class="pg-do" id="pgDO" style="flex:1"></div>
+      </div>
+      <div class="pg-dl"><span id="pgDlPull"></span><span id="pgDlCtr"></span><span id="pgDlOppo"></span></div>
+    </div>
+    <div class="pg-mid">
+      <div class="pg-mini-wrap"><canvas id="pgMini" width="108" height="108"></canvas></div>
+      <div class="pg-insights" id="pgInsights"></div>
+    </div>
+    <div class="pg-ai">
+      <div class="pg-ai-lbl">📊 경기 코멘트</div>
+      <div class="pg-ai-txt" id="pgAITxt"></div>
+    </div>
+    <button class="pg-save" id="pgSaveBtn" onclick="pgDoSave()">💾 경기 저장</button>
+    <div class="pg-share-row">
+      <button class="pg-sh-btn acc" onclick="pgExport(1080,1920,'story')">📱 스토리 9:16</button>
+      <button class="pg-sh-btn" onclick="pgExport(1080,1080,'feed')">🖼 피드 1:1</button>
+    </div>
+  </div>
+</div>
+
+<header class="app-hdr">
+  <div class="app-brand" onclick="goHome()">
+    <svg viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="12.5" stroke="#4b8cf5" stroke-width="1.4"/>
+      <path d="M6 22 Q14 3 22 22" stroke="#4b8cf5" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <circle cx="14" cy="13" r="2.2" fill="#4b8cf5"/>
+      <circle cx="7.5" cy="20" r="1.4" fill="#2dd4a0" opacity=".9"/>
+      <circle cx="20.5" cy="20" r="1.4" fill="#f56565" opacity=".9"/>
+      <circle cx="14" cy="7" r="1.4" fill="#f6c23e" opacity=".9"/>
+    </svg>
+    <div><div class="app-brand-name">Spray<em>Lab</em></div><div class="app-brand-tag">YOUR SWING, VISUALIZED</div></div>
+  </div>
+  <div class="scoreboard">
+    <div class="team-blk"><input class="team-inp" id="tHome" value="홈팀" maxlength="6"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('h',-1)">−</button><span class="sc-val" id="scH" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.hs=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('h',1)">+</button></div></div>
+    <span class="vs">VS</span> 
+    <div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.as=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
+  </div>
+  <div id="appToolbar" style="display:flex;gap:6px;align-items:center">
+    <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
+    <span class="save-ind" id="saveInd"></span>
+    <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
+    <button class="btn btn-ghost" id="saveBtn" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
+    <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
+    <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
+    <button class="btn btn-ghost btn-primary" id="analysisPanelBtn" onclick="toggleAnalysisPanel()" title="분석 패널 열기/닫기" style="padding:4px 8px;font-size:10px" data-help-title="📊 분석 패널" data-help="우측 <b>분석 패널</b>을 열고 닫습니다.<br>차트·통계·투수 탭을 경기 중에 빠르게 확인하세요.">📊 분석</button>
+    <div class="more-menu-wrap" id="moreMenuWrap">
+      <button class="btn btn-ghost" onclick="toggleMoreMenu()" id="moreMenuBtn" style="padding:4px 12px;font-size:15px;letter-spacing:2px;line-height:1" title="더보기">···</button>
+      <div class="more-menu" id="moreMenu">
+        <button class="mm-item" onclick="exportCurrentGameToExcel();closeMoreMenu()">📥 엑셀 내보내기</button>
+        <button class="mm-item" onclick="shareGameLink();closeMoreMenu()" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.">🔗 공유</button>
+        <button class="mm-item" onclick="showPostGameReport();closeMoreMenu()" style="color:#f6c23e">📊 리포트</button>
+        <div class="mm-divider"></div>
+        <button class="mm-item" onclick="showHelpMenu();closeMoreMenu()">❓ 도움말</button>
+        <button class="mm-item btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내 모드</button>
+        <div class="mm-divider"></div>
+        <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- 모바일 액션바: 저장/불러오기/실행취소/더보기 — savant-nav 위에 고정 -->
+<div id="mobileActionBar">
+  <button class="mab-btn" onclick="openLoad()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>
+    불러오기
+  </button>
+  <button class="mab-btn mab-save" id="mabSaveBtn" onclick="saveGame()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+    저장
+  </button>
+  <button class="mab-btn" id="mabUndoBtn" onclick="undoLast()" disabled>
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 5.17 7"/></svg>
+    취소
+  </button>
+  <button class="mab-btn" onclick="exportCurrentGameToExcel()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    엑셀
+  </button>
+  <button class="mab-btn" onclick="mabMoreOpen()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    더보기
+  </button>
+</div>
+
+<!-- 모바일 투구입력 바텀시트 -->
+<div id="mobPitchModal" onclick="if(event.target===this)mobPitchSheetClose()"
+  style="display:none;position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.6);flex-direction:column;justify-content:flex-end">
+  <div style="background:#1a1a24;border-radius:16px 16px 0 0;border-top:1px solid #2a2a3a;padding:14px 14px max(28px,env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:#eef0f8">⚾ 투구 입력</div>
+      <button onclick="mobPitchSheetClose()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <!-- 구종 -->
+    <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">구종</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="mobPtChips">
+      <button class="mob-pt-chip" data-pt="직구" onclick="mobSelPt2(this,'직구')">직구</button>
+      <button class="mob-pt-chip" data-pt="싱커" onclick="mobSelPt2(this,'싱커')">싱커</button>
+      <button class="mob-pt-chip" data-pt="커터" onclick="mobSelPt2(this,'커터')">커터</button>
+      <button class="mob-pt-chip" data-pt="슬라이더" onclick="mobSelPt2(this,'슬라이더')">슬라이더</button>
+      <button class="mob-pt-chip" data-pt="스위퍼" onclick="mobSelPt2(this,'스위퍼')">스위퍼</button>
+      <button class="mob-pt-chip" data-pt="슬러브" onclick="mobSelPt2(this,'슬러브')">슬러브</button>
+      <button class="mob-pt-chip" data-pt="커브" onclick="mobSelPt2(this,'커브')">커브</button>
+      <button class="mob-pt-chip" data-pt="너클커브" onclick="mobSelPt2(this,'너클커브')">너클커브</button>
+      <button class="mob-pt-chip" data-pt="슬로우커브" onclick="mobSelPt2(this,'슬로우커브')">슬로우커브</button>
+      <button class="mob-pt-chip" data-pt="체인지업" onclick="mobSelPt2(this,'체인지업')">체인지업</button>
+      <button class="mob-pt-chip" data-pt="포크볼" onclick="mobSelPt2(this,'포크볼')">포크볼</button>
+      <button class="mob-pt-chip" data-pt="스플리터" onclick="mobSelPt2(this,'스플리터')">스플리터</button>
+      <button class="mob-pt-chip" data-pt="스크류볼" onclick="mobSelPt2(this,'스크류볼')">스크류볼</button>
+      <button class="mob-pt-chip" data-pt="너클볼" onclick="mobSelPt2(this,'너클볼')">너클볼</button>
+      <button class="mob-pt-chip" data-pt="이퓨스볼" onclick="mobSelPt2(this,'이퓨스볼')">이퓨스볼</button>
+      <button class="mob-pt-chip" data-pt="팜볼" onclick="mobSelPt2(this,'팜볼')">팜볼</button>
+    </div>
+    <!-- 스트라이크존 -->
+    <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">스트라이크 존</div>
+    <canvas id="mobZoneCanvas" width="120" height="120" style="cursor:crosshair;border-radius:6px;display:block;margin:0 auto"></canvas>
+    <div id="mobZoneLbl" style="font-size:9px;color:#6b7280;text-align:center;margin-top:4px">존을 탭해서 코스 기록</div>
+  </div>
+</div>
+
+<!-- 모바일 더보기 바텀시트 (단일 모달) -->
+<div id="mabMoreModal" onclick="if(event.target===this)mabMoreClose()"
+  style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);flex-direction:column;justify-content:flex-end;align-items:stretch">
+  <div style="background:#1a1a24;border-radius:16px 16px 0 0;border-top:1px solid #2a2a3a;padding:10px 0 max(28px,env(safe-area-inset-bottom))">
+    <div style="width:36px;height:4px;border-radius:2px;background:#2a2a3a;margin:0 auto 12px"></div>
+    <button class="mab-sheet-btn" onclick="exportCurrentGameToExcel();mabMoreClose()">📥 엑셀 내보내기</button>
+    <button class="mab-sheet-btn" onclick="shareGameLink();mabMoreClose()">🔗 공유</button>
+    <button class="mab-sheet-btn" onclick="showPostGameReport();mabMoreClose()">📊 리포트</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
+    <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" style="color:#6b7280" onclick="goHome();mabMoreClose()">← 홈으로</button>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 4px 0 0;flex-shrink:0" class="mob-batter-wrap">
+  <button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:5px 10px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:900;cursor:pointer;margin:4px 4px;line-height:1;-webkit-tap-highlight-color:transparent">＋</button>
+  <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
+</div>
+
+<!-- 더보기 바텀시트 (모바일 전용) -->
+<div id="mobMoreSheet" style="display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMobMoreSheet()">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;padding:16px 16px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
+      <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('pitcher',document.getElementById('tab-pitcher'))">⚾ 투수 분석</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+  </div>
+</div>
+
+<div id="mobPlayerModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">선수 관리</span>
+      <button onclick="closeMobPlayerModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="mobTeamHome" onclick="mobSwitchTeam('home')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer">🏠 홈팀</button>
+      <button id="mobTeamAway" onclick="mobSwitchTeam('away')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer">✈️ 원정팀</button>
+    </div>
+    <div id="mobPlayerList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700">선수 추가</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input id="mobPName" class="inp" placeholder="이름" maxlength="10" style="flex:1">
+      <input id="mobPNum" class="inp" placeholder="#번" maxlength="3" style="width:54px;text-align:center">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <select id="mobPPos" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+      <select id="mobPBH" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+      <button onclick="mobAddPlayerFromModal()" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px">추가</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-layout">
+  <div class="pnl-left">
+    <!-- 모바일 전용 투구입력 패널 -->
+    <div id="mobPitchPanel">
+      <!-- 너비 조절 버튼 -->
+      <div style="display:flex;width:100%;justify-content:space-between;padding:2px 2px 0">
+        <button onclick="mobPanelNarrow()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">◀</button>
+        <button onclick="mobPanelWide()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">▶</button>
+      </div>
+      <button id="mobPitchOpenBtn" onclick="mobPitchSheetOpen()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>투구<br>입력</span>
+      </button>
+      <div id="mobPtSelected" style="font-size:9px;color:var(--accent);text-align:center;padding:2px;min-height:14px;word-break:keep-all"></div>
+    </div>
+    <div class="pnl-resize-handle" id="lpResizeHandle"></div>
+    <div class="tabs" style="border-bottom: 1px solid var(--border); flex-shrink: 0;">
+      <div class="tab on" id="subtab-home" onclick="swLineupTab('home')" style="font-size:11px; padding:10px 4px; font-weight:700;">홈 라인업</div>
+      <div class="tab" id="subtab-away" onclick="swLineupTab('away')" style="font-size:11px; padding:10px 4px; font-weight:700;">원정 라인업</div>
+    </div>
+    <div class="pnl-hd"><span class="pnl-title" id="lineupTitle">홈팀 명단</span><span style="font-size:10px;color:var(--text3)" id="lpCount">0명</span></div>
+    <div class="lineup-list" id="lpList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">아래에서 선수를 추가하세요 ↓</div></div>
+    <div class="add-row">
+      <div style="display:flex;gap:5px">
+        <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
+        <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:54px;flex-shrink:0;text-align:center" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="btn btn-primary btn-icon mobile-quick-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
+      <button class="mobile-detail-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ 상세 설정 접기':'+ 상세 설정 (포지션·타석)'>+ 상세 설정 (포지션·타석)</button>
+      <div class="mobile-detail-row" style="display:flex;gap:5px">
+        <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+        <select class="inp" id="pBH" style="flex:1;padding:7px 6px;font-size:12px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+        <button class="btn btn-primary btn-icon mobile-detail-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pnl-center">
+    <div class="batter-bar" style="flex-wrap:wrap;gap:5px">
+  <div id="batterDisp" style="flex:1;min-width:120px"><span class="batter-empty">← 타자를 선택하세요</span></div>
+  <div class="count-board" id="countBoard">
+    <div class="cnt-grp" onclick="chCount('b')" title="볼 (+1)">
+      <div class="cnt-dots" id="cntBalls"><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'볼 (Ball)','스트라이크존 밖으로 던진 투구\n4개 누적되면 타자 볼넷(1루 진출)')" onmouseleave="hideTT()">B</div>
+    </div>
+    <div class="cnt-grp" onclick="chCount('s')" title="스트라이크 (+1)">
+      <div class="cnt-dots" id="cntStrikes"><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'스트라이크 (Strike)','존 안으로 투구되거나 타자가 헛스윙한 경우\n3개 누적되면 삼진 아웃')" onmouseleave="hideTT()">S</div>
+    </div>
+    <div class="cnt-grp" onclick="chCount('o')" title="아웃 (+1)">
+      <div class="cnt-dots" id="cntOuts"><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
+      <div class="cnt-lbl tt-underline" onmouseenter="showTT(this,'아웃 (Out)','현재 이닝의 아웃 카운트\n3개 누적되면 공수 교대')" onmouseleave="hideTT()">O</div>
+    </div>
+    <button class="cnt-reset" onclick="resetCount()" title="카운트 초기화">↺</button>
+  </div>
+  <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" onmouseenter="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" ontouchend="hideBtnTipDelay()">👤</button>
+  <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" onmouseenter="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" ontouchend="hideBtnTipDelay()">전체</button>
+  <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" ontouchend="hideBtnTipDelay()">🌡️</button>
+  <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
+</div>
+    <!-- ══════ Game Flow 상태 바 ══════ -->
+    <div id="gfBar">
+      <div class="gfb-inner">
+        <div class="gfb-inn" id="gfbInn">1회초</div>
+        <div class="gfb-outs">
+          <div class="gfb-out-dot" id="gfbO0"></div>
+          <div class="gfb-out-dot" id="gfbO1"></div>
+          <span class="gfb-out-lbl">OUT</span>
+        </div>
+        <div class="gfb-bases">
+          <div class="gfb-base gfb-base-2" id="gfbB2"></div>
+          <div class="gfb-base gfb-base-3" id="gfbB3"></div>
+          <div class="gfb-base gfb-base-1" id="gfbB1"></div>
+        </div>
+        <div class="gfb-batter" id="gfbBatter">타자 선택</div>
+        <div class="gfb-score" id="gfbScore">0:0</div>
+        <button class="gfb-end" onclick="gfEndConfirm()">경기종료</button>
+      </div>
+    </div>
+    <!-- 상단 고정 퀵버튼 바 -->
+    <div class="quick-bar" id="quickBar" data-help-title="⚡ 퀵버튼 바" data-help="필드를 탭하지 않고 결과만 <b>즉시 1탭으로 기록</b>하는 버튼입니다.<br>타자를 선택한 뒤 버튼을 탭하면 바로 기록됩니다:<br>• 안타(1B) · 아웃(G/O) · 삼진(K) · 볼넷(BB)">
+      <button class="qb-btn qb-hit" onclick="recQuick('안타')" title="안타 즉시 기록">안타<small>1B</small></button>
+      <button class="qb-btn qb-out" onclick="recQuick('땅볼 아웃')" title="아웃 즉시 기록">아웃<small>G/O</small></button>
+      <button class="qb-btn qb-k" onclick="recQuick('삼진')" title="삼진 즉시 기록">삼진<small>K</small></button>
+      <button class="qb-btn qb-bb" onclick="recQuick('볼넷')" title="볼넷 즉시 기록">볼넷<small>BB</small></button>
+    </div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
+    <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
+    <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
+    <button class="ib-drawer-toggle" id="ibToggleBtn" onclick="toggleInputBar()">▼ 투구·결과 입력</button>
+    <div id="ibBackdrop" onclick="toggleInputBar()" style="display:none;position:fixed;inset:0;z-index:199"></div>
+    <div class="input-bar">
+      <div class="ib-tabs-bar">
+        <button class="ib-tab on" id="ibt-pitch" onclick="swIbTab('pitch',this)">⚾ 투구 입력</button>
+        <button class="ib-tab" id="ibt-result" onclick="swIbTab('result',this)">✅ 타석 결과</button>
+      </div>
+      <div class="ib-tab-pnl on" id="ib-pnl-pitch">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div class="sec-lbl">투구 종류</div>
+            <div class="chips" id="ptGroup" style="flex-wrap:wrap;gap:3px 4px">
+              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">패스트볼</span>
+              <button class="chip" onclick="selChip(this,'pt','직구')" style="border-left:3px solid #e53935">직구</button>
+              <button class="chip" onclick="selChip(this,'pt','싱커')" style="border-left:3px solid #ff7043">싱커</button>
+              <button class="chip" onclick="selChip(this,'pt','커터')" style="border-left:3px solid #795548">커터</button>
+              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">오프스피드</span>
+              <button class="chip" onclick="selChip(this,'pt','체인지업')" style="border-left:3px solid #43a047">체인지업</button>
+              <button class="chip" onclick="selChip(this,'pt','포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
+              <button class="chip" onclick="selChip(this,'pt','스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
+              <button class="chip" onclick="selChip(this,'pt','스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
+              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">브레이킹볼</span>
+              <button class="chip" onclick="selChip(this,'pt','커브')" style="border-left:3px solid #29b6f6">커브</button>
+              <button class="chip" onclick="selChip(this,'pt','너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
+              <button class="chip" onclick="selChip(this,'pt','슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
+              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">슬라이더</span>
+              <button class="chip" onclick="selChip(this,'pt','슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
+              <button class="chip" onclick="selChip(this,'pt','스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
+              <button class="chip" onclick="selChip(this,'pt','슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
+              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">기타</span>
+              <button class="chip" onclick="selChip(this,'pt','너클볼')" style="border-left:3px solid #006994">너클볼</button>
+              <button class="chip" onclick="selChip(this,'pt','이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
+              <button class="chip" onclick="selChip(this,'pt','팜볼')" style="border-left:3px solid #888888">팜볼</button>
+            </div>
+          </div>
+          <div style="flex-shrink:0">
+            <div class="sec-lbl">코스</div>
+            <canvas id="ibZoneCanvas" width="110" height="110" style="cursor:crosshair;border-radius:5px;display:block"></canvas>
+            <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px" id="ibZoneLabel">탭하여 코스 기록</div>
+          </div>
+        </div>
+      </div>
+      <div class="ib-tab-pnl" id="ib-pnl-result"><div class="ib-row">
+        <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')" onmouseenter="showTT(this,'볼넷 (BB / 4볼)','투수가 스트라이크존 밖으로 4번 던지면\n타자는 자동으로 1루 진출\n\nBase on Balls')" onmouseleave="hideTT()">볼넷</button><button class="o-btn k" onclick="recOther('삼진')" onmouseenter="showTT(this,'삼진 (K / Strikeout)','스트라이크 3개로 타석 종료\n헛스윙 또는 존 통과로 스트라이크 누적')" onmouseleave="hideTT()">삼진</button><button class="o-btn hbp" onclick="recOther('사구')" onmouseenter="showTT(this,'사구 (HBP)','투수가 던진 공이 타자 몸에 맞은 경우\n볼넷처럼 1루로 자동 진루\n\nHit By Pitch')" onmouseleave="hideTT()">사구</button><button class="o-btn sac" onclick="recOther('희타')" onmouseenter="showTT(this,'희생번트 (SAC)','타자가 아웃되더라도\n주자를 다음 베이스로 진루시키는 번트\n\nSacrifice Bunt')" onmouseleave="hideTT()">희타</button><button class="o-btn sac" onclick="recOther('희비')" onmouseenter="showTT(this,'희생플라이 (SF)','외야 플라이 아웃으로\n3루 주자를 홈으로 불러들이는 타격\n\nSacrifice Fly')" onmouseleave="hideTT()">희비</button><button class="o-btn dp" onclick="recOther('병살')" onmouseenter="showTT(this,'병살 (DP / Double Play)','한 번의 플레이로 두 명이 아웃되는 상황\n주로 땅볼 → 2루 → 1루 순서로 발생')" onmouseleave="hideTT()">병살</button><button class="o-btn dp" onclick="recOther('내야안타')" onmouseenter="showTT(this,'내야안타 (Infield Hit)','내야에서 타구를 잡았지만\n타자가 1루에 먼저 도달한 안타')" onmouseleave="hideTT()">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="pnl-right">
+    <div class="tab-mode-bar" id="tabModeBar">
+      <button class="tmb-btn on" id="tmbGame" onclick="setTabMode('game',this)">⚾ 경기중</button>
+      <button class="tmb-btn" id="tmbPost" onclick="setTabMode('post',this)">📊 경기후</button>
+    </div>
+    <div class="tabs">
+      <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
+      <div class="tab" id="tab-batter" onclick="swTab('batter',this)" data-help-title="👤 타자 탭" data-help="선택한 타자의 <b>타율·출루율·장타율(OPS)</b>과 패턴 분석을 봅니다.<br>타격 방향 성향, 삼진·볼넷 비율, 약점 패턴을 자동으로 분석합니다.">👤 타자</div>
+      <div class="tab" id="tab-stat" onclick="swTab('stat',this)" data-help-title="📊 팀통계 탭" data-help="팀 전체 <b>타율·출루율·OPS</b>와 선수별 성적 순위를 비교합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>팀통계</div>
+      <div class="tab" id="tab-chart" onclick="swTab('chart',this)" data-help-title="📈 차트 탭" data-help="개인(9:16) · 팀(1:1) <b>성적카드 PNG</b>를 생성해 SNS에 공유합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
+      <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)" data-help-title="⚾ 투수 탭" data-help="상대 투수의 <b>구종·코스·결과</b>를 기록하고 분석합니다.<br>구종 비율 도넛차트와 코스 히트맵이 자동 생성됩니다.">⚾ 투수</div>
+      <div class="tab" id="tab-team" onclick="swTab('team',this);renderTeamDashboard()" style="white-space:nowrap">🏟️ 팀</div>
+      <div class="tab mobile-more-tab" id="tab-more" onclick="openMobMoreSheet()">··· 더보기</div>
+    </div>
+    <div class="tab-body">
+      <div class="tab-pnl on" id="pnl-rec">
+        <div class="rec-hd"><span class="rec-count" id="recCnt">기록 없음</span></div>
+        <div class="rec-player-nav"><button class="rpn-btn" onclick="shiftRecPlayer(-1)">◀</button><span class="rpn-label" id="rpnLabel">전체</span><button class="rpn-btn" onclick="shiftRecPlayer(1)">▶</button></div>
+        <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
+      </div>
+      <div class="tab-pnl" id="pnl-batter">
+        <div id="batter-analysis-placeholder" style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">← 좌측에서 타자를 선택하세요</div>
+        <div id="batter-analysis-content" style="display:none">
+          <div class="batter-stat-section">
+            <div class="bs-name" id="bsName">—</div>
+            <div class="stat-grid"><div class="stat-it"><div class="stat-v" id="bsAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타\n\n가장 기본적인 타자 평가 지표')" onmouseleave="hideTT()">타율</div></div><div class="stat-it"><div class="stat-v" id="bsOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함, 베이스에 나간 비율\nOn-Base Percentage\n\n0.350 이상이면 우수한 수치')" onmouseleave="hideTT()">출루율</div></div><div class="stat-it"><div class="stat-v" id="bsSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\nSlugging Percentage\n\n홈런=4점, 3루타=3점, 2루타=2점, 안타=1점\n0.400 이상이면 파워형 타자')" onmouseleave="hideTT()">장타율</div></div></div>
+            <div class="stat-grid" style="margin-top:6px"><div class="stat-it"><div class="stat-v-sm" id="bsAB">0</div><div class="stat-l">타수</div></div><div class="stat-it"><div class="stat-v-sm" id="bsH">0</div><div class="stat-l">안타</div></div><div class="stat-it"><div class="stat-v-sm" id="bsRBI">0</div><div class="stat-l">타점</div></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-title">코스 투구 기록</div>
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div style="font-size:9px;color:var(--text3);line-height:2.8;text-align:right"><div>높</div><div>중</div><div>낮</div></div>
+              <div class="zone-heat" id="bsZoneHeat"></div>
+              <div style="font-size:9px;color:var(--text3);line-height:2.8"><div>내</div><div>중</div><div>외</div></div>
+            </div>
+            <div style="font-size:9px;color:var(--text3);margin-top:5px">녹색=안타 빨간=아웃 (타구 시 코스 선택 시 기록됨)</div>
+            <div style="margin-top:8px">
+              <div style="font-size:9px;color:var(--text3);margin-bottom:4px">투구 위치 (타석별 누적)</div>
+              <canvas id="bsPitchCanvas" width="110" height="110" style="border-radius:5px;display:block"></canvas>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-title">타구 방향</div>
+            <div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="bdPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bdPullBar" style="height:3px"></div></div><div class="dir-lbl">당겨</div></div><div class="dir-bar-w"><div class="dir-pct" id="bdCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bdCtrBar" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="bdOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bdOppoBar" style="height:3px"></div></div><div class="dir-lbl">밀어</div></div></div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-title">타구 유형</div>
+            <div id="bsTypeList"></div>
+            <div style="font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:8px 0 4px">구종별 타율</div>
+            <div id="bsPitchTypes"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pnl" id="pnl-stat">
+        <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타')" onmouseleave="hideTT()">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함 출루 비율\n0.350 이상 = 우수')" onmouseleave="hideTT()">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\n홈런=4점 · 2루타=2점 · 안타=1점')" onmouseleave="hideTT()">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'OPS','출루율 + 장타율\n0.800 이상 = 우수한 타자\n\n종합 타격 능력을 나타내는 핵심 지표')" onmouseleave="hideTT()">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
+        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+        <div class="stat-card">
+          <div class="sc-title">타구 결과 분포</div>
+          <div id="resultDistBar" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
+        </div>
+        <div class="stat-card"><div class="sc-title">타구 유형</div><div class="donut-row"><canvas class="donut-cvs" id="donut"></canvas><div class="legend"><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>안타<span class="leg-pct" id="lp1">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>2루타<span class="leg-pct" id="lp2">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>3루타<span class="leg-pct" id="lp3">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>홈런<span class="leg-pct" id="lp4">0%</span></div><div class="leg-item"><div class="leg-dot" style="background:#374151"></div>아웃<span class="leg-pct" id="lp5">0%</span></div></div></div></div>
+        <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
+
+        <div id="advStatFilter" class="stat-filter"><button class="sf-btn on" onclick="setAdvFilter(null,this)">종합</button><button class="sf-btn" onclick="setAdvFilter('home',this)">홈팀</button><button class="sf-btn" onclick="setAdvFilter('away',this)">원정팀</button></div>
+        <div class="stat-card">
+          <div class="sc-title">심화 지표</div>
+          <div class="ext-stat-grid">
+            <div class="stat-it"><div class="stat-v" id="sWOBA">.---</div><div class="stat-l">wOBA</div></div>
+            <div class="stat-it"><div class="stat-v" id="sBABIP">.---</div><div class="stat-l">BABIP</div></div>
+            <div class="stat-it"><div class="stat-v-sm" id="sBBpct">--%</div><div class="stat-l">BB%</div></div>
+            <div class="stat-it"><div class="stat-v-sm" id="sKpct">--%</div><div class="stat-l">K%</div></div>
+          </div>
+          <div style="font-size:9px;color:var(--text3);line-height:1.6">wOBA=가중출루율 · BABIP=인플레이타율<br>BB%=볼넷율 · K%=삼진율</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="sc-title">구종별 성적</div>
+          <div id="pitchTypeTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="sc-title">코스 × 구종 교차분석</div>
+          <div id="zonePitchCross" style="overflow-x:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
+        </div>
+        <div class="stat-card" id="aiInsightCard">
+          <div class="sc-title">📊 패턴 분석 <span style="font-size:9px;color:var(--text3);font-weight:400;margin-left:4px">(규칙 기반 자동 분석)</span></div>
+          <div id="aiInsightList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">2타석 이상 기록하면 분석합니다</div></div>
+        </div>
+        <button class="adv-toggle-btn" id="advToggleBtn" onclick="toggleAdvanced()">
+          <span>▸ 고급 분석 (시즌·약점)</span>
+          <span class="adv-arr">▶</span>
+        </button>
+        <div id="advSection" class="closed" style="max-height:0">
+        <div class="stat-card" id="seasonCard">
+          <div class="sc-title">📅 시즌 누적 (저장된 경기)</div>
+          <div id="seasonSummary" style="font-size:11px;color:var(--text3);text-align:center;padding:8px">저장된 경기가 없습니다</div>
+          <div style="margin-top:8px">
+            <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 5경기 타율 추세</div>
+            <canvas id="recentTrend" height="50" style="width:100%;display:block;border-radius:6px"></canvas>
+          </div>
+        </div>
+        <div class="stat-card" id="weaknessCard">
+          <div class="sc-title">⚠️ 약점 패턴 감지</div>
+          <div id="weaknessList"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">타석을 기록하면 패턴을 분석합니다</div></div>
+        </div>
+        </div><!-- /advSection -->
+      </div>
+
+      <div class="tab-pnl" id="pnl-chart">
+        <div class="stat-card">
+          <div class="sc-title" style="margin-bottom:6px">스프레이차트 내보내기</div>
+          <div class="export-row">
+            <button class="ex-btn green" onclick="exportSprayPNG()">📷 스프레이차트 PNG</button>
+            <button class="ex-btn green" onclick="exportShareCard()">📊 성적 카드 이미지</button>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:5px;line-height:1.6">PNG로 저장 후 SNS·카카오톡에 공유하세요<br>성적 카드: 팀 통계 요약 이미지</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-title">👤 선수 시즌 프로필</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px">저장된 모든 경기에서 선수별 시즌 성적을 집계합니다</div>
+          <button class="ex-btn" onclick="openPlayerProfile()" style="width:100%">📊 시즌 선수별 성적 보기</button>
+        </div>
+        <div class="stat-card">
+          <div class="sc-title">📊 경기 비교</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <select class="inp" id="cmpGame1" style="flex:1;font-size:10px;padding:5px"><option value="">경기 1 선택</option></select>
+            <select class="inp" id="cmpGame2" style="flex:1;font-size:10px;padding:5px"><option value="">경기 2 선택</option></select>
+          </div>
+          <button class="ex-btn" onclick="runGameCompare()" style="width:100%;margin-bottom:8px">비교 실행</button>
+          <div id="cmpResult"></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-title">🔥 핫존 분석</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px">안타 발생 밀집 구역을 히트맵으로 표시합니다</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('hit')" id="hzHitBtn" style="flex:1">🟢 안타 핫존</button>
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('out')" id="hzOutBtn" style="flex:1">🔴 아웃 콜드존</button>
+            <button class="ex-btn" onclick="toggleHotZoneOverlay('hr')" id="hzHrBtn" style="flex:1">💥 장타 구역</button>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:5px">다시 클릭하면 오버레이 해제</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-title">카운트별 결과 히트맵</div>
+          <div id="countHeatmap"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록이 없습니다</div></div>
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:rgba(45,212,160,.35)"></div>안타/출루</div>
+            <div style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:rgba(245,101,101,.25)"></div>아웃/삼진</div>
+            <div style="display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text3)"><div style="width:8px;height:8px;border-radius:2px;background:rgba(167,139,250,.25)"></div>볼넷/사구</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="sc-title">이닝별 타격 성적</div>
+          <canvas id="inningChart" class="inn-canvas"></canvas>
+          <div class="chart-legend">
+            <div class="cl-item"><div class="cl-dot" style="background:#4b8cf5"></div>AB</div>
+            <div class="cl-item"><div class="cl-dot" style="background:#2dd4a0"></div>안타</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="sc-title">누적 타율 트렌드</div>
+          <div class="trend-cvs-wrap"><canvas id="avgTrendChart" class="trend-canvas"></canvas><div id="trendTip"></div></div>
+          <div class="chart-legend">
+            <div class="cl-item"><div class="cl-dot" style="background:#4b8cf5;border-radius:50%"></div>누적 AVG</div>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px">타석 순서별 누적 타율 변화</div>
+        </div>
+      </div>
+
+      <!-- ⚾ 투수 탭 패널 -->
+      <div class="tab-pnl" id="pnl-pitcher">
+        <!-- 투수 등록 -->
+        <div class="stat-card">
+          <div class="sc-title">투수 등록</div>
+          <div style="display:flex;gap:5px;margin-bottom:6px">
+            <input class="inp" id="pitcherName" placeholder="이름" style="flex:2">
+            <input class="inp" id="pitcherNum" placeholder="#번" style="flex:1;width:52px">
+            <button class="btn btn-primary" style="padding:6px 10px;font-size:12px" onclick="addPitcher()">+</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-bottom:8px" id="pitcherRoleChips">
+            <button class="chip" id="prole-SP" onclick="selPitcherRole(this,'SP')" style="font-size:10px;padding:3px 8px">SP 선발</button>
+            <button class="chip" id="prole-RP" onclick="selPitcherRole(this,'RP')" style="font-size:10px;padding:3px 8px">RP 계투</button>
+            <button class="chip" id="prole-CP" onclick="selPitcherRole(this,'CP')" style="font-size:10px;padding:3px 8px">CP 마무리</button>
+          </div>
+          <div class="pitcher-roster" id="pitcherRoster">
+            <div style="font-size:11px;color:var(--text3)">투수를 등록하세요</div>
+          </div>
+        </div>
+
+        <!-- 투구 기록 -->
+        <div class="stat-card">
+          <div class="sc-title">투구 기록</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px">현재 투수: <strong id="currentPitcherLabel" style="color:var(--accent)">미선택</strong></div>
+
+          <!-- [모바일] 퀵 입력 바 -->
+          <div class="mobile-pitch-quick-bar">
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-strike" onclick="recordPitch('스트라이크')">스트라이크<small>K</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-ball" onclick="recordPitch('볼')">볼<small>B</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-result" id="mobile-pitch-result-toggle" onclick="var d=document.getElementById('mobile-pitch-result-panel');d.classList.toggle('open');document.getElementById('mobile-pitch-result-toggle').textContent=d.classList.contains('open')?'타격결과 ▲':'타격결과 ▼'">타격결과 ▼</button>
+          </div>
+
+          <!-- [모바일] 타격결과 확장 패널 -->
+          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
+            <div class="pt-result-chips" style="margin-bottom:5px">
+              <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
+              <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
+              <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
+              <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+            </div>
+            <div class="pt-result-chips" style="margin-bottom:6px">
+              <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
+              <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
+              <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
+              <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+              <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+            </div>
+          </div>
+
+          <!-- [모바일] 구종·코스 토글 -->
+          <button class="mobile-pitch-collapse-toggle" id="mobile-pitch-collapse-toggle" onclick="var c=document.getElementById('mobile-pitch-collapse');c.classList.toggle('open');document.getElementById('mobile-pitch-collapse-toggle').textContent=c.classList.contains('open')?'▲ 구종·코스 접기':'＋ 구종·코스 입력'">＋ 구종·코스 입력</button>
+
+          <!-- 구종·코스 영역 (모바일: 기본 접힘 / 데스크톱: 항상 표시) -->
+          <div id="mobile-pitch-collapse" class="mobile-pitch-collapse">
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+              <!-- 왼쪽: 코스 캔버스 -->
+              <div style="flex-shrink:0">
+                <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-align:center">코스 (자유클릭)</div>
+                <canvas id="pitcherZoneCanvas" width="96" height="96" style="cursor:crosshair;border-radius:4px;display:block"></canvas>
+                <div style="font-size:8px;color:var(--text3);text-align:center;margin-top:2px" id="pitcherZoneLabel">—</div>
+              </div>
+              <!-- 오른쪽: 구종 + 결과 -->
+              <div style="flex:1;min-width:0">
+                <div style="font-size:9px;color:var(--text3);margin-bottom:4px">구종</div>
+                <!-- [모바일] 5개 그룹 버튼 -->
+                <div class="mobile-pitch-group-btns">
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'직구');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">직구계<small>직구·싱커·커터</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'슬라이더');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">슬라이더<small>SL·스위퍼·슬러브</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'커브');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">커브<small>CB·너클·슬로우</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'체인지업');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">체인지업<small>CH·포크·스플리터</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'너클볼');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">기타<small>너클·이퓨스·팜</small></button>
+                </div>
+                <!-- 기존 구종 칩 (데스크톱만 표시) -->
+                <div class="pitch-type-chips" id="pitcherPtChips">
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%">패스트볼</div>
+                  <button class="chip" onclick="selPitcherPt(this,'직구')" style="border-left:3px solid #e53935">직구</button>
+                  <button class="chip" onclick="selPitcherPt(this,'싱커')" style="border-left:3px solid #ff7043">싱커</button>
+                  <button class="chip" onclick="selPitcherPt(this,'커터')" style="border-left:3px solid #795548">커터</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">오프스피드</div>
+                  <button class="chip" onclick="selPitcherPt(this,'체인지업')" style="border-left:3px solid #43a047">체인지업</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
+                  <button class="chip" onclick="selPitcherPt(this,'포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">브레이킹볼</div>
+                  <button class="chip" onclick="selPitcherPt(this,'커브')" style="border-left:3px solid #29b6f6">커브</button>
+                  <button class="chip" onclick="selPitcherPt(this,'너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
+                  <button class="chip" onclick="selPitcherPt(this,'슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">슬라이더</div>
+                  <button class="chip" onclick="selPitcherPt(this,'슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">기타</div>
+                  <button class="chip" onclick="selPitcherPt(this,'너클볼')" style="border-left:3px solid #006994">너클볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'팜볼')" style="border-left:3px solid #888888">팜볼</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px">볼카운트</div>
+                <div class="pt-result-chips" style="margin-bottom:5px">
+                  <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
+                  <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
+                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
+                  <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
+                  <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
+                  <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">안타</div>
+                <div class="pt-result-chips" style="margin-bottom:5px">
+                  <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
+                  <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
+                  <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
+                  <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">기타</div>
+                <div class="pt-result-chips">
+                  <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+                  <button class="ptr-btn" onclick="recordPitch('삼중살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">삼중살</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 투구 로그</div>
+          <div class="pitch-log" id="pitchLog">
+            <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>
+          </div>
+        </div>
+
+        <!-- 투수별 통계 -->
+        <div class="stat-card">
+          <div class="sc-title">투수 통계</div>
+          <div id="pitcherStats">
+            <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수를 등록하고 투구를 기록하세요</div>
+          </div>
+        </div>
+      </div>
+      <!-- ████ 팀 대시보드 패널 ████ -->
+      <div class="tab-pnl" id="pnl-team">
+        <!-- 역할 스위처 -->
+        <div class="role-sw">
+          <button class="role-sw-btn" data-r="coach" onclick="setRole('coach')">👔 감독</button>
+          <button class="role-sw-btn on" data-r="scorer" onclick="setRole('scorer')">📋 기록원</button>
+          <button class="role-sw-btn" data-r="player" onclick="setRole('player')">⚾ 선수</button>
+        </div>
+        <!-- 팀 헤더 (JS로 렌더) -->
+        <div id="teamPanelHdr"></div>
+        <!-- 시즌 기록 -->
+        <div class="stat-card" id="teamSeasonCard">
+          <div class="sc-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>시즌 기록</span>
+            <div class="flow-bar" id="teamRecentFlow" title="최근 5경기"></div>
+          </div>
+          <div class="team-rec-strip" id="teamRecordStrip">
+            <div style="font-size:11px;color:var(--text3);text-align:center;width:100%;padding:8px 0">경기를 저장하면 자동 집계됩니다</div>
+          </div>
+        </div>
+        <!-- 리더보드 -->
+        <div class="stat-card" id="teamLeaderboardCard">
+          <div class="sc-title">리더보드</div>
+          <div class="ldr-tabs">
+            <button class="ldr-tab on" data-s="ops" onclick="renderTeamLeaderboard('ops')">OPS</button>
+            <button class="ldr-tab" data-s="avg" onclick="renderTeamLeaderboard('avg')">타율</button>
+            <button class="ldr-tab" data-s="hr" onclick="renderTeamLeaderboard('hr')">홈런</button>
+            <button class="ldr-tab" data-s="rbi" onclick="renderTeamLeaderboard('rbi')">타점</button>
+          </div>
+          <div id="teamLeaderboardBody"><div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">팀 경기를 기록하면 자동 집계됩니다</div></div>
+        </div>
+        <!-- 경기 히스토리 -->
+        <div class="stat-card" id="teamHistoryCard">
+          <div class="sc-title">경기 히스토리</div>
+          <div id="teamHistoryBody"><div style="font-size:11px;color:var(--text3);text-align:center;padding:12px">저장된 경기가 없습니다</div></div>
+        </div>
+        <!-- 팀 공유 -->
+        <div class="stat-card" id="teamShareCard">
+          <div class="sc-title">팀 공유</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">팀 정보와 경기 기록을 URL·QR로 공유합니다</div>
+          <div class="team-share-row">
+            <button class="team-share-btn" onclick="shareTeamURL()">🔗 URL 공유</button>
+            <button class="team-share-btn" onclick="shareTeamURL()">📱 QR 코드</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="hitOverlay">
+  <div class="modal" id="hitModal" style="position:relative;touch-action:none">
+    <div class="swipe-active-feedback" id="swipeFeedback"></div>
+    <div class="modal-title">타구 결과 입력</div>
+    <div class="modal-sub" id="hitSub">방향 정보 로딩 중...</div>
+    <div class="rbi-row"><span class="rbi-lbl">타점</span><button class="rbi-btn" onclick="chRbi(-1)">−</button><span class="rbi-val" id="rbiVal">0</span><button class="rbi-btn" onclick="chRbi(1)">+</button></div>
+    <div class="hit-grid">
+      <button class="hit-btn hb-hit" onclick="recHit('안타')">🟢 안타</button>
+      <button class="hit-btn hb-2b" onclick="recHit('2루타')">🔵 2루타</button>
+      <button class="hit-btn hb-3b" onclick="recHit('3루타')">🟡 3루타</button>
+      <button class="hit-btn hb-hr" onclick="recHit('홈런')">🔴 홈런</button>
+      <button class="hit-btn hb-fly" onclick="recHit('플라이 아웃')">↑ 플라이 아웃</button>
+      <button class="hit-btn hb-grd" onclick="recHit('땅볼 아웃')">↓ 땅볼 아웃</button>
+    </div>
+    <div class="swipe-hints">
+      <div class="sw-title">스와이프로 빠른 입력</div>
+      <div class="sw-hint"><span class="sw-arrow">→</span><span style="color:#2dd4a0">안타</span></div>
+      <div class="sw-hint"><span class="sw-arrow">←</span><span style="color:#94a3b8">아웃</span></div>
+      <div class="sw-hint"><span class="sw-arrow">↑</span><span style="color:#a78bfa">볼넷</span></div>
+      <div class="sw-hint"><span class="sw-arrow">↓</span><span style="color:#f56565">삼진</span></div>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="closeHit()">취소</button>
+  </div>
+</div>
+
+<div class="overlay" id="playerProfileOverlay">
+  <div class="modal" style="width:min(520px,96vw);max-height:88vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+      <div style="font-size:15px;font-weight:800">👤 시즌 선수 프로필</div>
+      <button class="btn btn-ghost" style="padding:4px 10px" onclick="closeOverlay('playerProfileOverlay')">✕</button>
+    </div>
+    <div id="playerProfileContent" style="flex:1"></div>
+  </div>
+</div>
+
+<div class="overlay" id="editRecOverlay">
+  <div class="modal" style="width:min(310px,96vw)">
+    <div class="modal-title">타석 기록 수정</div>
+    <div class="modal-sub">이닝·결과·구종·코스·타점을 수정하세요</div>
+    <input type="hidden" id="editRecId">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div><div class="sec-lbl" style="margin-bottom:4px">이닝</div><select class="inp" id="editInn"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">결과</div><select class="inp" id="editRes"><option>안타</option><option>내야안타</option><option>2루타</option><option>3루타</option><option>홈런</option><option>볼넷</option><option>사구</option><option>삼진</option><option>플라이 아웃</option><option>땅볼 아웃</option><option>희타</option><option>희비</option><option>병살</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">구종</div><select class="inp" id="editPt"><option value="">없음</option><option>직구</option><option>커브</option><option>슬라이더</option><option>체인지업</option><option>포크볼</option><option>커터</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">코스</div><select class="inp" id="editZone"><option value="">없음</option><option>내각 높음</option><option>중앙 높음</option><option>외각 높음</option><option>내각 중간</option><option>중앙 중간</option><option>외각 중간</option><option>내각 낮음</option><option>중앙 낮음</option><option>외각 낮음</option><option>볼 위</option><option>볼 아래</option><option>볼 내</option><option>볼 외</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">타구 방향</div><select class="inp" id="editDir"><option value="">없음</option><option value="LF">당겨치기(LF)</option><option value="LC">좌중간(LC)</option><option value="CF">센터(CF)</option><option value="RC">우중간(RC)</option><option value="RF">밀어치기(RF)</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">타점</div><div class="rbi-row" style="margin-bottom:0"><button class="rbi-btn" onclick="chEditRbi(-1)">−</button><span class="rbi-val" id="editRbiVal">0</span><button class="rbi-btn" onclick="chEditRbi(1)">+</button></div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveEditRec()">저장</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeOverlay('editRecOverlay')">취소</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="loadOverlay">
+  <div class="modal" style="width:min(380px,96vw);max-height:88vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="modal-title" style="margin-bottom:0">경기 불러오기</div>
+      <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;gap:4px" onclick="closeOverlay('loadOverlay');openOverlay('dataSettingsOverlay')" title="데이터 관리">⚙️ 데이터 관리</button>
+    </div>
+    <div id="saveList" style="max-height:340px;overflow-y:auto;margin-bottom:8px"></div>
+    <div style="border-top:1px solid var(--border2);padding-top:8px;margin-bottom:8px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px;gap:5px" onclick="scanHiddenAutosaves()">⏱ 임시저장 복구</button>
+      <div id="hiddenAutoList" style="margin-top:6px"></div>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('loadOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- 카드 컨텍스트 메뉴 (꾹 누르기) -->
+<div id="cardCtxBdrop" onclick="_ctxClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9199"></div>
+<div id="cardCtxSheet" style="position:fixed;bottom:-100%;left:0;right:0;max-width:480px;margin:0 auto;z-index:9200;background:var(--bg-card);border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));transition:bottom .24s cubic-bezier(.4,0,.2,1)">
+  <div id="cardCtxTitle" style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <button class="ctx-btn" onclick="_ctxRename()">✏️ 이름 변경</button>
+  <button class="ctx-btn" onclick="_ctxExcel()">📊 엑셀 내보내기</button>
+  <button class="ctx-btn" onclick="_ctxShare()">📤 파일 내보내기</button>
+  <button class="ctx-btn ctx-del" onclick="_ctxDelete()">🗑️ 삭제</button>
+  <button class="ctx-btn ctx-cancel" onclick="_ctxClose()">취소</button>
+</div>
+
+<!-- ⚙️ 데이터 관리 오버레이 -->
+<div class="overlay" id="dataSettingsOverlay">
+  <div class="modal" style="width:min(380px,96vw)">
+    <div class="modal-title" style="margin-bottom:14px">⚙️ 데이터 관리</div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">가져오기</div>
+      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
+        📥 파일에서 가져오기<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)">
+      </label>
+      <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;font-size:12px" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 붙여넣기로 가져오기';})()">📋 붙여넣기로 가져오기</button>
+      <div id="paste-area" style="display:none;margin-top:2px">
+        <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+      </div>
+      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
+        📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)">
+      </label>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding-top:10px;border-top:1px solid var(--border2)">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">내보내기</div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGames()">📤 전체 경기 파일로 내보내기</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGamesToExcel()">📊 전체 경기 엑셀로 내보내기</button>
+      <div style="font-size:9px;color:var(--text3);line-height:1.5">엑셀 서식: <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a></div>
+    </div>
+
+    <div style="padding-top:10px;border-top:1px solid var(--border2);margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">클라우드</div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+    </div>
+
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('dataSettingsOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- ☁️ CLOUD OVERLAY -->
+<div class="overlay" id="cloudOverlay">
+  <div class="modal" style="width:min(360px,96vw)">
+    <div class="modal-title" style="margin-bottom:4px">☁️ 팀 코드로 경기 공유</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px">같은 팀 코드를 쓰는 기기끼리 경기 기록을 자동으로 나눕니다</div>
+
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:6px">
+        <input id="teamCodeInput" type="text" placeholder="팀 코드 입력 (예: tigers2024)"
+          style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"
+          oninput="this.value=this.value.replace(/[^a-zA-Z0-9가-힣_-]/g,'').toLowerCase()"
+          onkeydown="if(event.key==='Enter')setTeamCode()">
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;white-space:nowrap" onclick="setTeamCode()">설정</button>
+      </div>
+      <div id="cloudTeamStatus" style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600"></div>
+    </div>
+
+    <!-- 연결 상태 -->
+    <div id="cloudConnStatus" style="font-size:11px;padding:9px 12px;border-radius:8px;background:var(--bg-raised);margin-bottom:12px;color:var(--text3)">팀 코드를 설정하면 동기화가 시작됩니다</div>
+
+    <button class="btn btn-ghost" id="cloudSyncBtn" style="width:100%;justify-content:center;font-size:13px;padding:11px;margin-bottom:12px" onclick="cloudSyncSmart()">
+      ☁️ 동기화
+    </button>
+
+    <div style="font-size:9px;color:var(--text3);line-height:1.8;margin-bottom:14px">
+      팀 코드를 아는 사람 누구나 경기를 볼 수 있습니다
+    </div>
+
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('cloudOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- 모바일 투구입력 왼쪽 고정 탭 -->
+<button id="mobileInputTab" onclick="toggleInputBar();this.classList.toggle('open')" style="display:none">⚾<span>투구입력</span></button>
+
+<!-- 빠른 기록 오버레이 -->
+<div class="qr-ov" id="qrOv">
+  <div class="qr-hdr">
+    <div class="qr-batter-wrap">
+      <div class="qr-bname" id="qrBname">타자를 선택하세요</div>
+      <div class="qr-bstat" id="qrBstat">—</div>
+    </div>
+    <button class="qr-close" onclick="closeQR()">✕ 닫기</button>
+  </div>
+  <div class="qr-inn-row">
+    <span class="qr-inn-lbl">이닝</span>
+    <select class="qr-inn-sel" id="qrInn" onchange="AS.inning=+this.value;var s=document.getElementById('innSel');if(s)s.value=this.value;var d=document.getElementById('innDisp');if(d)d.textContent=this.value+'회'"></select>
+  </div>
+  <!-- Primary: 4개 큰 버튼 (2×2) -->
+  <div class="qr-grid qr-grid-primary" id="qrPrimary">
+    <button class="qr-btn" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:2px solid rgba(75,140,245,.4)" onclick="qrField()">📍 필드<br>클릭<small>타구위치→결과</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.2);color:#2dd4a0;border:2px solid rgba(45,212,160,.45)" onclick="qrOther('볼넷')">볼넷<small>BB</small></button>
+    <button class="qr-btn" style="background:rgba(245,101,101,.16);color:#f56565;border:2px solid rgba(245,101,101,.38)" onclick="qrOther('삼진')">삼진<small>K</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.28);color:#2dd4a0;border:2px solid rgba(45,212,160,.55)" onclick="qrQuickHit('안타')">안타<small>1B · 위치생략</small></button>
+  </div>
+
+  <!-- 더보기 토글 버튼 -->
+  <button class="qr-more-toggle" id="qrMoreToggle" onclick="toggleQRMore()">＋ 2루타 · 홈런 · 병살 더보기</button>
+
+  <!-- Secondary: 경기 컨디션 + 추가 결과 (접혀 있음) -->
+  <div class="qr-grid qr-grid-secondary" id="qrSecondary" style="display:none">
+    <button class="qr-btn" style="background:rgba(75,140,245,.2);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.4)" onclick="qrQuickHit('2루타')">2루타<small>2B</small></button>
+    <button class="qr-btn" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.35)" onclick="qrQuickHit('3루타')">3루타<small>3B</small></button>
+    <button class="qr-btn" style="background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.35)" onclick="qrQuickHit('홈런')">홈런<small>HR</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('플라이 아웃')">플라이<br>아웃<small>F/O</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.2);color:#7c8898;border:1.5px solid rgba(67,76,94,.4)" onclick="qrOther('땅볼 아웃')">땅볼<br>아웃<small>G/O</small></button>
+    <button class="qr-btn" style="background:rgba(67,76,94,.15);color:#7c8898;border:1.5px solid rgba(67,76,94,.3)" onclick="qrOther('병살')">병살<small>DP</small></button>
+    <button class="qr-btn" style="background:rgba(251,146,60,.12);color:#fb923c;border:1.5px solid rgba(251,146,60,.25)" onclick="qrOther('사구')">사구<small>HBP</small></button>
+    <button class="qr-btn" style="background:rgba(167,139,250,.12);color:#a78bfa;border:1.5px solid rgba(167,139,250,.25)" onclick="qrOther('희타')">희타<small>SAC</small></button>
+    <button class="qr-btn" style="background:rgba(45,212,160,.1);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.25)" onclick="qrQuickHit('내야안타')">내야<br>안타<small>IH</small></button>
+  </div>
+</div>
+
+<!-- 공유 QR 모달 -->
+<div class="share-qr-ov" id="shareQROv">
+  <div class="share-qr-box">
+    <h3>경기 데이터 공유</h3>
+    <p class="share-qr-sub">QR 코드를 스캔하거나 링크를 복사해 팀원에게 공유하세요</p>
+    <div class="share-qr-wrap" id="shareQRWrap"></div>
+    <div class="share-qr-url" id="shareQRUrl"></div>
+    <button class="share-qr-copy" onclick="copyShareURL()">링크 복사</button>
+    <button class="share-qr-close" onclick="closeShareQR()">닫기</button>
+  </div>
+</div>
+
+<!-- 성적 카드 미리보기 모달 -->
+<div class="card-preview-ov" id="cardPreviewOv">
+  <div class="card-preview-box">
+    <div class="card-preview-tabs">
+      <button class="cpt-btn on" id="cptPersonal" onclick="switchCardType('personal',this)">개인 카드 (9:16)</button>
+      <button class="cpt-btn" id="cptTeam" onclick="switchCardType('team',this)">팀 카드 (1:1)</button>
+    </div>
+    <canvas class="card-preview-canvas" id="cardPreviewCanvas"></canvas>
+    <button class="card-dl-btn" onclick="downloadPreviewCard()">PNG 저장</button>
+    <button class="card-cancel-btn" onclick="closeCardPreview()">닫기</button>
+  </div>
+</div>
+
+
+</div>
+
+<div id="hitDetailCard" style="display:none;position:fixed;z-index:500;pointer-events:auto"></div>
+<div id="btnTooltip" style="display:none"></div>
+
+<div class="toast" id="toast">
+  <span id="toastTxt"></span>
+  <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 실행취소</button>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SAVANT VIEWS -->
+<!-- ═══════════════════════════════════════ -->
+
+<!-- Filter Bar for Spray Chart -->
+<div id="sprayFilterBar" class="filter-bar" style="display:none">
+  <div class="filter-group">
+    <span class="filter-label">타구</span>
+    <button class="filter-chip" data-group="hit" data-value="안타">안타</button>
+    <button class="filter-chip" data-group="hit" data-value="2루타">2루타</button>
+    <button class="filter-chip" data-group="hit" data-value="3루타">3루타</button>
+    <button class="filter-chip" data-group="hit" data-value="홈런">홈런</button>
+    <button class="filter-chip" data-group="hit" data-value="아웃">아웃</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">구종</span>
+    <button class="filter-chip" data-group="pitch" data-value="직구">직구</button>
+    <button class="filter-chip" data-group="pitch" data-value="싱커">싱커</button>
+    <button class="filter-chip" data-group="pitch" data-value="커터">커터</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬라이더">슬라이더</button>
+    <button class="filter-chip" data-group="pitch" data-value="스위퍼">스위퍼</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬러브">슬러브</button>
+    <button class="filter-chip" data-group="pitch" data-value="커브">커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="너클커브">너클커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬로우커브">슬로우커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="체인지업">체인지업</button>
+    <button class="filter-chip" data-group="pitch" data-value="포크볼">포크볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="스플리터">스플리터</button>
+    <button class="filter-chip" data-group="pitch" data-value="스크류볼">스크류볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="너클볼">너클볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="이퓨스볼">이퓨스볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="팜볼">팜볼</button>
+  </div>
+</div>
+
+<!-- Profile View -->
+<div id="profileView" class="savant-view">
+  <div class="savant-view-header">
+    <div class="svh-title">선수 프로필</div>
+    <div class="svh-sub">커리어 통산 성적</div>
+  </div>
+  <div id="profilePlayerList" class="profile-player-list"></div>
+  <div id="profileContent" class="profile-content">
+    <div class="empty-state">선수를 선택하세요</div>
+  </div>
+</div>
+
+<!-- Compare View -->
+<div id="compareView" class="savant-view">
+  <div class="savant-view-header">
+    <div class="svh-title">선수 비교</div>
+    <div class="svh-sub">두 선수의 성적을 비교합니다</div>
+  </div>
+  <div class="compare-selects">
+    <select id="compareSelect1" class="compare-select" onchange="runPlayerCompare()"></select>
+    <span class="compare-vs">VS</span>
+    <select id="compareSelect2" class="compare-select" onchange="runPlayerCompare()"></select>
+  </div>
+  <div id="compareResult" class="compare-result">
+    <canvas id="radarCanvas" width="280" height="280" style="display:block;margin:0 auto"></canvas>
+    <div id="compareTable" class="compare-table"></div>
+  </div>
+</div>
+
+<!-- Scout View -->
+<div id="scoutView" class="savant-view">
+  <div class="savant-view-header">
+    <div class="svh-title">스카우팅 리포트</div>
+    <div class="svh-sub">상대 타자 분석 · 투구 전략</div>
+  </div>
+  <div class="scout-player-select">
+    <select id="scoutPlayerSelect" class="compare-select" style="max-width:200px" onchange="generateScoutReport(this.value)"></select>
+  </div>
+  <div id="scoutContent" class="scout-content">
+    <div class="empty-state">분석할 선수를 선택하세요</div>
+  </div>
+</div>
+
+
+<!-- FIELD: Offline Banner -->
+<div id="fieldOfflineBanner">
+  <span>📵 오프라인 — 데이터는 기기에 안전하게 저장됩니다</span>
+  <span id="fieldOfflineCount" style="font-weight:400;opacity:.75"></span>
+</div>
+
+<!-- FIELD: Feedback Button & Modal -->
+<button id="fieldFeedbackBtn" onclick="fieldFeedbackOpen()">💬 피드백</button>
+
+<div id="fieldFeedbackModal" onclick="fieldFeedbackClose()">
+  <div class="ffm-sheet" onclick="event.stopPropagation()">
+    <div class="ffm-title">💬 현장 피드백</div>
+    <div class="ffm-tags" id="ffmTags">
+      <button class="ffm-tag" data-v="bug" onclick="ffmToggle(this)">🐛 오류</button>
+      <button class="ffm-tag" data-v="slow" onclick="ffmToggle(this)">🐌 느려요</button>
+      <button class="ffm-tag" data-v="ui" onclick="ffmToggle(this)">🎨 UI 불편</button>
+      <button class="ffm-tag" data-v="miss" onclick="ffmToggle(this)">✨ 기능 필요</button>
+      <button class="ffm-tag" data-v="good" onclick="ffmToggle(this)">⭐ 만족</button>
+    </div>
+    <textarea class="ffm-textarea" id="ffmText" rows="3" placeholder="자세한 내용 (선택)..."></textarea>
+    <div class="ffm-btns">
+      <button class="ffm-cancel" onclick="fieldFeedbackClose()">취소</button>
+      <button class="ffm-send" onclick="fieldFeedbackSubmit()">전송</button>
+    </div>
+  </div>
+</div>
+
+<!-- ARCH: Autosave Recovery Banner -->
+<div id="archRecoveryBanner">
+  <div class="arch-rec-title">⚡ 미저장 기록이 발견됐습니다</div>
+  <div class="arch-rec-sub" id="archRecoveryCount">이전 기록을 복구할 수 있습니다</div>
+  <div class="arch-rec-btns">
+    <button class="arch-rec-btn primary" onclick="archRecoverAutosave()">복구하기</button>
+    <button class="arch-rec-btn" onclick="archDismissRecovery()">무시</button>
+  </div>
+</div>
+
+<!-- ARCH: Debug Panel (localhost only) -->
+<div id="archDebugPanel" style="display:none">
+  <div class="arch-dbg-hdr">
+    <span class="arch-dbg-title">SprayLab Debug</span>
+    <button class="arch-dbg-close" onclick="SL.debug(false)">✕</button>
+  </div>
+  <div id="archDebugBody"></div>
+</div>
+
+<!-- ═══ Bottom Navigation ═══ -->
+<nav id="savantNav" class="savant-nav">
+  <button class="savant-nav-btn active" data-view="record" onclick="switchSavantView('record',this)"
+    data-help-title="⏺ 기록 탭" data-help="타구를 필드에 찍고 결과를 입력하는 <b>메인 기록 화면</b>입니다.<br>라인업 선택 → 필드 탭 → 결과 입력 순서로 진행합니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2.5"/></svg>
+    기록
+  </button>
+  <button class="savant-nav-btn" data-view="spray" onclick="switchSavantView('spray',this)"
+    data-help-title="📍 스프레이 탭" data-help="기록된 타구의 <b>스프레이 차트</b>를 크게 봅니다.<br>당김·중앙·밀어 비율과 타구 분포를 한눈에 확인합니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17L10 3l7 14"/><path d="M6 12h8"/></svg>
+    스프레이
+  </button>
+  <button class="savant-nav-btn" data-view="profile" onclick="switchSavantView('profile',this)"
+    data-help-title="👤 프로필 탭" data-help="선수의 <b>모든 경기 통산 성적</b>을 집계합니다.<br>AVG · OBP · SLG · OPS · wOBA · BABIP · ISO · K% · BB%<br>경기별 타율 추이 그래프도 확인할 수 있습니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="7" r="4"/><path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
+    프로필
+  </button>
+  <button class="savant-nav-btn" data-view="compare" onclick="switchSavantView('compare',this)"
+    data-help-title="⚡ 비교 탭" data-help="두 선수를 <b>나란히 비교</b>합니다.<br>레이더 차트 · 17개 지표 테이블 · 타구 방향 · 최근 타율 추이를 한 화면에서 볼 수 있습니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="14" rx="1"/><rect x="11" y="3" width="7" height="14" rx="1"/></svg>
+    비교
+  </button>
+  <button class="savant-nav-btn" data-view="scout" onclick="switchSavantView('scout',this)"
+    data-help-title="🔍 스카우트 탭" data-help="상대 타자의 <b>약점을 분석하고 투구 전략을 제안</b>합니다.<br>존별 타율 히트맵 · 카운트별 성적 · 방향 분포 · 최근 타석 기록을 종합해 리포트를 생성합니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2l4 4-9 9-4 1 1-4z"/><path d="M12 6l4 4"/></svg>
+    스카우트
+  </button>
+</nav>
+
+<script>
+// 왼쪽 패널 너비 조절
+var _mobPanelWidths = [55, 80, 110, 150];
+function _getMobPanelW() {
+  return parseInt(localStorage.getItem('sl_lp_w_mob')) || 90;
+}
+function _setMobPanelW(w) {
+  var al = document.querySelector('.app-layout');
+  if (al) al.style.setProperty('--lp-w', w + 'px');
+  try { localStorage.setItem('sl_lp_w_mob', w); } catch(e) {}
+}
+function mobPanelNarrow() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.slice().reverse().find(function(w){ return w < cur; });
+  if (!next) next = _mobPanelWidths[0];
+  _setMobPanelW(next);
+}
+function mobPanelWide() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.find(function(w){ return w > cur; });
+  if (!next) next = _mobPanelWidths[_mobPanelWidths.length - 1];
+  _setMobPanelW(next);
+}
+// 저장값 복원
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.innerWidth <= 720) {
+    var saved = parseInt(localStorage.getItem('sl_lp_w_mob'));
+    if (saved >= 55 && saved <= 150) _setMobPanelW(saved);
+  }
+});
+
+// 모바일 투구입력 바텀시트
+function mobPitchSheetOpen() {
+  var m = document.getElementById('mobPitchModal');
+  if (!m) return;
+  m.style.display = 'flex';
+  // 현재 선택된 구종 표시
+  var cur = window.AS && window.AS.pt;
+  document.querySelectorAll('#mobPtChips .mob-pt-chip').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pt === cur);
+  });
+  // 존 캔버스 초기화
+  setTimeout(function(){
+    var c = document.getElementById('mobZoneCanvas');
+    if (c && typeof _drawZoneCanvas === 'function') {
+      _drawZoneCanvas(c, [], true);
+      if (!c._mobZoneInited) {
+        c._mobZoneInited = true;
+        c.addEventListener('click', function(e){
+          if (typeof _zoneCanvasClick !== 'function') return;
+          _zoneCanvasClick(e, c, function(zone){
+            if (window.AS) window.AS.zone = zone;
+            var lbl = document.getElementById('mobZoneLbl');
+            if (lbl) lbl.textContent = zone ? '선택: ' + zone : '존을 탭해서 코스 기록';
+            _drawZoneCanvas(c, [], true);
+            if (typeof ibZoneRedraw === 'function') ibZoneRedraw();
+          });
+        });
+      }
+    }
+  }, 50);
+}
+function mobPitchSheetClose() {
+  var m = document.getElementById('mobPitchModal');
+  if (m) m.style.display = 'none';
+}
+function mobSelPt2(btn, pt) {
+  var prev = window.AS && window.AS.pt;
+  if (window.AS) window.AS.pt = (prev === pt) ? null : pt;
+  var newPt = window.AS && window.AS.pt;
+  document.querySelectorAll('#mobPtChips .mob-pt-chip').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pt === newPt);
+  });
+  // 데스크톱 ptGroup 동기화
+  document.querySelectorAll('#ptGroup .chip').forEach(function(c){
+    var match = c.getAttribute('onclick') && c.getAttribute('onclick').indexOf("'"+pt+"'") !== -1;
+    c.classList.toggle('on', !!match && !!newPt);
+  });
+  // 왼쪽 패널 선택 표시
+  var disp = document.getElementById('mobPtSelected');
+  if (disp) disp.textContent = newPt || '';
+}
+
+// 모바일 더보기 바텀시트
+function mabMoreOpen() {
+  var m = document.getElementById('mabMoreModal');
+  if (!m) return;
+  m.style.display = 'flex';
+}
+function mabMoreClose() {
+  var m = document.getElementById('mabMoreModal');
+  if (m) m.style.display = 'none';
+}
+
+// FAB 자유 드래그 — #fabWrap, #qrFab 공통 적용
+function _makeDraggable(el, ignoreSelector) {
+  if (!el) return;
+  var startX, startY, startL, startT, moved;
+  el.style.touchAction = 'none';
+
+  function onStart(cx, cy, pid) {
+    var r = el.getBoundingClientRect();
+    // right/bottom → left/top 으로 변환
+    el.style.left   = r.left + 'px';
+    el.style.top    = r.top  + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+    startX = cx; startY = cy;
+    startL = r.left; startT = r.top;
+    moved  = false;
+    if (pid != null) { try { el.setPointerCapture(pid); } catch(e){} }
+  }
+
+  function onMove(cx, cy) {
+    var dx = cx - startX, dy = cy - startY;
+    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    moved = true;
+    var W = el.offsetWidth  || 60;
+    var H = el.offsetHeight || 60;
+    var x = Math.max(0, Math.min(window.innerWidth  - W, startL + dx));
+    var y = Math.max(0, Math.min(window.innerHeight - H, startT + dy));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+  }
+
+  el.addEventListener('pointerdown', function(e) {
+    if (ignoreSelector && e.target.closest(ignoreSelector)) return;
+    e.preventDefault();
+    onStart(e.clientX, e.clientY, e.pointerId);
+    el.addEventListener('pointermove', onPM);
+    el.addEventListener('pointerup',   onPU);
+    el.addEventListener('pointercancel', onPU);
+  }, {passive: false});
+
+  function onPM(e) { onMove(e.clientX, e.clientY); }
+  function onPU(e) {
+    el.removeEventListener('pointermove', onPM);
+    el.removeEventListener('pointerup',   onPU);
+    el.removeEventListener('pointercancel', onPU);
+    // 드래그 아니면 click 이벤트 직접 발생 (팝업 열기)
+    if (!moved) el.click();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
+  _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
+
+});
+</script>
+<script defer src="js/core.js?v=31"></script>
+<script type="module" src="js/app.js?v=10"></script>
+</body>
+</html>

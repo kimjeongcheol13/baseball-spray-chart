@@ -5575,8 +5575,9 @@ function gfNextHalf(){
   GF.batterIdx=0;
   // 공수 전환: 공격팀 탭 자동 전환
   var nextTeam=GF.half==='top'?'home':'away';
-  AS.curTeam=nextTeam;
-  swLineupTab(nextTeam);
+  // AS.curTeam을 먼저 바꾸면 swLineupTab이 early return하므로 순서 중요
+  AS.curTeam = nextTeam==='home'?'away':'home'; // 임시로 반대 팀으로 설정
+  swLineupTab(nextTeam); // 이제 team이 다르므로 renderLP/renderMob 정상 실행
   var lu=gfGetLineup();
   if(lu.length)selBatter(lu[0].id);
   requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});

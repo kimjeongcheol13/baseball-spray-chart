@@ -335,6 +335,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* grid + margin은 태블릿/PC 전용 */
 @media(min-width:721px){
   .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) 280px;grid-template-rows:1fr;margin-right:54px}
+  /* SCOREBOARD 축소 */
+  .scoreboard{gap:6px;padding:4px 10px}
+  .team-blk{gap:3px}
+  .team-inp{width:44px;font-size:11px}
+  .sc-ctrl{gap:3px}
+  .sc-val{font-size:15px;min-width:22px}
+  .sc-btn{font-size:12px;padding:0 3px}
 }
 
 /* LEFT */

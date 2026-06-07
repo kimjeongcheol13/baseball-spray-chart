@@ -334,6 +334,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .app-layout{flex:1;min-height:0;overflow:hidden}
 /* grid + margin은 태블릿/PC 전용 */
 @media(min-width:721px){
+  #app-page{height:100vh;overflow:hidden;display:flex;flex-direction:column}
   .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) minmax(280px,1fr);grid-template-rows:1fr;margin-right:54px}
   /* SCOREBOARD 축소 */
   .scoreboard{gap:6px;padding:4px 10px}

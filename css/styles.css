@@ -621,7 +621,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .tab{flex:0 0 auto;padding:10px 10px}
 }
 @media(min-width:721px) and (max-width:740px){
-  .app-layout{grid-template-columns:1fr 340px}
+  .app-layout{grid-template-columns:1fr 280px}
   .pnl-left{display:none}
   .tabs{overflow-x:auto;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}

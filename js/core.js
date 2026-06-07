@@ -967,6 +967,7 @@ function logPitchAction(){
   AS.zoneHistory[AS.zone].push({pt:AS.pt,symbol:symbol});
   AS.currentPitches.push({zone:AS.zone,pt:AS.pt,x:AS.zoneX||null,y:AS.zoneY||null});
   refreshZoneDisplay();
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
 }
 
 function refreshZoneDisplay(){

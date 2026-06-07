@@ -130,30 +130,30 @@
     img.src = url;
   }
 
-  // 긴 수직·수평 검정 선 → 흰색으로 교체 (표 격자선 제거)
+  // 표 격자선 제거 — 픽셀 밀도 기반 (안티앨리어싱에 강함)
   function _removeTableLines(ctx, w, h) {
     var id = ctx.getImageData(0, 0, w, h);
     var d  = id.data;
 
-    // 그레이스케일 맵
+    // 그레이스케일
     var gray = new Uint8Array(w * h);
     for (var i = 0; i < w * h; i++) {
       gray[i] = (77*d[i*4] + 150*d[i*4+1] + 29*d[i*4+2]) >> 8;
     }
 
-    var DARK = 110;           // 이 밝기 이하 = 어두운 픽셀
-    var V_MIN = h * 0.20;     // 세로선 최소 길이 (높이의 20%)
-    var H_MIN = w * 0.20;     // 가로선 최소 길이 (너비의 20%)
-    var PAD   = 3;            // 선 주변 여백 (px)
+    // 이진화 (임계값 180 — 안티앨리어싱된 회색 선도 검정으로 처리)
+    var bin = new Uint8Array(w * h);
+    for (var j = 0; j < gray.length; j++) {
+      bin[j] = gray[j] < 180 ? 0 : 255; // 0=검정, 255=흰색
+    }
 
-    // 수직선 제거
+    var PAD = 4;
+
+    // 수직선: 열(column) 내 검정 픽셀 비율이 25% 이상이면 선으로 판단
     for (var x = 0; x < w; x++) {
-      var maxRun = 0, run = 0;
-      for (var y = 0; y < h; y++) {
-        if (gray[y*w+x] < DARK) { if(++run > maxRun) maxRun = run; }
-        else run = 0;
-      }
-      if (maxRun >= V_MIN) {
+      var dark = 0;
+      for (var y = 0; y < h; y++) { if (bin[y*w+x] === 0) dark++; }
+      if (dark / h >= 0.25) {
         for (var y2 = 0; y2 < h; y2++) {
           for (var dx = -PAD; dx <= PAD; dx++) {
             var xx = x+dx; if (xx<0||xx>=w) continue;
@@ -164,14 +164,12 @@
       }
     }
 
-    // 수평선 제거
+    // 수평선: 행(row) 내 검정 픽셀 비율이 40% 이상이면 선으로 판단
+    // (텍스트 행은 40% 미만 — 헤더 배경바만 제거)
     for (var yr = 0; yr < h; yr++) {
-      var maxRunH = 0, runH = 0;
-      for (var xr = 0; xr < w; xr++) {
-        if (gray[yr*w+xr] < DARK) { if(++runH > maxRunH) maxRunH = runH; }
-        else runH = 0;
-      }
-      if (maxRunH >= H_MIN) {
+      var darkH = 0;
+      for (var xr = 0; xr < w; xr++) { if (bin[yr*w+xr] === 0) darkH++; }
+      if (darkH / w >= 0.40) {
         for (var xr2 = 0; xr2 < w; xr2++) {
           for (var dy = -PAD; dy <= PAD; dy++) {
             var yy = yr+dy; if (yy<0||yy>=h) continue;

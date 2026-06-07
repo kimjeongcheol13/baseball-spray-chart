@@ -17,6 +17,8 @@
     '3루':'3루','3B':'3루','삼루':'3루',
     '유격':'유격','유':'유격','SS':'유격',
     '좌익':'좌익','좌':'좌익','LF':'좌익',
+    // L→4 OCR 오독 보정
+    '4F':'좌익','1F':'좌익','IF':'좌익',
     '중견':'중견','중':'중견','CF':'중견',
     '우익':'우익','우':'우익','RF':'우익',
     'DH':'DH','지명':'DH','지명타자':'DH',
@@ -24,13 +26,22 @@
 
   function normalizePos(raw) {
     if (!raw) return '';
-    var t = raw.trim(), u = t.toUpperCase();
+    // 영숫자만 추출해서 검색 (소문자도 대문자로)
+    var clean = raw.replace(/[^A-Za-z0-9가-힣]/g,'');
+    var t = clean.trim(), u = t.toUpperCase();
+    if (!t) return '';
     if (POS_MAP[t]) return POS_MAP[t];
     if (POS_MAP[u]) return POS_MAP[u];
+    // 앞부분 일치 (DHA→DH, PA→P 등 뒤에 노이즈 붙은 경우)
     for (var k in POS_MAP) {
-      if (t.startsWith(k) || u.startsWith(k.toUpperCase())) return POS_MAP[k];
+      if (u.startsWith(k.toUpperCase())) return POS_MAP[k];
     }
-    return t;
+    // 마지막 1자 제거 후 재시도 (PA→P, DHA→DH)
+    if (t.length > 1) {
+      var shorter = u.slice(0, -1);
+      if (POS_MAP[shorter]) return POS_MAP[shorter];
+    }
+    return clean.trim();
   }
 
   // ─── OCR.space API ────────────────────────────
@@ -124,17 +135,18 @@
       var cell = _cleanCell(raw);
       if (!cell) return;
 
-      // 한글 이름 후보 (포지션 단어 + 차단 단어 제외)
-      var koM = cell.match(/[가-힣]{2,4}/g);
+      // 한글 이름 후보 — {2,3} 사용 (4자 매칭 시 OCR 노이즈 포함 방지)
+      // 예: 김정철선 → {2,3} → 김정철 ✓
+      var koM = cell.match(/[가-힣]{2,3}/g);
       if (koM) {
         koM.forEach(function(m) {
           if (!POS_MAP[m] && !BLOCKED[m] && m.length > name.length) name = m;
         });
       }
 
-      // 포지션: 영문 코드 (DHA→DH 등 노이즈 처리)
+      // 포지션: 영문+숫자 코드 (4F→LF, DHA→DH, PA→P 등)
       if (!pos) {
-        var eng = cell.replace(/[^A-Za-z]/g,'').toUpperCase();
+        var eng = cell.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
         var pn = normalizePos(eng);
         if (pn && pn !== eng) pos = pn;
       }

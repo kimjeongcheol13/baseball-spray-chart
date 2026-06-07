@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=47">
+<link rel="stylesheet" href="css/styles.css?v=48">
 <link rel="stylesheet" href="css/features.css?v=23">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-M0XVPN7YC1"></script>
@@ -942,6 +942,10 @@
 
 <!-- 모바일 액션바: 저장/불러오기/실행취소/더보기 — savant-nav 위에 고정 -->
 <div id="mobileActionBar">
+  <button class="mab-btn mab-pitch" onclick="mobPitchSheetOpen()" id="mabPitchBtn">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    투구입력
+  </button>
   <button class="mab-btn" onclick="openLoad()">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>
     불러오기

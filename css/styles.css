@@ -1773,6 +1773,8 @@ nav i {
 .mab-btn:disabled { opacity: 0.35; pointer-events: none; }
 .mab-save { color: var(--green); }
 .mab-save svg { stroke: var(--green); }
+.mab-pitch { color: #4b8cf5; }
+.mab-pitch svg { stroke: #4b8cf5; }
 /* 모바일 투구입력 패널 (왼쪽 칸) */
 #mobPitchPanel{
   display:none;

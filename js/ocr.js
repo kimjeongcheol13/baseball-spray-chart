@@ -173,6 +173,17 @@
     players.sort(function(a,b){
       if(a.order!=null&&b.order!=null) return a.order-b.order; return 0;
     });
+
+    // order가 null인 선수는 앞 선수 다음 번호로 채움
+    // (OCR이 타순 열을 빠뜨렸을 때 대비)
+    var seq = 0;
+    players.forEach(function(p) {
+      if (p.order != null) { seq = p.order; }
+      else { seq++; p.order = seq; }
+      // 배번이 없고 타순과 같은 숫자인 경우 배번도 채움 (ex: 타순2=배번2)
+      // → 이미 num에 값이 있으면 그대로 유지
+    });
+
     return players;
   }
 

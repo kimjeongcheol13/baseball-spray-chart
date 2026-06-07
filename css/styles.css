@@ -353,6 +353,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .mobile-detail-toggle{display:none!important}
   .mobile-detail-row{display:flex!important}
   .mobile-detail-add{display:flex!important}
+  #curPitchBadge{display:none!important}
 }
 
 /* LEFT */

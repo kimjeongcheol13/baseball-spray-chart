@@ -290,7 +290,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .btn-icon{padding:7px;border-radius:8px}
 
 /* LAYOUT */
-.app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) 280px;grid-template-rows:1fr;flex:1;min-height:0;overflow:hidden}
+.app-layout{display:grid;grid-template-columns:var(--lp-w,220px) minmax(0,1fr) 280px;grid-template-rows:1fr;flex:1;min-height:0;overflow:hidden}
 @media(min-width:721px){.app-layout{margin-right:54px}}
 
 /* LEFT */

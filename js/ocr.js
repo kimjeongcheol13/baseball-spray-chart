@@ -53,7 +53,7 @@
     var url = URL.createObjectURL(file);
     var img = new Image();
     img.onload = function() {
-      var MAX = 900;
+      var MAX = 1400;
       var scale = img.width > MAX ? MAX / img.width : 1;
       var w = Math.round(img.width * scale);
       var h = Math.round(img.height * scale);
@@ -63,9 +63,12 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
       ctx.imageSmoothingQuality = 'high';
+      // 대비·선명도 향상으로 OCR 인식률 개선
+      ctx.filter = 'contrast(1.3) brightness(1.05) saturate(0)';
       ctx.drawImage(img, 0, 0, w, h);
+      ctx.filter = 'none';
       URL.revokeObjectURL(url);
-      cb(cvs.toDataURL('image/jpeg', 0.92));
+      cb(cvs.toDataURL('image/jpeg', 0.95));
     };
     img.onerror = function(){ URL.revokeObjectURL(url); cb(null); };
     img.src = url;
@@ -208,7 +211,10 @@
 
     // ── 2. 순서 배정 (null은 앞 번호+1) ─────────
     players.sort(function(a,b){
-      if(a.order!=null&&b.order!=null) return a.order-b.order; return 0;
+      if(a.order!=null&&b.order!=null) return a.order-b.order;
+      if(a.order!=null) return -1;
+      if(b.order!=null) return 1;
+      return 0;
     });
     var seq = 0;
     players.forEach(function(p) {

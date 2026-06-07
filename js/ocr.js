@@ -35,60 +35,91 @@
   }
 
   // ─── Text parser ──────────────────────────────
-  var SKIP_RE = /타순|위치|성명|배번|선발|라인업|lineup|line.?up|gyeryong|gyeong|구장|감독|감덕/i;
+  var SKIP_RE = /타순|위치|성명|배번|선발|라인업|lineup|line.?up|gyeryong|구장|감독|vs\s/i;
 
-  function parseOcrText(text) {
+  // OCR 노이즈 문자 제거
+  function _cleanOcr(text) {
+    return text
+      .replace(/[←↵↩⏎＜]/g, ' ')        // 워드 단락 기호
+      .replace(/[—–]{2,}/g, ' ')          // 긴 대시
+      .replace(/[{}()\[\]™®©°]/g, ' ')    // 괄호류
+      .replace(/[_~`^*%#@!$&=+\\]/g, ' ') // 특수문자
+      .replace(/\s{2,}/g, ' ');
+  }
+
+  function parseOcrText(rawText) {
+    var text = _cleanOcr(rawText);
     var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
     var players = [];
 
     lines.forEach(function(line) {
       if (SKIP_RE.test(line)) return;
 
+      // ── 파이프 구분 셀 처리 (| 이 포함된 표 행) ──
+      if (line.indexOf('|') >= 0) {
+        var cells = line.split(/\|/).map(function(c){ return c.trim(); }).filter(Boolean);
+        var name = '', pos = '', num = '', order = null;
+        cells.forEach(function(cell) {
+          // 한글 이름
+          var koM = cell.match(/[가-힣]{2,4}/g);
+          if (koM) {
+            koM.forEach(function(m) {
+              if (!POS_MAP[m] && m.length >= name.length) name = m;
+            });
+          }
+          // 영문 포지션
+          var ep = cell.match(/^(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B|C|P)$/i);
+          if (ep) { var pn = normalizePos(ep[0].toUpperCase()); if (pn) pos = pn; }
+          // 한글 포지션
+          if (!pos) {
+            var pn2 = normalizePos(cell);
+            if (pn2 && pn2 !== cell) pos = pn2;
+          }
+          // 숫자
+          var nm = cell.match(/^\d{1,3}$/);
+          if (nm) {
+            var n = parseInt(nm[0]);
+            if (n >= 1 && n <= 9 && order === null) order = n;
+            else if (n > 0) num = nm[0];
+          }
+        });
+        if (name) { players.push({ order:order, name:name, pos:pos, num:num, bh:'' }); }
+        return;
+      }
+
+      // ── 일반 라인 처리 ─────────────────────────
       var nameMatches = line.match(/[가-힣]{2,4}/g);
       if (!nameMatches) return;
 
-      // 포지션 단어 제외하고 이름 후보 선택
-      var name = '';
+      var name2 = '';
       nameMatches.forEach(function(m) {
-        if (POS_MAP[m]) return;
-        if (m.length > (name.length)) name = m;
+        if (!POS_MAP[m] && m.length > name2.length) name2 = m;
       });
-      if (!name && nameMatches.length) name = nameMatches[0];
-      if (!name || name.length < 2) return;
+      if (!name2 || name2.length < 2) return;
 
       var nums = line.match(/\d+/g) || [];
-      var order = null, num = '';
+      var order2 = null, num2 = '';
       if (nums.length === 1) {
-        var n = parseInt(nums[0]);
-        if (n >= 1 && n <= 9) order = n; else num = nums[0];
+        var nv = parseInt(nums[0]);
+        if (nv >= 1 && nv <= 9) order2 = nv; else num2 = nums[0];
       } else if (nums.length >= 2) {
-        order = parseInt(nums[0]);
-        num = nums[nums.length - 1];
-        if (nums.length === 2 && nums[0] === nums[1]) num = '';
+        order2 = parseInt(nums[0]);
+        num2 = nums[nums.length - 1];
+        if (nums[0] === nums[nums.length-1]) num2 = nums.length>1 ? nums[1] : '';
       }
 
       var posRaw = '';
-      // 영문 포지션 코드 먼저 찾기 (DH, C, SS, LF, CF, RF, SP 등)
-      var engPos = line.match(/\b(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B)\b/i);
-      if (engPos) { posRaw = normalizePos(engPos[0].toUpperCase()); }
-      // 한글 포지션
+      var engPos = line.match(/\b(DH|SP|RP|SS|LF|CF|RF|1B|2B|3B|[CP])\b/);
+      if (engPos) posRaw = normalizePos(engPos[0].toUpperCase());
       if (!posRaw) {
         line.split(/\s+/).forEach(function(tok) {
-          if (!tok || tok === name || /^\d+$/.test(tok)) return;
-          var n2 = normalizePos(tok);
-          if (n2 && n2 !== tok) posRaw = n2;
+          if (!tok || tok === name2 || /^\d+$/.test(tok)) return;
+          var n3 = normalizePos(tok);
+          if (n3 && n3 !== tok) posRaw = n3;
         });
       }
-      // 이름 앞 텍스트에서 포지션 추출
-      if (!posRaw) {
-        var idx = line.indexOf(name);
-        if (idx > 0) {
-          var before = line.substring(0, idx).replace(/\d/g,'').trim();
-          if (before) posRaw = normalizePos(before);
-        }
-      }
 
-      players.push({ order:order, name:name, pos:posRaw||'', num:num||'', bh:'' });
+      players.push({ order:order2, name:name2, pos:posRaw||'', num:num2||'', bh:'' });
     });
 
     players.sort(function(a,b){
@@ -213,25 +244,28 @@
       if (err) { doneCb(err, null); return; }
       setStatus('한국어 언어팩 다운로드 중... (~10MB, 최초 1회)', 12);
 
-      // ★ createWorker 방식 사용 (v4 권장, 경로 자동)
+      // ★ createWorker — langPath를 jsdelivr로 명시 (tessdata.projectnaptha.com 느림/차단 우회)
       var worker;
       try {
         Tesseract.createWorker('kor+eng', 1, {
+          langPath: 'https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0',
           logger: function(m) {
-            if (m.status === 'loading tesseract core')        setStatus('OCR 코어 초기화...', 15);
-            if (m.status === 'loading language traineddata')  setStatus('언어팩 로딩 중... ' + Math.round((m.progress||0)*100) + '%', 15 + Math.round((m.progress||0)*60));
-            if (m.status === 'recognizing text')              setStatus('글자 인식 중... ' + Math.round((m.progress||0)*100) + '%', 75 + Math.round((m.progress||0)*20));
+            if (m.status === 'loading tesseract core')
+              setStatus('OCR 코어 초기화...', 15);
+            if (m.status === 'loading language traineddata')
+              setStatus('🇰🇷 한국어 데이터 로딩 중... ' + Math.round((m.progress||0)*100) + '% (최초 1회 ~5초)', 15 + Math.round((m.progress||0)*60));
+            if (m.status === 'recognizing text')
+              setStatus('글자 인식 중... ' + Math.round((m.progress||0)*100) + '%', 75 + Math.round((m.progress||0)*20));
           }
         }).then(function(w) {
           worker = w;
-          // PSM 6: 균일 텍스트 블록 — 표 형태 인식에 적합
+          // PSM 6: 균일 블록 — 표 형태에 적합
           return w.setParameters({ tessedit_pageseg_mode: '6' }).then(function(){ return w.recognize(dataUrl); });
         }).then(function(result) {
           if (worker) worker.terminate();
           doneCb(null, result.data.text);
         }).catch(function(e) {
           if (worker) try{ worker.terminate(); }catch(x){}
-          // fallback: 구형 API
           _fallbackRecognize(dataUrl, doneCb);
         });
       } catch(e2) {

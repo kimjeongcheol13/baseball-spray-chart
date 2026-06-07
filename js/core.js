@@ -5171,6 +5171,12 @@ function startFromWizard(){
   // 타자 표시 초기화
   var bd=document.getElementById('batterDisp');
   if(bd)bd.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  // 자동저장 복구 데이터 완전 삭제 (새 경기 시작 시 복구 배너 안 뜨도록)
+  storageManager.cancelPendingAutosave();
+  storageManager.clearRecovery();
+  // 복구 배너 강제 숨김
+  var rb=document.getElementById('archRecoveryBanner');
+  if(rb){rb.classList.add('arch-rec-hidden');rb.style.display='none';}
 
   document.getElementById('tHome').value=home;
   document.getElementById('tAway').value=away;
@@ -5188,6 +5194,8 @@ function startFromWizard(){
     delete AS._pendingAwayLineup;
   }
   renderLP();renderMob();
+  updateAll();
+  refreshZoneDisplay();
   // Ensure field canvas is drawn after overlays are dismissed
   requestAnimationFrame(function(){
     var w=document.getElementById('cwrap');
@@ -5197,8 +5205,7 @@ function startFromWizard(){
     drawField();safeRender();
   });
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
-  var hasLineup=(AS.home_lineup.length||AS.away_lineup.length);
-  showToast(hasLineup?'이전 라인업을 불러왔습니다. 바로 기록하세요':'경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
+  showToast('새 경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
 }
 
 function gwAutoComplete(team,val){

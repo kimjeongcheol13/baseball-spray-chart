@@ -333,7 +333,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .app-layout{flex:1;min-height:0;overflow:hidden}
 /* grid + margin은 태블릿/PC 전용 */
 @media(min-width:721px){
-  .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) 280px;grid-template-rows:1fr;margin-right:54px}
+  .app-layout{display:grid;grid-template-columns:var(--lp-w,280px) minmax(0,1fr) 360px;grid-template-rows:1fr;margin-right:54px}
 }
 
 /* LEFT */
@@ -606,13 +606,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .cl-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 /* ?? 以묎컙 ?붾㈃ ?ш린 ???(釉뚮씪?곗? 諛섏そ ?? ?? */
 @media(min-width:721px) and (max-width:960px){
-  .app-layout{grid-template-columns:160px minmax(0,1fr) 340px}
+  .app-layout{grid-template-columns:240px minmax(0,1fr) 340px}
   .app-hdr{flex-wrap:wrap;height:auto;padding:6px 10px;row-gap:4px}
   .scoreboard{flex-shrink:1;padding:4px 8px;gap:5px}
   .sc-val{font-size:16px}
 }
 @media(min-width:721px) and (max-width:820px){
-  .app-layout{grid-template-columns:140px minmax(0,1fr) 320px}
+  .app-layout{grid-template-columns:200px minmax(0,1fr) 320px}
   .app-brand-tag{display:none}
   .inn-sel{display:none}
   .btn{padding:5px 9px;font-size:11px}

@@ -1208,14 +1208,18 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gfb-out-lbl{font-size:8px;color:var(--text3);letter-spacing:.4px;margin-left:1px}
 /* ?ㅼ씠?꾨が??踰좎씠??*/
 .gfb-bases{position:relative;width:34px;height:24px;flex-shrink:0}
-.gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s}
+.gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .gfb-base.on{background:#f6c23e;border-color:#f6c23e}
+.gfb-base:active{opacity:.6}
 .gfb-base-2{left:50%;margin-left:-4px;top:0}
 .gfb-base-3{left:0;top:50%;margin-top:-4px}
 .gfb-base-1{right:0;top:50%;margin-top:-4px}
 /* ???/ ?ㅼ퐫??*/
 .gfb-batter{flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);flex-shrink:0}
+.gfb-score-ctrl{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)}
+.gfb-sc-btn{background:rgba(246,194,62,.1);border:1px solid rgba(246,194,62,.25);color:#f6c23e;border-radius:4px;font-size:12px;font-weight:800;width:20px;height:20px;line-height:1;cursor:pointer;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;transition:all .1s}
+.gfb-sc-btn:active{opacity:.6;transform:scale(.9)}
 /* 寃쎄린醫낅즺 踰꾪듉 */
 .gfb-end{background:rgba(245,101,101,.13);border:1px solid rgba(245,101,101,.3);color:#f56565;border-radius:6px;font-size:9px;font-weight:800;padding:4px 8px;cursor:pointer;flex-shrink:0;font-family:var(--font);min-height:26px;letter-spacing:.3px;transition:all .12s;-webkit-tap-highlight-color:transparent}
 .gfb-end:active{opacity:.7;transform:scale(.94)}

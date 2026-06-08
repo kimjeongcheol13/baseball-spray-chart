@@ -5614,6 +5614,20 @@ function _GF_IS_OUT(res){
   return['삼진','플라이 아웃','땅볼 아웃','희타','희비','병살'].includes(res);
 }
 
+// ─── 주자 토글 (베이스 클릭) ───
+function gfToggleBase(idx){
+  if(!GF.active)return;
+  GF.bases[idx]=!GF.bases[idx];
+  requestAnimationFrame(function(){gfUpdateBar();});
+}
+
+// ─── 공격팀 득점 +/- ───
+function gfScoreAtk(d){
+  if(!GF.active)return;
+  chSc(GF.half==='top'?'h':'a',d);
+  requestAnimationFrame(function(){gfUpdateBar();});
+}
+
 // ─── 아웃 & 이닝 전환 ───
 function gfNextHalf(){
   if(GF.half==='top'){GF.half='bottom';}

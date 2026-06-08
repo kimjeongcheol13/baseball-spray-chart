@@ -4040,7 +4040,7 @@ function shareGameLink(){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,t:a.team,ba:a.bats||'R',
+      ft:a.ft,t:a.team,ba:a.bats||'R',tm:a.ts||'',
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -4163,7 +4163,7 @@ function _restoreAbsFromPayload(payloadAbs){
     x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null,
     ev:a.ev!=null?a.ev:null,
     inn:a.i||'1회초',
-    ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
     count:a.cnt?{b:a.cnt.b||0,s:a.cnt.s||0,o:a.cnt.o||0}:{b:0,s:0,o:0},
     pitches:(a.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone};})
   };});

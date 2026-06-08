@@ -1726,6 +1726,8 @@ nav i {
 #mobileActionBar {
   display: none; /* JS showApp() 후 모바일에서만 표시 */
 }
+/* 홈 화면에서 mobileActionBar 숨김 */
+body.on-welcome #mobileActionBar { display: none !important; }
 @media (max-width: 720px) {
   /* 헤더 툴바 숨김 */
   #appToolbar { display: none !important; }

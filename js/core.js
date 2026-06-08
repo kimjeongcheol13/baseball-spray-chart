@@ -4992,10 +4992,12 @@ function showAppWelcome(){
   el.classList.remove('hidden');
   el.style.display='';
   el.style.pointerEvents='';
-  // 홈 화면에서 mobileActionBar 숨김 (로고 가림 방지)
+  // 홈 화면에서 savantNav / mobileActionBar 숨김
   document.body.classList.add('on-welcome');
   var mab=document.getElementById('mobileActionBar');
   if(mab)mab.style.display='none';
+  var nav=document.getElementById('savantNav');
+  if(nav)nav.style.display='none';
   _updateMobAwLinks();
   renderAwRecent();
   // 홈으로 돌아왔을 때 복구 배너 재확인
@@ -5014,6 +5016,8 @@ function hideAppWelcome(){
   document.body.classList.remove('on-welcome');
   var mab=document.getElementById('mobileActionBar');
   if(mab)mab.style.display='';
+  var nav=document.getElementById('savantNav');
+  if(nav)nav.style.display='flex';
   history.pushState({page:'game'},'','');
   // 게임 화면으로 전환 시 복구 배너를 즉시 숨김
   var banner=document.getElementById('archRecoveryBanner');

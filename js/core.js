@@ -234,7 +234,7 @@ function ftuAddPlayer(){
   if(!nm)return;
   var num=(document.getElementById('ftuPlayerNum').value||'').trim();
   if(!AS.home_lineup)AS.home_lineup=[];
-  var p={id:Date.now(),name:nm,num:num||(AS.home_lineup.length+1)+'',pos:'',bh:'',isStarter:true};
+  var p={id:Date.now()+Math.random(),name:nm,num:num||(AS.home_lineup.length+1)+'',pos:'',bh:'',isStarter:true};
   AS.home_lineup.push(p);
   if(typeof renderLP==='function')renderLP();
   if(typeof renderMob==='function')renderMob();
@@ -765,7 +765,7 @@ function addPlayer(){
   const pos=(document.getElementById('pPos')||{}).value||'';
   if(!n)return;
   const bh=(document.getElementById('pBH')||{}).value||'';
-  const p={id:Date.now(),name:n,num,pos,bh,isStarter:true};
+  const p={id:Date.now()+Math.random(),name:n,num,pos,bh,isStarter:true};
   getActiveLineup().push(p);
   document.getElementById('pName').value='';
   document.getElementById('pNum').value='';

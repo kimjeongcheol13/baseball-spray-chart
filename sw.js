@@ -1,6 +1,6 @@
-// SprayLab Service Worker v15
+// SprayLab Service Worker v14
 // 새로고침만으로 최신 파일 반영 — HTML은 항상 no-cache, 나머지는 stale-while-revalidate
-const CACHE_NAME = 'spraylab-v15';
+const CACHE_NAME = 'spraylab-v14';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting(); // 즉시 활성화

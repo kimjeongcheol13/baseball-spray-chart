@@ -5,8 +5,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SprayLab — 방문 통계</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#0f0f17;color:#eef0f8;font-family:'Segoe UI',sans-serif;padding:24px 16px;min-height:100vh}
@@ -61,35 +63,76 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ── Firebase 설정 (발급받은 값으로 교체) ──────────────────────
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+// ─────────────────────────────────────────────────────────────
 
-async function load() {
-  const { data, error } = await sb.from('visits').select('*').order('ts', { ascending: false });
-  if (error || !data) { document.getElementById('lastUpdated').textContent = '데이터를 불러올 수 없습니다.'; return; }
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 
-  const now = Date.now();
-  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const weekStart = new Date(now - 7 * 86400000);
+// 방문자 UUID (analytics.js와 동일 키 사용)
+var uid = null;
+try {
+  uid = localStorage.getItem('spraylab_uid');
+  if (!uid) {
+    uid = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random()*16|0;
+      return (c==='x'?r:(r&0x3|0x8)).toString(16);
+    }));
+    localStorage.setItem('spraylab_uid', uid);
+  }
+} catch(e) { uid = 'anonymous'; }
 
-  document.getElementById('totalVisits').textContent = data.length.toLocaleString();
-  document.getElementById('uniqueVisitors').textContent = new Set(data.map(r => r.uid)).size.toLocaleString();
-  document.getElementById('todayVisits').textContent = data.filter(r => r.ts >= todayStart.getTime()).length.toLocaleString();
-  document.getElementById('weekVisits').textContent = data.filter(r => r.ts >= weekStart.getTime()).length.toLocaleString();
-  document.getElementById('lastUpdated').textContent = '마지막 업데이트: ' + new Date().toLocaleString('ko-KR');
+// 방문 기록 저장
+db.ref('visits').push({
+  ts:  Date.now(),
+  uid: uid,
+  ua:  navigator.userAgent
+});
+
+// 데이터 읽어서 렌더링
+var chartInstance = null;
+
+db.ref('visits').once('value', function(snapshot) {
+  var raw = snapshot.val();
+  if (!raw) {
+    document.getElementById('lastUpdated').textContent = '데이터가 없습니다.';
+    document.getElementById('recentTable').innerHTML = '<div class="loading">기록 없음</div>';
+    return;
+  }
+
+  // 객체 → 배열, ts 내림차순 정렬
+  var data = Object.values(raw).sort(function(a, b){ return b.ts - a.ts; });
+
+  var now = Date.now();
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var weekStart  = now - 7 * 86400000;
+
+  document.getElementById('totalVisits').textContent    = data.length.toLocaleString();
+  document.getElementById('uniqueVisitors').textContent = new Set(data.map(function(r){ return r.uid; })).size.toLocaleString();
+  document.getElementById('todayVisits').textContent    = data.filter(function(r){ return r.ts >= todayStart.getTime(); }).length.toLocaleString();
+  document.getElementById('weekVisits').textContent     = data.filter(function(r){ return r.ts >= weekStart; }).length.toLocaleString();
+  document.getElementById('lastUpdated').textContent    = '마지막 업데이트: ' + new Date().toLocaleString('ko-KR');
 
   // 일별 차트 (최근 30일)
-  const days = [];
-  const counts = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now - i * 86400000);
-    d.setHours(0, 0, 0, 0);
-    const next = new Date(d.getTime() + 86400000);
+  var days = [], counts = [];
+  for (var i = 29; i >= 0; i--) {
+    var d = new Date(now - i * 86400000);
+    d.setHours(0,0,0,0);
+    var next = d.getTime() + 86400000;
     days.push((d.getMonth()+1) + '/' + d.getDate());
-    counts.push(data.filter(r => r.ts >= d.getTime() && r.ts < next.getTime()).length);
+    counts.push(data.filter(function(r){ return r.ts >= d.getTime() && r.ts < next; }).length);
   }
-  new Chart(document.getElementById('dailyChart'), {
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('dailyChart'), {
     type: 'bar',
     data: {
       labels: days,
@@ -98,7 +141,7 @@ async function load() {
         data: counts,
         backgroundColor: '#4b8cf5',
         borderRadius: 4,
-        borderSkipped: false,
+        borderSkipped: false
       }]
     },
     options: {
@@ -106,28 +149,22 @@ async function load() {
       plugins: { legend: { display: false } },
       scales: {
         x: { ticks: { color: '#6b7280', font: { size: 10 }, maxRotation: 45 }, grid: { color: '#1e1e2a' } },
-        y: { ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1e1e2a' }, beginAtZero: true }
+        y: { ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1  }, grid: { color: '#1e1e2a' }, beginAtZero: true }
       }
     }
   });
 
-  // 최근 방문 테이블
-  const recent = data.slice(0, 50);
-  const rows = recent.map(r => {
-    const d = new Date(r.ts);
-    const timeStr = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-    const ua = r.ua || '';
-    const device = ua.includes('Mobile') || ua.includes('Android') ? '📱 모바일' : '🖥️ 데스크톱';
-    return `<tr><td>${timeStr}</td><td><span class="badge">${r.uid ? r.uid.slice(0,8) : '—'}</span></td><td>${device}</td></tr>`;
+  // 최근 방문 테이블 (최신 50건)
+  var rows = data.slice(0, 50).map(function(r) {
+    var d = new Date(r.ts);
+    var timeStr = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+    var ua     = r.ua || '';
+    var device = (ua.includes('Mobile') || ua.includes('Android')) ? '📱 모바일' : '🖥️ 데스크톱';
+    return '<tr><td>' + timeStr + '</td><td><span class="badge">' + (r.uid ? r.uid.slice(0,8) : '—') + '</span></td><td>' + device + '</td></tr>';
   }).join('');
-  document.getElementById('recentTable').innerHTML = `
-    <table>
-      <thead><tr><th>시간</th><th>방문자 ID</th><th>기기</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
-load();
+  document.getElementById('recentTable').innerHTML =
+    '<table><thead><tr><th>시간</th><th>방문자 ID</th><th>기기</th></tr></thead><tbody>' + rows + '</tbody></table>';
+});
 </script>
 </body>
 </html>

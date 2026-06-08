@@ -208,6 +208,9 @@
       if (player) players.push(player);
     });
 
+    // ── 디버그 ──────────────────────────────────
+    console.log('[OCR v16] 파싱된 선수 raw:', JSON.stringify(players));
+
     // ── 1. 이름 없는 항목 제거 ───────────────────
     players = players.filter(function(p){ return p.name && p.name.length >= 2; });
 

@@ -208,33 +208,30 @@
       if (player) players.push(player);
     });
 
-    // ── 디버그 ──────────────────────────────────
-    console.log('[OCR v16] 파싱된 선수 raw:', JSON.stringify(players));
-
     // ── 1. 이름 없는 항목 제거 ───────────────────
     players = players.filter(function(p){ return p.name && p.name.length >= 2; });
 
-    // ── 2. 순서 배정 (null은 앞 번호+1) ─────────
-    players.sort(function(a,b){
-      if(a.order!=null&&b.order!=null) return a.order-b.order;
-      if(a.order!=null) return -1;
-      if(b.order!=null) return 1;
-      return 0;
-    });
-    var seq = 0;
-    players.forEach(function(p) {
-      if (p.order != null && p.order >= 1 && p.order <= 9) { seq = p.order; }
-      else { seq = Math.min(seq + 1, 9); p.order = seq; }
-    });
-
-    // ── 3. 슬롯 1~9 보장 (인식된 선수 + 빈 칸) ──
+    // ── 2. 타순 명시된 선수 먼저 슬롯 배치 ────────
     var slots = {};
     players.forEach(function(p) {
-      if (p.order >= 1 && p.order <= 9) {
-        // 같은 슬롯에 이름 있는 것 우선
-        if (!slots[p.order] || (!slots[p.order].name && p.name)) slots[p.order] = p;
+      if (p.order != null && p.order >= 1 && p.order <= 9 && !slots[p.order]) {
+        slots[p.order] = p;
       }
     });
+
+    // ── 3. 타순 없는 선수 → 빈 슬롯에 등장 순서대로 ─
+    // (OCR 행 순서 = 라인업 순서이므로 등장 순서 유지)
+    var nullPlayers = players.filter(function(p){ return p.order == null; });
+    var emptySlots = [];
+    for (var i = 1; i <= 9; i++) { if (!slots[i]) emptySlots.push(i); }
+    nullPlayers.forEach(function(p, idx) {
+      if (idx < emptySlots.length) {
+        p.order = emptySlots[idx];
+        slots[p.order] = p;
+      }
+    });
+
+    // ── 4. 슬롯 1~9 결과 반환 ────────────────────
     var result = [];
     for (var i = 1; i <= 9; i++) {
       result.push(slots[i] || { order:i, name:'', pos:'', num:'', bh:'' });

@@ -57,6 +57,26 @@
 .net-badge.online::before{background:#07090f}
 @keyframes net-fadeout{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
 @media(max-width:720px){.net-badge{top:8px;right:8px;font-size:10px;padding:4px 9px 4px 7px}}
+/* ── Scout intro modal ── */
+.scout-intro-backdrop{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.6);opacity:0;transition:opacity .25s;pointer-events:none}
+.scout-intro-backdrop.active{opacity:1;pointer-events:auto}
+.scout-intro-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:701;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:24px 20px max(28px,env(safe-area-inset-bottom));transition:transform .3s cubic-bezier(.32,1,.24,1);box-sizing:border-box}
+.scout-intro-sheet.active{transform:translateX(-50%) translateY(0)}
+.scout-intro-handle{width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px}
+.scout-intro-title{font-size:16px;font-weight:800;color:#f0f0f4;margin-bottom:4px}
+.scout-intro-sub{font-size:12px;color:#6b6b88;margin-bottom:18px}
+.scout-intro-rows{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.scout-intro-row{display:flex;align-items:flex-start;gap:10px;background:#111118;border:1px solid #2a2a3a;border-radius:10px;padding:11px 13px}
+.scout-intro-icon{font-size:18px;flex-shrink:0;line-height:1.3}
+.scout-intro-row-body{flex:1;min-width:0}
+.scout-intro-row-label{font-size:12.5px;font-weight:700;color:#f0f0f4;margin-bottom:2px}
+.scout-intro-row-desc{font-size:11px;color:#9898b0;line-height:1.5}
+.scout-intro-flow{display:flex;align-items:center;gap:6px;margin-bottom:20px;padding:10px 14px;background:#111118;border-radius:10px;border:1px solid #2a2a3a}
+.scout-intro-flow-step{font-size:11px;color:#c0c0d0;text-align:center;flex:1}
+.scout-intro-flow-arrow{color:#4b8cf5;font-size:13px;flex-shrink:0}
+.scout-intro-confirm{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.scout-intro-confirm:active{opacity:.82}
+@media(max-width:720px){.scout-intro-sheet{padding:18px 14px max(28px,env(safe-area-inset-bottom))}}
 </style>
 </head>
 <body>
@@ -2341,6 +2361,76 @@ if ('serviceWorker' in navigator) {
   // Initial state check
   if (!navigator.onLine) setOffline();
 })();
+</script>
+
+<!-- ████ Scout 탭 첫 방문 인트로 모달 ████ -->
+<div id="scoutIntroBackdrop" class="scout-intro-backdrop" onclick="dismissScoutIntro()"></div>
+<div id="scoutIntroSheet" class="scout-intro-sheet" role="dialog" aria-modal="true" aria-label="스카우트 탭 안내">
+  <div class="scout-intro-handle"></div>
+  <div class="scout-intro-title">🔍 스카우트 탭</div>
+  <div class="scout-intro-sub">상대 타자 경향을 분석하고 투구 전략을 세우세요</div>
+  <div class="scout-intro-rows">
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">🗺️</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">존별 타율 히트맵</div>
+        <div class="scout-intro-row-desc">9분할 스트라이크존의 코스별 타율을 색으로 한눈에 확인</div>
+      </div>
+    </div>
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">📊</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">구종 기록 · 결과 분포</div>
+        <div class="scout-intro-row-desc">직구·변화구 종류별 타격 결과를 집계해 약점을 파악</div>
+      </div>
+    </div>
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">💡</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">투구 전략 자동 제안</div>
+        <div class="scout-intro-row-desc">데이터 기반 공략 포인트와 텍스트 리포트를 자동 생성</div>
+      </div>
+    </div>
+  </div>
+  <div class="scout-intro-flow">
+    <div class="scout-intro-flow-step">선수 선택</div>
+    <div class="scout-intro-flow-arrow">→</div>
+    <div class="scout-intro-flow-step">투구 기록</div>
+    <div class="scout-intro-flow-arrow">→</div>
+    <div class="scout-intro-flow-step">차트 확인</div>
+  </div>
+  <button class="scout-intro-confirm" onclick="dismissScoutIntro()">확인</button>
+</div>
+
+<script>
+/* ── Scout intro modal show/hide ── */
+function showScoutIntro() {
+  document.getElementById('scoutIntroBackdrop').classList.add('active');
+  // rAF lets the browser paint translateY(100%) first so transition fires
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      document.getElementById('scoutIntroSheet').classList.add('active');
+    });
+  });
+}
+function dismissScoutIntro() {
+  localStorage.setItem('sl_scout_intro_seen', '1');
+  document.getElementById('scoutIntroBackdrop').classList.remove('active');
+  document.getElementById('scoutIntroSheet').classList.remove('active');
+}
+
+/* ── Hook into switchSavantView ── */
+document.addEventListener('DOMContentLoaded', function () {
+  var _origSwitch = window.switchSavantView;
+  if (typeof _origSwitch === 'function') {
+    window.switchSavantView = function (view, btn) {
+      _origSwitch.apply(this, arguments);
+      if (view === 'scout' && localStorage.getItem('sl_scout_intro_seen') !== '1') {
+        showScoutIntro();
+      }
+    };
+  }
+});
 </script>
 </body>
 </html>

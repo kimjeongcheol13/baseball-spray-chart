@@ -76,6 +76,16 @@ const firebaseConfig = {
 // ─────────────────────────────────────────────────────────────
 
 firebase.initializeApp(firebaseConfig);
+
+// UUID → 4자리 번호 (1000~9999), 같은 UUID는 항상 같은 번호
+function uidToNum(uid) {
+  if (!uid) return '????';
+  var h = 0;
+  for (var i = 0; i < uid.length; i++) {
+    h = (Math.imul(31, h) + uid.charCodeAt(i)) | 0;
+  }
+  return '방문자 #' + (1000 + (Math.abs(h) % 9000));
+}
 var db = firebase.database();
 
 // 방문자 UUID (analytics.js와 동일 키 사용)
@@ -160,7 +170,7 @@ db.ref('visits').once('value', function(snapshot) {
     var timeStr = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
     var ua     = r.ua || '';
     var device = (ua.includes('Mobile') || ua.includes('Android')) ? '📱 모바일' : '🖥️ 데스크톱';
-    return '<tr><td>' + timeStr + '</td><td><span class="badge">' + (r.uid ? r.uid.slice(0,8) : '—') + '</span></td><td>' + device + '</td></tr>';
+    return '<tr><td>' + timeStr + '</td><td><span class="badge">' + uidToNum(r.uid) + '</span></td><td>' + device + '</td></tr>';
   }).join('');
   document.getElementById('recentTable').innerHTML =
     '<table><thead><tr><th>시간</th><th>방문자 ID</th><th>기기</th></tr></thead><tbody>' + rows + '</tbody></table>';

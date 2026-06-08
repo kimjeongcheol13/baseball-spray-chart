@@ -74,40 +74,53 @@
     img.src = url;
   }
 
+  function _fetchOcr(base64, engine) {
+    var fd = new FormData();
+    fd.append('base64Image', base64);
+    fd.append('language', 'kor');
+    fd.append('isOverlayRequired', 'false');
+    fd.append('detectOrientation', 'true');
+    fd.append('scale', 'true');
+    fd.append('isTable', 'true');
+    fd.append('OCREngine', String(engine));
+    return fetch(OCR_API, { method:'POST', headers:{'apikey':OCR_KEY}, body:fd })
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        return (data.ParsedResults && data.ParsedResults[0] && data.ParsedResults[0].ParsedText) || '';
+      })
+      .catch(function(){ return ''; });
+  }
+
   function runOcrSpace(file, doneCb) {
     setStatus('이미지 준비 중...', 10);
     _resizeToBase64(file, function(base64) {
-      if (!base64) { doneCb(new Error('이미지 로딩 실패'), null); return; }
-      setStatus('OCR 서버에 전송 중 (한국어)...', 30);
+      if (!base64) { doneCb(new Error('이미지 로딩 실패'), null, null); return; }
+      setStatus('OCR 분석 중 (엔진 2개 병렬)...', 30);
 
-      var fd = new FormData();
-      fd.append('base64Image', base64);
-      fd.append('language', 'kor');
-      fd.append('isOverlayRequired', 'false');
-      fd.append('detectOrientation', 'true');
-      fd.append('scale', 'true');
-      fd.append('isTable', 'true');    // 표 구조 인식 활성화
-      fd.append('OCREngine', '2');     // Engine 2 = 최신 엔진, 한국어 정확도 높음
+      // Engine 1 + Engine 2 동시 실행 → 결과 합산 (포지션 누락 보완)
+      Promise.all([_fetchOcr(base64, 1), _fetchOcr(base64, 2)])
+        .then(function(texts) {
+          setStatus('결과 합산 중...', 88);
+          var text1 = texts[0], text2 = texts[1];
+          var rawText = text2 || text1;
+          var p1 = parseOcrText(text1);
+          var p2 = parseOcrText(text2);
 
-      fetch(OCR_API, {
-        method: 'POST',
-        headers: { 'apikey': OCR_KEY },
-        body: fd
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(data) {
-        setStatus('결과 파싱 중...', 90);
-        if (data.IsErroredOnProcessing) {
-          doneCb(new Error(data.ErrorMessage || 'OCR 처리 오류'), null);
-          return;
-        }
-        if (data.ParsedResults && data.ParsedResults.length > 0) {
-          doneCb(null, data.ParsedResults[0].ParsedText || '');
-        } else {
-          doneCb(new Error('인식 결과 없음'), null);
-        }
-      })
-      .catch(function(e){ doneCb(new Error('네트워크 오류: ' + e.message), null); });
+          // Engine2 기준으로 포지션 누락 시 Engine1 결과로 보완
+          var merged = p2.map(function(p) {
+            if (p.name && !p.pos) {
+              for (var i = 0; i < p1.length; i++) {
+                if (p1[i].name === p.name && p1[i].pos) {
+                  return Object.assign({}, p, { pos: p1[i].pos });
+                }
+              }
+            }
+            return p;
+          });
+
+          doneCb(null, rawText, merged);
+        })
+        .catch(function(e){ doneCb(new Error('네트워크 오류: ' + e.message), null, null); });
     });
   }
 
@@ -354,9 +367,9 @@
       rd.onload=function(e){ var pi=document.getElementById('ocrPreviewImg'),pw=document.getElementById('ocrImgWrap'); if(pi)pi.src=e.target.result; if(pw)pw.style.display='block'; };
       rd.readAsDataURL(file);
 
-      runOcrSpace(file, function(err, rawText) {
+      runOcrSpace(file, function(err, rawText, merged) {
         if(err){ setStatus('OCR 오류: '+err.message, 100); return; }
-        finish(parseOcrText(rawText), rawText);
+        finish(merged || parseOcrText(rawText), rawText);
       });
       return;
     }

@@ -4021,8 +4021,13 @@ function renderWeaknessAlerts(abs){
 function shareGameLink(){
   /* 선수 명단 경량화 (이름·번호만) */
   var _lpMin=function(arr){return(arr||[]).map(function(p){return{n:p.name,no:p.num,id:p.id};});};
+  /* 투수 데이터 경량화 */
+  var _pitMin=function(arr){return(arr||[]).map(function(p){return{
+    id:p.id,nm:p.name,hand:p.hand||'R',
+    pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,res:e.result,zone:e.zone,inn:e.inn};})
+  };});};
   var payload={
-    v:2,
+    v:3,
     hs:AS.hs,as:AS.as,
     ht:document.getElementById('tHome').value||'홈팀',
     at:document.getElementById('tAway').value||'원정팀',
@@ -4030,7 +4035,9 @@ function shareGameLink(){
     cond:getGameCond(),
     hl:_lpMin(AS.home_lineup),
     al:_lpMin(AS.away_lineup),
-    abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,t:a.team,bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid};})
+    pitchers:_pitMin(AS.pitchers),
+    abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,t:a.team,bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
+      pitches:(a.pitches||[]).map(function(e){return{pt:e.pt,res:e.result||e.res,zone:e.zone};})};})
   };
 
   // Supabase short link 시도
@@ -4143,21 +4150,34 @@ function loadSharedGame(){
   AS.hs=payload.hs||0;AS.as=payload.as||0;
   var tH=document.getElementById('tHome');if(tH)tH.value=payload.ht||'홈팀';
   var tA=document.getElementById('tAway');if(tA)tA.value=payload.at||'원정팀';
-  /* 선수 명단 복원 (v2 이상) */
+  /* 선수 명단 복원 (v2+) */
   AS.home_lineup=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   AS.away_lineup=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
+  /* 투수 데이터 복원 (v3+) */
+  AS.pitchers=(payload.pitchers||[]).map(function(p){return{
+    id:p.id||Date.now()+Math.random(),name:p.nm||'투수',hand:p.hand||'R',
+    pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone,inn:e.inn};})
+  };});
+  AS.currentPitcher=AS.pitchers.length?AS.pitchers[0]:null;
+  AS.pitchLog=[];
+  AS.pitchers.forEach(function(p){(p.pitches||[]).forEach(function(e){AS.pitchLog.push(e);});});
   AS.abs=payload.abs.map(function(a,i){return{
     id:i,bid:a.bid||-1,bname:(a.bn!=null&&a.bn!=='')?a.bn:'공유',bnum:a.bno!=null?a.bno:0,team:a.t||'home',
     res:a.r,pt:a.p,zone:a.z,rbi:a.b||0,
     x:a.x,y:a.y,deg:a.d,dir:a.d?'center':null,ft:null,
     inn:a.i||'1회초',ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
-    count:{b:0,s:0,o:0},pitches:[]
+    count:{b:0,s:0,o:0},
+    pitches:(a.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone};})
   };});
   history.replaceState(null,'',location.pathname);
   dismissSharedBanner();
   showApp();
   hideAppWelcome();
-  setTimeout(function(){updateAll();showToast('공유된 경기 데이터를 불러왔습니다 (읽기 전용)');},500);
+  setTimeout(function(){
+    updateAll();
+    if(typeof renderPitcherRoster==='function')renderPitcherRoster();
+    showToast('공유된 경기 데이터를 불러왔습니다 (읽기 전용)');
+  },500);
 }
 
 function saveSharedGameLocal(){
@@ -4171,12 +4191,16 @@ function saveSharedGameLocal(){
   };});
   var homeLP=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   var awayLP=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
+  var pitchersLP=(payload.pitchers||[]).map(function(p){return{
+    id:p.id||Date.now()+Math.random(),name:p.nm||'투수',hand:p.hand||'R',
+    pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone,inn:e.inn};})
+  };});
   var key='sl_'+Date.now();
   var d={
     key,hs:payload.hs||0,as:payload.as||0,
     th:payload.ht||'홈팀',ta:payload.at||'원정팀',
     home_lineup:homeLP,away_lineup:awayLP,
-    abs:abs,zoneHistory:{},
+    abs:abs,zoneHistory:{},pitchers:pitchersLP,
     d:new Date().toLocaleDateString('ko-KR'),ts:Date.now()
   };
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');

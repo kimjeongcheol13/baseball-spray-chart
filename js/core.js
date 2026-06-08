@@ -148,9 +148,11 @@ function showApp(){
   document.body.style.overflowX='hidden';
   initApp();
   ftuCheck();
-  // Show savant bottom nav
-  var nav=document.getElementById('savantNav');
-  if(nav)nav.style.display='flex';
+  // Show savant bottom nav — 홈 화면이면 숨김 유지
+  if(!document.body.classList.contains('on-welcome')){
+    var nav=document.getElementById('savantNav');
+    if(nav)nav.style.display='flex';
+  }
   // Show mobile action bar — 홈(welcome) 화면이면 숨김 유지
   if(!document.body.classList.contains('on-welcome')){
     var mab=document.getElementById('mobileActionBar');

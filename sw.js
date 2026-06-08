@@ -7,10 +7,13 @@ self.addEventListener('install', function(e) {
 });
 
 self.addEventListener('activate', function(e) {
-  // 구버전 캐시 전체 삭제
+  // 현재 캐시 유지, 구버전 캐시만 삭제
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE_NAME; })
+            .map(function(k) { return caches.delete(k); })
+      );
     }).then(function() { return self.clients.claim(); })
   );
 });
@@ -35,7 +38,21 @@ self.addEventListener('fetch', function(e) {
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.match(req).then(function(cached) {
         var fetchPromise = fetch(req).then(function(res) {
-          if (res && res.status === 200) cache.put(req, res.clone());
+          if (res && res.status === 200) {
+            cache.put(req, res.clone());
+            // ?v= 쿼리가 있는 버전드 에셋: 같은 pathname의 구버전 항목 제거
+            var url = new URL(req.url);
+            if (url.search) {
+              cache.keys().then(function(entries) {
+                entries.forEach(function(entry) {
+                  var eu = new URL(entry.url);
+                  if (eu.pathname === url.pathname && eu.search !== url.search) {
+                    cache.delete(entry);
+                  }
+                });
+              });
+            }
+          }
           return res;
         }).catch(function() { return cached; });
         return cached || fetchPromise;

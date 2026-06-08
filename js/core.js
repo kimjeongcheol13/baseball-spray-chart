@@ -5518,7 +5518,7 @@ function gfActivate(){
   GF.bases=[false,false,false];
   // 현재 공격팀 첫 타자 자동 선택
   var lu=gfGetLineup();
-  if(lu.length) selBatter(lu[0].id);
+  if(lu.length){AS.batter=null;selBatter(lu[GF.batterIdx%lu.length].id);}
   gfSyncInnSel();
   var bar=document.getElementById('gfBar');
   if(bar)bar.classList.add('active');

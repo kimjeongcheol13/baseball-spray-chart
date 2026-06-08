@@ -4207,7 +4207,7 @@ function loadSharedGame(){
     updateAll();
     if(typeof renderPitcherRoster==='function')renderPitcherRoster();
     if(typeof renderPitchLog==='function')renderPitchLog();
-    showToast('공유된 경기 데이터를 불러왔습니다 (읽기 전용)');
+    showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
   },500);
 }
 

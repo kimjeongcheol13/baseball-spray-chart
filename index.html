@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=48">
+<link rel="stylesheet" href="css/styles.css?v=49">
 <link rel="stylesheet" href="css/features.css?v=23">
 </head>
 <body>
@@ -1068,6 +1068,7 @@
 
 <div style="display:flex;align-items:center;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 4px 0 0;flex-shrink:0" class="mob-batter-wrap">
   <button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:5px 10px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:900;cursor:pointer;margin:4px 4px;line-height:1;-webkit-tap-highlight-color:transparent">＋</button>
+  <button class="mobile-ocr-btn" onclick="ocrModalOpen()" title="사진으로 라인업 입력">📷</button>
   <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
 </div>
 
@@ -1259,6 +1260,7 @@
     <div class="tab-mode-bar" id="tabModeBar">
       <button class="tmb-btn on" id="tmbGame" onclick="setTabMode('game',this)">⚾ 경기중</button>
       <button class="tmb-btn" id="tmbPost" onclick="setTabMode('post',this)">📊 경기후</button>
+      <button class="tmb-btn tmb-gf-btn" id="tmbGF" onclick="gfToggle()" title="경기운영 모드">▶ 운영</button>
     </div>
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
@@ -2195,7 +2197,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=36"></script>
+<script defer src="js/core.js?v=37"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
 </body>

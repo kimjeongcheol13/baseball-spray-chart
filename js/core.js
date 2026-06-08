@@ -5524,6 +5524,8 @@ function gfActivate(){
   if(bar)bar.classList.add('active');
   var btn=document.getElementById('gfToggleBtn');
   if(btn){btn.classList.add('on');btn.textContent='■ 운영중';}
+  var mbtn=document.getElementById('tmbGF');
+  if(mbtn){mbtn.classList.add('on');mbtn.textContent='■ 운영중';}
   // 이닝 셀렉터 비활성화 (GF가 자동 관리)
   var ap=document.getElementById('app-page');
   if(ap)ap.classList.add('gf-on');
@@ -5537,6 +5539,8 @@ function gfDeactivate(){
   if(bar)bar.classList.remove('active');
   var btn=document.getElementById('gfToggleBtn');
   if(btn){btn.classList.remove('on');btn.textContent='▶ 경기운영';}
+  var mbtn=document.getElementById('tmbGF');
+  if(mbtn){mbtn.classList.remove('on');mbtn.textContent='▶ 운영';}
   var ap=document.getElementById('app-page');
   if(ap)ap.classList.remove('gf-on');
 }

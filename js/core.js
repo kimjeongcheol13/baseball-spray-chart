@@ -4030,7 +4030,7 @@ function shareGameLink(){
     cond:getGameCond(),
     hl:_lpMin(AS.home_lineup),
     al:_lpMin(AS.away_lineup),
-    abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,t:a.team,bn:a.bname||'',bno:a.bnum!=null?a.bnum:0,bid:a.bid};})
+    abs:(AS.abs||[]).map(function(a){return{r:a.res,d:a.deg,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,t:a.team,bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid};})
   };
 
   // Supabase short link 시도
@@ -4147,7 +4147,7 @@ function loadSharedGame(){
   AS.home_lineup=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   AS.away_lineup=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   AS.abs=payload.abs.map(function(a,i){return{
-    id:i,bid:a.bid||-1,bname:a.bn||'공유',bnum:a.bno!=null?a.bno:0,team:a.t||'home',
+    id:i,bid:a.bid||-1,bname:(a.bn!=null&&a.bn!=='')?a.bn:'공유',bnum:a.bno!=null?a.bno:0,team:a.t||'home',
     res:a.r,pt:a.p,zone:a.z,rbi:a.b||0,
     x:a.x,y:a.y,deg:a.d,dir:a.d?'center':null,ft:null,
     inn:a.i||'1회초',ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
@@ -4164,7 +4164,7 @@ function saveSharedGameLocal(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
   var abs=payload.abs.map(function(a,i){return{
-    id:i,bid:a.bid||-1,bname:a.bn||'공유',bnum:a.bno!=null?a.bno:0,team:a.t||'home',
+    id:i,bid:a.bid||-1,bname:(a.bn!=null&&a.bn!=='')?a.bn:'공유',bnum:a.bno!=null?a.bno:0,team:a.t||'home',
     res:a.r,pt:a.p,zone:a.z,rbi:a.b||0,
     x:a.x,y:a.y,deg:a.d,dir:null,ft:null,
     inn:a.i||'1회초',ts:'',count:{b:0,s:0,o:0},pitches:[]

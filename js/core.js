@@ -4023,7 +4023,7 @@ function shareGameLink(){
   var _lpMin=function(arr){return(arr||[]).map(function(p){return{n:p.name,no:p.num,id:p.id};});};
   /* 투수 데이터 경량화 */
   var _pitMin=function(arr){return(arr||[]).map(function(p){return{
-    id:p.id,nm:p.name,hand:p.hand||'R',
+    id:p.id,nm:p.name,no:p.num||'',hand:p.hand||'R',role:p.role||'',
     pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,res:e.result,zone:e.zone,inn:e.inn};})
   };});};
   var payload={
@@ -4170,7 +4170,7 @@ function _restoreAbsFromPayload(payloadAbs){
 }
 function _restorePitchersFromPayload(payloadPitchers){
   return (payloadPitchers||[]).map(function(p){return{
-    id:p.id||Date.now()+Math.random(), name:p.nm||'투수', hand:p.hand||'R',
+    id:p.id||Date.now()+Math.random(), name:p.nm||'투수', num:p.no||'', hand:p.hand||'R', role:p.role||'',
     pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone,inn:e.inn};})
   };});
 }

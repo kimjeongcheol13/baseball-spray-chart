@@ -74,14 +74,14 @@
     img.src = url;
   }
 
-  function _fetchOcr(base64, engine) {
+  function _fetchOcr(base64, engine, useTable) {
     var fd = new FormData();
     fd.append('base64Image', base64);
     fd.append('language', 'kor');
     fd.append('isOverlayRequired', 'false');
     fd.append('detectOrientation', 'true');
     fd.append('scale', 'true');
-    fd.append('isTable', 'true');
+    fd.append('isTable', useTable ? 'true' : 'false');
     fd.append('OCREngine', String(engine));
     return fetch(OCR_API, { method:'POST', headers:{'apikey':OCR_KEY}, body:fd })
       .then(function(r){ return r.json(); })
@@ -91,34 +91,52 @@
       .catch(function(){ return ''; });
   }
 
+  // 일반 텍스트(isTable=false) 결과에서 선수 이름 앞에 오는 포지션 코드 추출
+  function _findPosInPlainText(plainText, playerName) {
+    var lines = plainText.split(/\r?\n/);
+    var key = playerName.slice(0, 2); // 이름 앞 2글자로 검색
+    for (var i = 0; i < lines.length; i++) {
+      var idx = lines[i].indexOf(key);
+      if (idx < 0) continue;
+      var before = lines[i].substring(0, idx).trim();
+      var tokens = before.split(/[\s\t]+/);
+      for (var j = tokens.length - 1; j >= 0; j--) {
+        var tok = tokens[j].replace(/[^A-Za-z0-9가-힣]/g, '');
+        if (!tok) continue;
+        var p = normalizePos(tok);
+        if (p && p !== tok) return p;
+      }
+    }
+    return '';
+  }
+
   function runOcrSpace(file, doneCb) {
     setStatus('이미지 준비 중...', 10);
     _resizeToBase64(file, function(base64) {
       if (!base64) { doneCb(new Error('이미지 로딩 실패'), null, null); return; }
-      setStatus('OCR 분석 중 (엔진 2개 병렬)...', 30);
+      setStatus('OCR 분석 중...', 30);
 
-      // Engine 1 + Engine 2 동시 실행 → 결과 합산 (포지션 누락 보완)
-      Promise.all([_fetchOcr(base64, 1), _fetchOcr(base64, 2)])
+      // ① 표모드(Engine2) + ② 일반모드(Engine1) 병렬 실행
+      // 표모드가 놓친 포지션을 일반모드 텍스트에서 이름 앞 단어로 보완
+      Promise.all([
+        _fetchOcr(base64, 2, true),   // 표 구조 파싱용 (주력)
+        _fetchOcr(base64, 1, false)   // 평문 파싱용 (포지션 보완)
+      ])
         .then(function(texts) {
           setStatus('결과 합산 중...', 88);
-          var text1 = texts[0], text2 = texts[1];
-          var rawText = text2 || text1;
-          var p1 = parseOcrText(text1);
-          var p2 = parseOcrText(text2);
+          var tableText = texts[0], plainText = texts[1];
+          var players = parseOcrText(tableText);
 
-          // Engine2 기준으로 포지션 누락 시 Engine1 결과로 보완
-          var merged = p2.map(function(p) {
+          // 포지션 없는 선수 → 평문 텍스트에서 이름 앞 단어로 포지션 추출
+          players = players.map(function(p) {
             if (p.name && !p.pos) {
-              for (var i = 0; i < p1.length; i++) {
-                if (p1[i].name === p.name && p1[i].pos) {
-                  return Object.assign({}, p, { pos: p1[i].pos });
-                }
-              }
+              var found = _findPosInPlainText(plainText, p.name);
+              if (found) return Object.assign({}, p, { pos: found });
             }
             return p;
           });
 
-          doneCb(null, rawText, merged);
+          doneCb(null, tableText, players);
         })
         .catch(function(e){ doneCb(new Error('네트워크 오류: ' + e.message), null, null); });
     });

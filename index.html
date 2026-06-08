@@ -48,9 +48,21 @@
   .onboard-title{font-size:15px}
   .onboard-step{padding:12px 12px;gap:10px}
 }
+/* ── Network status badge ── */
+.net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
+.net-badge::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.net-badge.offline{display:flex;background:#f56565;color:#fff}
+.net-badge.offline::before{background:#fff}
+.net-badge.online{display:flex;background:#2dd4a0;color:#07090f;animation:net-fadeout 3s forwards}
+.net-badge.online::before{background:#07090f}
+@keyframes net-fadeout{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
+@media(max-width:720px){.net-badge{top:8px;right:8px;font-size:10px;padding:4px 9px 4px 7px}}
 </style>
 </head>
 <body>
+<!-- 네트워크 상태 뱃지 -->
+<div id="netBadge" class="net-badge" role="status" aria-live="polite"></div>
+
 <!-- 공유 경기 데이터 감지 배너 -->
 <div id="sharedBanner">
   <div class="sb-inner">
@@ -2293,5 +2305,42 @@ function dismissOnboarding() {
 <script defer src="js/core.js?v=43"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
+<script>
+/* ── Service Worker registration ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+
+/* ── Network status badge ── */
+(function () {
+  var badge = document.getElementById('netBadge');
+  var _timer = null;
+
+  function setOffline() {
+    if (!badge) return;
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    badge.textContent = '오프라인';
+    badge.className = 'net-badge offline';
+  }
+
+  function setOnline() {
+    if (!badge) return;
+    if (_timer) clearTimeout(_timer);
+    badge.textContent = '온라인';
+    badge.className = 'net-badge online';
+    // animation is 3s; remove class after so it resets for next trigger
+    _timer = setTimeout(function () {
+      badge.className = 'net-badge';
+      _timer = null;
+    }, 3100);
+  }
+
+  window.addEventListener('online',  setOnline);
+  window.addEventListener('offline', setOffline);
+
+  // Initial state check
+  if (!navigator.onLine) setOffline();
+})();
+</script>
 </body>
 </html>

@@ -142,7 +142,6 @@
       if (!cell) return;
 
       // 한글 이름 후보 — {2,3} 사용 (4자 매칭 시 OCR 노이즈 포함 방지)
-      // 예: 김정철선 → {2,3} → 김정철 ✓
       var koM = cell.match(/[가-힣]{2,3}/g);
       if (koM) {
         koM.forEach(function(m) {
@@ -150,22 +149,25 @@
         });
       }
 
-      // 포지션: 영문+숫자 코드 (4F→LF, DHA→DH, PA→P 등)
+      // 포지션 판별 — 이 셀이 포지션으로 인식되면 숫자를 타순/배번에 쓰지 않음
+      // (2B, 1B, 3BA 등 포지션 코드의 숫자가 타순으로 오인식되는 버그 방지)
+      var cellIsPos = false;
       if (!pos) {
         var eng = cell.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
         var pn = normalizePos(eng);
-        if (pn && pn !== eng) pos = pn;
+        if (pn && pn !== eng) { pos = pn; cellIsPos = true; }
       }
-      // 포지션: 한글
       if (!pos) {
         var kor = cell.replace(/[^가-힣]/g,'');
         var pn2 = normalizePos(kor);
-        if (pn2 && pn2 !== kor) pos = pn2;
+        if (pn2 && pn2 !== kor) { pos = pn2; cellIsPos = true; }
       }
 
-      // 숫자 수집
-      var ns = cell.match(/\d+/g);
-      if (ns) ns.forEach(function(n){ allNums.push(parseInt(n)); });
+      // 숫자 수집 — 포지션 셀의 숫자는 제외
+      if (!cellIsPos) {
+        var ns = cell.match(/\d+/g);
+        if (ns) ns.forEach(function(n){ allNums.push(parseInt(n)); });
+      }
     });
 
     if (!name) return null;

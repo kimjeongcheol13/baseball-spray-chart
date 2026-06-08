@@ -151,9 +151,11 @@ function showApp(){
   // Show savant bottom nav
   var nav=document.getElementById('savantNav');
   if(nav)nav.style.display='flex';
-  // Show mobile action bar (CSS media query limits to ≤720px)
-  var mab=document.getElementById('mobileActionBar');
-  if(mab)mab.style.display='';
+  // Show mobile action bar — 홈(welcome) 화면이면 숨김 유지
+  if(!document.body.classList.contains('on-welcome')){
+    var mab=document.getElementById('mobileActionBar');
+    if(mab)mab.style.display='';
+  }
   // Show mobile input tab (모바일 전용)
   var mit=document.getElementById('mobileInputTab');
   if(mit&&isMob)mit.style.display='';

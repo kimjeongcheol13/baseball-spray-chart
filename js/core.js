@@ -4990,6 +4990,9 @@ function showAppWelcome(){
   el.classList.remove('hidden');
   el.style.display='';
   el.style.pointerEvents='';
+  // 홈 화면에서 mobileActionBar 숨김 (로고 가림 방지)
+  var mab=document.getElementById('mobileActionBar');
+  if(mab)mab.style.display='none';
   _updateMobAwLinks();
   renderAwRecent();
   // 홈으로 돌아왔을 때 복구 배너 재확인
@@ -5005,6 +5008,9 @@ function showAppWelcome(){
 function hideAppWelcome(){
   var el=document.getElementById('appWelcome');
   if(el){el.classList.add('hidden');el.style.display='none';el.style.pointerEvents='none';}
+  // 게임 화면 진입 시 mobileActionBar 복원
+  var mab=document.getElementById('mobileActionBar');
+  if(mab)mab.style.display='';
   history.pushState({page:'game'},'','');
   // 게임 화면으로 전환 시 복구 배너를 즉시 숨김
   var banner=document.getElementById('archRecoveryBanner');

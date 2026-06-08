@@ -1208,8 +1208,10 @@ function onFClick(e){
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
+  var _evRaw=parseFloat((document.getElementById('evInput')||{}).value);var _ev=isNaN(_evRaw)?null:_evRaw;
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev};
 AS.currentPitches=[];
+  var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
   gfAfterRecord(res,r.rbi);
 }
@@ -3045,6 +3047,7 @@ function showHitDetail(ab, clientX, clientY) {
     rows+=`<div class="hdc-row">🔢 <span>${c.o}아웃 ${c.b}볼 ${c.s}스트라이크</span></div>`;
   }
   if(ab.rbi>0) rows+=`<div class="hdc-row">🏅 <span style="color:#f6c23e">${ab.rbi}타점</span></div>`;
+  if(ab.ev!=null){var _eu=localStorage.getItem('sl_ev_unit')||'kmh';rows+=`<div class="hdc-row">💨 <span>${ab.ev} ${_eu==='mph'?'mph':'km/h'}</span></div>`;}
   if(ab.pt||ab.zone!=null) rows+=`<div class="hdc-row">🎯 <span>${[ab.pt,ab.zone!=null?'존 '+ab.zone:''].filter(Boolean).join(' · ')}</span></div>`;
   if(ab.ts) rows+=`<div class="hdc-row">🕐 <span>${ab.ts}</span></div>`;
   el.innerHTML=`

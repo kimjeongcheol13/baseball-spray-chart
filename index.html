@@ -20,7 +20,7 @@
 
 <script>
 /* Kakao Share SDK — 로드 실패 시 버튼 숨김 유지 */
-const KAKAO_APP_KEY = '';
+const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
 (function() {
   var s = document.createElement('script');
   s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
@@ -2443,20 +2443,42 @@ function toggleEvUnit() {
 function kakaoShareGame() {
   try {
     if (!window.Kakao || !Kakao.isInitialized()) return;
+
     var home = (document.getElementById('tHome') || {}).value || '홈팀';
     var away = (document.getElementById('tAway') || {}).value || '원정팀';
-    var title = 'SprayLab — ' + home + ' vs ' + away;
-    var url = document.getElementById('shareQRUrl') ? document.getElementById('shareQRUrl').textContent.trim() : location.href;
-    if (!url || url.length < 5) url = location.href;
+    var today = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
+
+    /* 경기 타율 계산 (AS 전역 객체에서 읽기) */
+    var descParts = [home + ' vs ' + away, today];
+    try {
+      var abs = (window.AS && AS.abs) ? AS.abs : [];
+      var hits = ['안타','내야안타','2루타','3루타','홈런'];
+      var abRes = ['안타','내야안타','2루타','3루타','홈런','삼진','플라이 아웃','땅볼 아웃','희타','병살'];
+      var h = abs.filter(function(a){ return hits.indexOf(a.res) > -1; }).length;
+      var ab = abs.filter(function(a){ return abRes.indexOf(a.res) > -1; }).length;
+      if (ab > 0) {
+        var avg = (h / ab).toFixed(3).replace(/^0/,'');
+        descParts.push('팀 타율 ' + avg + ' (' + h + '안타 / ' + ab + '타수)');
+      }
+      var pa = abs.length;
+      if (pa > 0) descParts.push('총 ' + pa + '타석');
+    } catch(e2) {}
+
+    var title = 'SprayLab ⚾ ' + home + ' vs ' + away;
+    var desc = descParts.join(' · ');
+    var url = (document.getElementById('shareQRUrl') || {}).textContent || '';
+    url = url.trim();
+    if (url.length < 10) url = 'https://kimjeongcheol13.github.io/baseball-spray-chart/';
+
     Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
         title: title,
-        description: '스프레이 차트와 타격 통계를 확인하세요',
+        description: desc,
         imageUrl: 'https://kimjeongcheol13.github.io/baseball-spray-chart/icon.svg',
         link: { mobileWebUrl: url, webUrl: url }
       },
-      buttons: [{ title: 'SprayLab 열기', link: { mobileWebUrl: url, webUrl: url } }]
+      buttons: [{ title: 'SprayLab에서 보기', link: { mobileWebUrl: url, webUrl: url } }]
     });
   } catch(e) {}
 }

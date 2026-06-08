@@ -77,6 +77,11 @@
 .scout-intro-confirm{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .scout-intro-confirm:active{opacity:.82}
 @media(max-width:720px){.scout-intro-sheet{padding:18px 14px max(28px,env(safe-area-inset-bottom))}}
+/* ── Link-badge: cross-tab indicators ── */
+.link-badge-status{font-size:10.5px;color:var(--text3,#6b7280);margin-top:8px;padding:5px 8px;border-radius:6px;background:rgba(75,140,245,.07);border:1px solid rgba(75,140,245,.15);line-height:1.4}
+.link-badge-status strong{color:var(--accent,#4b8cf5);font-weight:700}
+.link-badge-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 8px;border-radius:999px;background:rgba(75,140,245,.15);border:1px solid rgba(75,140,245,.35);color:var(--accent,#4b8cf5);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.link-badge-pill:hover,.link-badge-pill:active{background:rgba(75,140,245,.25)}
 </style>
 </head>
 <body>
@@ -1377,6 +1382,11 @@
         <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
       </div>
       <div class="tab-pnl" id="pnl-batter">
+        <!-- 투수 탭 연결 배지 -->
+        <div id="linkBadgePill" class="link-badge-pill" style="display:none"
+             onclick="swTab('pitcher',document.getElementById('tab-pitcher'))">
+          ⚾ 투구 기록 중 · <span id="linkBadgePillCount"></span>구
+        </div>
         <div id="batter-analysis-placeholder" style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">← 좌측에서 타자를 선택하세요</div>
         <div id="batter-analysis-content" style="display:none">
           <div class="batter-stat-section">
@@ -1650,6 +1660,10 @@
           <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 투구 로그</div>
           <div class="pitch-log" id="pitchLog">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>
+          </div>
+          <!-- 현재 타자 연결 표시 -->
+          <div id="linkBadgeStatus" class="link-badge-status" style="display:none">
+            현재 타자: <strong id="linkBadgeBatterName"></strong> · <span id="linkBadgePitchCount"></span>구째
           </div>
         </div>
 
@@ -2431,6 +2445,92 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 });
+
+/* ── Link-badge: cross-tab pitch/batter indicators ── */
+(function () {
+  function updateLinkBadges() {
+    var pitches = window.AS && Array.isArray(window.AS.currentPitches)
+      ? window.AS.currentPitches : [];
+    var n = pitches.length;
+
+    // Batter name: prefer bsName content when analysis panel is shown
+    var batterName = '';
+    var bsNameEl = document.getElementById('bsName');
+    var analysisContent = document.getElementById('batter-analysis-content');
+    if (bsNameEl && analysisContent && analysisContent.style.display !== 'none') {
+      var t = bsNameEl.textContent.trim();
+      if (t && t !== '—') batterName = t;
+    }
+    // Fallback: rpnLabel when a specific player is filtered
+    if (!batterName) {
+      var rpn = document.getElementById('rpnLabel');
+      if (rpn) {
+        var rt = rpn.textContent.trim();
+        if (rt && rt !== '전체') batterName = rt;
+      }
+    }
+
+    // ① 투수 탭 status line
+    var statusEl = document.getElementById('linkBadgeStatus');
+    var nameEl   = document.getElementById('linkBadgeBatterName');
+    var cntEl    = document.getElementById('linkBadgePitchCount');
+    if (statusEl && nameEl && cntEl) {
+      if (batterName) {
+        nameEl.textContent = batterName;
+        cntEl.textContent  = n;
+        statusEl.style.display = 'block';
+      } else {
+        statusEl.style.display = 'none';
+      }
+    }
+
+    // ② 타자 탭 pill badge
+    var pillEl  = document.getElementById('linkBadgePill');
+    var pillCnt = document.getElementById('linkBadgePillCount');
+    if (pillEl && pillCnt) {
+      if (n > 0) {
+        pillCnt.textContent = n;
+        pillEl.style.display = 'inline-flex';
+      } else {
+        pillEl.style.display = 'none';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Wrap recordPitch (defined in external JS)
+    var _origRecordPitch = window.recordPitch;
+    if (typeof _origRecordPitch === 'function') {
+      window.recordPitch = function () {
+        _origRecordPitch.apply(this, arguments);
+        updateLinkBadges();
+      };
+    }
+
+    // Wrap swTab to refresh on tab switch
+    var _origSwTab = window.swTab;
+    if (typeof _origSwTab === 'function') {
+      window.swTab = function (tab, el) {
+        _origSwTab.apply(this, arguments);
+        updateLinkBadges();
+      };
+    }
+
+    // Watch bsName for batter changes via MutationObserver
+    var bsNameEl = document.getElementById('bsName');
+    if (bsNameEl && window.MutationObserver) {
+      new MutationObserver(updateLinkBadges).observe(bsNameEl, { childList: true, characterData: true, subtree: true });
+    }
+
+    // Watch pitchLog for any pitch DOM changes (belt-and-suspenders)
+    var pitchLogEl = document.getElementById('pitchLog');
+    if (pitchLogEl && window.MutationObserver) {
+      new MutationObserver(updateLinkBadges).observe(pitchLogEl, { childList: true, subtree: true });
+    }
+
+    updateLinkBadges();
+  });
+})();
 </script>
 </body>
 </html>

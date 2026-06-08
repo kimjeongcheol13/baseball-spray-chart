@@ -5625,7 +5625,7 @@ function gfNextHalf(){
   AS.curTeam = nextTeam==='home'?'away':'home'; // 임시로 반대 팀으로 설정
   swLineupTab(nextTeam); // 이제 team이 다르므로 renderLP/renderMob 정상 실행
   var lu=gfGetLineup();
-  if(lu.length)selBatter(lu[0].id);
+  if(lu.length){AS.batter=null;selBatter(lu[0].id);}
   requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});
   var halfTxt=GF.half==='top'?'초':'말';
   setTimeout(function(){
@@ -5639,7 +5639,7 @@ function gfNextBatter(){
   if(!lu.length)return;
   GF.batterIdx=(GF.batterIdx+1)%lu.length;
   var p=lu[GF.batterIdx];
-  if(p)selBatter(p.id);
+  if(p){AS.batter=null;selBatter(p.id);}
 }
 
 // ─── 베이스 진루 로직 ───

@@ -160,6 +160,16 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
   .sl-ob-cta-title{font-size:14px}
   .sl-ob-cta-main{font-size:15px;padding:14px}
 }
+/* ── Stadium selector (sl-st-) ── */
+.sl-st-bar{display:flex;gap:6px;padding:6px 8px 2px;overflow-x:auto;scrollbar-width:none}
+.sl-st-bar::-webkit-scrollbar{display:none}
+.sl-st-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:#1a1a2e;border:1.5px solid #2a2a3e;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;min-width:52px}
+.sl-st-btn:active{opacity:.82}
+.sl-st-btn .sl-st-emoji{font-size:18px;line-height:1}
+.sl-st-btn .sl-st-name{font-size:10px;font-weight:700;color:#8888a8;letter-spacing:-.2px}
+.sl-st-on{border-color:#4b8cf5!important;background:#1a2a48!important}
+.sl-st-on .sl-st-name{color:#7ab0f5!important}
+@media(max-width:720px){.sl-st-btn{padding:5px 8px;min-width:46px}.sl-st-btn .sl-st-emoji{font-size:16px}}
 </style>
 </head>
 <body>
@@ -1430,6 +1440,12 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
       <button class="qb-btn qb-k" onclick="recQuick('삼진')" title="삼진 즉시 기록">삼진<small>K</small></button>
       <button class="qb-btn qb-bb" onclick="recQuick('볼넷')" title="볼넷 즉시 기록">볼넷<small>BB</small></button>
     </div>
+    <div class="sl-st-bar" id="slStBar">
+      <button class="sl-st-btn sl-st-on" data-st="standard" onclick="setStadium('standard')"><span class="sl-st-emoji">⚾</span><span class="sl-st-name">표준</span></button>
+      <button class="sl-st-btn" data-st="gochuk"   onclick="setStadium('gochuk')"  ><span class="sl-st-emoji">🏟</span><span class="sl-st-name">고척</span></button>
+      <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
+      <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
+    </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
@@ -2528,6 +2544,11 @@ document.addEventListener('DOMContentLoaded', function() {
       if (_ov.style.display !== 'none') _slObDrawDemo();
     }).observe(_ov, {attributes:true, attributeFilter:['style']});
   }
+  // 저장된 구장으로 버튼 초기 상태 적용
+  var _savedSt = localStorage.getItem('sl_stadium') || 'standard';
+  document.querySelectorAll('.sl-st-btn').forEach(function(b) {
+    b.classList.toggle('sl-st-on', b.dataset.st === _savedSt);
+  });
 });
 /* ── EV unit toggle ── */
 function toggleEvUnit() {

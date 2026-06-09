@@ -20,6 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch (e) {}
 })();
 
+// ── 구장 설정 ──
+const STADIUMS = {
+  standard: { name:'표준',  emoji:'⚾', cfDist:120, lfDist:90,  rfDist:90,  grass:['#1f4d24','#193f1d','#112b14'], dirt:'#4a2e10', if:'#7d5028', dome:false },
+  gochuk:   { name:'고척',  emoji:'🏟', cfDist:121, lfDist:99,  rfDist:99,  grass:['#28692b','#206025','#17491c'], dirt:'#56370f', if:'#82511a', dome:true  },
+  jamsil:   { name:'잠실',  emoji:'🌿', cfDist:125, lfDist:100, rfDist:100, grass:['#174020','#12361a','#0d2913'], dirt:'#3b2207', if:'#614016', dome:false },
+  local:    { name:'지방',  emoji:'🏘', cfDist:105, lfDist:82,  rfDist:82,  grass:['#2d5a1e','#264f18','#1c3f12'], dirt:'#6b4218', if:'#9b6830', dome:false },
+};
+window.STADIUMS = STADIUMS;
+
 // ── 좌타/우타 당겨치기·밀어치기 헬퍼 ──
 function _isPull(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg>108:a.deg<72;}
 function _isOppo(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg<72:a.deg>108;}
@@ -515,7 +524,8 @@ const AS={
   pitcherRole:null,
   pitchLog:[],
   recFilterBid:null,
-  pendingQuickRes:null
+  pendingQuickRes:null,
+  stadium: localStorage.getItem('sl_stadium') || 'standard'
 };
 // feature 모듈(profile.js, compare.js, scouting.js)이 window.AS로 접근하므로 노출
 window.AS = AS;
@@ -1129,12 +1139,21 @@ function _showNearDot(event){
 
 function drawField(){
   if(!fCtx||!fC||FS<=0)return;
+  const st=STADIUMS[AS.stadium]||STADIUMS.standard;
   const ctx=fCtx,S2=FS,cx=S2/2,cy=S2;ctx.clearRect(0,0,S2,S2);
-  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S2);bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#112b14');
+  // 배경 그라디언트
+  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S2);
+  bg.addColorStop(0,st.grass[0]);bg.addColorStop(.55,st.grass[1]);bg.addColorStop(1,st.grass[2]);
   ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=bg;ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.arc(cx,cy,S2*.89,0,-Math.PI,true);ctx.closePath();ctx.fillStyle='#4a2e10';ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,S2*.41,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#7d5028';ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,S2*.33,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle='#2a6b30';ctx.fill();
+  // 돔 구장: 외곽 링
+  if(st.dome){ctx.beginPath();ctx.arc(cx,cy,S2*.975,-Math.PI,0);ctx.strokeStyle='rgba(180,200,255,0.3)';ctx.lineWidth=3;ctx.stroke();}
+  // 파울 존 흙
+  ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.arc(cx,cy,S2*.89,0,-Math.PI,true);ctx.closePath();ctx.fillStyle=st.dirt;ctx.fill();
+  // 내야 흙
+  ctx.beginPath();ctx.arc(cx,cy,S2*.41,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=st.if;ctx.fill();
+  // 내야 잔디
+  ctx.beginPath();ctx.arc(cx,cy,S2*.33,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=st.grass[0];ctx.fill();
+  // 파울라인
   ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-S2*.97,cy);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+S2*.97,cy);ctx.stroke();
@@ -1142,23 +1161,40 @@ function drawField(){
   [[Math.PI*.72],[Math.PI*.28]].forEach(([a])=>{ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a+Math.PI)*S2*.97,cy+Math.sin(a+Math.PI)*S2*.97);ctx.stroke();});
   ctx.setLineDash([]);
   ctx.beginPath();ctx.arc(cx,cy,S2*.89,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;ctx.stroke();
+  // 베이스
   const br=S2*.42;[[cx,cy-br*.65],[cx-br*.46,cy-br*.33],[cx+br*.46,cy-br*.33]].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();});
   ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle='#7d5028';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle=st.if;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.stroke();
+  // LF/CF/RF 거리 표기 (구장별 실제 거리)
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
-  ctx.fillText('LF',cx-S2*.32,cy-S2*.58);ctx.fillText('CF',cx,cy-S2*.72);ctx.fillText('RF',cx+S2*.32,cy-S2*.58);
+  ctx.fillText(st.lfDist+'m',cx-S2*.32,cy-S2*.58);ctx.fillText(st.cfDist+'m',cx,cy-S2*.72);ctx.fillText(st.rfDist+'m',cx+S2*.32,cy-S2*.58);
+  // 방향 레이블
   const dl=Math.floor(S2*.019);ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;
   ctx.fillStyle='rgba(245,101,101,.85)';ctx.fillText('당겨치기',cx-S2*.23,cy-S2*.37);
   ctx.fillStyle='rgba(45,212,160,.85)';ctx.fillText('센터',cx,cy-S2*.45);
   ctx.fillStyle='rgba(75,140,245,.85)';ctx.fillText('밀어치기',cx+S2*.23,cy-S2*.37);
+  // 베이스라인
   ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
   const bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
   ctx.beginPath();bps.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));ctx.stroke();
-  // ── 거리 링 50m/80m/100m (CF 400ft≈122m → FS*.97 기준) ──
+  // 거리 링 (구장 CF 기준 정규화)
+  const cfRef=st.cfDist;
   ctx.setLineDash([3,6]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
   ctx.fillStyle='rgba(255,255,255,0.38)';ctx.font=Math.floor(S2*.022)+'px sans-serif';ctx.textAlign='left';
-  [50,80,100].forEach(function(m){var r=S2*m/122;ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI,0);ctx.stroke();ctx.fillText(m+'m',cx+r*.35+2,cy-r*.93+4);});
+  [Math.round(cfRef*.41),Math.round(cfRef*.66),Math.round(cfRef*.82)].forEach(function(m){
+    var r=S2*m/cfRef;ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI,0);ctx.stroke();ctx.fillText(m+'m',cx+r*.35+2,cy-r*.93+4);
+  });
   ctx.setLineDash([]);
+}
+
+// ── 구장 선택 ──
+function setStadium(id){
+  if(!STADIUMS[id])return;
+  AS.stadium=id;
+  try{localStorage.setItem('sl_stadium',id);}catch(e){}
+  drawField();
+  // 선택 UI 업데이트
+  document.querySelectorAll('.sl-st-btn').forEach(function(b){b.classList.toggle('sl-st-on',b.dataset.st===id);});
 }
 
 var _ftLabelTimer;
@@ -1179,7 +1215,9 @@ function onFClick(e){
   oC.classList.add('show');
   const ang=Math.atan2(dy,dx);const deg=(ang+Math.PI)*180/Math.PI;
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
-  var _wallFt={LF:330,LC:375,CF:400,RC:375,RF:330};
+  var _st=STADIUMS[AS.stadium]||STADIUMS.standard;
+  var _lf=Math.round(_st.lfDist*3.281),_cf=Math.round(_st.cfDist*3.281),_rf=Math.round(_st.rfDist*3.281);
+  var _wallFt={LF:_lf,LC:Math.round((_lf+_cf)/2),CF:_cf,RC:Math.round((_cf+_rf)/2),RF:_rf};
   const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
   // ── 클릭 위치 거리 말풍선 (2초 후 자동 소거) ──
   clearTimeout(_ftLabelTimer);

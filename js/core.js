@@ -1209,9 +1209,12 @@ function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
   var _evRaw=parseFloat((document.getElementById('evInput')||{}).value);var _ev=isNaN(_evRaw)?null:_evRaw;
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev};
+  var _laRaw=parseFloat((document.getElementById('laInput')||{}).value);var _la=isNaN(_laRaw)?null:_laRaw;
+  var _laType=_la===null?null:(_la<10?'땅볼':_la<25?'라인드라이브':'플라이볼');
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
+  var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
   gfAfterRecord(res,r.rbi);
 }
@@ -1270,7 +1273,27 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
 const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};
-function drawDot(r){if(!r.x)return;const x=r.x*FS,y=r.y*FS;const col=RC[r.res]||'#94a3b8';const out=r.res.includes('아웃')||r.res==='삼진';hCtx.beginPath();hCtx.arc(x,y,out?3:4.5,0,Math.PI*2);hCtx.fillStyle=col+'cc';hCtx.fill();hCtx.strokeStyle=col;hCtx.lineWidth=1.2;hCtx.stroke();if(!out){hCtx.beginPath();hCtx.arc(x,y,7.5,0,Math.PI*2);hCtx.strokeStyle=col+'44';hCtx.lineWidth=1.5;hCtx.stroke();}}
+// launchType 테두리 색: 땅볼=주황, 라인드라이브=하늘색, 플라이볼=흰색
+const LTC={'땅볼':'#f97316','라인드라이브':'#38bdf8','플라이볼':'#e2e8f0'};
+function drawDot(r){
+  if(!r.x)return;
+  const x=r.x*FS,y=r.y*FS;
+  const col=RC[r.res]||'#94a3b8';
+  const out=r.res.includes('아웃')||r.res==='삼진';
+  const ltCol=r.launchType?LTC[r.launchType]:null;
+  hCtx.beginPath();hCtx.arc(x,y,out?3:4.5,0,Math.PI*2);
+  hCtx.fillStyle=col+'cc';hCtx.fill();
+  hCtx.strokeStyle=col;hCtx.lineWidth=1.2;hCtx.stroke();
+  if(!out){
+    hCtx.beginPath();hCtx.arc(x,y,7.5,0,Math.PI*2);
+    hCtx.strokeStyle=ltCol?ltCol+'bb':col+'44';
+    hCtx.lineWidth=ltCol?2:1.5;hCtx.stroke();
+  } else if(ltCol){
+    // 아웃 타구도 launchType 있으면 외곽 링 추가
+    hCtx.beginPath();hCtx.arc(x,y,5.5,0,Math.PI*2);
+    hCtx.strokeStyle=ltCol+'99';hCtx.lineWidth=1.5;hCtx.stroke();
+  }
+}
 
 function safeRender(){
   requestAnimationFrame(()=>{

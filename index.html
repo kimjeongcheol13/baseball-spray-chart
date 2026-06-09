@@ -1847,7 +1847,7 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
     <div class="modal-title">타구 결과 입력</div>
     <div class="modal-sub" id="hitSub">방향 정보 로딩 중...</div>
     <div class="rbi-row"><span class="rbi-lbl">타점</span><button class="rbi-btn" onclick="chRbi(-1)">−</button><span class="rbi-val" id="rbiVal">0</span><button class="rbi-btn" onclick="chRbi(1)">+</button></div>
-    <div class="ev-row"><span class="rbi-lbl">EV</span><input type="number" id="evInput" class="ev-inp" min="0" max="250" step="1" placeholder="—" inputmode="decimal"><button class="ev-unit-btn" id="evUnitBtn" onclick="toggleEvUnit()">km/h</button></div>
+    <div class="ev-row"><span class="rbi-lbl">EV</span><input type="number" id="evInput" class="ev-inp" min="0" max="250" step="1" placeholder="—" inputmode="decimal"><button class="ev-unit-btn" id="evUnitBtn" onclick="toggleEvUnit()">km/h</button><span class="rbi-lbl" style="margin-left:4px">LA</span><input type="number" id="laInput" class="ev-inp" min="-90" max="90" step="1" placeholder="발사각" inputmode="decimal"><span class="ev-unit-btn" style="cursor:default;pointer-events:none">°</span></div>
     <div class="hit-grid">
       <button class="hit-btn hb-hit" onclick="recHit('안타')">🟢 안타</button>
       <button class="hit-btn hb-2b" onclick="recHit('2루타')">🔵 2루타</button>

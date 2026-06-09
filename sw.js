@@ -1,13 +1,38 @@
-// SprayLab Service Worker v14
-// 새로고침만으로 최신 파일 반영 — HTML은 항상 no-cache, 나머지는 stale-while-revalidate
-const CACHE_NAME = 'spraylab-v14';
+// SprayLab Service Worker v15
+// 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
+//        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
+const CACHE_NAME = 'spraylab-v15';
+
+// 설치 시 사전 캐싱할 핵심 로컬 파일 목록
+// (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
+const CACHE_FILES = [
+  './',
+  './index.html',
+  './css/styles.css',
+  './css/features.css',
+  './js/core.js',
+  './js/app.js',
+  './js/ocr.js',
+  './js/constants.js',
+  './js/analytics.js',
+  './icon.svg',
+  './manifest.json',
+];
 
 self.addEventListener('install', function(e) {
-  self.skipWaiting(); // 즉시 활성화
+  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      // allSettled: 일부 실패(예: CDN 리소스)해도 설치 중단하지 않음
+      return Promise.allSettled(
+        CACHE_FILES.map(function(url) { return cache.add(url); })
+      );
+    })
+  );
 });
 
 self.addEventListener('activate', function(e) {
-  // 현재 캐시 유지, 구버전 캐시만 삭제
+  // 구버전 캐시 삭제, 현재 캐시 유지
   e.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(
@@ -20,27 +45,40 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var req = e.request;
-  // GET 요청만 처리
+
+  // GET 요청만 처리 — Supabase POST/WebSocket 등은 SW 통과 (silent pass-through)
   if (req.method !== 'GET') return;
 
-  // HTML(네비게이션) 요청: 항상 네트워크에서 no-cache로 가져옴
-  // → 새로고침 한 번으로 최신 index.html 반영
-  if (req.mode === 'navigate' || req.headers.get('accept').includes('text/html')) {
+  // HTML 네비게이션: 네트워크 우선, 성공 시 캐시에도 저장, 실패 시 캐시 폴백
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
-      fetch(new Request(req, {cache: 'no-cache'}))
-        .catch(function() { return caches.match(req); })
+      fetch(new Request(req, { cache: 'no-cache' }))
+        .then(function(res) {
+          if (res && res.status === 200) {
+            var clone = res.clone();
+            caches.open(CACHE_NAME).then(function(cache) { cache.put(req, clone); });
+          }
+          return res;
+        })
+        .catch(function() {
+          // 오프라인 폴백: 정확한 URL → index.html → 루트 순서로 탐색
+          return caches.match(req)
+            .then(function(r) { return r || caches.match('./index.html'); })
+            .then(function(r) { return r || caches.match('./'); });
+        })
     );
     return;
   }
 
-  // CSS/JS/이미지: stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
+  // CSS / JS / 이미지: stale-while-revalidate
+  // 캐시에 있으면 즉시 반환 + 백그라운드에서 최신 버전 갱신
   e.respondWith(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.match(req).then(function(cached) {
         var fetchPromise = fetch(req).then(function(res) {
           if (res && res.status === 200) {
             cache.put(req, res.clone());
-            // ?v= 쿼리가 있는 버전드 에셋: 같은 pathname의 구버전 항목 제거
+            // ?v= 버전드 에셋: 동일 pathname의 구버전 항목 자동 정리
             var url = new URL(req.url);
             if (url.search) {
               cache.keys().then(function(entries) {
@@ -54,7 +92,8 @@ self.addEventListener('fetch', function(e) {
             }
           }
           return res;
-        }).catch(function() { return cached; });
+        }).catch(function() { return cached; }); // 오프라인 시 캐시 반환
+
         return cached || fetchPromise;
       });
     })

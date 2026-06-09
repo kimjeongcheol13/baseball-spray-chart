@@ -529,6 +529,7 @@ const AS={
 };
 // feature 모듈(profile.js, compare.js, scouting.js)이 window.AS로 접근하므로 노출
 window.AS = AS;
+window.STADIUMS = STADIUMS;
 
 const MAX_HITS = 300;
 let saveTimer;
@@ -1188,7 +1189,7 @@ function drawField(){
 }
 
 // ── 구장 선택 ──
-function setStadium(id){
+window.setStadium = function setStadium(id){
   if(!STADIUMS[id])return;
   AS.stadium=id;
   try{localStorage.setItem('sl_stadium',id);}catch(e){}

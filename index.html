@@ -114,6 +114,40 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
 .link-badge-status strong{color:var(--accent,#4b8cf5);font-weight:700}
 .link-badge-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 8px;border-radius:999px;background:rgba(75,140,245,.15);border:1px solid rgba(75,140,245,.35);color:var(--accent,#4b8cf5);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;transition:background .15s}
 .link-badge-pill:hover,.link-badge-pill:active{background:rgba(75,140,245,.25)}
+/* ── Onboarding 3-step wizard (sl-ob-) ── */
+.sl-ob-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.sl-ob-skip{background:none;border:none;color:#6b6b88;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0;font-family:inherit;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.sl-ob-dots{display:flex;justify-content:center;gap:7px;margin-bottom:16px}
+.sl-ob-dot{width:8px;height:8px;border-radius:50%;background:#3a3a4a;transition:background .2s}
+.sl-ob-dot-on{background:#4b8cf5}
+.sl-ob-canvas{border-radius:10px;background:#0d0d18;display:block;margin:0 auto;max-width:100%}
+.sl-ob-demo-wrap{text-align:center;margin-bottom:12px}
+.sl-ob-demo-legend{display:flex;justify-content:center;gap:14px;margin-top:8px;font-size:11px;color:#9898b0;align-items:center}
+.sl-ob-demo-legend span{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;flex-shrink:0}
+.sl-ob-dot-hit{background:#2dd4a0!important}
+.sl-ob-dot-out{background:#f56565!important}
+.sl-ob-dot-bb{background:#f6c23e!important}
+.sl-ob-intro-txt{font-size:12px;color:#9898b0;line-height:1.6;text-align:center;margin-bottom:16px}
+.sl-ob-cards{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.sl-ob-card{display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:13px 14px}
+.sl-ob-card-icon{font-size:20px;flex-shrink:0;line-height:1.3;margin-top:1px}
+.sl-ob-card-body{flex:1;min-width:0}
+.sl-ob-card-title{font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px}
+.sl-ob-card-desc{font-size:11.5px;color:#9898b0;line-height:1.5}
+.sl-ob-cta-wrap{text-align:center;padding:6px 0 16px}
+.sl-ob-cta-title{font-size:16px;font-weight:800;color:#f0f0f4;margin-bottom:8px}
+.sl-ob-cta-desc{font-size:12px;color:#9898b0;line-height:1.7;margin-bottom:20px}
+.sl-ob-cta-flow{display:block;margin-top:4px;color:#4b8cf5;font-weight:600;font-size:12px}
+.sl-ob-cta-main{font-size:16px;padding:16px;letter-spacing:.4px}
+.sl-ob-nav{display:flex;gap:8px;align-items:center}
+.sl-ob-btn-ghost{padding:14px 16px;background:#1e1e2e;border:1px solid #2a2a3a;border-radius:12px;color:#9898b0;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.sl-ob-btn-ghost:active{opacity:.82}
+@media(max-width:720px){
+  .sl-ob-canvas{width:100%}
+  .sl-ob-card{padding:11px 12px;gap:10px}
+  .sl-ob-cta-title{font-size:14px}
+  .sl-ob-cta-main{font-size:15px;padding:14px}
+}
 </style>
 </head>
 <body>
@@ -655,62 +689,79 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
 <div id="onboardOverlay" class="onboard-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="시작 가이드">
   <span class="onboard-up-arrow" id="onboardUpArrow">↑</span>
   <div class="onboard-card">
-    <div class="onboard-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+    <div class="sl-ob-header">
       <div>
         <div class="onboard-title">⚾ SprayLab 시작 가이드</div>
         <div class="onboard-sub">3단계로 주요 기능을 확인하세요</div>
       </div>
-      <button onclick="dismissOnboarding()" style="background:none;border:none;color:#6b6b88;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0;font-family:inherit;-webkit-tap-highlight-color:transparent">건너뛰기</button>
+      <button class="sl-ob-skip" onclick="dismissOnboarding()">건너뛰기</button>
     </div>
-    <!-- Step 1 -->
-    <div id="onboardPage1">
-      <div class="onboard-steps">
-        <div class="onboard-step">
-          <div class="onboard-step-num">1</div>
-          <div class="onboard-step-body">
-            <div class="onboard-step-label">필드 탭에서 타구 위치 클릭</div>
-            <div class="onboard-step-desc">타자를 선택한 뒤 <strong style="color:#f0f0f4">필드의 공이 떨어진 위치</strong>를 탭하면 결과 입력 창이 나타납니다</div>
+    <!-- 스텝 인디케이터 -->
+    <div class="sl-ob-dots">
+      <div class="sl-ob-dot sl-ob-dot-on" id="slObDot1"></div>
+      <div class="sl-ob-dot" id="slObDot2"></div>
+      <div class="sl-ob-dot" id="slObDot3"></div>
+    </div>
+
+    <!-- Step 1: 앱 소개 + 샘플 스프레이차트 Canvas 미리보기 -->
+    <div id="slObPage1">
+      <div class="sl-ob-demo-wrap">
+        <canvas id="slObDemoCanvas" class="sl-ob-canvas" width="240" height="160"></canvas>
+        <div class="sl-ob-demo-legend">
+          <span class="sl-ob-dot-hit"></span>안타
+          <span class="sl-ob-dot-out"></span>아웃
+          <span class="sl-ob-dot-bb"></span>볼넷
+        </div>
+      </div>
+      <div class="sl-ob-intro-txt">
+        필드를 탭하면 타구 위치가 바로 차트에 기록됩니다.<br>
+        색상으로 안타 · 아웃 · 볼넷을 한눈에 구분하세요.
+      </div>
+    </div>
+
+    <!-- Step 2: 핵심 기능 카드 3개 -->
+    <div id="slObPage2" style="display:none">
+      <div class="sl-ob-cards">
+        <div class="sl-ob-card">
+          <div class="sl-ob-card-icon">⚾</div>
+          <div class="sl-ob-card-body">
+            <div class="sl-ob-card-title">스프레이차트 기록</div>
+            <div class="sl-ob-card-desc">필드를 탭해 타구 위치 즉시 기록. 안타·아웃·홈런을 색상으로 시각화</div>
           </div>
-          <div class="onboard-step-arrow">↑</div>
+        </div>
+        <div class="sl-ob-card">
+          <div class="sl-ob-card-icon">📊</div>
+          <div class="sl-ob-card-body">
+            <div class="sl-ob-card-title">타격 통계 자동계산</div>
+            <div class="sl-ob-card-desc">타율(AVG) · 출루율(OBP) · 장타율(SLG)을 기록과 동시에 자동 계산</div>
+          </div>
+        </div>
+        <div class="sl-ob-card">
+          <div class="sl-ob-card-icon">💾</div>
+          <div class="sl-ob-card-body">
+            <div class="sl-ob-card-title">경기 저장 · 공유</div>
+            <div class="sl-ob-card-desc">경기 데이터를 로컬 저장하고 QR코드 · 링크로 팀원과 공유</div>
+          </div>
         </div>
       </div>
     </div>
-    <!-- Step 2 -->
-    <div id="onboardPage2" style="display:none">
-      <div class="onboard-steps">
-        <div class="onboard-step">
-          <div class="onboard-step-num">2</div>
-          <div class="onboard-step-body">
-            <div class="onboard-step-label">스와이프 제스처로 빠른 입력</div>
-            <div class="onboard-step-desc">결과 팝업에서 <strong style="color:#f0f0f4">스와이프</strong>로 더욱 빠르게 기록하세요<br><span style="color:#2dd4a0">→ 안타</span> &nbsp;<span style="color:#94a3b8">← 아웃</span> &nbsp;<span style="color:#a78bfa">↑ 볼넷</span> &nbsp;<span style="color:#f56565">↓ 삼진</span></div>
-          </div>
-          <div class="onboard-step-arrow">→</div>
+
+    <!-- Step 3: 직접 해보기 CTA -->
+    <div id="slObPage3" style="display:none">
+      <div class="sl-ob-cta-wrap">
+        <div class="sl-ob-cta-title">모든 준비가 끝났어요!</div>
+        <div class="sl-ob-cta-desc">
+          경기를 시작하고 첫 타석을 직접 기록해보세요.
+          <span class="sl-ob-cta-flow">선수 등록 → 필드 탭 → 결과 선택</span>
         </div>
+        <button class="onboard-btn sl-ob-cta-main" onclick="slObStartNow()">⚾ 직접 해보기 →</button>
       </div>
     </div>
-    <!-- Step 3 -->
-    <div id="onboardPage3" style="display:none">
-      <div class="onboard-steps">
-        <div class="onboard-step">
-          <div class="onboard-step-num">3</div>
-          <div class="onboard-step-body">
-            <div class="onboard-step-label">경기 저장 · 불러오기</div>
-            <div class="onboard-step-desc"><strong style="color:#f0f0f4">상단 저장 버튼</strong>으로 경기를 저장하고 <strong style="color:#f0f0f4">불러오기</strong>로 이전 경기를 다시 열 수 있습니다</div>
-          </div>
-          <div class="onboard-step-arrow">→</div>
-        </div>
-      </div>
-    </div>
-    <!-- Step indicators -->
-    <div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">
-      <div id="od1" style="width:8px;height:8px;border-radius:50%;background:#4b8cf5;transition:background .2s"></div>
-      <div id="od2" style="width:8px;height:8px;border-radius:50%;background:#3a3a4a;transition:background .2s"></div>
-      <div id="od3" style="width:8px;height:8px;border-radius:50%;background:#3a3a4a;transition:background .2s"></div>
-    </div>
-    <!-- Navigation buttons -->
-    <div style="display:flex;gap:8px">
-      <button id="onboardPrevBtn" class="onboard-btn" style="background:#1e1e2e;border:1px solid #2a2a3a;color:#9898b0;display:none" onclick="onboardPrev()">이전</button>
-      <button id="onboardNextBtn" class="onboard-btn" onclick="onboardNext()">다음 →</button>
+
+    <!-- 네비게이션 버튼 -->
+    <div class="sl-ob-nav" id="slObNav">
+      <button id="slObPrevBtn" class="sl-ob-btn-ghost" onclick="slObPrev()" style="display:none">← 이전</button>
+      <button id="slObNextBtn" class="onboard-btn" style="flex:1" onclick="slObNext()">다음 →</button>
     </div>
   </div>
 </div>
@@ -2399,38 +2450,73 @@ function dismissOnboarding() {
   if (startBtn) startBtn.classList.remove('onboard-ring');
   localStorage.setItem('sl_onboarding_done', '1');
 }
-/* ── Onboarding wizard step logic ── */
-var _onboardStep = 1;
-function onboardNext() {
-  if (_onboardStep < 3) {
-    document.getElementById('onboardPage' + _onboardStep).style.display = 'none';
-    _onboardStep++;
-    document.getElementById('onboardPage' + _onboardStep).style.display = '';
-    _onboardUpdateUI();
+/* ── Onboarding 3-step wizard (sl-ob-) ── */
+var _slObStep = 1;
+function slObNext() {
+  if (_slObStep < 3) {
+    document.getElementById('slObPage' + _slObStep).style.display = 'none';
+    _slObStep++;
+    document.getElementById('slObPage' + _slObStep).style.display = '';
+    _slObUpdateUI();
   } else {
     dismissOnboarding();
   }
 }
-function onboardPrev() {
-  if (_onboardStep > 1) {
-    document.getElementById('onboardPage' + _onboardStep).style.display = 'none';
-    _onboardStep--;
-    document.getElementById('onboardPage' + _onboardStep).style.display = '';
-    _onboardUpdateUI();
+function slObPrev() {
+  if (_slObStep > 1) {
+    document.getElementById('slObPage' + _slObStep).style.display = 'none';
+    _slObStep--;
+    document.getElementById('slObPage' + _slObStep).style.display = '';
+    _slObUpdateUI();
   }
 }
-function _onboardUpdateUI() {
+function _slObUpdateUI() {
   for (var i = 1; i <= 3; i++) {
-    var dot = document.getElementById('od' + i);
-    if (dot) dot.style.background = i === _onboardStep ? '#4b8cf5' : '#3a3a4a';
+    var d = document.getElementById('slObDot' + i);
+    if (d) d.className = 'sl-ob-dot' + (i === _slObStep ? ' sl-ob-dot-on' : '');
   }
-  var prev = document.getElementById('onboardPrevBtn');
-  var next = document.getElementById('onboardNextBtn');
-  if (prev) prev.style.display = _onboardStep > 1 ? '' : 'none';
-  if (next) next.textContent = _onboardStep === 3 ? '완료 ✓' : '다음 →';
+  var prev = document.getElementById('slObPrevBtn');
+  var next = document.getElementById('slObNextBtn');
   var arrow = document.getElementById('onboardUpArrow');
-  if (arrow) arrow.style.display = _onboardStep === 1 ? '' : 'none';
+  if (prev) prev.style.display = _slObStep > 1 ? '' : 'none';
+  if (next) { next.style.display = _slObStep === 3 ? 'none' : ''; }
+  if (arrow) arrow.style.display = _slObStep === 1 ? '' : 'none';
 }
+/* Step 3 CTA: 온보딩 완료 후 경기 시작 위자드 진입 */
+function slObStartNow() {
+  dismissOnboarding();
+  if (typeof hideAppWelcome === 'function') hideAppWelcome();
+  if (typeof openGameWizard === 'function') openGameWizard();
+}
+/* 샘플 스프레이차트 Canvas 렌더링 */
+function _slObDrawDemo() {
+  var cvs = document.getElementById('slObDemoCanvas');
+  if (!cvs) return;
+  var W = cvs.width, H = cvs.height;
+  var ctx = cvs.getContext('2d');
+  ctx.fillStyle = '#0d1520'; ctx.fillRect(0, 0, W, H);
+  ctx.beginPath(); ctx.arc(W/2, H+24, H*1.15, Math.PI, 0); ctx.closePath();
+  ctx.fillStyle = '#0a2315'; ctx.fill();
+  var cx = W/2, cy = H-8;
+  ctx.beginPath(); ctx.arc(cx, cy, H*0.38, Math.PI, 0); ctx.closePath();
+  ctx.fillStyle = '#1e1205'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(4,4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(W-4,4); ctx.stroke();
+  [{nx:.63,ny:.26,col:'#2dd4a0'},{nx:.28,ny:.40,col:'#f56565'},{nx:.50,ny:.82,col:'#f6c23e'}].forEach(function(d){
+    var px=d.nx*W, py=d.ny*H;
+    ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fillStyle=d.col+'30'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fillStyle=d.col; ctx.fill();
+  });
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var _ov = document.getElementById('onboardOverlay');
+  if (_ov) {
+    new MutationObserver(function() {
+      if (_ov.style.display !== 'none') _slObDrawDemo();
+    }).observe(_ov, {attributes:true, attributeFilter:['style']});
+  }
+});
 /* ── EV unit toggle ── */
 function toggleEvUnit() {
   var cur = localStorage.getItem('sl_ev_unit') || 'kmh';

@@ -238,40 +238,31 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .app-hdr .btn.btn-ghost.btn-primary,
   .app-hdr .more-menu-wrap{display:none}
   .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
-  /* ── 레이아웃: 왼쪽=구종패널 / 오른쪽=필드 / 아래=기록 그리드 ── */
+  /* ── 레이아웃: 필드 위 / 기록 아래 (pnl-left 모바일 숨김) ── */
   .app-layout{
     display:grid!important;
-    grid-template-columns:var(--lp-w,90px) 1fr!important;
-    grid-template-rows:auto minmax(160px,1fr)!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto 1fr!important;
     flex:1;min-height:0;overflow:hidden;
   }
-  /* 왼쪽: 구종 패널 */
-  .pnl-left{
-    display:flex!important;flex-direction:column;
-    grid-column:1;grid-row:1;
-    overflow-y:auto;overflow-x:visible;
-    background:var(--bg-card);border-right:1px solid var(--border);
-    position:relative;
-  }
-  /* pnl-left 기존 데스크톱 컨텐츠 숨김 */
-  .pnl-left > *:not(#mobPitchPanel){display:none!important}
-  /* 위쪽 오른쪽: 필드 */
+  /* 왼쪽 패널 모바일 완전 숨김 (mobileActionBar가 투구입력 담당) */
+  .pnl-left{display:none!important}
+  /* 필드 영역 */
   .pnl-center{
     display:flex!important;flex-direction:column;
-    grid-column:2;grid-row:1;
+    grid-column:1;grid-row:1;
     width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;
-    min-height:min(220px,35vh);
   }
-  .field-wrap{padding:4px;flex:0 0 auto;min-height:min(220px,35vh)}
-  .canvas-wrap{width:min(220px,calc(100vw - 100px));height:min(220px,calc(100vw - 100px));aspect-ratio:1/1;max-height:none!important}
+  .field-wrap{padding:4px;flex:0 0 auto;min-height:0}
+  .canvas-wrap{width:min(calc(100vw - 56px),80vh)!important;height:min(calc(100vw - 56px),80vh)!important;aspect-ratio:1/1;max-height:none!important}
   .field-hint{display:none!important}
   .spray-legend{display:none!important}
   .ib-drawer-toggle{display:none!important}
   #mobileInputTab{display:none!important}
-  /* 아래: 타석기록 패널 (양쪽 열 전체) */
+  /* 아래: 타석기록 패널 */
   .pnl-right{
     display:flex;flex-direction:column;
-    grid-column:1/-1;grid-row:2;
+    grid-column:1;grid-row:2;
     width:100%;min-height:160px;max-height:60vh;overflow:hidden;
     border-top:1px solid var(--border);border-left:none;
   }

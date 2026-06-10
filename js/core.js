@@ -2582,7 +2582,18 @@ function updBatterStat(){
   var ballZones=['볼 위','볼 내','볼 외','볼 아래'];
   var zonePitches={};
   zoneOrder.concat(ballZones).forEach(function(z){zonePitches[z]=[];});
+  // AS.pitchers fallback용 순차 목록
+  var _zpFlatP=[];
+  (AS.pitchers||[]).forEach(function(pitcher){
+    (pitcher.pitches||[]).filter(function(p){return p.batter===b.name;}).forEach(function(p){
+      _zpFlatP.push({id:p.id,name:pitcher.name});
+    });
+  });
+  _zpFlatP.sort(function(a,c){return a.id-c.id;});
+  var _zpFlatCts={};
+  _zpFlatP.forEach(function(p){_zpFlatCts[p.name]=(_zpFlatCts[p.name]||0)+1;p.seq=_zpFlatCts[p.name];});
   var _zpPitcherCounts={};
+  var _zpFlatIdx=0;
   bAbs.slice().sort(function(a,c){return a.id-c.id;}).forEach(function(ab){
     var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{zone:ab.zone,pt:ab.pt}]:[]);
     ps.forEach(function(p,idx){
@@ -2591,6 +2602,7 @@ function updBatterStat(){
       var pName=p.pitcher||'';
       var pNum=null;
       if(pName){_zpPitcherCounts[pName]=(_zpPitcherCounts[pName]||0)+1;pNum=_zpPitcherCounts[pName];}
+      else if(_zpFlatP[_zpFlatIdx]){pName=_zpFlatP[_zpFlatIdx].name;pNum=_zpFlatP[_zpFlatIdx].seq;_zpFlatIdx++;}
       zonePitches[p.zone].push({pt:p.pt,result:idx===ps.length-1?ab.res:null,pitcher:pName,pitchNum:pNum});
     });
   });
@@ -2674,17 +2686,34 @@ function updBatterStat(){
   // 저장된 투구 위치 캔버스
   var bsPitchCvs=document.getElementById('bsPitchCanvas');
   if(bsPitchCvs&&typeof _drawZoneCanvas==='function'){
-    // ab.pitches[i].pitcher 에 투수명이 이미 저장됨 → 직접 사용
+    // 투수 순차 목록: AS.pitchers에서 이 타자 대상 공을 시간순으로 flat하게
+    var _pFlat=[];
+    (AS.pitchers||[]).forEach(function(pitcher){
+      (pitcher.pitches||[]).filter(function(p){return p.batter===b.name;}).forEach(function(p){
+        _pFlat.push({id:p.id,name:pitcher.name});
+      });
+    });
+    _pFlat.sort(function(a,c){return a.id-c.id;});
+    var _pFlatCounts={};
+    _pFlat.forEach(function(p){_pFlatCounts[p.name]=(_pFlatCounts[p.name]||0)+1;p.seq=_pFlatCounts[p.name];});
+
     var _sortedAbs=bAbs.slice().sort(function(a,c){return a.id-c.id;});
     var allDots=[];
     var _pitcherCounts={};
+    var _flatIdx=0;
     _sortedAbs.forEach(function(ab){
       if(!ab.pitches||!ab.pitches.length)return;
       ab.pitches.forEach(function(p,pi){
         if(p.x==null||p.y==null)return;
         var pName=p.pitcher||'';
         var pNum=null;
-        if(pName){_pitcherCounts[pName]=(_pitcherCounts[pName]||0)+1;pNum=_pitcherCounts[pName];}
+        if(pName){
+          // ab.pitches[i].pitcher 있으면 직접 사용
+          _pitcherCounts[pName]=(_pitcherCounts[pName]||0)+1;pNum=_pitcherCounts[pName];
+        } else if(_pFlat[_flatIdx]){
+          // fallback: AS.pitchers 순차 매핑
+          pName=_pFlat[_flatIdx].name;pNum=_pFlat[_flatIdx].seq;_flatIdx++;
+        }
         allDots.push({
           cx:p.x,cy:p.y,result:p.pt||'스트라이크',
           pitchType:p.pt||'',zone:p.zone||'',

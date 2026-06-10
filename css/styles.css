@@ -327,6 +327,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 @media(min-width:721px){
   #app-page{height:100vh;overflow:hidden;display:flex;flex-direction:column}
   .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) minmax(280px,1fr);grid-template-rows:1fr;margin-right:54px}
+  .pnl-left{display:flex!important;grid-column:1;grid-row:1}
+  .pnl-center{grid-column:2;grid-row:1}
+  .pnl-right{grid-column:3;grid-row:1;border-left:1px solid var(--border)}
   /* SCOREBOARD 축소 */
   .scoreboard{gap:6px;padding:4px 10px}
   .team-blk{gap:3px}

@@ -2660,15 +2660,38 @@ function updBatterStat(){
   // 저장된 투구 위치 캔버스
   var bsPitchCvs=document.getElementById('bsPitchCanvas');
   if(bsPitchCvs&&typeof _drawZoneCanvas==='function'){
+    // 투수별 좌표→(투수명, 구번호) 맵 구성
+    var _pzKey=function(x,y){return Math.round(x*1000)+'_'+Math.round(y*1000);};
+    var _pitcherDotMap={};
+    (AS.pitchers||[]).forEach(function(pitcher){
+      var seq=0;
+      (pitcher.pitches||[]).filter(function(p){return p.batter===b.name;}).forEach(function(p){
+        seq++;
+        if(p.zoneX!=null&&p.zoneY!=null){
+          var k=_pzKey(p.zoneX,p.zoneY);
+          if(!_pitcherDotMap[k])_pitcherDotMap[k]=[];
+          _pitcherDotMap[k].push({pitcher:pitcher.name,pitchNum:seq});
+        }
+      });
+    });
+    var _dotUsed={};
     var allDots=[];
     bAbs.forEach(function(ab){
       if(ab.pitches)ab.pitches.forEach(function(p,pi){
-        if(p.x!=null&&p.y!=null)allDots.push({
-          cx:p.x,cy:p.y,result:p.pt||'스트라이크',
-          pitchType:p.pt||'',zone:p.zone||'',
-          abResult:pi===ab.pitches.length-1?ab.res:'—',
-          inn:ab.inn||''
-        });
+        if(p.x!=null&&p.y!=null){
+          var k=_pzKey(p.x,p.y);
+          var used=_dotUsed[k]||0;
+          var info=(_pitcherDotMap[k]||[])[used]||null;
+          _dotUsed[k]=used+1;
+          allDots.push({
+            cx:p.x,cy:p.y,result:p.pt||'스트라이크',
+            pitchType:p.pt||'',zone:p.zone||'',
+            abResult:pi===ab.pitches.length-1?ab.res:'—',
+            inn:ab.inn||'',
+            pitcher:info?info.pitcher:'',
+            pitchNum:info?info.pitchNum:null
+          });
+        }
       });
     });
     _drawZoneCanvas(bsPitchCvs,allDots,false);
@@ -2686,14 +2709,14 @@ function updBatterStat(){
     };
     bsPitchCvs.onmousemove=function(e){
       var n=_bsNear(e);
-      if(n){this.style.cursor='pointer';_showPzCard(e,n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn}]);}
+      if(n){this.style.cursor='pointer';_showPzCard(e,n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn,pitcher:n.pitcher,pitchNum:n.pitchNum}]);}
       else{this.style.cursor='crosshair';_hidePzCard();}
     };
     bsPitchCvs.onmouseleave=function(){_hidePzCard();};
     bsPitchCvs.ontouchmove=function(e){
       e.preventDefault();
       var t=e.touches[0],n=_bsNear(null,t);
-      if(n)_showPzCard({target:this,clientX:t.clientX,clientY:t.clientY},n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn}]);
+      if(n)_showPzCard({target:this,clientX:t.clientX,clientY:t.clientY},n.zone||'?',[{pt:n.pitchType,result:n.abResult,inning:n.inn,pitcher:n.pitcher,pitchNum:n.pitchNum}]);
     };
     bsPitchCvs.ontouchend=function(){_hidePzCard();};
   }
@@ -4886,6 +4909,7 @@ function _showPzCard(e,zone,pitches){
       +(p.inning?'<span style="font-size:8px;color:var(--text3);min-width:28px">'+p.inning+'</span>':'')
       +'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+ptCol+';flex-shrink:0"></span>'
       +'<span style="flex:1;color:var(--text2)">'+(p.pt||'—')+'</span>'
+      +(p.pitcher?'<span style="color:#7ab0f5;font-size:9px">'+p.pitcher+(p.pitchNum?' '+p.pitchNum+'구':'')+'</span>':'')
       +'<span style="color:'+col+';font-weight:700">'+p.result+'</span>'
       +'</div>';
   }).join('');

@@ -181,12 +181,21 @@ function showApp(){
   // 히어로 캔버스 애니메이션 루프 중단
   if(window._cancelHeroAnim){window._cancelHeroAnim();window._cancelHeroAnim=null;}
   document.getElementById('landing-page').style.display='none';
-  var isMob=window.innerWidth<=720;
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
-  if(isMob){ap.style.overflowY='hidden';ap.style.height='100svh';}else{ap.style.overflowY='';ap.style.height='';}
+  function _applyMobLayout(){
+    var isMob=window.innerWidth<=720;
+    if(isMob){ap.style.overflowY='hidden';ap.style.height='100svh';}
+    else{ap.style.overflowY='';ap.style.height='';}
+  }
+  _applyMobLayout();
   document.body.style.overflowY='hidden';
   document.body.style.overflowX='hidden';
+  // 창 크기 바뀔 때 app-page 인라인 스타일 재판단 + 캔버스 재드로우
+  window.addEventListener('resize',function(){
+    _applyMobLayout();
+    if(typeof drawField==='function')requestAnimationFrame(function(){drawField();if(typeof safeRender==='function')safeRender();});
+  });
   initApp();
   ftuCheck();
   // Show savant bottom nav — 홈 화면이면 숨김 유지
@@ -194,14 +203,13 @@ function showApp(){
     var nav=document.getElementById('savantNav');
     if(nav)nav.style.display='flex';
   }
-  // Show mobile action bar — 홈(welcome) 화면이면 숨김 유지
+  // Show mobile action bar
   if(!document.body.classList.contains('on-welcome')){
     var mab=document.getElementById('mobileActionBar');
     if(mab)mab.style.display='';
   }
-  // Show mobile input tab (모바일 전용)
   var mit=document.getElementById('mobileInputTab');
-  if(mit&&isMob)mit.style.display='';
+  if(mit&&window.innerWidth<=720)mit.style.display='';
 }
 function goHome(){
   // 앱 내에 있으면 홈 화면(welcom)으로 복귀
@@ -2574,12 +2582,16 @@ function updBatterStat(){
   var ballZones=['볼 위','볼 내','볼 외','볼 아래'];
   var zonePitches={};
   zoneOrder.concat(ballZones).forEach(function(z){zonePitches[z]=[];});
-  bAbs.forEach(function(ab){
+  var _zpPitcherCounts={};
+  bAbs.slice().sort(function(a,c){return a.id-c.id;}).forEach(function(ab){
     var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{zone:ab.zone,pt:ab.pt}]:[]);
     ps.forEach(function(p,idx){
       if(!p.zone)return;
       if(!zonePitches[p.zone])zonePitches[p.zone]=[];
-      zonePitches[p.zone].push({pt:p.pt,result:idx===ps.length-1?ab.res:null});
+      var pName=p.pitcher||'';
+      var pNum=null;
+      if(pName){_zpPitcherCounts[pName]=(_zpPitcherCounts[pName]||0)+1;pNum=_zpPitcherCounts[pName];}
+      zonePitches[p.zone].push({pt:p.pt,result:idx===ps.length-1?ab.res:null,pitcher:pName,pitchNum:pNum});
     });
   });
   function zoneHR(z){var pp=zonePitches[z]||[];var n=pp.length,h=pp.filter(function(p){return _HITS.includes(p.result);}).length;return{n:n,h:h,rate:n?h/n:0};}
@@ -2593,7 +2605,7 @@ function updBatterStat(){
       var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
       var ptCts={};(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
       var ptTagsHtml=Object.keys(ptCts).map(function(pt){var c=_PT_COL[pt]||'#7c8898';return'<span class="zh-pt" style="background:'+c+'33;color:'+c+'">'+(_PT_ABR[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
-      var _zpBase=(zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||''};});
+      var _zpBase=(zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||'',pitcher:p.pitcher||'',pitchNum:p.pitchNum||null};});
       var _zpLog=(AS.pitchLog||[]).filter(function(p){return p.batter===b.name&&p.zone===z;}).map(function(p){return{pt:p.pt||'',result:p.result||'',inning:p.inning||''};});
       var zpJ=JSON.stringify(_zpBase.length?_zpBase:_zpLog);
       return'<div class="zh-cell" title="'+z+': '+tips+'" onclick="_showPzCard(event,'+JSON.stringify(z)+','+zpJ+')" style="background:'+bg+';color:'+col+';flex-direction:column;gap:0;padding:1px;cursor:'+(zd.n?'pointer':'default')+'">'+(zd.n?'<span style="font-size:9px;font-weight:800">'+zd.n+'</span><span style="font-size:7px">'+Math.round(zd.rate*100)+'%</span><div class="zh-pt-row">'+ptTagsHtml+'</div>':'')+'</div>';
@@ -2604,7 +2616,9 @@ function updBatterStat(){
     var bzNames={'볼 위':'위볼','볼 내':'내볼','볼 외':'외볼','볼 아래':'아래볼'};
     bzEl.innerHTML=ballZones.map(function(z){
       var zd=zoneHR(z);var col=zd.n?(zd.rate>=0.4?'#2dd4a0':'#f56565'):'var(--text3)';
-      return'<div style="font-size:9px;color:'+col+'">'+bzNames[z]+(zd.n?' '+zd.n:'')+'</div>';
+      var _bz=(zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||'',pitcher:p.pitcher||'',pitchNum:p.pitchNum||null};});
+      var _bzJ=JSON.stringify(_bz);
+      return'<div onclick="'+(zd.n?'_showPzCard(event,'+JSON.stringify(z)+','+_bzJ.replace(/"/g,'&quot;')+')':'')+'" style="font-size:9px;color:'+col+';cursor:'+(zd.n?'pointer':'default')+'">'+bzNames[z]+(zd.n?' '+zd.n:'')+'</div>';
     }).join('');
   }
   var seqEl=document.getElementById('bsPitchSeq');

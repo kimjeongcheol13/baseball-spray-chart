@@ -160,6 +160,13 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
   .sl-ob-cta-title{font-size:14px}
   .sl-ob-cta-main{font-size:15px;padding:14px}
 }
+/* ── xStats ── */
+.xst-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.xst-it{background:#12122a;border-radius:8px;padding:7px 6px;text-align:center}
+.xst-v{font-size:17px;font-weight:800;color:#e2e8f0;letter-spacing:-.5px;font-family:'JetBrains Mono',monospace}
+.xst-l{font-size:9px;color:#6b6b88;font-weight:700;margin-top:1px;text-transform:uppercase;letter-spacing:.4px}
+.xst-d{font-size:10px;font-weight:700;margin-top:2px;min-height:14px}
+.xd-pos{color:#2dd4a0}.xd-neg{color:#f56565}.xd-neu{color:#6b6b88}
 /* ── Stadium selector (sl-st-) ── */
 .sl-st-bar{display:flex;gap:6px;padding:6px 8px 2px;overflow-x:auto;scrollbar-width:none}
 .sl-st-bar::-webkit-scrollbar{display:none}
@@ -1576,6 +1583,8 @@ const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
             <div class="stat-it"><div class="stat-v-sm" id="sKpct">--%</div><div class="stat-l">K%</div></div>
           </div>
           <div style="font-size:9px;color:var(--text3);line-height:1.6">wOBA=가중출루율 · BABIP=인플레이타율<br>BB%=볼넷율 · K%=삼진율</div>
+          <div class="sc-title" style="margin-top:14px">xStats <span style="font-size:9px;font-weight:400;color:var(--text3)">(EV·LA 기반 기댓값)</span></div>
+          <div id="sXStatsWrap"><div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">EV·LA 입력된 타석 없음</div></div>
         </div>
 
         <div class="stat-card">
@@ -2619,7 +2628,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=50"></script>
+<script defer src="js/core.js?v=51"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
 <script>

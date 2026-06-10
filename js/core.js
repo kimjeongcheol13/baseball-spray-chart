@@ -20,6 +20,38 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch (e) {}
 })();
 
+// ── xStats 모델 (EV km/h + LA ° → xBA / xSLG / xwOBA) ──
+// Statcast 회귀 모델 기반, 사회인야구 EV 범위(50~145 km/h) 보정
+function calcXStats(ev_kmh, la_deg) {
+  const evN = Math.max(0, Math.min(1, (ev_kmh - 50) / 95)); // 50km/h=0, 145km/h=1
+  const la  = Math.max(-30, Math.min(60, la_deg));
+  let p1b, p2b, p3b, phr;
+  if (la < -10) {
+    p1b=0.02; p2b=0.00; p3b=0; phr=0;
+  } else if (la < 5) {
+    p1b=0.10+evN*0.14; p2b=0.02+evN*0.04; p3b=0.003; phr=0;
+  } else if (la < 15) {
+    p1b=0.24+evN*0.20; p2b=0.05+evN*0.14; p3b=0.01+evN*0.03; phr=evN>0.7?(evN-0.7)*0.08:0;
+  } else if (la < 25) {
+    p1b=0.30+evN*0.14; p2b=0.09+evN*0.18; p3b=0.02+evN*0.04; phr=Math.max(0,(evN-0.45)*0.14);
+  } else if (la < 35) {
+    p1b=0.07+evN*0.14; p2b=0.05+evN*0.12; p3b=0.01; phr=Math.max(0,(evN-0.38)*0.40);
+  } else if (la < 50) {
+    p1b=0.03+evN*0.08; p2b=0.02+evN*0.06; p3b=0; phr=Math.max(0,(evN-0.48)*0.22);
+  } else {
+    p1b=0.02; p2b=0; p3b=0; phr=0;
+  }
+  p1b=Math.min(0.65,Math.max(0,p1b));
+  p2b=Math.min(0.40,Math.max(0,p2b));
+  p3b=Math.min(0.12,Math.max(0,p3b));
+  phr=Math.min(0.50,Math.max(0,phr));
+  const xba  = Math.min(0.99, p1b+p2b+p3b+phr);
+  const xslg = Math.min(4.0,  p1b*1+p2b*2+p3b*3+phr*4);
+  const xwoba= 0.89*p1b + 1.27*p2b + 1.62*p3b + 2.10*phr;
+  return { xba, xslg, xwoba };
+}
+window.calcXStats = calcXStats;
+
 // ── 구장 설정 ──
 const STADIUMS = {
   standard: { name:'표준',  emoji:'⚾', cfDist:120, lfDist:90,  rfDist:90,  grass:['#1f4d24','#193f1d','#112b14'], dirt:'#4a2e10', if:'#7d5028', dome:false },
@@ -1450,6 +1482,48 @@ function renderExtStats(abs){
   document.getElementById('sBABIP').textContent=fmt3(babip);
   document.getElementById('sBBpct').textContent=fmtPct(bbpct);
   document.getElementById('sKpct').textContent=fmtPct(kpct);
+
+  // ── xStats (EV+LA 기록 있는 타석만) ──
+  const xAbs = abs.filter(a=>a.ev!=null&&a.launchAngle!=null);
+  const xEl = document.getElementById('sXStatsWrap');
+  if (!xEl) return;
+  if (xAbs.length < 1) {
+    xEl.innerHTML = '<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">EV·LA 입력된 타석 없음 — 타석 기록 시 EV·LA를 입력하면 xStats가 계산됩니다</div>';
+    return;
+  }
+  const xs = xAbs.map(a=>calcXStats(a.ev * (localStorage.getItem('sl_ev_unit')==='mph'?1.60934:1), a.launchAngle));
+  const avg = (arr, fn) => arr.reduce((s,v)=>s+fn(v),0)/arr.length;
+  const xxba  = avg(xs,v=>v.xba);
+  const xxslg = avg(xs,v=>v.xslg);
+  const xxwoba= avg(xs,v=>v.xwoba);
+
+  // 실제값 대비 델타
+  const avgBA  = ab ? h/ab : null;
+  const slgNum = abs.filter(a=>!noab.includes(a.res)).length;
+  const tb = s1*1+s2*2+s3*3+hr*4;
+  const avgSLG = slgNum ? tb/slgNum : null;
+  const fmtDelta = (actual, expected) => {
+    if (actual==null) return '';
+    const d = actual - expected;
+    const sign = d>=0 ? '+' : '';
+    const cls = d>0.015 ? 'xd-pos' : d<-0.015 ? 'xd-neg' : 'xd-neu';
+    return `<span class="${cls}">${sign}${d.toFixed(3).replace('0.','.')}</span>`;
+  };
+  const fmtDeltaSlg = (actual, expected) => {
+    if (actual==null) return '';
+    const d = actual - expected;
+    const sign = d>=0 ? '+' : '';
+    const cls = d>0.02 ? 'xd-pos' : d<-0.02 ? 'xd-neg' : 'xd-neu';
+    return `<span class="${cls}">${sign}${d.toFixed(3).replace('0.','.')}</span>`;
+  };
+
+  xEl.innerHTML =
+    '<div class="xst-grid">'
+    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxba)+'</div><div class="xst-l">xBA</div><div class="xst-d">'+fmtDelta(avgBA,xxba)+'</div></div>'
+    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxslg)+'</div><div class="xst-l">xSLG</div><div class="xst-d">'+fmtDeltaSlg(avgSLG,xxslg)+'</div></div>'
+    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxwoba)+'</div><div class="xst-l">xwOBA</div><div class="xst-d">'+fmtDelta(woba,xxwoba)+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:9px;color:var(--text3);margin-top:4px">EV·LA 입력 '+xAbs.length+'타석 기준 · 델타=실제−기댓값</div>';
 }
 
 function renderPitchTypeTable(abs){

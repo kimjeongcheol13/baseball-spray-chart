@@ -1483,47 +1483,35 @@ function renderExtStats(abs){
   document.getElementById('sBBpct').textContent=fmtPct(bbpct);
   document.getElementById('sKpct').textContent=fmtPct(kpct);
 
-  // ── xStats (EV+LA 기록 있는 타석만) ──
-  const xAbs = abs.filter(a=>a.ev!=null&&a.launchAngle!=null);
-  const xEl = document.getElementById('sXStatsWrap');
-  if (!xEl) return;
-  if (xAbs.length < 1) {
-    xEl.innerHTML = '<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">EV·LA 입력된 타석 없음 — 타석 기록 시 EV·LA를 입력하면 xStats가 계산됩니다</div>';
-    return;
-  }
-  const xs = xAbs.map(a=>calcXStats(a.ev * (localStorage.getItem('sl_ev_unit')==='mph'?1.60934:1), a.launchAngle));
-  const avg = (arr, fn) => arr.reduce((s,v)=>s+fn(v),0)/arr.length;
-  const xxba  = avg(xs,v=>v.xba);
-  const xxslg = avg(xs,v=>v.xslg);
-  const xxwoba= avg(xs,v=>v.xwoba);
-
-  // 실제값 대비 델타
-  const avgBA  = ab ? h/ab : null;
-  const slgNum = abs.filter(a=>!noab.includes(a.res)).length;
-  const tb = s1*1+s2*2+s3*3+hr*4;
-  const avgSLG = slgNum ? tb/slgNum : null;
-  const fmtDelta = (actual, expected) => {
-    if (actual==null) return '';
-    const d = actual - expected;
-    const sign = d>=0 ? '+' : '';
-    const cls = d>0.015 ? 'xd-pos' : d<-0.015 ? 'xd-neg' : 'xd-neu';
-    return `<span class="${cls}">${sign}${d.toFixed(3).replace('0.','.')}</span>`;
-  };
-  const fmtDeltaSlg = (actual, expected) => {
-    if (actual==null) return '';
-    const d = actual - expected;
-    const sign = d>=0 ? '+' : '';
-    const cls = d>0.02 ? 'xd-pos' : d<-0.02 ? 'xd-neg' : 'xd-neu';
-    return `<span class="${cls}">${sign}${d.toFixed(3).replace('0.','.')}</span>`;
-  };
-
-  xEl.innerHTML =
-    '<div class="xst-grid">'
-    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxba)+'</div><div class="xst-l">xBA</div><div class="xst-d">'+fmtDelta(avgBA,xxba)+'</div></div>'
-    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxslg)+'</div><div class="xst-l">xSLG</div><div class="xst-d">'+fmtDeltaSlg(avgSLG,xxslg)+'</div></div>'
-    +'<div class="xst-it"><div class="xst-v">'+fmt3(xxwoba)+'</div><div class="xst-l">xwOBA</div><div class="xst-d">'+fmtDelta(woba,xxwoba)+'</div></div>'
-    +'</div>'
-    +'<div style="font-size:9px;color:var(--text3);margin-top:4px">EV·LA 입력 '+xAbs.length+'타석 기준 · 델타=실제−기댓값</div>';
+  // ── 방향별 성공률 ──
+  const dEl = document.getElementById('sDirStatsWrap');
+  if (!dEl) return;
+  const dirAbs = abs.filter(a=>a.x!=null&&a.deg!=null);
+  if (!dirAbs.length) { dEl.innerHTML='<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">타구 방향 기록 없음</div>'; return; }
+  const dirs = [
+    { lbl:'당겨치기', fn: a=>_isPull(a) },
+    { lbl:'센터',     fn: a=>_isCtr(a)  },
+    { lbl:'밀어치기', fn: a=>_isOppo(a) },
+  ];
+  const overallAvg = ab ? h/ab : 0;
+  const rows = dirs.map(d=>{
+    const dAbs = dirAbs.filter(d.fn);
+    const dAb  = dAbs.filter(a=>!noab.includes(a.res)).length;
+    const dH   = dAbs.filter(a=>hits.includes(a.res)).length;
+    const avg  = dAb ? dH/dAb : null;
+    return { lbl:d.lbl, pa:dAbs.length, h:dH, ab:dAb, avg };
+  });
+  dEl.innerHTML = '<div class="dir-grid">'
+    + rows.map(r=>{
+        const avgStr = r.avg!=null ? r.avg.toFixed(3).replace('0.','.') : '.---';
+        const diff   = r.avg!=null ? r.avg - overallAvg : null;
+        const cls    = diff==null?'':diff>0.03?'xd-pos':diff<-0.03?'xd-neg':'xd-neu';
+        const sign   = diff!=null&&diff>=0?'+':'';
+        const delta  = diff!=null?`<span class="${cls}">${sign}${diff.toFixed(3).replace('0.','.') }</span>`:'';
+        return `<div class="dir-it"><div class="dir-v">${avgStr}</div><div class="dir-d">${delta}</div><div class="dir-l">${r.lbl}</div><div class="dir-sub">${r.h}H / ${r.ab}AB</div></div>`;
+      }).join('')
+    + '</div>'
+    + '<div style="font-size:9px;color:var(--text3);margin-top:4px">전체 타율 대비 방향별 편차 · 인플레이 타석 기준</div>';
 }
 
 function renderPitchTypeTable(abs){

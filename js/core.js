@@ -2660,38 +2660,41 @@ function updBatterStat(){
   // 저장된 투구 위치 캔버스
   var bsPitchCvs=document.getElementById('bsPitchCanvas');
   if(bsPitchCvs&&typeof _drawZoneCanvas==='function'){
-    // 투수별 좌표→(투수명, 구번호) 맵 구성
-    var _pzKey=function(x,y){return Math.round(x*1000)+'_'+Math.round(y*1000);};
-    var _pitcherDotMap={};
+    // 투수별 구번호 시퀀스 구성 (이 타자 대상, 타임스탬프 순)
+    var _pitcherSeq={};
     (AS.pitchers||[]).forEach(function(pitcher){
       var seq=0;
-      (pitcher.pitches||[]).filter(function(p){return p.batter===b.name;}).forEach(function(p){
-        seq++;
-        if(p.zoneX!=null&&p.zoneY!=null){
-          var k=_pzKey(p.zoneX,p.zoneY);
-          if(!_pitcherDotMap[k])_pitcherDotMap[k]=[];
-          _pitcherDotMap[k].push({pitcher:pitcher.name,pitchNum:seq});
-        }
-      });
+      _pitcherSeq[pitcher.name]=(pitcher.pitches||[])
+        .filter(function(p){return p.batter===b.name;})
+        .sort(function(a,c){return a.id-c.id;})
+        .map(function(p){seq++;return{id:p.id,seq:seq,pt:p.pt,zone:p.zone};});
     });
-    var _dotUsed={};
+    // 타석별 타임스탬프 창으로 투수 공 매핑
+    var _sortedAbs=bAbs.slice().sort(function(a,c){return a.id-c.id;});
     var allDots=[];
-    bAbs.forEach(function(ab){
-      if(ab.pitches)ab.pitches.forEach(function(p,pi){
-        if(p.x!=null&&p.y!=null){
-          var k=_pzKey(p.x,p.y);
-          var used=_dotUsed[k]||0;
-          var info=(_pitcherDotMap[k]||[])[used]||null;
-          _dotUsed[k]=used+1;
-          allDots.push({
-            cx:p.x,cy:p.y,result:p.pt||'스트라이크',
-            pitchType:p.pt||'',zone:p.zone||'',
-            abResult:pi===ab.pitches.length-1?ab.res:'—',
-            inn:ab.inn||'',
-            pitcher:info?info.pitcher:'',
-            pitchNum:info?info.pitchNum:null
-          });
-        }
+    _sortedAbs.forEach(function(ab,abIdx){
+      if(!ab.pitches||!ab.pitches.length)return;
+      var prevT=abIdx>0?_sortedAbs[abIdx-1].id:0;
+      var abT=ab.id;
+      // 이 타석 창 안의 투수 공 (투수 불문, 시간순)
+      var windowPitches=[];
+      Object.keys(_pitcherSeq).forEach(function(pName){
+        _pitcherSeq[pName].forEach(function(pp){
+          if(pp.id>prevT&&pp.id<=abT)windowPitches.push({pitcherName:pName,seq:pp.seq,id:pp.id});
+        });
+      });
+      windowPitches.sort(function(a,c){return a.id-c.id;});
+      ab.pitches.forEach(function(p,pi){
+        if(p.x==null||p.y==null)return;
+        var info=windowPitches[pi]||null;
+        allDots.push({
+          cx:p.x,cy:p.y,result:p.pt||'스트라이크',
+          pitchType:p.pt||'',zone:p.zone||'',
+          abResult:pi===ab.pitches.length-1?ab.res:'—',
+          inn:ab.inn||'',
+          pitcher:info?info.pitcherName:'',
+          pitchNum:info?info.seq:null
+        });
       });
     });
     _drawZoneCanvas(bsPitchCvs,allDots,false);

@@ -2713,8 +2713,9 @@ function updBatterStat(){
       if (_HITS.includes(ab.res)) pm.h++;
     });
     var entries = Object.entries(pitcherMap).sort(function(a,b){ return b[1].pa - a[1].pa; });
-    if (!entries.length || (entries.length === 1 && entries[0][0] === '미기록')) {
-      summaryEl.innerHTML = '';
+    var hasRealPitcher = entries.some(function(e){ return e[0] !== '미기록'; });
+    if (!entries.length || !hasRealPitcher) {
+      summaryEl.innerHTML = '<div style="font-size:9px;color:var(--text3);padding:3px 0">투수 미등록 — 투수 탭에서 투수를 추가하면 투수별 기록이 표시됩니다</div>';
     } else {
       summaryEl.innerHTML =
         '<div style="font-size:9px;color:var(--text3);margin-bottom:4px">투수별 대결 기록</div>'

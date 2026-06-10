@@ -2697,6 +2697,42 @@ function updBatterStat(){
     };
     bsPitchCvs.ontouchend=function(){_hidePzCard();};
   }
+
+  // ── 투수별 요약 ──
+  var summaryEl = document.getElementById('bsPitcherSummary');
+  if (summaryEl) {
+    var pitcherMap = {};
+    bAbs.forEach(function(ab) {
+      var pName = (ab.pitcher || '').trim() || '미기록';
+      if (!pitcherMap[pName]) pitcherMap[pName] = { pitches: 0, pa: 0, bb: 0, k: 0, h: 0 };
+      var pm = pitcherMap[pName];
+      pm.pa++;
+      pm.pitches += (ab.pitches && ab.pitches.length) ? ab.pitches.length : 0;
+      if (ab.res === '볼넷') pm.bb++;
+      if (ab.res === '삼진') pm.k++;
+      if (_HITS.includes(ab.res)) pm.h++;
+    });
+    var entries = Object.entries(pitcherMap).sort(function(a,b){ return b[1].pa - a[1].pa; });
+    if (!entries.length || (entries.length === 1 && entries[0][0] === '미기록')) {
+      summaryEl.innerHTML = '';
+    } else {
+      summaryEl.innerHTML =
+        '<div style="font-size:9px;color:var(--text3);margin-bottom:4px">투수별 대결 기록</div>'
+        + entries.map(function(e) {
+          var name = e[0], st = e[1];
+          var badges = '';
+          if (st.bb) badges += '<span style="color:#a78bfa;font-size:9px;font-weight:700">BB'+st.bb+'</span> ';
+          if (st.k)  badges += '<span style="color:#f56565;font-size:9px;font-weight:700">K'+st.k+'</span> ';
+          if (st.h)  badges += '<span style="color:#2dd4a0;font-size:9px;font-weight:700">H'+st.h+'</span> ';
+          return '<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--border);font-size:10px">'
+            + '<span style="flex:1;font-weight:600;color:var(--text1)">'+name+'</span>'
+            + '<span style="color:var(--text3);font-size:9px">'+st.pa+'타석</span>'
+            + (st.pitches ? '<span style="color:var(--text3);font-size:9px">'+st.pitches+'구</span>' : '')
+            + (badges ? '<span>'+badges.trim()+'</span>' : '')
+            + '</div>';
+        }).join('');
+    }
+  }
 }
 
 document.addEventListener('keydown',e=>{

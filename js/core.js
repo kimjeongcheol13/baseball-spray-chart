@@ -2701,20 +2701,40 @@ function updBatterStat(){
   // ── 투수별 요약 ──
   var summaryEl = document.getElementById('bsPitcherSummary');
   if (summaryEl) {
-    var pitcherMap = {};
-    bAbs.forEach(function(ab) {
-      var pName = (ab.pitcher || '').trim() || '미기록';
-      if (!pitcherMap[pName]) pitcherMap[pName] = { pitches: 0, pa: 0, bb: 0, k: 0, h: 0 };
-      var pm = pitcherMap[pName];
-      pm.pa++;
-      pm.pitches += (ab.pitches && ab.pitches.length) ? ab.pitches.length : 0;
-      if (ab.res === '볼넷') pm.bb++;
-      if (ab.res === '삼진') pm.k++;
-      if (_HITS.includes(ab.res)) pm.h++;
+    // AS.pitchers 직접 참조 — 각 투수의 pitches에서 현재 타자 이름으로 필터
+    var psMap = {};
+    (AS.pitchers || []).forEach(function(pitcher) {
+      var myPitches = (pitcher.pitches || []).filter(function(p){ return p.batter === b.name; });
+      if (!myPitches.length) return;
+      psMap[pitcher.name] = { pitches: myPitches.length, pitchIds: myPitches.map(function(p){ return p.id; }), pa: 0, bb: 0, k: 0, h: 0 };
     });
-    var entries = Object.entries(pitcherMap).sort(function(a,b){ return b[1].pa - a[1].pa; });
+
+    // at-bat을 타임스탬프로 투수에 매핑
+    bAbs.forEach(function(ab) {
+      // ab.pitcher가 이미 있으면 그대로 사용
+      var pName = (ab.pitcher || '').trim();
+      if (!pName) {
+        // 타임스탬프 기준: ab.id 이전 최근 투구가 있는 투수 찾기
+        var best = null, bestDiff = Infinity;
+        Object.keys(psMap).forEach(function(n) {
+          var ids = psMap[n].pitchIds.filter(function(id){ return id <= ab.id; });
+          if (!ids.length) return;
+          var diff = ab.id - Math.max.apply(null, ids);
+          if (diff < bestDiff) { bestDiff = diff; best = n; }
+        });
+        pName = best || '미기록';
+      }
+      if (!psMap[pName]) psMap[pName] = { pitches: 0, pitchIds: [], pa: 0, bb: 0, k: 0, h: 0 };
+      psMap[pName].pa++;
+      if (ab.res === '볼넷') psMap[pName].bb++;
+      if (ab.res === '삼진') psMap[pName].k++;
+      if (_HITS.includes(ab.res)) psMap[pName].h++;
+    });
+
+    var entries = Object.entries(psMap).filter(function(e){ return e[0] !== '미기록'; })
+      .sort(function(a,b){ return b[1].pa - a[1].pa; });
     if (!entries.length) {
-      summaryEl.innerHTML = '';
+      summaryEl.innerHTML = '<div style="font-size:9px;color:var(--text3);padding:3px 0">투수 등록 후 경기를 기록하면 투수별 통계가 표시됩니다</div>';
     } else {
       summaryEl.innerHTML =
         '<div style="font-size:9px;color:var(--text3);margin-bottom:4px">투수별 대결 기록</div>'

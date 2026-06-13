@@ -2627,7 +2627,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
 }
 
 /* ── Network status badge ── */

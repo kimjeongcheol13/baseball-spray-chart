@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kimjeongcheol13.github.io/baseball-spray-chart/sitemap.xml

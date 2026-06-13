@@ -40,6 +40,11 @@ self.addEventListener('activate', function(e) {
             .map(function(k) { return caches.delete(k); })
       );
     }).then(function() { return self.clients.claim(); })
+    .then(function() {
+      return self.clients.matchAll().then(function(clients) {
+        clients.forEach(function(client) { client.navigate(client.url); });
+      });
+    })
   );
 });
 

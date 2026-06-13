@@ -1,7 +1,7 @@
-// SprayLab Service Worker v17
+// SprayLab Service Worker v18
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v17';
+const CACHE_NAME = 'spraylab-v18';
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -55,8 +55,24 @@ self.addEventListener('fetch', function(e) {
       fetch(new Request(req, { cache: 'no-cache' }))
         .then(function(res) {
           if (res && res.status === 200) {
-            var clone = res.clone();
-            caches.open(CACHE_NAME).then(function(cache) { cache.put(req, clone); });
+            return res.text().then(function(html) {
+              // SVG 로고를 이미지로 강제 교체
+              html = html.replace(
+                /<svg class="nav-logo"[\s\S]*?<\/svg>/,
+                '<img class="nav-logo" src="player-logo.png" alt="SprayLab">'
+              );
+              html = html.replace(
+                /<svg class="aw-logo-icon"[\s\S]*?<\/svg>/,
+                '<img class="aw-logo-icon" src="player-logo.png" alt="SprayLab">'
+              );
+              var newRes = new Response(html, {
+                status: res.status,
+                statusText: res.statusText,
+                headers: {'Content-Type': 'text/html; charset=utf-8'}
+              });
+              caches.open(CACHE_NAME).then(function(cache) { cache.put(req, newRes.clone()); });
+              return newRes;
+            });
           }
           return res;
         })

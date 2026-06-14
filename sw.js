@@ -1,7 +1,7 @@
-// SprayLab Service Worker v18
+// SprayLab Service Worker v19
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v18';
+const CACHE_NAME = 'spraylab-v19';
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -15,7 +15,7 @@ const CACHE_FILES = [
   './js/ocr.js',
   './js/constants.js',
   './js/analytics.js',
-  './icon.svg',
+  './player-logo.png',
   './manifest.json',
 ];
 

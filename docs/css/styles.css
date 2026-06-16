@@ -718,6 +718,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     display:block !important;
     scroll-snap-align:start;
     overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
     padding:10px;
     box-sizing:border-box;
     height:100%;

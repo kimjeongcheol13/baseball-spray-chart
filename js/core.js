@@ -175,17 +175,20 @@ function showDataModal(jsonStr, fileName) {
   document.body.appendChild(ov);
 }
 
-// ── 모바일: 스와이프 업으로 탭바 숨기기 ──
+// ── 모바일: 스와이프 업으로 필드 숨기고 아래 패널 전체화면 ──
 (function() {
+  // CSS 주입
+  var s = document.createElement('style');
+  s.textContent =
+    '@media(max-width:720px){' +
+    '.pnl-center{transition:max-height .35s ease,opacity .25s ease;overflow:hidden!important;max-height:80vh}' +
+    '#app-page.field-up .pnl-center{max-height:0!important;opacity:0}' +
+    '#app-page.field-up .pnl-right{max-height:calc(100vh - 44px)!important}' +
+    '}';
+  document.head.appendChild(s);
+
   var sy = 0;
   var collapsed = false;
-
-  function setCollapsed(on) {
-    var tmb = document.querySelector('.tab-mode-bar');
-    var tabs = document.querySelector('.pnl-right > .tabs');
-    if (tmb) tmb.style.display = on ? 'none' : '';
-    if (tabs) tabs.style.display = on ? 'none' : '';
-  }
 
   document.addEventListener('touchstart', function(e) {
     sy = e.touches[0].clientY;
@@ -193,12 +196,14 @@ function showDataModal(jsonStr, fileName) {
 
   document.addEventListener('touchmove', function(e) {
     var dy = sy - e.touches[0].clientY;
-    if (!collapsed && dy > 20) {
+    var ap = document.getElementById('app-page');
+    if (!ap) return;
+    if (!collapsed && dy > 30) {
       collapsed = true;
-      setCollapsed(true);
-    } else if (collapsed && dy < -20) {
+      ap.classList.add('field-up');
+    } else if (collapsed && dy < -30) {
       collapsed = false;
-      setCollapsed(false);
+      ap.classList.remove('field-up');
     }
   }, { passive: true, capture: true });
 })();

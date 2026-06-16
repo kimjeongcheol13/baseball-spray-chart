@@ -178,30 +178,17 @@ function showDataModal(jsonStr, fileName) {
 // ── 모바일: 아래 패널 스크롤 시 헤더 영역 접기/펼치기 ──
 document.addEventListener('DOMContentLoaded', function() {
   var appPage = document.getElementById('app-page');
-  var pnlRight = document.querySelector('.pnl-right');
-  if (!appPage || !pnlRight) return;
+  if (!appPage) return;
 
-  var startY = 0;
-  var tracking = false;
-
-  document.addEventListener('touchstart', function(e) {
-    if (!pnlRight.contains(e.target)) return;
-    startY = e.changedTouches[0].clientY;
-    tracking = true;
-  }, {passive: true});
-
-  document.addEventListener('touchmove', function(e) {
-    if (!tracking || window.innerWidth > 720) return;
-    var dy = startY - e.changedTouches[0].clientY;
-    if (dy > 30) appPage.classList.add('chart-hidden');
-    else if (dy < -30) appPage.classList.remove('chart-hidden');
-  }, {passive: true});
-
-  document.addEventListener('touchend', function() { tracking = false; }, {passive: true});
-
-  window.addEventListener('resize', function() {
-    if (window.innerWidth > 720) appPage.classList.remove('chart-hidden');
-  });
+  setInterval(function() {
+    if (window.innerWidth > 720) {
+      appPage.classList.remove('chart-hidden');
+      return;
+    }
+    var pnl = document.querySelector('.tab-pnl.on') || document.querySelector('.tab-pnl');
+    if (!pnl) return;
+    appPage.classList.toggle('chart-hidden', pnl.scrollTop > 30);
+  }, 150);
 });
 
 

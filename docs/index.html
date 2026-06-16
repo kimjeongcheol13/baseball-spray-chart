@@ -1725,5 +1725,26 @@
 
 <script defer src="js/core.js?v=23"></script>
 <script type="module" src="js/app.js?v=10"></script>
+<style>
+@media(max-width:720px){
+  #app-page.ch .pnl-center{display:none!important}
+  #app-page.ch .tab-mode-bar{display:none!important}
+  #app-page.ch .pnl-right>.tabs{display:none!important}
+}
+</style>
+<script>
+(function(){
+  var ap=document.getElementById('app-page');
+  if(!ap)return;
+  setInterval(function(){
+    if(window.innerWidth>720){ap.classList.remove('ch');return;}
+    var scrolled=false;
+    document.querySelectorAll('.tab-pnl').forEach(function(p){if(p.scrollTop>30)scrolled=true;});
+    var hidden=ap.classList.contains('ch');
+    if(!hidden&&scrolled)ap.classList.add('ch');
+    else if(hidden&&!scrolled)ap.classList.remove('ch');
+  },150);
+})();
+</script>
 </body>
 </html>

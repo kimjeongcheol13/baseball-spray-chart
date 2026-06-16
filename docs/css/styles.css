@@ -232,7 +232,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   #app-page{overflow:hidden;height:100svh}
   .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
   .pnl-left{display:none}
-  .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;transition:max-height .3s ease,opacity .3s ease}
+  #app-page.chart-hidden .pnl-center{max-height:0!important;opacity:0;overflow:hidden}
   .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
   .canvas-wrap{width:min(240px,100%);height:min(240px,36svh)}
   .field-wrap{padding:8px;flex:none}

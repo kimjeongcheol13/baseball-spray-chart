@@ -175,6 +175,35 @@ function showDataModal(jsonStr, fileName) {
   document.body.appendChild(ov);
 }
 
+// ── 모바일: 아래 패널 스크롤 시 위 스프레이차트 접기/펼치기 ──
+(function initScrollCompact() {
+  if (window.innerWidth > 720) return;
+  var appPage = document.getElementById('app-page');
+  if (!appPage) return;
+
+  var ticking = false;
+
+  function onTabScroll(e) {
+    var el = e.target;
+    if (!el || !el.classList.contains('tab-pnl')) return;
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function() {
+      appPage.classList.toggle('chart-hidden', el.scrollTop > 10);
+      ticking = false;
+    });
+  }
+
+  var pnlRight = document.querySelector('.pnl-right');
+  if (pnlRight) {
+    pnlRight.addEventListener('scroll', onTabScroll, {capture: true, passive: true});
+  }
+
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 720) appPage.classList.remove('chart-hidden');
+  });
+})();
+
 
 // ───── PAGE ROUTING ─────
 function showApp(){

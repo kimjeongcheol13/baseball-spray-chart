@@ -175,21 +175,33 @@ function showDataModal(jsonStr, fileName) {
   document.body.appendChild(ov);
 }
 
-// ── 모바일: 아래 패널 스크롤 시 헤더 영역 접기/펼치기 ──
-document.addEventListener('DOMContentLoaded', function() {
-  var appPage = document.getElementById('app-page');
-  if (!appPage) return;
+// ── 모바일: 스와이프 업으로 탭바 숨기기 ──
+(function() {
+  var sy = 0;
+  var collapsed = false;
 
-  setInterval(function() {
-    if (window.innerWidth > 720) {
-      appPage.classList.remove('chart-hidden');
-      return;
+  function setCollapsed(on) {
+    var tmb = document.querySelector('.tab-mode-bar');
+    var tabs = document.querySelector('.pnl-right > .tabs');
+    if (tmb) tmb.style.display = on ? 'none' : '';
+    if (tabs) tabs.style.display = on ? 'none' : '';
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    sy = e.touches[0].clientY;
+  }, { passive: true, capture: true });
+
+  document.addEventListener('touchmove', function(e) {
+    var dy = sy - e.touches[0].clientY;
+    if (!collapsed && dy > 20) {
+      collapsed = true;
+      setCollapsed(true);
+    } else if (collapsed && dy < -20) {
+      collapsed = false;
+      setCollapsed(false);
     }
-    var pnl = document.querySelector('.tab-pnl.on') || document.querySelector('.tab-pnl');
-    if (!pnl) return;
-    appPage.classList.toggle('chart-hidden', pnl.scrollTop > 30);
-  }, 150);
-});
+  }, { passive: true, capture: true });
+})();
 
 
 // ───── PAGE ROUTING ─────

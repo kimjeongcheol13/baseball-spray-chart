@@ -177,21 +177,14 @@ function showDataModal(jsonStr, fileName) {
 
 // ── 모바일: 스와이프 업으로 필드 숨기고 아래 패널 전체화면 ──
 (function() {
+  var s = document.createElement('style');
+  s.textContent =
+    '#app-page.field-up .pnl-center{display:none!important}' +
+    '#app-page.field-up .pnl-right{max-height:calc(100vh - 44px)!important}';
+  document.head.appendChild(s);
+
   var sy = 0;
   var collapsed = false;
-
-  function setCollapsed(on) {
-    var pc = document.querySelector('.pnl-center');
-    var pr = document.querySelector('.pnl-right');
-    if (!pc || !pr) return;
-    if (on) {
-      pc.style.display = 'none';
-      pr.style.maxHeight = 'calc(100vh - 44px)';
-    } else {
-      pc.style.display = '';
-      pr.style.maxHeight = '';
-    }
-  }
 
   document.addEventListener('touchstart', function(e) {
     sy = e.touches[0].clientY;
@@ -199,12 +192,14 @@ function showDataModal(jsonStr, fileName) {
 
   document.addEventListener('touchmove', function(e) {
     var dy = sy - e.touches[0].clientY;
+    var ap = document.getElementById('app-page');
+    if (!ap) return;
     if (!collapsed && dy > 30) {
       collapsed = true;
-      setCollapsed(true);
+      ap.classList.add('field-up');
     } else if (collapsed && dy < -30) {
       collapsed = false;
-      setCollapsed(false);
+      ap.classList.remove('field-up');
     }
   }, { passive: true, capture: true });
 })();

@@ -107,14 +107,31 @@ document.addEventListener('DOMContentLoaded', function() {
   var appPage = document.getElementById('app-page');
   if (!appPage) return;
 
-  function onPnlScroll() {
-    if (window.innerWidth > 720) return;
-    appPage.classList.toggle('chart-hidden', this.scrollTop > 10);
+  var startY = 0;
+
+  function attachToPane(pnl) {
+    pnl.addEventListener('touchstart', function(e) {
+      startY = e.touches[0].clientY;
+    }, {passive: true});
+
+    pnl.addEventListener('touchmove', function(e) {
+      if (window.innerWidth > 720) return;
+      var dy = startY - e.touches[0].clientY;
+      if (dy > 20) {
+        appPage.classList.add('chart-hidden');
+      } else if (dy < -20 && pnl.scrollTop <= 0) {
+        appPage.classList.remove('chart-hidden');
+      }
+    }, {passive: true});
+
+    // scroll 이벤트도 백업으로 유지
+    pnl.addEventListener('scroll', function() {
+      if (window.innerWidth > 720) return;
+      appPage.classList.toggle('chart-hidden', pnl.scrollTop > 30);
+    }, {passive: true});
   }
 
-  document.querySelectorAll('.tab-pnl').forEach(function(pnl) {
-    pnl.addEventListener('scroll', onPnlScroll, {passive: true});
-  });
+  document.querySelectorAll('.tab-pnl').forEach(attachToPane);
 
   window.addEventListener('resize', function() {
     if (window.innerWidth > 720) appPage.classList.remove('chart-hidden');

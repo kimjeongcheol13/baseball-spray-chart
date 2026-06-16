@@ -29,7 +29,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=23">
+<link rel="stylesheet" href="css/styles.css?v=24">
 <link rel="stylesheet" href="css/features.css?v=20">
 </head>
 <body>
@@ -1040,10 +1040,11 @@
   </div>
 
   <div class="pnl-right">
+    <input type="checkbox" id="chartToggle" class="chart-toggle-chk">
     <div class="tab-mode-bar" id="tabModeBar">
       <button class="tmb-btn on" id="tmbGame" onclick="setTabMode('game',this)">⚾ 경기중</button>
       <button class="tmb-btn" id="tmbPost" onclick="setTabMode('post',this)">📊 경기후</button>
-      <button class="tmb-expand-btn" id="tmbExpand" onclick="toggleChartHidden()" title="화면 확장">⬆</button>
+      <label for="chartToggle" class="tmb-expand-btn" title="화면 확장">⬆</label>
     </div>
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>

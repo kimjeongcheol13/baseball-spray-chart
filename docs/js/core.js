@@ -104,34 +104,34 @@ function showDataModal(jsonStr, fileName) {
 
 // ── 모바일: 스와이프 업으로 탭바 숨기기 ──
 (function() {
-  // CSS 주입 (SW 캐시 우회 - core.js는 항상 서버에서 fresh fetch)
-  var style = document.createElement('style');
-  style.textContent = '@media(max-width:720px){' +
-    '#app-page.ch .tab-mode-bar{display:none!important}' +
-    '#app-page.ch .pnl-right>.tabs{display:none!important}' +
-    '}';
-  document.head.appendChild(style);
-
   function initCompact() {
     var ap = document.getElementById('app-page');
-    var pr = document.querySelector('.pnl-right');
-    if (!ap || !pr) return;
+    if (!ap) return;
+
+    function setCollapsed(on) {
+      var tmb = document.querySelector('.tab-mode-bar');
+      var tabs = document.querySelector('.pnl-right > .tabs');
+      if (tmb) tmb.style.display = on ? 'none' : '';
+      if (tabs) tabs.style.display = on ? 'none' : '';
+    }
 
     var sy = 0;
+    var collapsed = false;
+
     document.addEventListener('touchstart', function(e) {
       sy = e.touches[0].clientY;
     }, { passive: true, capture: true });
 
     document.addEventListener('touchmove', function(e) {
-      if (window.innerWidth > 720) return;
       var dy = sy - e.touches[0].clientY;
-      if (dy > 20) ap.classList.add('ch');
-      else if (dy < -20) ap.classList.remove('ch');
+      if (!collapsed && dy > 20) {
+        collapsed = true;
+        setCollapsed(true);
+      } else if (collapsed && dy < -20) {
+        collapsed = false;
+        setCollapsed(false);
+      }
     }, { passive: true, capture: true });
-
-    setInterval(function() {
-      if (window.innerWidth > 720) ap.classList.remove('ch');
-    }, 500);
   }
 
   if (document.readyState === 'loading') {

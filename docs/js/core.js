@@ -102,27 +102,45 @@ function showDataModal(jsonStr, fileName) {
   document.body.appendChild(ov);
 }
 
-// ── 모바일: 스크롤 시 상단 영역 접기/펼치기 ──
-function toggleChartHidden() {
-  var appPage = document.getElementById('app-page');
-  if (!appPage) return;
-  appPage.classList.toggle('chart-hidden');
-}
+// ── 모바일: 스와이프 업으로 탭바 숨기기 ──
+(function() {
+  // CSS 주입 (SW 캐시 우회 - core.js는 항상 서버에서 fresh fetch)
+  var style = document.createElement('style');
+  style.textContent = '@media(max-width:720px){' +
+    '#app-page.ch .tab-mode-bar{display:none!important}' +
+    '#app-page.ch .pnl-right>.tabs{display:none!important}' +
+    '}';
+  document.head.appendChild(style);
 
-document.addEventListener('DOMContentLoaded', function() {
-  var appPage = document.getElementById('app-page');
-  if (!appPage) return;
+  function initCompact() {
+    var ap = document.getElementById('app-page');
+    var pr = document.querySelector('.pnl-right');
+    if (!ap || !pr) return;
 
-  // 폴링: 모든 tab-pnl의 scrollTop 감시
-  setInterval(function() {
-    if (window.innerWidth > 720) { appPage.classList.remove('chart-hidden'); return; }
-    var scrolled = false;
-    document.querySelectorAll('.tab-pnl').forEach(function(p) {
-      if (p.scrollTop > 30) scrolled = true;
-    });
-    appPage.classList.toggle('chart-hidden', scrolled);
-  }, 150);
-});
+    var sy = 0;
+    pr.addEventListener('touchstart', function(e) {
+      sy = e.touches[0].clientY;
+    }, { passive: true });
+
+    pr.addEventListener('touchmove', function(e) {
+      if (window.innerWidth > 720) return;
+      var dy = sy - e.touches[0].clientY;
+      if (dy > 40) ap.classList.add('ch');
+      else if (dy < -40) ap.classList.remove('ch');
+    }, { passive: true });
+
+    // 폴백: 데스크탑 전환 시 초기화
+    setInterval(function() {
+      if (window.innerWidth > 720) ap.classList.remove('ch');
+    }, 500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCompact);
+  } else {
+    initCompact();
+  }
+})();
 
 
 // ───── PAGE ROUTING ─────

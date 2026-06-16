@@ -127,9 +127,11 @@ function showDataModal(jsonStr, fileName) {
       if (!collapsed && dy > 20) {
         collapsed = true;
         setCollapsed(true);
+        if (typeof showToast === 'function') showToast('탭바 숨김 ↑');
       } else if (collapsed && dy < -20) {
         collapsed = false;
         setCollapsed(false);
+        if (typeof showToast === 'function') showToast('탭바 표시 ↓');
       }
     }, { passive: true, capture: true });
   }

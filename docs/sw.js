@@ -1,5 +1,5 @@
 // SprayLab Service Worker - 자동 업데이트 지원
-const CACHE_NAME = 'spraylab-v18';
+const CACHE_NAME = 'spraylab-v19';
 const ASSETS = [
   '/baseball-spray-chart/',
   '/baseball-spray-chart/index.html',
@@ -42,20 +42,31 @@ self.addEventListener('activate', function(e) {
   );
 });
 
-// fetch: 캐시 우선, 없으면 네트워크
+// fetch: HTML은 네트워크 우선(항상 최신), 나머지는 캐시 우선
 self.addEventListener('fetch', function(e) {
-  e.respondWith(
-    caches.match(e.request).then(function(cached) {
-      var fetchPromise = fetch(e.request).then(function(response) {
-        if(response && response.status === 200 && e.request.method === 'GET') {
-          var clone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(e.request, clone);
-          });
+  var req = e.request;
+  var url = req.url;
+  var isHtml = url.endsWith('/') || url.includes('index.html') || (!url.includes('.') && !url.includes('?'));
+  if(isHtml){
+    e.respondWith(
+      fetch(req).then(function(res){
+        if(res && res.status===200){
+          caches.open(CACHE_NAME).then(function(c){c.put(req,res.clone());});
         }
-        return response;
-      }).catch(function() { return cached; });
-      return cached || fetchPromise;
+        return res;
+      }).catch(function(){ return caches.match(req); })
+    );
+    return;
+  }
+  e.respondWith(
+    caches.match(req).then(function(cached){
+      var net=fetch(req).then(function(res){
+        if(res&&res.status===200&&req.method==='GET'){
+          caches.open(CACHE_NAME).then(function(c){c.put(req,res.clone());});
+        }
+        return res;
+      }).catch(function(){return cached;});
+      return cached||net;
     })
   );
 });

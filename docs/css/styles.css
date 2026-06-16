@@ -1439,20 +1439,12 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .tab-mode-bar{display:flex;gap:4px;padding:6px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
 .tmb-btn{flex:1;padding:7px 8px;font-size:11px;font-weight:800;border:none;background:var(--bg-raised);color:var(--text3);cursor:pointer;border-radius:8px;transition:all 150ms;font-family:var(--font)}
 .tmb-btn.on{background:var(--blue);color:#fff}
-.chart-toggle-chk{display:none}
-.tmb-expand-btn{flex:0 0 auto;width:30px;padding:0;font-size:13px;font-weight:800;border:none;background:var(--bg-raised);color:var(--text3);cursor:pointer;border-radius:8px;transition:transform 150ms;font-family:var(--font);display:flex;align-items:center;justify-content:center}
-/* 순수 CSS 접기: :has() 방식 — JS/캐시 무관 */
 @media(max-width:720px){
-  #app-page:has(#chartToggle:checked) .pnl-center{display:none!important}
-  #app-page:has(#chartToggle:checked) .pnl-right>.tabs{display:none!important}
-  #app-page:has(#chartToggle:checked) .tmb-btn{display:none!important}
-  #app-page:has(#chartToggle:checked) .tmb-expand-btn{transform:rotate(180deg);color:var(--accent)}
-  /* JS 폴링 방식 병행 */
   #app-page.chart-hidden .pnl-center{display:none!important}
   #app-page.chart-hidden .tab-mode-bar{display:none!important}
   #app-page.chart-hidden .pnl-right>.tabs{display:none!important}
 }
-@media(min-width:721px){.tab-mode-bar{display:none}.tmb-expand-btn{display:none}}
+@media(min-width:721px){.tab-mode-bar{display:none}}
 
 /* ?먥븧 EXCEL TOOLBAR BUTTON ?먥븧 */
 .btn-xl{padding:4px 8px;font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:6px;cursor:pointer;font-family:var(--font);font-weight:700;white-space:nowrap;transition:background .15s}

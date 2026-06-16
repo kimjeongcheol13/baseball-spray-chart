@@ -1,5 +1,5 @@
 // SprayLab Service Worker - 자동 업데이트 지원
-const CACHE_NAME = 'spraylab-v12';
+const CACHE_NAME = 'spraylab-v13';
 const ASSETS = [
   '/baseball-spray-chart/',
   '/baseball-spray-chart/index.html',

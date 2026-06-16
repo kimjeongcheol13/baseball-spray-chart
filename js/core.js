@@ -178,32 +178,26 @@ function showDataModal(jsonStr, fileName) {
 // ── 모바일: 아래 패널 스크롤 시 헤더 영역 접기/펼치기 ──
 document.addEventListener('DOMContentLoaded', function() {
   var appPage = document.getElementById('app-page');
-  if (!appPage) return;
+  var pnlRight = document.querySelector('.pnl-right');
+  if (!appPage || !pnlRight) return;
 
   var startY = 0;
+  var tracking = false;
 
-  function attachToPane(pnl) {
-    pnl.addEventListener('touchstart', function(e) {
-      startY = e.touches[0].clientY;
-    }, {passive: true});
+  document.addEventListener('touchstart', function(e) {
+    if (!pnlRight.contains(e.target)) return;
+    startY = e.changedTouches[0].clientY;
+    tracking = true;
+  }, {passive: true});
 
-    pnl.addEventListener('touchmove', function(e) {
-      if (window.innerWidth > 720) return;
-      var dy = startY - e.touches[0].clientY;
-      if (dy > 20) {
-        appPage.classList.add('chart-hidden');
-      } else if (dy < -20 && pnl.scrollTop <= 0) {
-        appPage.classList.remove('chart-hidden');
-      }
-    }, {passive: true});
+  document.addEventListener('touchmove', function(e) {
+    if (!tracking || window.innerWidth > 720) return;
+    var dy = startY - e.changedTouches[0].clientY;
+    if (dy > 30) appPage.classList.add('chart-hidden');
+    else if (dy < -30) appPage.classList.remove('chart-hidden');
+  }, {passive: true});
 
-    pnl.addEventListener('scroll', function() {
-      if (window.innerWidth > 720) return;
-      appPage.classList.toggle('chart-hidden', pnl.scrollTop > 30);
-    }, {passive: true});
-  }
-
-  document.querySelectorAll('.tab-pnl').forEach(attachToPane);
+  document.addEventListener('touchend', function() { tracking = false; }, {passive: true});
 
   window.addEventListener('resize', function() {
     if (window.innerWidth > 720) appPage.classList.remove('chart-hidden');

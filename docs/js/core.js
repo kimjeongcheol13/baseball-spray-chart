@@ -120,14 +120,14 @@ function showDataModal(jsonStr, fileName) {
     var sy = 0;
     document.addEventListener('touchstart', function(e) {
       sy = e.touches[0].clientY;
-    }, { passive: true });
+    }, { passive: true, capture: true });
 
     document.addEventListener('touchmove', function(e) {
       if (window.innerWidth > 720) return;
       var dy = sy - e.touches[0].clientY;
-      if (dy > 40) ap.classList.add('ch');
-      else if (dy < -40) ap.classList.remove('ch');
-    }, { passive: true });
+      if (dy > 20) ap.classList.add('ch');
+      else if (dy < -20) ap.classList.remove('ch');
+    }, { passive: true, capture: true });
 
     setInterval(function() {
       if (window.innerWidth > 720) ap.classList.remove('ch');

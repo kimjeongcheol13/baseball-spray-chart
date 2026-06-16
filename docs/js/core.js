@@ -108,6 +108,10 @@ function showDataModal(jsonStr, fileName) {
     var ap = document.getElementById('app-page');
     if (!ap) return;
 
+    // 진단: 빨간 테두리로 코드 로드 확인
+    var _tmb = document.querySelector('.tab-mode-bar');
+    if (_tmb) _tmb.style.border = '3px solid red';
+
     function setCollapsed(on) {
       var tmb = document.querySelector('.tab-mode-bar');
       var tabs = document.querySelector('.pnl-right > .tabs');

@@ -118,18 +118,17 @@ function showDataModal(jsonStr, fileName) {
     if (!ap || !pr) return;
 
     var sy = 0;
-    pr.addEventListener('touchstart', function(e) {
+    document.addEventListener('touchstart', function(e) {
       sy = e.touches[0].clientY;
     }, { passive: true });
 
-    pr.addEventListener('touchmove', function(e) {
+    document.addEventListener('touchmove', function(e) {
       if (window.innerWidth > 720) return;
       var dy = sy - e.touches[0].clientY;
       if (dy > 40) ap.classList.add('ch');
       else if (dy < -40) ap.classList.remove('ch');
     }, { passive: true });
 
-    // 폴백: 데스크탑 전환 시 초기화
     setInterval(function() {
       if (window.innerWidth > 720) ap.classList.remove('ch');
     }, 500);

@@ -102,19 +102,25 @@ function showDataModal(jsonStr, fileName) {
   document.body.appendChild(ov);
 }
 
-// ── 모바일: 아래 패널 스크롤 시 헤더 영역 접기/펼치기 ──
+// ── 모바일: 스크롤 시 상단 영역 접기/펼치기 ──
+function toggleChartHidden() {
+  var appPage = document.getElementById('app-page');
+  if (!appPage) return;
+  appPage.classList.toggle('chart-hidden');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   var appPage = document.getElementById('app-page');
   if (!appPage) return;
 
+  // 폴링: 모든 tab-pnl의 scrollTop 감시
   setInterval(function() {
-    if (window.innerWidth > 720) {
-      appPage.classList.remove('chart-hidden');
-      return;
-    }
-    var pnl = document.querySelector('.tab-pnl.on') || document.querySelector('.tab-pnl');
-    if (!pnl) return;
-    appPage.classList.toggle('chart-hidden', pnl.scrollTop > 30);
+    if (window.innerWidth > 720) { appPage.classList.remove('chart-hidden'); return; }
+    var scrolled = false;
+    document.querySelectorAll('.tab-pnl').forEach(function(p) {
+      if (p.scrollTop > 30) scrolled = true;
+    });
+    appPage.classList.toggle('chart-hidden', scrolled);
   }, 150);
 });
 

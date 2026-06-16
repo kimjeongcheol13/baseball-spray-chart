@@ -1,5 +1,5 @@
 // SprayLab Service Worker - 자동 업데이트 지원
-const CACHE_NAME = 'spraylab-v13';
+const CACHE_NAME = 'spraylab-v14';
 const ASSETS = [
   '/baseball-spray-chart/',
   '/baseball-spray-chart/index.html',
@@ -18,15 +18,14 @@ const ASSETS = [
   '/baseball-spray-chart/js/features/perf.js'
 ];
 
-// 설치: 새 캐시 생성
+// 설치: 새 캐시 생성 + 즉시 활성화
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
       return cache.addAll(ASSETS).catch(function(){});
     })
   );
-  // SKIP_WAITING 메시지 받으면 즉시 활성화
-  // (index.html에서 postMessage로 요청)
+  self.skipWaiting(); // 구버전 기다리지 않고 즉시 활성화
 });
 
 // 활성화: 구버전 캐시 삭제 (localStorage는 건드리지 않음)

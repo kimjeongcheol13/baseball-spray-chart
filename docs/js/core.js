@@ -107,19 +107,14 @@ document.addEventListener('DOMContentLoaded', function() {
   var appPage = document.getElementById('app-page');
   if (!appPage) return;
 
-  var ticking = false;
-
-  document.addEventListener('scroll', function(e) {
-    var el = e.target;
-    if (!el || !el.classList.contains('tab-pnl')) return;
+  function onPnlScroll() {
     if (window.innerWidth > 720) return;
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(function() {
-      appPage.classList.toggle('chart-hidden', el.scrollTop > 10);
-      ticking = false;
-    });
-  }, {capture: true, passive: true});
+    appPage.classList.toggle('chart-hidden', this.scrollTop > 10);
+  }
+
+  document.querySelectorAll('.tab-pnl').forEach(function(pnl) {
+    pnl.addEventListener('scroll', onPnlScroll, {passive: true});
+  });
 
   window.addEventListener('resize', function() {
     if (window.innerWidth > 720) appPage.classList.remove('chart-hidden');

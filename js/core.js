@@ -4282,22 +4282,19 @@ function renderWeaknessAlerts(abs){
 // FEATURE 3: SHARE LINK
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function shareGameLink(){
-  /* 선수 명단 경량화 (이름·번호만) */
+  var ht=document.getElementById('tHome').value||'홈팀';
+  var at=document.getElementById('tAway').value||'원정팀';
+
+  /* ── Full payload (Supabase용: 모든 데이터) ── */
   var _lpMin=function(arr){return(arr||[]).map(function(p){return{n:p.name,no:p.num,id:p.id};});};
-  /* 투수 데이터 경량화 */
   var _pitMin=function(arr){return(arr||[]).map(function(p){return{
     id:p.id,nm:p.name,no:p.num||'',hand:p.hand||'R',role:p.role||'',
     pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,res:e.result,zone:e.zone,inn:e.inn};})
   };});};
-  var payload={
-    v:3,
-    hs:AS.hs,as:AS.as,
-    ht:document.getElementById('tHome').value||'홈팀',
-    at:document.getElementById('tAway').value||'원정팀',
-    ts:Date.now(),
+  var fullPayload={
+    v:3,hs:AS.hs,as:AS.as,ht:ht,at:at,ts:Date.now(),
     cond:getGameCond(),
-    hl:_lpMin(AS.home_lineup),
-    al:_lpMin(AS.away_lineup),
+    hl:_lpMin(AS.home_lineup),al:_lpMin(AS.away_lineup),
     pitchers:_pitMin(AS.pitchers),
     zh:AS.zoneHistory||{},
     abs:(AS.abs||[]).map(function(a){return{
@@ -4311,21 +4308,39 @@ function shareGameLink(){
     };})
   };
 
-  // Supabase short link 시도
+  /* ── Compact payload (URL 폴백용: 스프레이 차트 핵심만) ── */
+  var compactPayload={
+    v:3,hs:AS.hs,as:AS.as,ht:ht,at:at,
+    cond:getGameCond(),
+    hl:(AS.home_lineup||[]).map(function(p){return{n:p.name,no:p.num};}),
+    al:(AS.away_lineup||[]).map(function(p){return{n:p.name,no:p.num};}),
+    /* 투수: 이름·손·역할만, 투구 시퀀스 제외 */
+    pitchers:(AS.pitchers||[]).map(function(p){return{nm:p.name,no:p.num||'',hand:p.hand||'R',role:p.role||''};}),
+    /* 존 히스토리 제외 (zh 없으면 {} 로 복원됨) */
+    /* 타석: 위치·결과·타자 정보만, 투구 시퀀스·카운트·타임스탬프 제외 */
+    abs:(AS.abs||[]).map(function(a){return{
+      r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
+      x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
+      ft:a.ft,t:a.team,ba:a.bats||'R',
+      bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
+    };})
+  };
+
+  // Supabase short link 시도 (full payload)
   if(typeof pushSharedLink==='function'){
     showToast('🔗 링크 생성 중…',false,true);
-    pushSharedLink(payload,
+    pushSharedLink(fullPayload,
       function(id){
         var url=location.origin+location.pathname+'?gid='+id;
         showShareQR(url);
       },
       function(err){
         console.warn('[SprayLab] pushSharedLink failed, fallback:',err);
-        _shareGameLinkLegacy(payload);
+        _shareGameLinkLegacy(compactPayload);
       }
     );
   }else{
-    _shareGameLinkLegacy(payload);
+    _shareGameLinkLegacy(compactPayload);
   }
 }
 

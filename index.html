@@ -31,16 +31,26 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
-/* Kakao Share SDK — 로드 실패 시 버튼 숨김 유지 */
+/* Kakao Share SDK */
 const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
+var _kakaoSdkLoaded = false;
 (function() {
+  /* 데스크톱은 SDK 없이도 버튼 항상 표시 (클립보드 fallback) */
+  var isDesktop = !('ontouchstart' in window) && !/Mobi|Android/i.test(navigator.userAgent);
+  if (isDesktop) {
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('kakaoShareBtn');
+      if (btn) btn.style.display = '';
+    });
+  }
   var s = document.createElement('script');
-  s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
+  s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
   s.crossOrigin = 'anonymous';
   s.onload = function() {
     try {
       if (KAKAO_APP_KEY && window.Kakao && !Kakao.isInitialized()) {
         Kakao.init(KAKAO_APP_KEY);
+        _kakaoSdkLoaded = true;
         var btn = document.getElementById('kakaoShareBtn');
         if (btn) btn.style.display = '';
       }
@@ -2551,13 +2561,10 @@ function toggleEvUnit() {
 /* ── Kakao share ── */
 function kakaoShareGame() {
   try {
-    if (!window.Kakao || !Kakao.isInitialized()) return;
-
     var home = (document.getElementById('tHome') || {}).value || '홈팀';
     var away = (document.getElementById('tAway') || {}).value || '원정팀';
     var today = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
 
-    /* 경기 타율 계산 (AS 전역 객체에서 읽기) */
     var descParts = [home + ' vs ' + away, today];
     try {
       var abs = (window.AS && AS.abs) ? AS.abs : [];
@@ -2579,17 +2586,43 @@ function kakaoShareGame() {
     url = url.trim();
     if (url.length < 10) url = 'https://kimjeongcheol13.github.io/baseball-spray-chart/';
 
-    Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: title,
-        description: desc,
-        imageUrl: 'https://kimjeongcheol13.github.io/baseball-spray-chart/icon.svg',
-        link: { mobileWebUrl: url, webUrl: url }
-      },
-      buttons: [{ title: 'SprayLab에서 보기', link: { mobileWebUrl: url, webUrl: url } }]
+    /* 모바일 + SDK 정상 로드 → Kakao Share 팝업 */
+    var isMobile = ('ontouchstart' in window) || /Mobi|Android/i.test(navigator.userAgent);
+    if (isMobile && _kakaoSdkLoaded && window.Kakao && Kakao.isInitialized()) {
+      Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: title,
+          description: desc,
+          imageUrl: 'https://kimjeongcheol13.github.io/baseball-spray-chart/icon.svg',
+          link: { mobileWebUrl: url, webUrl: url }
+        },
+        buttons: [{ title: 'SprayLab에서 보기', link: { mobileWebUrl: url, webUrl: url } }]
+      });
+      return;
+    }
+
+    /* 데스크톱 or SDK 없음 → 클립보드 복사 + 안내 토스트 */
+    navigator.clipboard.writeText(url).then(function() {
+      _showKakaoToast('링크가 복사되었습니다!\n카카오톡에 붙여넣기(Ctrl+V)해서 공유하세요 💛');
+    }).catch(function() {
+      /* clipboard API 실패 시 prompt fallback */
+      window.prompt('아래 링크를 복사해서 카카오톡에 공유하세요 💛', url);
     });
   } catch(e) {}
+}
+function _showKakaoToast(msg) {
+  var t = document.getElementById('_kakaoToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_kakaoToast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#191919;color:#FEE500;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:99999;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.style.opacity = '0'; }, 3000);
 }
 /* ── Scout info banner ── */
 function closeScoutInfoBanner() {

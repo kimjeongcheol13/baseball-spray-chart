@@ -670,6 +670,34 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .save-ind.syncing{color:var(--accent)}
 .save-ind.offline{color:var(--text3)}
 
+/* ── 인증 버튼 ── */
+.auth-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s,border-color .15s}
+.auth-btn:hover{background:var(--bg3,var(--border));border-color:var(--accent)}
+.auth-btn.auth-logged{border-color:var(--accent);color:var(--accent)}
+.auth-avatar{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+
+/* ── 로그인 모달 ── */
+.login-modal{width:min(340px,96vw);padding:24px}
+.login-header{text-align:center;margin-bottom:20px}
+.login-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.login-sub{font-size:12px;color:var(--text3);line-height:1.5}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-google:hover{background:var(--border)}
+.login-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--text3);font-size:11px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+.magic-form{display:flex;gap:6px}
+.magic-input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;outline:none}
+.magic-input:focus{border-color:var(--accent)}
+.btn-magic{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.magic-msg{font-size:11px;margin-top:8px;min-height:16px;color:var(--text3)}
+.magic-msg.ok{color:var(--green)}
+.magic-msg.error{color:var(--red)}
+.login-close{width:100%;justify-content:center;margin-top:14px}
+.profile-info{background:var(--bg2);border-radius:10px;padding:14px;margin-bottom:12px}
+.profile-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+.profile-email{font-size:11px;color:var(--text3)}
+.profile-badge{font-size:11px;color:var(--green);font-weight:600;text-align:center}
+
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/

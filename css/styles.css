@@ -667,6 +667,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .save-ind.fail{color:var(--red)}
 .save-ind.saving{color:var(--yellow)}
 .save-ind.unsaved{color:var(--yellow);font-weight:700}
+.save-ind.syncing{color:var(--accent)}
+.save-ind.offline{color:var(--text3)}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD

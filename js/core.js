@@ -4338,8 +4338,14 @@ function _shareGameLinkLegacy(payload){
       :'b'+btoa(unescape(encodeURIComponent(json)));
     url=location.origin+location.pathname+'?game='+encoded;
   }catch(e){url=location.href;}
-  if(url.length>4096){
-    showToast('⚠️ URL이 깁니다('+Math.round(url.length/1024*10)/10+'KB) — Supabase 미연결 상태',false,true);
+  /* is.gd로 단축 시도 (CORS 지원, 무료) */
+  if(url.length>300){
+    showToast('🔗 링크 생성 중…',false,true);
+    fetch('https://is.gd/create.php?format=json&url='+encodeURIComponent(url))
+      .then(function(r){return r.json();})
+      .then(function(d){showShareQR(d.shorturl||url);})
+      .catch(function(){showShareQR(url);});
+    return;
   }
   showShareQR(url);
 }

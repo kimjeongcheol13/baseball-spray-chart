@@ -40,7 +40,7 @@ var _kakaoSdkLoaded = false;
   if (isDesktop) {
     document.addEventListener('DOMContentLoaded', function() {
       var btn = document.getElementById('kakaoShareBtn');
-      if (btn) btn.style.display = '';
+      if (btn) btn.style.display = 'block';
     });
   }
   var s = document.createElement('script');
@@ -52,7 +52,7 @@ var _kakaoSdkLoaded = false;
         Kakao.init(KAKAO_APP_KEY);
         _kakaoSdkLoaded = true;
         var btn = document.getElementById('kakaoShareBtn');
-        if (btn) btn.style.display = '';
+        if (btn) btn.style.display = 'block';
       }
     } catch(e) {}
   };

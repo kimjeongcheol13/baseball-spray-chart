@@ -668,10 +668,8 @@ const TOUR=[
 let tourIdx=0,tourActive=false;
 
 function startTour(){
-  tourActive=true;
-  tourIdx=0;
-  document.getElementById('tourOv').classList.add('on');
-  tourGo(tourIdx);
+  // 투어 제거됨 — 도움말 모드로 대체
+  toggleHelpMode();
 }
 
 function tourNext(){
@@ -682,17 +680,15 @@ function tourNext(){
 
 function tourSkip(){
   tourActive=false;
-  document.getElementById('tourOv').classList.remove('on');
-  const spot=document.getElementById('tourSpot');
-  spot.style.cssText='';
-  const card=document.getElementById('tourCard');
-  card.classList.remove('vis');
-  hideTourCursor();
+  const ov=document.getElementById('tourOv');if(ov)ov.classList.remove('on');
+  const spot=document.getElementById('tourSpot');if(spot)spot.style.cssText='';
+  const card=document.getElementById('tourCard');if(card)card.classList.remove('vis');
+  if(typeof hideTourCursor==='function')hideTourCursor();
 }
 
 function tourGo(idx){
   const step=TOUR[idx];
-  const card=document.getElementById('tourCard');
+  const card=document.getElementById('tourCard');if(!card)return;
   const spot=document.getElementById('tourSpot');
   const cursor=document.getElementById('tourCursor');
   const ring=document.getElementById('tourRing');
@@ -817,10 +813,6 @@ function initApp(){
       }
     }
   }catch(e){}
-  // 온보딩: sl_ob3 키가 없으면 신규/업데이트 사용자로 간주해 안내 표시
-  if(!localStorage.getItem('sl_ob3')){
-    document.getElementById('obOverlay').style.display='flex';
-  }
   localStorage.setItem('sl_visited','1');
   document.getElementById('innSel').addEventListener('change',()=>document.getElementById('innDisp').textContent=document.getElementById('innSel').value);
   refreshZoneDisplay();
@@ -914,7 +906,7 @@ function renderLP(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
-  if(!targetLineup.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px">아래에서 선수를 추가하세요 ↓</div>';return;}
+  if(!targetLineup.length){el.innerHTML='<div style="padding:24px 16px;text-align:center"><div style="font-size:28px;margin-bottom:8px">👤</div><div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:4px">+ 선수 추가로 시작하세요</div><div style="font-size:11px;color:var(--text3);line-height:1.6">이름과 번호를 입력하고<br>+ 버튼을 누르세요</div></div>';return;}
   const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
   el.innerHTML=targetLineup.map((p,idx)=>{
     const pAbs=AS.abs.filter(a=>a.bid===p.id);
@@ -1490,6 +1482,9 @@ function updStats(){
   const pp=Math.round(pull/tot*100),pc=Math.round(ctr/tot*100),po=Math.round(oppo/tot*100);
   document.getElementById('dPull').textContent=pp+'%';document.getElementById('dCtr').textContent=pc+'%';document.getElementById('dOppo').textContent=po+'%';
   document.getElementById('bPull').style.height=Math.max(3,pp*.44)+'px';document.getElementById('bCtr').style.height=Math.max(3,pc*.44)+'px';document.getElementById('bOppo').style.height=Math.max(3,po*.44)+'px';
+  // 점진적 노출: 3타석 이상이면 방향 분포 카드 표시
+  const _dirCard=document.getElementById('dirStatCard');
+  if(_dirCard)_dirCard.style.display=abs.length>=3?'':'none';
   drawDonut();renderPsTable();const _advAbs=AS.advFilter?abs.filter(a=>a.team===AS.advFilter):abs;renderExtStats(_advAbs);renderPitchTypeTable(_advAbs);renderZonePitchCross(_advAbs);renderResultDist(abs);renderSeasonStats();renderWeaknessAlerts(abs);
 }
 
@@ -1519,6 +1514,10 @@ function renderExtStats(abs){
   document.getElementById('sBABIP').textContent=fmt3(babip);
   document.getElementById('sBBpct').textContent=fmtPct(bbpct);
   document.getElementById('sKpct').textContent=fmtPct(kpct);
+
+  // 점진적 지표 노출: PA 수에 따라 심화 지표 카드 표시
+  const advCard=document.getElementById('advStatCard');
+  if(advCard) advCard.style.display=pa>=10?'':'none';
 
   // ── 방향별 성공률 ──
   const dEl = document.getElementById('sDirStatsWrap');

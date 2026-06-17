@@ -178,6 +178,15 @@ var _kakaoSdkLoaded = false;
 .dir-l{font-size:9px;color:#6b6b88;font-weight:700;margin-top:2px}
 .dir-sub{font-size:9px;color:#44445a;margin-top:1px}
 .xd-pos{color:#2dd4a0}.xd-neg{color:#f56565}.xd-neu{color:#6b6b88}
+/* ── 첫 탭 유도 오버레이 ── */
+.field-tap-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:10;gap:10px}
+.field-tap-hint.hidden{display:none}
+.fth-ring{width:52px;height:52px;border-radius:50%;border:3px solid rgba(75,140,245,.7);animation:fth-pulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(75,140,245,.4)}
+@keyframes fth-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(75,140,245,.4)}50%{transform:scale(1.1);box-shadow:0 0 0 12px rgba(75,140,245,0)}}
+.fth-txt{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;line-height:1.5;text-shadow:0 1px 6px rgba(0,0,0,.8);background:rgba(7,9,15,.55);padding:7px 14px;border-radius:20px;backdrop-filter:blur(4px)}
+/* ── 처음 쓰시나요 버튼 ── */
+.btn-first-use{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;border:1px solid rgba(75,140,245,.4);background:rgba(75,140,245,.08);color:rgba(75,140,245,.9);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-top:12px}
+.btn-first-use:active{opacity:.8}
 /* ── Stadium selector (sl-st-) ── */
 .sl-st-bar{display:flex;gap:6px;padding:6px 8px 2px;overflow-x:auto;scrollbar-width:none}
 .sl-st-bar::-webkit-scrollbar{display:none}
@@ -590,20 +599,6 @@ var _kakaoSdkLoaded = false;
 
 <div class="tt-box" id="ttBox"></div>
 
-<div id="tourOv">
-  <div id="tourSpot" class="pulse"></div>
-  <div id="tourCard">
-    <div id="tourProg"><span id="tourProgTxt">1 / 9</span><div id="tourProgBar"><div id="tourProgFill" style="width:11%"></div></div></div>
-    <div id="tourTitle"></div>
-    <div id="tourDesc"></div>
-    <div class="tour-btns">
-      <button id="tourSkipBtn" onclick="tourSkip()">투어 종료</button>
-      <button id="tourNextBtn" onclick="tourNext()">다음 →</button>
-    </div>
-  </div>
-  <div id="tourCursor">👆</div>
-  <div id="tourRing"></div>
-</div>
 
 <div class="ob-overlay" id="obOverlay" style="display:none">
   <div class="ob-card">
@@ -708,89 +703,10 @@ var _kakaoSdkLoaded = false;
     <button class="tsb-new" onclick="openTeamCreate()">+ 팀 만들기</button>
   </div>
   <div class="aw-recent" id="awRecent"></div>
-  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 도움말 · 투어 · 설정</button>
+  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 설정 · 내보내기</button>
+  <button class="btn-first-use" onclick="showHelpModal()">? 처음 쓰시나요</button>
 </div>
 
-<!-- ████ 온보딩 오버레이 (3단계 위자드) ████ -->
-<div id="onboardOverlay" class="onboard-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="시작 가이드">
-  <span class="onboard-up-arrow" id="onboardUpArrow">↑</span>
-  <div class="onboard-card">
-    <div class="sl-ob-header">
-      <div>
-        <div class="onboard-title">⚾ SprayLab 시작 가이드</div>
-        <div class="onboard-sub">3단계로 주요 기능을 확인하세요</div>
-      </div>
-      <button class="sl-ob-skip" onclick="dismissOnboarding()">건너뛰기</button>
-    </div>
-    <!-- 스텝 인디케이터 -->
-    <div class="sl-ob-dots">
-      <div class="sl-ob-dot sl-ob-dot-on" id="slObDot1"></div>
-      <div class="sl-ob-dot" id="slObDot2"></div>
-      <div class="sl-ob-dot" id="slObDot3"></div>
-    </div>
-
-    <!-- Step 1: 앱 소개 + 샘플 스프레이차트 Canvas 미리보기 -->
-    <div id="slObPage1">
-      <div class="sl-ob-demo-wrap">
-        <canvas id="slObDemoCanvas" class="sl-ob-canvas" width="240" height="160"></canvas>
-        <div class="sl-ob-demo-legend">
-          <span class="sl-ob-dot-hit"></span>안타
-          <span class="sl-ob-dot-out"></span>아웃
-          <span class="sl-ob-dot-bb"></span>볼넷
-        </div>
-      </div>
-      <div class="sl-ob-intro-txt">
-        필드를 탭하면 타구 위치가 바로 차트에 기록됩니다.<br>
-        색상으로 안타 · 아웃 · 볼넷을 한눈에 구분하세요.
-      </div>
-    </div>
-
-    <!-- Step 2: 핵심 기능 카드 3개 -->
-    <div id="slObPage2" style="display:none">
-      <div class="sl-ob-cards">
-        <div class="sl-ob-card">
-          <div class="sl-ob-card-icon">⚾</div>
-          <div class="sl-ob-card-body">
-            <div class="sl-ob-card-title">스프레이차트 기록</div>
-            <div class="sl-ob-card-desc">필드를 탭해 타구 위치 즉시 기록. 안타·아웃·홈런을 색상으로 시각화</div>
-          </div>
-        </div>
-        <div class="sl-ob-card">
-          <div class="sl-ob-card-icon">📊</div>
-          <div class="sl-ob-card-body">
-            <div class="sl-ob-card-title">타격 통계 자동계산</div>
-            <div class="sl-ob-card-desc">타율(AVG) · 출루율(OBP) · 장타율(SLG)을 기록과 동시에 자동 계산</div>
-          </div>
-        </div>
-        <div class="sl-ob-card">
-          <div class="sl-ob-card-icon">💾</div>
-          <div class="sl-ob-card-body">
-            <div class="sl-ob-card-title">경기 저장 · 공유</div>
-            <div class="sl-ob-card-desc">경기 데이터를 로컬 저장하고 QR코드 · 링크로 팀원과 공유</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 3: 직접 해보기 CTA -->
-    <div id="slObPage3" style="display:none">
-      <div class="sl-ob-cta-wrap">
-        <div class="sl-ob-cta-title">모든 준비가 끝났어요!</div>
-        <div class="sl-ob-cta-desc">
-          경기를 시작하고 첫 타석을 직접 기록해보세요.
-          <span class="sl-ob-cta-flow">선수 등록 → 필드 탭 → 결과 선택</span>
-        </div>
-        <button class="onboard-btn sl-ob-cta-main" onclick="slObStartNow()">⚾ 직접 해보기 →</button>
-      </div>
-    </div>
-
-    <!-- 네비게이션 버튼 -->
-    <div class="sl-ob-nav" id="slObNav">
-      <button id="slObPrevBtn" class="sl-ob-btn-ghost" onclick="slObPrev()" style="display:none">← 이전</button>
-      <button id="slObNextBtn" class="onboard-btn" style="flex:1" onclick="slObNext()">다음 →</button>
-    </div>
-  </div>
-</div>
 
 <!-- ████ 공유된 팀 배너 ████ -->
 <div id="teamSharedBanner">
@@ -835,10 +751,7 @@ var _kakaoSdkLoaded = false;
 <div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
   <div class="aw-more-sheet">
     <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
-      <span class="aw-more-item-icon">❓</span>도움말
-    </div>
-    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();startTour()">
-      <span class="aw-more-item-icon">🎯</span>투어 시작
+      <span class="aw-more-item-icon">❓</span>도움말 · 처음 쓰시나요?
     </div>
     <div class="aw-more-divider"></div>
     <div class="aw-more-item" onclick="awMoreClose();exportFullReport()">
@@ -1078,13 +991,9 @@ var _kakaoSdkLoaded = false;
       </div>
     </div>
     <div class="hm-tour-btns">
-      <button class="hm-tour-btn" onclick="closeHelpModal();startTour()">
-        <span class="hm-tour-icon">🎯</span>
-        <div class="hm-tour-btn-body"><div>앱 투어 시작</div><div class="hm-tour-btn-sub">화살표 가이드로 각 구역을 직접 설명</div></div>
-      </button>
-      <button class="hm-tour-btn" onclick="closeHelpModal();showTutorial()">
-        <span class="hm-tour-icon">📖</span>
-        <div class="hm-tour-btn-body"><div>슬라이드 튜토리얼</div><div class="hm-tour-btn-sub">3단계 입문 가이드 다시 보기</div></div>
+      <button class="hm-tour-btn" onclick="closeHelpModal();toggleHelpMode()">
+        <span class="hm-tour-icon">💡</span>
+        <div class="hm-tour-btn-body"><div>안내 모드 켜기</div><div class="hm-tour-btn-sub">버튼마다 설명 툴팁 — 궁금한 곳을 탭하세요</div></div>
       </button>
     </div>
   </div>
@@ -1443,7 +1352,7 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
     <button class="ib-drawer-toggle" id="ibToggleBtn" onclick="toggleInputBar()">▼ 투구·결과 입력</button>
@@ -1556,7 +1465,7 @@ var _kakaoSdkLoaded = false;
       </div>
       <div class="tab-pnl" id="pnl-stat">
         <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타')" onmouseleave="hideTT()">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함 출루 비율\n0.350 이상 = 우수')" onmouseleave="hideTT()">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\n홈런=4점 · 2루타=2점 · 안타=1점')" onmouseleave="hideTT()">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'OPS','출루율 + 장타율\n0.800 이상 = 우수한 타자\n\n종합 타격 능력을 나타내는 핵심 지표')" onmouseleave="hideTT()">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
-        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+        <div class="stat-card" id="dirStatCard" style="display:none"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
         <div class="stat-card">
           <div class="sc-title">타구 결과 분포</div>
           <div id="resultDistBar" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
@@ -1565,6 +1474,7 @@ var _kakaoSdkLoaded = false;
         <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
 
         <div id="advStatFilter" class="stat-filter"><button class="sf-btn on" onclick="setAdvFilter(null,this)">종합</button><button class="sf-btn" onclick="setAdvFilter('home',this)">홈팀</button><button class="sf-btn" onclick="setAdvFilter('away',this)">원정팀</button></div>
+        <div id="advStatCard" style="display:none">
         <div class="stat-card">
           <div class="sc-title">심화 지표</div>
           <div class="ext-stat-grid">
@@ -1577,6 +1487,7 @@ var _kakaoSdkLoaded = false;
           <div class="sc-title" style="margin-top:14px">방향별 성공률</div>
           <div id="sDirStatsWrap"><div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">기록 없음</div></div>
         </div>
+        </div><!-- /advStatCard -->
 
         <div class="stat-card">
           <div class="sc-title">구종별 성적</div>
@@ -2451,104 +2362,40 @@ document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
   _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
 
-  // Onboarding: wrap showApp so overlay fires on first entry
-  function _showOnboardingIfNeeded() {
-    if (localStorage.getItem('sl_onboarding_done') === '1') return;
-    var ov = document.getElementById('onboardOverlay');
-    if (ov) ov.style.display = 'flex';
-    var startBtn = document.querySelector('.aw-btn-start');
-    if (startBtn) startBtn.classList.add('onboard-ring');
-  }
-  var _origShowApp = window.showApp;
-  if (typeof _origShowApp === 'function') {
-    window.showApp = function() {
-      _origShowApp.apply(this, arguments);
-      _showOnboardingIfNeeded();
-    };
-  }
-  // Catch auto-show (e.g. returning via back-button with app already visible)
-  setTimeout(_showOnboardingIfNeeded, 200);
 });
 </script>
 <script>
-function dismissOnboarding() {
-  var ov = document.getElementById('onboardOverlay');
-  if (ov) ov.style.display = 'none';
-  var startBtn = document.querySelector('.aw-btn-start');
-  if (startBtn) startBtn.classList.remove('onboard-ring');
-  localStorage.setItem('sl_onboarding_done', '1');
-}
-/* ── Onboarding 3-step wizard (sl-ob-) ── */
-var _slObStep = 1;
-function slObNext() {
-  if (_slObStep < 3) {
-    document.getElementById('slObPage' + _slObStep).style.display = 'none';
-    _slObStep++;
-    document.getElementById('slObPage' + _slObStep).style.display = '';
-    _slObUpdateUI();
-  } else {
-    dismissOnboarding();
-  }
-}
-function slObPrev() {
-  if (_slObStep > 1) {
-    document.getElementById('slObPage' + _slObStep).style.display = 'none';
-    _slObStep--;
-    document.getElementById('slObPage' + _slObStep).style.display = '';
-    _slObUpdateUI();
-  }
-}
-function _slObUpdateUI() {
-  for (var i = 1; i <= 3; i++) {
-    var d = document.getElementById('slObDot' + i);
-    if (d) d.className = 'sl-ob-dot' + (i === _slObStep ? ' sl-ob-dot-on' : '');
-  }
-  var prev = document.getElementById('slObPrevBtn');
-  var next = document.getElementById('slObNextBtn');
-  var arrow = document.getElementById('onboardUpArrow');
-  if (prev) prev.style.display = _slObStep > 1 ? '' : 'none';
-  if (next) { next.style.display = _slObStep === 3 ? 'none' : ''; }
-  if (arrow) arrow.style.display = _slObStep === 1 ? '' : 'none';
-}
-/* Step 3 CTA: 온보딩 완료 후 경기 시작 위자드 진입 */
-function slObStartNow() {
-  dismissOnboarding();
-  if (typeof hideAppWelcome === 'function') hideAppWelcome();
-  if (typeof openGameWizard === 'function') openGameWizard();
-}
-/* 샘플 스프레이차트 Canvas 렌더링 */
-function _slObDrawDemo() {
-  var cvs = document.getElementById('slObDemoCanvas');
-  if (!cvs) return;
-  var W = cvs.width, H = cvs.height;
-  var ctx = cvs.getContext('2d');
-  ctx.fillStyle = '#0d1520'; ctx.fillRect(0, 0, W, H);
-  ctx.beginPath(); ctx.arc(W/2, H+24, H*1.15, Math.PI, 0); ctx.closePath();
-  ctx.fillStyle = '#0a2315'; ctx.fill();
-  var cx = W/2, cy = H-8;
-  ctx.beginPath(); ctx.arc(cx, cy, H*0.38, Math.PI, 0); ctx.closePath();
-  ctx.fillStyle = '#1e1205'; ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(4,4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(W-4,4); ctx.stroke();
-  [{nx:.63,ny:.26,col:'#2dd4a0'},{nx:.28,ny:.40,col:'#f56565'},{nx:.50,ny:.82,col:'#f6c23e'}].forEach(function(d){
-    var px=d.nx*W, py=d.ny*H;
-    ctx.beginPath(); ctx.arc(px,py,7,0,Math.PI*2); ctx.fillStyle=d.col+'30'; ctx.fill();
-    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fillStyle=d.col; ctx.fill();
-  });
-}
 document.addEventListener('DOMContentLoaded', function() {
-  var _ov = document.getElementById('onboardOverlay');
-  if (_ov) {
-    new MutationObserver(function() {
-      if (_ov.style.display !== 'none') _slObDrawDemo();
-    }).observe(_ov, {attributes:true, attributeFilter:['style']});
-  }
   // 저장된 구장으로 버튼 초기 상태 적용
   var _savedSt = localStorage.getItem('sl_stadium') || 'standard';
   document.querySelectorAll('.sl-st-btn').forEach(function(b) {
     b.classList.toggle('sl-st-on', b.dataset.st === _savedSt);
   });
+});
+/* ── 첫 탭 오버레이 제어 ── */
+function initFieldTapHint(){
+  var hint=document.getElementById('fieldTapHint');
+  if(!hint)return;
+  if(localStorage.getItem('sl_field_tapped')){hint.classList.add('hidden');return;}
+  hint.classList.remove('hidden');
+  var cwrap=document.getElementById('cwrap');
+  if(cwrap){
+    cwrap.addEventListener('pointerdown',function _onTap(){
+      hint.classList.add('hidden');
+      localStorage.setItem('sl_field_tapped','1');
+      cwrap.removeEventListener('pointerdown',_onTap);
+    },{once:true});
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  // 경기 시작 후 필드 오버레이 초기화
+  var _origStart=window.startFromWizard;
+  if(typeof _origStart==='function'){
+    window.startFromWizard=function(){
+      _origStart.apply(this,arguments);
+      setTimeout(initFieldTapHint,300);
+    };
+  }
 });
 /* ── EV unit toggle ── */
 function toggleEvUnit() {

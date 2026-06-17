@@ -77,7 +77,7 @@
     return _ensureAuth().then(function (user) {
       if (!user) return;
       var db = _client();
-      return db.from('games').upsert({
+      return db.from('user_games').upsert({
         user_id:    user.id,
         game_key:   key,
         team_name:  (gameData.th || '') + ' vs ' + (gameData.ta || ''),
@@ -119,12 +119,12 @@
       }).filter(Boolean);
 
       var upProm = rows.length
-        ? db.from('games').upsert(rows, { onConflict: 'user_id,game_key' })
+        ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' })
         : Promise.resolve({ error: null });
 
       // 2. 클라우드 → 로컬 (updated_at 기준 최신 우선)
       return upProm.then(function () {
-        return db.from('games').select('game_key, data, updated_at').eq('user_id', user.id);
+        return db.from('user_games').select('game_key, data, updated_at').eq('user_id', user.id);
       }).then(function (r) {
         if (r.error) throw r.error;
 

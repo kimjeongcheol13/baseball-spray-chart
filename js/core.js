@@ -3026,12 +3026,13 @@ function showShareQR(url){
     wrap.innerHTML='';
     if(typeof QRCode!=='undefined'){
       try{
-        new QRCode(wrap,{text:url,width:180,height:180,colorDark:'#eef0f8',colorLight:'#141c2e',correctLevel:QRCode.CorrectLevel.M});
+        new QRCode(wrap,{text:url,width:180,height:180,colorDark:'#eef0f8',colorLight:'#141c2e',correctLevel:QRCode.CorrectLevel.L});
       }catch(e){
-        wrap.innerHTML='<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">QR 생성 실패<br>아래 링크를 복사해 공유하세요</div>';
+        /* URL이 너무 길면 QR 생성 실패 → 안내 메시지 */
+        wrap.innerHTML='<div style="font-size:12px;color:var(--text3);padding:16px;text-align:center;line-height:1.6">URL이 너무 길어 QR 생성 불가<br>아래 링크를 복사해 공유하세요</div>';
       }
     } else {
-      wrap.innerHTML='<div style="font-size:11px;color:var(--text3);padding:12px;text-align:center">아래 링크를 복사해 공유하세요</div>';
+      wrap.innerHTML='<div style="font-size:12px;color:var(--text3);padding:16px;text-align:center">아래 링크를 복사해 공유하세요</div>';
     }
   }
 
@@ -4338,13 +4339,26 @@ function _shareGameLinkLegacy(payload){
       :'b'+btoa(unescape(encodeURIComponent(json)));
     url=location.origin+location.pathname+'?game='+encoded;
   }catch(e){url=location.href;}
-  /* is.gd로 단축 시도 (CORS 지원, 무료) */
+  /* URL 단축: is.gd → v.gd 순서로 시도 */
   if(url.length>300){
     showToast('🔗 링크 생성 중…',false,true);
-    fetch('https://is.gd/create.php?format=json&url='+encodeURIComponent(url))
-      .then(function(r){return r.json();})
-      .then(function(d){showShareQR(d.shorturl||url);})
-      .catch(function(){showShareQR(url);});
+    var enc=encodeURIComponent(url);
+    fetch('https://is.gd/create.php?format=json&url='+enc)
+      .then(function(r){
+        if(!r.ok)throw new Error(r.status);
+        return r.json();
+      })
+      .then(function(d){
+        if(d.shorturl){showShareQR(d.shorturl);}
+        else throw new Error('no shorturl');
+      })
+      .catch(function(){
+        /* is.gd 실패 시 v.gd로 재시도 */
+        fetch('https://v.gd/create.php?format=json&url='+enc)
+          .then(function(r){return r.json();})
+          .then(function(d){showShareQR(d.shorturl||url);})
+          .catch(function(){showShareQR(url);});
+      });
     return;
   }
   showShareQR(url);

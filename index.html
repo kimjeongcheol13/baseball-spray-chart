@@ -2616,7 +2616,30 @@ document.addEventListener('DOMContentLoaded', function() {
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+
+  // 새 SW가 활성화되면 페이지를 깨끗하게 새로고침
+  // (skipWaiting으로 인한 리소스 불일치 방지)
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    window.location.reload();
+  });
+
+  // SW로부터 활성화 알림을 받으면 새로고침
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'SW_ACTIVATED') {
+      window.location.reload();
+    }
+  });
 }
+
+/* ── 앱 복귀 시 안정성 보장 ── */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    // SW 컨트롤러가 없으면(SW 교체 중 잠깐 발생 가능) 새로고침
+    if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+      window.location.reload();
+    }
+  }
+});
 
 /* ── Network status badge ── */
 (function () {

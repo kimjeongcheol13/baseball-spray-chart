@@ -40,6 +40,14 @@ self.addEventListener('activate', function(e) {
             .map(function(k) { return caches.delete(k); })
       );
     }).then(function() { return self.clients.claim(); })
+      .then(function() {
+        // 새 SW가 활성화되면 열려 있는 모든 페이지에 알림 → 페이지가 깨끗하게 새로고침
+        return self.clients.matchAll({ type: 'window' }).then(function(clients) {
+          clients.forEach(function(client) {
+            client.postMessage({ type: 'SW_ACTIVATED' });
+          });
+        });
+      })
   );
 });
 

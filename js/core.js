@@ -4339,26 +4339,26 @@ function _shareGameLinkLegacy(payload){
       :'b'+btoa(unescape(encodeURIComponent(json)));
     url=location.origin+location.pathname+'?game='+encoded;
   }catch(e){url=location.href;}
-  /* URL 단축: is.gd → v.gd 순서로 시도 */
+  /* URL 단축: cleanuri → 1pt.co 순서로 시도 */
   if(url.length>300){
     showToast('🔗 링크 생성 중…',false,true);
-    var enc=encodeURIComponent(url);
-    fetch('https://is.gd/create.php?format=json&url='+enc)
-      .then(function(r){
-        if(!r.ok)throw new Error(r.status);
-        return r.json();
-      })
-      .then(function(d){
-        if(d.shorturl){showShareQR(d.shorturl);}
-        else throw new Error('no shorturl');
-      })
-      .catch(function(){
-        /* is.gd 실패 시 v.gd로 재시도 */
-        fetch('https://v.gd/create.php?format=json&url='+enc)
-          .then(function(r){return r.json();})
-          .then(function(d){showShareQR(d.shorturl||url);})
-          .catch(function(){showShareQR(url);});
-      });
+    fetch('https://cleanuri.com/api/v1/shorten',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'url='+encodeURIComponent(url)
+    })
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(function(d){
+      if(d.result_url){showShareQR(d.result_url);}
+      else throw new Error('no result');
+    })
+    .catch(function(){
+      /* cleanuri 실패 → 1pt.co */
+      fetch('https://api.1pt.co/addURL?long='+encodeURIComponent(url))
+        .then(function(r){return r.json();})
+        .then(function(d){showShareQR(d.short?'https://1pt.co/'+d.short:url);})
+        .catch(function(){showShareQR(url);});
+    });
     return;
   }
   showShareQR(url);
@@ -7895,7 +7895,26 @@ function fieldFeedbackSubmit(){
     var id=_genId();
     db.from('shared_links').insert({id:id,payload:payload})
       .then(function(r){
-        if(r.error){onFail(r.error);return;}
+        if(r.error){
+          /* 테이블 없음(42P01) → 자동 생성 후 재시도 */
+          if(r.error.code==='42P01'||r.error.message&&r.error.message.indexOf('shared_links')>-1){
+            db.rpc('exec_ddl',{sql:
+              'create table if not exists shared_links(id text primary key,payload jsonb not null,created_at timestamptz default now());'+
+              'alter table shared_links enable row level security;'+
+              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon insert\') then '+
+              'create policy "anon insert" on shared_links for insert to anon with check (true);end if;end $$;'+
+              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon select\') then '+
+              'create policy "anon select" on shared_links for select to anon using (true);end if;end $$;'
+            }).then(function(){
+              return db.from('shared_links').insert({id:id,payload:payload});
+            }).then(function(r2){
+              if(r2.error){onFail(r2.error);}else{onOk(id);}
+            }).catch(onFail);
+          } else {
+            onFail(r.error);
+          }
+          return;
+        }
         onOk(id);
       })
       .catch(onFail);

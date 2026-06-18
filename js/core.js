@@ -4421,7 +4421,12 @@ _loadSharedGame();
 (function autoSkipLanding(){
   var sp=new URLSearchParams(location.search);
   var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
-  if(hasShare) showApp();
+  if(hasShare){showApp();return;}
+  if(!localStorage.getItem('sl_visited')){
+    setTimeout(function(){
+      if(typeof showPreviewModal==='function') showPreviewModal();
+    },400);
+  }
 })();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

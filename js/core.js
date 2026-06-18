@@ -8512,26 +8512,25 @@ if(window.SL){
 // ═══ Service Worker Registration ═══
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/baseball-spray-chart/sw.js').then(function(r){
-      console.log('SW registered');
+    navigator.serviceWorker.register('/baseball-spray-chart/sw.js',{updateViaCache:'none'}).then(function(r){
       // 업데이트 감지: 새 SW가 설치 대기 중이면 즉시 적용
       r.addEventListener('updatefound',function(){
         var newSW=r.installing;
         if(!newSW)return;
         newSW.addEventListener('statechange',function(){
           if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-            // 새 버전 발견 → SW에 즉시 활성화 요청 후 페이지 리로드
-            // (localStorage 데이터는 보존됨)
             newSW.postMessage({type:'SKIP_WAITING'});
           }
         });
       });
-      // 이미 업데이트 대기 중인 SW 있으면 즉시 적용
-      if(r.waiting){
-        r.waiting.postMessage({type:'SKIP_WAITING'});
-      }
+      // 이미 대기 중인 SW 있으면 즉시 적용
+      if(r.waiting) r.waiting.postMessage({type:'SKIP_WAITING'});
+      // PWA 포그라운드 전환 시 업데이트 강제 체크
+      document.addEventListener('visibilitychange',function(){
+        if(document.visibilityState==='visible') r.update();
+      });
     }).catch(function(e){console.log('SW failed',e);});
-    // SW 교체 완료 시 페이지 자동 새로고침 (데이터 보존)
+    // SW 교체 완료 시 페이지 자동 새로고침
     var _refreshing=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       if(_refreshing)return;

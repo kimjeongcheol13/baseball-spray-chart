@@ -1,7 +1,7 @@
 // SprayLab Service Worker v20
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v24';
+const CACHE_NAME = 'spraylab-v25';
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -18,6 +18,11 @@ const CACHE_FILES = [
   './player-logo.png',
   './manifest.json',
 ];
+
+// 페이지에서 SKIP_WAITING 메시지 수신 시 즉시 활성화
+self.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

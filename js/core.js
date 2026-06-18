@@ -1190,7 +1190,13 @@ function renderLP(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
-  if(!targetLineup.length){el.innerHTML='<div style="padding:24px 16px;text-align:center"><div style="font-size:28px;margin-bottom:8px">👤</div><div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:4px">+ 선수 추가로 시작하세요</div><div style="font-size:11px;color:var(--text3);line-height:1.6">이름과 번호를 입력하고<br>+ 버튼을 누르세요</div></div>';return;}
+  var ov=document.getElementById('onboardOverlay');
+  if(!targetLineup.length){
+    el.innerHTML='<div style="padding:24px 16px;text-align:center"><div style="font-size:28px;margin-bottom:8px">👤</div><div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:4px">+ 선수 추가로 시작하세요</div><div style="font-size:11px;color:var(--text3);line-height:1.6">이름과 번호를 입력하고<br>+ 버튼을 누르세요</div></div>';
+    if(ov)ov.style.display='flex';
+    return;
+  }
+  if(ov)ov.style.display='none';
   const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
   el.innerHTML=targetLineup.map((p,idx)=>{
     const pAbs=AS.abs.filter(a=>a.bid===p.id);

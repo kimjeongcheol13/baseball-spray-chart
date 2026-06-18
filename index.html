@@ -1696,6 +1696,42 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
+    <div id="onboardOverlay" class="onboard-overlay" style="display:none">
+      <span class="onboard-up-arrow">↑</span>
+      <div class="onboard-card">
+        <div class="onboard-header">
+          <div class="onboard-title">⚾ 시작하는 방법</div>
+          <div class="onboard-sub">아래 3단계를 따라해 보세요</div>
+        </div>
+        <div class="onboard-steps">
+          <div class="onboard-step">
+            <div class="onboard-step-num">1</div>
+            <div class="onboard-step-body">
+              <div class="onboard-step-label">선수 추가</div>
+              <div class="onboard-step-desc">왼쪽 패널에서 이름·번호를 입력하고 + 버튼을 누르세요</div>
+            </div>
+            <div class="onboard-step-arrow">›</div>
+          </div>
+          <div class="onboard-step">
+            <div class="onboard-step-num">2</div>
+            <div class="onboard-step-body">
+              <div class="onboard-step-label">타자 선택</div>
+              <div class="onboard-step-desc">추가된 선수를 탭해 현재 타자로 지정하세요</div>
+            </div>
+            <div class="onboard-step-arrow">›</div>
+          </div>
+          <div class="onboard-step">
+            <div class="onboard-step-num">3</div>
+            <div class="onboard-step-body">
+              <div class="onboard-step-label">필드 탭</div>
+              <div class="onboard-step-desc">타구가 떨어진 위치를 필드에서 탭하면 기록됩니다</div>
+            </div>
+            <div class="onboard-step-arrow">›</div>
+          </div>
+        </div>
+        <button class="onboard-btn" onclick="document.getElementById('onboardOverlay').style.display='none';document.getElementById('pName').focus()">+ 선수 추가하기</button>
+      </div>
+    </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>

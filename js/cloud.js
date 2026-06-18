@@ -391,12 +391,7 @@
     var db = _client();
     if (!db) return;
     var redirect = window.location.href.split('?')[0].split('#')[0];
-    if (_user && _user.is_anonymous) {
-      db.auth.linkIdentity({ provider: 'google', options: { redirectTo: redirect } })
-        .catch(function (e) { console.warn('[Cloud] linkIdentity:', e && e.message); });
-    } else {
-      db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect } });
-    }
+    db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect } });
   };
 
   /* 이메일 매직링크 */

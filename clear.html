@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>업데이트 중...</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#fff;flex-direction:column;gap:16px;font-size:18px}</style>
+</head>
+<body>
+<div>⚙️ 업데이트 중...</div>
+<div id="msg" style="font-size:13px;color:#aaa"></div>
+<script>
+(function(){
+  var msg = document.getElementById('msg');
+  if (!('serviceWorker' in navigator)) {
+    msg.textContent = 'SW 미지원 브라우저';
+    setTimeout(function(){ location.href = '/baseball-spray-chart/'; }, 1000);
+    return;
+  }
+  // 모든 캐시 삭제
+  caches.keys().then(function(keys){
+    return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+  }).then(function(){
+    // 모든 SW 등록 해제
+    return navigator.serviceWorker.getRegistrations();
+  }).then(function(regs){
+    return Promise.all(regs.map(function(r){ return r.unregister(); }));
+  }).then(function(){
+    msg.textContent = '완료! 앱으로 이동합니다...';
+    setTimeout(function(){ location.href = '/baseball-spray-chart/'; }, 500);
+  }).catch(function(e){
+    msg.textContent = '오류: ' + e.message;
+    setTimeout(function(){ location.href = '/baseball-spray-chart/'; }, 1500);
+  });
+})();
+</script>
+</body>
+</html>

@@ -411,8 +411,8 @@ function showDataModal(jsonStr, fileName) {
     }
   };
   window.mpmGoTo=function(n){_goto(n,true);};
-  window.mpmStart=function(){_close();showApp();};
-  window.mpmSkip=function(){_close();showApp();};
+  window.mpmStart=function(){localStorage.setItem('sl_preview_seen','1');_close();};
+  window.mpmSkip=function(){localStorage.setItem('sl_preview_seen','1');_close();};
 })();
 
 function showApp(){
@@ -4511,11 +4511,9 @@ _loadSharedGame();
   var sp=new URLSearchParams(location.search);
   var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
   if(hasShare){showApp();return;}
-  if(!localStorage.getItem('sl_visited')){
-    setTimeout(function(){
-      if(typeof showPreviewModal==='function') showPreviewModal();
-    },400);
-  }
+  // 모바일은 항상 랜딩 스킵 → 바로 앱 (프리뷰 모달은 앱 홈에서 표시)
+  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
+  if(isMobile) showApp();
 })();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5882,6 +5880,13 @@ function showAppWelcome(){
   if(nav)nav.style.display='none';
   _updateMobAwLinks();
   renderAwRecent();
+  // 모바일 첫 방문 시 프리뷰 모달 표시
+  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
+  if(isMobile&&!localStorage.getItem('sl_preview_seen')){
+    setTimeout(function(){
+      if(typeof showMobilePreviewModal==='function') showMobilePreviewModal();
+    },300);
+  }
   // 홈으로 돌아왔을 때 복구 배너 재확인
   setTimeout(function(){
     var banner=document.getElementById('archRecoveryBanner');

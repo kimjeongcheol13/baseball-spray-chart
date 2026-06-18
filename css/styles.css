@@ -697,6 +697,24 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .profile-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
 .profile-email{font-size:11px;color:var(--text3)}
 .profile-badge{font-size:11px;color:var(--green);font-weight:600;text-align:center}
+/* ── 팀 UI ── */
+.team-divider{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);border-top:1px solid var(--border2);padding-top:14px;margin-top:14px}
+.team-actions{display:flex;gap:8px;margin-top:10px}
+.btn-team-create,.btn-team-join{flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:background .15s}
+.btn-team-create{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-team-create:hover{filter:brightness(1.1)}
+.btn-team-join{background:var(--bg2);color:var(--text2)}
+.btn-team-join:hover{background:var(--border);color:var(--text)}
+.team-form{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.team-info{background:var(--bg2);border-radius:10px;padding:14px;margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.team-code-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.team-code-big{font-size:28px;font-weight:900;letter-spacing:4px;color:var(--accent);font-family:var(--mono)}
+.btn-team-copy{padding:7px 18px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;width:100%}
+.btn-team-copy:hover{background:var(--blue-dim)}
+.btn-team-leave{padding:7px 18px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;width:100%}
+.btn-team-danger{color:var(--red);border-color:var(--red)}
+.team-login-hint{font-size:11px;color:var(--text3);text-align:center;padding:12px 0}
+#teamBadge{display:none;align-items:center;gap:4px;font-size:10px;font-weight:700;background:rgba(75,140,245,.15);color:var(--accent);border-radius:12px;padding:3px 8px;margin-left:4px}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD

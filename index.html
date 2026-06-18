@@ -1124,6 +1124,7 @@ var _kakaoSdkLoaded = false;
     <button class="auth-btn" id="authBtn" onclick="openLoginModal()" title="로그인하면 다른 기기에서도 이어서 사용할 수 있어요">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>저장하기</span>
     </button>
+    <span id="teamBadge" onclick="openLoginModal()" style="cursor:pointer"></span>
   </div>
 </header>
 
@@ -1160,7 +1161,9 @@ var _kakaoSdkLoaded = false;
       <div class="profile-email" id="profileEmail"></div>
     </div>
     <div class="profile-badge">✅ 다른 기기에서도 이어서 사용 가능</div>
-    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="document.getElementById('profileModal').classList.remove('show')">닫기</button>
+    <div class="team-divider">팀 기능</div>
+    <div id="teamSection"></div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="document.getElementById('profileModal').classList.remove('show')">닫기</button>
     <button class="btn" style="width:100%;justify-content:center;margin-top:6px;background:var(--bg2);color:var(--text3);border:1px solid var(--border2)" onclick="cloudSignOut()">로그아웃</button>
   </div>
 </div>

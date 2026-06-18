@@ -218,12 +218,38 @@ var _kakaoSdkLoaded = false;
 .apm-foot{padding:12px 20px max(16px,env(safe-area-inset-bottom))}
 .apm-cta{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px;transition:opacity .15s}
 .apm-cta:active{opacity:.82}
-@media(max-width:480px){
-  #appPreviewModal{align-items:flex-end;transition:opacity .3s}
-  #appPreviewModal .apm-card{width:100%;max-height:92svh;border-radius:20px 20px 0 0;border-left:none;border-right:none;border-bottom:none}
-  .apm-slide-visual{min-height:180px}
-  .apm-slide-cap{font-size:12px;margin:8px 0 2px}
-}
+/* ── Mobile Preview Modal ── */
+#mpm{position:fixed;inset:0;z-index:8500;background:#080b14;opacity:0;pointer-events:none;transition:opacity .35s;display:flex;flex-direction:column;overflow:hidden}
+#mpm.show{opacity:1;pointer-events:auto}
+.mpm-head{display:flex;align-items:center;justify-content:space-between;padding:max(52px,env(safe-area-inset-top)) 24px 0}
+.mpm-logo{font-size:18px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
+.mpm-logo em{color:#4b8cf5;font-style:normal}
+.mpm-skip{background:none;border:none;color:#6b6b88;font-size:13px;font-weight:600;padding:8px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.mpm-slides-wrap{flex:1;min-height:0;overflow:hidden;position:relative;margin-top:16px}
+.mpm-slides{display:flex;height:100%;transition:transform .38s cubic-bezier(.4,0,.2,1)}
+.mpm-slide{flex:0 0 100%;display:flex;flex-direction:column;padding:0 20px}
+.mpm-visual{flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#0d1117;border:1px solid #1a2030;position:relative}
+.mpm-caption{padding:18px 4px 0;text-align:center}
+.mpm-cap-title{font-size:20px;font-weight:800;color:#f0f0f4;letter-spacing:-.4px;margin:0 0 6px}
+.mpm-cap-desc{font-size:13px;color:#9898b0;line-height:1.55;margin:0}
+.mpm-dots{display:flex;justify-content:center;gap:7px;padding:16px 0 10px}
+.mpm-dot{height:8px;width:8px;border-radius:4px;background:#2a2a3a;transition:all .25s;cursor:pointer}
+.mpm-dot.on{background:#4b8cf5;width:26px}
+.mpm-foot{padding:0 20px max(28px,env(safe-area-inset-bottom))}
+.mpm-cta{width:100%;padding:17px;background:#4b8cf5;color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:.2px;transition:opacity .15s}
+.mpm-cta:active{opacity:.82}
+/* mock elements inside mobile slides */
+.mpm-qb{display:flex;gap:8px;padding:14px 14px 0;flex-wrap:wrap}
+.mpm-qbtn{border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;border:none;font-family:inherit;cursor:default}
+.mpm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:20px 16px 0}
+.mpm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:14px;padding:14px 8px;text-align:center}
+.mpm-stat-val{font-size:26px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.mpm-stat-lbl{font-size:11px;color:#6b6b88;margin-top:4px;font-weight:600}
+.mpm-stat-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #1a1a2a}
+.mpm-stat-name{font-size:13px;font-weight:700;color:#c0c8e0;width:60px;flex-shrink:0}
+.mpm-stat-bar-wrap{flex:1;height:6px;background:#1e2030;border-radius:3px;overflow:hidden}
+.mpm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
+.mpm-stat-num{font-size:12px;font-weight:700;color:#9898b0;width:38px;text-align:right;font-family:'JetBrains Mono',monospace}
 /* mock UI inside slides */
 .apm-mock-qb{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
 .apm-mock-btn{border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;border:none;font-family:inherit}
@@ -263,6 +289,71 @@ var _kakaoSdkLoaded = false;
   <button onclick="kakaoExportThenOpen()" style="margin:4px 4px 0;padding:5px 12px;background:#07090f;color:#f6c23e;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">📤 데이터 백업 후 Chrome으로 열기</button>
   <button onclick="kakaoOpenOnly()" style="margin:4px 4px 0;padding:5px 12px;background:none;border:1px solid #07090f;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">그냥 Chrome으로 열기</button>
   <button onclick="document.getElementById('kakao-warn').style.display='none'" style="margin:4px 4px 0;padding:5px 10px;background:none;border:1px solid #888;border-radius:6px;font-size:11px;cursor:pointer">✕ 계속 사용</button>
+</div>
+
+<!-- ████ 모바일 프리뷰 모달 ████ -->
+<div id="mpm">
+  <div class="mpm-head">
+    <div class="mpm-logo">Spray<em>Lab</em></div>
+    <button class="mpm-skip" onclick="mpmSkip()">건너뛰기</button>
+  </div>
+  <div class="mpm-slides-wrap" id="mpmSlidesWrap">
+    <div class="mpm-slides" id="mpmSlides">
+      <!-- Slide 1: 타석 기록 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual">
+          <div class="mpm-qb">
+            <button class="mpm-qbtn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
+            <button class="mpm-qbtn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
+            <button class="mpm-qbtn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
+            <button class="mpm-qbtn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
+          </div>
+          <canvas id="mpmCanvas0" style="width:100%;display:block;margin-top:8px"></canvas>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">필드를 탭해 타구를 기록</p>
+          <p class="mpm-cap-desc">이닝별 타석을 실시간으로 기록하고<br>결과를 한 번에 확인하세요</p>
+        </div>
+      </div>
+      <!-- Slide 2: 스프레이차트 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual">
+          <canvas id="mpmCanvas1" style="width:100%;display:block"></canvas>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">스프레이차트로 한눈에</p>
+          <p class="mpm-cap-desc">타구 분포와 방향 패턴을<br>시각적으로 파악하세요</p>
+        </div>
+      </div>
+      <!-- Slide 3: 통계 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual" style="overflow-y:auto">
+          <div class="mpm-stat-grid">
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.312</div><div class="mpm-stat-lbl">타율 AVG</div></div>
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.405</div><div class="mpm-stat-lbl">출루율 OBP</div></div>
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.832</div><div class="mpm-stat-lbl">OPS</div></div>
+          </div>
+          <div style="padding:14px 16px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">김민준</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:88%"></div></div><span class="mpm-stat-num">.388</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">이도현</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:72%"></div></div><span class="mpm-stat-num">.312</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">박지훈</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:60%"></div></div><span class="mpm-stat-num">.267</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">최성원</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="mpm-stat-num">.233</span></div>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">타율·출루율·OPS 자동 계산</p>
+          <p class="mpm-cap-desc">기록하는 순간 모든 지표가<br>실시간으로 업데이트됩니다</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mpm-dots" id="mpmDots">
+    <div class="mpm-dot on" onclick="mpmGoTo(0)"></div>
+    <div class="mpm-dot" onclick="mpmGoTo(1)"></div>
+    <div class="mpm-dot" onclick="mpmGoTo(2)"></div>
+  </div>
+  <div class="mpm-foot">
+    <button class="mpm-cta" onclick="mpmStart()">지금 시작하기 →</button>
+  </div>
 </div>
 
 <!-- ████ 앱 프리뷰 모달 ████ -->
@@ -2745,7 +2836,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=73"></script>
+<script defer src="js/core.js?v=74"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
 <script>

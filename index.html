@@ -1510,21 +1510,24 @@ var _kakaoSdkLoaded = false;
     <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">구종</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="mobPtChips">
       <button class="mob-pt-chip" data-pt="직구" onclick="mobSelPt2(this,'직구')">직구</button>
-      <button class="mob-pt-chip" data-pt="싱커" onclick="mobSelPt2(this,'싱커')">싱커</button>
-      <button class="mob-pt-chip" data-pt="커터" onclick="mobSelPt2(this,'커터')">커터</button>
       <button class="mob-pt-chip" data-pt="슬라이더" onclick="mobSelPt2(this,'슬라이더')">슬라이더</button>
-      <button class="mob-pt-chip" data-pt="스위퍼" onclick="mobSelPt2(this,'스위퍼')">스위퍼</button>
-      <button class="mob-pt-chip" data-pt="슬러브" onclick="mobSelPt2(this,'슬러브')">슬러브</button>
       <button class="mob-pt-chip" data-pt="커브" onclick="mobSelPt2(this,'커브')">커브</button>
-      <button class="mob-pt-chip" data-pt="너클커브" onclick="mobSelPt2(this,'너클커브')">너클커브</button>
-      <button class="mob-pt-chip" data-pt="슬로우커브" onclick="mobSelPt2(this,'슬로우커브')">슬로우커브</button>
       <button class="mob-pt-chip" data-pt="체인지업" onclick="mobSelPt2(this,'체인지업')">체인지업</button>
-      <button class="mob-pt-chip" data-pt="포크볼" onclick="mobSelPt2(this,'포크볼')">포크볼</button>
-      <button class="mob-pt-chip" data-pt="스플리터" onclick="mobSelPt2(this,'스플리터')">스플리터</button>
-      <button class="mob-pt-chip" data-pt="스크류볼" onclick="mobSelPt2(this,'스크류볼')">스크류볼</button>
-      <button class="mob-pt-chip" data-pt="너클볼" onclick="mobSelPt2(this,'너클볼')">너클볼</button>
-      <button class="mob-pt-chip" data-pt="이퓨스볼" onclick="mobSelPt2(this,'이퓨스볼')">이퓨스볼</button>
-      <button class="mob-pt-chip" data-pt="팜볼" onclick="mobSelPt2(this,'팜볼')">팜볼</button>
+      <div id="mobPtMore" style="display:none;flex-wrap:wrap;gap:6px;width:100%">
+        <button class="mob-pt-chip" data-pt="싱커" onclick="mobSelPt2(this,'싱커')">싱커</button>
+        <button class="mob-pt-chip" data-pt="커터" onclick="mobSelPt2(this,'커터')">커터</button>
+        <button class="mob-pt-chip" data-pt="포크볼" onclick="mobSelPt2(this,'포크볼')">포크볼</button>
+        <button class="mob-pt-chip" data-pt="스플리터" onclick="mobSelPt2(this,'스플리터')">스플리터</button>
+        <button class="mob-pt-chip" data-pt="스크류볼" onclick="mobSelPt2(this,'스크류볼')">스크류볼</button>
+        <button class="mob-pt-chip" data-pt="너클커브" onclick="mobSelPt2(this,'너클커브')">너클커브</button>
+        <button class="mob-pt-chip" data-pt="슬로우커브" onclick="mobSelPt2(this,'슬로우커브')">슬로우커브</button>
+        <button class="mob-pt-chip" data-pt="스위퍼" onclick="mobSelPt2(this,'스위퍼')">스위퍼</button>
+        <button class="mob-pt-chip" data-pt="슬러브" onclick="mobSelPt2(this,'슬러브')">슬러브</button>
+        <button class="mob-pt-chip" data-pt="너클볼" onclick="mobSelPt2(this,'너클볼')">너클볼</button>
+        <button class="mob-pt-chip" data-pt="이퓨스볼" onclick="mobSelPt2(this,'이퓨스볼')">이퓨스볼</button>
+        <button class="mob-pt-chip" data-pt="팜볼" onclick="mobSelPt2(this,'팜볼')">팜볼</button>
+      </div>
+      <button id="mobPtMoreBtn" onclick="toggleMobPtMore()" style="background:none;border:1px dashed #3a3a4a;border-radius:6px;color:#6b7280;font-size:10px;padding:4px 10px;cursor:pointer;width:100%">더보기 ▾</button>
     </div>
     <!-- 스트라이크존 -->
     <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">스트라이크 존</div>
@@ -1750,27 +1753,25 @@ var _kakaoSdkLoaded = false;
           <div style="flex:1;min-width:0">
             <div class="sec-lbl">투구 종류</div>
             <div class="chips" id="ptGroup" style="flex-wrap:wrap;gap:3px 4px">
-              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">패스트볼</span>
               <button class="chip" onclick="selChip(this,'pt','직구')" style="border-left:3px solid #e53935">직구</button>
-              <button class="chip" onclick="selChip(this,'pt','싱커')" style="border-left:3px solid #ff7043">싱커</button>
-              <button class="chip" onclick="selChip(this,'pt','커터')" style="border-left:3px solid #795548">커터</button>
-              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">오프스피드</span>
-              <button class="chip" onclick="selChip(this,'pt','체인지업')" style="border-left:3px solid #43a047">체인지업</button>
-              <button class="chip" onclick="selChip(this,'pt','포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
-              <button class="chip" onclick="selChip(this,'pt','스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
-              <button class="chip" onclick="selChip(this,'pt','스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
-              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">브레이킹볼</span>
-              <button class="chip" onclick="selChip(this,'pt','커브')" style="border-left:3px solid #29b6f6">커브</button>
-              <button class="chip" onclick="selChip(this,'pt','너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
-              <button class="chip" onclick="selChip(this,'pt','슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
-              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">슬라이더</span>
               <button class="chip" onclick="selChip(this,'pt','슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
-              <button class="chip" onclick="selChip(this,'pt','스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
-              <button class="chip" onclick="selChip(this,'pt','슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
-              <span style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;width:100%;display:block;padding:2px 0 1px">기타</span>
-              <button class="chip" onclick="selChip(this,'pt','너클볼')" style="border-left:3px solid #006994">너클볼</button>
-              <button class="chip" onclick="selChip(this,'pt','이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
-              <button class="chip" onclick="selChip(this,'pt','팜볼')" style="border-left:3px solid #888888">팜볼</button>
+              <button class="chip" onclick="selChip(this,'pt','커브')" style="border-left:3px solid #29b6f6">커브</button>
+              <button class="chip" onclick="selChip(this,'pt','체인지업')" style="border-left:3px solid #43a047">체인지업</button>
+              <div id="ptGroupMore" style="display:none;flex-wrap:wrap;gap:3px 4px;width:100%">
+                <button class="chip" onclick="selChip(this,'pt','싱커')" style="border-left:3px solid #ff7043">싱커</button>
+                <button class="chip" onclick="selChip(this,'pt','커터')" style="border-left:3px solid #795548">커터</button>
+                <button class="chip" onclick="selChip(this,'pt','포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
+                <button class="chip" onclick="selChip(this,'pt','스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
+                <button class="chip" onclick="selChip(this,'pt','스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
+                <button class="chip" onclick="selChip(this,'pt','너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
+                <button class="chip" onclick="selChip(this,'pt','슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
+                <button class="chip" onclick="selChip(this,'pt','스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
+                <button class="chip" onclick="selChip(this,'pt','슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
+                <button class="chip" onclick="selChip(this,'pt','너클볼')" style="border-left:3px solid #006994">너클볼</button>
+                <button class="chip" onclick="selChip(this,'pt','이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
+                <button class="chip" onclick="selChip(this,'pt','팜볼')" style="border-left:3px solid #888888">팜볼</button>
+              </div>
+              <button id="ptMoreBtn" onclick="togglePtMore()" style="background:none;border:1px dashed var(--border);border-radius:6px;color:var(--text3);font-size:10px;padding:3px 8px;cursor:pointer;width:100%;margin-top:2px">더보기 ▾</button>
             </div>
           </div>
           <div style="flex-shrink:0">
@@ -2665,6 +2666,8 @@ function mobSelPt2(btn, pt) {
   // 왼쪽 패널 선택 표시
   var disp = document.getElementById('mobPtSelected');
   if (disp) disp.textContent = newPt || '';
+  // 확장 구종 선택 시 자동 펼침
+  if (newPt && typeof _autoExpandPtIfNeeded === 'function') _autoExpandPtIfNeeded(newPt);
   // 필드 상단 구종 뱃지 업데이트
   _updateCurPitchBadge();
 }

@@ -1294,6 +1294,7 @@ function selChip(el,k,v){
   el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   AS[k]=v;
+  if(k==='pt')_autoExpandPtIfNeeded(v);
 }
 
 // ───── 투구 추적 코어 엔진 ─────
@@ -5875,6 +5876,31 @@ function openMobMoreSheet(){
 function closeMobMoreSheet(){
   var s=document.getElementById('mobMoreSheet');
   if(s){s.style.display='none';}
+}
+
+/* ── 구종 더보기 토글 ── */
+var _ptExpanded=false;
+var _mobPtExpanded=false;
+var _PT_EXTRA=['싱커','커터','포크볼','스플리터','스크류볼','너클커브','슬로우커브','스위퍼','슬러브','너클볼','이퓨스볼','팜볼'];
+
+function togglePtMore(){
+  _ptExpanded=!_ptExpanded;
+  var el=document.getElementById('ptGroupMore');
+  var btn=document.getElementById('ptMoreBtn');
+  if(el)el.style.display=_ptExpanded?'flex':'none';
+  if(btn)btn.textContent=_ptExpanded?'접기 ▴':'더보기 ▾';
+}
+function toggleMobPtMore(){
+  _mobPtExpanded=!_mobPtExpanded;
+  var el=document.getElementById('mobPtMore');
+  var btn=document.getElementById('mobPtMoreBtn');
+  if(el)el.style.display=_mobPtExpanded?'flex':'none';
+  if(btn)btn.textContent=_mobPtExpanded?'접기 ▴':'더보기 ▾';
+}
+function _autoExpandPtIfNeeded(pt){
+  if(_PT_EXTRA.indexOf(pt)===-1)return;
+  if(!_ptExpanded){_ptExpanded=true;var el=document.getElementById('ptGroupMore');var btn=document.getElementById('ptMoreBtn');if(el)el.style.display='flex';if(btn)btn.textContent='접기 ▴';}
+  if(!_mobPtExpanded){_mobPtExpanded=true;var el2=document.getElementById('mobPtMore');var btn2=document.getElementById('mobPtMoreBtn');if(el2)el2.style.display='flex';if(btn2)btn2.textContent='접기 ▴';}
 }
 
 function showAppWelcome(){

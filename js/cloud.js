@@ -35,6 +35,13 @@
   function _setStatus(state) {
     var ind = document.getElementById('saveInd');
     if (!ind) return;
+    var loggedIn = window._cloudIsLoggedIn && window._cloudIsLoggedIn();
+    if (!loggedIn) {
+      ind.innerHTML = '<span title="로그인하면 클라우드 저장 가능" style="color:#555;cursor:default;font-size:13px">☁</span>';
+      ind.className = 'save-ind';
+      return;
+    }
+    ind.innerHTML = '';
     switch (state) {
       case 'syncing': ind.textContent = '동기화 중...';  ind.className = 'save-ind syncing'; break;
       case 'saved':   ind.textContent = '저장됨 ✓';     ind.className = 'save-ind ok';      break;

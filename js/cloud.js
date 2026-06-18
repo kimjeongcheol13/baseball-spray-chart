@@ -25,7 +25,7 @@
     if (_sb) return _sb;
     if (window.supabase && window.supabase.createClient) {
       _sb = window.supabase.createClient(SURL, SKEY, {
-        auth: { persistSession: true, storageKey: SESSION_KEY }
+        auth: { persistSession: true, storageKey: SESSION_KEY, flowType: 'pkce' }
       });
     }
     return _sb;

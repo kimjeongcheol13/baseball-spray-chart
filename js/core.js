@@ -2104,13 +2104,9 @@ function _showCloudUpsellToast() {
   clearTimeout(_cloudUpsellTimer);
   var el = document.getElementById('cloudUpsellToast');
   if (!el) return;
-  el.style.opacity = '0';
-  el.style.transform = 'translateX(-50%) translateY(20px)';
+  el.style.opacity = '1';
+  el.style.transform = 'translateX(-50%) translateY(0)';
   el.style.pointerEvents = 'auto';
-  setTimeout(function () {
-    el.style.opacity = '1';
-    el.style.transform = 'translateX(-50%) translateY(0)';
-  }, 16);
   _cloudUpsellTimer = setTimeout(function () {
     el.style.opacity = '0';
     el.style.transform = 'translateX(-50%) translateY(20px)';
@@ -2147,7 +2143,8 @@ function closeSaveMethodSheet() {
 function saveMethodLocal() {
   closeSaveMethodSheet();
   setTimeout(function () {
-    saveGame(true); // true = 로컬 전용 플래그
+    saveGame();
+    setTimeout(_showCloudUpsellToast, 400);
   }, 150);
 }
 
@@ -2158,7 +2155,7 @@ function saveMethodCloud() {
   }, 150);
 }
 
-function saveGame(localOnly){
+function saveGame(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     // 팀명+날짜 기반 키 (가독성 향상)
@@ -2171,15 +2168,10 @@ function saveGame(localOnly){
     saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
-    if(!localOnly && window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
+    if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
-    if(localOnly){
-      showToast('경기 저장 완료 ✓',false);
-      _showCloudUpsellToast();
-    } else {
-      showToast('경기 저장 완료 ✓',false);
-    }
+    showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
     setTimeout(showGameSummary, 400);
   }, 300);

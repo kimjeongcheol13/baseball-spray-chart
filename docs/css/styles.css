@@ -1,4 +1,4 @@
-﻿/* ?먥븧??Landing CSS ?먥븧??*/
+/* ?먥븧??Landing CSS ?먥븧??*/
 :root{
   --bg:#07090f;--card:#0e1018;--raised:#141720;--hover:#1a1e2a;
   --blue:#4b8cf5;--blue-dim:rgba(75,140,245,.1);
@@ -1684,3 +1684,16 @@ nav i {
     z-index:150!important;
   }
 }
+
+/* 더보기 바텀시트 */
+.mab-sheet-btn {
+  display: block; width: 100%;
+  padding: 14px 20px; text-align: left;
+  background: none; border: none;
+  color: var(--text); font-size: 14px;
+  font-family: var(--font); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mab-sheet-btn:active { background: var(--bg-raised, #141720); }
+
+#tab-more { display: flex !important; align-items: center; justify-content: center; white-space: nowrap; }

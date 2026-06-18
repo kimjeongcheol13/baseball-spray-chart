@@ -605,6 +605,20 @@
   </div>
 </div>
 
+<!-- 더보기 바텀시트 -->
+<div id="mobMoreSheet" style="display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMobMoreSheet()">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;padding:16px 16px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
+      <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('stat',document.getElementById('tab-stat'))">📊 팀통계</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('chart',document.getElementById('tab-chart'))">📤 내보내기</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+    <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
+  </div>
+</div>
+
 <!-- ████ 경기 시작 마법사 ████ -->
 <div id="gameWizard" onclick="if(event.target===this)closeGameWizard()">
   <div class="gw-card">
@@ -1047,10 +1061,8 @@
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
       <div class="tab" id="tab-batter" onclick="swTab('batter',this)" data-help-title="👤 타자 탭" data-help="선택한 타자의 <b>타율·출루율·장타율(OPS)</b>과 패턴 분석을 봅니다.<br>타격 방향 성향, 삼진·볼넷 비율, 약점 패턴을 자동으로 분석합니다.">👤 타자</div>
-      <div class="tab" id="tab-stat" onclick="swTab('stat',this)" data-help-title="📊 팀통계 탭" data-help="팀 전체 <b>타율·출루율·OPS</b>와 선수별 성적 순위를 비교합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>팀통계</div>
-      <div class="tab" id="tab-chart" onclick="swTab('chart',this)" data-help-title="📈 차트 탭" data-help="개인(9:16) · 팀(1:1) <b>성적카드 PNG</b>를 생성해 SNS에 공유합니다."><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>차트</div>
       <div class="tab" id="tab-pitcher" onclick="swTab('pitcher',this)" data-help-title="⚾ 투수 탭" data-help="상대 투수의 <b>구종·코스·결과</b>를 기록하고 분석합니다.<br>구종 비율 도넛차트와 코스 히트맵이 자동 생성됩니다.">⚾ 투수</div>
-      <div class="tab" id="tab-team" onclick="swTab('team',this);renderTeamDashboard()" style="white-space:nowrap">🏟️ 팀</div>
+      <div class="tab" id="tab-more" onclick="openMobMoreSheet()">··· 더보기</div>
     </div>
     <div class="tab-body">
       <div class="tab-pnl on" id="pnl-rec">

@@ -50,11 +50,18 @@ function initSavantNav() {
       case 'scout':
         if (window.openScoutView) window.openScoutView();
         break;
-      case 'spray':
+      case 'spray': {
         document.getElementById('app-page').style.display = '';
         document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
-        if (window.swTab) window.swTab('rec', document.getElementById('tab-rec'));
+        // Pair the center spray canvas with batter stats (if batter selected) or team stats
+        const _sprayTab = (window.AS && window.AS.batter) ? 'batter' : 'stat';
+        const _sprayEl = document.getElementById('tab-' + _sprayTab);
+        if (window.swTab && _sprayEl) window.swTab(_sprayTab, _sprayEl);
+        // Redraw so hit dots are visible
+        if (window.drawField) window.drawField();
+        if (window.safeRender) window.safeRender();
         break;
+      }
     }
   });
 }

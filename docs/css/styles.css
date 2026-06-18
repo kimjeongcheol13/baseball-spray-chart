@@ -1,4 +1,4 @@
-/* ?먥븧??Landing CSS ?먥븧??*/
+﻿/* ?먥븧??Landing CSS ?먥븧??*/
 :root{
   --bg:#07090f;--card:#0e1018;--raised:#141720;--hover:#1a1e2a;
   --blue:#4b8cf5;--blue-dim:rgba(75,140,245,.1);
@@ -229,24 +229,53 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .pv-center{height:280px}
 }
 @media(max-width:720px){
-  #app-page{overflow:hidden;height:100svh}
-  .app-layout{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
-  .pnl-left{display:none}
-  .pnl-center{flex:0 0 auto;max-height:60svh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
-  #app-page.chart-hidden .pnl-center{display:none!important}
-  #app-page.chart-hidden .tab-mode-bar{display:none!important}
-  #app-page.chart-hidden .pnl-right>.tabs{display:none!important}
-  .pnl-right{flex:1;min-height:0;border-left:none;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-  .canvas-wrap{width:min(240px,100%);height:min(240px,36svh)}
-  .field-wrap{padding:8px;flex:none}
-  .mob-batter{display:flex;overflow-x:auto;gap:5px;padding:8px 12px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+  /* ── app-page: 세로 스택, 전체 높이 ── */
+  #app-page{overflow:hidden;height:100svh;display:flex;flex-direction:column}
+  /* ── 헤더: 1줄 고정 ── */
+  .app-hdr{height:46px;flex-wrap:nowrap;overflow:hidden;padding:0 8px;gap:6px}
+  .app-hdr .btn-xl,
+  .app-hdr .btn-gf,
+  .app-hdr .btn.btn-ghost.btn-primary,
+  .app-hdr .more-menu-wrap{display:none}
+  .scoreboard{padding:3px 6px;gap:4px;flex-shrink:1;min-width:0}.sc-val{font-size:17px}.inn-sel{display:none}
+  /* ── 레이아웃: 필드 위 / 기록 아래 (pnl-left 모바일 숨김) ── */
+  .app-layout{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto 1fr!important;
+    flex:1;min-height:0;overflow:hidden;
+  }
+  /* 왼쪽 패널 모바일 완전 숨김 (mobileActionBar가 투구입력 담당) */
+  .pnl-left{display:none!important}
+  /* 필드 영역 */
+  .pnl-center{
+    display:flex!important;flex-direction:column;
+    grid-column:1;grid-row:1;
+    width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;
+  }
+  .field-wrap{padding:4px;flex:0 0 auto;min-height:0}
+  .canvas-wrap{width:min(calc(100vw - 56px),80vh)!important;height:min(calc(100vw - 56px),80vh)!important;aspect-ratio:1/1;max-height:none!important}
+  .field-hint{display:none!important}
+  .spray-legend{display:none!important}
+  .ib-drawer-toggle{display:none!important}
+  #mobileInputTab{display:none!important}
+  /* 아래: 타석기록 패널 */
+  .pnl-right{
+    display:flex;flex-direction:column;
+    grid-column:1;grid-row:2;
+    width:100%;min-height:160px;max-height:60vh;overflow:hidden;
+    border-top:1px solid var(--border);border-left:none;
+  }
+  .tab-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .tab-pnl{width:100%;height:auto;min-height:0;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+  /* mob-batter: 선수 버튼 목록 가로 스크롤 */
+  .mob-batter{display:flex!important;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:6px 10px;background:var(--bg-card);border-bottom:1px solid var(--border);scrollbar-width:none;flex-shrink:0;touch-action:pan-x}
   .mob-batter::-webkit-scrollbar{display:none}
   .mob-chip{flex-shrink:0;padding:5px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;transition:all 100ms;white-space:nowrap;font-family:var(--font)}
   .mob-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}.mob-chip:active{transform:scale(.95)}
   .app-brand-tag{display:none}
-  .scoreboard{padding:3px 8px;gap:5px}.sc-val{font-size:17px}.inn-sel{display:none}
 }
-@media(min-width:741px){.mob-batter{display:none}}
+@media(min-width:721px){.mob-batter{display:none}.mob-batter-wrap{display:none!important}}
 
 /* ?먥븧??App CSS ?먥븧??*/
 #app-page{
@@ -292,14 +321,43 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .btn-red{background:none;border:1px solid var(--red);color:var(--red)}.btn-red:hover{background:rgba(245,101,101,.1)}
 .btn-icon{padding:7px;border-radius:8px}
 
-/* LAYOUT */
-.app-layout{display:grid;grid-template-columns:var(--lp-w,220px) minmax(0,1fr) 280px;grid-template-rows:1fr;flex:1;min-height:0;overflow:hidden}
-@media(min-width:721px){.app-layout{margin-right:54px}}
+/* LAYOUT — base (flex 기본값, 모바일에서도 사용) */
+.app-layout{flex:1;min-height:0;overflow:hidden}
+/* grid + margin은 태블릿/PC 전용 */
+@media(min-width:721px){
+  #app-page{height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) minmax(280px,1fr);grid-template-rows:1fr;margin-right:54px}
+  .pnl-left{display:flex!important;grid-column:1;grid-row:1}
+  .pnl-center{grid-column:2;grid-row:1}
+  .pnl-right{grid-column:3;grid-row:1;border-left:1px solid var(--border)}
+  /* SCOREBOARD 축소 */
+  .scoreboard{gap:6px;padding:4px 10px}
+  .team-blk{gap:3px}
+  .team-inp{width:44px;font-size:11px}
+  .sc-ctrl{gap:3px}
+  .sc-val{font-size:15px;min-width:22px}
+  .sc-btn{font-size:12px;padding:0 3px}
+  /* 캔버스: pnl-center 너비에 맞게 최대한 채우기 */
+  .canvas-wrap{
+    width:min(calc(100vh - 220px), calc(100% - 24px));
+    max-width:calc(100% - 24px);
+    max-height:none;
+  }
+  /* 선수 추가 행: 데스크톱에서 토글 버튼 숨기고 포지션/타석+추가버튼 항상 표시 */
+  .mobile-detail-toggle{display:none!important}
+  .mobile-detail-row{display:flex!important}
+  .mobile-detail-add{display:flex!important}
+  #curPitchBadge{display:none!important}
+}
 
 /* LEFT */
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
-.pnl-resize-handle{position:absolute;top:0;right:0;bottom:0;width:5px;cursor:col-resize;z-index:20;transition:background .15s}
+.pnl-resize-handle{position:absolute;top:0;right:0;bottom:0;width:8px;cursor:col-resize;z-index:20;transition:background .15s;touch-action:none}
 .pnl-resize-handle:hover,.pnl-resize-handle.dragging{background:var(--accent-dim)}
+@media(max-width:720px){
+  /* 모바일에서 드래그 핸들 숨김 — ◀▶ 버튼으로 대체 */
+  .pnl-resize-handle{display:none}
+}
 .pnl-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .pnl-title{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3)}
 .lineup-list{flex:1;overflow-y:auto;padding:6px}
@@ -318,7 +376,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}
 
 /* CENTER */
-.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;min-height:0;min-width:0;position:relative}
+.pnl-center{display:flex;flex-direction:column;background:var(--bg);overflow:clip;min-height:0;min-width:0;position:relative}
 .batter-bar{padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-card);flex-shrink:0}
 .batter-display{font-size:13px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:6px}
 .batter-empty{font-size:12px;color:var(--text3)}
@@ -336,14 +394,17 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 
 /* INPUT BAR — position:absolute로 field 위에 overlay, 필드 크기 유지 */
 .input-bar{
-  position:absolute;bottom:0;left:0;right:0;
+  position:fixed;bottom:0;left:0;right:0;
   background:var(--bg-card);
   border-top:2px solid var(--border2);
-  padding:10px 14px;
+  padding:0;
   display:none;
-  z-index:30;
-  max-height:60%;
+  z-index:200;
+  max-height:75vh;
   overflow-y:auto;
+  overflow-x:hidden;
+  touch-action:pan-y;
+  overscroll-behavior:contain;
   box-shadow:0 -6px 24px rgba(0,0,0,.45);
   border-radius:12px 12px 0 0;
 }
@@ -388,7 +449,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .tab{flex:1;padding:11px 6px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;transition:all 100ms;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;white-space:nowrap;min-width:0}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-body{flex:1;overflow-y:auto;padding:10px}
+.tab-body{flex:1;min-height:0;overflow-y:auto;padding:10px}
 .tab-pnl{display:none}.tab-pnl.on{display:block}
 
 /* RECORDS */
@@ -606,6 +667,54 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .save-ind.fail{color:var(--red)}
 .save-ind.saving{color:var(--yellow)}
 .save-ind.unsaved{color:var(--yellow);font-weight:700}
+.save-ind.syncing{color:var(--accent)}
+.save-ind.offline{color:var(--text3)}
+
+/* ── 인증 버튼 ── */
+.auth-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s,border-color .15s}
+.auth-btn:hover{background:var(--bg3,var(--border));border-color:var(--accent)}
+.auth-btn.auth-logged{border-color:var(--accent);color:var(--accent)}
+.auth-avatar{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+
+/* ── 로그인 모달 ── */
+.login-modal{width:min(340px,96vw);padding:24px}
+.login-header{text-align:center;margin-bottom:20px}
+.login-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.login-sub{font-size:12px;color:var(--text3);line-height:1.5}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-google:hover{background:var(--border)}
+.login-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--text3);font-size:11px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+.magic-form{display:flex;gap:6px}
+.magic-input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-size:12px;outline:none}
+.magic-input:focus{border-color:var(--accent)}
+.btn-magic{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.magic-msg{font-size:11px;margin-top:8px;min-height:16px;color:var(--text3)}
+.magic-msg.ok{color:var(--green)}
+.magic-msg.error{color:var(--red)}
+.login-close{width:100%;justify-content:center;margin-top:14px}
+.profile-info{background:var(--bg2);border-radius:10px;padding:14px;margin-bottom:12px}
+.profile-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+.profile-email{font-size:11px;color:var(--text3)}
+.profile-badge{font-size:11px;color:var(--green);font-weight:600;text-align:center}
+/* ── 팀 UI ── */
+.team-divider{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);border-top:1px solid var(--border2);padding-top:14px;margin-top:14px}
+.team-actions{display:flex;gap:8px;margin-top:10px}
+.btn-team-create,.btn-team-join{flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:background .15s}
+.btn-team-create{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-team-create:hover{filter:brightness(1.1)}
+.btn-team-join{background:var(--bg2);color:var(--text2)}
+.btn-team-join:hover{background:var(--border);color:var(--text)}
+.team-form{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.team-info{background:var(--bg2);border-radius:10px;padding:14px;margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.team-code-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.team-code-big{font-size:28px;font-weight:900;letter-spacing:4px;color:var(--accent);font-family:var(--mono)}
+.btn-team-copy{padding:7px 18px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;width:100%}
+.btn-team-copy:hover{background:var(--blue-dim)}
+.btn-team-leave{padding:7px 18px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;width:100%}
+.btn-team-danger{color:var(--red);border-color:var(--red)}
+.team-login-hint{font-size:11px;color:var(--text3);text-align:center;padding:12px 0}
+#teamBadge{display:none;align-items:center;gap:4px;font-size:10px;font-weight:700;background:rgba(75,140,245,.15);color:var(--accent);border-radius:12px;padding:3px 8px;margin-left:4px}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    MOBILE FAB + QUICK-RECORD
@@ -718,8 +827,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     display:block !important;
     scroll-snap-align:start;
     overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    touch-action:pan-y;
     padding:10px;
     box-sizing:border-box;
     height:100%;
@@ -754,7 +861,6 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   .tab{padding:8px 5px;font-size:11px}
   .rec-item{padding:10px 10px}
   .player-row{padding:10px 12px}
-  .app-hdr{height:46px}
   .batter-bar{padding:5px 10px}
   .tab-mode-bar{padding:4px 6px}.tmb-btn{padding:5px 8px}
 }
@@ -881,7 +987,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
    APP WELCOME SCREEN (?????붾㈃)
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 #appWelcome{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;overflow-y:auto;transition:opacity .2s}
-#appWelcome.hidden{display:none}
+#appWelcome.hidden{display:none;pointer-events:none}
 .aw-logo{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:32px;flex-shrink:0}
 .aw-logo-icon{width:120px;height:120px;border-radius:24px;object-fit:cover;filter:drop-shadow(0 0 16px rgba(75,140,245,.4))}
 .aw-logo-name{font-size:30px;font-weight:900;letter-spacing:-.5px;color:var(--text)}
@@ -1144,14 +1250,18 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .gfb-out-lbl{font-size:8px;color:var(--text3);letter-spacing:.4px;margin-left:1px}
 /* ?ㅼ씠?꾨が??踰좎씠??*/
 .gfb-bases{position:relative;width:34px;height:24px;flex-shrink:0}
-.gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s}
+.gfb-base{position:absolute;width:9px;height:9px;border:1.5px solid rgba(255,255,255,.2);background:transparent;transform:rotate(45deg);transition:background .12s,border-color .12s;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .gfb-base.on{background:#f6c23e;border-color:#f6c23e}
+.gfb-base:active{opacity:.6}
 .gfb-base-2{left:50%;margin-left:-4px;top:0}
 .gfb-base-3{left:0;top:50%;margin-top:-4px}
 .gfb-base-1{right:0;top:50%;margin-top:-4px}
 /* ???/ ?ㅼ퐫??*/
 .gfb-batter{flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);flex-shrink:0}
+.gfb-score-ctrl{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.gfb-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)}
+.gfb-sc-btn{background:rgba(246,194,62,.1);border:1px solid rgba(246,194,62,.25);color:#f6c23e;border-radius:4px;font-size:12px;font-weight:800;width:20px;height:20px;line-height:1;cursor:pointer;padding:0;font-family:var(--font);-webkit-tap-highlight-color:transparent;transition:all .1s}
+.gfb-sc-btn:active{opacity:.6;transform:scale(.9)}
 /* 寃쎄린醫낅즺 踰꾪듉 */
 .gfb-end{background:rgba(245,101,101,.13);border:1px solid rgba(245,101,101,.3);color:#f56565;border-radius:6px;font-size:9px;font-weight:800;padding:4px 8px;cursor:pointer;flex-shrink:0;font-family:var(--font);min-height:26px;letter-spacing:.3px;transition:all .12s;-webkit-tap-highlight-color:transparent}
 .gfb-end:active{opacity:.7;transform:scale(.94)}
@@ -1232,8 +1342,7 @@ body.game-focus #advToggleBtn{display:none!important}
 
 /* ?먥븧 TABLET LANDSCAPE ?먥븧 */
 @media(min-width:960px) and (orientation:landscape){
-  .pnl-left{min-width:220px;max-width:220px}
-  .pnl-right{min-width:290px;max-width:290px}
+  .pnl-right{min-width:290px;max-width:none}
 }
 
 /* ?먥븧 ANIMATION CLEANUP ?먥븧 */
@@ -1404,11 +1513,11 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .mm-home{color:var(--text3)}
 
 /* ?? ?섎떒 ?낅젰 ??諛??? */
-.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg-raised)}
+.ib-tabs-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg-raised);padding:0 14px}
 .ib-tab{flex:1;padding:7px 0;font-size:11px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);cursor:pointer;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-tap-highlight-color:transparent}
 .ib-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
 .ib-tab-pnl{display:none}
-.ib-tab-pnl.on{display:block}
+.ib-tab-pnl.on{display:block;padding:10px 14px}
 
 /* ?? ?곗륫 遺꾩꽍 ?⑤꼸 ?좉? ?? */
 .pnl-right{transition:opacity .25s ease,min-width .25s ease}
@@ -1436,16 +1545,22 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ftu-player-row .ftu-inp{margin-bottom:0;flex:1}
 .ftu-player-row .ftu-inp.num{width:56px;flex:none;text-align:center}
 .ftu-add-btn{height:42px;width:42px;flex-shrink:0;border-radius:10px;background:var(--blue);color:#fff;font-size:20px;border:none;cursor:pointer;font-family:var(--font);line-height:1}
+.ftu-role-list{display:flex;flex-direction:column;gap:9px;margin-bottom:16px;text-align:left}
+.ftu-role-card{display:flex;align-items:center;gap:12px;background:var(--bg-raised);border:1.5px solid var(--border2);border-radius:12px;padding:13px 14px;cursor:pointer;font-family:var(--font);width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.ftu-role-card:active{background:var(--bg-card)}
+.ftu-role-card:hover{border-color:var(--blue)}
+.ftu-role-icon{font-size:22px;flex-shrink:0;line-height:1}
+.ftu-role-body{flex:1;min-width:0}
+.ftu-role-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ftu-role-desc{font-size:11.5px;color:var(--text2);line-height:1.4}
+.ftu-role-arrow{font-size:16px;color:var(--text3);flex-shrink:0}
 
 /* ?먥븧 TAB MODE TOGGLE (mobile only) ?먥븧 */
 .tab-mode-bar{display:flex;gap:4px;padding:6px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}
 .tmb-btn{flex:1;padding:7px 8px;font-size:11px;font-weight:800;border:none;background:var(--bg-raised);color:var(--text3);cursor:pointer;border-radius:8px;transition:all 150ms;font-family:var(--font)}
 .tmb-btn.on{background:var(--blue);color:#fff}
-@media(max-width:720px){
-  #app-page.chart-hidden .pnl-center{display:none!important}
-  #app-page.chart-hidden .tab-mode-bar{display:none!important}
-  #app-page.chart-hidden .pnl-right>.tabs{display:none!important}
-}
+.tmb-gf-btn{flex:0 0 auto;background:rgba(246,194,62,.1);color:#f6c23e;border:1px solid rgba(246,194,62,.25)}
+.tmb-gf-btn.on{background:rgba(246,194,62,.25);color:#f6c23e;border-color:rgba(246,194,62,.6)}
 @media(min-width:721px){.tab-mode-bar{display:none}}
 
 /* ?먥븧 EXCEL TOOLBAR BUTTON ?먥븧 */
@@ -1459,7 +1574,7 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /* savant-nav: overlay(200) 아래 */
-.savant-nav{z-index:150!important}
+.savant-nav{z-index:400!important}
 
 /* 스코어보드 stacking context */
 .scoreboard{position:relative;z-index:10}
@@ -1656,9 +1771,138 @@ nav i {
   box-shadow: 0 2px 10px rgba(0,0,0,0.18) !important;
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE ACTION BAR (저장/불러오기/취소/엑셀/더보기)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#mobileActionBar {
+  display: none; /* JS showApp() 후 모바일에서만 표시 */
+}
+/* 홈 화면에서 mobileActionBar 숨김 */
+body.on-welcome #mobileActionBar { display: none !important; }
+@media (max-width: 720px) {
+  /* 헤더 툴바 숨김 */
+  #appToolbar { display: none !important; }
+
+  /* 모바일 액션바: 우측 세로 고정 */
+  #mobileActionBar {
+    display: flex;
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    bottom: auto;
+    left: auto;
+    z-index: 320;
+    background: rgba(14,16,24,0.97);
+    border: 1px solid var(--border2);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    padding: 6px 4px;
+    flex-direction: column;
+    width: 46px;
+    height: auto;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    backdrop-filter: blur(12px);
+  }
+  .tab-pnl { padding-bottom: calc(44px + env(safe-area-inset-bottom,0px)); }
+  /* Fix 2: mobBar OCR 버튼 */
+  .mobile-ocr-btn {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-radius: 10px;
+    border: 1px solid rgba(75,140,245,.35);
+    background: rgba(75,140,245,.1);
+    color: #4b8cf5;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    margin: 4px 2px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-ocr-btn:active { opacity: .6; }
+  /* Fix 3: gfBar 모바일 sticky 해제 */
+  #gfBar { position: relative !important; }
+  #gfBar.active { display: block; width: 100%; }
+  /* Fix 4: 탭 터치 영역 보장 */
+  .tab { min-height: 40px; padding: 8px 4px; }
+}
+.mab-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 4px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  min-width: 44px;
+}
+.mab-btn:active { background: rgba(255,255,255,0.06); }
+.mab-btn:disabled { opacity: 0.35; pointer-events: none; }
+.mab-save { color: var(--green); }
+.mab-save svg { stroke: var(--green); }
+.mab-pitch { color: #4b8cf5; }
+.mab-pitch svg { stroke: #4b8cf5; }
+/* 모바일 투구입력 패널 (왼쪽 칸) */
+#mobPitchPanel{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:8px 4px;
+  gap:6px;
+  height:100%;
+}
+#mobPitchOpenBtn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  width:100%;padding:10px 4px;
+  border-radius:8px;border:1px solid var(--border2);
+  background:var(--bg-raised);color:var(--text2);
+  font-size:9px;font-weight:800;font-family:var(--font);
+  cursor:pointer;text-align:center;line-height:1.3;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .15s;
+}
+#mobPitchOpenBtn:active{transform:scale(.95)}
+@media(max-width:720px){
+  #mobPitchPanel{display:flex}
+}
+/* 바텀시트 구종 칩 */
+.mob-pt-chip{
+  padding:7px 10px;border-radius:8px;
+  border:1px solid #2a2a3a;background:#111118;
+  color:#8892a4;font-size:12px;font-weight:700;
+  font-family:var(--font);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .12s;
+}
+.mob-pt-chip:active{transform:scale(.94)}
+.mob-pt-chip.on{background:rgba(239,68,68,.15);border-color:#ef4444;color:#ef4444}
+
+.mab-sheet-btn {
+  display: block; width: 100%;
+  padding: 14px 20px; text-align: left;
+  background: none; border: none;
+  color: var(--text); font-size: 15px; font-weight: 600;
+  font-family: var(--font); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mab-sheet-btn:active { background: var(--bg-raised); }
+
 /* ━━ savant-nav 최종 보장 (nav 룰 이후 재선언) ━━ */
 /* nav{...} 보다 나중에 위치 → 데스크톱 오른쪽 끝 세로 플로팅 확정 */
-.savant-nav{z-index:150!important}
+.savant-nav{z-index:400!important}
 
 /* 데스크톱: 오른쪽 끝 세로 플로팅 (nav 광범위 룰 이후 최종 오버라이드) */
 @media(min-width:721px){
@@ -1685,15 +1929,134 @@ nav i {
   }
 }
 
-/* 더보기 바텀시트 */
-.mab-sheet-btn {
-  display: block; width: 100%;
-  padding: 14px 20px; text-align: left;
-  background: none; border: none;
-  color: var(--text); font-size: 14px;
-  font-family: var(--font); cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.mab-sheet-btn:active { background: var(--bg-raised, #141720); }
+/* ━━ 모바일 UX 개선 5종 ━━ */
 
+/* Item 1: 홈 화면 스마트 버튼 */
+.mobile-aw-links { display: none; }
+@media(max-width:480px) {
+  .mobile-aw-links {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 16px 0;
+  }
+  .mobile-aw-links button {
+    width: 100%; padding: 14px 16px;
+    background: var(--bg-raised); border: 1px solid var(--border2);
+    border-radius: 12px; color: var(--text);
+    font-size: 15px; font-weight: 700; font-family: var(--font);
+    cursor: pointer; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-aw-links button:active { background: var(--bg-card2); }
+  /* 저장 경기 없을 때 새경기만 강조 */
+  #appWelcome.mobile-no-saves .mobile-aw-links button:not(:first-child) { display: none; }
+  /* 데스크톱 큰 버튼 숨기기 (모바일 전용 링크로 대체) */
+  #appWelcome .aw-main-btns { display: none; }
+}
+
+/* Item 2: 게임 위자드 힌트 */
+.mobile-gw-hint { display: none; }
+@media(max-width:480px) {
+  .mobile-gw-hint {
+    display: block;
+    padding: 6px 12px; margin: -4px 0 8px;
+    background: rgba(45,212,160,.1); border-radius: 8px;
+    color: #2dd4a0; font-size: 12px; font-weight: 600;
+  }
+}
+
+/* Item 3: 선수 추가 상세 설정 토글 */
+.mobile-detail-toggle { display: none; }
+.mobile-quick-add { display: none; }
+@media(max-width:480px) {
+  .mobile-detail-toggle {
+    display: block; width: 100%;
+    padding: 7px 12px; margin-top: 4px;
+    background: none; border: 1px dashed var(--border2);
+    border-radius: 8px; color: var(--text3);
+    font-size: 12px; font-weight: 600; font-family: var(--font);
+    cursor: pointer; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-detail-row { display: none !important; }
+  .mobile-detail-row.open { display: flex !important; }
+  .mobile-detail-add { display: none !important; }
+  .mobile-quick-add { display: flex !important; }
+}
+
+/* Item 4: 탭 단순화 — 더보기 탭 항상 표시 */
 #tab-more { display: flex !important; align-items: center; justify-content: center; white-space: nowrap; }
+
+/* Item 5: 퀵 버튼 크기 키우기 */
+@media(max-width:480px) {
+  .qb-btn { min-height: 54px !important; font-size: 14px !important; }
+  .qb-btn small { font-size: 10px !important; }
+}
+
+/* ━━ 투수 탭 모바일 UX ━━ */
+
+/* 데스크톱: 모바일 전용 요소 숨기기, 접힘 해제 */
+@media(min-width:481px){
+  .mobile-pitch-quick-bar{display:none}
+  .mobile-pitch-result-panel{display:none}
+  .mobile-pitch-collapse-toggle{display:none}
+  .mobile-pitch-collapse{display:block!important}
+  .mobile-pitch-group-btns{display:none}
+}
+
+/* 모바일 */
+@media(max-width:480px){
+  /* 퀵 입력 바 */
+  .mobile-pitch-quick-bar{
+    display:flex;gap:6px;margin-bottom:8px;
+  }
+  .mobile-pitch-qbtn{
+    flex:1;height:56px;border:none;border-radius:10px;
+    font-size:12px;font-weight:800;font-family:var(--font);
+    cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mobile-pitch-qbtn:active{transform:scale(.94);filter:brightness(.85)}
+  .mobile-pitch-qbtn small{font-size:10px;font-weight:500;opacity:.75}
+  .mobile-pitch-qbtn-strike{background:rgba(245,101,101,.2);color:#f56565;border:1px solid rgba(245,101,101,.4)}
+  .mobile-pitch-qbtn-ball{background:rgba(75,140,245,.2);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)}
+  .mobile-pitch-qbtn-result{background:rgba(45,212,160,.15);color:#2dd4a0;border:1px solid rgba(45,212,160,.4)}
+
+  /* 타격결과 확장 패널 */
+  .mobile-pitch-result-panel{display:none;margin-bottom:8px;padding:8px;background:var(--bg-raised);border-radius:10px;border:1px solid var(--border2)}
+  .mobile-pitch-result-panel.open{display:block}
+
+  /* 구종·코스 토글 버튼 */
+  .mobile-pitch-collapse-toggle{
+    display:block;width:100%;padding:8px 12px;margin-bottom:6px;
+    background:none;border:1px dashed var(--border2);border-radius:8px;
+    color:var(--text3);font-size:12px;font-weight:600;font-family:var(--font);
+    cursor:pointer;text-align:left;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* 구종·코스 접힘 */
+  .mobile-pitch-collapse{display:none}
+  .mobile-pitch-collapse.open{display:block}
+
+  /* 기존 구종 칩 숨기기 */
+  #pnl-pitcher .pitch-type-chips{display:none!important}
+
+  /* 5개 그룹 버튼 */
+  .mobile-pitch-group-btns{
+    display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;
+  }
+  .mobile-pitch-grp{
+    flex:1;min-width:calc(50% - 5px);
+    padding:8px 6px;border-radius:8px;
+    background:var(--bg-raised);border:1px solid var(--border2);
+    color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);
+    cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;
+    -webkit-tap-highlight-color:transparent;transition:all .12s;
+  }
+  .mobile-pitch-grp:active{transform:scale(.95)}
+  .mobile-pitch-grp small{font-size:9px;font-weight:400;color:var(--text3)}
+  .mobile-pitch-grp.on{background:rgba(75,140,245,.15);border-color:#4b8cf5;color:#4b8cf5}
+  .mobile-pitch-grp.on small{color:rgba(75,140,245,.7)}
+}

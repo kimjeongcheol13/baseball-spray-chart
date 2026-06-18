@@ -5,6 +5,7 @@
   src="https://js.sentry-cdn.com/faa955c28109534c40458ca1e32c2909.min.js"
   crossorigin="anonymous"
 ></script>
+<script src="js/analytics.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
@@ -12,27 +13,261 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SprayLab">
-<link rel="apple-touch-icon" href="icon.svg">
-<title>SprayLab — 아마추어 야구 스프레이 차트 분석 앱</title>
-<meta name="description" content="SprayLab은 아마추어 야구 선수를 위한 스프레이 차트 분석 웹앱입니다. 타구 방향·결과를 기록하고 wOBA, OBP 등 세이버메트릭스 지표를 즉시 확인하세요.">
-<meta name="keywords" content="스프레이 차트, 야구 분석, 아마추어 야구, 타구 기록, wOBA, OBP, 세이버메트릭스, SprayLab">
-<link rel="canonical" href="https://kimjeongcheol13.github.io/baseball-spray-chart/">
+<link rel="icon" href="player-logo.png" type="image/png">
+<link rel="apple-touch-icon" href="player-logo.png">
+<title>SprayLab — Your Swing, Visualized</title>
 <meta name="google-site-verification" content="NzxE0saUNWZK0Ir-my4--fYOs1YXiuHWk4vpo-tiJoY" />
-<meta property="og:type" content="website">
-<meta property="og:title" content="SprayLab — 아마추어 야구 스프레이 차트 분석 앱">
-<meta property="og:description" content="타구 방향·결과를 기록하고 wOBA, OBP 등 세이버메트릭스 지표를 즉시 확인하세요. 아마추어 야구 선수를 위한 무료 분석 도구.">
-<meta property="og:url" content="https://kimjeongcheol13.github.io/baseball-spray-chart/">
+<meta property="og:title" content="SprayLab — 사회인야구 타구 분석" />
+<meta property="og:description" content="타석을 기록하고 패턴을 발견하세요. 스프레이차트·타율·OPS 자동계산. 무료·로그인 불필요." />
+<meta property="og:image" content="https://kimjeongcheol13.github.io/baseball-spray-chart/player-logo.png" />
+<meta property="og:url" content="https://kimjeongcheol13.github.io/baseball-spray-chart/" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/cloud.js"></script>
 
-<link rel="stylesheet" href="css/styles.css?v=26">
-<link rel="stylesheet" href="css/features.css?v=20">
+<script>
+/* Kakao Share SDK */
+const KAKAO_APP_KEY = '4fd210e79486b40e5e3b19208748a2a4';
+var _kakaoSdkLoaded = false;
+(function() {
+  /* 데스크톱은 SDK 없이도 버튼 항상 표시 (클립보드 fallback) */
+  var isDesktop = !('ontouchstart' in window) && !/Mobi|Android/i.test(navigator.userAgent);
+  if (isDesktop) {
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('kakaoShareBtn');
+      if (btn) btn.style.display = 'block';
+    });
+  }
+  var s = document.createElement('script');
+  s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
+  s.crossOrigin = 'anonymous';
+  s.onload = function() {
+    try {
+      if (KAKAO_APP_KEY && window.Kakao && !Kakao.isInitialized()) {
+        Kakao.init(KAKAO_APP_KEY);
+        _kakaoSdkLoaded = true;
+        var btn = document.getElementById('kakaoShareBtn');
+        if (btn) btn.style.display = 'block';
+      }
+    } catch(e) {}
+  };
+  s.onerror = function() {};
+  document.head.appendChild(s);
+})();
+</script>
+<link rel="stylesheet" href="css/styles.css?v=53">
+<link rel="stylesheet" href="css/features.css?v=23">
+<style>
+/* ── Onboarding overlay ── */
+.onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:auto}
+.onboard-card{background:#1a1a24;border-top:1px solid #2a2a3a;border-radius:20px 20px 0 0;padding:24px 20px max(28px,env(safe-area-inset-bottom));overflow-y:auto;max-height:80vh}
+.onboard-header{margin-bottom:18px}
+.onboard-title{font-size:17px;font-weight:800;color:#f0f0f4;margin-bottom:4px}
+.onboard-sub{font-size:12px;color:#6b6b88}
+.onboard-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.onboard-step{display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 14px}
+.onboard-step-num{width:26px;height:26px;border-radius:50%;background:#4b8cf5;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.onboard-step-body{flex:1;min-width:0}
+.onboard-step-label{font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px}
+.onboard-step-desc{font-size:11.5px;color:#9898b0;line-height:1.55}
+.onboard-step-arrow{font-size:18px;color:#4b8cf5;flex-shrink:0;align-self:center;animation:onboard-nudge .9s ease-in-out infinite}
+.onboard-btn{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:.3px}
+.onboard-btn:active{opacity:.82}
+/* Pointing arrow above the card for step 1 */
+.onboard-up-arrow{display:block;text-align:center;font-size:24px;color:#4b8cf5;margin-bottom:6px;animation:onboard-nudge-up .9s ease-in-out infinite}
+/* Ring on the 경기 시작 button */
+.onboard-ring{box-shadow:0 0 0 3px #4b8cf5,0 0 0 7px rgba(75,140,245,.28)!important;animation:onboard-ring-pulse 1.3s ease-in-out infinite!important;position:relative;z-index:601}
+@keyframes onboard-ring-pulse{0%,100%{box-shadow:0 0 0 3px #4b8cf5,0 0 0 7px rgba(75,140,245,.28)}50%{box-shadow:0 0 0 3px #4b8cf5,0 0 0 13px rgba(75,140,245,0)}}
+@keyframes onboard-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+@keyframes onboard-nudge-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@media(max-width:720px){
+  .onboard-card{padding:18px 14px max(28px,env(safe-area-inset-bottom))}
+  .onboard-title{font-size:15px}
+  .onboard-step{padding:12px 12px;gap:10px}
+}
+/* ── Network status badge ── */
+.net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
+.net-badge::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.net-badge.offline{display:flex;background:#f56565;color:#fff}
+.net-badge.offline::before{background:#fff}
+.net-badge.online{display:flex;background:#2dd4a0;color:#07090f;animation:net-fadeout 3s forwards}
+.net-badge.online::before{background:#07090f}
+@keyframes net-fadeout{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
+@media(max-width:720px){.net-badge{top:8px;right:8px;font-size:10px;padding:4px 9px 4px 7px}}
+/* ── Scout intro modal ── */
+.scout-intro-backdrop{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.6);opacity:0;transition:opacity .25s;pointer-events:none}
+.scout-intro-backdrop.active{opacity:1;pointer-events:auto}
+.scout-intro-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:701;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:24px 20px max(28px,env(safe-area-inset-bottom));transition:transform .3s cubic-bezier(.32,1,.24,1);box-sizing:border-box}
+.scout-intro-sheet.active{transform:translateX(-50%) translateY(0)}
+.scout-intro-handle{width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px}
+.scout-intro-title{font-size:16px;font-weight:800;color:#f0f0f4;margin-bottom:4px}
+.scout-intro-sub{font-size:12px;color:#6b6b88;margin-bottom:18px}
+.scout-intro-rows{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.scout-intro-row{display:flex;align-items:flex-start;gap:10px;background:#111118;border:1px solid #2a2a3a;border-radius:10px;padding:11px 13px}
+.scout-intro-icon{font-size:18px;flex-shrink:0;line-height:1.3}
+.scout-intro-row-body{flex:1;min-width:0}
+.scout-intro-row-label{font-size:12.5px;font-weight:700;color:#f0f0f4;margin-bottom:2px}
+.scout-intro-row-desc{font-size:11px;color:#9898b0;line-height:1.5}
+.scout-intro-flow{display:flex;align-items:center;gap:6px;margin-bottom:20px;padding:10px 14px;background:#111118;border-radius:10px;border:1px solid #2a2a3a}
+.scout-intro-flow-step{font-size:11px;color:#c0c0d0;text-align:center;flex:1}
+.scout-intro-flow-arrow{color:#4b8cf5;font-size:13px;flex-shrink:0}
+.scout-intro-confirm{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.scout-intro-confirm:active{opacity:.82}
+@media(max-width:720px){.scout-intro-sheet{padding:18px 14px max(28px,env(safe-area-inset-bottom))}}
+/* ── Scout info banner ── */
+.mobile-info-banner{display:flex;align-items:flex-start;gap:10px;background:rgba(75,140,245,.1);border:1px solid rgba(75,140,245,.25);border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:11.5px;color:var(--text2,#c0c0d0);line-height:1.5}
+.mobile-info-banner-text{flex:1;min-width:0}
+.mobile-info-banner-close{background:none;border:none;color:var(--text3,#6b6b88);font-size:15px;cursor:pointer;line-height:1;padding:0 0 0 4px;flex-shrink:0;-webkit-tap-highlight-color:transparent;font-family:inherit}
+/* ── EV row in hit modal ── */
+.ev-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ev-inp{width:76px;background:#111118;border:1px solid #2a2a3a;border-radius:7px;color:var(--text,#f0f0f4);font-size:14px;padding:6px 8px;outline:none;text-align:center;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.ev-inp::-webkit-inner-spin-button,.ev-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.ev-unit-btn{background:#1e1e2e;border:1px solid #2a2a3a;border-radius:7px;color:#9898b0;font-size:11px;font-weight:700;padding:6px 9px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+/* ── Kakao share button ── */
+.share-kakao-btn{width:100%;padding:13px;background:#FEE500;color:#191919;border:none;border-radius:10px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;display:none;margin-bottom:8px}
+.share-kakao-btn:active{opacity:.82}
+/* ── Link-badge: cross-tab indicators ── */
+.link-badge-status{font-size:10.5px;color:var(--text3,#6b7280);margin-top:8px;padding:5px 8px;border-radius:6px;background:rgba(75,140,245,.07);border:1px solid rgba(75,140,245,.15);line-height:1.4}
+.link-badge-status strong{color:var(--accent,#4b8cf5);font-weight:700}
+.link-badge-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 8px;border-radius:999px;background:rgba(75,140,245,.15);border:1px solid rgba(75,140,245,.35);color:var(--accent,#4b8cf5);font-size:11px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.link-badge-pill:hover,.link-badge-pill:active{background:rgba(75,140,245,.25)}
+/* ── Onboarding 3-step wizard (sl-ob-) ── */
+.sl-ob-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.sl-ob-skip{background:none;border:none;color:#6b6b88;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0;font-family:inherit;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.sl-ob-dots{display:flex;justify-content:center;gap:7px;margin-bottom:16px}
+.sl-ob-dot{width:8px;height:8px;border-radius:50%;background:#3a3a4a;transition:background .2s}
+.sl-ob-dot-on{background:#4b8cf5}
+.sl-ob-canvas{border-radius:10px;background:#0d0d18;display:block;margin:0 auto;max-width:100%}
+.sl-ob-demo-wrap{text-align:center;margin-bottom:12px}
+.sl-ob-demo-legend{display:flex;justify-content:center;gap:14px;margin-top:8px;font-size:11px;color:#9898b0;align-items:center}
+.sl-ob-demo-legend span{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;flex-shrink:0}
+.sl-ob-dot-hit{background:#2dd4a0!important}
+.sl-ob-dot-out{background:#f56565!important}
+.sl-ob-dot-bb{background:#f6c23e!important}
+.sl-ob-intro-txt{font-size:12px;color:#9898b0;line-height:1.6;text-align:center;margin-bottom:16px}
+.sl-ob-cards{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.sl-ob-card{display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:13px 14px}
+.sl-ob-card-icon{font-size:20px;flex-shrink:0;line-height:1.3;margin-top:1px}
+.sl-ob-card-body{flex:1;min-width:0}
+.sl-ob-card-title{font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px}
+.sl-ob-card-desc{font-size:11.5px;color:#9898b0;line-height:1.5}
+.sl-ob-cta-wrap{text-align:center;padding:6px 0 16px}
+.sl-ob-cta-title{font-size:16px;font-weight:800;color:#f0f0f4;margin-bottom:8px}
+.sl-ob-cta-desc{font-size:12px;color:#9898b0;line-height:1.7;margin-bottom:20px}
+.sl-ob-cta-flow{display:block;margin-top:4px;color:#4b8cf5;font-weight:600;font-size:12px}
+.sl-ob-cta-main{font-size:16px;padding:16px;letter-spacing:.4px}
+.sl-ob-nav{display:flex;gap:8px;align-items:center}
+.sl-ob-btn-ghost{padding:14px 16px;background:#1e1e2e;border:1px solid #2a2a3a;border-radius:12px;color:#9898b0;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.sl-ob-btn-ghost:active{opacity:.82}
+@media(max-width:720px){
+  .sl-ob-canvas{width:100%}
+  .sl-ob-card{padding:11px 12px;gap:10px}
+  .sl-ob-cta-title{font-size:14px}
+  .sl-ob-cta-main{font-size:15px;padding:14px}
+}
+/* ── 방향별 성공률 ── */
+.dir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.dir-it{background:#12122a;border-radius:8px;padding:7px 6px;text-align:center}
+.dir-v{font-size:17px;font-weight:800;color:#e2e8f0;letter-spacing:-.5px;font-family:'JetBrains Mono',monospace}
+.dir-d{font-size:10px;font-weight:700;min-height:14px}
+.dir-l{font-size:9px;color:#6b6b88;font-weight:700;margin-top:2px}
+.dir-sub{font-size:9px;color:#44445a;margin-top:1px}
+.xd-pos{color:#2dd4a0}.xd-neg{color:#f56565}.xd-neu{color:#6b6b88}
+/* ── 첫 탭 유도 오버레이 ── */
+.field-tap-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:10;gap:10px}
+.field-tap-hint.hidden{display:none}
+.fth-ring{width:52px;height:52px;border-radius:50%;border:3px solid rgba(75,140,245,.7);animation:fth-pulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(75,140,245,.4)}
+@keyframes fth-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(75,140,245,.4)}50%{transform:scale(1.1);box-shadow:0 0 0 12px rgba(75,140,245,0)}}
+.fth-txt{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;line-height:1.5;text-shadow:0 1px 6px rgba(0,0,0,.8);background:rgba(7,9,15,.55);padding:7px 14px;border-radius:20px;backdrop-filter:blur(4px)}
+/* ── 처음 쓰시나요 버튼 ── */
+.btn-first-use{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;border:1px solid rgba(75,140,245,.4);background:rgba(75,140,245,.08);color:rgba(75,140,245,.9);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-top:12px}
+.btn-first-use:active{opacity:.8}
+/* ── Stadium selector (sl-st-) ── */
+.sl-st-bar{display:flex;gap:6px;padding:6px 8px 2px;overflow-x:auto;scrollbar-width:none}
+.sl-st-bar::-webkit-scrollbar{display:none}
+.sl-st-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:#1a1a2e;border:1.5px solid #2a2a3e;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;min-width:52px}
+.sl-st-btn:active{opacity:.82}
+.sl-st-btn .sl-st-emoji{font-size:18px;line-height:1}
+.sl-st-btn .sl-st-name{font-size:10px;font-weight:700;color:#8888a8;letter-spacing:-.2px}
+.sl-st-on{border-color:#4b8cf5!important;background:#1a2a48!important}
+.sl-st-on .sl-st-name{color:#7ab0f5!important}
+@media(max-width:720px){.sl-st-btn{padding:5px 8px;min-width:46px}.sl-st-btn .sl-st-emoji{font-size:16px}}
+/* ── App Preview Modal ── */
+#appPreviewModal{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;background:rgba(4,6,12,.85);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s}
+#appPreviewModal.show{opacity:1;pointer-events:auto}
+.apm-card{background:#0d1117;border:1px solid #1e2a3a;border-radius:24px;width:min(440px,calc(100vw - 32px));max-height:calc(100svh - 40px);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.8)}
+.apm-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+.apm-logo{font-size:15px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
+.apm-logo em{color:#4b8cf5;font-style:normal}
+.apm-skip{background:none;border:1px solid #2a2a3a;border-radius:8px;color:#9898b0;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
+.apm-skip:hover{border-color:#4b8cf5;color:#c0c8e0}
+.apm-slides-wrap{overflow:hidden;flex:1;min-height:0;position:relative;margin:16px 0 0}
+.apm-slides{display:flex;transition:transform .4s cubic-bezier(.4,0,.2,1);height:100%}
+.apm-slide{flex:0 0 100%;display:flex;flex-direction:column;align-items:center;padding:0 20px}
+.apm-slide-visual{width:100%;flex:1;min-height:160px;border-radius:14px;overflow:hidden;background:#07090f;border:1px solid #1a2030;position:relative}
+.apm-slide-cap{font-size:13px;color:#c0c8e0;text-align:center;margin:10px 0 2px;font-weight:500;line-height:1.4}
+.apm-dots{display:flex;justify-content:center;gap:6px;padding:8px 0}
+.apm-dot{width:7px;height:7px;border-radius:50%;background:#2a2a3a;transition:background .2s,transform .2s;cursor:pointer}
+.apm-dot.on{background:#4b8cf5;transform:scale(1.3)}
+.apm-foot{padding:12px 20px max(16px,env(safe-area-inset-bottom))}
+.apm-cta{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px;transition:opacity .15s}
+.apm-cta:active{opacity:.82}
+/* ── Mobile Preview Modal ── */
+#mpm{position:fixed;inset:0;z-index:8500;background:#080b14;opacity:0;pointer-events:none;transition:opacity .35s;display:flex;flex-direction:column;overflow:hidden}
+#mpm.show{opacity:1;pointer-events:auto}
+.mpm-head{display:flex;align-items:center;justify-content:space-between;padding:max(52px,env(safe-area-inset-top)) 24px 0}
+.mpm-logo{font-size:18px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
+.mpm-logo em{color:#4b8cf5;font-style:normal}
+.mpm-skip{background:none;border:none;color:#6b6b88;font-size:13px;font-weight:600;padding:8px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.mpm-slides-wrap{flex:1;min-height:0;overflow:hidden;position:relative;margin-top:16px}
+.mpm-slides{display:flex;height:100%;transition:transform .38s cubic-bezier(.4,0,.2,1)}
+.mpm-slide{flex:0 0 100%;display:flex;flex-direction:column;padding:0 20px}
+.mpm-visual{flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#0d1117;border:1px solid #1a2030;position:relative}
+.mpm-caption{padding:18px 4px 0;text-align:center}
+.mpm-cap-title{font-size:20px;font-weight:800;color:#f0f0f4;letter-spacing:-.4px;margin:0 0 6px}
+.mpm-cap-desc{font-size:13px;color:#9898b0;line-height:1.55;margin:0}
+.mpm-dots{display:flex;justify-content:center;gap:7px;padding:16px 0 10px}
+.mpm-dot{height:8px;width:8px;border-radius:4px;background:#2a2a3a;transition:all .25s;cursor:pointer}
+.mpm-dot.on{background:#4b8cf5;width:26px}
+.mpm-foot{padding:0 20px max(28px,env(safe-area-inset-bottom))}
+.mpm-cta{width:100%;padding:17px;background:#4b8cf5;color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:.2px;transition:opacity .15s}
+.mpm-cta:active{opacity:.82}
+/* mock elements inside mobile slides */
+.mpm-qb{display:flex;gap:8px;padding:14px 14px 0;flex-wrap:wrap}
+.mpm-qbtn{border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;border:none;font-family:inherit;cursor:default}
+.mpm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:20px 16px 0}
+.mpm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:14px;padding:14px 8px;text-align:center}
+.mpm-stat-val{font-size:26px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.mpm-stat-lbl{font-size:11px;color:#6b6b88;margin-top:4px;font-weight:600}
+.mpm-stat-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #1a1a2a}
+.mpm-stat-name{font-size:13px;font-weight:700;color:#c0c8e0;width:60px;flex-shrink:0}
+.mpm-stat-bar-wrap{flex:1;height:6px;background:#1e2030;border-radius:3px;overflow:hidden}
+.mpm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
+.mpm-stat-num{font-size:12px;font-weight:700;color:#9898b0;width:38px;text-align:right;font-family:'JetBrains Mono',monospace}
+/* mock UI inside slides */
+.apm-mock-qb{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+.apm-mock-btn{border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;border:none;font-family:inherit}
+.apm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 14px 0}
+.apm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:10px;padding:11px 8px;text-align:center}
+.apm-stat-val{font-size:22px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.apm-stat-lbl{font-size:10px;color:#6b6b88;margin-top:3px;font-weight:600}
+.apm-stat-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1a1a2a}
+.apm-stat-name{font-size:12px;font-weight:700;color:#c0c8e0;width:56px;flex-shrink:0}
+.apm-stat-bar-wrap{flex:1;height:5px;background:#1e2030;border-radius:3px;overflow:hidden}
+.apm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
+.apm-stat-num{font-size:11px;font-weight:700;color:#9898b0;width:36px;text-align:right;font-family:'JetBrains Mono',monospace}
+</style>
 </head>
 <body>
+<!-- 네트워크 상태 뱃지 -->
+<div id="netBadge" class="net-badge" role="status" aria-live="polite"></div>
+
 <!-- 공유 경기 데이터 감지 배너 -->
 <div id="sharedBanner">
   <div class="sb-inner">
@@ -56,6 +291,132 @@
   <button onclick="document.getElementById('kakao-warn').style.display='none'" style="margin:4px 4px 0;padding:5px 10px;background:none;border:1px solid #888;border-radius:6px;font-size:11px;cursor:pointer">✕ 계속 사용</button>
 </div>
 
+<!-- ████ 모바일 프리뷰 모달 ████ -->
+<div id="mpm">
+  <div class="mpm-head">
+    <div class="mpm-logo">Spray<em>Lab</em></div>
+    <button class="mpm-skip" onclick="mpmSkip()">건너뛰기</button>
+  </div>
+  <div class="mpm-slides-wrap" id="mpmSlidesWrap">
+    <div class="mpm-slides" id="mpmSlides">
+      <!-- Slide 1: 타석 기록 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual">
+          <div class="mpm-qb">
+            <button class="mpm-qbtn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
+            <button class="mpm-qbtn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
+            <button class="mpm-qbtn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
+            <button class="mpm-qbtn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
+          </div>
+          <canvas id="mpmCanvas0" style="width:100%;display:block;margin-top:8px"></canvas>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">필드를 탭해 타구를 기록</p>
+          <p class="mpm-cap-desc">이닝별 타석을 실시간으로 기록하고<br>결과를 한 번에 확인하세요</p>
+        </div>
+      </div>
+      <!-- Slide 2: 스프레이차트 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual">
+          <canvas id="mpmCanvas1" style="width:100%;display:block"></canvas>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">스프레이차트로 한눈에</p>
+          <p class="mpm-cap-desc">타구 분포와 방향 패턴을<br>시각적으로 파악하세요</p>
+        </div>
+      </div>
+      <!-- Slide 3: 통계 -->
+      <div class="mpm-slide">
+        <div class="mpm-visual" style="overflow-y:auto">
+          <div class="mpm-stat-grid">
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.312</div><div class="mpm-stat-lbl">타율 AVG</div></div>
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.405</div><div class="mpm-stat-lbl">출루율 OBP</div></div>
+            <div class="mpm-stat-cell"><div class="mpm-stat-val">.832</div><div class="mpm-stat-lbl">OPS</div></div>
+          </div>
+          <div style="padding:14px 16px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">김민준</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:88%"></div></div><span class="mpm-stat-num">.388</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">이도현</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:72%"></div></div><span class="mpm-stat-num">.312</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">박지훈</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:60%"></div></div><span class="mpm-stat-num">.267</span></div>
+          <div class="mpm-stat-row"><span class="mpm-stat-name">최성원</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="mpm-stat-num">.233</span></div>
+        </div>
+        <div class="mpm-caption">
+          <p class="mpm-cap-title">타율·출루율·OPS 자동 계산</p>
+          <p class="mpm-cap-desc">기록하는 순간 모든 지표가<br>실시간으로 업데이트됩니다</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mpm-dots" id="mpmDots">
+    <div class="mpm-dot on" onclick="mpmGoTo(0)"></div>
+    <div class="mpm-dot" onclick="mpmGoTo(1)"></div>
+    <div class="mpm-dot" onclick="mpmGoTo(2)"></div>
+  </div>
+  <div class="mpm-foot">
+    <button class="mpm-cta" onclick="mpmStart()">지금 시작하기 →</button>
+  </div>
+</div>
+
+<!-- ████ 앱 프리뷰 모달 ████ -->
+<div id="appPreviewModal">
+  <div class="apm-card">
+    <div class="apm-head">
+      <div class="apm-logo">Spray<em>Lab</em></div>
+      <button class="apm-skip" onclick="apmSkip()">바로 시작 →</button>
+    </div>
+    <div class="apm-slides-wrap" id="apmSlidesWrap">
+      <div class="apm-slides" id="apmSlides">
+        <!-- Slide 1: 필드 기록 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual">
+            <div class="apm-mock-qb">
+              <button class="apm-mock-btn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
+              <button class="apm-mock-btn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
+              <button class="apm-mock-btn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
+              <button class="apm-mock-btn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
+            </div>
+            <canvas id="apmCanvas0" style="width:100%;display:block;margin-top:6px"></canvas>
+          </div>
+          <div class="apm-slide-cap">⚾ 필드를 탭해 타구 위치를 기록하세요</div>
+        </div>
+        <!-- Slide 2: 스프레이차트 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual">
+            <canvas id="apmCanvas1" style="width:100%;display:block"></canvas>
+          </div>
+          <div class="apm-slide-cap">🗺️ 타구 분포를 스프레이차트로 한눈에</div>
+        </div>
+        <!-- Slide 3: 통계 카드 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual" style="overflow-y:auto">
+            <div class="apm-stat-grid">
+              <div class="apm-stat-cell"><div class="apm-stat-val">.312</div><div class="apm-stat-lbl">타율 AVG</div></div>
+              <div class="apm-stat-cell"><div class="apm-stat-val">.405</div><div class="apm-stat-lbl">출루율 OBP</div></div>
+              <div class="apm-stat-cell"><div class="apm-stat-val">.832</div><div class="apm-stat-lbl">OPS</div></div>
+            </div>
+            <div style="padding:12px 14px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
+            <div class="apm-stat-row"><span class="apm-stat-name">김민준</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:88%"></div></div><span class="apm-stat-num">.388</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">이도현</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:72%"></div></div><span class="apm-stat-num">.312</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">박지훈</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:60%"></div></div><span class="apm-stat-num">.267</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">최성원</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="apm-stat-num">.233</span></div>
+          </div>
+          <div class="apm-slide-cap">📊 타율·출루율·OPS를 자동으로 계산</div>
+        </div>
+      </div>
+    </div>
+    <div class="apm-dots" id="apmDots">
+      <div class="apm-dot on" onclick="apmGoTo(0)"></div>
+      <div class="apm-dot" onclick="apmGoTo(1)"></div>
+      <div class="apm-dot" onclick="apmGoTo(2)"></div>
+    </div>
+    <div class="apm-foot">
+      <button class="apm-cta" onclick="apmStart()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        지금 시작하기
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="landing-page">
 
 <nav id="mainNav">
@@ -69,7 +430,7 @@
     <li><a href="#preview">미리보기</a></li>
     <li><a href="#target">대상</a></li>
   </ul>
-  <button class="nav-cta" onclick="showApp()">
+  <button class="nav-cta" onclick="showPreviewModal()">
     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     앱 시작하기
   </button>
@@ -101,7 +462,7 @@
       </div>
     </div>
     <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="showApp()">
+      <button class="btn-hero-primary" onclick="showPreviewModal()">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         무료로 시작하기
       </button>
@@ -402,7 +763,7 @@
   <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
   <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
   <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
+    <button class="btn-hero-primary" onclick="showPreviewModal()" style="font-size:15px;padding:16px 36px">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       SprayLab 시작하기
     </button>
@@ -429,20 +790,6 @@
 
 <div class="tt-box" id="ttBox"></div>
 
-<div id="tourOv">
-  <div id="tourSpot" class="pulse"></div>
-  <div id="tourCard">
-    <div id="tourProg"><span id="tourProgTxt">1 / 9</span><div id="tourProgBar"><div id="tourProgFill" style="width:11%"></div></div></div>
-    <div id="tourTitle"></div>
-    <div id="tourDesc"></div>
-    <div class="tour-btns">
-      <button id="tourSkipBtn" onclick="tourSkip()">투어 종료</button>
-      <button id="tourNextBtn" onclick="tourNext()">다음 →</button>
-    </div>
-  </div>
-  <div id="tourCursor">👆</div>
-  <div id="tourRing"></div>
-</div>
 
 <div class="ob-overlay" id="obOverlay" style="display:none">
   <div class="ob-card">
@@ -466,12 +813,45 @@
 <div id="ftuOverlay" class="hidden">
   <div class="ftu-card">
     <div class="ftu-dots">
-      <div class="ftu-dot on" id="ftuD0"></div>
+      <div class="ftu-dot on" id="ftuDRole"></div>
+      <div class="ftu-dot" id="ftuD0"></div>
       <div class="ftu-dot" id="ftuD1"></div>
       <div class="ftu-dot" id="ftuD2"></div>
     </div>
+    <!-- Step Role: 역할 선택 -->
+    <div id="ftuStepRole">
+      <div class="ftu-icon">🎯</div>
+      <div class="ftu-title">어떤 역할로 사용하실 건가요?</div>
+      <div class="ftu-sub">역할에 맞게 화면이 최적화됩니다<br>나중에 설정에서 변경할 수 있어요</div>
+      <div class="ftu-role-list">
+        <button class="ftu-role-card" onclick="ftuSelectRole('recorder')">
+          <span class="ftu-role-icon">📋</span>
+          <div class="ftu-role-body">
+            <div class="ftu-role-title">기록원</div>
+            <div class="ftu-role-desc">경기 중 타석 기록이 주목적</div>
+          </div>
+          <span class="ftu-role-arrow">›</span>
+        </button>
+        <button class="ftu-role-card" onclick="ftuSelectRole('coach')">
+          <span class="ftu-role-icon">👔</span>
+          <div class="ftu-role-body">
+            <div class="ftu-role-title">감독 / 코치</div>
+            <div class="ftu-role-desc">팀 통계·선수 비교 분석이 주목적</div>
+          </div>
+          <span class="ftu-role-arrow">›</span>
+        </button>
+        <button class="ftu-role-card" onclick="ftuSelectRole('player')">
+          <span class="ftu-role-icon">⚾</span>
+          <div class="ftu-role-body">
+            <div class="ftu-role-title">선수</div>
+            <div class="ftu-role-desc">내 타석·패턴 분석이 주목적</div>
+          </div>
+          <span class="ftu-role-arrow">›</span>
+        </button>
+      </div>
+    </div>
     <!-- Step 0: 팀 이름 -->
-    <div id="ftuStep0">
+    <div id="ftuStep0" style="display:none">
       <div class="ftu-icon">⚾</div>
       <div class="ftu-title">SprayLab에 오신 걸 환영합니다!</div>
       <div class="ftu-sub">사회인야구 스프레이차트 기록앱<br>3단계로 빠르게 시작해봐요</div>
@@ -534,6 +914,11 @@
       </div>
     </button>
   </div>
+  <div class="mobile-aw-links">
+    <button onclick="hideAppWelcome();openGameWizard()">새 경기 시작</button>
+    <button onclick="hideAppWelcome();openLoad()">경기 불러오기</button>
+    <button onclick="hideAppWelcome();openPlayerProfile()">시즌 보기</button>
+  </div>
   <div class="team-sel-bar">
     <span class="tsb-label">현재 팀</span>
     <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
@@ -542,8 +927,10 @@
     <button class="tsb-new" onclick="openTeamCreate()">+ 팀 만들기</button>
   </div>
   <div class="aw-recent" id="awRecent"></div>
-  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 도움말 · 투어 · 설정</button>
+  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 설정 · 내보내기</button>
+  <button class="btn-first-use" onclick="showHelpModal()">? 처음 쓰시나요</button>
 </div>
+
 
 <!-- ████ 공유된 팀 배너 ████ -->
 <div id="teamSharedBanner">
@@ -587,11 +974,16 @@
 <!-- ████ 더보기 바텀시트 ████ -->
 <div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
   <div class="aw-more-sheet">
-    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
-      <span class="aw-more-item-icon">❓</span>도움말
+    <div class="aw-more-item" onclick="awMoreClose();openRoleChangeSheet()">
+      <span class="aw-more-item-icon">🎯</span>역할 변경
     </div>
-    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();startTour()">
-      <span class="aw-more-item-icon">🎯</span>투어 시작
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();localStorage.removeItem('sl_preview_seen');showMobilePreviewModal?showMobilePreviewModal():showPreviewModal()">
+      <span class="aw-more-item-icon">▶</span>앱 소개 다시 보기
+    </div>
+    <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
+      <span class="aw-more-item-icon">❓</span>도움말 · 처음 쓰시나요?
     </div>
     <div class="aw-more-divider"></div>
     <div class="aw-more-item" onclick="awMoreClose();exportFullReport()">
@@ -605,24 +997,95 @@
   </div>
 </div>
 
-<!-- 더보기 바텀시트 -->
-<div id="mobMoreSheet" style="display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMobMoreSheet()">
-  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;padding:16px 16px 24px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
-      <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+<!-- ████ 역할 변경 바텀시트 ████ -->
+<div id="roleChangeBackdrop" onclick="closeRoleChangeSheet()" style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.55)"></div>
+<div id="roleChangeSheet" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:9201;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:22px 18px max(24px,env(safe-area-inset-bottom));box-sizing:border-box;transition:transform .3s cubic-bezier(.32,1,.24,1)">
+  <div style="width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px"></div>
+  <div style="font-size:15px;font-weight:800;color:#f0f0f4;margin-bottom:4px">역할 변경</div>
+  <div style="font-size:11.5px;color:#6b6b88;margin-bottom:16px">역할에 맞게 화면이 최적화됩니다</div>
+  <div class="ftu-role-list">
+    <button class="ftu-role-card" id="roleCardRecorder" onclick="applyRoleLayout('recorder');closeRoleChangeSheet()">
+      <span class="ftu-role-icon">📋</span>
+      <div class="ftu-role-body">
+        <div class="ftu-role-title">기록원</div>
+        <div class="ftu-role-desc">경기 중 타석 기록이 주목적</div>
+      </div>
+      <span class="ftu-role-arrow" id="roleCheckRecorder"></span>
+    </button>
+    <button class="ftu-role-card" id="roleCardCoach" onclick="applyRoleLayout('coach');closeRoleChangeSheet()">
+      <span class="ftu-role-icon">👔</span>
+      <div class="ftu-role-body">
+        <div class="ftu-role-title">감독 / 코치</div>
+        <div class="ftu-role-desc">팀 통계·선수 비교 분석이 주목적</div>
+      </div>
+      <span class="ftu-role-arrow" id="roleCheckCoach"></span>
+    </button>
+    <button class="ftu-role-card" id="roleCardPlayer" onclick="applyRoleLayout('player');closeRoleChangeSheet()">
+      <span class="ftu-role-icon">⚾</span>
+      <div class="ftu-role-body">
+        <div class="ftu-role-title">선수</div>
+        <div class="ftu-role-desc">내 타석·패턴 분석이 주목적</div>
+      </div>
+      <span class="ftu-role-arrow" id="roleCheckPlayer"></span>
+    </button>
+  </div>
+  <button onclick="closeRoleChangeSheet()" style="width:100%;padding:12px;background:none;border:1px solid #2a2a3a;border-radius:12px;color:#9898b0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">취소</button>
+</div>
+
+<!-- ████ OCR 라인업 임포트 모달 ████ -->
+<div id="ocrModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);overflow-y:auto;-webkit-overflow-scrolling:touch" onclick="if(event.target===this)ocrModalClose()">
+  <div style="margin:20px auto;max-width:420px;background:#1a1a2e;border-radius:16px;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:800;color:#fff">📷 사진으로 라인업 입력 <span style="font-size:10px;color:#434c5e;font-weight:400">v16</span></div>
+      <button onclick="ocrModalClose()" style="background:none;border:none;color:#6b7280;font-size:22px;cursor:pointer;line-height:1">✕</button>
     </div>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('stat',document.getElementById('tab-stat'))">📊 팀통계</button>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('chart',document.getElementById('tab-chart'))">📤 내보내기</button>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
-    <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
+    <!-- 팀 선택 -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="ocrTeamHome" onclick="ocrSetTeam('home')" style="flex:1;padding:8px;border-radius:10px;border:2px solid #4b8cf5;background:#0f1729;color:#4b8cf5;font-size:13px;font-weight:700;cursor:pointer">🏠 홈팀</button>
+      <button id="ocrTeamAway" onclick="ocrSetTeam('away')" style="flex:1;padding:8px;border-radius:10px;border:2px solid #2a2a3a;background:#111118;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer">✈ 원정팀</button>
+    </div>
+    <!-- 사진 선택 영역 -->
+    <div id="ocrDropzone" onclick="document.getElementById('ocrFileInput').click()" style="border:2px dashed #2a2a3a;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;margin-bottom:14px;transition:border-color .2s">
+      <div style="font-size:32px;margin-bottom:8px">📸</div>
+      <div style="font-size:14px;font-weight:700;color:#c9d1d9">사진 / 문서 선택</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:5px;line-height:1.6">📷 사진 (jpg/png/heic) — 라인업 카드 촬영<br>📄 문서 (txt/csv/xlsx) — 라인업 표 파일</div>
+    </div>
+    <input type="file" id="ocrFileInput" accept="image/*,.txt,.csv,.xlsx,.xls,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="ocrHandleFile(this.files[0])">
+    <!-- 미리보기 이미지 -->
+    <div id="ocrImgWrap" style="display:none;margin-bottom:14px;border-radius:10px;overflow:hidden;max-height:200px;text-align:center;background:#0d0d1a">
+      <img id="ocrPreviewImg" style="max-width:100%;max-height:200px;object-fit:contain">
+    </div>
+    <!-- 진행상태 -->
+    <div id="ocrStatus" style="display:none;text-align:center;padding:12px;background:#0d1117;border-radius:10px;margin-bottom:14px">
+      <div id="ocrStatusText" style="font-size:13px;color:#4b8cf5;font-weight:600">OCR 인식 중...</div>
+      <div style="margin-top:8px;background:#1a1a2e;border-radius:4px;height:6px;overflow:hidden">
+        <div id="ocrProgressBar" style="height:100%;background:linear-gradient(90deg,#4b8cf5,#7c3aed);width:0%;transition:width .3s;border-radius:4px"></div>
+      </div>
+    </div>
+    <!-- 파싱된 선수 목록 (편집 가능) -->
+    <div id="ocrResultWrap" style="display:none;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.5px;margin-bottom:8px">인식된 선수 목록 (수정 가능)</div>
+      <div id="ocrPlayerList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto"></div>
+    </div>
+    <!-- 수동 입력 RAW 텍스트 (토글) -->
+    <div id="ocrRawWrap" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:4px">OCR 원문 (수정 후 재파싱)</div>
+      <textarea id="ocrRawText" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #2a2a3a;border-radius:8px;color:#c9d1d9;font-size:11px;padding:8px;min-height:80px;font-family:monospace;resize:vertical"></textarea>
+      <button onclick="ocrReparse()" style="margin-top:4px;padding:5px 12px;background:#2a2a3a;border:none;border-radius:6px;color:#9ca3af;font-size:11px;cursor:pointer">재파싱</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="ocrRawToggleBtn" onclick="ocrToggleRaw()" style="display:none;flex:0 0 auto;padding:10px 12px;background:#1a1a2e;border:1px solid #2a2a3a;border-radius:10px;color:#6b7280;font-size:12px;cursor:pointer">원문보기</button>
+      <button id="ocrApplyBtn" onclick="ocrApply()" style="display:none;flex:1;padding:12px;background:linear-gradient(135deg,#4b8cf5,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer">✅ 라인업에 추가</button>
+    </div>
   </div>
 </div>
+<input type="file" id="ocrFileInputGlobal" accept="image/*,.txt,.csv,.xlsx,.xls,text/plain,text/csv" style="display:none" onchange="ocrHandleFile(this.files[0])">
 
 <!-- ████ 경기 시작 마법사 ████ -->
 <div id="gameWizard" onclick="if(event.target===this)closeGameWizard()">
   <div class="gw-card">
     <div class="gw-title">⚾ 새 경기 시작</div>
+    <div class="mobile-gw-hint">이름 없이 바로 시작해도 돼요 ✓</div>
     <div class="gw-sub">팀 이름을 입력하고 바로 기록을 시작하세요</div>
     <div class="gw-field">
       <div class="gw-label">우리 팀</div>
@@ -795,13 +1258,9 @@
       </div>
     </div>
     <div class="hm-tour-btns">
-      <button class="hm-tour-btn" onclick="closeHelpModal();startTour()">
-        <span class="hm-tour-icon">🎯</span>
-        <div class="hm-tour-btn-body"><div>앱 투어 시작</div><div class="hm-tour-btn-sub">화살표 가이드로 각 구역을 직접 설명</div></div>
-      </button>
-      <button class="hm-tour-btn" onclick="closeHelpModal();showTutorial()">
-        <span class="hm-tour-icon">📖</span>
-        <div class="hm-tour-btn-body"><div>슬라이드 튜토리얼</div><div class="hm-tour-btn-sub">3단계 입문 가이드 다시 보기</div></div>
+      <button class="hm-tour-btn" onclick="closeHelpModal();toggleHelpMode()">
+        <span class="hm-tour-icon">💡</span>
+        <div class="hm-tour-btn-body"><div>안내 모드 켜기</div><div class="hm-tour-btn-sub">버튼마다 설명 툴팁 — 궁금한 곳을 탭하세요</div></div>
       </button>
     </div>
   </div>
@@ -816,6 +1275,7 @@
     <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
     <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
     <div class="fab-pop-sep"></div>
+    <button class="fab-pop-btn repeat" onclick="fabToggle();openQR()">📱 전체화면 기록</button>
     <button class="fab-pop-btn repeat" onclick="undoLast();fabToggle()">⎌ 직전 취소</button>
     <button class="fab-pop-btn repeat" onclick="fabEditLast();fabToggle()">✏️ 최근 수정</button>
     <button class="fab-pop-btn danger" onclick="fabToggle();showPostGameReport()">🏁 경기 종료</button>
@@ -905,11 +1365,11 @@
     <span class="vs">VS</span> 
     <div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.as=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
   </div>
-  <div style="display:flex;gap:6px;align-items:center">
+  <div id="appToolbar" style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <span class="save-ind" id="saveInd"></span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-ghost" id="saveBtn" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn btn-ghost" id="saveBtn" onclick="showSaveSheet()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
     <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
@@ -927,13 +1387,227 @@
         <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
       </div>
     </div>
+    <button class="auth-btn" id="authBtn" onclick="openLoginModal()" title="로그인하면 다른 기기에서도 이어서 사용할 수 있어요">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </button>
+    <span id="teamBadge" onclick="openLoginModal()" style="cursor:pointer"></span>
   </div>
 </header>
 
-<div class="mob-batter" id="mobBar"></div>
+<!-- ── 저장 방식 선택 시트 ── -->
+<div class="overlay" id="saveMethodBackdrop" onclick="closeSaveMethodSheet()" style="display:none;background:rgba(0,0,0,.55)"></div>
+<div id="saveMethodSheet" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:9100;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:22px 18px max(24px,env(safe-area-inset-bottom));box-sizing:border-box;transition:transform .3s cubic-bezier(.32,1,.24,1)">
+  <div style="width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px"></div>
+  <div style="font-size:15px;font-weight:800;color:#f0f0f4;margin-bottom:4px">저장 방식 선택</div>
+  <div style="font-size:11.5px;color:#6b6b88;margin-bottom:16px">경기 데이터를 어떻게 저장할까요?</div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px">
+    <button onclick="saveMethodLocal()" style="display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 15px;cursor:pointer;font-family:inherit;text-align:left;width:100%;-webkit-tap-highlight-color:transparent;transition:border-color .15s" onmouseenter="this.style.borderColor='#4b8cf5'" onmouseleave="this.style.borderColor='#2a2a3a'" ontouchstart="" >
+      <span style="font-size:22px;flex-shrink:0;line-height:1.3">📱</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px">이 기기에 저장</div>
+        <div style="font-size:11.5px;color:#9898b0;line-height:1.5">지금 바로 저장, 이 기기에서만 불러올 수 있어요</div>
+      </div>
+      <span style="font-size:16px;color:#4b4b60;align-self:center">›</span>
+    </button>
+    <button onclick="saveMethodCloud()" style="display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 15px;cursor:pointer;font-family:inherit;text-align:left;width:100%;-webkit-tap-highlight-color:transparent;transition:border-color .15s" onmouseenter="this.style.borderColor='#4b8cf5'" onmouseleave="this.style.borderColor='#2a2a3a'" ontouchstart="">
+      <span style="font-size:22px;flex-shrink:0;line-height:1.3">☁️</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px">클라우드에 저장 <span style="font-size:10px;font-weight:600;color:#9898b0;background:#1e1e2e;border:1px solid #2a2a3a;border-radius:4px;padding:1px 5px;margin-left:4px">Google 로그인 필요</span></div>
+        <div style="font-size:11.5px;color:#9898b0;line-height:1.5">모든 기기에서 이어서 사용 가능</div>
+      </div>
+      <span style="font-size:16px;color:#4b4b60;align-self:center">›</span>
+    </button>
+  </div>
+  <button onclick="closeSaveMethodSheet()" style="width:100%;padding:12px;background:transparent;border:1px solid #2a2a3a;border-radius:10px;color:#6b6b88;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:4px;-webkit-tap-highlight-color:transparent">취소</button>
+</div>
+
+<!-- ── 로그인 모달 ── -->
+<div class="overlay" id="loginModal" onclick="if(event.target===this)closeLoginModal()">
+  <div class="modal login-modal">
+    <div class="login-header">
+      <div class="login-title">☁️ 클라우드 저장</div>
+      <div class="login-sub">로그인하면 모든 기기에서 경기 기록을 이어서 사용할 수 있어요</div>
+    </div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Google로 계속하기
+    </button>
+    <div class="login-divider"><span>또는 이메일로</span></div>
+    <div class="magic-form">
+      <input id="magicEmailInput" type="email" placeholder="이메일 주소 입력" class="magic-input"
+        onkeydown="if(event.key==='Enter')sendMagicLink()">
+      <button class="btn-magic" onclick="sendMagicLink()">링크 받기</button>
+    </div>
+    <div id="magicMsg" class="magic-msg"></div>
+    <button class="btn btn-ghost login-close" onclick="closeLoginModal()">닫기</button>
+  </div>
+</div>
+
+<!-- ── 프로필 모달 (로그인 상태) ── -->
+<div class="overlay" id="profileModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal login-modal">
+    <div class="login-header">
+      <div class="login-title">내 계정</div>
+    </div>
+    <div class="profile-info">
+      <div class="profile-name" id="profileName"></div>
+      <div class="profile-email" id="profileEmail"></div>
+    </div>
+    <div class="profile-badge">✅ 다른 기기에서도 이어서 사용 가능</div>
+    <div class="team-divider">팀 기능</div>
+    <div id="teamSection"></div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="document.getElementById('profileModal').classList.remove('show')">닫기</button>
+    <button class="btn" style="width:100%;justify-content:center;margin-top:6px;background:var(--bg2);color:var(--text3);border:1px solid var(--border2)" onclick="cloudSignOut()">로그아웃</button>
+  </div>
+</div>
+
+<!-- 모바일 액션바: 저장/불러오기/실행취소/더보기 — savant-nav 위에 고정 -->
+<div id="mobileActionBar" style="display:none">
+  <button class="mab-btn mab-pitch" onclick="mobPitchSheetOpen()" id="mabPitchBtn">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    투구입력
+  </button>
+  <button class="mab-btn" onclick="openLoad()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>
+    불러오기
+  </button>
+  <button class="mab-btn mab-save" id="mabSaveBtn" onclick="showSaveSheet()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+    저장
+  </button>
+  <button class="mab-btn" id="mabUndoBtn" onclick="undoLast()" disabled>
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 5.17 7"/></svg>
+    취소
+  </button>
+  <button class="mab-btn" onclick="exportCurrentGameToExcel()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    엑셀
+  </button>
+  <button class="mab-btn mab-auth" id="mabAuthBtn" onclick="openLoginModal()" title="계정">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="mab-label">계정</span>
+  </button>
+  <button class="mab-btn" onclick="mabMoreOpen()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    더보기
+  </button>
+</div>
+
+<!-- 모바일 투구입력 바텀시트 -->
+<div id="mobPitchModal" onclick="if(event.target===this)mobPitchSheetClose()"
+  style="display:none;position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.6);flex-direction:column;justify-content:flex-end">
+  <div style="background:#1a1a24;border-radius:16px 16px 0 0;border-top:1px solid #2a2a3a;padding:14px 14px max(28px,env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:#eef0f8">⚾ 투구 입력</div>
+      <button onclick="mobPitchSheetClose()" style="background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <!-- 투구 기록 로그 -->
+    <div id="mobPitchLog" style="display:none;margin-bottom:12px;background:#111118;border-radius:10px;padding:8px 10px">
+      <div class="mob-pitch-log-hdr" style="font-size:9px;font-weight:800;color:#6b7280;letter-spacing:.5px;margin-bottom:6px">이번 타석 투구 기록</div>
+      <div id="mobPitchLogList" style="display:flex;flex-direction:column;gap:2px"></div>
+    </div>
+    <!-- 구종 -->
+    <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">구종</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="mobPtChips">
+      <button class="mob-pt-chip" data-pt="직구" onclick="mobSelPt2(this,'직구')">직구</button>
+      <button class="mob-pt-chip" data-pt="싱커" onclick="mobSelPt2(this,'싱커')">싱커</button>
+      <button class="mob-pt-chip" data-pt="커터" onclick="mobSelPt2(this,'커터')">커터</button>
+      <button class="mob-pt-chip" data-pt="슬라이더" onclick="mobSelPt2(this,'슬라이더')">슬라이더</button>
+      <button class="mob-pt-chip" data-pt="스위퍼" onclick="mobSelPt2(this,'스위퍼')">스위퍼</button>
+      <button class="mob-pt-chip" data-pt="슬러브" onclick="mobSelPt2(this,'슬러브')">슬러브</button>
+      <button class="mob-pt-chip" data-pt="커브" onclick="mobSelPt2(this,'커브')">커브</button>
+      <button class="mob-pt-chip" data-pt="너클커브" onclick="mobSelPt2(this,'너클커브')">너클커브</button>
+      <button class="mob-pt-chip" data-pt="슬로우커브" onclick="mobSelPt2(this,'슬로우커브')">슬로우커브</button>
+      <button class="mob-pt-chip" data-pt="체인지업" onclick="mobSelPt2(this,'체인지업')">체인지업</button>
+      <button class="mob-pt-chip" data-pt="포크볼" onclick="mobSelPt2(this,'포크볼')">포크볼</button>
+      <button class="mob-pt-chip" data-pt="스플리터" onclick="mobSelPt2(this,'스플리터')">스플리터</button>
+      <button class="mob-pt-chip" data-pt="스크류볼" onclick="mobSelPt2(this,'스크류볼')">스크류볼</button>
+      <button class="mob-pt-chip" data-pt="너클볼" onclick="mobSelPt2(this,'너클볼')">너클볼</button>
+      <button class="mob-pt-chip" data-pt="이퓨스볼" onclick="mobSelPt2(this,'이퓨스볼')">이퓨스볼</button>
+      <button class="mob-pt-chip" data-pt="팜볼" onclick="mobSelPt2(this,'팜볼')">팜볼</button>
+    </div>
+    <!-- 스트라이크존 -->
+    <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">스트라이크 존</div>
+    <canvas id="mobZoneCanvas" width="120" height="120" style="cursor:crosshair;border-radius:6px;display:block;margin:0 auto"></canvas>
+    <div id="mobZoneLbl" style="font-size:9px;color:#6b7280;text-align:center;margin-top:4px">존을 탭해서 코스 기록</div>
+  </div>
+</div>
+
+<!-- 모바일 더보기 바텀시트 (단일 모달) -->
+<div id="mabMoreModal" onclick="if(event.target===this)mabMoreClose()"
+  style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);flex-direction:column;justify-content:flex-end;align-items:stretch">
+  <div style="background:#1a1a24;border-radius:16px 16px 0 0;border-top:1px solid #2a2a3a;padding:10px 0 max(28px,env(safe-area-inset-bottom))">
+    <div style="width:36px;height:4px;border-radius:2px;background:#2a2a3a;margin:0 auto 12px"></div>
+    <button class="mab-sheet-btn" onclick="exportCurrentGameToExcel();mabMoreClose()">📥 엑셀 내보내기</button>
+    <button class="mab-sheet-btn" onclick="shareGameLink();mabMoreClose()">🔗 공유</button>
+    <button class="mab-sheet-btn" onclick="showPostGameReport();mabMoreClose()">📊 리포트</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
+    <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
+    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
+    <button class="mab-sheet-btn" style="color:#6b7280" onclick="goHome();mabMoreClose()">← 홈으로</button>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 4px 0 0;flex-shrink:0" class="mob-batter-wrap">
+  <button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:5px 10px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:900;cursor:pointer;margin:4px 4px;line-height:1;-webkit-tap-highlight-color:transparent">＋</button>
+  <button class="mobile-ocr-btn" onclick="ocrModalOpen()" title="사진으로 라인업 입력">📷</button>
+  <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
+</div>
+
+<!-- 더보기 바텀시트 (모바일 전용) -->
+<div id="mobMoreSheet" style="display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMobMoreSheet()">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;padding:16px 16px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
+      <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('stat',document.getElementById('tab-stat'))">📊 팀통계</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('chart',document.getElementById('tab-chart'))">📤 내보내기</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+    <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
+  </div>
+</div>
+
+<div id="mobPlayerModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg-card);border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:700;color:var(--text)">선수 관리</span>
+      <button onclick="closeMobPlayerModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="mobTeamHome" onclick="mobSwitchTeam('home')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer">🏠 홈팀</button>
+      <button id="mobTeamAway" onclick="mobSwitchTeam('away')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer">✈️ 원정팀</button>
+    </div>
+    <div id="mobPlayerList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700">선수 추가</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input id="mobPName" class="inp" placeholder="이름" maxlength="10" style="flex:1">
+      <input id="mobPNum" class="inp" placeholder="#번" maxlength="3" style="width:54px;text-align:center">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <select id="mobPPos" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
+      <select id="mobPBH" class="inp" style="flex:1;padding:7px 6px;font-size:12px"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
+      <button onclick="mobAddPlayerFromModal()" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px">추가</button>
+    </div>
+  </div>
+</div>
 
 <div class="app-layout">
   <div class="pnl-left">
+    <!-- 모바일 전용 투구입력 패널 -->
+    <div id="mobPitchPanel">
+      <!-- 너비 조절 버튼 -->
+      <div style="display:flex;width:100%;justify-content:space-between;padding:2px 2px 0">
+        <button onclick="mobPanelNarrow()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">◀</button>
+        <button onclick="mobPanelWide()" style="flex:1;background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;padding:2px">▶</button>
+      </div>
+      <button id="mobPitchOpenBtn" onclick="mobPitchSheetOpen()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>투구<br>입력</span>
+      </button>
+      <div id="mobPtSelected" style="font-size:9px;color:var(--accent);text-align:center;padding:2px;min-height:14px;word-break:keep-all"></div>
+    </div>
     <div class="pnl-resize-handle" id="lpResizeHandle"></div>
     <div class="tabs" style="border-bottom: 1px solid var(--border); flex-shrink: 0;">
       <div class="tab on" id="subtab-home" onclick="swLineupTab('home')" style="font-size:11px; padding:10px 4px; font-weight:700;">홈 라인업</div>
@@ -945,11 +1619,14 @@
       <div style="display:flex;gap:5px">
         <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
         <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:54px;flex-shrink:0;text-align:center" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="btn btn-primary btn-icon mobile-quick-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="btn btn-icon" onclick="ocrModalOpen()" title="사진으로 라인업 입력" style="flex-shrink:0;background:#1a1a2e;border:1px solid #2a3a5a;color:#4b8cf5" title="사진으로 라인업 입력"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
       </div>
-      <div style="display:flex;gap:5px">
+      <button class="mobile-detail-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ 상세 설정 접기':'+ 상세 설정 (포지션·타석)'">+ 상세 설정 (포지션·타석)</button>
+      <div class="mobile-detail-row" style="display:flex;gap:5px">
         <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
         <select class="inp" id="pBH" style="flex:1;padding:7px 6px;font-size:12px" title="타격 방향"><option value="">타석</option><option value="R">우타</option><option value="L">좌타</option><option value="S">스위치</option></select>
-        <button class="btn btn-primary btn-icon" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="btn btn-primary btn-icon mobile-detail-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       </div>
     </div>
   </div>
@@ -987,14 +1664,24 @@
           <span class="gfb-out-lbl">OUT</span>
         </div>
         <div class="gfb-bases">
-          <div class="gfb-base gfb-base-2" id="gfbB2"></div>
-          <div class="gfb-base gfb-base-3" id="gfbB3"></div>
-          <div class="gfb-base gfb-base-1" id="gfbB1"></div>
+          <div class="gfb-base gfb-base-2" id="gfbB2" onclick="gfToggleBase(1)" title="2루 주자"></div>
+          <div class="gfb-base gfb-base-3" id="gfbB3" onclick="gfToggleBase(2)" title="3루 주자"></div>
+          <div class="gfb-base gfb-base-1" id="gfbB1" onclick="gfToggleBase(0)" title="1루 주자"></div>
         </div>
         <div class="gfb-batter" id="gfbBatter">타자 선택</div>
-        <div class="gfb-score" id="gfbScore">0:0</div>
+        <div class="gfb-score-ctrl">
+          <button class="gfb-sc-btn" onclick="gfScoreAtk(-1)">−</button>
+          <div class="gfb-score" id="gfbScore">0:0</div>
+          <button class="gfb-sc-btn" onclick="gfScoreAtk(1)">+</button>
+        </div>
         <button class="gfb-end" onclick="gfEndConfirm()">경기종료</button>
       </div>
+    </div>
+    <!-- 현재 투구 구종 표시 뱃지 (모바일 전용) -->
+    <div id="curPitchBadge" style="display:none;align-items:center;justify-content:center;gap:6px;padding:4px 10px;background:#1a1a24;border-bottom:1px solid #2a2a3a;flex-shrink:0">
+      <span style="font-size:10px;color:#6b7280;font-weight:600">⚾ 투구</span>
+      <span id="curPitchName" style="font-size:15px;font-weight:900;color:#4b8cf5;letter-spacing:.5px"></span>
+      <span id="curPitchZone" style="font-size:10px;color:#9ca3af"></span>
     </div>
     <!-- 상단 고정 퀵버튼 바 -->
     <div class="quick-bar" id="quickBar" data-help-title="⚡ 퀵버튼 바" data-help="필드를 탭하지 않고 결과만 <b>즉시 1탭으로 기록</b>하는 버튼입니다.<br>타자를 선택한 뒤 버튼을 탭하면 바로 기록됩니다:<br>• 안타(1B) · 아웃(G/O) · 삼진(K) · 볼넷(BB)">
@@ -1003,10 +1690,17 @@
       <button class="qb-btn qb-k" onclick="recQuick('삼진')" title="삼진 즉시 기록">삼진<small>K</small></button>
       <button class="qb-btn qb-bb" onclick="recQuick('볼넷')" title="볼넷 즉시 기록">볼넷<small>BB</small></button>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas></div></div>
+    <div class="sl-st-bar" id="slStBar" style="display:none">
+      <button class="sl-st-btn sl-st-on" data-st="standard" onclick="setStadium('standard')"><span class="sl-st-emoji">⚾</span><span class="sl-st-name">표준</span></button>
+      <button class="sl-st-btn" data-st="gochuk"   onclick="setStadium('gochuk')"  ><span class="sl-st-emoji">🏟</span><span class="sl-st-name">고척</span></button>
+      <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
+      <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
+    </div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
     <button class="ib-drawer-toggle" id="ibToggleBtn" onclick="toggleInputBar()">▼ 투구·결과 입력</button>
+    <div id="ibBackdrop" onclick="toggleInputBar()" style="display:none;position:fixed;inset:0;z-index:199"></div>
     <div class="input-bar">
       <div class="ib-tabs-bar">
         <button class="ib-tab on" id="ibt-pitch" onclick="swIbTab('pitch',this)">⚾ 투구 입력</button>
@@ -1057,6 +1751,7 @@
     <div class="tab-mode-bar" id="tabModeBar">
       <button class="tmb-btn on" id="tmbGame" onclick="setTabMode('game',this)">⚾ 경기중</button>
       <button class="tmb-btn" id="tmbPost" onclick="setTabMode('post',this)">📊 경기후</button>
+      <button class="tmb-btn tmb-gf-btn" id="tmbGF" onclick="gfToggle()" title="경기운영 모드">▶ 운영</button>
     </div>
     <div class="tabs">
       <div class="tab on" id="tab-rec" onclick="swTab('rec',this)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>타석기록</div>
@@ -1071,6 +1766,11 @@
         <div id="recList"><div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">타석을 기록하면<br>여기에 표시됩니다</div></div>
       </div>
       <div class="tab-pnl" id="pnl-batter">
+        <!-- 투수 탭 연결 배지 -->
+        <div id="linkBadgePill" class="link-badge-pill" style="display:none"
+             onclick="swTab('pitcher',document.getElementById('tab-pitcher'))">
+          ⚾ 투구 기록 중 · <span id="linkBadgePillCount"></span>구
+        </div>
         <div id="batter-analysis-placeholder" style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">← 좌측에서 타자를 선택하세요</div>
         <div id="batter-analysis-content" style="display:none">
           <div class="batter-stat-section">
@@ -1089,6 +1789,7 @@
             <div style="margin-top:8px">
               <div style="font-size:9px;color:var(--text3);margin-bottom:4px">투구 위치 (타석별 누적)</div>
               <canvas id="bsPitchCanvas" width="110" height="110" style="border-radius:5px;display:block"></canvas>
+              <div id="bsPitcherSummary" style="margin-top:8px"></div>
             </div>
           </div>
           <div class="stat-card">
@@ -1105,7 +1806,7 @@
       </div>
       <div class="tab-pnl" id="pnl-stat">
         <div class="stat-card"><div class="sc-title">이번 경기</div><div class="stat-grid"><div class="stat-it"><div class="stat-v" id="sAVG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'타율 AVG','안타 ÷ 타석 수\n0.300 = 10번 중 3번 안타')" onmouseleave="hideTT()">타율 AVG</div></div><div class="stat-it"><div class="stat-v" id="sOBP">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'출루율 OBP','볼넷·사구 포함 출루 비율\n0.350 이상 = 우수')" onmouseleave="hideTT()">출루율 OBP</div></div><div class="stat-it"><div class="stat-v" id="sSLG">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'장타율 SLG','타구당 평균 누타수\n홈런=4점 · 2루타=2점 · 안타=1점')" onmouseleave="hideTT()">장타율 SLG</div></div><div class="stat-it"><div class="stat-v" id="sOPS">.---</div><div class="stat-l tt-underline" onmouseenter="showTT(this,'OPS','출루율 + 장타율\n0.800 이상 = 우수한 타자\n\n종합 타격 능력을 나타내는 핵심 지표')" onmouseleave="hideTT()">OPS</div></div></div><div class="stat-grid" style="margin-top:8px"><div class="stat-it"><div class="stat-v-sm" id="sAB">0</div><div class="stat-l">타수 AB</div></div><div class="stat-it"><div class="stat-v-sm" id="sH">0</div><div class="stat-l">안타 H</div></div><div class="stat-it"><div class="stat-v-sm" id="sRBI">0</div><div class="stat-l">타점 RBI</div></div></div></div>
-        <div class="stat-card"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
+        <div class="stat-card" id="dirStatCard" style="display:none"><div class="sc-title">타구 방향</div><div class="dir-chart"><div class="dir-bar-w"><div class="dir-pct" id="dPull" style="color:var(--red)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-pull" id="bPull" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'당겨치기 (Pull)','우타자 기준 3루 방향으로 친 타구\n좌타자는 반대(1루 방향)\n\n당겨치기 비율이 높으면 풀히터형 타자')" onmouseleave="hideTT()">당겨치기</div></div><div class="dir-bar-w"><div class="dir-pct" id="dCtr" style="color:var(--green)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-ctr" id="bCtr" style="height:3px"></div></div><div class="dir-lbl">센터</div></div><div class="dir-bar-w"><div class="dir-pct" id="dOppo" style="color:var(--accent)">0%</div><div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end"><div class="dir-bar dir-oppo" id="bOppo" style="height:3px"></div></div><div class="dir-lbl tt-underline" onmouseenter="showTT(this,'밀어치기 (Oppo)','우타자 기준 1루 방향으로 친 타구\n반대 방향으로 보내는 기술\n\nOpposite Field Hit')" onmouseleave="hideTT()">밀어치기</div></div></div><div style="font-size:9px;color:var(--text3);text-align:center">필드 클릭 기록 기준</div></div>
         <div class="stat-card">
           <div class="sc-title">타구 결과 분포</div>
           <div id="resultDistBar" style="display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
@@ -1114,6 +1815,7 @@
         <div class="stat-card"><div class="sc-title">선수별 통계</div><div id="psTable"><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div></div></div>
 
         <div id="advStatFilter" class="stat-filter"><button class="sf-btn on" onclick="setAdvFilter(null,this)">종합</button><button class="sf-btn" onclick="setAdvFilter('home',this)">홈팀</button><button class="sf-btn" onclick="setAdvFilter('away',this)">원정팀</button></div>
+        <div id="advStatCard" style="display:none">
         <div class="stat-card">
           <div class="sc-title">심화 지표</div>
           <div class="ext-stat-grid">
@@ -1123,7 +1825,10 @@
             <div class="stat-it"><div class="stat-v-sm" id="sKpct">--%</div><div class="stat-l">K%</div></div>
           </div>
           <div style="font-size:9px;color:var(--text3);line-height:1.6">wOBA=가중출루율 · BABIP=인플레이타율<br>BB%=볼넷율 · K%=삼진율</div>
+          <div class="sc-title" style="margin-top:14px">방향별 성공률</div>
+          <div id="sDirStatsWrap"><div style="font-size:10px;color:var(--text3);text-align:center;padding:4px 0">기록 없음</div></div>
         </div>
+        </div><!-- /advStatCard -->
 
         <div class="stat-card">
           <div class="sc-title">구종별 성적</div>
@@ -1245,59 +1950,98 @@
           <div class="sc-title">투구 기록</div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:8px">현재 투수: <strong id="currentPitcherLabel" style="color:var(--accent)">미선택</strong></div>
 
-          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
-            <!-- 왼쪽: 코스 캔버스 -->
-            <div style="flex-shrink:0">
-              <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-align:center">코스 (자유클릭)</div>
-              <canvas id="pitcherZoneCanvas" width="96" height="96" style="cursor:crosshair;border-radius:4px;display:block"></canvas>
-              <div style="font-size:8px;color:var(--text3);text-align:center;margin-top:2px" id="pitcherZoneLabel">—</div>
+          <!-- [모바일] 퀵 입력 바 -->
+          <div class="mobile-pitch-quick-bar">
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-strike" onclick="recordPitch('스트라이크')">스트라이크<small>K</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-ball" onclick="recordPitch('볼')">볼<small>B</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-result" id="mobile-pitch-result-toggle" onclick="var d=document.getElementById('mobile-pitch-result-panel');d.classList.toggle('open');document.getElementById('mobile-pitch-result-toggle').textContent=d.classList.contains('open')?'타격결과 ▲':'타격결과 ▼'">타격결과 ▼</button>
+          </div>
+
+          <!-- [모바일] 타격결과 확장 패널 -->
+          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
+            <div class="pt-result-chips" style="margin-bottom:5px">
+              <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
+              <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
+              <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
+              <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
             </div>
-            <!-- 오른쪽: 구종 + 결과 -->
-            <div style="flex:1;min-width:0">
-              <div style="font-size:9px;color:var(--text3);margin-bottom:4px">구종</div>
-              <div class="pitch-type-chips" id="pitcherPtChips">
-                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%">패스트볼</div>
-                <button class="chip" onclick="selPitcherPt(this,'직구')" style="border-left:3px solid #e53935">직구</button>
-                <button class="chip" onclick="selPitcherPt(this,'싱커')" style="border-left:3px solid #ff7043">싱커</button>
-                <button class="chip" onclick="selPitcherPt(this,'커터')" style="border-left:3px solid #795548">커터</button>
-                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">오프스피드</div>
-                <button class="chip" onclick="selPitcherPt(this,'체인지업')" style="border-left:3px solid #43a047">체인지업</button>
-                <button class="chip" onclick="selPitcherPt(this,'스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
-                <button class="chip" onclick="selPitcherPt(this,'포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
-                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">브레이킹볼</div>
-                <button class="chip" onclick="selPitcherPt(this,'커브')" style="border-left:3px solid #29b6f6">커브</button>
-                <button class="chip" onclick="selPitcherPt(this,'너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
-                <button class="chip" onclick="selPitcherPt(this,'슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
-                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">슬라이더</div>
-                <button class="chip" onclick="selPitcherPt(this,'슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
-                <button class="chip" onclick="selPitcherPt(this,'스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
-                <button class="chip" onclick="selPitcherPt(this,'슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
-                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">기타</div>
-                <button class="chip" onclick="selPitcherPt(this,'너클볼')" style="border-left:3px solid #006994">너클볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
-                <button class="chip" onclick="selPitcherPt(this,'팜볼')" style="border-left:3px solid #888888">팜볼</button>
+            <div class="pt-result-chips" style="margin-bottom:6px">
+              <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
+              <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
+              <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
+              <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+              <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+            </div>
+          </div>
+
+          <!-- [모바일] 구종·코스 토글 -->
+          <button class="mobile-pitch-collapse-toggle" id="mobile-pitch-collapse-toggle" onclick="var c=document.getElementById('mobile-pitch-collapse');c.classList.toggle('open');document.getElementById('mobile-pitch-collapse-toggle').textContent=c.classList.contains('open')?'▲ 구종·코스 접기':'＋ 구종·코스 입력'">＋ 구종·코스 입력</button>
+
+          <!-- 구종·코스 영역 (모바일: 기본 접힘 / 데스크톱: 항상 표시) -->
+          <div id="mobile-pitch-collapse" class="mobile-pitch-collapse">
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+              <!-- 왼쪽: 코스 캔버스 -->
+              <div style="flex-shrink:0">
+                <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-align:center">코스 (자유클릭)</div>
+                <canvas id="pitcherZoneCanvas" width="96" height="96" style="cursor:crosshair;border-radius:4px;display:block"></canvas>
+                <div style="font-size:8px;color:var(--text3);text-align:center;margin-top:2px" id="pitcherZoneLabel">—</div>
               </div>
-              <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px">볼카운트</div>
-              <div class="pt-result-chips" style="margin-bottom:5px">
-                <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
-                <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
-                <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
-                <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
-                <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
-                <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
-              </div>
-              <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">안타</div>
-              <div class="pt-result-chips" style="margin-bottom:5px">
-                <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
-                <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
-                <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
-                <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
-              </div>
-              <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">기타</div>
-              <div class="pt-result-chips">
-                <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
-                <button class="ptr-btn" onclick="recordPitch('삼중살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">삼중살</button>
+              <!-- 오른쪽: 구종 + 결과 -->
+              <div style="flex:1;min-width:0">
+                <div style="font-size:9px;color:var(--text3);margin-bottom:4px">구종</div>
+                <!-- [모바일] 5개 그룹 버튼 -->
+                <div class="mobile-pitch-group-btns">
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'직구');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">직구계<small>직구·싱커·커터</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'슬라이더');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">슬라이더<small>SL·스위퍼·슬러브</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'커브');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">커브<small>CB·너클·슬로우</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'체인지업');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">체인지업<small>CH·포크·스플리터</small></button>
+                  <button class="mobile-pitch-grp" onclick="selPitcherPt(this,'너클볼');document.querySelectorAll('.mobile-pitch-grp').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">기타<small>너클·이퓨스·팜</small></button>
+                </div>
+                <!-- 기존 구종 칩 (데스크톱만 표시) -->
+                <div class="pitch-type-chips" id="pitcherPtChips">
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%">패스트볼</div>
+                  <button class="chip" onclick="selPitcherPt(this,'직구')" style="border-left:3px solid #e53935">직구</button>
+                  <button class="chip" onclick="selPitcherPt(this,'싱커')" style="border-left:3px solid #ff7043">싱커</button>
+                  <button class="chip" onclick="selPitcherPt(this,'커터')" style="border-left:3px solid #795548">커터</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">오프스피드</div>
+                  <button class="chip" onclick="selPitcherPt(this,'체인지업')" style="border-left:3px solid #43a047">체인지업</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스플리터')" style="border-left:3px solid #2e7d32">스플리터</button>
+                  <button class="chip" onclick="selPitcherPt(this,'포크볼')" style="border-left:3px solid #aeea00">포크볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스크류볼')" style="border-left:3px solid #7cb9a8">스크류볼</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">브레이킹볼</div>
+                  <button class="chip" onclick="selPitcherPt(this,'커브')" style="border-left:3px solid #29b6f6">커브</button>
+                  <button class="chip" onclick="selPitcherPt(this,'너클커브')" style="border-left:3px solid #7b1fa2">너클커브</button>
+                  <button class="chip" onclick="selPitcherPt(this,'슬로우커브')" style="border-left:3px solid #1565c0">슬로우커브</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">슬라이더</div>
+                  <button class="chip" onclick="selPitcherPt(this,'슬라이더')" style="border-left:3px solid #fdd835">슬라이더</button>
+                  <button class="chip" onclick="selPitcherPt(this,'스위퍼')" style="border-left:3px solid #ffc400">스위퍼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'슬러브')" style="border-left:3px solid #4e6b8c">슬러브</button>
+                  <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:1px 0;width:100%;margin-top:3px">기타</div>
+                  <button class="chip" onclick="selPitcherPt(this,'너클볼')" style="border-left:3px solid #006994">너클볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'이퓨스볼')" style="border-left:3px solid #555555">이퓨스볼</button>
+                  <button class="chip" onclick="selPitcherPt(this,'팜볼')" style="border-left:3px solid #888888">팜볼</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px">볼카운트</div>
+                <div class="pt-result-chips" style="margin-bottom:5px">
+                  <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
+                  <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
+                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
+                  <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
+                  <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
+                  <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">안타</div>
+                <div class="pt-result-chips" style="margin-bottom:5px">
+                  <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
+                  <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
+                  <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
+                  <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+                </div>
+                <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">기타</div>
+                <div class="pt-result-chips">
+                  <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+                  <button class="ptr-btn" onclick="recordPitch('삼중살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">삼중살</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1305,6 +2049,10 @@
           <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 투구 로그</div>
           <div class="pitch-log" id="pitchLog">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>
+          </div>
+          <!-- 현재 타자 연결 표시 -->
+          <div id="linkBadgeStatus" class="link-badge-status" style="display:none">
+            현재 타자: <strong id="linkBadgeBatterName"></strong> · <span id="linkBadgePitchCount"></span>구째
           </div>
         </div>
 
@@ -1373,6 +2121,7 @@
     <div class="modal-title">타구 결과 입력</div>
     <div class="modal-sub" id="hitSub">방향 정보 로딩 중...</div>
     <div class="rbi-row"><span class="rbi-lbl">타점</span><button class="rbi-btn" onclick="chRbi(-1)">−</button><span class="rbi-val" id="rbiVal">0</span><button class="rbi-btn" onclick="chRbi(1)">+</button></div>
+    <div class="ev-row"><span class="rbi-lbl">EV</span><input type="number" id="evInput" class="ev-inp" min="0" max="250" step="1" placeholder="—" inputmode="decimal"><button class="ev-unit-btn" id="evUnitBtn" onclick="toggleEvUnit()">km/h</button><span class="rbi-lbl" style="margin-left:4px">LA</span><input type="number" id="laInput" class="ev-inp" min="-90" max="90" step="1" placeholder="발사각" inputmode="decimal"><span class="ev-unit-btn" style="cursor:default;pointer-events:none">°</span></div>
     <div class="hit-grid">
       <button class="hit-btn hb-hit" onclick="recHit('안타')">🟢 안타</button>
       <button class="hit-btn hb-2b" onclick="recHit('2루타')">🔵 2루타</button>
@@ -1516,8 +2265,8 @@
   </div>
 </div>
 
-<!-- ⚡ MOBILE FAB -->
-<button class="fab" id="qrFab" onclick="openQR()" title="빠른 기록">⚡</button>
+<!-- 모바일 투구입력 왼쪽 고정 탭 -->
+<button id="mobileInputTab" onclick="toggleInputBar();this.classList.toggle('open')" style="display:none">⚾<span>투구입력</span></button>
 
 <!-- 빠른 기록 오버레이 -->
 <div class="qr-ov" id="qrOv">
@@ -1565,6 +2314,7 @@
     <div class="share-qr-wrap" id="shareQRWrap"></div>
     <div class="share-qr-url" id="shareQRUrl"></div>
     <button class="share-qr-copy" onclick="copyShareURL()">링크 복사</button>
+    <button class="share-kakao-btn" id="kakaoShareBtn" onclick="kakaoShareGame()">💛 카카오로 공유</button>
     <button class="share-qr-close" onclick="closeShareQR()">닫기</button>
   </div>
 </div>
@@ -1575,6 +2325,7 @@
     <div class="card-preview-tabs">
       <button class="cpt-btn on" id="cptPersonal" onclick="switchCardType('personal',this)">개인 카드 (9:16)</button>
       <button class="cpt-btn" id="cptTeam" onclick="switchCardType('team',this)">팀 카드 (1:1)</button>
+      <button class="cpt-btn" id="cptSeason" onclick="switchCardType('season',this)">시즌 카드</button>
     </div>
     <canvas class="card-preview-canvas" id="cardPreviewCanvas"></canvas>
     <button class="card-dl-btn" onclick="downloadPreviewCard()">PNG 저장</button>
@@ -1592,6 +2343,13 @@
   <span id="toastTxt"></span>
   <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 실행취소</button>
 </div>
+<div id="cloudUpsellToast" onclick="if(window.openLoginModal)openLoginModal()" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:8000;background:#1e2a40;border:1px solid #3a5080;border-radius:12px;padding:11px 16px;font-size:12px;font-weight:600;color:#a0c4ff;cursor:pointer;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:calc(100vw - 32px);text-align:center;line-height:1.5">
+  저장 완료 · 클라우드 동기화로 다른 기기에서도 이어보기 →
+</div>
+<style>
+#cloudUpsellToast{opacity:0}
+#cloudUpsellToast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+</style>
 
 <!-- ═══════════════════════════════════════ -->
 <!-- SAVANT VIEWS -->
@@ -1610,9 +2368,21 @@
   <div class="filter-group">
     <span class="filter-label">구종</span>
     <button class="filter-chip" data-group="pitch" data-value="직구">직구</button>
-    <button class="filter-chip" data-group="pitch" data-value="슬라이더">SL</button>
-    <button class="filter-chip" data-group="pitch" data-value="커브">CV</button>
-    <button class="filter-chip" data-group="pitch" data-value="체인지업">CH</button>
+    <button class="filter-chip" data-group="pitch" data-value="싱커">싱커</button>
+    <button class="filter-chip" data-group="pitch" data-value="커터">커터</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬라이더">슬라이더</button>
+    <button class="filter-chip" data-group="pitch" data-value="스위퍼">스위퍼</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬러브">슬러브</button>
+    <button class="filter-chip" data-group="pitch" data-value="커브">커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="너클커브">너클커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="슬로우커브">슬로우커브</button>
+    <button class="filter-chip" data-group="pitch" data-value="체인지업">체인지업</button>
+    <button class="filter-chip" data-group="pitch" data-value="포크볼">포크볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="스플리터">스플리터</button>
+    <button class="filter-chip" data-group="pitch" data-value="스크류볼">스크류볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="너클볼">너클볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="이퓨스볼">이퓨스볼</button>
+    <button class="filter-chip" data-group="pitch" data-value="팜볼">팜볼</button>
   </div>
 </div>
 
@@ -1647,6 +2417,10 @@
 
 <!-- Scout View -->
 <div id="scoutView" class="savant-view">
+  <div id="scoutInfoBanner" class="mobile-info-banner">
+    <div class="mobile-info-banner-text">🔍 <strong>분석</strong> — 약점 패턴·카운트 히트맵·누적 트렌드를 분석합니다</div>
+    <button class="mobile-info-banner-close" onclick="closeScoutInfoBanner()" aria-label="닫기">✕</button>
+  </div>
   <div class="savant-view-header">
     <div class="svh-title">스카우팅 리포트</div>
     <div class="svh-sub">상대 타자 분석 · 투구 전략</div>
@@ -1669,8 +2443,8 @@
 <!-- FIELD: Feedback Button & Modal -->
 <button id="fieldFeedbackBtn" onclick="fieldFeedbackOpen()">💬 피드백</button>
 
-<div id="fieldFeedbackModal">
-  <div class="ffm-sheet">
+<div id="fieldFeedbackModal" onclick="fieldFeedbackClose()">
+  <div class="ffm-sheet" onclick="event.stopPropagation()">
     <div class="ffm-title">💬 현장 피드백</div>
     <div class="ffm-tags" id="ffmTags">
       <button class="ffm-tag" data-v="bug" onclick="ffmToggle(this)">🐛 오류</button>
@@ -1729,42 +2503,558 @@
     비교
   </button>
   <button class="savant-nav-btn" data-view="scout" onclick="switchSavantView('scout',this)"
-    data-help-title="🔍 스카우트 탭" data-help="상대 타자의 <b>약점을 분석하고 투구 전략을 제안</b>합니다.<br>존별 타율 히트맵 · 카운트별 성적 · 방향 분포 · 최근 타석 기록을 종합해 리포트를 생성합니다.">
+    data-help-title="🔍 분석 탭" data-help="상대 타자의 <b>약점을 분석하고 투구 전략을 제안</b>합니다.<br>존별 타율 히트맵 · 카운트별 성적 · 방향 분포 · 최근 타석 기록을 종합해 리포트를 생성합니다.">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2l4 4-9 9-4 1 1-4z"/><path d="M12 6l4 4"/></svg>
-    스카우트
+    분석
   </button>
 </nav>
 
-<script defer src="js/core.js?v=24"></script>
-<script type="module" src="js/app.js?v=10"></script>
-<style>
-@media(max-width:720px){
-  #app-page.ch .tab-mode-bar{display:none!important}
-  #app-page.ch .pnl-right>.tabs{display:none!important}
-}
-</style>
 <script>
-(function(){
-  var ap=document.getElementById('app-page');
-  var pr=document.querySelector('.pnl-right');
-  if(!ap||!pr)return;
-  var sy=0;
-  pr.addEventListener('touchstart',function(e){
-    sy=e.touches[0].clientY;
-  },{passive:true});
-  pr.addEventListener('touchmove',function(e){
-    if(window.innerWidth>720)return;
-    var dy=sy-e.touches[0].clientY;
-    if(dy>40)ap.classList.add('ch');
-    else if(dy<-40)ap.classList.remove('ch');
-  },{passive:true});
-  // 탭 내용 스크롤로도 감지
-  setInterval(function(){
-    if(window.innerWidth>720){ap.classList.remove('ch');return;}
-    var scrolled=false;
-    document.querySelectorAll('.tab-pnl').forEach(function(p){if(p.scrollTop>30)scrolled=true;});
-    if(scrolled)ap.classList.add('ch');
-  },150);
+// 왼쪽 패널 너비 조절
+var _mobPanelWidths = [55, 80, 110, 150];
+function _getMobPanelW() {
+  return parseInt(localStorage.getItem('sl_lp_w_mob')) || 90;
+}
+function _setMobPanelW(w) {
+  var al = document.querySelector('.app-layout');
+  if (al) al.style.setProperty('--lp-w', w + 'px');
+  try { localStorage.setItem('sl_lp_w_mob', w); } catch(e) {}
+}
+function mobPanelNarrow() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.slice().reverse().find(function(w){ return w < cur; });
+  if (!next) next = _mobPanelWidths[0];
+  _setMobPanelW(next);
+}
+function mobPanelWide() {
+  var cur = _getMobPanelW();
+  var next = _mobPanelWidths.find(function(w){ return w > cur; });
+  if (!next) next = _mobPanelWidths[_mobPanelWidths.length - 1];
+  _setMobPanelW(next);
+}
+// 저장값 복원
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.innerWidth <= 720) {
+    var saved = parseInt(localStorage.getItem('sl_lp_w_mob'));
+    if (saved >= 55 && saved <= 150) _setMobPanelW(saved);
+  }
+});
+
+// 모바일 투구입력 바텀시트
+function _renderMobPitchLog() {
+  var pitches = window.AS && window.AS.currentPitches;
+  var logWrap = document.getElementById('mobPitchLog');
+  var logList = document.getElementById('mobPitchLogList');
+  if (!logWrap || !logList) return;
+  if (!pitches || !pitches.length) { logWrap.style.display = 'none'; return; }
+  logWrap.style.display = 'block';
+  // 헤더: 현재 투수명
+  var pitcher = window.AS && window.AS.currentPitcher ? window.AS.currentPitcher.name : '';
+  var hdrEl = logWrap.querySelector('.mob-pitch-log-hdr');
+  if (hdrEl) hdrEl.textContent = pitcher ? ('이번 타석 (' + pitcher + ' 상대)') : '이번 타석 투구 기록';
+  logList.innerHTML = pitches.map(function(p, i) {
+    var countStr = p.balls !== undefined ? (p.balls + 'B ' + p.strikes + 'S ' + p.outs + 'O') : '';
+    var zoneStr = p.zone || '';
+    return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #1e1e2a">'
+      + '<span style="font-size:10px;font-weight:800;color:#434c5e;min-width:18px">' + (i+1) + '구</span>'
+      + '<span style="font-size:12px;font-weight:800;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px;flex-shrink:0">' + p.pt + '</span>'
+      + '<span style="font-size:10px;color:#8892a4;flex:1">' + zoneStr + '</span>'
+      + (countStr ? '<span style="font-size:9px;color:#434c5e;font-family:monospace">' + countStr + '</span>' : '')
+      + (p.ts ? '<span style="font-size:9px;color:#434c5e">' + p.ts + '</span>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function mobPitchSheetOpen() {
+  var m = document.getElementById('mobPitchModal');
+  if (!m) return;
+  m.style.display = 'flex';
+  _renderMobPitchLog();
+  // 현재 선택된 구종 표시
+  var cur = window.AS && window.AS.pt;
+  document.querySelectorAll('#mobPtChips .mob-pt-chip').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pt === cur);
+  });
+  // 존 캔버스 초기화
+  setTimeout(function(){
+    var c = document.getElementById('mobZoneCanvas');
+    if (c && typeof _drawZoneCanvas === 'function') {
+      var dots = (window.AS && window.AS.currentPitches || []).filter(function(p){return p.x!=null;}).map(function(p){return {cx:p.x,cy:p.y,result:p.pt};});
+      _drawZoneCanvas(c, dots, true);
+      if (!c._mobZoneInited) {
+        c._mobZoneInited = true;
+        c.addEventListener('click', function(e){
+          if (typeof _zoneCanvasClick !== 'function') return;
+          _zoneCanvasClick(e, c, function(cx, cy){
+            var zone = typeof _getZoneFromPos === 'function' ? _getZoneFromPos(cx, cy) : (cx.toFixed(2)+','+cy.toFixed(2));
+            if (window.AS) { window.AS.zone = zone; window.AS.zoneX = cx; window.AS.zoneY = cy; }
+            var lbl = document.getElementById('mobZoneLbl');
+            if (typeof ibZoneRedraw === 'function') ibZoneRedraw();
+            // 구종이 선택된 상태에서 존을 탭하면 투구 자동 기록
+            if (window.AS && window.AS.pt) {
+              logPitchAction();
+              if (lbl) lbl.textContent = window.AS.currentPitches.length + '구 기록됨 · 다음 구종 선택';
+            } else {
+              if (lbl) lbl.textContent = '선택: ' + zone + ' (구종 먼저 선택하세요)';
+            }
+            // 존 캔버스에 누적 투구 표시
+            var dots = (window.AS && window.AS.currentPitches || []).filter(function(p){return p.x!=null;}).map(function(p){return {cx:p.x,cy:p.y,result:p.pt};});
+            _drawZoneCanvas(c, dots, true);
+            _updateCurPitchBadge();
+          });
+        });
+      }
+    }
+  }, 50);
+}
+function mobPitchSheetClose() {
+  var m = document.getElementById('mobPitchModal');
+  if (m) m.style.display = 'none';
+}
+function mobSelPt2(btn, pt) {
+  var prev = window.AS && window.AS.pt;
+  if (window.AS) window.AS.pt = (prev === pt) ? null : pt;
+  var newPt = window.AS && window.AS.pt;
+  document.querySelectorAll('#mobPtChips .mob-pt-chip').forEach(function(b){
+    b.classList.toggle('on', b.dataset.pt === newPt);
+  });
+  // 데스크톱 ptGroup 동기화
+  document.querySelectorAll('#ptGroup .chip').forEach(function(c){
+    var match = c.getAttribute('onclick') && c.getAttribute('onclick').indexOf("'"+pt+"'") !== -1;
+    c.classList.toggle('on', !!match && !!newPt);
+  });
+  // 왼쪽 패널 선택 표시
+  var disp = document.getElementById('mobPtSelected');
+  if (disp) disp.textContent = newPt || '';
+  // 필드 상단 구종 뱃지 업데이트
+  _updateCurPitchBadge();
+}
+
+function _updateCurPitchBadge() {
+  var badge = document.getElementById('curPitchBadge');
+  var nameEl = document.getElementById('curPitchName');
+  var zoneEl = document.getElementById('curPitchZone');
+  if (!badge) return;
+  var pt = window.AS && window.AS.pt;
+  var zone = window.AS && window.AS.zone;
+  if (pt) {
+    nameEl.textContent = pt;
+    zoneEl.textContent = zone ? ('존 ' + zone) : '';
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// 모바일 더보기 바텀시트
+function mabMoreOpen() {
+  var m = document.getElementById('mabMoreModal');
+  if (!m) return;
+  m.style.display = 'flex';
+}
+function mabMoreClose() {
+  var m = document.getElementById('mabMoreModal');
+  if (m) m.style.display = 'none';
+}
+
+// FAB 자유 드래그 — #fabWrap, #qrFab 공통 적용
+function _makeDraggable(el, ignoreSelector) {
+  if (!el) return;
+  var startX, startY, startL, startT, moved;
+  el.style.touchAction = 'none';
+
+  function onStart(cx, cy, pid) {
+    var r = el.getBoundingClientRect();
+    // right/bottom → left/top 으로 변환
+    el.style.left   = r.left + 'px';
+    el.style.top    = r.top  + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+    startX = cx; startY = cy;
+    startL = r.left; startT = r.top;
+    moved  = false;
+    if (pid != null) { try { el.setPointerCapture(pid); } catch(e){} }
+  }
+
+  function onMove(cx, cy) {
+    var dx = cx - startX, dy = cy - startY;
+    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    moved = true;
+    var W = el.offsetWidth  || 60;
+    var H = el.offsetHeight || 60;
+    var x = Math.max(0, Math.min(window.innerWidth  - W, startL + dx));
+    var y = Math.max(0, Math.min(window.innerHeight - H, startT + dy));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+  }
+
+  el.addEventListener('pointerdown', function(e) {
+    if (ignoreSelector && e.target.closest(ignoreSelector)) return;
+    e.preventDefault();
+    onStart(e.clientX, e.clientY, e.pointerId);
+    el.addEventListener('pointermove', onPM);
+    el.addEventListener('pointerup',   onPU);
+    el.addEventListener('pointercancel', onPU);
+  }, {passive: false});
+
+  function onPM(e) { onMove(e.clientX, e.clientY); }
+  function onPU(e) {
+    el.removeEventListener('pointermove', onPM);
+    el.removeEventListener('pointerup',   onPU);
+    el.removeEventListener('pointercancel', onPU);
+    // 드래그 아니면 click 이벤트 직접 발생 (팝업 열기)
+    if (!moved) el.click();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
+  _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
+
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 저장된 구장으로 버튼 초기 상태 적용
+  var _savedSt = localStorage.getItem('sl_stadium') || 'standard';
+  document.querySelectorAll('.sl-st-btn').forEach(function(b) {
+    b.classList.toggle('sl-st-on', b.dataset.st === _savedSt);
+  });
+});
+/* ── 첫 탭 오버레이 제어 ── */
+function initFieldTapHint(){
+  var hint=document.getElementById('fieldTapHint');
+  if(!hint)return;
+  if(localStorage.getItem('sl_field_tapped')){hint.classList.add('hidden');return;}
+  hint.classList.remove('hidden');
+  var cwrap=document.getElementById('cwrap');
+  if(cwrap){
+    cwrap.addEventListener('pointerdown',function _onTap(){
+      hint.classList.add('hidden');
+      localStorage.setItem('sl_field_tapped','1');
+      cwrap.removeEventListener('pointerdown',_onTap);
+    },{once:true});
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  // 경기 시작 후 필드 오버레이 초기화
+  var _origStart=window.startFromWizard;
+  if(typeof _origStart==='function'){
+    window.startFromWizard=function(){
+      _origStart.apply(this,arguments);
+      setTimeout(initFieldTapHint,300);
+    };
+  }
+});
+/* ── EV unit toggle ── */
+function toggleEvUnit() {
+  var cur = localStorage.getItem('sl_ev_unit') || 'kmh';
+  var next = cur === 'mph' ? 'kmh' : 'mph';
+  localStorage.setItem('sl_ev_unit', next);
+  var btn = document.getElementById('evUnitBtn');
+  if (btn) btn.textContent = next === 'mph' ? 'mph' : 'km/h';
+}
+/* ── Kakao share ── */
+function kakaoShareGame() {
+  try {
+    var home = (document.getElementById('tHome') || {}).value || '홈팀';
+    var away = (document.getElementById('tAway') || {}).value || '원정팀';
+    var today = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\. /g,'.').replace(/\.$/,'');
+
+    var descParts = [home + ' vs ' + away, today];
+    try {
+      var abs = (window.AS && AS.abs) ? AS.abs : [];
+      var hits = ['안타','내야안타','2루타','3루타','홈런'];
+      var abRes = ['안타','내야안타','2루타','3루타','홈런','삼진','플라이 아웃','땅볼 아웃','희타','병살'];
+      var h = abs.filter(function(a){ return hits.indexOf(a.res) > -1; }).length;
+      var ab = abs.filter(function(a){ return abRes.indexOf(a.res) > -1; }).length;
+      if (ab > 0) {
+        var avg = (h / ab).toFixed(3).replace(/^0/,'');
+        descParts.push('팀 타율 ' + avg + ' (' + h + '안타 / ' + ab + '타수)');
+      }
+      var pa = abs.length;
+      if (pa > 0) descParts.push('총 ' + pa + '타석');
+    } catch(e2) {}
+
+    var title = 'SprayLab ⚾ ' + home + ' vs ' + away;
+    var desc = descParts.join(' · ');
+    var url = (document.getElementById('shareQRUrl') || {}).textContent || '';
+    url = url.trim();
+    if (url.length < 10) url = 'https://kimjeongcheol13.github.io/baseball-spray-chart/';
+
+    /* 모바일 + SDK 정상 로드 → Kakao Share 팝업 */
+    var isMobile = ('ontouchstart' in window) || /Mobi|Android/i.test(navigator.userAgent);
+    if (isMobile && _kakaoSdkLoaded && window.Kakao && Kakao.isInitialized()) {
+      Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: title,
+          description: desc,
+          imageUrl: 'https://kimjeongcheol13.github.io/baseball-spray-chart/icon.svg',
+          link: { mobileWebUrl: url, webUrl: url }
+        },
+        buttons: [{ title: 'SprayLab에서 보기', link: { mobileWebUrl: url, webUrl: url } }]
+      });
+      return;
+    }
+
+    /* 데스크톱 or SDK 없음 → 클립보드 복사 + 안내 토스트 */
+    navigator.clipboard.writeText(url).then(function() {
+      _showKakaoToast('링크가 복사되었습니다!\n카카오톡에 붙여넣기(Ctrl+V)해서 공유하세요 💛');
+    }).catch(function() {
+      /* clipboard API 실패 시 prompt fallback */
+      window.prompt('아래 링크를 복사해서 카카오톡에 공유하세요 💛', url);
+    });
+  } catch(e) {}
+}
+function _showKakaoToast(msg) {
+  var t = document.getElementById('_kakaoToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_kakaoToast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#191919;color:#FEE500;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:99999;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+}
+/* ── Scout info banner ── */
+function closeScoutInfoBanner() {
+  var el = document.getElementById('scoutInfoBanner');
+  if (el) el.style.display = 'none';
+  localStorage.setItem('sl_scout_info_closed', '1');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  if (localStorage.getItem('sl_scout_info_closed') === '1') {
+    var el = document.getElementById('scoutInfoBanner');
+    if (el) el.style.display = 'none';
+  }
+  /* EV unit restore */
+  var evUnit = localStorage.getItem('sl_ev_unit') || 'kmh';
+  var evBtn = document.getElementById('evUnitBtn');
+  if (evBtn) evBtn.textContent = evUnit === 'mph' ? 'mph' : 'km/h';
+
+});
+</script>
+<script defer src="js/core.js?v=77"></script>
+<script defer src="js/ocr.js?v=19"></script>
+<script type="module" src="js/app.js?v=10"></script>
+<script>
+/* ── Service Worker registration ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+
+  // 새 SW가 활성화되면 페이지를 깨끗하게 새로고침
+  // (skipWaiting으로 인한 리소스 불일치 방지)
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    window.location.reload();
+  });
+
+  // SW로부터 활성화 알림을 받으면 새로고침
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'SW_ACTIVATED') {
+      window.location.reload();
+    }
+  });
+}
+
+/* ── 앱 복귀 시 안정성 보장 ── */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    // SW 컨트롤러가 없으면(SW 교체 중 잠깐 발생 가능) 새로고침
+    if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+      window.location.reload();
+    }
+  }
+});
+
+/* ── Network status badge ── */
+(function () {
+  var badge = document.getElementById('netBadge');
+  var _timer = null;
+
+  function setOffline() {
+    if (!badge) return;
+    if (_timer) { clearTimeout(_timer); _timer = null; }
+    badge.textContent = '오프라인';
+    badge.className = 'net-badge offline';
+  }
+
+  function setOnline() {
+    if (!badge) return;
+    if (_timer) clearTimeout(_timer);
+    badge.textContent = '온라인';
+    badge.className = 'net-badge online';
+    // animation is 3s; remove class after so it resets for next trigger
+    _timer = setTimeout(function () {
+      badge.className = 'net-badge';
+      _timer = null;
+    }, 3100);
+  }
+
+  window.addEventListener('online',  setOnline);
+  window.addEventListener('offline', setOffline);
+
+  // Initial state check
+  if (!navigator.onLine) setOffline();
+})();
+</script>
+
+<!-- ████ Scout 탭 첫 방문 인트로 모달 ████ -->
+<div id="scoutIntroBackdrop" class="scout-intro-backdrop" onclick="dismissScoutIntro()"></div>
+<div id="scoutIntroSheet" class="scout-intro-sheet" role="dialog" aria-modal="true" aria-label="스카우트 탭 안내">
+  <div class="scout-intro-handle"></div>
+  <div class="scout-intro-title">🔍 스카우트 탭</div>
+  <div class="scout-intro-sub">상대 타자 경향을 분석하고 투구 전략을 세우세요</div>
+  <div class="scout-intro-rows">
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">🗺️</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">존별 타율 히트맵</div>
+        <div class="scout-intro-row-desc">9분할 스트라이크존의 코스별 타율을 색으로 한눈에 확인</div>
+      </div>
+    </div>
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">📊</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">구종 기록 · 결과 분포</div>
+        <div class="scout-intro-row-desc">직구·변화구 종류별 타격 결과를 집계해 약점을 파악</div>
+      </div>
+    </div>
+    <div class="scout-intro-row">
+      <div class="scout-intro-icon">💡</div>
+      <div class="scout-intro-row-body">
+        <div class="scout-intro-row-label">투구 전략 자동 제안</div>
+        <div class="scout-intro-row-desc">데이터 기반 공략 포인트와 텍스트 리포트를 자동 생성</div>
+      </div>
+    </div>
+  </div>
+  <div class="scout-intro-flow">
+    <div class="scout-intro-flow-step">선수 선택</div>
+    <div class="scout-intro-flow-arrow">→</div>
+    <div class="scout-intro-flow-step">투구 기록</div>
+    <div class="scout-intro-flow-arrow">→</div>
+    <div class="scout-intro-flow-step">차트 확인</div>
+  </div>
+  <button class="scout-intro-confirm" onclick="dismissScoutIntro()">확인</button>
+</div>
+
+<script>
+/* ── Scout intro modal show/hide ── */
+function showScoutIntro() {
+  document.getElementById('scoutIntroBackdrop').classList.add('active');
+  // rAF lets the browser paint translateY(100%) first so transition fires
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      document.getElementById('scoutIntroSheet').classList.add('active');
+    });
+  });
+}
+function dismissScoutIntro() {
+  localStorage.setItem('sl_scout_intro_seen', '1');
+  document.getElementById('scoutIntroBackdrop').classList.remove('active');
+  document.getElementById('scoutIntroSheet').classList.remove('active');
+}
+
+/* ── Hook into switchSavantView ── */
+document.addEventListener('DOMContentLoaded', function () {
+  var _origSwitch = window.switchSavantView;
+  if (typeof _origSwitch === 'function') {
+    window.switchSavantView = function (view, btn) {
+      _origSwitch.apply(this, arguments);
+      if (view === 'scout' && localStorage.getItem('sl_scout_intro_seen') !== '1') {
+        showScoutIntro();
+      }
+    };
+  }
+});
+
+/* ── Link-badge: cross-tab pitch/batter indicators ── */
+(function () {
+  function updateLinkBadges() {
+    var pitches = window.AS && Array.isArray(window.AS.currentPitches)
+      ? window.AS.currentPitches : [];
+    var n = pitches.length;
+
+    // Batter name: prefer bsName content when analysis panel is shown
+    var batterName = '';
+    var bsNameEl = document.getElementById('bsName');
+    var analysisContent = document.getElementById('batter-analysis-content');
+    if (bsNameEl && analysisContent && analysisContent.style.display !== 'none') {
+      var t = bsNameEl.textContent.trim();
+      if (t && t !== '—') batterName = t;
+    }
+    // Fallback: rpnLabel when a specific player is filtered
+    if (!batterName) {
+      var rpn = document.getElementById('rpnLabel');
+      if (rpn) {
+        var rt = rpn.textContent.trim();
+        if (rt && rt !== '전체') batterName = rt;
+      }
+    }
+
+    // ① 투수 탭 status line
+    var statusEl = document.getElementById('linkBadgeStatus');
+    var nameEl   = document.getElementById('linkBadgeBatterName');
+    var cntEl    = document.getElementById('linkBadgePitchCount');
+    if (statusEl && nameEl && cntEl) {
+      if (batterName) {
+        nameEl.textContent = batterName;
+        cntEl.textContent  = n;
+        statusEl.style.display = 'block';
+      } else {
+        statusEl.style.display = 'none';
+      }
+    }
+
+    // ② 타자 탭 pill badge
+    var pillEl  = document.getElementById('linkBadgePill');
+    var pillCnt = document.getElementById('linkBadgePillCount');
+    if (pillEl && pillCnt) {
+      if (n > 0) {
+        pillCnt.textContent = n;
+        pillEl.style.display = 'inline-flex';
+      } else {
+        pillEl.style.display = 'none';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Wrap recordPitch (defined in external JS)
+    var _origRecordPitch = window.recordPitch;
+    if (typeof _origRecordPitch === 'function') {
+      window.recordPitch = function () {
+        _origRecordPitch.apply(this, arguments);
+        updateLinkBadges();
+      };
+    }
+
+    // Wrap swTab to refresh on tab switch
+    var _origSwTab = window.swTab;
+    if (typeof _origSwTab === 'function') {
+      window.swTab = function (tab, el) {
+        _origSwTab.apply(this, arguments);
+        updateLinkBadges();
+      };
+    }
+
+    // Watch bsName for batter changes via MutationObserver
+    var bsNameEl = document.getElementById('bsName');
+    if (bsNameEl && window.MutationObserver) {
+      new MutationObserver(updateLinkBadges).observe(bsNameEl, { childList: true, characterData: true, subtree: true });
+    }
+
+    // Watch pitchLog for any pitch DOM changes (belt-and-suspenders)
+    var pitchLogEl = document.getElementById('pitchLog');
+    if (pitchLogEl && window.MutationObserver) {
+      new MutationObserver(updateLinkBadges).observe(pitchLogEl, { childList: true, subtree: true });
+    }
+
+    updateLinkBadges();
+  });
 })();
 </script>
 </body>

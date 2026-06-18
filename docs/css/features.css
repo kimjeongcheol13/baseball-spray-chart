@@ -8,33 +8,37 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 100;
-  display: none;
-  height: 48px;
+  z-index: 400 !important;
+  display: none;   /* showApp()에서 inline flex로 켬 */
+  height: 44px;
   background: rgba(14,16,24,0.95);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border2);
   padding: 0 4px;
   justify-content: space-around;
   align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-/* Show nav when app-page is visible (landing hidden) */
-.savant-nav { display: none; }
+.savant-nav::-webkit-scrollbar { display: none; }
 
 .savant-nav-btn {
+  flex: 1 0 auto;
+  min-width: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
+  gap: 0;
+  padding: 6px 4px;
   background: none;
   border: none;
   color: var(--text3);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--font);
   cursor: pointer;
   transition: color 0.15s;
+  white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 .savant-nav-btn svg { transition: stroke 0.15s; }
@@ -49,11 +53,30 @@
 .savant-view {
   display: none;
   flex-direction: column;
-  min-height: calc(100vh - 48px);
   background: var(--bg);
   padding: 16px 16px 72px;
 }
-.savant-view.active { display: flex; }
+.savant-view.active {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  bottom: 54px;       /* 모바일: savantNav 높이(54px) */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 390;       /* appWelcome(400) 아래, 일반 UI 위 */
+}
+/* 모바일: 하단 nav 높이만큼 여백 */
+@media(max-width:720px){
+  .savant-view.active { inset: 0 0 54px 0; }
+}
+/* 데스크톱: nav가 오른쪽 세로 사이드바이므로 bottom:0, right:54px */
+@media(min-width:721px){
+  .savant-view.active {
+    left: 0 !important;
+    right: 54px !important;
+    bottom: 0 !important;
+  }
+}
 
 .savant-view-header {
   text-align: center;
@@ -122,14 +145,19 @@
 
 /* ── Profile View ── */
 .profile-player-list {
+  width: 100%;
+  min-height: auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 0 12px;
-  overflow-x: auto;
+  height: auto;
+  overflow: visible;
+  gap: 8px;
+  padding: 8px 16px;
 }
 .profile-player-btn {
-  padding: 6px 14px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 8px 14px;
   border-radius: 20px;
   border: 1px solid var(--border2);
   background: var(--card);
@@ -139,13 +167,16 @@
   font-family: var(--font);
   cursor: pointer;
   transition: all 0.15s;
-  white-space: nowrap;
 }
-.profile-player-btn:hover,
-.profile-player-btn.active {
+.profile-player-btn:hover {
   border-color: var(--blue);
   color: var(--blue);
   background: rgba(75,140,245,0.08);
+}
+.profile-player-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
 }
 
 .profile-content { padding: 0; }
@@ -494,6 +525,19 @@
   .career-card .cc-val { font-size: 24px; }
 }
 
+/* ── Desktop: nav becomes vertical right sidebar ── */
+@media(min-width:721px){
+  .savant-nav{
+    position:fixed;top:52px;right:0;bottom:0;left:auto;
+    width:54px;max-width:54px;height:auto;
+    transform:none;border-radius:0;border-top:none;
+    border-left:1px solid var(--border2);
+    flex-direction:column;justify-content:flex-start;
+    padding:6px 0;gap:2px;
+    overflow-x:hidden;overflow-y:auto;
+  }
+}
+
 /* ── AI Insight severity colors ── */
 .ai-card.ai-pos { border-left-color: var(--green); }
 .ai-card.ai-warn { border-left-color: var(--yellow); }
@@ -506,6 +550,134 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .savant-view.active { animation: fadeInUp 0.3s ease-out; }
+
+/* ── Finding severity border-left ── */
+.finding-high { border-left: 3px solid #f56565; }
+.finding-med  { border-left: 3px solid #f6c23e; }
+.finding-low  { border-left: 3px solid #4b8cf5; }
+
+/* ── Scout zone data-attr overrides ── */
+.scout-zone[data-danger] { background: rgba(245,101,101,0.55) !important; color: #fff; }
+.scout-zone[data-weak]   { background: rgba(45,212,160,0.45)  !important; color: #fff; }
+
+/* ── Scout zone grid ── */
+.scout-zone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  max-width: 220px;
+  margin: 0 auto;
+}
+.scout-zone {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.scout-zone .sz-avg    { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.scout-zone .sz-detail { font-size: 9px; opacity: .65; }
+.scout-zone .sz-label  { font-size: 8px; opacity: .6; font-family: var(--font); }
+
+/* ── Scout zone canvas layout ── */
+.scout-zone-canvases {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.szc-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.szc-label { font-size: 9px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
+.szc-wrap canvas { border-radius: 6px; border: 1px solid var(--border); }
+.scout-zone-legend {
+  display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 6px;
+}
+.szl-item {
+  font-size: 9px; color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: 700;
+}
+
+/* ── Scout direction labels ── */
+.scout-dir-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 5px;
+  padding: 0 2px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── Scout count grid ── */
+.scout-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.sc-item {
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.07);
+}
+.sc-label { font-size: 9px; color: var(--text3); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.sc-val   { font-size: 18px; font-weight: 800; font-family: var(--mono); }
+.sc-pa    { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* ── Scout recent abs ── */
+.scout-recent-abs { display: flex; flex-direction: column; gap: 3px; }
+.sra-item {
+  display: flex; gap: 8px; align-items: center;
+  padding: 5px 8px; border-radius: 6px;
+  background: var(--raised); font-size: 11px;
+}
+.sra-res  { font-weight: 700; min-width: 54px; }
+.sra-dir  { color: var(--text3); flex: 1; }
+.sra-inn  { color: var(--text3); font-size: 10px; }
+
+/* ── Compare enhancements ── */
+.compare-better { color: #2dd4a0 !important; font-weight: 800; }
+.compare-worse  { color: #f56565 !important; }
+
+.compare-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.csh-player { flex: 1; text-align: center; }
+.csh-name   { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.csh-stats  { display: flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.csh-stat   { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.csh-sep    { font-size: 9px; color: var(--text3); }
+.csh-vs     { font-size: 11px; font-weight: 900; color: var(--text3); letter-spacing: 1px; flex-shrink: 0; }
+
+.compare-section { margin-top: 12px; }
+.compare-section-title {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.compare-dir-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cdr-name   { font-size: 10px; font-weight: 700; color: var(--text3); margin-bottom: 4px; }
+.cdr-legend { font-size: 9px; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+.compare-trend-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.compare-trend-row canvas { border-radius: 6px; border: 1px solid var(--border); }
 
 /* ═══════════════════════════════════════════
    BASEBALL SAVANT THEME (override layer)
@@ -564,4 +736,87 @@
    prevent sticky tap-hover highlight from lingering */
 @media (hover: none) {
   .profile-player-btn:hover, .scout-export-btn:hover { background: var(--card); }
+}
+
+/* ── 7. Profile player button: name first, number secondary ── */
+.profile-player-btn .ppb-num {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* ── 8. Compare radar legend ── */
+.compare-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.compare-radar-wrap { text-align: center; }
+
+/* ── 9. Scout overview: card layout (value on top, label below) ── */
+.scout-overview {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.so-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--raised);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 4px 6px;
+  gap: 3px;
+}
+.so-val {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+.so-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── 10. Scout heatmap tab switcher ── */
+.scout-heatmap-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.sht-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 7px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sht-btn.active {
+  background: var(--blue-dim, rgba(239,68,68,.12));
+  border-color: var(--blue, #ef4444);
+  color: var(--blue, #ef4444);
 }

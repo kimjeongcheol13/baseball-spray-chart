@@ -602,6 +602,9 @@
   };
 
   /* ── 앱 시작 ─────────────────────────────────────── */
+  // OAuth 리다이렉트 후 URL 해시 토큰을 즉시 감지하기 위해 클라이언트를 바로 생성
+  _client();
+
   document.addEventListener('DOMContentLoaded', function () {
     if (!_online) _setStatus('offline');
     var db = _client();

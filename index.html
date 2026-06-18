@@ -198,6 +198,38 @@ var _kakaoSdkLoaded = false;
 .sl-st-on{border-color:#4b8cf5!important;background:#1a2a48!important}
 .sl-st-on .sl-st-name{color:#7ab0f5!important}
 @media(max-width:720px){.sl-st-btn{padding:5px 8px;min-width:46px}.sl-st-btn .sl-st-emoji{font-size:16px}}
+/* ── App Preview Modal ── */
+#appPreviewModal{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;background:rgba(4,6,12,.85);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s}
+#appPreviewModal.show{opacity:1;pointer-events:auto}
+.apm-card{background:#0d1117;border:1px solid #1e2a3a;border-radius:24px;width:min(440px,calc(100vw - 32px));max-height:calc(100svh - 40px);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.8)}
+.apm-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+.apm-logo{font-size:15px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
+.apm-logo em{color:#4b8cf5;font-style:normal}
+.apm-skip{background:none;border:1px solid #2a2a3a;border-radius:8px;color:#9898b0;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
+.apm-skip:hover{border-color:#4b8cf5;color:#c0c8e0}
+.apm-slides-wrap{overflow:hidden;flex:1;min-height:0;position:relative;margin:16px 0 0}
+.apm-slides{display:flex;transition:transform .4s cubic-bezier(.4,0,.2,1);height:100%}
+.apm-slide{flex:0 0 100%;display:flex;flex-direction:column;align-items:center;padding:0 20px}
+.apm-slide-visual{width:100%;flex:1;min-height:0;border-radius:14px;overflow:hidden;background:#07090f;border:1px solid #1a2030;position:relative}
+.apm-slide-cap{font-size:13px;color:#c0c8e0;text-align:center;margin:12px 0 4px;font-weight:500;line-height:1.4}
+.apm-dots{display:flex;justify-content:center;gap:6px;padding:10px 0}
+.apm-dot{width:7px;height:7px;border-radius:50%;background:#2a2a3a;transition:background .2s,transform .2s;cursor:pointer}
+.apm-dot.on{background:#4b8cf5;transform:scale(1.3)}
+.apm-foot{padding:14px 20px max(18px,env(safe-area-inset-bottom))}
+.apm-cta{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px;transition:opacity .15s}
+.apm-cta:active{opacity:.82}
+/* mock UI inside slides */
+.apm-mock-qb{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+.apm-mock-btn{border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;border:none;font-family:inherit}
+.apm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 14px 0}
+.apm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:10px;padding:11px 8px;text-align:center}
+.apm-stat-val{font-size:22px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.apm-stat-lbl{font-size:10px;color:#6b6b88;margin-top:3px;font-weight:600}
+.apm-stat-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1a1a2a}
+.apm-stat-name{font-size:12px;font-weight:700;color:#c0c8e0;width:56px;flex-shrink:0}
+.apm-stat-bar-wrap{flex:1;height:5px;background:#1e2030;border-radius:3px;overflow:hidden}
+.apm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
+.apm-stat-num{font-size:11px;font-weight:700;color:#9898b0;width:36px;text-align:right;font-family:'JetBrains Mono',monospace}
 </style>
 </head>
 <body>
@@ -227,6 +259,67 @@ var _kakaoSdkLoaded = false;
   <button onclick="document.getElementById('kakao-warn').style.display='none'" style="margin:4px 4px 0;padding:5px 10px;background:none;border:1px solid #888;border-radius:6px;font-size:11px;cursor:pointer">✕ 계속 사용</button>
 </div>
 
+<!-- ████ 앱 프리뷰 모달 ████ -->
+<div id="appPreviewModal">
+  <div class="apm-card">
+    <div class="apm-head">
+      <div class="apm-logo">Spray<em>Lab</em></div>
+      <button class="apm-skip" onclick="apmSkip()">바로 시작 →</button>
+    </div>
+    <div class="apm-slides-wrap" id="apmSlidesWrap">
+      <div class="apm-slides" id="apmSlides">
+        <!-- Slide 1: 필드 기록 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual">
+            <div class="apm-mock-qb">
+              <button class="apm-mock-btn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
+              <button class="apm-mock-btn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
+              <button class="apm-mock-btn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
+              <button class="apm-mock-btn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
+            </div>
+            <canvas id="apmCanvas0" style="width:100%;display:block;margin-top:6px"></canvas>
+          </div>
+          <div class="apm-slide-cap">⚾ 필드를 탭해 타구 위치를 기록하세요</div>
+        </div>
+        <!-- Slide 2: 스프레이차트 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual">
+            <canvas id="apmCanvas1" style="width:100%;display:block"></canvas>
+          </div>
+          <div class="apm-slide-cap">🗺️ 타구 분포를 스프레이차트로 한눈에</div>
+        </div>
+        <!-- Slide 3: 통계 카드 -->
+        <div class="apm-slide">
+          <div class="apm-slide-visual" style="overflow-y:auto">
+            <div class="apm-stat-grid">
+              <div class="apm-stat-cell"><div class="apm-stat-val">.312</div><div class="apm-stat-lbl">타율 AVG</div></div>
+              <div class="apm-stat-cell"><div class="apm-stat-val">.405</div><div class="apm-stat-lbl">출루율 OBP</div></div>
+              <div class="apm-stat-cell"><div class="apm-stat-val">.832</div><div class="apm-stat-lbl">OPS</div></div>
+            </div>
+            <div style="padding:12px 14px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
+            <div class="apm-stat-row"><span class="apm-stat-name">김민준</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:88%"></div></div><span class="apm-stat-num">.388</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">이도현</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:72%"></div></div><span class="apm-stat-num">.312</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">박지훈</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:60%"></div></div><span class="apm-stat-num">.267</span></div>
+            <div class="apm-stat-row"><span class="apm-stat-name">최성원</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="apm-stat-num">.233</span></div>
+          </div>
+          <div class="apm-slide-cap">📊 타율·출루율·OPS를 자동으로 계산</div>
+        </div>
+      </div>
+    </div>
+    <div class="apm-dots" id="apmDots">
+      <div class="apm-dot on" onclick="apmGoTo(0)"></div>
+      <div class="apm-dot" onclick="apmGoTo(1)"></div>
+      <div class="apm-dot" onclick="apmGoTo(2)"></div>
+    </div>
+    <div class="apm-foot">
+      <button class="apm-cta" onclick="apmStart()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        지금 시작하기
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="landing-page">
 
 <nav id="mainNav">
@@ -240,7 +333,7 @@ var _kakaoSdkLoaded = false;
     <li><a href="#preview">미리보기</a></li>
     <li><a href="#target">대상</a></li>
   </ul>
-  <button class="nav-cta" onclick="showApp()">
+  <button class="nav-cta" onclick="showPreviewModal()">
     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     앱 시작하기
   </button>
@@ -272,7 +365,7 @@ var _kakaoSdkLoaded = false;
       </div>
     </div>
     <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="showApp()">
+      <button class="btn-hero-primary" onclick="showPreviewModal()">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         무료로 시작하기
       </button>
@@ -573,7 +666,7 @@ var _kakaoSdkLoaded = false;
   <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
   <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
   <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
+    <button class="btn-hero-primary" onclick="showPreviewModal()" style="font-size:15px;padding:16px 36px">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       SprayLab 시작하기
     </button>

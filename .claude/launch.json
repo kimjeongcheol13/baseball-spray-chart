@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "spraylab",
-      "runtimeExecutable": "C:\\Users\\jeong\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
-      "runtimeArgs": ["-m", "http.server", "3700"],
-      "port": 3700
+      "name": "spraylab-app",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "3001", "."],
+      "port": 3001
     }
   ]
 }

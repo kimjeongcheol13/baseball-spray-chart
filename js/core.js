@@ -206,6 +206,122 @@ function showDataModal(jsonStr, fileName) {
 
 
 // ───── PAGE ROUTING ─────
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   앱 프리뷰 모달
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+(function(){
+  var _cur=0, _total=3, _timer=null, _startX=0;
+
+  function _dots(){
+    var ds=document.querySelectorAll('.apm-dot');
+    ds.forEach(function(d,i){d.classList.toggle('on',i===_cur);});
+  }
+  function _goto(n,animate){
+    _cur=(n+_total)%_total;
+    var sl=document.getElementById('apmSlides');
+    if(sl) sl.style.transition=animate===false?'none':'transform .4s cubic-bezier(.4,0,.2,1)';
+    if(sl) sl.style.transform='translateX(-'+(_cur*100)+'%)';
+    _dots();
+    _resetTimer();
+  }
+  function _resetTimer(){
+    clearTimeout(_timer);
+    _timer=setTimeout(function(){_goto(_cur+1,true);},3000);
+  }
+  function _drawField(cv,dots){
+    var w=cv.width,h=cv.height,ctx=cv.getContext('2d');
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='#07090f'; ctx.fillRect(0,0,w,h);
+    var cx=w/2,by=h-4,r=Math.min(w,h)*0.88;
+    // outfield
+    ctx.beginPath(); ctx.arc(cx,by,r,Math.PI*1.08,Math.PI*1.92);
+    ctx.strokeStyle='rgba(75,140,245,.35)'; ctx.lineWidth=1.5; ctx.stroke();
+    // foul lines
+    ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx-r*.72,by-r*.72);
+    ctx.moveTo(cx,by); ctx.lineTo(cx+r*.72,by-r*.72);
+    ctx.strokeStyle='rgba(75,140,245,.2)'; ctx.lineWidth=1; ctx.stroke();
+    // infield diamond
+    var ds=h*.24;
+    ctx.beginPath(); ctx.moveTo(cx,by-ds*1.96); ctx.lineTo(cx+ds,by-ds*.98);
+    ctx.lineTo(cx,by-.1); ctx.lineTo(cx-ds,by-ds*.98); ctx.closePath();
+    ctx.strokeStyle='rgba(75,140,245,.5)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='rgba(75,140,245,.05)'; ctx.fill();
+    // home plate
+    ctx.beginPath(); ctx.arc(cx,by-2,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(75,140,245,.7)'; ctx.fill();
+    // dots
+    if(dots) dots.forEach(function(d){
+      ctx.beginPath(); ctx.arc(d.x*w,d.y*h,d.r||5,0,Math.PI*2);
+      ctx.fillStyle=d.c; ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1; ctx.stroke();
+    });
+  }
+  function _initCanvases(){
+    var wrap=document.querySelector('.apm-slides-wrap');
+    var h=wrap?Math.round(wrap.clientHeight*0.72):200;
+    // slide 0: 기록 화면 (타구 3개)
+    var c0=document.getElementById('apmCanvas0');
+    if(c0){c0.width=c0.offsetWidth||340;c0.height=h;
+      _drawField(c0,[
+        {x:.42,y:.52,c:'rgba(45,212,160,.9)',r:6},
+        {x:.62,y:.38,c:'rgba(45,212,160,.9)',r:6},
+        {x:.28,y:.44,c:'rgba(245,101,101,.85)',r:6},
+      ]);}
+    // slide 1: 스프레이차트 (점 많이)
+    var c1=document.getElementById('apmCanvas1');
+    if(c1){c1.width=c1.offsetWidth||340;c1.height=h+30;
+      _drawField(c1,[
+        {x:.38,y:.55,c:'rgba(45,212,160,.9)',r:5},{x:.60,y:.40,c:'rgba(45,212,160,.9)',r:5},
+        {x:.45,y:.32,c:'rgba(45,212,160,.9)',r:5},{x:.55,y:.60,c:'rgba(45,212,160,.85)',r:5},
+        {x:.33,y:.38,c:'rgba(246,194,62,.9)',r:7},{x:.68,y:.35,c:'rgba(246,194,62,.85)',r:6},
+        {x:.50,y:.22,c:'rgba(246,194,62,.9)',r:8},
+        {x:.25,y:.50,c:'rgba(245,101,101,.8)',r:5},{x:.72,y:.52,c:'rgba(245,101,101,.8)',r:5},
+        {x:.40,y:.68,c:'rgba(245,101,101,.75)',r:5},{x:.62,y:.65,c:'rgba(245,101,101,.75)',r:5},
+        {x:.48,y:.75,c:'rgba(245,101,101,.7)',r:5},
+      ]);}
+  }
+
+  window.showPreviewModal=function(){
+    if(window._cancelHeroAnim){window._cancelHeroAnim();window._cancelHeroAnim=null;}
+    var m=document.getElementById('appPreviewModal');
+    if(!m) return showApp();
+    m.classList.add('show');
+    _cur=0;
+    setTimeout(function(){
+      _initCanvases();
+      _goto(0,false);
+    },50);
+    // swipe
+    var wrap=document.getElementById('apmSlidesWrap');
+    if(wrap&&!wrap._apmBound){
+      wrap._apmBound=true;
+      wrap.addEventListener('touchstart',function(e){_startX=e.touches[0].clientX;},{ passive:true });
+      wrap.addEventListener('touchend',function(e){
+        var dx=e.changedTouches[0].clientX-_startX;
+        if(Math.abs(dx)>40) _goto(dx<0?_cur+1:_cur-1,true);
+      });
+      wrap.addEventListener('mousedown',function(e){_startX=e.clientX;});
+      wrap.addEventListener('mouseup',function(e){
+        var dx=e.clientX-_startX;
+        if(Math.abs(dx)>40) _goto(dx<0?_cur+1:_cur-1,true);
+      });
+    }
+  };
+  window.apmGoTo=function(n){_goto(n,true);};
+  window.apmStart=function(){
+    var m=document.getElementById('appPreviewModal');
+    clearTimeout(_timer);
+    if(m){m.classList.remove('show');}
+    showApp();
+  };
+  window.apmSkip=function(){
+    var m=document.getElementById('appPreviewModal');
+    clearTimeout(_timer);
+    if(m){m.classList.remove('show');}
+    showApp();
+  };
+})();
+
 function showApp(){
   // 히어로 캔버스 애니메이션 루프 중단
   if(window._cancelHeroAnim){window._cancelHeroAnim();window._cancelHeroAnim=null;}

@@ -461,6 +461,11 @@ function goHome(){
 // ① FTU 온보딩 위저드
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function ftuCheck(){
+  // ?showpreview=1 파라미터로 강제 표시
+  if(new URLSearchParams(location.search).get('showpreview')==='1'){
+    localStorage.removeItem('sl_preview_seen');
+    history.replaceState(null,'',location.pathname);
+  }
   if(localStorage.getItem('sl_ftu_done')){showAppWelcome();return;}
   var ov=document.getElementById('ftuOverlay');
   ov.classList.remove('hidden');

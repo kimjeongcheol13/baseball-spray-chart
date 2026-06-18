@@ -5880,9 +5880,8 @@ function showAppWelcome(){
   if(nav)nav.style.display='none';
   _updateMobAwLinks();
   renderAwRecent();
-  // 모바일 첫 방문 시 프리뷰 모달 표시
-  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
-  if(isMobile&&!localStorage.getItem('sl_preview_seen')){
+  // 첫 방문 시 프리뷰 모달 표시 (모바일에서만 진입 가능한 경로)
+  if(!localStorage.getItem('sl_preview_seen')){
     setTimeout(function(){
       if(typeof showMobilePreviewModal==='function') showMobilePreviewModal();
     },300);

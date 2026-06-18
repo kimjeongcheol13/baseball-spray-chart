@@ -391,7 +391,7 @@
     var db = _client();
     if (!db) return;
     var redirect = window.location.href.split('?')[0].split('#')[0];
-    db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect } });
+    db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect, queryParams: { prompt: 'select_account' } } });
   };
 
   /* 이메일 매직링크 */

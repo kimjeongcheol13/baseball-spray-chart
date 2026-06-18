@@ -1103,7 +1103,7 @@ var _kakaoSdkLoaded = false;
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <span class="save-ind" id="saveInd"></span>
     <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-ghost" id="saveBtn" onclick="saveGame()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
+    <button class="btn btn-ghost" id="saveBtn" onclick="showSaveSheet()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
     <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
@@ -1127,6 +1127,33 @@ var _kakaoSdkLoaded = false;
     <span id="teamBadge" onclick="openLoginModal()" style="cursor:pointer"></span>
   </div>
 </header>
+
+<!-- ── 저장 방식 선택 시트 ── -->
+<div class="overlay" id="saveMethodBackdrop" onclick="closeSaveMethodSheet()" style="display:none;background:rgba(0,0,0,.55)"></div>
+<div id="saveMethodSheet" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:9100;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:22px 18px max(24px,env(safe-area-inset-bottom));box-sizing:border-box;transition:transform .3s cubic-bezier(.32,1,.24,1)">
+  <div style="width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px"></div>
+  <div style="font-size:15px;font-weight:800;color:#f0f0f4;margin-bottom:4px">저장 방식 선택</div>
+  <div style="font-size:11.5px;color:#6b6b88;margin-bottom:16px">경기 데이터를 어떻게 저장할까요?</div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px">
+    <button onclick="saveMethodLocal()" style="display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 15px;cursor:pointer;font-family:inherit;text-align:left;width:100%;-webkit-tap-highlight-color:transparent;transition:border-color .15s" onmouseenter="this.style.borderColor='#4b8cf5'" onmouseleave="this.style.borderColor='#2a2a3a'" ontouchstart="" >
+      <span style="font-size:22px;flex-shrink:0;line-height:1.3">📱</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px">이 기기에 저장</div>
+        <div style="font-size:11.5px;color:#9898b0;line-height:1.5">지금 바로 저장, 이 기기에서만 불러올 수 있어요</div>
+      </div>
+      <span style="font-size:16px;color:#4b4b60;align-self:center">›</span>
+    </button>
+    <button onclick="saveMethodCloud()" style="display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 15px;cursor:pointer;font-family:inherit;text-align:left;width:100%;-webkit-tap-highlight-color:transparent;transition:border-color .15s" onmouseenter="this.style.borderColor='#4b8cf5'" onmouseleave="this.style.borderColor='#2a2a3a'" ontouchstart="">
+      <span style="font-size:22px;flex-shrink:0;line-height:1.3">☁️</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px">클라우드에 저장 <span style="font-size:10px;font-weight:600;color:#9898b0;background:#1e1e2e;border:1px solid #2a2a3a;border-radius:4px;padding:1px 5px;margin-left:4px">Google 로그인 필요</span></div>
+        <div style="font-size:11.5px;color:#9898b0;line-height:1.5">모든 기기에서 이어서 사용 가능</div>
+      </div>
+      <span style="font-size:16px;color:#4b4b60;align-self:center">›</span>
+    </button>
+  </div>
+  <button onclick="closeSaveMethodSheet()" style="width:100%;padding:12px;background:transparent;border:1px solid #2a2a3a;border-radius:10px;color:#6b6b88;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:4px;-webkit-tap-highlight-color:transparent">취소</button>
+</div>
 
 <!-- ── 로그인 모달 ── -->
 <div class="overlay" id="loginModal" onclick="if(event.target===this)closeLoginModal()">
@@ -1178,7 +1205,7 @@ var _kakaoSdkLoaded = false;
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>
     불러오기
   </button>
-  <button class="mab-btn mab-save" id="mabSaveBtn" onclick="saveGame()">
+  <button class="mab-btn mab-save" id="mabSaveBtn" onclick="showSaveSheet()">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
     저장
   </button>
@@ -2052,6 +2079,13 @@ var _kakaoSdkLoaded = false;
   <span id="toastTxt"></span>
   <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 실행취소</button>
 </div>
+<div id="cloudUpsellToast" onclick="if(window.openLoginModal)openLoginModal()" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:8000;background:#1e2a40;border:1px solid #3a5080;border-radius:12px;padding:11px 16px;font-size:12px;font-weight:600;color:#a0c4ff;cursor:pointer;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:calc(100vw - 32px);text-align:center;line-height:1.5">
+  저장 완료 · 클라우드 동기화로 다른 기기에서도 이어보기 →
+</div>
+<style>
+#cloudUpsellToast{opacity:0}
+#cloudUpsellToast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+</style>
 
 <!-- ═══════════════════════════════════════ -->
 <!-- SAVANT VIEWS -->
@@ -2540,7 +2574,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=63"></script>
+<script defer src="js/core.js?v=68"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
 <script>

@@ -486,6 +486,11 @@
 
   window.closeLoginModal = _closeLoginModal;
 
+  /* 로그인 상태 확인 (저장 방식 선택 시트에서 사용) */
+  window._cloudIsLoggedIn = function () {
+    return !!((_user && !_user.is_anonymous));
+  };
+
   /* ──────────────────────────────────────────────
      팀 기능
   ────────────────────────────────────────────── */

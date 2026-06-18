@@ -2098,7 +2098,67 @@ function _updateSaveUI(unsaved){
   }
 }
 
-function saveGame(){
+/* ── 클라우드 유도 토스트 (로컬 저장 후) ── */
+var _cloudUpsellTimer = null;
+function _showCloudUpsellToast() {
+  clearTimeout(_cloudUpsellTimer);
+  var el = document.getElementById('cloudUpsellToast');
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(-50%) translateY(20px)';
+  el.style.pointerEvents = 'auto';
+  setTimeout(function () {
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+  }, 16);
+  _cloudUpsellTimer = setTimeout(function () {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(20px)';
+    el.style.pointerEvents = 'none';
+  }, 7000);
+}
+
+/* ── 저장 방식 선택 시트 ── */
+function showSaveSheet() {
+  // 이미 로그인된 상태면 바로 클라우드 저장 (시트 없이)
+  if (window._cloudIsLoggedIn && window._cloudIsLoggedIn()) {
+    saveGame();
+    return;
+  }
+  var backdrop = document.getElementById('saveMethodBackdrop');
+  var sheet    = document.getElementById('saveMethodSheet');
+  if (!backdrop || !sheet) { saveGame(); return; }
+  backdrop.style.display = 'block';
+  setTimeout(function () {
+    sheet.style.transform = 'translateX(-50%) translateY(0)';
+  }, 16);
+}
+
+function closeSaveMethodSheet() {
+  var backdrop = document.getElementById('saveMethodBackdrop');
+  var sheet    = document.getElementById('saveMethodSheet');
+  if (!sheet) return;
+  sheet.style.transform = 'translateX(-50%) translateY(100%)';
+  setTimeout(function () {
+    if (backdrop) backdrop.style.display = 'none';
+  }, 300);
+}
+
+function saveMethodLocal() {
+  closeSaveMethodSheet();
+  setTimeout(function () {
+    saveGame(true); // true = 로컬 전용 플래그
+  }, 150);
+}
+
+function saveMethodCloud() {
+  closeSaveMethodSheet();
+  setTimeout(function () {
+    if (window.openLoginModal) openLoginModal();
+  }, 150);
+}
+
+function saveGame(localOnly){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     // 팀명+날짜 기반 키 (가독성 향상)
@@ -2111,10 +2171,15 @@ function saveGame(){
     saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
-    if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
+    if(!localOnly && window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
-    showToast('경기 저장 완료 ✓',false);
+    if(localOnly){
+      showToast('경기 저장 완료 ✓',false);
+      _showCloudUpsellToast();
+    } else {
+      showToast('경기 저장 완료 ✓',false);
+    }
     triggerSavePulse();
     setTimeout(showGameSummary, 400);
   }, 300);
@@ -6406,7 +6471,7 @@ var _origSaveGame=null;
 (function(){
   var _orig=saveGame;
   saveGame=function(){
-    _orig();
+    _orig.apply(this,arguments);
     // GF 상태를 별도 키로 저장 (필요 시 복원)
   };
 })();

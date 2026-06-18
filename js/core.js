@@ -226,6 +226,9 @@ function showApp(){
     if(typeof drawField==='function')requestAnimationFrame(function(){drawField();if(typeof safeRender==='function')safeRender();});
   });
   initApp();
+  // 저장된 역할 적용 (FTU 완료 후 재방문 시)
+  var _savedRole=localStorage.getItem('sl_role_type');
+  if(_savedRole) applyRoleLayout(_savedRole);
   ftuCheck();
   // Show savant bottom nav — 홈 화면이면 숨김 유지
   if(!document.body.classList.contains('on-welcome')){
@@ -252,15 +255,82 @@ function ftuCheck(){
   if(localStorage.getItem('sl_ftu_done')){showAppWelcome();return;}
   var ov=document.getElementById('ftuOverlay');
   ov.classList.remove('hidden');
+  if(!localStorage.getItem('sl_role_type')){
+    _ftuSetStep(-1);
+  } else {
+    _ftuSetStep(0);
+    setTimeout(ftuDrawField,80);
+  }
+}
+function _ftuSetStep(n){
+  // role step (-1)
+  var roleEl=document.getElementById('ftuStepRole');
+  if(roleEl) roleEl.style.display=n===-1?'':'none';
+  // steps 0-2
+  for(var i=0;i<3;i++){
+    var el=document.getElementById('ftuStep'+i);
+    if(el) el.style.display=i===n?'':'none';
+  }
+  // dots: ftuDRole + ftuD0,1,2
+  var dRole=document.getElementById('ftuDRole');
+  if(dRole) dRole.classList.toggle('on',n>=-1);
+  for(var i=0;i<3;i++){
+    var d=document.getElementById('ftuD'+i);
+    if(d) d.classList.toggle('on',n>=0&&i<=n);
+  }
+}
+function ftuSelectRole(role){
+  localStorage.setItem('sl_role_type',role);
+  applyRoleLayout(role);
   _ftuSetStep(0);
   setTimeout(ftuDrawField,80);
 }
-function _ftuSetStep(n){
-  for(var i=0;i<3;i++){
-    document.getElementById('ftuStep'+i).style.display=i===n?'':'none';
-    var d=document.getElementById('ftuD'+i);
-    if(d)d.classList.toggle('on',i<=n);
-  }
+/* ── 역할별 탭 레이아웃 적용 ── */
+function applyRoleLayout(role){
+  localStorage.setItem('sl_role_type',role);
+  var ALL=['tab-rec','tab-batter','tab-stat','tab-chart','tab-pitcher','tab-team'];
+  var HIDE={
+    recorder:['tab-batter','tab-chart','tab-pitcher'],
+    coach:[],
+    player:['tab-stat','tab-team']
+  };
+  var DEFAULT_TAB={recorder:'rec',coach:'stat',player:'batter'};
+  // 모든 탭 표시
+  ALL.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display='';
+  });
+  // 역할별 숨김
+  (HIDE[role]||[]).forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  // 기본 탭 전환
+  var def=DEFAULT_TAB[role]||'rec';
+  var tabEl=document.getElementById('tab-'+def);
+  if(tabEl&&typeof swTab==='function') swTab(def,tabEl);
+  // 역할 변경 시트 체크 표시 업데이트
+  ['recorder','coach','player'].forEach(function(r){
+    var el=document.getElementById('roleCheck'+r.charAt(0).toUpperCase()+r.slice(1));
+    if(el) el.textContent=r===role?'✓':'›';
+    var card=document.getElementById('roleCard'+r.charAt(0).toUpperCase()+r.slice(1));
+    if(card) card.style.borderColor=r===role?'#4b8cf5':'';
+  });
+}
+function openRoleChangeSheet(){
+  var role=localStorage.getItem('sl_role_type')||'recorder';
+  applyRoleLayout(role);
+  var bd=document.getElementById('roleChangeBackdrop');
+  var sh=document.getElementById('roleChangeSheet');
+  if(!bd||!sh) return;
+  bd.style.display='block';
+  setTimeout(function(){sh.style.transform='translateX(-50%) translateY(0)';},16);
+}
+function closeRoleChangeSheet(){
+  var sh=document.getElementById('roleChangeSheet');
+  var bd=document.getElementById('roleChangeBackdrop');
+  if(sh) sh.style.transform='translateX(-50%) translateY(100%)';
+  setTimeout(function(){if(bd) bd.style.display='none';},300);
 }
 function ftuDrawField(){
   var cv=document.getElementById('ftuFieldCanvas');

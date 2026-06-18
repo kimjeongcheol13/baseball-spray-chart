@@ -1545,6 +1545,15 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ftu-player-row .ftu-inp{margin-bottom:0;flex:1}
 .ftu-player-row .ftu-inp.num{width:56px;flex:none;text-align:center}
 .ftu-add-btn{height:42px;width:42px;flex-shrink:0;border-radius:10px;background:var(--blue);color:#fff;font-size:20px;border:none;cursor:pointer;font-family:var(--font);line-height:1}
+.ftu-role-list{display:flex;flex-direction:column;gap:9px;margin-bottom:16px;text-align:left}
+.ftu-role-card{display:flex;align-items:center;gap:12px;background:var(--bg-raised);border:1.5px solid var(--border2);border-radius:12px;padding:13px 14px;cursor:pointer;font-family:var(--font);width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.ftu-role-card:active{background:var(--bg-card)}
+.ftu-role-card:hover{border-color:var(--blue)}
+.ftu-role-icon{font-size:22px;flex-shrink:0;line-height:1}
+.ftu-role-body{flex:1;min-width:0}
+.ftu-role-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ftu-role-desc{font-size:11.5px;color:var(--text2);line-height:1.4}
+.ftu-role-arrow{font-size:16px;color:var(--text3);flex-shrink:0}
 
 /* ?먥븧 TAB MODE TOGGLE (mobile only) ?먥븧 */
 .tab-mode-bar{display:flex;gap:4px;padding:6px 8px;background:var(--bg-card);border-bottom:1px solid var(--border);flex-shrink:0}

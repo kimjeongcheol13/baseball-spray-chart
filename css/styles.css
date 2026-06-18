@@ -1983,15 +1983,8 @@ body.on-welcome #mobileActionBar { display: none !important; }
   .mobile-quick-add { display: flex !important; }
 }
 
-/* Item 4: 탭 단순화 — 투수/팀 탭 숨기고 더보기 탭 표시 */
-.mobile-more-tab { display: none; }
-@media(max-width:480px) {
-  #tab-pitcher, #tab-team { display: none !important; }
-  .mobile-more-tab {
-    display: flex !important; align-items: center; justify-content: center;
-    white-space: nowrap;
-  }
-}
+/* Item 4: 탭 단순화 — 더보기 탭 항상 표시 */
+#tab-more { display: flex !important; align-items: center; justify-content: center; white-space: nowrap; }
 
 /* Item 5: 퀵 버튼 크기 키우기 */
 @media(max-width:480px) {

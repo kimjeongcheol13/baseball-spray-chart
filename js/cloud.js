@@ -126,6 +126,12 @@
     }
   }
 
+  /* ── OAuth 리다이렉트 여부 감지 ────────────────── */
+  function _isOAuthRedirect() {
+    return window.location.search.indexOf('code=') !== -1 ||
+           window.location.hash.indexOf('access_token=') !== -1;
+  }
+
   /* ── 익명 인증 ──────────────────────────────────── */
   function _ensureAuth() {
     return new Promise(function (resolve) {
@@ -139,6 +145,8 @@
           resolve(_user);
           return;
         }
+        // OAuth 리다이렉트 직후면 익명 로그인 하지 않고 대기
+        if (_isOAuthRedirect()) { resolve(null); return; }
         db.auth.signInAnonymously().then(function (r) {
           if (r.error) { console.warn('[Cloud] anon:', r.error.message); resolve(null); return; }
           _user = r.data.user;
@@ -308,6 +316,11 @@
 
       if (event === 'SIGNED_IN' && _user && !_user.is_anonymous) {
         localStorage.setItem('sl_cloud_uid', _user.id);
+        // OAuth 코드 파라미터 URL에서 제거 (만료된 코드로 재교환 방지)
+        if (window.location.search.indexOf('code=') !== -1) {
+          var cleanUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState(null, '', cleanUrl);
+        }
         _startDone = false;
         setTimeout(function () {
           _startupSync();

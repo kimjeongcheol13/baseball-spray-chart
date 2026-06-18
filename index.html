@@ -1730,6 +1730,9 @@ var _kakaoSdkLoaded = false;
           </div>
         </div>
         <button class="onboard-btn" onclick="document.getElementById('onboardOverlay').style.display='none';document.getElementById('pName').focus()">+ 선수 추가하기</button>
+        <div style="text-align:center;margin-top:14px">
+          <button onclick="showHelpMenu()" style="background:none;border:none;color:#6b7280;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline;padding:0">❓ 도움말 보기</button>
+        </div>
       </div>
     </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>

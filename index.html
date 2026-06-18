@@ -1190,6 +1190,10 @@ var _kakaoSdkLoaded = false;
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     엑셀
   </button>
+  <button class="mab-btn mab-auth" id="mabAuthBtn" onclick="openLoginModal()" title="계정">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="mab-label">계정</span>
+  </button>
   <button class="mab-btn" onclick="mabMoreOpen()">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
     더보기
@@ -1267,6 +1271,7 @@ var _kakaoSdkLoaded = false;
     </div>
     <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('pitcher',document.getElementById('tab-pitcher'))">⚾ 투수 분석</button>
     <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+    <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
   </div>
 </div>
 

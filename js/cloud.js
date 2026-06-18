@@ -46,21 +46,45 @@
 
   /* ── 인증 UI 업데이트 ────────────────────────────── */
   function _updateAuthUI() {
-    var btn = document.getElementById('authBtn');
-    if (!btn) return;
     var isReal = _user && !_user.is_anonymous;
-    if (isReal) {
-      var name = (_user.user_metadata && (_user.user_metadata.full_name || _user.user_metadata.name))
-               || _user.email || '계정';
-      var initial = name.charAt(0).toUpperCase();
-      btn.innerHTML = '<span class="auth-avatar">' + initial + '</span>';
-      btn.title = name;
-      btn.classList.add('auth-logged');
-    } else {
-      btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>저장하기</span>';
-      btn.title = '로그인하면 다른 기기에서도 이어서 사용할 수 있어요';
-      btn.classList.remove('auth-logged');
+    var name = isReal
+      ? ((_user.user_metadata && (_user.user_metadata.full_name || _user.user_metadata.name)) || _user.email || '계정')
+      : null;
+
+    // 데스크톱 헤더 버튼
+    var btn = document.getElementById('authBtn');
+    if (btn) {
+      if (isReal) {
+        var initial = name.charAt(0).toUpperCase();
+        btn.innerHTML = '<span class="auth-avatar">' + initial + '</span>';
+        btn.title = name;
+        btn.classList.add('auth-logged');
+      } else {
+        btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>저장하기</span>';
+        btn.title = '로그인하면 다른 기기에서도 이어서 사용할 수 있어요';
+        btn.classList.remove('auth-logged');
+      }
     }
+
+    // 모바일 액션바 계정 버튼
+    var mabAuth = document.getElementById('mabAuthBtn');
+    if (mabAuth) {
+      if (isReal) {
+        var ini = name.charAt(0).toUpperCase();
+        mabAuth.innerHTML = '<span class="auth-avatar" style="width:20px;height:20px;font-size:10px">' + ini + '</span><span class="mab-label">계정</span>';
+        mabAuth.style.color = 'var(--accent)';
+      } else {
+        mabAuth.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="mab-label">계정</span>';
+        mabAuth.style.color = '';
+      }
+    }
+
+    // 모바일 더보기 시트 계정 버튼
+    var mobAcc = document.getElementById('mobAccountBtn');
+    if (mobAcc) {
+      mobAcc.textContent = isReal ? ('✅ ' + name + ' · 계정/팀 관리') : '👤 로그인 / 계정 관리';
+    }
+
     _updateTeamUI();
   }
 

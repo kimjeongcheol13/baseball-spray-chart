@@ -1698,7 +1698,7 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(true);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));

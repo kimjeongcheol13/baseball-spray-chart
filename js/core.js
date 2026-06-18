@@ -6044,12 +6044,14 @@ function openGameWizard(){
     }
   }
   el.classList.add('show');
+  var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='none';
   setTimeout(function(){var h=document.getElementById('gwHome');if(h)h.focus();},200);
 }
 
 function closeGameWizard(){
   var el=document.getElementById('gameWizard');
   if(el)el.classList.remove('show');
+  if(getActiveLineup().length===0){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
 }
 
 function startFromWizard(){

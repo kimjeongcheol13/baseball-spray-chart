@@ -258,10 +258,14 @@ function showDataModal(jsonStr, fileName) {
   }
   function _initCanvases(){
     var wrap=document.querySelector('.apm-slides-wrap');
-    var h=wrap?Math.round(wrap.clientHeight*0.72):200;
+    var wrapH=wrap?wrap.clientHeight:0;
+    var cardW=document.querySelector('.apm-card');
+    var availW=cardW?(cardW.clientWidth-40):Math.min(window.innerWidth-40,400);
+    var h=wrapH>0?Math.round(wrapH*0.72):Math.round(availW*0.62);
+    if(h<140)h=140;
     // slide 0: 기록 화면 (타구 3개)
     var c0=document.getElementById('apmCanvas0');
-    if(c0){c0.width=c0.offsetWidth||340;c0.height=h;
+    if(c0){c0.width=c0.offsetWidth||availW;c0.height=h;
       _drawField(c0,[
         {x:.42,y:.52,c:'rgba(45,212,160,.9)',r:6},
         {x:.62,y:.38,c:'rgba(45,212,160,.9)',r:6},
@@ -269,7 +273,7 @@ function showDataModal(jsonStr, fileName) {
       ]);}
     // slide 1: 스프레이차트 (점 많이)
     var c1=document.getElementById('apmCanvas1');
-    if(c1){c1.width=c1.offsetWidth||340;c1.height=h+30;
+    if(c1){c1.width=c1.offsetWidth||availW;c1.height=h+30;
       _drawField(c1,[
         {x:.38,y:.55,c:'rgba(45,212,160,.9)',r:5},{x:.60,y:.40,c:'rgba(45,212,160,.9)',r:5},
         {x:.45,y:.32,c:'rgba(45,212,160,.9)',r:5},{x:.55,y:.60,c:'rgba(45,212,160,.85)',r:5},

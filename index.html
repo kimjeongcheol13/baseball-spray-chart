@@ -978,6 +978,10 @@ var _kakaoSdkLoaded = false;
       <span class="aw-more-item-icon">🎯</span>역할 변경
     </div>
     <div class="aw-more-divider"></div>
+    <div class="aw-more-item" onclick="awMoreClose();localStorage.removeItem('sl_preview_seen');showMobilePreviewModal?showMobilePreviewModal():showPreviewModal()">
+      <span class="aw-more-item-icon">▶</span>앱 소개 다시 보기
+    </div>
+    <div class="aw-more-divider"></div>
     <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
       <span class="aw-more-item-icon">❓</span>도움말 · 처음 쓰시나요?
     </div>

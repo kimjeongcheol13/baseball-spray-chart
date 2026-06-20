@@ -77,17 +77,28 @@ window._isPull=_isPull;window._isOppo=_isOppo;window._isCtr=_isCtr;window._dirLb
 // ─────────────────────────────────────────────────────────
 (function detectKakaoBrowser() {
   var ua = navigator.userAgent.toLowerCase();
-  if (ua.indexOf('kakaotalk') > -1) {
-    // 강제 이동 X — 데이터 손실 방지를 위해 배너만 표시
-    document.addEventListener('DOMContentLoaded', function() {
-      var banner = document.getElementById('kakao-warn');
-      if (banner) banner.style.display = 'block';
-      // 앱 페이지 상단 여백 추가
-      var appPage = document.getElementById('app-page');
-      if (appPage) appPage.style.paddingTop = '70px';
-    });
-  }
+  window._isKakaoBrowser = ua.indexOf('kakaotalk') > -1;
+  // 배너 자동 표시 X — 저장 버튼 클릭 시 토스트로만 안내
 })();
+
+function _showKakaoSaveToast(){
+  if(!window._isKakaoBrowser)return;
+  if(localStorage.getItem('sl_kakao_toast_shown'))return;
+  localStorage.setItem('sl_kakao_toast_shown','1');
+  // 기존 토스트 시스템 활용
+  var old=document.getElementById('_kakaoSaveToast');
+  if(old)old.remove();
+  var t=document.createElement('div');
+  t.id='_kakaoSaveToast';
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;background:#f6c23e;color:#07090f;border-radius:12px;padding:12px 16px;font-size:12px;font-family:inherit;line-height:1.6;max-width:320px;width:calc(100% - 32px);box-sizing:border-box;box-shadow:0 4px 20px rgba(0,0,0,.4);text-align:left';
+  t.innerHTML='<strong>⚠️ 카카오톡 내부 브라우저</strong><br>여기서 저장한 데이터는 Chrome/Safari와 공유되지 않습니다.'
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+    +'<button onclick="kakaoExportThenOpen()" style="flex:1;padding:7px 8px;background:#07090f;color:#f6c23e;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📤 백업 후 Chrome으로</button>'
+    +'<button onclick="this.closest(\'#_kakaoSaveToast\').remove()" style="padding:7px 9px;background:none;border:1px solid rgba(0,0,0,.3);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit">계속 사용</button>'
+    +'</div>';
+  document.body.appendChild(t);
+  setTimeout(function(){if(t.parentNode)t.style.transition='opacity .4s';t.style.opacity='0';setTimeout(function(){if(t.parentNode)t.remove();},400);},8000);
+}
 
 function kakaoExportThenOpen() {
   var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
@@ -635,7 +646,20 @@ function ftuDone(){
   localStorage.setItem('sl_ftu_done','1');
   var ov=document.getElementById('ftuOverlay');
   ov.style.opacity='0';
-  setTimeout(function(){ov.classList.add('hidden');ov.style.opacity='';showAppWelcome();},320);
+  setTimeout(function(){
+    ov.classList.add('hidden');ov.style.opacity='';
+    // 첫 온보딩 완료 시 곧바로 경기 기록 화면으로 전환
+    var appW=document.getElementById('appWelcome');
+    if(appW){appW.classList.add('hidden');appW.style.display='none';}
+    document.body.classList.remove('on-welcome');
+    // app-page가 아직 숨겨진 경우(FTU는 showApp 이후에 호출되므로 보통 표시 상태임)
+    var ap=document.getElementById('app-page');
+    if(ap&&ap.style.display==='none'){ap.style.display='flex';}
+    var mab=document.getElementById('mobileActionBar');if(mab)mab.style.display='';
+    var nav=document.getElementById('savantNav');if(nav)nav.style.display='flex';
+    history.pushState({page:'game'},'','');
+    openGameWizard();
+  },320);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -746,8 +770,9 @@ function toggleAnalysisPanel(){
     FS=w.clientWidth;
     ['fldCanvas','hitCanvas','ovrCanvas'].forEach(function(id){
       var c=document.getElementById(id);
-      if(c){c.width=FS;c.height=FS;}
+      if(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';}
     });
+    _applyDPR();
     drawField();
     safeRender();
   },280);
@@ -887,6 +912,8 @@ window.STADIUMS = STADIUMS;
 const MAX_HITS = 300;
 let saveTimer;
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
+var DPR=Math.min(window.devicePixelRatio||1,3);
+function _applyDPR(){[fCtx,hCtx,oCtx].forEach(function(c){if(c)c.scale(DPR,DPR);});}
 let _nearbyHitId=null,_nearbyCloseTimer=null;
 let _FORCE_SHOW_HITDETAIL_DEBUG=false;
 
@@ -1356,18 +1383,19 @@ function refreshZoneDisplay(){
 function initCanvas(){
   const w=document.getElementById('cwrap');
   FS=w.clientWidth||w.offsetWidth||440;
-  [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS;c.height=FS;return c;});
+  [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';return c;});
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
+  _applyDPR();
   fC.style.touchAction='none';
   fC.style.userSelect='none';
   drawField();
   // Retry draw on next frame in case layout wasn't ready
   requestAnimationFrame(function(){
     var nw=w.clientWidth||w.offsetWidth;
-    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}
-    else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();}
+    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}
+    else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();}
   });
-  new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}).observe(w);
+  new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}).observe(w);
 
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   let _lastPointerX=null,_lastPointerY=null;
@@ -1692,7 +1720,91 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(true);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(true);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_triggerSprayDotAnim();_updateMiniSpray();_checkFirstHitTooltip();}
+
+// ── 미니 스프레이차트 & 기록 즉시 보상 ──
+var _lastAbsLen=0;
+function _triggerSprayDotAnim(){
+  if(!AS.abs||AS.abs.length===_lastAbsLen)return;
+  _lastAbsLen=AS.abs.length;
+  // 메인 필드 캔버스에 "새 점 찍히는" 펄스 효과
+  var cv=document.getElementById('ovrCanvas');
+  if(!cv)return;
+  var lastAb=AS.abs[AS.abs.length-1];
+  if(!lastAb||lastAb.x==null||lastAb.y==null)return;
+  var ctx=cv.getContext('2d');
+  var dpr=window.devicePixelRatio||1;
+  var r=cv.width?cv.clientWidth:cv.offsetWidth;
+  var h=cv.clientHeight||cv.offsetHeight;
+  var px=lastAb.x*r,py=lastAb.y*h;
+  var dotColor=lastAb.res&&(lastAb.res.indexOf('안타')>-1||lastAb.res==='홈런')?'#2dd4a0':lastAb.res==='볼넷'?'#f6c23e':'#f56565';
+  var start=performance.now(),dur=600;
+  function pulse(now){
+    var t=Math.min(1,(now-start)/dur);
+    var maxR=22*(1-t*t);
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.beginPath();ctx.arc(px*dpr,py*dpr,maxR*dpr,0,Math.PI*2);
+    ctx.strokeStyle=dotColor;ctx.globalAlpha=(1-t)*0.7;ctx.lineWidth=2.5*dpr;ctx.stroke();
+    ctx.globalAlpha=1;
+    if(t<1)requestAnimationFrame(pulse);
+    else ctx.clearRect(0,0,cv.width,cv.height);
+  }
+  requestAnimationFrame(pulse);
+}
+
+function _updateMiniSpray(){
+  var wrap=document.getElementById('miniSprayWrap');
+  var cv=document.getElementById('miniSprayCanvas');
+  if(!wrap||!cv)return;
+  var fieldAbs=AS.abs.filter(function(a){return a.x!=null&&a.y!=null;});
+  if(!fieldAbs.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  var dpr=window.devicePixelRatio||1;
+  var w=cv.offsetWidth||300,h=72;
+  cv.width=w*dpr;cv.height=h*dpr;
+  var ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.fillStyle='#07090f';ctx.fillRect(0,0,w,h);
+  // 미니 필드 삼각형
+  var cx=w/2,by=h*0.96,ty=h*0.06;
+  ctx.beginPath();ctx.moveTo(cx,ty);ctx.lineTo(w*0.97,by);ctx.lineTo(w*0.03,by);ctx.closePath();
+  ctx.fillStyle='#0c1e0f';ctx.fill();ctx.strokeStyle='#1a3520';ctx.lineWidth=0.7;ctx.stroke();
+  // 내야 다이아몬드
+  var ds=h*0.13,dy=by-h*0.28;
+  ctx.beginPath();ctx.moveTo(cx,dy-ds);ctx.lineTo(cx+ds,dy);ctx.lineTo(cx,dy+ds);ctx.lineTo(cx-ds,dy);ctx.closePath();
+  ctx.fillStyle='#12280f';ctx.fill();
+  // 타구 점
+  fieldAbs.forEach(function(a){
+    var px=a.x*w,py=a.y*h;
+    var c=a.res&&(a.res.indexOf('안타')>-1||a.res==='홈런')?'#2dd4a0':a.res==='볼넷'?'#f6c23e':'#f56565';
+    ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);
+    ctx.fillStyle=c;ctx.globalAlpha=0.85;ctx.fill();ctx.globalAlpha=1;
+  });
+  // 가장 최근 타구 하이라이트
+  var last=fieldAbs[fieldAbs.length-1];
+  if(last){
+    ctx.beginPath();ctx.arc(last.x*w,last.y*h,5,0,Math.PI*2);
+    var lc=last.res&&(last.res.indexOf('안타')>-1||last.res==='홈런')?'#2dd4a0':last.res==='볼넷'?'#f6c23e':'#f56565';
+    ctx.strokeStyle=lc;ctx.lineWidth=1.5;ctx.globalAlpha=0.6;ctx.stroke();ctx.globalAlpha=1;
+  }
+}
+
+function _checkFirstHitTooltip(){
+  if(localStorage.getItem('sl_mini_spray_tip_shown'))return;
+  var fieldAbs=AS.abs.filter(function(a){return a.x!=null&&a.y!=null;});
+  if(fieldAbs.length!==1)return;
+  localStorage.setItem('sl_mini_spray_tip_shown','1');
+  var tip=document.getElementById('miniSprayTooltip');
+  if(!tip)return;
+  tip.style.display='';
+  tip.onclick=function(){
+    var chartTab=document.getElementById('tab-chart');
+    if(chartTab&&window.swTab)window.swTab('chart',chartTab);
+    tip.style.display='none';
+  };
+  setTimeout(function(){tip.style.display='none';},5000);
+}
+
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));
@@ -2400,6 +2512,8 @@ function _showCloudUpsellToast() {
 
 /* ── 저장 방식 선택 시트 ── */
 function showSaveSheet() {
+  // 카카오 인앱 브라우저 경고 (첫 저장 시 1회만)
+  _showKakaoSaveToast();
   // 이미 로그인된 상태면 바로 클라우드 저장 (시트 없이)
   if (window._cloudIsLoggedIn && window._cloudIsLoggedIn()) {
     saveGame();
@@ -5899,6 +6013,62 @@ function showAppWelcome(){
       banner.classList.remove('arch-rec-hidden');
     }
   },200);
+  // 팀 셀렉터: 팀 있을 때만 표시
+  var teamBar=document.getElementById('awTeamSelBar');
+  if(teamBar){
+    var teams=[];try{teams=JSON.parse(localStorage.getItem('sl_teams')||'[]');}catch(e){}
+    teamBar.style.display=teams.length>0?'':'none';
+  }
+  // 미니 스프레이차트 프리뷰 그리기
+  setTimeout(awDrawPreviewCanvas,80);
+}
+
+function awDrawPreviewCanvas(){
+  var cv=document.getElementById('awPreviewCanvas');
+  if(!cv)return;
+  var dpr=window.devicePixelRatio||1;
+  var w=cv.offsetWidth||300,h=cv.offsetHeight||130;
+  cv.width=w*dpr;cv.height=h*dpr;
+  var ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  // 배경 필드
+  ctx.fillStyle='#0d1117';ctx.fillRect(0,0,w,h);
+  // 잔디 삼각형
+  ctx.beginPath();ctx.moveTo(w/2,h*0.06);ctx.lineTo(w*0.95,h*0.94);ctx.lineTo(w*0.05,h*0.94);ctx.closePath();
+  ctx.fillStyle='#0c1e0f';ctx.fill();
+  ctx.strokeStyle='#1a3520';ctx.lineWidth=1;ctx.stroke();
+  // 내야 다이아몬드
+  var cx=w/2,cy=h*0.62,s=h*0.14;
+  ctx.beginPath();ctx.moveTo(cx,cy-s);ctx.lineTo(cx+s,cy);ctx.lineTo(cx,cy+s);ctx.lineTo(cx-s,cy);ctx.closePath();
+  ctx.fillStyle='#12280f';ctx.fill();ctx.strokeStyle='#1d4020';ctx.lineWidth=0.8;ctx.stroke();
+  // 파울라인
+  ctx.strokeStyle='rgba(29,64,32,.6)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(cx,cy+s);ctx.lineTo(w*0.05,h*0.06);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy+s);ctx.lineTo(w*0.95,h*0.06);ctx.stroke();
+  // 데모 타구 점들 (애니메이션)
+  var dots=[
+    {x:w*0.62,y:h*0.28,c:'#2dd4a0',r:4},{x:w*0.28,y:h*0.42,c:'#f56565',r:4},
+    {x:w*0.72,y:h*0.50,c:'#2dd4a0',r:4},{x:w*0.50,y:h*0.18,c:'#4b8cf5',r:4},
+    {x:w*0.35,y:h*0.30,c:'#2dd4a0',r:4},{x:w*0.65,y:h*0.40,c:'#f56565',r:4},
+    {x:w*0.45,y:h*0.52,c:'#f6c23e',r:4},{x:w*0.78,y:h*0.32,c:'#2dd4a0',r:4}
+  ];
+  dots.forEach(function(d){
+    ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fillStyle=d.c;ctx.globalAlpha=0.9;ctx.fill();
+    ctx.globalAlpha=0.25;ctx.strokeStyle=d.c;ctx.lineWidth=2;ctx.stroke();
+    ctx.globalAlpha=1;
+  });
+}
+
+function awShowFtuWizard(){
+  // FTU 위저드 재실행 (처음 쓰시나요 진입점)
+  localStorage.removeItem('sl_ftu_done');
+  var el=document.getElementById('appWelcome');
+  if(el){el.classList.add('hidden');el.style.display='none';}
+  var ov=document.getElementById('ftuOverlay');
+  if(ov){ov.classList.remove('hidden');ov.style.opacity='';}
+  _ftuSetStep(localStorage.getItem('sl_role_type')?0:-1);
+  if(localStorage.getItem('sl_role_type'))setTimeout(ftuDrawField,80);
 }
 
 function hideAppWelcome(){

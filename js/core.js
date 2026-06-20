@@ -746,8 +746,9 @@ function toggleAnalysisPanel(){
     FS=w.clientWidth;
     ['fldCanvas','hitCanvas','ovrCanvas'].forEach(function(id){
       var c=document.getElementById(id);
-      if(c){c.width=FS;c.height=FS;}
+      if(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';}
     });
+    _applyDPR();
     drawField();
     safeRender();
   },280);
@@ -887,6 +888,8 @@ window.STADIUMS = STADIUMS;
 const MAX_HITS = 300;
 let saveTimer;
 let FS=440,fCtx,hCtx,oCtx,fC,hC,oC,appInited=false;
+var DPR=Math.min(window.devicePixelRatio||1,3);
+function _applyDPR(){[fCtx,hCtx,oCtx].forEach(function(c){if(c)c.scale(DPR,DPR);});}
 let _nearbyHitId=null,_nearbyCloseTimer=null;
 let _FORCE_SHOW_HITDETAIL_DEBUG=false;
 
@@ -1363,18 +1366,19 @@ function refreshZoneDisplay(){
 function initCanvas(){
   const w=document.getElementById('cwrap');
   FS=w.clientWidth||w.offsetWidth||440;
-  [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS;c.height=FS;return c;});
+  [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';return c;});
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
+  _applyDPR();
   fC.style.touchAction='none';
   fC.style.userSelect='none';
   drawField();
   // Retry draw on next frame in case layout wasn't ready
   requestAnimationFrame(function(){
     var nw=w.clientWidth||w.offsetWidth;
-    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}
-    else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();}
+    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}
+    else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();}
   });
-  new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});drawField();safeRender();}).observe(w);
+  new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}).observe(w);
 
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   let _lastPointerX=null,_lastPointerY=null;

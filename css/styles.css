@@ -912,7 +912,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .qb-out{background:rgba(67,76,94,.25);color:#94a3b8;border:1.5px solid rgba(67,76,94,.45)}
 .qb-k{background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.38)}
 .qb-bb{background:rgba(167,139,250,.18);color:#a78bfa;border:1.5px solid rgba(167,139,250,.38)}
-@media(max-width:720px){.quick-bar{padding:4px 6px;gap:4px}.qb-btn{min-height:38px;font-size:13px;border-radius:10px}}
+@media(max-width:720px){.quick-bar{padding:4px 6px;gap:4px;width:100%}.qb-btn{min-height:44px;font-size:13px;border-radius:10px}}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    SWIPE HINT (?앹뾽 ?ㅼ??댄봽 ?뚰듃)
@@ -1545,6 +1545,10 @@ body.game-focus.offline-active .app-hdr{margin-top:34px}
 .ftu-player-row .ftu-inp{margin-bottom:0;flex:1}
 .ftu-player-row .ftu-inp.num{width:56px;flex:none;text-align:center}
 .ftu-add-btn{height:42px;width:42px;flex-shrink:0;border-radius:10px;background:var(--blue);color:#fff;font-size:20px;border:none;cursor:pointer;font-family:var(--font);line-height:1}
+@media(max-width:720px){
+  .ftu-add-btn{width:44px;height:44px}
+  .ftu-skip{min-height:44px;display:flex;align-items:center;justify-content:center;padding:0 10px}
+}
 .ftu-role-list{display:flex;flex-direction:column;gap:9px;margin-bottom:16px;text-align:left}
 .ftu-role-card{display:flex;align-items:center;gap:12px;background:var(--bg-raised);border:1.5px solid var(--border2);border-radius:12px;padding:13px 14px;cursor:pointer;font-family:var(--font);width:100%;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent}
 .ftu-role-card:active{background:var(--bg-card)}
@@ -1827,6 +1831,8 @@ body.on-welcome #mobileActionBar { display: none !important; }
   #gfBar.active { display: block; width: 100%; }
   /* Fix 4: 탭 터치 영역 보장 */
   .tab { min-height: 40px; padding: 8px 4px; }
+  /* Fix 5: 액션바 터치 타겟 44px 보장 */
+  .mab-btn { min-height: 44px; }
 }
 .mab-btn {
   flex: 0 0 auto;

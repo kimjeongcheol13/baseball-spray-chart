@@ -23,4 +23,15 @@
   window.gtag = gtag;
   gtag('js', new Date());
   gtag('config', GA_ID, userId ? { user_id: userId } : {});
+
+  // landing_view — 랜딩 진입 시 1회, UTM 파라미터가 있으면 함께 전송
+  try {
+    var qs = new URLSearchParams(window.location.search);
+    var evParams = {};
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function(k) {
+      var v = qs.get(k);
+      if (v) evParams[k] = v;
+    });
+    if (typeof gtag === 'function') gtag('event', 'landing_view', evParams);
+  } catch(e) {}
 })();

@@ -1703,7 +1703,16 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();}
+function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
+// GA4: 브라우저당 최초 1회, 첫 타구 기록이 실제로 저장된 시점(AS.abs에 1건 이상 존재)에만 발생
+function _trackFirstRecordGA(){
+  if(!(AS.abs&&AS.abs.length>0))return;
+  try{
+    if(localStorage.getItem('sl_ga_first_record'))return;
+    localStorage.setItem('sl_ga_first_record','1');
+  }catch(e){return;}
+  if(typeof gtag==='function')gtag('event','first_record_complete');
+}
 function renderRecs(){
   const el=document.getElementById('recList');
   const allPlayers=[...AS.home_lineup,...AS.away_lineup].filter(p=>AS.abs.some(a=>a.bid===p.id));

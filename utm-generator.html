@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>UTM 링크 생성기 — SprayLab 내부용</title>
+<style>
+  :root{
+    --bg:#07090f;--card:#0e1018;--raised:#141720;
+    --blue:#4b8cf5;--green:#2dd4a0;
+    --text:#eef0f8;--text2:#7c8898;
+    --border:#1e2535;
+    --font:'Noto Sans KR',sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--font);background:var(--bg);color:var(--text);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:24px;-webkit-font-smoothing:antialiased;
+  }
+  .card{
+    width:100%;max-width:480px;background:var(--card);border:1px solid var(--border);
+    border-radius:16px;padding:28px 24px;
+  }
+  h1{font-size:18px;font-weight:900;margin-bottom:4px}
+  .sub{font-size:12px;color:var(--text2);margin-bottom:24px}
+  label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px}
+  input[type=text]{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
+    background:var(--raised);color:var(--text);font-size:15px;font-family:var(--mono);
+    outline:none;transition:border-color .15s;
+  }
+  input[type=text]:focus{border-color:var(--blue)}
+  .out-wrap{margin-top:20px}
+  .out{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);
+    background:var(--raised);color:var(--text2);font-family:var(--mono);font-size:12px;
+    word-break:break-all;line-height:1.6;min-height:64px;
+  }
+  .out.ready{color:var(--text)}
+  .copy-btn{
+    width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;
+    background:var(--blue);color:#fff;font-size:14px;font-weight:700;
+    font-family:var(--font);cursor:pointer;transition:background .15s,transform .1s;
+  }
+  .copy-btn:hover{background:#5d9bff}
+  .copy-btn:active{transform:scale(.98)}
+  .copy-btn:disabled{background:var(--raised);color:var(--text2);cursor:not-allowed}
+  .copy-btn.done{background:var(--green)}
+  .hint{font-size:11px;color:var(--text2);margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>UTM 링크 생성기</h1>
+  <div class="sub">릴스 회차 번호만 입력하면 링크가 완성됩니다</div>
+
+  <label for="roundInput">회차 번호</label>
+  <input type="text" id="roundInput" inputmode="numeric" placeholder="예: 3" autocomplete="off">
+
+  <div class="out-wrap">
+    <label>생성된 링크</label>
+    <div class="out" id="outLink">회차 번호를 입력하세요</div>
+  </div>
+
+  <button class="copy-btn" id="copyBtn" disabled>복사</button>
+  <div class="hint">utm_campaign은 2026q3로 고정됩니다</div>
+</div>
+
+<script>
+(function(){
+  var BASE = 'https://kimjeongcheol13.github.io/baseball-spray-chart/';
+  var input = document.getElementById('roundInput');
+  var outEl = document.getElementById('outLink');
+  var copyBtn = document.getElementById('copyBtn');
+  var resetTimer = null;
+
+  function buildLink(round){
+    var content = round + 'ho';
+    var params = 'utm_source=instagram&utm_medium=reels&utm_campaign=2026q3&utm_content=' + encodeURIComponent(content);
+    return BASE + '?' + params;
+  }
+
+  function render(){
+    var round = input.value.trim();
+    if (!round) {
+      outEl.textContent = '회차 번호를 입력하세요';
+      outEl.classList.remove('ready');
+      copyBtn.disabled = true;
+      return;
+    }
+    outEl.textContent = buildLink(round);
+    outEl.classList.add('ready');
+    copyBtn.disabled = false;
+  }
+
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function showCopied(){
+    clearTimeout(resetTimer);
+    var original = '복사';
+    copyBtn.textContent = '복사됨';
+    copyBtn.classList.add('done');
+    resetTimer = setTimeout(function(){
+      copyBtn.textContent = original;
+      copyBtn.classList.remove('done');
+    }, 2000);
+  }
+
+  input.addEventListener('input', render);
+
+  copyBtn.addEventListener('click', function(){
+    var text = outEl.textContent;
+    if (!text || copyBtn.disabled) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showCopied, function(){
+        if (fallbackCopy(text)) showCopied();
+      });
+    } else {
+      if (fallbackCopy(text)) showCopied();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

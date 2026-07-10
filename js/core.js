@@ -6090,7 +6090,7 @@ function openGameWizard(){
 function closeGameWizard(){
   var el=document.getElementById('gameWizard');
   if(el)el.classList.remove('show');
-  if(getActiveLineup().length===0){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
+  if(getActiveLineup().length===0&&!localStorage.getItem('sl_ftu_done')){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
 }
 
 function startFromWizard(){

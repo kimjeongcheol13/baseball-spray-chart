@@ -1554,7 +1554,7 @@ var _kakaoSdkLoaded = false;
 
 <div style="display:flex;align-items:center;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 4px 0 0;flex-shrink:0" class="mob-batter-wrap">
   <button onclick="openMobPlayerModal()" style="flex-shrink:0;padding:5px 10px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:900;cursor:pointer;margin:4px 4px;line-height:1;-webkit-tap-highlight-color:transparent">＋</button>
-  <button class="mobile-ocr-btn" onclick="ocrModalOpen()" title="사진으로 라인업 입력">📷</button>
+  <button class="mobile-ocr-btn" onclick="ocrModalOpen()" title="사진/CSV로 라인업 입력">📷</button>
   <div class="mob-batter" id="mobBar" style="border-bottom:none;flex:1;min-width:0"></div>
 </div>
 
@@ -1623,8 +1623,8 @@ var _kakaoSdkLoaded = false;
         <input class="inp" id="pName" placeholder="선수 이름" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')addPlayer()">
         <input class="inp" id="pNum" placeholder="#번" maxlength="3" style="width:54px;flex-shrink:0;text-align:center" onkeydown="if(event.key==='Enter')addPlayer()">
         <button class="btn btn-primary btn-icon mobile-quick-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-        <button class="btn btn-icon" onclick="ocrModalOpen()" title="사진으로 라인업 입력" style="flex-shrink:0;background:#1a1a2e;border:1px solid #2a3a5a;color:#4b8cf5" title="사진으로 라인업 입력"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
       </div>
+      <button class="lineup-alt-input-btn" onclick="ocrModalOpen()" title="사진/CSV로 라인업 입력">📷 다른 방법으로 입력 (사진/CSV)</button>
       <button class="mobile-detail-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ 상세 설정 접기':'+ 상세 설정 (포지션·타석)'">+ 상세 설정 (포지션·타석)</button>
       <div class="mobile-detail-row" style="display:flex;gap:5px">
         <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>

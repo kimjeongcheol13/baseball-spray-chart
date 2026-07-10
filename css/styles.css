@@ -1811,26 +1811,32 @@ body.on-welcome #mobileActionBar { display: none !important; }
     backdrop-filter: blur(12px);
   }
   .tab-pnl { padding-bottom: calc(44px + env(safe-area-inset-bottom,0px)); }
-  /* Fix 2: mobBar OCR 버튼 */
+  /* Fix 2: mobBar OCR 버튼 — 보조 옵션으로 축소 (수동입력이 기본) */
   .mobile-ocr-btn {
     flex-shrink: 0;
-    padding: 5px 9px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
     border-radius: 10px;
-    border: 1px solid rgba(75,140,245,.35);
-    background: rgba(75,140,245,.1);
-    color: #4b8cf5;
-    font-size: 16px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-size: 14px;
     line-height: 1;
+    opacity: .55;
     cursor: pointer;
     margin: 4px 2px;
     -webkit-tap-highlight-color: transparent;
   }
-  .mobile-ocr-btn:active { opacity: .6; }
+  .mobile-ocr-btn:active { opacity: .3; background: rgba(255,255,255,.06); }
   /* Fix 3: gfBar 모바일 sticky 해제 */
   #gfBar { position: relative !important; }
   #gfBar.active { display: block; width: 100%; }
   /* Fix 4: 탭 터치 영역 보장 */
-  .tab { min-height: 40px; padding: 8px 4px; }
+  .tab { min-height: 44px; padding: 8px 4px; }
   /* Fix 5: 액션바 터치 타겟 44px 보장 */
   .mab-btn { min-height: 44px; }
 }
@@ -1988,6 +1994,18 @@ body.on-welcome #mobileActionBar { display: none !important; }
   .mobile-detail-add { display: none !important; }
   .mobile-quick-add { display: flex !important; }
 }
+
+/* 라인업 대체 입력 진입점 (OCR/CSV) — 수동입력이 기본, 이건 보조 링크 */
+.lineup-alt-input-btn {
+  display: block; width: 100%;
+  padding: 7px 12px; margin-top: 4px;
+  background: none; border: 1px dashed var(--border2);
+  border-radius: 8px; color: var(--text3);
+  font-size: 12px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.lineup-alt-input-btn:active { opacity: .6; }
 
 /* Item 4: 탭 단순화 — 더보기 탭 항상 표시 */
 #tab-more { display: flex !important; align-items: center; justify-content: center; white-space: nowrap; }

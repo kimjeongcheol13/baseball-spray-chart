@@ -460,6 +460,12 @@ function goHome(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ① FTU 온보딩 위저드
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// sl_ftu_done이 어떤 이유로든 안 남아있어도(구버전 세션·스토리지 정리 등),
+// 저장된 경기가 하나라도 있으면 신규 유저가 아니므로 온보딩 카드 대상에서 제외
+function _isReturningUser(){
+  if(localStorage.getItem('sl_ftu_done'))return true;
+  try{return JSON.parse(localStorage.getItem('sl_saves')||'[]').length>0;}catch(e){return false;}
+}
 function ftuCheck(){
   // ?showpreview=1 파라미터로 강제 표시
   if(new URLSearchParams(location.search).get('showpreview')==='1'){
@@ -1196,7 +1202,7 @@ function renderLP(){
   var ov=document.getElementById('onboardOverlay');
   if(!targetLineup.length){
     el.innerHTML='<div style="padding:24px 16px;text-align:center"><div style="font-size:28px;margin-bottom:8px">👤</div><div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:4px">+ 선수 추가로 시작하세요</div><div style="font-size:11px;color:var(--text3);line-height:1.6">이름과 번호를 입력하고<br>+ 버튼을 누르세요</div></div>';
-    if(ov)ov.style.display=localStorage.getItem('sl_ftu_done')?'none':'flex';
+    if(ov)ov.style.display=_isReturningUser()?'none':'flex';
     return;
   }
   if(ov)ov.style.display='none';
@@ -6090,7 +6096,7 @@ function openGameWizard(){
 function closeGameWizard(){
   var el=document.getElementById('gameWizard');
   if(el)el.classList.remove('show');
-  if(getActiveLineup().length===0&&!localStorage.getItem('sl_ftu_done')){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
+  if(getActiveLineup().length===0&&!_isReturningUser()){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
 }
 
 function startFromWizard(){

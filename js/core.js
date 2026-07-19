@@ -2505,7 +2505,7 @@ function openLoad(){
         +' ontouchcancel="_lpEnd()">'
         +'<div class="lc-info">'
           +'<div class="lc-title">'+s.label+'</div>'
-          +'<div class="lc-meta">'+_fmtTs(s.ts)+'</div>'
+          +'<div class="lc-meta">'+_fmtTs(s.ts)+(s.winP?' · 승 '+s.winP+(s.loseP?' / 패 '+s.loseP:''):'')+'</div>'
         +'</div>'
         +'<div class="lc-hint">꾹 ···</div>'
         +'</div>';
@@ -3679,6 +3679,10 @@ function showHitDetail(ab, clientX, clientY) {
   if(ab.ev!=null){var _eu=localStorage.getItem('sl_ev_unit')||'kmh';rows+=`<div class="hdc-row">💨 <span>${ab.ev} ${_eu==='mph'?'mph':'km/h'}</span></div>`;}
   if(ab.pt||ab.zone!=null) rows+=`<div class="hdc-row">🎯 <span>${[ab.pt,ab.zone!=null?'존 '+ab.zone:''].filter(Boolean).join(' · ')}</span></div>`;
   if(ab.ts) rows+=`<div class="hdc-row">🕐 <span>${ab.ts}</span></div>`;
+  if(ab.oppP) rows+=`<div class="hdc-row">⚾ <span>상대 ${ab.oppP}${(ab.oppEra!=null||ab.oppFip!=null)?' · ERA '+(ab.oppEra!=null?ab.oppEra:'-')+' / FIP '+(ab.oppFip!=null?ab.oppFip:'-'):''}</span></div>`;
+  if(ab.bAvg!=null||ab.bOps!=null) rows+=`<div class="hdc-row">📈 <span>시즌 AVG ${ab.bAvg!=null?ab.bAvg.toFixed(3):'-'} · OPS ${ab.bOps!=null?ab.bOps.toFixed(3):'-'}</span></div>`;
+  if(ab.lev!=null||ab.wpa!=null) rows+=`<div class="hdc-row">⚖ <span>${ab.lev!=null?'LEV '+ab.lev:''}${(ab.lev!=null&&ab.wpa!=null)?' · ':''}${ab.wpa!=null?'WPA '+(ab.wpa>=0?'+':'')+ab.wpa.toFixed(3):''}</span></div>`;
+  if(ab.note) rows+=`<div class="hdc-row">📝 <span>${ab.note}</span></div>`;
   el.innerHTML=`
     <button class="hdc-close" onclick="closeHitDetail()">✕</button>
     <div class="hdc-res" style="color:${col}">${ab.res}</div>
@@ -4102,6 +4106,18 @@ function importExcelAsGame(input) {
     try {
       var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
 
+      // 0) 단일테이블 다중경기 포맷 감지 (날짜+타자+결과 헤더가 한 시트에 있는 경우)
+      var _firstRows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+      var _stIdx=-1;
+      for(var _i=0;_i<Math.min(_firstRows.length,5);_i++){
+        var _hset=_firstRows[_i].map(function(c){return String(c).trim();});
+        if(_hset.indexOf('날짜')!==-1&&_hset.indexOf('타자')!==-1&&_hset.indexOf('결과')!==-1){_stIdx=_i;break;}
+      }
+      if(_stIdx!==-1){
+        importSingleTableGames(_firstRows,_stIdx,input);
+        return;
+      }
+
       // 1) 경기요약 시트에서 팀명·점수 추출
       var th='홈팀',ta='원정팀',hs=0,gameAs=0,gameDate=new Date().toLocaleDateString('ko-KR');
       var sumSN=wb.SheetNames.find(function(n){return n.replace(/\s/g,'').includes('요약')||n.toLowerCase().includes('summary');});
@@ -4238,6 +4254,158 @@ function importExcelAsGame(input) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ─────────────────────────────────────────────────────────
+// 단일테이블 다중경기 가져오기 (날짜별로 자동 분리해 여러 경기로 저장)
+// ─────────────────────────────────────────────────────────
+function importSingleTableGames(rows, hIdx, input) {
+  var headers=rows[hIdx].map(function(h){return String(h).trim();});
+  function idxEq(name){return headers.indexOf(name);}
+  function idxInc(sub){return headers.findIndex(function(h){return h.indexOf(sub)!==-1;});}
+  var C={
+    date:idxEq('날짜'), inn:idxEq('이닝'), team:idxEq('타격팀'), bname:idxEq('타자'),
+    bAvg:idxEq('타자시즌AVG'), bOps:idxEq('타자시즌OPS'),
+    oppP:idxEq('상대투수'), era:idxInc('시즌ERA'), fip:idxInc('시즌FIP'),
+    res:idxEq('결과'), dir:idxEq('방향'), rbi:idxEq('타점'),
+    lev:idxEq('LEV'), wpa:idxEq('WPA'),
+    score:idxInc('경기스코어'), winP:idxInc('승리투수'), loseP:idxInc('패전투수'),
+    note:idxEq('비고')
+  };
+  if(C.date===-1||C.bname===-1||C.res===-1){showToast('"날짜"·"타자"·"결과" 컬럼이 필요합니다',false);if(input)input.value='';return;}
+
+  var RES_ALIAS={'희생플라이':'희비','병살타':'병살','희생번트':'희타'};
+  var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+  var noLocSet={'볼넷':1,'사구':1,'삼진':1};
+  var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+  var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+
+  function fmtDate(raw){
+    if(raw instanceof Date)return raw.toLocaleDateString('ko-KR');
+    var s=String(raw||'').trim();
+    var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3])).toLocaleDateString('ko-KR');
+    return s||new Date().toLocaleDateString('ko-KR');
+  }
+
+  // 날짜별 그룹핑
+  var groups=[],groupIdx={};
+  rows.slice(hIdx+1).forEach(function(row){
+    if(!row||row.every(function(c){return c===''||c===null||c===undefined;}))return;
+    var bname=C.bname>=0?String(row[C.bname]||'').trim():'';
+    var res=C.res>=0?String(row[C.res]||'').trim():'';
+    if(!bname||!res)return;
+    var dkey=C.date>=0?String(row[C.date]||''):'';
+    if(!(dkey in groupIdx)){groupIdx[dkey]=groups.length;groups.push({dateRaw:C.date>=0?row[C.date]:'',rows:[]});}
+    groups[groupIdx[dkey]].rows.push(row);
+  });
+
+  if(!groups.length){showToast('가져올 타석 데이터가 없습니다',false);if(input)input.value='';return;}
+
+  var savedLabels=[],totalAdded=0,totalSkipped=0;
+
+  groups.forEach(function(g,gi){
+    // 팀 → 홈/원정 매핑 (이닝 초/말 기준, 매핑 안 되면 폴백)
+    var side={};
+    g.rows.forEach(function(row){
+      var inn=C.inn>=0?String(row[C.inn]||'').trim():'';
+      var teamRaw=C.team>=0?String(row[C.team]||'').trim():'';
+      if(!teamRaw||side[teamRaw])return;
+      if(inn.slice(-1)==='초')side[teamRaw]='away';
+      else if(inn.slice(-1)==='말')side[teamRaw]='home';
+    });
+    var allTeams=[];
+    g.rows.forEach(function(row){var t=C.team>=0?String(row[C.team]||'').trim():'';if(t&&allTeams.indexOf(t)===-1)allTeams.push(t);});
+    var usedHome=allTeams.some(function(t){return side[t]==='home';});
+    var usedAway=allTeams.some(function(t){return side[t]==='away';});
+    allTeams.forEach(function(t){
+      if(side[t])return;
+      if(!usedAway){side[t]='away';usedAway=true;}
+      else if(!usedHome){side[t]='home';usedHome=true;}
+      else side[t]='home';
+    });
+    var th='홈팀',ta='원정팀';
+    Object.keys(side).forEach(function(t){if(side[t]==='home')th=t;else if(side[t]==='away')ta=t;});
+
+    // 점수 / 승패투수
+    var hs=0,gameAs=0,winP='',loseP='';
+    var first=g.rows[0];
+    if(C.score>=0){
+      var sm=String(first[C.score]||'').trim().split(':');
+      if(sm.length===2){gameAs=parseInt(sm[0])||0;hs=parseInt(sm[1])||0;}
+    }
+    if(C.winP>=0)winP=String(first[C.winP]||'').trim();
+    if(C.loseP>=0)loseP=String(first[C.loseP]||'').trim();
+    var gameDate=fmtDate(g.dateRaw);
+
+    var homeLP=[],awayLP=[],absArr=[];
+    var homeSet={},awaySet={},added=0,skipped=0,_plrId=Date.now()+gi;
+
+    g.rows.forEach(function(row){
+      var bname=C.bname>=0?String(row[C.bname]||'').trim():'';
+      var res=C.res>=0?String(row[C.res]||'').trim():'';
+      if(RES_ALIAS[res])res=RES_ALIAS[res];
+      if(!validRes[res]){skipped++;return;}
+
+      var teamRaw=C.team>=0?String(row[C.team]||'').trim():'';
+      var team=side[teamRaw]||'home';
+      var inn=C.inn>=0?String(row[C.inn]||'').trim():'1회초';
+      if(!validInn[inn])inn='1회초';
+      var rbi=C.rbi>=0?(parseInt(row[C.rbi])||0):0;
+      var dirStr=C.dir>=0?String(row[C.dir]||'').trim():'';
+
+      var lineup=team==='home'?homeLP:awayLP;
+      var set=team==='home'?homeSet:awaySet;
+      if(!set[bname]){set[bname]={id:++_plrId,name:bname,num:'',pos:'',bh:''};lineup.push(set[bname]);}
+      var player=set[bname];
+
+      var deg=null,dir=null,x=null,y=null;
+      if(!noLocSet[res]&&dirStr&&dirDeg[dirStr]!==undefined){
+        deg=dirDeg[dirStr];
+        if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
+        var dp=280/450;
+        var ang=deg*Math.PI/180-Math.PI;
+        x=Math.min(0.97,Math.max(0.03,0.5+dp*Math.cos(ang)));
+        y=Math.min(0.97,Math.max(0.01,1.0+dp*Math.sin(ang)));
+      }
+
+      var ab={id:Date.now()+gi*1000+added,bid:player.id,bname:player.name,bnum:'',team:team,res:res,pt:null,zone:null,rbi:rbi,x:x,y:y,deg:deg,dir:dir,ft:deg!==null?280:null,inn:inn,ts:'',pitches:[]};
+      if(C.oppP>=0){var v1=String(row[C.oppP]||'').trim();if(v1)ab.oppP=v1;}
+      if(C.era>=0){var v2=parseFloat(row[C.era]);if(!isNaN(v2))ab.oppEra=v2;}
+      if(C.fip>=0){var v3=parseFloat(row[C.fip]);if(!isNaN(v3))ab.oppFip=v3;}
+      if(C.bAvg>=0){var v4=parseFloat(row[C.bAvg]);if(!isNaN(v4))ab.bAvg=v4;}
+      if(C.bOps>=0){var v5=parseFloat(row[C.bOps]);if(!isNaN(v5))ab.bOps=v5;}
+      if(C.lev>=0){var v6=parseFloat(row[C.lev]);if(!isNaN(v6))ab.lev=v6;}
+      if(C.wpa>=0){var v7=parseFloat(row[C.wpa]);if(!isNaN(v7))ab.wpa=v7;}
+      if(C.note>=0){var v8=String(row[C.note]||'').trim();if(v8)ab.note=v8;}
+
+      absArr.push(ab);
+      added++;
+    });
+
+    if(!added){totalSkipped+=skipped;return;}
+
+    var key='sl_'+(Date.now()+gi);
+    var nowTs=Date.now()+gi;
+    var gameData={key:key,hs:hs,as:gameAs,th:th,ta:ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:nowTs};
+    var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+    var lbl=th+' '+hs+':'+gameAs+' '+ta+' ('+gameDate+')';
+    var saveEntry={key:key,label:lbl,ts:nowTs};
+    if(winP)saveEntry.winP=winP;
+    if(loseP)saveEntry.loseP=loseP;
+    saves.push(saveEntry);
+    localStorage.setItem('sl_saves',JSON.stringify(saves));
+    localStorage.setItem(key,JSON.stringify(gameData));
+    if(window.cloudSave)cloudSave(key,gameData,lbl,gameData.ts);
+
+    savedLabels.push(lbl);
+    totalAdded+=added;totalSkipped+=skipped;
+  });
+
+  if(input)input.value='';
+  if(!savedLabels.length){showToast('가져올 타석 데이터가 없습니다'+(totalSkipped>0?' (오류 '+totalSkipped+'개)':''),false);return;}
+  openLoad();
+  showToast(savedLabels.length+'경기 · '+totalAdded+'개 타석 가져오기 완료'+(totalSkipped>0?' (건너뜀 '+totalSkipped+'개)':''),false);
 }
 
 // ─────────────────────────────────────────────────────────

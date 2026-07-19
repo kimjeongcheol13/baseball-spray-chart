@@ -1617,6 +1617,7 @@ AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
   AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
+  _showMiniSprayAfterRecord();
   gfAfterRecord(res,r.rbi);
 }
 function recOther(res){
@@ -1630,9 +1631,31 @@ function recOther(res){
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
+  _showMiniSprayAfterRecord();
   gfAfterRecord(res,0);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
+
+// ── 기록 직후: 메인 필드 접고 미니 스프레이차트 표시 (탭 또는 2.5초 후 자동으로 다시 펼침) ──
+var _miniSprayTimer=null;
+function _showMiniSprayAfterRecord(){
+  var wrap=document.getElementById('miniSprayWrap');
+  var fieldWrap=document.getElementById('cwrap');
+  var mini=document.getElementById('miniSprayCanvas');
+  if(!wrap||!fieldWrap||!mini)return;
+  _drawMiniSpray(mini,AS.abs);
+  fieldWrap.style.display='none';
+  wrap.style.display='block';
+  clearTimeout(_miniSprayTimer);
+  _miniSprayTimer=setTimeout(_expandMainField,2500);
+}
+function _expandMainField(){
+  clearTimeout(_miniSprayTimer);
+  var wrap=document.getElementById('miniSprayWrap');
+  var fieldWrap=document.getElementById('cwrap');
+  if(wrap)wrap.style.display='none';
+  if(fieldWrap)fieldWrap.style.display='';
+}
 function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=document.getElementById('ibToggleBtn');var bd=document.getElementById('ibBackdrop');if(!ib)return;var open=ib.classList.toggle('open');if(btn){btn.textContent=open?'▲ 투구·결과 입력 닫기':'▼ 투구·결과 입력';btn.classList.toggle('open',open);}if(bd){bd.style.display=open?'block':'none';}}
 (function initLpResize(){
   var handle=document.getElementById('lpResizeHandle');
@@ -1694,6 +1717,31 @@ function drawDot(r){
     hCtx.beginPath();hCtx.arc(x,y,5.5,0,Math.PI*2);
     hCtx.strokeStyle=ltCol+'99';hCtx.lineWidth=1.5;hCtx.stroke();
   }
+}
+
+// ── 미니 스프레이차트 (웰컴 프리뷰 · 인게임 기록직후 요약용 경량 렌더러) ──
+function _drawMiniSpray(canvas, abs){
+  if(!canvas)return;
+  var w=canvas.clientWidth||300, h=canvas.clientHeight||130;
+  var dpr=Math.min(window.devicePixelRatio||1,3);
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  var ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  if(!abs||!abs.length)return;
+  var cx=w/2, cy=h*0.95, R=Math.max(w,h*2)*0.48;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,-Math.PI,0);ctx.closePath();
+  ctx.fillStyle='rgba(75,140,245,0.07)';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.stroke();
+  abs.forEach(function(a){
+    if(a.x==null||a.y==null)return;
+    var x=a.x*w, y=a.y*h;
+    var col=RC[a.res]||'#94a3b8';
+    var out=a.res.indexOf('아웃')!==-1||a.res==='삼진';
+    ctx.beginPath();ctx.arc(x,y,out?2:3,0,Math.PI*2);
+    ctx.fillStyle=col+'cc';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=1;ctx.stroke();
+  });
 }
 
 function safeRender(){
@@ -6104,6 +6152,7 @@ function showAppWelcome(){
   if(nav)nav.style.display='none';
   _updateMobAwLinks();
   renderAwRecent();
+  renderAwPreview();
   // 첫 방문 시 프리뷰 모달 표시 (모바일에서만 진입 가능한 경로)
   if(!localStorage.getItem('sl_preview_seen')){
     setTimeout(function(){
@@ -6160,6 +6209,17 @@ function renderAwRecent(){
   });
   html+='</div>';
   el.innerHTML=html;
+}
+
+function renderAwPreview(){
+  var canvas=document.getElementById('awPreviewCanvas');
+  if(!canvas)return;
+  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  if(!saves.length){_drawMiniSpray(canvas,[]);return;}
+  var last=saves[saves.length-1];
+  var raw=localStorage.getItem(last.key);
+  if(!raw){_drawMiniSpray(canvas,[]);return;}
+  try{var d=JSON.parse(raw);_drawMiniSpray(canvas,d.abs||[]);}catch(e){_drawMiniSpray(canvas,[]);}
 }
 
 // ── Savant 탭 전환 (nav 버튼 onclick 핸들러) ──
@@ -7355,6 +7415,8 @@ function createTeam(){
 // ── 팀 셀렉터 (AppWelcome) ──
 function renderTeamSelector(){
   tdLoad();
+  var bar=document.getElementById('awTeamSelBar');
+  if(bar)bar.style.display=_TD.teams.length?'':'none';
   var sel=document.getElementById('tsbSelect');if(!sel)return;
   if(!_TD.teams.length){sel.innerHTML='<option value="">팀 없음</option>';return;}
   sel.innerHTML='<option value="">팀 선택 안함</option>'

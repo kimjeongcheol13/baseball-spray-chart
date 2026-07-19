@@ -171,6 +171,10 @@ var _kakaoSdkLoaded = false;
   .sl-ob-cta-title{font-size:14px}
   .sl-ob-cta-main{font-size:15px;padding:14px}
 }
+/* ── 홈화면 미니 스프레이차트 프리뷰 ── */
+.aw-preview-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 auto 16px;max-width:340px;width:100%}
+.aw-preview-canvas{width:100%;max-width:300px;height:130px;border-radius:12px;background:#0d1117;border:1px solid #1e2a3a;display:block}
+.aw-preview-hint{font-size:11px;color:#6b6b88;text-align:center;line-height:1.5}
 /* ── 방향별 성공률 ── */
 .dir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .dir-it{background:#12122a;border-radius:8px;padding:7px 6px;text-align:center}
@@ -891,12 +895,17 @@ var _kakaoSdkLoaded = false;
     <div class="aw-logo-name">Spray<em>Lab</em></div>
     <div class="aw-logo-tag">YOUR SWING, VISUALIZED</div>
   </div>
+  <!-- 미니 스프레이차트 프리뷰 -->
+  <div class="aw-preview-wrap">
+    <canvas id="awPreviewCanvas" class="aw-preview-canvas"></canvas>
+    <div class="aw-preview-hint">필드를 탭해 타구를 기록 → 스프레이차트 자동 생성</div>
+  </div>
   <div class="aw-main-btns">
     <button class="aw-btn-start" onclick="hideAppWelcome();openGameWizard()">
       <span style="font-size:26px;flex-shrink:0">⚾</span>
       <div class="aw-btn-inner">
-        <span>경기 시작</span>
-        <span class="aw-btn-sub">새 경기 기록 시작</span>
+        <span>새 경기 시작</span>
+        <span class="aw-btn-sub">필드 탭하면 바로 기록</span>
       </div>
     </button>
     <button class="aw-btn-load" onclick="hideAppWelcome();openLoad()">
@@ -919,12 +928,12 @@ var _kakaoSdkLoaded = false;
     <button onclick="hideAppWelcome();openLoad()">경기 불러오기</button>
     <button onclick="hideAppWelcome();openPlayerProfile()">시즌 보기</button>
   </div>
-  <div class="team-sel-bar">
+  <!-- 팀 셀렉터: 팀이 있을 때만 표시 (JS에서 제어) -->
+  <div class="team-sel-bar" id="awTeamSelBar" style="display:none">
     <span class="tsb-label">현재 팀</span>
     <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
       <option value="">팀 없음</option>
     </select>
-    <button class="tsb-new" onclick="openTeamCreate()">+ 팀 만들기</button>
   </div>
   <div class="aw-recent" id="awRecent"></div>
   <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 설정 · 내보내기</button>
@@ -974,6 +983,10 @@ var _kakaoSdkLoaded = false;
 <!-- ████ 더보기 바텀시트 ████ -->
 <div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
   <div class="aw-more-sheet">
+    <div class="aw-more-item" onclick="awMoreClose();openTeamCreate()">
+      <span class="aw-more-item-icon">🏟️</span>팀 만들기
+    </div>
+    <div class="aw-more-divider"></div>
     <div class="aw-more-item" onclick="awMoreClose();openRoleChangeSheet()">
       <span class="aw-more-item-icon">🎯</span>역할 변경
     </div>
@@ -1741,6 +1754,11 @@ var _kakaoSdkLoaded = false;
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
+    <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
+    <div id="miniSprayWrap" style="display:none;position:relative" onclick="_expandMainField()">
+      <canvas id="miniSprayCanvas" style="width:100%;height:72px;display:block;border-top:1px solid #1a2030"></canvas>
+      <div id="miniSprayTooltip" style="position:absolute;top:4px;right:8px;background:rgba(75,140,245,.15);border:1px solid rgba(75,140,245,.35);border-radius:8px;padding:4px 10px;font-size:10.5px;color:#7ab0f5;font-weight:700;pointer-events:none">스프레이차트 보기 →</div>
+    </div>
     <button class="ib-drawer-toggle" id="ibToggleBtn" onclick="toggleInputBar()">▼ 투구·결과 입력</button>
     <div id="ibBackdrop" onclick="toggleInputBar()" style="display:none;position:fixed;inset:0;z-index:199"></div>
     <div class="input-bar">

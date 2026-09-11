@@ -1401,7 +1401,7 @@ function _fieldFS(w){
     pw=p.clientWidth||0;
     ph=p.clientHeight||0;
   }
-  var fs=Math.min(pw,ph)-24;
+  var fs=Math.min(pw,ph)-16; // field-wrap padding 8px*2
   if(fs>0){
     // 모바일 초기 폭 CSS가 순환참조 방지를 위해 !important를 쓰므로, JS 계산값도 !important로 덮어써야 함
     w.style.setProperty('width',fs+'px','important');

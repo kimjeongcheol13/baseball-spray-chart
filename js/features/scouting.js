@@ -112,6 +112,18 @@ export function exportScoutReport() {
   }
 }
 
+export function exportScoutPDF() {
+  if (!window.requirePro('PDF 내보내기')) return;
+  window.print();
+}
+
+export function exportScoutImage() {
+  if (!window.requirePro('이미지 내보내기')) return;
+  const c = document.getElementById('scoutZoneCanvas');
+  if (!c) { window.showToast && window.showToast('내보낼 리포트가 없습니다'); return; }
+  window._downloadCanvas(c, 'scout_report_' + Date.now() + '.png');
+}
+
 function _getAllPlayers() {
   const map = {};
   const AS = window.AS;
@@ -489,6 +501,8 @@ function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
     <div class="scout-header">
       <div class="scout-name">${_esc(name)} 스카우팅 리포트</div>
       <button id="scoutExportBtn" class="scout-export-btn" onclick="window.exportScoutReport()">리포트 복사</button>
+      <button class="scout-export-btn pro-btn" onclick="window.exportScoutPDF()">PDF 내보내기</button>
+      <button class="scout-export-btn pro-btn" onclick="window.exportScoutImage()">이미지 내보내기</button>
     </div>
 
     <div class="scout-overview">
@@ -880,5 +894,7 @@ if (typeof window !== 'undefined') {
   window.renderScoutPlayerSelect = renderScoutPlayerSelect;
   window.generateScoutReport = generateScoutReport;
   window.exportScoutReport = exportScoutReport;
+  window.exportScoutPDF = exportScoutPDF;
+  window.exportScoutImage = exportScoutImage;
   window.switchScoutHeatmapTab = switchScoutHeatmapTab;
 }

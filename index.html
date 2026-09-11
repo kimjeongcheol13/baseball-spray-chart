@@ -2124,6 +2124,18 @@ var _kakaoSdkLoaded = false;
       </div>
       <!-- ████ 팀 대시보드 패널 ████ -->
       <div class="tab-pnl" id="pnl-team">
+        <style>
+          .pro-gate{position:relative}
+          .pro-gate-badge{display:none}
+          body.plan-free .pro-gate .pro-gate-content{filter:blur(5px);pointer-events:none;user-select:none}
+          body.plan-free .pro-gate .pro-gate-badge{display:flex;position:absolute;inset:0;z-index:5;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,14,22,.55);border-radius:12px;text-align:center;padding:20px}
+          .pro-gate-badge-title{font-size:14px;font-weight:800;color:#fff}
+          .pro-gate-badge-desc{font-size:11px;color:#cbd5e1;max-width:260px;line-height:1.5}
+          .pro-gate-btn{background:linear-gradient(135deg,#4b8cf5,#7c9cfc);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:12px;font-weight:800;cursor:pointer}
+          body.plan-free .pro-btn::before{content:'🔒 '}
+        </style>
+        <div class="pro-gate" id="teamDashGate">
+        <div class="pro-gate-content">
         <!-- 역할 스위처 -->
         <div class="role-sw">
           <button class="role-sw-btn" data-r="coach" onclick="setRole('coach')">👔 감독</button>
@@ -2166,6 +2178,13 @@ var _kakaoSdkLoaded = false;
             <button class="team-share-btn" onclick="shareTeamURL()">🔗 URL 공유</button>
             <button class="team-share-btn" onclick="shareTeamURL()">📱 QR 코드</button>
           </div>
+        </div>
+        </div>
+        <div class="pro-gate-badge">
+          <div class="pro-gate-badge-title">🔒 감독 대시보드는 Pro 전용입니다</div>
+          <div class="pro-gate-badge-desc">팀 리더보드 · 이닝별 흐름 · 시즌 트렌드를 Pro에서 확인하세요</div>
+          <button class="pro-gate-btn" onclick="setPlan('pro')">✨ Pro로 전환</button>
+        </div>
         </div>
       </div>
     </div>
@@ -2284,10 +2303,21 @@ var _kakaoSdkLoaded = false;
 
     <div style="padding-top:10px;border-top:1px solid var(--border2);margin-bottom:14px">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">클라우드</div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+      <button class="btn btn-ghost pro-btn" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');if(window.requirePro('클라우드 동기화'))openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
     </div>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('dataSettingsOverlay')">닫기</button>
+  </div>
+</div>
+
+<!-- 🔒 PRO 업그레이드 안내 -->
+<div class="overlay" id="upgradeOverlay">
+  <div class="modal" style="width:min(320px,92vw);text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🔒</div>
+    <div class="modal-title" style="margin-bottom:6px">Pro 전용 기능</div>
+    <div class="modal-sub" id="upgradeFeatureName" style="margin-bottom:16px">이 기능은 Pro에서 사용할 수 있습니다</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="setPlan('pro');closeOverlay('upgradeOverlay')">✨ Pro로 전환 (데모)</button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('upgradeOverlay')">닫기</button>
   </div>
 </div>
 

@@ -2440,6 +2440,15 @@ let _tt;
 function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,6000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
+// ── 플랜 게이트 (Free/Pro, 결제 없는 데모용 토글) ──
+function getPlan(){return localStorage.getItem('sl_plan')==='pro'?'pro':'free';}
+function isPro(){return getPlan()==='pro';}
+function setPlan(p){localStorage.setItem('sl_plan',p);applyPlanGate();if(p==='pro')showToast('✨ Pro로 전환되었습니다 (데모)',false);}
+function showUpgradeModal(feature){const d=document.getElementById('upgradeFeatureName');if(d)d.textContent=(feature?feature+' 기능은':'이 기능은')+' Pro에서 사용할 수 있습니다';openOverlay('upgradeOverlay');}
+function requirePro(feature){if(isPro())return true;showUpgradeModal(feature);return false;}
+function applyPlanGate(){document.body.classList.toggle('plan-free',!isPro());}
+applyPlanGate();
+
 // ── 저장 상태 UI 헬퍼 ──
 function _updateSaveUI(unsaved){
   var ind=document.getElementById('saveInd');

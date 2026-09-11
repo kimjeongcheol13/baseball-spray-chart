@@ -254,7 +254,8 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
     width:100%;flex:0 0 auto;max-height:none;overflow:visible;align-items:center;
   }
   .field-wrap{padding:4px;flex:0 0 auto;min-height:0}
-  .canvas-wrap{width:min(calc(100vw - 56px),80vh)!important;height:min(calc(100vw - 56px),80vh)!important;aspect-ratio:1/1;max-height:none!important}
+  /* 초기 폭만 지정(순환참조 방지용 기본값) — 실제 크기는 JS _fieldFS()가 계산해 인라인으로 덮어씀 (세로 공간 부족 시 잘림 방지) */
+  .canvas-wrap{width:calc(100vw - 40px)!important}
   .field-hint{display:none!important}
   .spray-legend{display:none!important}
   .ib-drawer-toggle{display:none!important}

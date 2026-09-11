@@ -1382,8 +1382,34 @@ function refreshZoneDisplay(){
 }
 
 // 필드 캔버스는 정사각형: 부모(field-wrap)의 가로/세로 중 작은 쪽에 맞춰야 세로 공간이 부족할 때 잘리지 않음.
-// 래퍼(w) 자신이 아니라 부모를 기준으로 재야 순환참조 없이 리사이즈에 반응하고, 래퍼도 그 크기로 맞춰 field-wrap의 flex 중앙정렬이 제대로 동작함
-function _fieldFS(w){var p=w.parentElement||w;var fs=Math.min(p.clientWidth||0,p.clientHeight||0)-24;if(fs>0){w.style.width=w.style.height=fs+'px';w.style.maxWidth=w.style.maxHeight='none';}return fs>0?fs:0;}
+// 래퍼(w) 자신이 아니라 부모를 기준으로 재야 순환참조 없이 리사이즈에 반응하고, 래퍼도 그 크기로 맞춰 field-wrap의 flex 중앙정렬이 제대로 동작함.
+// 모바일은 field-wrap이 align-items:center로 자식(캔버스)에 맞춰 가로·세로 모두 줄어드는 구조라
+// field-wrap의 clientWidth/clientHeight를 그대로 쓰면 이전 계산값을 계속 되읽는 순환참조에 빠짐(한 번 작아지면 다시 못 커짐) —
+// 뷰포트 기준의 독립적인 값(가로: 100vw-40px, 세로: field-wrap 시작 위치·뒤따르는 형제 요소 실측 높이·
+// 아래 통계 패널 최소 높이 160px(.pnl-right min-height)를 제외한 값)으로 계산해야 함
+function _fieldFS(w){
+  var p=w.parentElement||w;
+  var pw,ph;
+  if(window.innerWidth<=720){
+    pw=window.innerWidth-40;
+    var siblingsH=0;
+    for(var el=p.nextElementSibling;el;el=el.nextElementSibling){
+      if(getComputedStyle(el).display!=='none')siblingsH+=el.getBoundingClientRect().height;
+    }
+    ph=window.innerHeight-p.getBoundingClientRect().top-siblingsH-160;
+  } else {
+    pw=p.clientWidth||0;
+    ph=p.clientHeight||0;
+  }
+  var fs=Math.min(pw,ph)-24;
+  if(fs>0){
+    // 모바일 초기 폭 CSS가 순환참조 방지를 위해 !important를 쓰므로, JS 계산값도 !important로 덮어써야 함
+    w.style.setProperty('width',fs+'px','important');
+    w.style.setProperty('height',fs+'px','important');
+    w.style.maxWidth=w.style.maxHeight='none';
+  }
+  return fs>0?fs:0;
+}
 function initCanvas(){
   const w=document.getElementById('cwrap');
   FS=_fieldFS(w)||w.offsetWidth||440;

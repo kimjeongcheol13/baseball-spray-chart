@@ -429,10 +429,22 @@ function showApp(){
   _applyMobLayout();
   document.body.style.overflowY='hidden';
   document.body.style.overflowX='hidden';
-  // 창 크기 바뀔 때 app-page 인라인 스타일 재판단 + 캔버스 재드로우
+  // 창 크기/줌 배율이 바뀔 때 app-page 인라인 스타일 재판단 + 필드 캔버스 크기 재계산 + 재드로우
+  // (ResizeObserver는 CDP 뷰포트 에뮬레이션 등 일부 환경에서 안 붙는 경우가 있어 window resize로도 한 번 더 보정)
   window.addEventListener('resize',function(){
     _applyMobLayout();
-    if(typeof drawField==='function')requestAnimationFrame(function(){drawField();if(typeof safeRender==='function')safeRender();});
+    requestAnimationFrame(function(){
+      var cw=document.getElementById('cwrap');
+      if(cw&&typeof _fieldFS==='function'){
+        var nw=_fieldFS(cw);
+        if(nw&&nw!==FS&&fC&&hC&&oC){
+          FS=nw;
+          [fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});
+          if(typeof _applyDPR==='function')_applyDPR();
+        }
+      }
+      if(typeof drawField==='function'){drawField();if(typeof safeRender==='function')safeRender();}
+    });
   });
   initApp();
   // 저장된 역할 적용 (FTU 완료 후 재방문 시)
@@ -749,7 +761,7 @@ function toggleAnalysisPanel(){
   setTimeout(function(){
     var w=document.getElementById('cwrap');
     if(!w)return;
-    FS=w.clientWidth;
+    FS=_fieldFS(w);
     ['fldCanvas','hitCanvas','ovrCanvas'].forEach(function(id){
       var c=document.getElementById(id);
       if(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';}
@@ -1369,9 +1381,12 @@ function refreshZoneDisplay(){
   });
 }
 
+// 필드 캔버스는 정사각형: 부모(field-wrap)의 가로/세로 중 작은 쪽에 맞춰야 세로 공간이 부족할 때 잘리지 않음.
+// 래퍼(w) 자신이 아니라 부모를 기준으로 재야 순환참조 없이 리사이즈에 반응하고, 래퍼도 그 크기로 맞춰 field-wrap의 flex 중앙정렬이 제대로 동작함
+function _fieldFS(w){var p=w.parentElement||w;var fs=Math.min(p.clientWidth||0,p.clientHeight||0)-24;if(fs>0){w.style.width=w.style.height=fs+'px';w.style.maxWidth=w.style.maxHeight='none';}return fs>0?fs:0;}
 function initCanvas(){
   const w=document.getElementById('cwrap');
-  FS=w.clientWidth||w.offsetWidth||440;
+  FS=_fieldFS(w)||w.offsetWidth||440;
   [fC,hC,oC]=['fldCanvas','hitCanvas','ovrCanvas'].map(id=>{const c=document.getElementById(id);c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';return c;});
   fCtx=fC.getContext('2d');hCtx=hC.getContext('2d');oCtx=oC.getContext('2d');
   _applyDPR();
@@ -1380,11 +1395,11 @@ function initCanvas(){
   drawField();
   // Retry draw on next frame in case layout wasn't ready
   requestAnimationFrame(function(){
-    var nw=w.clientWidth||w.offsetWidth;
+    var nw=_fieldFS(w)||w.offsetWidth;
     if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}
     else if(FS<=0){FS=nw||440;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();}
   });
-  new ResizeObserver(function(){var nw=w.clientWidth;if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}).observe(w);
+  new ResizeObserver(function(){var nw=_fieldFS(w);if(!nw||nw===FS)return;FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();drawField();safeRender();}).observe(w.parentElement||w);
 
   let _lastTouch=0,_touchStartX=0,_touchStartY=0;
   let _lastPointerX=null,_lastPointerY=null;
@@ -6394,7 +6409,7 @@ function startFromWizard(){
   requestAnimationFrame(function(){
     var w=document.getElementById('cwrap');
     if(!w)return;
-    var nw=w.clientWidth||w.offsetWidth;
+    var nw=_fieldFS(w)||w.offsetWidth;
     if(nw&&nw!==FS){FS=nw;if(fC){fC.width=FS;fC.height=FS;}if(hC){hC.width=FS;hC.height=FS;}if(oC){oC.width=FS;oC.height=FS;}}
     drawField();safeRender();
   });
@@ -8003,7 +8018,7 @@ document.addEventListener('visibilitychange',function(){
       try{
         if(fC&&hC&&oC){
           var w=document.getElementById('cwrap');
-          var nw=w?w.clientWidth:0;
+          var nw=w?_fieldFS(w):0;
           if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});}
           fCtx=fC.getContext('2d');
           hCtx=hC.getContext('2d');

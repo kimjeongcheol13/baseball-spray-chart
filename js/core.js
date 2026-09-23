@@ -1704,7 +1704,7 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
   if(!handle||!al)return;
   var mob=function(){return window.innerWidth<=720;};
   function setW(w){
-    var min=mob()?55:180, max=mob()?220:320;
+    var min=mob()?55:140, max=mob()?220:320;
     w=Math.min(max,Math.max(min,Math.round(w)));
     al.style.setProperty('--lp-w',w+'px');
     try{localStorage.setItem(mob()?'sl_lp_w_mob':'sl_lp_w',w);}catch(e){}
@@ -1732,7 +1732,7 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
     var sm=+localStorage.getItem('sl_lp_w_mob');
     var sd=+localStorage.getItem('sl_lp_w');
     if(mob()&&sm>=55&&sm<=220)setW(sm);
-    else if(!mob()&&sd>=180&&sd<=320)setW(sd);
+    else if(!mob()&&sd>=140&&sd<=320)setW(sd);
   });
 })();
 (function initRpResize(){
@@ -1741,7 +1741,10 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
   var rp=document.querySelector('.pnl-right');
   if(!handle||!al||!rp)return;
   function setW(w){
-    w=Math.max(240,Math.min(Math.round(window.innerWidth*0.6),Math.round(w)));
+    // 필드(가운데) 영역 최소 260px 확보
+    var lpW=document.querySelector('.pnl-left').getBoundingClientRect().width;
+    var max=Math.min(window.innerWidth*0.6,window.innerWidth-54-lpW-260);
+    w=Math.max(240,Math.min(Math.round(max),Math.round(w)));
     al.style.setProperty('--rp-w',w+'px');
     try{localStorage.setItem('sl_rp_w',w);}catch(e){}
   }

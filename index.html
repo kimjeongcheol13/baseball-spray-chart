@@ -29,7 +29,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/cloud.js"></script>
+<script src="js/cloud.js?v=2"></script>
 
 <script>
 /* Kakao Share SDK */
@@ -61,7 +61,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=64">
+<link rel="stylesheet" href="css/styles.css?v=65">
 <link rel="stylesheet" href="css/features.css?v=23">
 <style>
 /* ── Onboarding overlay ── */
@@ -1381,18 +1381,19 @@ var _kakaoSdkLoaded = false;
   <div id="appToolbar" style="display:flex;gap:6px;align-items:center">
     <select class="inn-sel" id="innSel"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select>
     <span class="save-ind" id="saveInd"></span>
-    <button class="btn btn-ghost" onclick="openLoad()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="13" height="10" rx="2"/></svg>불러오기</button>
-    <button class="btn btn-ghost" id="saveBtn" onclick="showSaveSheet()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
-    <button class="btn btn-ghost" id="toolbarUndoBtn" onclick="undoLast()" title="직전 타구 취소 (Ctrl+Z)" disabled style="padding:4px 9px;font-size:14px">⎌</button>
-    <button class="btn-xl" onclick="exportCurrentGameToExcel()" title="엑셀로 내보내기">📥 엑셀</button>
+    <button class="btn btn-primary" id="saveBtn" onclick="showSaveSheet()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>저장</button>
     <button class="btn-gf" id="gfToggleBtn" onclick="gfToggle()" title="경기 운영 모드 — 타순·아웃카운트·베이스 자동 진행" data-help-title="▶ 경기 운영 모드" data-help="타순·아웃카운트·이닝을 자동으로 진행하는 <b>경기 운영 모드</b>입니다.<br>기록을 입력할 때마다 타순이 넘어가고,<br>3아웃 시 이닝이 자동 전환됩니다.<br>경기종료 버튼을 탭하면 최종 요약 카드가 표시됩니다.">▶ 경기운영</button>
-    <button class="btn btn-ghost btn-primary" id="analysisPanelBtn" onclick="toggleAnalysisPanel()" title="분석 패널 열기/닫기" style="padding:4px 8px;font-size:10px" data-help-title="📊 분석 패널" data-help="우측 <b>분석 패널</b>을 열고 닫습니다.<br>차트·통계·투수 탭을 경기 중에 빠르게 확인하세요.">📊 분석</button>
     <div class="more-menu-wrap" id="moreMenuWrap">
-      <button class="btn btn-ghost" onclick="toggleMoreMenu()" id="moreMenuBtn" style="padding:4px 12px;font-size:15px;letter-spacing:2px;line-height:1" title="더보기">···</button>
+      <button class="btn btn-ghost" onclick="toggleMoreMenu()" id="moreMenuBtn" style="padding:4px 12px" title="메뉴" aria-label="메뉴" aria-haspopup="true" aria-expanded="false">메뉴</button>
       <div class="more-menu" id="moreMenu">
+        <button class="mm-item" onclick="openLoad();closeMoreMenu()">📂 불러오기</button>
+        <button class="mm-item" id="toolbarUndoBtn" onclick="undoLast();closeMoreMenu()" title="직전 타구 취소 (Ctrl+Z)" disabled>↶ 실행 취소</button>
         <button class="mm-item" onclick="exportCurrentGameToExcel();closeMoreMenu()">📥 엑셀 내보내기</button>
         <button class="mm-item" onclick="shareGameLink();closeMoreMenu()" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.">🔗 공유</button>
-        <button class="mm-item" onclick="showPostGameReport();closeMoreMenu()" style="color:#f6c23e">📊 리포트</button>
+        <button class="mm-item" onclick="showPostGameReport();closeMoreMenu()">📊 리포트</button>
+        <div class="mm-divider"></div>
+        <button class="mm-item" id="hcToggleBtn" onclick="toggleHighContrast();closeMoreMenu()" title="야외 고대비 모드">☀ 고대비</button>
+        <button class="mm-item" id="authBtn" onclick="openLoginModal();closeMoreMenu()" title="로그인하면 다른 기기에서도 이어서 사용할 수 있어요">👤 로그인</button>
         <div class="mm-divider"></div>
         <button class="mm-item" onclick="showHelpMenu();closeMoreMenu()">❓ 도움말</button>
         <button class="mm-item btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내 모드</button>
@@ -1400,9 +1401,6 @@ var _kakaoSdkLoaded = false;
         <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
       </div>
     </div>
-    <button class="auth-btn" id="authBtn" onclick="openLoginModal()" title="로그인하면 다른 기기에서도 이어서 사용할 수 있어요">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </button>
     <span id="teamBadge" onclick="openLoginModal()" style="cursor:pointer"></span>
   </div>
 </header>
@@ -1668,7 +1666,6 @@ var _kakaoSdkLoaded = false;
   <button id="filterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleBatterFilter()" onmouseenter="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'👤 타자 필터','라인업에서 선택한 타자의 타구만 필드에 표시합니다. 타자를 선택하면 자동으로 켜집니다.')" ontouchend="hideBtnTipDelay()">👤</button>
   <button id="teamFilterBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px;min-width:36px" onclick="cycleTeamFilter()" onmouseenter="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'⚾ 팀 필터','필드에 표시할 팀 타구를 전환합니다.<br>전체 → 홈팀만 → 원정팀만 → 전체')" ontouchend="hideBtnTipDelay()">전체</button>
   <button id="hotColdBtn" class="btn btn-ghost" style="padding:4px 8px;font-size:10px" onclick="toggleHotCold()" onmouseenter="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" onmouseleave="hideBtnTip()" ontouchstart="showBtnTip(this,'🌡️ 타구 히트맵','타자 선택 시 → 그 타자의 구역별 안타율 표시<br>타자 미선택 시 → 전체 타구 밀집도 히트맵<br>🔴 빨강 = 집중 · 🟡 노랑 = 보통 · 🔵 파랑 = 분산')" ontouchend="hideBtnTipDelay()">🌡️</button>
-  <span class="batter-hint" id="innDisp" style="flex-shrink:0">1회초</span>
 </div>
     <!-- ══════ Game Flow 상태 바 ══════ -->
     <div id="gfBar">
@@ -1751,7 +1748,7 @@ var _kakaoSdkLoaded = false;
         </div>
       </div>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint"><div class="fth-ring"></div><div class="fth-txt">⚾ 여기를 탭해서<br>첫 타구를 기록하세요</div></div></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint no-batter"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt">타자를 먼저 선택하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
     <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
@@ -2812,31 +2809,6 @@ document.addEventListener('DOMContentLoaded', function() {
     b.classList.toggle('sl-st-on', b.dataset.st === _savedSt);
   });
 });
-/* ── 첫 탭 오버레이 제어 ── */
-function initFieldTapHint(){
-  var hint=document.getElementById('fieldTapHint');
-  if(!hint)return;
-  if(localStorage.getItem('sl_field_tapped')){hint.classList.add('hidden');return;}
-  hint.classList.remove('hidden');
-  var cwrap=document.getElementById('cwrap');
-  if(cwrap){
-    cwrap.addEventListener('pointerdown',function _onTap(){
-      hint.classList.add('hidden');
-      localStorage.setItem('sl_field_tapped','1');
-      cwrap.removeEventListener('pointerdown',_onTap);
-    },{once:true});
-  }
-}
-document.addEventListener('DOMContentLoaded',function(){
-  // 경기 시작 후 필드 오버레이 초기화
-  var _origStart=window.startFromWizard;
-  if(typeof _origStart==='function'){
-    window.startFromWizard=function(){
-      _origStart.apply(this,arguments);
-      setTimeout(initFieldTapHint,300);
-    };
-  }
-});
 /* ── EV unit toggle ── */
 function toggleEvUnit() {
   var cur = localStorage.getItem('sl_ev_unit') || 'kmh';
@@ -2929,9 +2901,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=87"></script>
+<script defer src="js/core.js?v=88"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=10"></script>
+<script type="module" src="js/app.js?v=11"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

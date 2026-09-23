@@ -63,11 +63,11 @@
     if (btn) {
       if (isReal) {
         var initial = name.charAt(0).toUpperCase();
-        btn.innerHTML = '<span class="auth-avatar">' + initial + '</span>';
+        btn.innerHTML = '<span class="auth-avatar">' + initial + '</span> 내 계정';
         btn.title = name;
         btn.classList.add('auth-logged');
       } else {
-        btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+        btn.innerHTML = '👤 로그인';
         btn.title = '로그인하면 다른 기기에서도 이어서 사용할 수 있어요';
         btn.classList.remove('auth-logged');
       }

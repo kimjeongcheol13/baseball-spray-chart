@@ -725,7 +725,8 @@ function toggleMoreMenu(){
   if(!m)return;
   var isOpen=m.style.display==='flex';
   m.style.display=isOpen?'none':'flex';
-  if(btn)btn.classList.toggle('btn-primary',!isOpen);
+  if(btn)btn.setAttribute('aria-expanded',String(!isOpen));
+  _hideMenuMovedTip();
   if(!isOpen){
     setTimeout(function(){document.addEventListener('click',_closeMoreMenuOutside,{once:true});},0);
   }
@@ -734,8 +735,26 @@ function closeMoreMenu(){
   var m=document.getElementById('moreMenu');
   var btn=document.getElementById('moreMenuBtn');
   if(m)m.style.display='none';
-  if(btn)btn.classList.remove('btn-primary');
+  if(btn)btn.setAttribute('aria-expanded','false');
 }
+// 메뉴로 옮긴 기능 안내 (1회)
+function _hideMenuMovedTip(){var t=document.getElementById('menuMovedTip');if(t)t.remove();}
+(function(){
+  var btn=document.getElementById('moreMenuBtn');
+  try{if(!btn||localStorage.getItem('sl_menu_moved_seen')||!window.IntersectionObserver)return;}catch(e){return;}
+  var io=new IntersectionObserver(function(en){
+    if(!en[0].isIntersecting)return;
+    io.disconnect();
+    try{localStorage.setItem('sl_menu_moved_seen','1');}catch(e){}
+    var t=document.createElement('div');
+    t.id='menuMovedTip';t.className='menu-moved-tip';t.setAttribute('role','status');
+    t.textContent='불러오기·실행 취소·엑셀·공유·고대비·계정은 메뉴 안으로 이동했어요';
+    t.onclick=_hideMenuMovedTip;
+    document.getElementById('moreMenuWrap').appendChild(t);
+    setTimeout(_hideMenuMovedTip,8000);
+  });
+  io.observe(btn);
+})();
 function _closeMoreMenuOutside(e){
   var wrap=document.getElementById('moreMenuWrap');
   if(wrap&&!wrap.contains(e.target))closeMoreMenu();
@@ -1119,8 +1138,8 @@ function initApp(){
     }
   }catch(e){}
   localStorage.setItem('sl_visited','1');
-  document.getElementById('innSel').addEventListener('change',()=>document.getElementById('innDisp').textContent=document.getElementById('innSel').value);
   refreshZoneDisplay();
+  updateFieldTapHint();
   initOfflineDetection();
 }
 
@@ -1541,6 +1560,14 @@ function _showNearDot(event){
   }
 }
 
+var _fieldOv=(function(){try{return JSON.parse(localStorage.getItem('sl_field_overlays'))||{};}catch(e){return {};}})();
+function setFieldOverlay(k,on){
+  _fieldOv[k]=!!on;
+  try{localStorage.setItem('sl_field_overlays',JSON.stringify(_fieldOv));}catch(e){}
+  document.body.classList.toggle('ov-legend',!!_fieldOv.legend);
+  drawField();
+}
+document.body.classList.toggle('ov-legend',!!_fieldOv.legend);
 function drawField(){
   if(!fCtx||!fC||FS<=0)return;
   const st=STADIUMS[AS.stadium]||STADIUMS.standard;
@@ -1573,15 +1600,18 @@ function drawField(){
   ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
   ctx.fillText(st.lfDist+'m',cx-S2*.32,cy-S2*.58);ctx.fillText(st.cfDist+'m',cx,cy-S2*.72);ctx.fillText(st.rfDist+'m',cx+S2*.32,cy-S2*.58);
   // 방향 레이블
+  if(_fieldOv.dir){
   const dl=Math.floor(S2*.019);ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;
   ctx.fillStyle='rgba(245,101,101,.85)';ctx.fillText('당겨치기',cx-S2*.23,cy-S2*.37);
   ctx.fillStyle='rgba(45,212,160,.85)';ctx.fillText('센터',cx,cy-S2*.45);
   ctx.fillStyle='rgba(75,140,245,.85)';ctx.fillText('밀어치기',cx+S2*.23,cy-S2*.37);
+  }
   // 베이스라인
   ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
   const bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
   ctx.beginPath();bps.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));ctx.stroke();
   // 거리 링 (구장 CF 기준 정규화)
+  if(!_fieldOv.arcs)return;
   const cfRef=st.cfDist;
   ctx.setLineDash([3,6]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
   ctx.fillStyle='rgba(255,255,255,0.38)';ctx.font=Math.floor(S2*.022)+'px sans-serif';ctx.textAlign='left';
@@ -1815,7 +1845,16 @@ function _drawMiniSpray(canvas, abs){
   });
 }
 
+function updateFieldTapHint(){
+  var hint=document.getElementById('fieldTapHint'),txt=document.getElementById('fieldTapHintTxt');
+  if(!hint||!txt)return;
+  var msg=!AS.batter?'타자를 먼저 선택하세요':(!AS.abs.some(a=>a.bid===AS.batter.id)?'첫 타구를 기록하세요':'');
+  txt.textContent=msg;
+  hint.classList.toggle('hidden',!msg);
+  hint.classList.toggle('no-batter',!AS.batter);
+}
 function safeRender(){
+  updateFieldTapHint();
   requestAnimationFrame(()=>{
     if(!hCtx)return;
     hCtx.clearRect(0,0,FS,FS);
@@ -1844,7 +1883,7 @@ function renderRecs(){
   const rpnLabel=document.getElementById('rpnLabel');
   if(rpnLabel){
     if(!AS.recFilterBid){rpnLabel.textContent='전체'+(allPlayers.length?' ('+allPlayers.length+'명)':'');}
-    else{const p=allPlayers.find(p=>p.id===AS.recFilterBid);rpnLabel.textContent=p?'#'+p.num+' '+p.name:'전체';}
+    else{const p=allPlayers.find(p=>p.id===AS.recFilterBid);rpnLabel.textContent=p?(p.num?'#'+p.num+' ':'')+p.name:'전체';}
   }
   const list=AS.recFilterBid?AS.abs.filter(a=>a.bid===AS.recFilterBid):AS.abs;
   document.getElementById('recCnt').textContent=list.length+'개 기록';
@@ -1852,7 +1891,7 @@ function renderRecs(){
   const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
-  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">#${a.bnum} ${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${a.inn}${a.pt?' · '+a.pt:''}${a.zone?' · '+a.zone:''}${a.dir?' · '+a.dir:''}${a.rbi>0?' · '+a.rbi+'타점':''} · ${a.ts}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${a.id})" ondragover="recDragOver(event,${a.id})" ondrop="recDrop(event,${a.id})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${a.res}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+a.bnum+' ':''}${a.bname} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${[a.inn,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · ')}</div></div><button class="rec-edit" onclick="openEditRec(${a.id})">✏️ 수정</button><button class="rec-del" onclick="delRec(${a.id})">✕</button></div>`).join('');
 }
 var _dragRecId=null;
 function recDragStart(e,id){_dragRecId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
@@ -2526,10 +2565,8 @@ function _updateSaveUI(unsaved){
   var btn=document.getElementById('saveBtn');
   if(unsaved){
     if(ind){ind.textContent='● 미저장';ind.className='save-ind unsaved';}
-    if(btn){btn.classList.add('btn-primary');btn.classList.remove('btn-ghost');}
   }else{
     if(ind){ind.textContent='저장됨 ✓';ind.className='save-ind ok';}
-    if(btn){btn.classList.remove('btn-primary');btn.classList.add('btn-ghost');}
     setTimeout(function(){
       if(ind&&ind.className==='save-ind ok'){ind.textContent='';ind.className='save-ind';}
     },3000);
@@ -8332,19 +8369,7 @@ function toggleHighContrast(){
   showToast(_hcMode?'☀️ 고대비 모드 ON (야외)':'고대비 모드 OFF',false);
 }
 
-// 헤더에 고대비 버튼 주입
-(function _injectHcBtn(){
-  setTimeout(function(){
-    var hdr=document.querySelector('.app-hdr>div:last-child')||document.querySelector('.app-hdr');
-    if(!hdr)return;
-    var btn=document.createElement('button');
-    btn.id='hcToggleBtn';btn.className='btn btn-ghost';
-    btn.title='야외 고대비 모드';
-    btn.textContent='☀ 고대비';
-    btn.onclick=toggleHighContrast;
-    hdr.appendChild(btn);
-  },300);
-})();
+(function(){var b=document.getElementById('hcToggleBtn');if(b&&_hcMode)b.textContent='☀ 일반';})();
 
 // ─── 2. 오프라인 배너 강화 ─────────────────────
 (function _fieldOffline(){

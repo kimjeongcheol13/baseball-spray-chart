@@ -99,6 +99,7 @@ function _syncChips() {
     if (key === 'res')   on = _SF.res.indexOf(val) >= 0;
     if (key === 'hand')  on = _SF.hand  === val;
     if (key === 'count') on = _SF.count === val;
+    if (key === 'ov')    on = !!(window._fieldOv && window._fieldOv[val]);
     el.classList.toggle('sfc-on', !!on);
   });
 }
@@ -107,6 +108,11 @@ function _syncChips() {
 function _sfChip(el) {
   var key = el.dataset.key, val = el.dataset.val;
   var single = el.dataset.single === '1';
+  if (key === 'ov') { // 필드 표시 토글: 즉시 적용 + localStorage 저장
+    if (window.setFieldOverlay) window.setFieldOverlay(val, !(window._fieldOv && window._fieldOv[val]));
+    _syncChips();
+    return;
+  }
   if (key === 'pt' || key === 'res') {
     var arr = _SF[key];
     var idx = arr.indexOf(val);
@@ -248,6 +254,13 @@ function _build() {
         ['batter','타자 유리 (2B↑)'],['full','풀카운트 (3-2)']
       ].map(function(pair) {
         return '<button class="sfc" data-key="count" data-val="' + pair[0] + '" data-single="1" onclick="_sfChip(this)">' + pair[1] + '</button>';
+      }).join('')
+    + '</div></div>'
+
+    // 필드 표시 (기본 OFF)
+    + '<div class="sfp-sec"><div class="sfp-lbl">필드 표시</div><div class="sfp-row">'
+    + [['arcs','거리 호·거리'],['dir','당겨치기/밀어치기'],['legend','범례']].map(function(pair) {
+        return '<button class="sfc" data-key="ov" data-val="' + pair[0] + '" onclick="_sfChip(this)">' + pair[1] + '</button>';
       }).join('')
     + '</div></div>'
 

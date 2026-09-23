@@ -1735,6 +1735,33 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
     else if(!mob()&&sd>=180&&sd<=320)setW(sd);
   });
 })();
+(function initRpResize(){
+  var handle=document.getElementById('rpResizeHandle');
+  var al=document.querySelector('.app-layout');
+  var rp=document.querySelector('.pnl-right');
+  if(!handle||!al||!rp)return;
+  function setW(w){
+    w=Math.max(240,Math.min(Math.round(window.innerWidth*0.6),Math.round(w)));
+    al.style.setProperty('--rp-w',w+'px');
+    try{localStorage.setItem('sl_rp_w',w);}catch(e){}
+  }
+  handle.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    var startX=e.clientX,startW=rp.getBoundingClientRect().width;
+    handle.classList.add('dragging');
+    function onMove(ev){setW(startW-(ev.clientX-startX));}
+    function onUp(){
+      handle.classList.remove('dragging');
+      handle.removeEventListener('pointermove',onMove);
+      handle.removeEventListener('pointerup',onUp);
+    }
+    handle.addEventListener('pointermove',onMove);
+    handle.addEventListener('pointerup',onUp);
+  });
+  var sw=0;try{sw=+localStorage.getItem('sl_rp_w');}catch(e){}
+  if(sw>=240)setW(sw);
+})();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
 const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};

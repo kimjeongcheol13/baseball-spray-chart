@@ -327,7 +327,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 /* grid + margin은 태블릿/PC 전용 */
 @media(min-width:721px){
   #app-page{height:100vh;overflow:hidden;display:flex;flex-direction:column}
-  .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) minmax(280px,1fr);grid-template-rows:1fr;margin-right:54px;overflow-x:auto}
+  .app-layout{display:grid;grid-template-columns:var(--lp-w,180px) minmax(0,1fr) var(--rp-w,minmax(280px,1fr));grid-template-rows:1fr;margin-right:54px;overflow-x:auto}
   .pnl-left{display:flex!important;grid-column:1;grid-row:1}
   .pnl-center{grid-column:2;grid-row:1}
   .pnl-right{grid-column:3;grid-row:1;border-left:1px solid var(--border)}
@@ -355,6 +355,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .pnl-left{background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 .pnl-resize-handle{position:absolute;top:0;right:0;bottom:0;width:8px;cursor:col-resize;z-index:20;transition:background .15s;touch-action:none}
 .pnl-resize-handle:hover,.pnl-resize-handle.dragging{background:var(--accent-dim)}
+.pnl-right>.pnl-resize-handle{right:auto;left:0}
 @media(max-width:720px){
   /* 모바일에서 드래그 핸들 숨김 — ◀▶ 버튼으로 대체 */
   .pnl-resize-handle{display:none}
@@ -446,7 +447,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .sb-btn:hover{border-color:var(--yellow);color:var(--yellow)}.sb-btn:active{transform:scale(.93)}
 
 /* RIGHT */
-.pnl-right{background:var(--bg-card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.pnl-right{background:var(--bg-card);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
 .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .tab{flex:1;padding:11px 6px;text-align:center;font-size:11px;font-weight:700;color:var(--text3);cursor:pointer;transition:all 100ms;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:3px;overflow:hidden;white-space:nowrap;min-width:0}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}

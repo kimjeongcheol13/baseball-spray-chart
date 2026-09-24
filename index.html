@@ -63,6 +63,7 @@ var _kakaoSdkLoaded = false;
 </script>
 <link rel="stylesheet" href="css/styles.css?v=66">
 <link rel="stylesheet" href="css/features.css?v=23">
+<link rel="stylesheet" href="css/shell.css?v=1">
 <style>
 /* ── Onboarding overlay ── */
 .onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:none}
@@ -1578,9 +1579,9 @@ var _kakaoSdkLoaded = false;
       <span style="font-size:14px;font-weight:700;color:var(--text)">더보기</span>
       <button onclick="closeMobMoreSheet()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
     </div>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('stat',document.getElementById('tab-stat'))">📊 팀통계</button>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('chart',document.getElementById('tab-chart'))">📤 내보내기</button>
-    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();shellOpenAnalysis('team')">📊 팀통계</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();shellOpenAnalysis('team')">📤 내보내기</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();shellOpenAnalysis('team')">🏟️ 팀 대시보드</button>
     <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
     <button class="mab-sheet-btn" onclick="closeMobMoreSheet();fieldFeedbackOpen()">💬 피드백</button>
   </div>
@@ -1827,10 +1828,10 @@ var _kakaoSdkLoaded = false;
       <div class="tab-pnl" id="pnl-batter">
         <!-- 투수 탭 연결 배지 -->
         <div id="linkBadgePill" class="link-badge-pill" style="display:none"
-             onclick="swTab('pitcher',document.getElementById('tab-pitcher'))">
+             onclick="shellOpenAnalysis('pitcher')">
           ⚾ 투구 기록 중 · <span id="linkBadgePillCount"></span>구
         </div>
-        <div id="batter-analysis-placeholder" style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">← 좌측에서 타자를 선택하세요</div>
+        <div id="batter-analysis-placeholder" style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">기록 탭에서 타자를 선택하세요</div>
         <div id="batter-analysis-content" style="display:none">
           <div class="batter-stat-section">
             <div class="bs-name" id="bsName">—</div>
@@ -2523,6 +2524,83 @@ var _kakaoSdkLoaded = false;
 </div>
 
 
+<!-- ═══ 분석 탭 (서브탭: 스프레이·타자·투수·비교·프로필·스카우트·팀) ═══ -->
+<div id="analysisView" class="savant-view">
+  <div class="ana-subnav" id="anaSubnav" role="tablist" aria-label="분석 항목">
+    <div class="ana-subnav-inner">
+      <button class="ana-sub on" data-sub="spray" role="tab" onclick="shellSub('spray')">스프레이</button>
+      <button class="ana-sub" data-sub="batter" role="tab" onclick="shellSub('batter')">타자</button>
+      <button class="ana-sub" data-sub="pitcher" role="tab" onclick="shellSub('pitcher')">투수</button>
+      <button class="ana-sub" data-sub="compare" role="tab" onclick="shellSub('compare')">비교</button>
+      <button class="ana-sub" data-sub="profile" role="tab" onclick="shellSub('profile')">프로필</button>
+      <button class="ana-sub" data-sub="scout" role="tab" onclick="shellSub('scout')">스카우트</button>
+      <button class="ana-sub" data-sub="team" role="tab" onclick="shellSub('team')">팀</button>
+    </div>
+  </div>
+  <div class="shell-inner" id="anaBody">
+    <section class="ana-sec on" data-sub="spray">
+      <div class="ana-spray-ctrls" id="anaSprayCtrls"></div>
+      <div class="ana-spray-wrap">
+        <canvas id="anaSprayCanvas" aria-label="스프레이 차트"></canvas>
+        <div class="spray-legend" id="anaSprayLegend"></div>
+      </div>
+      <div class="ana-note">기록 탭의 필드와 같은 데이터입니다 · 선수별 성적은 <button class="ana-link" onclick="shellSub('batter')">타자</button> / <button class="ana-link" onclick="shellSub('team')">팀</button></div>
+    </section>
+    <section class="ana-sec" data-sub="batter" id="anaSecBatter"></section>
+    <section class="ana-sec" data-sub="pitcher" id="anaSecPitcher"></section>
+    <section class="ana-sec" data-sub="compare" id="anaSecCompare"></section>
+    <section class="ana-sec" data-sub="profile" id="anaSecProfile"></section>
+    <section class="ana-sec" data-sub="scout" id="anaSecScout"></section>
+    <section class="ana-sec" data-sub="team" id="anaSecTeam"></section>
+  </div>
+</div>
+
+<!-- ═══ 경기설정 탭 ═══ -->
+<div id="settingsView" class="savant-view">
+  <div class="shell-inner">
+    <div class="savant-view-header">
+      <div class="svh-title">경기설정</div>
+      <div class="svh-sub">경기 운영 · 팀 · 라인업 · 구장</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">경기 운영</div>
+      <div class="set-row">
+        <button class="set-btn" id="setGfBtn" onclick="shellGfToggle()">▶ 경기 운영 시작</button>
+        <button class="set-btn danger" id="setGfEnd" style="display:none" onclick="gfEndConfirm()">경기 종료</button>
+      </div>
+      <div class="set-row">
+        <button class="set-btn" onclick="openGameWizard()">＋ 새 경기 시작</button>
+      </div>
+      <div class="set-hint">경기 운영을 켜면 타순·아웃카운트·이닝·주자가 자동으로 진행됩니다.</div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">팀 · 라인업</div>
+      <div class="set-row">
+        <label class="set-field">홈팀<input class="inp" id="setHome" maxlength="6" oninput="shellTeamName('home',this.value)"></label>
+        <label class="set-field">원정팀<input class="inp" id="setAway" maxlength="6" oninput="shellTeamName('away',this.value)"></label>
+      </div>
+      <div class="set-row">
+        <button class="set-btn primary" onclick="openMobPlayerModal()">👥 라인업 편집</button>
+        <button class="set-btn" onclick="ocrModalOpen()">📷 사진/CSV로 입력</button>
+      </div>
+      <div class="set-row">
+        <button class="set-btn" onclick="applyLastLineup()">↺ 지난 경기 라인업</button>
+        <button class="set-btn" onclick="openTeamCreate()">🏟️ 팀 만들기</button>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">구장</div>
+      <div id="setStadiumSlot"></div>
+    </div>
+    <div class="set-sec">
+      <div class="set-title">사용 모드</div>
+      <div class="set-row">
+        <button class="set-btn" onclick="openRoleChangeSheet()">🎭 역할 변경 (기록원·코치·선수)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- FIELD: Offline Banner -->
 <div id="fieldOfflineBanner">
   <span>📵 오프라인 — 데이터는 기기에 안전하게 저장됩니다</span>
@@ -2569,31 +2647,21 @@ var _kakaoSdkLoaded = false;
 </div>
 
 <!-- ═══ Bottom Navigation ═══ -->
-<nav id="savantNav" class="savant-nav">
-  <button class="savant-nav-btn active" data-view="record" onclick="switchSavantView('record',this)"
-    data-help-title="⏺ 기록 탭" data-help="타구를 필드에 찍고 결과를 입력하는 <b>메인 기록 화면</b>입니다.<br>라인업 선택 → 필드 탭 → 결과 입력 순서로 진행합니다.">
+<nav id="savantNav" class="savant-nav" role="tablist" aria-label="메인 탭">
+  <button class="savant-nav-btn active" data-tab="record" role="tab" aria-selected="true" onclick="shellNav('record')"
+    data-help-title="⏺ 기록" data-help="타구를 필드에 찍고 결과를 입력하는 <b>메인 기록 화면</b>입니다.">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2.5"/></svg>
     기록
   </button>
-  <button class="savant-nav-btn" data-view="spray" onclick="switchSavantView('spray',this)"
-    data-help-title="📍 스프레이 탭" data-help="기록된 타구의 <b>스프레이 차트</b>를 크게 봅니다.<br>당김·중앙·밀어 비율과 타구 분포를 한눈에 확인합니다.">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17L10 3l7 14"/><path d="M6 12h8"/></svg>
-    스프레이
-  </button>
-  <button class="savant-nav-btn" data-view="profile" onclick="switchSavantView('profile',this)"
-    data-help-title="👤 프로필 탭" data-help="선수의 <b>모든 경기 통산 성적</b>을 집계합니다.<br>AVG · OBP · SLG · OPS · wOBA · BABIP · ISO · K% · BB%<br>경기별 타율 추이 그래프도 확인할 수 있습니다.">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="7" r="4"/><path d="M3 18c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
-    프로필
-  </button>
-  <button class="savant-nav-btn" data-view="compare" onclick="switchSavantView('compare',this)"
-    data-help-title="⚡ 비교 탭" data-help="두 선수를 <b>나란히 비교</b>합니다.<br>레이더 차트 · 17개 지표 테이블 · 타구 방향 · 최근 타율 추이를 한 화면에서 볼 수 있습니다.">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="14" rx="1"/><rect x="11" y="3" width="7" height="14" rx="1"/></svg>
-    비교
-  </button>
-  <button class="savant-nav-btn" data-view="scout" onclick="switchSavantView('scout',this)"
-    data-help-title="🔍 분석 탭" data-help="상대 타자의 <b>약점을 분석하고 투구 전략을 제안</b>합니다.<br>존별 타율 히트맵 · 카운트별 성적 · 방향 분포 · 최근 타석 기록을 종합해 리포트를 생성합니다.">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2l4 4-9 9-4 1 1-4z"/><path d="M12 6l4 4"/></svg>
+  <button class="savant-nav-btn" data-tab="analysis" role="tab" aria-selected="false" onclick="shellNav('analysis')"
+    data-help-title="📊 분석" data-help="<b>스프레이 · 타자 · 투수 · 비교 · 프로필 · 스카우트 · 팀</b> 분석을 한곳에서 봅니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V9"/><path d="M8 17V4"/><path d="M13 17v-6"/><path d="M18 17V7"/></svg>
     분석
+  </button>
+  <button class="savant-nav-btn" data-tab="settings" role="tab" aria-selected="false" onclick="shellNav('settings')"
+    data-help-title="⚙ 경기설정" data-help="<b>경기 운영 · 팀 · 라인업 · 구장</b>을 설정합니다.">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.3 4.3l1.8 1.8M13.9 13.9l1.8 1.8M4.3 15.7l1.8-1.8M13.9 6.1l1.8-1.8"/></svg>
+    경기설정
   </button>
 </nav>
 
@@ -2902,9 +2970,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=88"></script>
+<script defer src="js/core.js?v=89"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=11"></script>
+<script type="module" src="js/app.js?v=12"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

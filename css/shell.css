@@ -1,0 +1,414 @@
+/* ═══════════════════════════════════════════
+   SprayLab Shell — 하단 탭 3개 + 분석/경기설정 뷰
+   (features.css / styles.css 이후 로드: 기존 레일·오버레이 규칙을 덮어씀)
+   ═══════════════════════════════════════════ */
+:root{
+  --sl-navy:#09090f;
+  --sl-signal:#4b8cf5;
+  --sl-hit-red:#ef4444;
+  --sl-amber:#f59e0b;
+  --sl-teal:#2dd4a0;
+  --nav-h:54px;
+}
+
+/* #app-page 밖에 있는 셸 요소에도 앱 색상 토큰 적용 (styles.css #app-page 블록과 동일 값) */
+.ld,.sl-pop,#analysisView,#settingsView{
+  --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
+  --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
+  --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;
+  --text:#eef0f8;--text2:#8892a4;--text3:#434c5e;
+  --border:#1c1c26;--border2:#252532;
+  --r:10px;--r2:14px;--font:'Noto Sans KR',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+
+/* ── 하단 탭: 모든 폭에서 동일 위치 (오른쪽 세로 레일 폐지) ── */
+#savantNav.savant-nav{
+  position:fixed!important;
+  top:auto!important;left:0!important;right:0!important;bottom:0!important;
+  width:100%!important;max-width:none!important;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px))!important;
+  min-height:0!important;
+  transform:none!important;
+  flex-direction:row!important;
+  justify-content:center!important;
+  align-items:stretch!important;
+  gap:0!important;
+  padding:0 0 env(safe-area-inset-bottom,0px)!important;
+  border:none!important;
+  border-top:1px solid var(--border2)!important;
+  border-radius:0!important;
+  background:rgba(9,9,15,.96)!important;
+  overflow:hidden!important;
+  z-index:400!important;
+}
+#savantNav .savant-nav-btn{
+  flex:1 1 0;min-width:0;max-width:220px;
+  justify-content:center;gap:3px;
+  padding:6px 4px;font-size:11px;
+  color:var(--text3);
+}
+#savantNav .savant-nav-btn svg{stroke:currentColor}
+#savantNav .savant-nav-btn.active{color:var(--sl-signal)}
+#savantNav .savant-nav-btn.active svg{stroke:var(--sl-signal)}
+
+/* 레일이 차지하던 오른쪽 여백 제거, 하단 탭 높이만큼 비움 */
+@media(min-width:721px){
+  .app-layout{margin-right:0!important}
+  #app-page{padding-bottom:var(--nav-h);box-sizing:border-box}
+}
+
+/* 기록 화면 오른쪽 패널: 타석기록만 남김 (나머지는 분석 탭으로 이동) */
+.pnl-right>.tabs,
+#tabModeBar{display:none!important}
+.pnl-right #pnl-rec{display:block}
+
+/* ── 분석 / 경기설정 뷰 공통 ── */
+#analysisView.savant-view.active,
+#settingsView.savant-view.active{
+  top:0!important;left:0!important;right:0!important;
+  bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px))!important;
+  max-width:none!important;margin:0!important;
+  padding:0!important;
+  display:block;
+  animation:none;
+}
+.shell-inner{max-width:960px;margin:0 auto;padding:12px 12px 28px;box-sizing:border-box}
+
+/* ── 분석 서브탭 바 ── */
+.ana-subnav{
+  position:sticky;top:0;z-index:5;
+  display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
+  padding:10px 12px;
+  background:var(--sl-navy);
+  border-bottom:1px solid var(--border2);
+}
+.ana-subnav::-webkit-scrollbar{display:none}
+.ana-subnav-inner{display:flex;gap:6px;max-width:960px;margin:0 auto;width:100%}
+.ana-sub{
+  flex:0 0 auto;
+  padding:7px 14px;border-radius:999px;
+  border:1px solid var(--border2);background:transparent;
+  color:var(--text3);font:700 12px var(--font);
+  cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;
+}
+.ana-sub.on{background:var(--sl-signal);border-color:var(--sl-signal);color:#fff}
+
+.ana-sec{display:none;padding:0;margin:0;background:none}
+.ana-sec.on{display:block}
+
+/* 옮겨온 기존 탭 패널: 탭 시스템과 무관하게 항상 표시 */
+#anaBody .tab-pnl{
+  display:block!important;
+  width:auto!important;min-width:0!important;flex:none!important;
+  height:auto!important;overflow:visible!important;
+  padding:0!important;
+  scroll-snap-align:none;
+}
+#anaBody .tab-pnl+.tab-pnl{margin-top:12px}
+/* 옮겨온 프로필/비교/스카우트 뷰: 오버레이 해제 */
+#anaBody .ana-embed{display:block;position:static;padding:0}
+#anaBody .ana-embed .savant-view-header{padding-top:4px}
+
+/* ── 스프레이 서브탭 ── */
+.ana-spray-ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.ana-spray-ctrls>div{padding:0!important}
+.ana-spray-wrap{max-width:560px;margin:0 auto}
+#anaSprayCanvas{display:block;width:100%;height:auto;aspect-ratio:1/1;border-radius:10px;background:var(--sl-navy)}
+#anaSprayLegend{justify-content:center;margin-top:8px}
+.ana-note{font-size:11px;color:var(--text3);text-align:center;margin-top:8px;line-height:1.5}
+.ana-link{background:none;border:none;color:var(--sl-signal);font:700 11px var(--font);cursor:pointer;padding:0;text-decoration:underline}
+
+/* ── 경기설정 ── */
+.set-sec{background:var(--bg-card);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px}
+.set-title{font-size:12px;font-weight:800;color:var(--text2);letter-spacing:.3px;margin-bottom:10px}
+.set-row{display:flex;flex-wrap:wrap;gap:8px}
+.set-row+.set-row{margin-top:8px}
+.set-btn{
+  flex:1 1 160px;min-height:44px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--bg-raised);border:1px solid var(--border2);border-radius:10px;
+  color:var(--text);font:700 13px var(--font);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.set-btn:active{opacity:.8}
+.set-btn.primary{background:var(--sl-signal);border-color:var(--sl-signal);color:#fff}
+.set-btn.on{background:rgba(75,140,245,.15);border-color:var(--sl-signal);color:var(--sl-signal)}
+.set-btn.danger{color:var(--sl-hit-red)}
+.set-field{flex:1 1 140px;display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--text3);font-weight:700}
+.set-field input{min-height:40px}
+.set-hint{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5}
+#setStadiumSlot .sl-st-bar{padding:0}
+
+/* 모바일 ⚡ 빠른 기록 버튼: 하단 탭 위로 (드래그 시 인라인 위치가 우선) */
+.fab-wrap{bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 12px)}
+
+/* ═══ 3단계: 라인업 서랍 · 현재 타자 칩 · 되돌리기 ═══ */
+
+/* 왼쪽 라인업 패널과 모바일 타자 줄은 서랍으로 대체 */
+.pnl-left,
+.mob-batter-wrap{display:none!important}
+/* (5단계) 열 구성은 아래 '데스크톱 레이아웃' 블록에서 폭별로 정의 */
+
+/* 현재 타자 칩 */
+.cur-batter-chip{
+  flex:1 1 180px;min-width:0;min-height:40px;
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;
+  background:rgba(75,140,245,.1);border:1px solid rgba(75,140,245,.45);
+  color:var(--text);font:inherit;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.cur-batter-chip:active{background:rgba(75,140,245,.2)}
+.cur-batter-chip:focus-visible{outline:2px solid var(--sl-signal);outline-offset:2px}
+.cur-batter-chip #batterDisp{flex:1 1 auto!important;min-width:0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbc-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cbc-next{font-size:10px;color:var(--text3);white-space:nowrap}
+.cbc-open{font-size:11px;font-weight:800;color:var(--sl-signal);white-space:nowrap}
+@media(max-width:420px){.cbc-next{display:none}}
+
+/* 서랍 */
+.ld-backdrop{position:fixed;inset:0;z-index:440;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s}
+.ld-backdrop.open{opacity:1;pointer-events:auto}
+.ld{
+  position:fixed;top:0;bottom:0;left:0;z-index:450;
+  width:min(380px,88vw);
+  display:flex;flex-direction:column;
+  background:var(--bg-card);border-right:1px solid var(--border2);
+  box-shadow:8px 0 32px rgba(0,0,0,.45);
+  transform:translateX(-102%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  visibility:hidden;
+}
+.ld.open{transform:none;visibility:visible}
+.ld-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 10px;border-bottom:1px solid var(--border)}
+.ld-title{font-size:15px;font-weight:800;color:var(--text)}
+.ld-sub{font-size:10.5px;color:var(--text3);margin-top:3px;line-height:1.4}
+.ld-x{flex-shrink:0;width:36px;height:36px;border-radius:10px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:16px;cursor:pointer}
+.ld-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.ld-body>.tabs{flex-shrink:0}
+.ld-body>.lineup-list{flex:1;min-height:0;overflow-y:auto}
+.ld-body .player-row{min-height:48px}
+
+/* 최근 기록 + 되돌리기 */
+.rec-item.rec-latest{border-color:rgba(75,140,245,.55)!important;box-shadow:inset 3px 0 0 var(--sl-signal)}
+.rec-undo{
+  display:inline-flex;align-items:center;margin-top:6px;
+  padding:5px 10px;border-radius:8px;
+  border:1px solid var(--sl-signal);background:rgba(75,140,245,.12);
+  color:var(--sl-signal);font:700 11px var(--font);cursor:pointer;white-space:nowrap;
+}
+.rec-undo:active{background:rgba(75,140,245,.25)}
+
+/* ═══ 4단계: 상단 바 · 자동 저장 표시 · ☰ 통합 메뉴 · 결과 색상 ═══ */
+
+/* 예전 툴바(저장·경기운영·메뉴)와 모바일 세로 액션바는 ☰ / 경기설정으로 통합 */
+.app-hdr #appToolbar,
+#mobileActionBar{display:none!important}
+
+.app-hdr{
+  display:flex!important;align-items:center;gap:10px;
+  height:auto!important;min-height:52px;padding:6px 12px!important;
+  flex-wrap:nowrap!important;overflow:visible!important;
+}
+.app-hdr .app-brand{flex-shrink:0}
+.app-hdr #innSel{display:inline-block!important;flex-shrink:0;min-height:36px}
+.app-hdr .hdr-count{flex-shrink:0;margin:0}
+@media(max-width:900px){.app-hdr .app-brand-tag{display:none}}
+
+/* 자동 저장 상태 */
+.as-status{
+  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
+  font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap;
+}
+.as-status i{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.as-status .as-time{font-weight:600;opacity:.8;font-variant-numeric:tabular-nums}
+.as-status[data-state="saved"]{color:var(--sl-teal)}
+.as-status[data-state="saved"] i{background:var(--sl-teal)}
+.as-status[data-state="pending"]{color:var(--sl-amber)}
+.as-status[data-state="pending"] i{background:var(--sl-amber);animation:asPulse 1.2s ease-in-out infinite}
+.as-status[data-state="fail"]{color:var(--sl-hit-red)}
+.as-status[data-state="fail"] i{background:var(--sl-hit-red)}
+@keyframes asPulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.as-status[data-state="pending"] i{animation:none}}
+
+/* 스코어 칩 */
+.score-chip{
+  margin-left:auto;flex-shrink:1;min-width:0;min-height:38px;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:999px;
+  background:var(--bg-raised);border:1px solid var(--border2);
+  color:var(--text);font:inherit;cursor:pointer;
+}
+.score-chip b{font:800 17px var(--mono);font-variant-numeric:tabular-nums}
+.score-chip .scc-sep{color:var(--text3);font-weight:800}
+.score-chip .scc-team{font-size:11px;font-weight:700;color:var(--text2);max-width:6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-chip:focus-visible,.hdr-menu-btn:focus-visible{outline:2px solid var(--sl-signal);outline-offset:2px}
+
+.hdr-menu-btn{
+  flex-shrink:0;width:40px;height:40px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);
+  color:var(--text);cursor:pointer;
+}
+.hdr-menu-btn[aria-expanded="true"]{border-color:var(--sl-signal);color:var(--sl-signal)}
+
+/* 모바일: 2줄 상단 바 (1줄: 로고·상태·스코어·☰ / 2줄: 이닝·B·S·O) */
+@media(max-width:560px){
+  .app-hdr{
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"brand status score menu" "inn count count count";
+    column-gap:8px;row-gap:6px;padding:6px 10px!important;
+  }
+  .app-hdr .app-brand{grid-area:brand}
+  .app-hdr .app-brand-name,.app-hdr .app-brand-tag{display:none}
+  .app-hdr #autoSaveStatus{grid-area:status;min-width:0;overflow:hidden}
+  .app-hdr #scoreChip{grid-area:score;margin-left:0}
+  .app-hdr #slMenuBtn{grid-area:menu}
+  .app-hdr #innSel{grid-area:inn}
+  .app-hdr .hdr-count{grid-area:count;justify-self:start}
+  .score-chip .scc-team{max-width:3.5em}
+}
+@media(max-width:360px){.as-status .as-time{display:none}}
+
+/* 투구 입력 버튼 (타자 칩 옆) */
+.pitch-input-btn{
+  flex-shrink:0;min-height:40px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--border2);background:var(--bg-raised);
+  color:var(--text2);font:700 12px var(--font);cursor:pointer;white-space:nowrap;
+}
+.pitch-input-btn:active{background:var(--bg-hover)}
+
+/* 팝오버: 데스크톱 = 오른쪽 위 드롭다운, 모바일 = 바텀시트 */
+.sl-pop-backdrop{position:fixed;inset:0;z-index:590;background:rgba(0,0,0,.45);display:none}
+.sl-pop-backdrop.open{display:block}
+.sl-pop{
+  position:fixed;z-index:600;top:60px;right:12px;
+  width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 140px);overflow-y:auto;
+  display:none;
+  background:var(--bg-card);border:1px solid var(--border2);border-radius:14px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);padding:6px 8px 10px;
+  color:var(--text);font-family:var(--font);
+}
+.sl-pop.open{display:block}
+.sl-pop-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 6px 6px;font-size:13px;font-weight:800}
+.sl-pop-x{width:32px;height:32px;border-radius:8px;border:none;background:none;color:var(--text3);font-size:15px;cursor:pointer}
+@media(max-width:720px){
+  .sl-pop{
+    top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;
+    border-radius:18px 18px 0 0;border-bottom:none;
+    padding:6px 12px calc(14px + env(safe-area-inset-bottom,0px));
+  }
+}
+
+/* ☰ 메뉴 항목 */
+.slm-sec{padding:4px 0;border-top:1px solid var(--border)}
+.slm-sec:first-of-type{border-top:none}
+.slm-title{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.6px;padding:8px 8px 4px}
+.slm .slm-item{
+  display:flex;align-items:center;gap:8px;width:100%;min-height:44px;
+  padding:10px 10px;margin:0;border:none;border-radius:10px;background:none;
+  color:var(--text);font:600 13px var(--font);text-align:left;cursor:pointer;
+}
+.slm .slm-item:hover{background:var(--bg-hover)}
+.slm .slm-item:disabled{opacity:.4;cursor:default;background:none}
+.slm .slm-item small{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text3)}
+.slm-sync{margin-left:auto;display:inline-flex;align-items:center}
+.slm-sync .save-ind{font-size:11px}
+.slm-auth{display:flex;flex-direction:column}
+.slm-auth #teamBadge{margin:2px 10px 6px;font-size:11px;color:var(--text2)}
+.slm .slm-home{color:var(--text3)}
+
+/* 스코어 수정 팝오버 안의 기존 스코어보드 */
+.se-body .scoreboard{display:flex!important;flex-wrap:wrap;justify-content:center;gap:10px;padding:10px 4px;background:none;border:none}
+.se-body .team-blk{display:flex!important;align-items:center;gap:8px}
+.se-body .team-inp{min-height:38px;max-width:8em}
+.se-body .sc-btn{min-width:38px;min-height:38px}
+.se-body .sc-val{font-size:22px!important}
+
+/* ── 결과 색상: 안타 Teal / 홈런 Amber / 아웃 회색 / 삼진 Hit Red / 볼넷 Signal Blue ── */
+.qb-hit{background:rgba(45,212,160,.16);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.45)}
+.qb-out{background:rgba(148,163,184,.12);color:#cbd5e1;border:1.5px solid rgba(148,163,184,.35)}
+.qb-k{background:rgba(239,68,68,.16);color:#f87171;border:1.5px solid rgba(239,68,68,.45)}
+.qb-bb{background:rgba(75,140,245,.16);color:#7aa9f7;border:1.5px solid rgba(75,140,245,.45)}
+.b-hit,.b-2b,.b-3b{background:rgba(45,212,160,.14);color:#2dd4a0}
+.b-hr{background:rgba(245,158,11,.16);color:#f59e0b}
+.b-out{background:rgba(148,163,184,.14);color:#94a3b8}
+.b-k{background:rgba(239,68,68,.15);color:#f87171}
+.b-walk{background:rgba(75,140,245,.15);color:#7aa9f7}
+.b-hbp{background:rgba(147,197,253,.14);color:#93c5fd}
+
+/* 타자 칩 + 투구 버튼: 한 줄, 가로 전체 */
+.pnl-center .batter-bar{flex-wrap:nowrap!important;width:100%!important;max-width:none!important;box-sizing:border-box;margin-left:0!important;margin-right:0!important;align-self:stretch}
+/* ☰로 옮겨온 기존 버튼(고대비·안내 모드)도 메뉴 항목 크기로 */
+.slm #hcToggleBtn,.slm #helpModeBtn{padding:10px!important;font:600 13px var(--font)!important;border:none!important;border-radius:10px!important;color:var(--text)!important;background:none!important}
+.slm #helpModeBtn.active{color:#f6c23e!important}
+
+
+/* ═══ 5단계: 데스크톱 레이아웃 (모바일 구조 재사용 + 1024px↑ 오른쪽 기록 패널) ═══ */
+
+/* 전체 콘텐츠 최대 폭 1200px, 가운데 정렬 */
+.app-layout{width:100%;max-width:1200px;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
+.app-hdr{
+  padding-left:max(12px,calc((100% - 1200px) / 2 + 12px))!important;
+  padding-right:max(12px,calc((100% - 1200px) / 2 + 12px))!important;
+}
+@media(min-width:721px){
+  .sl-pop{right:max(12px,calc((100vw - 1200px) / 2 + 12px))}
+}
+
+/* 결과 버튼: 필드 바로 아래 */
+.pnl-center .quick-bar{margin:0;border-top:1px solid var(--border)}
+
+/* 최근 기록 2개 + 전체 보기 (1024px 미만) */
+.recent-mini{flex-shrink:0;align-self:stretch;width:100%;box-sizing:border-box;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--bg-card)}
+.rm-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rm-title{font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.3px}
+.rm-all{background:none;border:none;color:var(--sl-signal);font:700 12px var(--font);cursor:pointer;padding:6px 2px;min-height:32px}
+.rm-list{display:flex;flex-direction:column;gap:6px}
+.rm-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg-raised)}
+.rm-item.rec-latest{border-color:rgba(75,140,245,.55);box-shadow:inset 3px 0 0 var(--sl-signal)}
+.rm-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.rm-info b{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-info small{font-size:10.5px;color:var(--text3)}
+.rm-item .rec-undo{margin-top:0}
+.rm-empty{font-size:11px;color:var(--text3);text-align:center;padding:10px 0}
+
+/* 1024px 미만: 한 열 (모바일과 같은 구조), 오른쪽 패널은 '전체 보기' 시트로만 */
+.rec-sheet-hd{display:none}
+.rec-sheet-backdrop{display:none}
+@media(max-width:1023px){
+  .app-layout,
+  .app-layout.panel-collapsed,
+  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr)!important}
+  .pnl-center{grid-column:1!important}
+  .pnl-right{display:none!important}
+  .pnl-right>.pnl-resize-handle{display:none!important}
+
+  body.rec-sheet-open .pnl-right{
+    display:flex!important;flex-direction:column;
+    position:fixed;left:0;right:0;bottom:0;top:12vh;z-index:470;
+    max-height:none;min-height:0;width:auto;max-width:720px;margin:0 auto;
+    background:var(--bg-card);border:1px solid var(--border2);border-bottom:none;
+    border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);
+    padding-bottom:env(safe-area-inset-bottom,0px);overflow:hidden;
+  }
+  body.rec-sheet-open .rec-sheet-hd{
+    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+    padding:10px 12px 6px 16px;font-size:14px;font-weight:800;color:var(--text);
+  }
+  body.rec-sheet-open .pnl-right .tab-body{flex:1;min-height:0;overflow-y:auto;display:block}
+  body.rec-sheet-open .pnl-right .tab-pnl{width:auto;padding-bottom:16px}
+  .rec-sheet-backdrop.open{display:block;position:fixed;inset:0;z-index:465;background:rgba(0,0,0,.5)}
+}
+
+/* 1024px 이상: 필드 | 타석기록 목록 */
+@media(min-width:1024px){
+  .app-layout,
+  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr) var(--rp-w,380px)!important}
+  .app-layout.panel-collapsed{grid-template-columns:minmax(0,1fr) 0px!important}
+  .pnl-center{grid-column:1!important}
+  .pnl-right{grid-column:2!important;display:flex!important}
+  .recent-mini{display:none}
+}
+@media(min-width:721px){.pnl-center .qb-btn{min-height:40px}}

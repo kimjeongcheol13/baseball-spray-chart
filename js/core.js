@@ -931,7 +931,7 @@ let _nearbyHitId=null,_nearbyCloseTimer=null;
 let _FORCE_SHOW_HITDETAIL_DEBUG=false;
 
 const OB=[
-  {icon:'🏟️',step:'STEP 1 · 타구 기록',title:'필드를 터치해\n타구 위치를 기록하세요',desc:'공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.\n<b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.',highlight:'안타 · 2루타 · 아웃 · 삼진 · 볼넷'},
+  {icon:'🏟️',step:'STEP 1 · 타구 기록',title:'필드를 터치해\n타구 위치를 기록하세요',desc:'공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.\n<b>필드 아래 결과 버튼</b>으로 더욱 빠르게 기록할 수 있어요.',highlight:'안타 · 2루타 · 아웃 · 삼진 · 볼넷'},
   {icon:'▶',step:'STEP 2 · 경기 운영 모드',title:'타순·아웃카운트·이닝이\n자동으로 진행됩니다',desc:'<b>▶ 경기운영</b> 버튼을 탭하면 기록할 때마다 타순이 자동으로 넘어갑니다.\n3아웃 시 이닝이 전환되고, 종료 시 최종 요약 카드가 표시됩니다.',highlight:'경기운영 버튼 → 자동 타순 · 아웃카운트 · 이닝 전환'},
   {icon:'📊',step:'STEP 3 · 패턴 분석',title:'타격 패턴을\n자동으로 분석합니다',desc:'타자 탭 하단에서 <b>📊 패턴 분석</b>을 확인하세요.\n2타석 이상 기록하면 당겨치기 성향·삼진 패턴·강점 코스를 자동 감지합니다.',highlight:'타율 트렌드 · 방향 편중 · 약점 코스 자동 감지'},
   {icon:'✅',step:'STEP 4 · 저장하기',title:'경기 종료 후\n[저장]을 눌러 보관하세요',desc:'기록된 데이터는 기기에 자동 보관됩니다.\n경기가 끝나면 <b>[저장]</b> 버튼으로 영구 저장하세요.',highlight:'가입 불필요 · 클라우드 미사용 · 완전 무료'},
@@ -986,7 +986,7 @@ const TOUR=[
   {sel:'.pnl-right .tabs', title:'④ 통계 확인', desc:'오른쪽 패널에서 자동 계산된 통계를 확인하세요.\n• <b>타자</b> 탭 — 개인 타율·OBP·패턴 분석\n• <b>팀통계</b> 탭 — 팀 전체 타율·방향 분포\n• <b>차트</b> 탭 — 스프레이차트 PNG 내보내기', card:'left', cursor:true},
   {sel:null, title:'⑤ 저장', desc:'경기가 끝나면 상단 툴바의 <b>[저장]</b> 버튼을 꼭 눌러주세요.\n기기에 영구 저장됩니다 — 가입·클라우드 불필요.\n⌨️ <b>Ctrl+S</b> 로도 빠르게 저장할 수 있어요.', card:'center', cursor:false},
   {sel:null, title:'⑥ 공유', desc:'<b>🔗 공유</b> 버튼을 탭하면 QR코드와 링크가 생성됩니다.\n팀원이 링크를 열면 배너로 자동 안내됩니다.\n<b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장 후 SNS 공유', card:'center', cursor:false},
-  {sel:'#savantNav', title:'⑦ Savant 분석 뷰', desc:'하단 탭으로 고급 분석 뷰를 전환합니다.\n👤 <b>프로필</b> — 통산 성적 (wOBA·BABIP·ISO 포함)\n⚡ <b>비교</b> — 두 선수 레이더 차트 & 지표 비교\n🔍 <b>스카우트</b> — 약점 존 히트맵 & 투구 전략 자동 제안', card:'top', cursor:true},
+  {sel:'#savantNav', title:'⑦ 하단 탭', desc:'<b>기록 · 분석 · 경기설정</b> 3개 탭으로 이동합니다.\n📊 <b>분석</b> — 스프레이·타자·투수·비교·프로필·스카우트·팀\n⚙ <b>경기설정</b> — 경기 운영·팀·라인업·구장', card:'top', cursor:true},
   {sel:null, title:'⑧ 스프레이 필터', desc:'필드 아래 <b>필터</b> 버튼으로 타구를 세분화해 분석합니다.\n구종 · 결과 · 투수 손 · 카운트 조건을 선택하면\n스프레이차트와 통계가 실시간으로 반영됩니다.', card:'center', cursor:false},
 ];
 let tourIdx=0,tourActive=false;
@@ -1191,7 +1191,7 @@ function selBatter(id){
   renderMob();
   const d=document.getElementById('batterDisp');
   if(AS.batter) d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
-  else d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  else d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   closeHitDetail();
   // 새 타자 선택 시 인게임 코스 초기화 (에러 방지용 try-catch)
   try{AS.currentPitches=[];AS.zone=null;AS.pt=null;AS.zoneX=null;AS.zoneY=null;
@@ -1797,7 +1797,8 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
-const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};
+// 결과 색상: 안타 Teal / 홈런 Amber / 아웃 회색 / 삼진 Hit Red / 볼넷 Signal Blue
+const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#14b8a6','3루타':'#0d9488','홈런':'#f59e0b','플라이 아웃':'#94a3b8','땅볼 아웃':'#94a3b8','삼진':'#ef4444','볼넷':'#4b8cf5','사구':'#93c5fd','희타':'#94a3b8','희비':'#94a3b8','병살':'#64748b'};
 // launchType 테두리 색: 땅볼=주황, 라인드라이브=하늘색, 플라이볼=흰색
 const LTC={'땅볼':'#f97316','라인드라이브':'#38bdf8','플라이볼':'#e2e8f0'};
 function drawDot(r){
@@ -2954,7 +2955,7 @@ function cycleTeamFilter(){
     // 전체로 돌아올 때 타자 필터도 해제
     AS.batter=null;AS.batterFilter=false;
     const fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
-    const d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+    const d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
     if(btn){btn.textContent='전체';btn.classList.remove('btn-primary');}
   }
   safeRender();
@@ -6472,7 +6473,7 @@ function startFromWizard(){
   if(innSel){innSel.value='1회초';var innD=document.getElementById('innDisp');if(innD)innD.textContent='1회초';}
   // 타자 표시 초기화
   var bd=document.getElementById('batterDisp');
-  if(bd)bd.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  if(bd)bd.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   // 자동저장 복구 데이터 완전 삭제 (새 경기 시작 시 복구 배너 안 뜨도록)
   storageManager.cancelPendingAutosave();
   storageManager.clearRecovery();

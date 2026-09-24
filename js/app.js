@@ -3,12 +3,12 @@
 
 import './features/profile.js';
 import './features/compare.js';
-import './features/scouting.js';
+import './features/scouting.js?v=2';
 import './features/heatmap.js';
 import './features/filter.js?v=2';
 import './features/insights.js';
 import './features/perf.js';
-import './features/shell.js?v=4';
+import './features/shell.js?v=5';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

@@ -283,7 +283,7 @@ function _patchBatterFlow() {
     window.renderRecs = function () {
       const r = origRecs.apply(this, arguments);
       _markLatestRec();
-      _renderRecentMini();
+      _updateRecCount();
       return r;
     };
   }
@@ -343,26 +343,13 @@ function _ringLatest(r) {
   hCtx.restore();
 }
 
-// ── 상단 바: 로고 / 이닝 / B·S·O / 자동 저장 / 스코어 / ☰ ──────
+// ── 상단 바: 이닝 · 스코어 · ☰ (B·S·O·자동 저장 표시·투구 버튼은 기록 화면에서 뺌) ──
 function _mountHeader() {
   const hdr = document.querySelector('.app-hdr');
   if (!hdr || $('slMenuBtn')) return;
-  const brand = hdr.querySelector('.app-brand');
-  const after = (node, ref) => { if (node && ref) ref.after(node); };
 
   const inn = $('innSel');
-  after(inn, brand);
-
-  const cb = $('countBoard');
-  if (cb) { cb.classList.add('hdr-count'); after(cb, inn || brand); }
-
-  const st = document.createElement('span');
-  st.id = 'autoSaveStatus';
-  st.className = 'as-status';
-  st.setAttribute('role', 'status');
-  st.setAttribute('aria-live', 'polite');
-  st.innerHTML = '<i aria-hidden="true"></i><span class="as-txt">자동 저장</span><span class="as-time"></span>';
-  after(st, cb || inn || brand);
+  if (inn) hdr.insertBefore(inn, hdr.firstChild);
 
   // 스코어: 요약 칩 → 누르면 기존 스코어보드(팀명·±·직접입력)를 팝오버로
   const sb = hdr.querySelector('.scoreboard');
@@ -374,7 +361,7 @@ function _mountHeader() {
   chip.setAttribute('aria-expanded', 'false');
   chip.title = '스코어 수정';
   chip.onclick = (e) => { e.stopPropagation(); shellScore(); };
-  after(chip, st);
+  if (inn) inn.after(chip); else hdr.insertBefore(chip, hdr.firstChild);
   const pop = $('scoreEditor');
   if (sb && pop) _move(sb, pop.querySelector('.se-body'));
 
@@ -398,23 +385,6 @@ function _mountHeader() {
     _move(n, $(slot));
     if (n.tagName === 'BUTTON') n.classList.add('slm-item');
   });
-
-  // 투구 입력 진입점 (모바일 액션바 → 타자 칩 옆)
-  const bar = document.querySelector('.pnl-center .batter-bar');
-  if (bar && !$('pitchInputBtn')) {
-    const pb = document.createElement('button');
-    pb.type = 'button';
-    pb.id = 'pitchInputBtn';
-    pb.className = 'pitch-input-btn';
-    pb.innerHTML = '⚾ 투구';
-    pb.title = '구종·코스 입력';
-    pb.onclick = () => {
-      if (window.innerWidth <= 720) { if (window.mobPitchSheetOpen) window.mobPitchSheetOpen(); }
-      else if (window.toggleInputBar) window.toggleInputBar();
-    };
-    const c = $('curBatterChip');
-    if (c) c.after(pb); else bar.appendChild(pb);
-  }
 
   _updateScoreChip();
   ['scH', 'scA'].forEach((id) => {
@@ -461,69 +431,25 @@ function shellScore(open) {
 }
 function shellClosePops() { shellMenu(false); shellScore(false); }
 
+// ☰ → 투구 입력 (구종·코스)
+function shellPitchInput() {
+  if (window.innerWidth <= 720) { if (window.mobPitchSheetOpen) window.mobPitchSheetOpen(); }
+  else if (window.toggleInputBar) window.toggleInputBar();
+}
+
 // ☰ 항목을 누르면 메뉴 닫기
 document.addEventListener('click', (e) => {
   if (e.target.closest('#slMenu button')) setTimeout(() => shellMenu(false), 0);
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { shellClosePops(); shellRecSheet(false); } });
 
-// ── 자동 저장 상태 표시 (저장 로직은 core.js 기존 엔진 그대로) ──
-function _setSaveState(state) {
-  const el = $('autoSaveStatus');
-  if (!el) return;
-  el.dataset.state = state;
-  const txt = el.querySelector('.as-txt'), tm = el.querySelector('.as-time');
-  const label = { idle: '자동 저장', pending: '저장 대기', saved: '자동 저장됨', fail: '저장 실패' }[state] || '자동 저장';
-  if (txt) txt.textContent = label;
-  if (tm) tm.textContent = state === 'saved' ? new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
-  el.title = state === 'fail' ? '기기 저장 공간을 확인하세요 (☰ → 데이터 관리)' : '기록이 바뀌면 이 기기에 자동으로 저장됩니다';
-}
-
-function _patchAutoSave() {
-  const origSch = window.scheduleAutoSave;
-  if (typeof origSch === 'function') {
-    window.scheduleAutoSave = function () {
-      const r = origSch.apply(this, arguments);
-      if (typeof AS !== 'undefined' && AS.abs && AS.abs.length) _setSaveState('pending');
-      return r;
-    };
-  }
-  const origDo = window._doAutoSave;
-  if (typeof origDo === 'function') {
-    window._doAutoSave = function () {
-      const had = typeof AS !== 'undefined' && AS.abs && AS.abs.length;
-      const r = origDo.apply(this, arguments);
-      const ind = $('saveInd');
-      if (!had) _setSaveState('idle');
-      // 용량 경고(4MB↑)도 fail 클래스를 쓰므로 실패 문구로만 판정
-      else _setSaveState(ind && ind.textContent.indexOf('저장 실패') >= 0 ? 'fail' : 'saved');
-      return r;
-    };
-  }
-  _setSaveState('idle');
-}
-
-// ── 기록 화면 배치: 칩 → 필드 → 결과 버튼 → (1024px 미만) 최근 기록 2개 ──
-const REC_BADGE = { '안타': 'b-hit', '내야안타': 'b-hit', '2루타': 'b-2b', '3루타': 'b-3b', '홈런': 'b-hr', '볼넷': 'b-walk', '사구': 'b-hbp', '삼진': 'b-k', '플라이 아웃': 'b-out', '땅볼 아웃': 'b-out', '희타': 'b-other', '희비': 'b-other', '병살': 'b-out' };
-const _esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
+// ── 기록 화면 배치: 칩 → 필드 → 결과 버튼 (최근 기록은 ☰ → 최근 기록 시트) ──
 function _mountRecordLayout() {
   const fw = document.querySelector('.pnl-center .field-wrap');
   const qb = $('quickBar');
   if (fw && qb) fw.after(qb);
 
-  if (qb && !$('recentMini')) {
-    const rm = document.createElement('section');
-    rm.id = 'recentMini';
-    rm.className = 'recent-mini';
-    rm.setAttribute('aria-label', '최근 기록');
-    rm.innerHTML = '<div class="rm-hd"><span class="rm-title">최근 기록</span>'
-      + '<button type="button" class="rm-all" onclick="shellRecSheet(true)">전체 보기 <span id="rmCount"></span> ›</button></div>'
-      + '<div class="rm-list" id="rmList"></div>';
-    qb.after(rm);
-  }
-
-  // 1024px 미만: 기존 타석기록 패널을 "전체 보기" 시트로 사용 (수정·삭제·선수별 보기·순서 변경 그대로)
+  // 기존 타석기록 패널을 "최근 기록" 시트로 사용 (수정·삭제·선수별 보기·순서 변경 그대로)
   const pr = document.querySelector('.pnl-right');
   if (pr && !pr.querySelector('.rec-sheet-hd')) {
     const hd = document.createElement('div');
@@ -531,28 +457,12 @@ function _mountRecordLayout() {
     hd.innerHTML = '<span>타석 기록</span><button type="button" class="sl-pop-x" onclick="shellRecSheet(false)" aria-label="닫기">✕</button>';
     pr.insertBefore(hd, pr.firstChild);
   }
-  _renderRecentMini();
+  _updateRecCount();
 }
 
-function _renderRecentMini() {
-  const list = $('rmList');
-  if (!list || typeof AS === 'undefined') return;
-  const abs = AS.abs || [];
-  const cnt = $('rmCount');
-  if (cnt) cnt.textContent = abs.length ? '(' + abs.length + ')' : '';
-  if (!abs.length) {
-    list.innerHTML = '<div class="rm-empty">타석을 기록하면 여기에 표시됩니다</div>';
-    return;
-  }
-  list.innerHTML = abs.slice(-2).reverse().map((a, i) => {
-    const who = (a.bnum ? '#' + a.bnum + ' ' : '') + (a.bname || '');
-    const detail = [a.inn, a.dir, a.rbi > 0 ? a.rbi + '타점' : ''].filter(Boolean).join(' · ');
-    return '<div class="rm-item' + (i === 0 ? ' rec-latest' : '') + '">'
-      + '<span class="badge ' + (REC_BADGE[a.res] || 'b-other') + '">' + _esc(a.res) + '</span>'
-      + '<div class="rm-info"><b>' + _esc(who) + '</b><small>' + _esc(detail) + '</small></div>'
-      + (i === 0 ? '<button type="button" class="rec-undo" onclick="undoLast()" title="가장 최근 기록 취소">↶ 되돌리기</button>' : '')
-      + '</div>';
-  }).join('');
+function _updateRecCount() {
+  const cnt = $('slmRecCount');
+  if (cnt && typeof AS !== 'undefined') cnt.textContent = AS.abs && AS.abs.length ? AS.abs.length + '타석' : '';
 }
 
 function shellRecSheet(open) {
@@ -568,14 +478,6 @@ function _patchLegacy() {
     if (view === 'record') shellNav('record');
     else shellNav('analysis', view);
   };
-  // 홈 화면으로 나갈 때 분석/설정 뷰가 남지 않도록 기록 탭으로 리셋
-  const _origWelcome = window.showAppWelcome;
-  if (typeof _origWelcome === 'function') {
-    window.showAppWelcome = function () {
-      if (_tab !== 'record') shellNav('record');
-      return _origWelcome.apply(this, arguments);
-    };
-  }
 }
 
 // 분석 > 스프레이가 열려 있을 때 필터 조작 후 복사본 갱신
@@ -612,6 +514,7 @@ window.shellMenu = shellMenu;
 window.shellScore = shellScore;
 window.shellClosePops = shellClosePops;
 window.shellRecSheet = shellRecSheet;
+window.shellPitchInput = shellPitchInput;
 
 function _init() {
   _mount();
@@ -619,7 +522,6 @@ function _init() {
   _patchBatterFlow();
   _updateChipNext();
   _mountHeader();
-  _patchAutoSave();
   _mountRecordLayout();
 }
 

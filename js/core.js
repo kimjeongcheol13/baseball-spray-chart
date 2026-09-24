@@ -1797,7 +1797,8 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
 })();
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
-const RC={'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0','홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444','삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd','희타':'#fb923c','희비':'#fb923c','병살':'#dc2626'};
+// 결과 색상: 안타 Teal / 홈런 Amber / 아웃 회색 / 삼진 Hit Red / 볼넷 Signal Blue
+const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#14b8a6','3루타':'#0d9488','홈런':'#f59e0b','플라이 아웃':'#94a3b8','땅볼 아웃':'#94a3b8','삼진':'#ef4444','볼넷':'#4b8cf5','사구':'#93c5fd','희타':'#94a3b8','희비':'#94a3b8','병살':'#64748b'};
 // launchType 테두리 색: 땅볼=주황, 라인드라이브=하늘색, 플라이볼=흰색
 const LTC={'땅볼':'#f97316','라인드라이브':'#38bdf8','플라이볼':'#e2e8f0'};
 function drawDot(r){

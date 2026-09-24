@@ -12,7 +12,7 @@
 }
 
 /* #app-page 밖에 있는 셸 요소에도 앱 색상 토큰 적용 (styles.css #app-page 블록과 동일 값) */
-.ld,#analysisView,#settingsView{
+.ld,.sl-pop,#analysisView,#settingsView{
   --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
   --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
   --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;
@@ -205,3 +205,148 @@
   color:var(--sl-signal);font:700 11px var(--font);cursor:pointer;white-space:nowrap;
 }
 .rec-undo:active{background:rgba(75,140,245,.25)}
+
+/* ═══ 4단계: 상단 바 · 자동 저장 표시 · ☰ 통합 메뉴 · 결과 색상 ═══ */
+
+/* 예전 툴바(저장·경기운영·메뉴)와 모바일 세로 액션바는 ☰ / 경기설정으로 통합 */
+.app-hdr #appToolbar,
+#mobileActionBar{display:none!important}
+
+.app-hdr{
+  display:flex!important;align-items:center;gap:10px;
+  height:auto!important;min-height:52px;padding:6px 12px!important;
+  flex-wrap:nowrap!important;overflow:visible!important;
+}
+.app-hdr .app-brand{flex-shrink:0}
+.app-hdr #innSel{display:inline-block!important;flex-shrink:0;min-height:36px}
+.app-hdr .hdr-count{flex-shrink:0;margin:0}
+@media(max-width:900px){.app-hdr .app-brand-tag{display:none}}
+
+/* 자동 저장 상태 */
+.as-status{
+  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
+  font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap;
+}
+.as-status i{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.as-status .as-time{font-weight:600;opacity:.8;font-variant-numeric:tabular-nums}
+.as-status[data-state="saved"]{color:var(--sl-teal)}
+.as-status[data-state="saved"] i{background:var(--sl-teal)}
+.as-status[data-state="pending"]{color:var(--sl-amber)}
+.as-status[data-state="pending"] i{background:var(--sl-amber);animation:asPulse 1.2s ease-in-out infinite}
+.as-status[data-state="fail"]{color:var(--sl-hit-red)}
+.as-status[data-state="fail"] i{background:var(--sl-hit-red)}
+@keyframes asPulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.as-status[data-state="pending"] i{animation:none}}
+
+/* 스코어 칩 */
+.score-chip{
+  margin-left:auto;flex-shrink:1;min-width:0;min-height:38px;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:999px;
+  background:var(--bg-raised);border:1px solid var(--border2);
+  color:var(--text);font:inherit;cursor:pointer;
+}
+.score-chip b{font:800 17px var(--mono);font-variant-numeric:tabular-nums}
+.score-chip .scc-sep{color:var(--text3);font-weight:800}
+.score-chip .scc-team{font-size:11px;font-weight:700;color:var(--text2);max-width:6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-chip:focus-visible,.hdr-menu-btn:focus-visible{outline:2px solid var(--sl-signal);outline-offset:2px}
+
+.hdr-menu-btn{
+  flex-shrink:0;width:40px;height:40px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);
+  color:var(--text);cursor:pointer;
+}
+.hdr-menu-btn[aria-expanded="true"]{border-color:var(--sl-signal);color:var(--sl-signal)}
+
+/* 모바일: 2줄 상단 바 (1줄: 로고·상태·스코어·☰ / 2줄: 이닝·B·S·O) */
+@media(max-width:560px){
+  .app-hdr{
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"brand status score menu" "inn count count count";
+    column-gap:8px;row-gap:6px;padding:6px 10px!important;
+  }
+  .app-hdr .app-brand{grid-area:brand}
+  .app-hdr .app-brand-name,.app-hdr .app-brand-tag{display:none}
+  .app-hdr #autoSaveStatus{grid-area:status;min-width:0;overflow:hidden}
+  .app-hdr #scoreChip{grid-area:score;margin-left:0}
+  .app-hdr #slMenuBtn{grid-area:menu}
+  .app-hdr #innSel{grid-area:inn}
+  .app-hdr .hdr-count{grid-area:count;justify-self:start}
+  .score-chip .scc-team{max-width:3.5em}
+}
+@media(max-width:360px){.as-status .as-time{display:none}}
+
+/* 투구 입력 버튼 (타자 칩 옆) */
+.pitch-input-btn{
+  flex-shrink:0;min-height:40px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--border2);background:var(--bg-raised);
+  color:var(--text2);font:700 12px var(--font);cursor:pointer;white-space:nowrap;
+}
+.pitch-input-btn:active{background:var(--bg-hover)}
+
+/* 팝오버: 데스크톱 = 오른쪽 위 드롭다운, 모바일 = 바텀시트 */
+.sl-pop-backdrop{position:fixed;inset:0;z-index:590;background:rgba(0,0,0,.45);display:none}
+.sl-pop-backdrop.open{display:block}
+.sl-pop{
+  position:fixed;z-index:600;top:60px;right:12px;
+  width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 140px);overflow-y:auto;
+  display:none;
+  background:var(--bg-card);border:1px solid var(--border2);border-radius:14px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);padding:6px 8px 10px;
+  color:var(--text);font-family:var(--font);
+}
+.sl-pop.open{display:block}
+.sl-pop-hd{display:flex;align-items:center;justify-content:space-between;padding:8px 6px 6px;font-size:13px;font-weight:800}
+.sl-pop-x{width:32px;height:32px;border-radius:8px;border:none;background:none;color:var(--text3);font-size:15px;cursor:pointer}
+@media(max-width:720px){
+  .sl-pop{
+    top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;
+    border-radius:18px 18px 0 0;border-bottom:none;
+    padding:6px 12px calc(14px + env(safe-area-inset-bottom,0px));
+  }
+}
+
+/* ☰ 메뉴 항목 */
+.slm-sec{padding:4px 0;border-top:1px solid var(--border)}
+.slm-sec:first-of-type{border-top:none}
+.slm-title{font-size:10px;font-weight:800;color:var(--text3);letter-spacing:.6px;padding:8px 8px 4px}
+.slm .slm-item{
+  display:flex;align-items:center;gap:8px;width:100%;min-height:44px;
+  padding:10px 10px;margin:0;border:none;border-radius:10px;background:none;
+  color:var(--text);font:600 13px var(--font);text-align:left;cursor:pointer;
+}
+.slm .slm-item:hover{background:var(--bg-hover)}
+.slm .slm-item:disabled{opacity:.4;cursor:default;background:none}
+.slm .slm-item small{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text3)}
+.slm-sync{margin-left:auto;display:inline-flex;align-items:center}
+.slm-sync .save-ind{font-size:11px}
+.slm-auth{display:flex;flex-direction:column}
+.slm-auth #teamBadge{margin:2px 10px 6px;font-size:11px;color:var(--text2)}
+.slm .slm-home{color:var(--text3)}
+
+/* 스코어 수정 팝오버 안의 기존 스코어보드 */
+.se-body .scoreboard{display:flex!important;flex-wrap:wrap;justify-content:center;gap:10px;padding:10px 4px;background:none;border:none}
+.se-body .team-blk{display:flex!important;align-items:center;gap:8px}
+.se-body .team-inp{min-height:38px;max-width:8em}
+.se-body .sc-btn{min-width:38px;min-height:38px}
+.se-body .sc-val{font-size:22px!important}
+
+/* ── 결과 색상: 안타 Teal / 홈런 Amber / 아웃 회색 / 삼진 Hit Red / 볼넷 Signal Blue ── */
+.qb-hit{background:rgba(45,212,160,.16);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.45)}
+.qb-out{background:rgba(148,163,184,.12);color:#cbd5e1;border:1.5px solid rgba(148,163,184,.35)}
+.qb-k{background:rgba(239,68,68,.16);color:#f87171;border:1.5px solid rgba(239,68,68,.45)}
+.qb-bb{background:rgba(75,140,245,.16);color:#7aa9f7;border:1.5px solid rgba(75,140,245,.45)}
+.b-hit,.b-2b,.b-3b{background:rgba(45,212,160,.14);color:#2dd4a0}
+.b-hr{background:rgba(245,158,11,.16);color:#f59e0b}
+.b-out{background:rgba(148,163,184,.14);color:#94a3b8}
+.b-k{background:rgba(239,68,68,.15);color:#f87171}
+.b-walk{background:rgba(75,140,245,.15);color:#7aa9f7}
+.b-hbp{background:rgba(147,197,253,.14);color:#93c5fd}
+
+/* 타자 칩 + 투구 버튼: 한 줄, 가로 전체 */
+.pnl-center .batter-bar{flex-wrap:nowrap!important;width:100%!important;max-width:none!important;box-sizing:border-box;margin-left:0!important;margin-right:0!important;align-self:stretch}
+/* ☰로 옮겨온 기존 버튼(고대비·안내 모드)도 메뉴 항목 크기로 */
+.slm #hcToggleBtn,.slm #helpModeBtn{padding:10px!important;font:600 13px var(--font)!important;border:none!important;border-radius:10px!important;color:var(--text)!important;background:none!important}
+.slm #helpModeBtn.active{color:#f6c23e!important}

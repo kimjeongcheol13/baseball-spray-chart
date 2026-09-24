@@ -63,7 +63,7 @@ var _kakaoSdkLoaded = false;
 </script>
 <link rel="stylesheet" href="css/styles.css?v=66">
 <link rel="stylesheet" href="css/features.css?v=23">
-<link rel="stylesheet" href="css/shell.css?v=2">
+<link rel="stylesheet" href="css/shell.css?v=3">
 <style>
 /* ── Onboarding overlay ── */
 .onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:none}
@@ -1754,7 +1754,7 @@ var _kakaoSdkLoaded = false;
     </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint no-batter"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt">타자를 먼저 선택하세요</div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
-    <div class="spray-legend"><span><i style="background:#22c55e"></i>안타</span><span><i style="background:#fbbf24"></i>홈런</span><span><i style="background:#ef4444"></i>아웃</span><span><i style="background:#6b7280"></i>삼진</span><span><i style="background:#60a5fa"></i>볼넷</span></div>
+    <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
     <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
     <div id="miniSprayWrap" style="display:none;position:relative" onclick="_expandMainField()">
       <canvas id="miniSprayCanvas" style="width:100%;height:72px;display:block;border-top:1px solid #1a2030"></canvas>
@@ -2646,6 +2646,44 @@ var _kakaoSdkLoaded = false;
   <div id="archDebugBody"></div>
 </div>
 
+<!-- ═══ ☰ 통합 메뉴 / 스코어 수정 (상단 바) ═══ -->
+<div id="slPopBackdrop" class="sl-pop-backdrop" onclick="shellClosePops()"></div>
+<div id="scoreEditor" class="sl-pop se-pop" role="dialog" aria-label="스코어 수정" aria-hidden="true">
+  <div class="sl-pop-hd"><span>스코어 수정</span><button type="button" class="sl-pop-x" onclick="shellScore(false)" aria-label="닫기">✕</button></div>
+  <div class="se-body"></div>
+  <div class="set-hint">팀명을 누르면 이름을, 숫자를 누르면 점수를 직접 고칠 수 있습니다.</div>
+</div>
+<div id="slMenu" class="sl-pop slm" role="menu" aria-label="메뉴" aria-hidden="true">
+  <div class="sl-pop-hd"><span>메뉴</span><button type="button" class="sl-pop-x" onclick="shellMenu(false)" aria-label="닫기">✕</button></div>
+  <div class="slm-sec">
+    <div class="slm-title">경기</div>
+    <button type="button" class="slm-item" onclick="showSaveSheet()">💾 경기 저장 <small>불러오기 목록 · 클라우드</small></button>
+    <button type="button" class="slm-item" onclick="openLoad()">📂 불러오기</button>
+    <div id="slmUndoSlot"></div>
+    <button type="button" class="slm-item" onclick="showPostGameReport()">📊 경기 리포트</button>
+  </div>
+  <div class="slm-sec">
+    <div class="slm-title">내보내기</div>
+    <button type="button" class="slm-item" onclick="shareGameLink()">🔗 공유 <small>QR · 링크</small></button>
+    <button type="button" class="slm-item" onclick="exportSprayPNG()">🖼 스프레이차트 PNG</button>
+    <button type="button" class="slm-item" onclick="exportShareCard()">🪪 성적 카드 이미지</button>
+    <button type="button" class="slm-item" onclick="exportCurrentGameToExcel()">📥 엑셀 내보내기</button>
+  </div>
+  <div class="slm-sec">
+    <div class="slm-title">동기화 · 계정</div>
+    <button type="button" class="slm-item" onclick="if(!window.requirePro||window.requirePro('클라우드 동기화'))openCloudOverlay()">☁️ 클라우드 동기화 <span id="slmSyncStatus" class="slm-sync"></span></button>
+    <div id="slmAuthSlot" class="slm-auth"></div>
+    <button type="button" class="slm-item" onclick="openOverlay('dataSettingsOverlay')">⚙️ 데이터 관리</button>
+  </div>
+  <div class="slm-sec">
+    <div class="slm-title">보기 · 도움말</div>
+    <div id="slmViewSlot"></div>
+    <button type="button" class="slm-item" onclick="showHelpMenu()">❓ 도움말</button>
+    <button type="button" class="slm-item" onclick="fieldFeedbackOpen()">💬 피드백</button>
+    <button type="button" class="slm-item slm-home" onclick="goHome()">← 홈으로</button>
+  </div>
+</div>
+
 <!-- ═══ 라인업 서랍 (현재 타자 칩으로 열기) ═══ -->
 <div id="lineupDrawerBackdrop" class="ld-backdrop" onclick="shellDrawer(false)"></div>
 <aside id="lineupDrawer" class="ld" role="dialog" aria-modal="true" aria-label="라인업" aria-hidden="true">
@@ -2980,9 +3018,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=90"></script>
+<script defer src="js/core.js?v=91"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=13"></script>
+<script type="module" src="js/app.js?v=14"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

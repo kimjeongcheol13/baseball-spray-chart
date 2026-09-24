@@ -342,6 +342,166 @@ function _ringLatest(r) {
   hCtx.restore();
 }
 
+// ── 상단 바: 로고 / 이닝 / B·S·O / 자동 저장 / 스코어 / ☰ ──────
+function _mountHeader() {
+  const hdr = document.querySelector('.app-hdr');
+  if (!hdr || $('slMenuBtn')) return;
+  const brand = hdr.querySelector('.app-brand');
+  const after = (node, ref) => { if (node && ref) ref.after(node); };
+
+  const inn = $('innSel');
+  after(inn, brand);
+
+  const cb = $('countBoard');
+  if (cb) { cb.classList.add('hdr-count'); after(cb, inn || brand); }
+
+  const st = document.createElement('span');
+  st.id = 'autoSaveStatus';
+  st.className = 'as-status';
+  st.setAttribute('role', 'status');
+  st.setAttribute('aria-live', 'polite');
+  st.innerHTML = '<i aria-hidden="true"></i><span class="as-txt">자동 저장</span><span class="as-time"></span>';
+  after(st, cb || inn || brand);
+
+  // 스코어: 요약 칩 → 누르면 기존 스코어보드(팀명·±·직접입력)를 팝오버로
+  const sb = hdr.querySelector('.scoreboard');
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.id = 'scoreChip';
+  chip.className = 'score-chip';
+  chip.setAttribute('aria-haspopup', 'dialog');
+  chip.setAttribute('aria-expanded', 'false');
+  chip.title = '스코어 수정';
+  chip.onclick = (e) => { e.stopPropagation(); shellScore(); };
+  after(chip, st);
+  const pop = $('scoreEditor');
+  if (sb && pop) _move(sb, pop.querySelector('.se-body'));
+
+  const menuBtn = document.createElement('button');
+  menuBtn.type = 'button';
+  menuBtn.id = 'slMenuBtn';
+  menuBtn.className = 'hdr-menu-btn';
+  menuBtn.setAttribute('aria-label', '메뉴');
+  menuBtn.setAttribute('aria-haspopup', 'true');
+  menuBtn.setAttribute('aria-controls', 'slMenu');
+  menuBtn.setAttribute('aria-expanded', 'false');
+  menuBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+  menuBtn.onclick = (e) => { e.stopPropagation(); shellMenu(); };
+  hdr.appendChild(menuBtn);
+
+  // 기존 메뉴·툴바 요소 중 cloud.js / core.js가 ID로 갱신하는 것은 ☰ 안으로 이동
+  [['toolbarUndoBtn', 'slmUndoSlot'], ['saveInd', 'slmSyncStatus'], ['authBtn', 'slmAuthSlot'],
+   ['teamBadge', 'slmAuthSlot'], ['hcToggleBtn', 'slmViewSlot'], ['helpModeBtn', 'slmViewSlot']].forEach(([id, slot]) => {
+    const n = $(id);
+    if (!n) return;
+    _move(n, $(slot));
+    if (n.tagName === 'BUTTON') n.classList.add('slm-item');
+  });
+
+  // 투구 입력 진입점 (모바일 액션바 → 타자 칩 옆)
+  const bar = document.querySelector('.pnl-center .batter-bar');
+  if (bar && !$('pitchInputBtn')) {
+    const pb = document.createElement('button');
+    pb.type = 'button';
+    pb.id = 'pitchInputBtn';
+    pb.className = 'pitch-input-btn';
+    pb.innerHTML = '⚾ 투구';
+    pb.title = '구종·코스 입력';
+    pb.onclick = () => {
+      if (window.innerWidth <= 720) { if (window.mobPitchSheetOpen) window.mobPitchSheetOpen(); }
+      else if (window.toggleInputBar) window.toggleInputBar();
+    };
+    const c = $('curBatterChip');
+    if (c) c.after(pb); else bar.appendChild(pb);
+  }
+
+  _updateScoreChip();
+  ['scH', 'scA'].forEach((id) => {
+    const el = $(id);
+    if (el && window.MutationObserver) new MutationObserver(_updateScoreChip).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+  ['tHome', 'tAway'].forEach((id) => { const el = $(id); if (el) el.addEventListener('input', _updateScoreChip); });
+}
+
+function _updateScoreChip() {
+  const chip = $('scoreChip');
+  if (!chip) return;
+  const v = (id, d) => { const el = $(id); return el ? (el.value !== undefined && el.tagName === 'INPUT' ? el.value : el.textContent).trim() || d : d; };
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const th = v('tHome', '홈'), ta = v('tAway', '원정'), h = v('scH', '0'), a = v('scA', '0');
+  chip.innerHTML = '<span class="scc-team">' + esc(th) + '</span><b>' + esc(h) + '</b><span class="scc-sep">:</span><b>' + esc(a) + '</b><span class="scc-team">' + esc(ta) + '</span>';
+  chip.setAttribute('aria-label', '스코어 ' + th + ' ' + h + ' 대 ' + ta + ' ' + a + ', 눌러서 수정');
+}
+
+// ── 팝오버 (스코어 / ☰) ─────────────────────────────────────
+function _setPop(id, btnId, open) {
+  const el = $(id), btn = $(btnId), bd = $('slPopBackdrop');
+  if (!el) return;
+  el.classList.toggle('open', open);
+  el.setAttribute('aria-hidden', open ? 'false' : 'true');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const any = ['slMenu', 'scoreEditor'].some((x) => $(x) && $(x).classList.contains('open'));
+  if (bd) bd.classList.toggle('open', any);
+}
+function shellMenu(open) {
+  const el = $('slMenu');
+  if (!el) return;
+  if (open === undefined) open = !el.classList.contains('open');
+  if (open) _setPop('scoreEditor', 'scoreChip', false);
+  _setPop('slMenu', 'slMenuBtn', open);
+}
+function shellScore(open) {
+  const el = $('scoreEditor');
+  if (!el) return;
+  if (open === undefined) open = !el.classList.contains('open');
+  if (open) _setPop('slMenu', 'slMenuBtn', false);
+  _setPop('scoreEditor', 'scoreChip', open);
+  if (!open) _updateScoreChip();
+}
+function shellClosePops() { shellMenu(false); shellScore(false); }
+
+// ☰ 항목을 누르면 메뉴 닫기
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#slMenu button')) setTimeout(() => shellMenu(false), 0);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') shellClosePops(); });
+
+// ── 자동 저장 상태 표시 (저장 로직은 core.js 기존 엔진 그대로) ──
+function _setSaveState(state) {
+  const el = $('autoSaveStatus');
+  if (!el) return;
+  el.dataset.state = state;
+  const txt = el.querySelector('.as-txt'), tm = el.querySelector('.as-time');
+  const label = { idle: '자동 저장', pending: '저장 대기', saved: '자동 저장됨', fail: '저장 실패' }[state] || '자동 저장';
+  if (txt) txt.textContent = label;
+  if (tm) tm.textContent = state === 'saved' ? new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  el.title = state === 'fail' ? '기기 저장 공간을 확인하세요 (☰ → 데이터 관리)' : '기록이 바뀌면 이 기기에 자동으로 저장됩니다';
+}
+
+function _patchAutoSave() {
+  const origSch = window.scheduleAutoSave;
+  if (typeof origSch === 'function') {
+    window.scheduleAutoSave = function () {
+      const r = origSch.apply(this, arguments);
+      if (typeof AS !== 'undefined' && AS.abs && AS.abs.length) _setSaveState('pending');
+      return r;
+    };
+  }
+  const origDo = window._doAutoSave;
+  if (typeof origDo === 'function') {
+    window._doAutoSave = function () {
+      const had = typeof AS !== 'undefined' && AS.abs && AS.abs.length;
+      const r = origDo.apply(this, arguments);
+      const ind = $('saveInd');
+      if (!had) _setSaveState('idle');
+      // 용량 경고(4MB↑)도 fail 클래스를 쓰므로 실패 문구로만 판정
+      else _setSaveState(ind && ind.textContent.indexOf('저장 실패') >= 0 ? 'fail' : 'saved');
+      return r;
+    };
+  }
+  _setSaveState('idle');
+}
+
 // ── 기존 진입점 호환 ────────────────────────────────────────
 function _patchLegacy() {
   // 기존 switchSavantView('spray'|'profile'|'compare'|'scout'|'record') 호출 → 새 탭으로
@@ -389,12 +549,17 @@ window.shellGfToggle = shellGfToggle;
 window.shellSyncSettings = _syncSettings;
 window.shellMirrorSpray = _mirrorSpray;
 window.shellDrawer = shellDrawer;
+window.shellMenu = shellMenu;
+window.shellScore = shellScore;
+window.shellClosePops = shellClosePops;
 
 function _init() {
   _mount();
   _patchLegacy();
   _patchBatterFlow();
   _updateChipNext();
+  _mountHeader();
+  _patchAutoSave();
 }
 
 if (document.readyState === 'loading') {

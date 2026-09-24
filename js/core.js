@@ -7518,7 +7518,7 @@ var SL=window.SL={
 
 // ?debug=1 로 자동 활성화 (localhost 전용)
 if(location.hostname==='localhost'&&location.search.includes('debug=1'))setTimeout(function(){SL.debug(true);},600);
-document.getElementById('footYear').textContent=new Date().getFullYear();
+var _fy=document.getElementById('footYear');if(_fy)_fy.textContent=new Date().getFullYear();
 // 2초마다 자동 갱신
 setInterval(function(){if(_dbgMode)SL.refresh();},2000);
 

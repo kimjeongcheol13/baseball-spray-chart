@@ -25,6 +25,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&family=JetBrains+Mono:wght=400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Myeongjo:wght@400;700&family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -199,375 +200,219 @@ var _kakaoSdkLoaded = false;
 </div>
 
 <div id="landing-page">
+<style>
+#landing-page{background:#F4EFE3;color:#14192B;font-family:'Nanum Myeongjo',serif;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+#landing-page *{box-sizing:border-box}
+#landing-page section,#landing-page header,#landing-page footer{padding:0;background:none}
+#landing-page a{color:#14192B}
+#landing-page a:hover{color:#D8352F}
+#landing-page .lp2-cta{display:inline-block;background:#14192B;color:#F4EFE3;border:0;cursor:pointer;font-family:'Black Han Sans',sans-serif;font-size:22px;padding:16px 32px;box-shadow:6px 6px 0 #D8352F;line-height:1;transition:box-shadow .12s,transform .12s}
+#landing-page .lp2-cta:hover{box-shadow:3px 3px 0 #D8352F;transform:translate(3px,3px)}
+#landing-page .lp2-cta:focus-visible{outline:3px solid #2456D9;outline-offset:4px}
+#landing-page .lp2-name{border-right:1px solid #14192B;text-align:center;font-family:'Nanum Pen Script',cursive;font-size:24px;color:#2456D9}
+#landing-page .lp2-ab{border-right:1px solid #14192B;text-align:center;font-family:'Nanum Pen Script',cursive;font-size:23px;transform:rotate(-1deg)}
+#landing-page .lp2-note{grid-column:span 2}
+@media(max-width:733px){#landing-page .lp2-sheet{border-right:0!important;border-bottom:3px solid #14192B}}
+@media(max-width:640px){
+  #landing-page .lp2-note{grid-column:auto}
+  #landing-page .lp2-name{font-size:19px}
+  #landing-page .lp2-ab{font-size:19px}
+  #landing-page .lp2-meta{padding-left:0!important;border-left:0!important}
+}
+</style>
+<div style="position:relative;min-height:100vh;background:#F4EFE3;color:#14192B;font-family:'Nanum Myeongjo',serif;overflow-x:hidden">
+  <div style="position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #E2D9C6 31px, #E2D9C6 32px)"></div>
+  <div style="position:relative;max-width:1180px;margin:0 auto;padding:0 24px 40px">
 
-<nav id="mainNav">
-  <a class="nav-brand" onclick="window.scrollTo({top:0,behavior:'smooth'})">
-    <img class="nav-logo" src="player-logo.png" alt="SprayLab">
-    <span class="nav-name">Spray<em>Lab</em></span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="#features">기능</a></li>
-    <li><a href="#howto">사용법</a></li>
-    <li><a href="#preview">미리보기</a></li>
-    <li><a href="#target">대상</a></li>
-  </ul>
-  <button class="nav-cta" onclick="showApp()">
-    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    앱 시작하기
-  </button>
-</nav>
+    <!-- 1. 상단 띠 -->
+    <header style="display:flex;flex-wrap:wrap;align-items:stretch;gap:12px 24px;border-bottom:4px solid #14192B;padding:20px 0 16px">
+      <a href="#lp2-top" style="font-family:'Black Han Sans',sans-serif;font-size:32px;letter-spacing:.02em;text-decoration:none;color:#14192B;line-height:1;padding-right:24px;border-right:2px solid #14192B;display:flex;align-items:center">SPRAYLAB</a>
+      <div style="flex:1 1 320px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4A4F62" aria-hidden="true">
+        <span style="display:flex;align-items:center;gap:8px">경기일<span style="display:inline-block;width:96px;border-bottom:1px solid #14192B;height:14px"></span></span>
+        <span style="display:flex;align-items:center;gap:8px">구장<span style="display:inline-block;width:110px;border-bottom:1px solid #14192B;height:14px"></span></span>
+        <span style="display:flex;align-items:center;gap:8px">팀<span style="display:inline-block;width:96px;border-bottom:1px solid #14192B;height:14px"></span></span>
+      </div>
+      <div class="lp2-meta" style="display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:13px;padding-left:24px;border-left:2px solid #14192B">
+        <span>무료</span><span style="color:#B3AA98">/</span><span>가입 없음</span><span style="color:#B3AA98">/</span><span>브라우저</span>
+      </div>
+    </header>
 
-<section class="hero">
-  <canvas id="heroCanvas"></canvas>
-  <div class="hero-content">
-    <div class="hero-badge"><span class="hero-badge-dot"></span>사회인야구 · 아마추어 · 데이터 분석</div>
-    <h1 class="hero-title">YOUR<br><span class="hl">SWING</span><br>VISUALIZED</h1>
-    <p class="hero-sub">타석을 기록하고, <strong>패턴을 발견하세요.</strong><br>당겨치기 비율부터 타율까지 — 모든 타석이 데이터가 됩니다.</p>
-    <div class="hero-flow">
-      <div class="hf-step">
-        <div class="hf-num">1</div>
-        <div class="hf-label">선수 등록</div>
-        <div class="hf-sub">이름 · 등번호 입력</div>
+    <!-- 2. 헤드라인 -->
+    <section id="lp2-top" style="padding:56px 0 48px">
+      <h1 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:clamp(46px, 10.4vw, 128px);line-height:1.02;margin:0;letter-spacing:-.01em;text-wrap:balance">
+        타석 하나 찍으면<br>
+        <span style="position:relative;display:inline-block">차트가 그려진다.<span style="position:absolute;left:0;right:2%;bottom:-6px;height:7px;background:#D8352F;border-radius:60% 40% 50% 50% / 60% 60% 40% 40%;transform:rotate(-.6deg)"></span></span>
+      </h1>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:20px 40px;margin-top:40px">
+        <div style="display:inline-block;transform:rotate(-2.2deg);border:3px solid #D8352F;color:#D8352F;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(14px, 1.6vw, 20px);letter-spacing:.22em;padding:12px 22px;opacity:.9;mix-blend-mode:multiply">YOUR SWING, VISUALIZED</div>
+        <p style="margin:0;font-size:clamp(16px, 1.7vw, 20px);line-height:1.7;max-width:520px;text-wrap:pretty">사회인야구 스프레이 차트와 타격 스탯.<br>설치 없고, 가입 없고, 주소 하나로 바로 시작한다.</p>
       </div>
-      <div class="hf-arrow">→</div>
-      <div class="hf-step">
-        <div class="hf-num">2</div>
-        <div class="hf-label">타석 기록</div>
-        <div class="hf-sub">필드 탭 · 결과 선택</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;margin-top:44px">
+        <button type="button" class="lp2-cta" onclick="showApp()">차트 열기 →</button>
+        <span style="font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:26px;line-height:1;transform:rotate(-1deg);display:inline-block">← 주소 하나면 됨. 앱스토어 안 감.</span>
       </div>
-      <div class="hf-arrow">→</div>
-      <div class="hf-step">
-        <div class="hf-num">3</div>
-        <div class="hf-label">통계 확인</div>
-        <div class="hf-sub">AVG · 스프레이 차트</div>
-      </div>
-    </div>
-    <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="showApp()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        무료로 시작하기
-      </button>
-      <a class="btn-hero-secondary" href="#preview">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
-        미리보기
-      </a>
-    </div>
-    <div class="hero-feat-badges">
-      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>무료</div>
-      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>광고 없음</div>
-      <div class="hfb"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>로그인 불필요</div>
-    </div>
-  </div>
-  <div class="scroll-hint"><span>스크롤</span><div class="scroll-arrow"></div></div>
-</section>
+    </section>
 
-<div class="ticker">
-  <div class="ticker-track">
-    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
-    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
-    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
-    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
-    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
-    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
-    <div class="ticker-item"><span class="ticker-k">타율 AVG</span><span class="ticker-v">자동 계산</span></div>
-    <div class="ticker-item"><span class="ticker-k">출루율 OBP</span><span class="ticker-v">타석 기록 기반</span></div>
-    <div class="ticker-item"><span class="ticker-k">장타율 SLG</span><span class="ticker-v">즉시 반영</span></div>
-    <div class="ticker-item"><span class="ticker-k">PULL%</span><span class="ticker-v">당겨치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">OPPO%</span><span class="ticker-v">밀어치기 비율</span></div>
-    <div class="ticker-item"><span class="ticker-k">스프레이 차트</span><span class="ticker-v">필드 클릭 기록</span></div>
-    <div class="ticker-item"><span class="ticker-k">9분할 스트라이크존</span><span class="ticker-v">투구 코스 분석</span></div>
-    <div class="ticker-item"><span class="ticker-k">경기 저장</span><span class="ticker-v">로컬 저장소</span></div>
+    <!-- 3. 기록지 스프레드 -->
+    <section style="border:3px solid #14192B;background:#F7F2E7;box-shadow:8px 8px 0 #E2D9C6;display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 340px), 1fr));margin-top:8px">
+      <div class="lp2-sheet" style="display:flex;flex-direction:column;border-right:3px solid #14192B">
+        <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:13px;table-layout:fixed">
+          <thead>
+            <tr style="border-bottom:1.5px solid #14192B">
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500;width:14%">타순</th>
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500;width:26%">선수</th>
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500">1</th>
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500">2</th>
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500">3</th>
+              <th style="border-right:1px solid #14192B;padding:12px 6px;font-weight:500">4</th>
+              <th style="padding:12px 6px;font-weight:500">5</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #14192B;height:64px">
+              <td style="border-right:1px solid #14192B;text-align:center">1</td>
+              <td class="lp2-name">#7 김</td>
+              <td class="lp2-ab" style="color:#2456D9">안타</td><td class="lp2-ab" style="color:#2456D9">삼진</td><td class="lp2-ab" style="color:#D8352F">2B</td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9;border-right:0"></td>
+            </tr>
+            <tr style="border-bottom:1px solid #14192B;height:64px">
+              <td style="border-right:1px solid #14192B;text-align:center">2</td>
+              <td class="lp2-name">#23 박</td>
+              <td class="lp2-ab" style="color:#2456D9">유땅</td><td class="lp2-ab" style="color:#2456D9">안타</td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9;border-right:0"></td>
+            </tr>
+            <tr style="border-bottom:1px solid #14192B;height:64px">
+              <td style="border-right:1px solid #14192B;text-align:center">3</td>
+              <td class="lp2-name">#5 이</td>
+              <td class="lp2-ab" style="color:#2456D9">좌비</td><td class="lp2-ab" style="color:#2456D9">볼넷</td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9;border-right:0"></td>
+            </tr>
+            <tr style="border-bottom:1px solid #14192B;height:64px">
+              <td style="border-right:1px solid #14192B;text-align:center">4</td>
+              <td class="lp2-name">#11 최</td>
+              <td class="lp2-ab" style="color:#D8352F">HR</td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9"></td><td class="lp2-ab" style="color:#2456D9;border-right:0"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="flex:1;padding:28px 20px 20px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;min-height:180px">
+          <p style="margin:0;font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:26px;line-height:1.3;transform:rotate(-1.2deg)">이 표는 예전 방식.<br>이제 오른쪽 그림 하나로 끝.</p>
+          <svg viewBox="0 0 160 50" width="150" height="48" style="align-self:flex-end;overflow:visible" aria-hidden="true">
+            <path d="M6 12 C 50 48, 110 46, 150 24" fill="none" stroke="#2456D9" stroke-width="3" stroke-linecap="round"></path>
+            <path d="M136 14 L 152 23 L 136 34" fill="none" stroke="#2456D9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div style="position:relative;background-color:#F7F2E7;background-image:linear-gradient(to right, #D9CFB8 1px, transparent 1px),linear-gradient(to bottom, #D9CFB8 1px, transparent 1px);background-size:24px 24px;padding:20px;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#4A4F62;background:#F7F2E7;padding:2px 6px">#7 · 2026 시즌 누적 타구</span>
+          <span style="font-family:'Nanum Pen Script',cursive;color:#D8352F;font-size:24px;line-height:1;transform:rotate(2deg);background:#F7F2E7;padding:0 6px">※ 샘플 데이터</span>
+        </div>
+        <svg viewBox="0 0 600 420" style="width:100%;height:auto;display:block;margin-top:4px;overflow:visible" role="img" aria-label="스프레이 차트 샘플">
+          <path d="M60 170 Q 300 -60 540 170" fill="none" stroke="#14192B" stroke-width="2.5"></path>
+          <path d="M300 400 L 60 170" stroke="#14192B" stroke-width="2.5"></path>
+          <path d="M300 400 L 540 170" stroke="#14192B" stroke-width="2.5"></path>
+          <path d="M165 265 Q 300 180 435 265" fill="none" stroke="#14192B" stroke-width="1.8" stroke-dasharray="7 6"></path>
+          <path d="M300 400 L 372 328 L 300 256 L 228 328 Z" fill="none" stroke="#14192B" stroke-width="2.5"></path>
+          <rect x="294" y="392" width="12" height="12" fill="#14192B"></rect>
+          <circle cx="300" cy="328" r="8" fill="#F7F2E7" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="150" cy="210" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="190" cy="250" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="242" cy="190" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="230" cy="292" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="340" cy="220" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="468" cy="244" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="330" cy="300" r="9" fill="#D8352F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="155" cy="190" r="9" fill="#E0A21F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="205" cy="150" r="9" fill="#E0A21F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="270" cy="130" r="9" fill="#E0A21F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="410" cy="90" r="9" fill="#E0A21F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="300" cy="200" r="9" fill="#E0A21F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="200" cy="240" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="255" cy="340" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="285" cy="358" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="320" cy="260" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="372" cy="358" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="420" cy="310" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="385" cy="270" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <circle cx="480" cy="180" r="9" fill="#1A9E8F" stroke="#14192B" stroke-width="2"></circle>
+          <path d="M470 120 C 500 150, 505 190, 468 230" fill="none" stroke="#2456D9" stroke-width="3" stroke-linecap="round"></path>
+          <path d="M462 214 L 468 232 L 484 222" fill="none" stroke="#2456D9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <text x="430" y="112" font-family="Nanum Pen Script, cursive" font-size="30" fill="#2456D9" transform="rotate(-3 430 112)">여기 한 번 탭</text>
+        </svg>
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;margin-top:auto;padding-top:16px">
+          <div style="display:flex;gap:16px;font-family:'IBM Plex Mono',monospace;font-size:13px;background:#F7F2E7;padding:4px 6px">
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:50%;background:#D8352F;border:2px solid #14192B;display:inline-block"></span>안타</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:50%;background:#E0A21F;border:2px solid #14192B;display:inline-block"></span>장타</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:50%;background:#1A9E8F;border:2px solid #14192B;display:inline-block"></span>아웃</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 18px;border:2px solid #14192B;background:#F7F2E7;padding:10px 16px;font-family:'IBM Plex Mono',monospace;font-size:14px">
+            <span>AVG <b style="font-weight:600">.318</b></span>
+            <span>OBP <b style="font-weight:600">.389</b></span>
+            <span>SLG <b style="font-weight:600">.455</b></span>
+            <span style="color:#D8352F">wOBA <b style="font-weight:600">.372</b></span>
+            <span>ISO <b style="font-weight:600">.137</b></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 본문 2단 -->
+    <section style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr));gap:48px 64px;padding:96px 0 72px">
+      <div>
+        <h2 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:clamp(32px, 3.6vw, 44px);line-height:1.15;margin:0;text-wrap:balance">경기 중 30초.<br>더그아웃에서<br>폰으로 찍는다.</h2>
+        <div style="width:44px;height:4px;background:#D8352F;margin:28px 0"></div>
+        <p style="margin:0;font-size:17px;line-height:1.9;max-width:420px;text-wrap:pretty">타구가 떨어진 자리를 필드 위에서 한 번 탭하고, 결과를 고른다. 그게 전부다. 차트와 지표는 알아서 쌓인다. 기록지에 연필로 적던 그 일을, 그림 한 장으로 대신한다.</p>
+      </div>
+      <div>
+        <ol style="list-style:none;margin:0;padding:0;border-top:2px solid #14192B">
+          <li style="display:grid;grid-template-columns:56px 1fr;gap:8px;padding:26px 0;border-bottom:1.5px solid #14192B">
+            <span style="font-family:'IBM Plex Mono',monospace;color:#D8352F;font-size:14px;padding-top:6px">01</span>
+            <div><h3 style="margin:0;font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:22px">스프레이 차트</h3><p style="margin:10px 0 0;font-size:15px;line-height:1.75;color:#3A3F52">타석마다 타구 위치와 결과를 찍는다. 시즌 누적 그림이 자동으로 쌓인다.</p></div>
+          </li>
+          <li style="display:grid;grid-template-columns:56px 1fr;gap:8px;padding:26px 0;border-bottom:1.5px solid #14192B">
+            <span style="font-family:'IBM Plex Mono',monospace;color:#D8352F;font-size:14px;padding-top:6px">02</span>
+            <div><h3 style="margin:0;font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:22px">타격 지표 자동 계산</h3><p style="margin:10px 0 0;font-size:15px;line-height:1.75;color:#3A3F52">AVG · OBP · SLG · wOBA · ISO. 계산기 두드릴 일이 없다.</p></div>
+          </li>
+          <li style="display:grid;grid-template-columns:56px 1fr;gap:8px;padding:26px 0;border-bottom:2px solid #14192B">
+            <span style="font-family:'IBM Plex Mono',monospace;color:#D8352F;font-size:14px;padding-top:6px">03</span>
+            <div><h3 style="margin:0;font-family:'Nanum Myeongjo',serif;font-weight:700;font-size:22px">타구 방향 분포</h3><p style="margin:10px 0 0;font-size:15px;line-height:1.75;color:#3A3F52">Pull / Center / Oppo 비율. 내가 어디로 치는 타자인지 숫자로 안다.</p></div>
+          </li>
+        </ol>
+        <p style="margin:20px 0 0;font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:25px;transform:rotate(-.8deg);display:inline-block">이 세 가지가 전부. 그 이상은 약속 안 함.</p>
+      </div>
+    </section>
+
+    <!-- 5. 하지 않는 것 -->
+    <section style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr));gap:32px 48px;align-items:start;padding:16px 0 96px">
+      <div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4A4F62;letter-spacing:.2em">비 고</span>
+        <h2 style="font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:clamp(30px, 3.4vw, 40px);line-height:1.15;margin:8px 0 0">SprayLab이<br>하지 않는 것</h2>
+      </div>
+      <div class="lp2-note" style="border:2.5px solid #2456D9;padding:28px 32px;transform:rotate(-.4deg);border-radius:3px 6px 4px 5px;background:rgba(247,242,231,.6)">
+        <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr));gap:18px 40px;font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:27px;line-height:1.35">
+          <li>· 가입 안 시킴 (로그인은 선택)</li>
+          <li>· 광고 없음</li>
+          <li>· 유료 플랜 없음</li>
+          <li>· 로그인 없이 브라우저 데이터 지우면 기록도 날아감 — 이건 솔직히 말해둠</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6. 푸터 -->
+    <footer style="border-top:4px solid #14192B;padding:22px 0 8px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px 24px">
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:16px">
+        <span style="font-family:'Black Han Sans',sans-serif;font-size:24px;line-height:1">SPRAYLAB</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4A4F62">사회인야구 1인 개발</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:28px;font-family:'IBM Plex Mono',monospace;font-size:14px">
+        <a href="https://www.instagram.com/spraylab2026" target="_blank" rel="noopener" style="text-decoration:underline;text-underline-offset:4px">@spraylab2026</a>
+        <a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" rel="noopener" style="text-decoration:underline;text-underline-offset:4px">GitHub</a>
+        <span style="display:inline-block;transform:rotate(-8deg);border:2.5px solid #D8352F;color:#D8352F;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;letter-spacing:.2em;padding:5px 10px;opacity:.9;mix-blend-mode:multiply">FREE</span>
+      </div>
+    </footer>
   </div>
 </div>
 
-<section id="features" style="background:var(--bg)">
-  <div class="section-head centered">
-    <span class="section-label fade-up">기능</span>
-    <h2 class="section-title fade-up" data-delay="1">프로처럼 분석하세요</h2>
-    <p class="section-sub fade-up" data-delay="2">Baseball Savant에서 영감을 받은 기능들을<br>사회인야구 환경에 맞게 재설계했습니다.</p>
-  </div>
-  <div class="feat-grid">
-    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div><div class="feat-title">실시간 스프레이 차트</div><div class="feat-desc">필드를 탭하는 순간 타구 위치가 차트에 기록됩니다. 색상으로 구분된 점이 경기 내내 쌓입니다.</div><span class="feat-tag">CORE</span></div>
-    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#2dd4a0" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="feat-title">자동 통계 계산</div><div class="feat-desc">타율(AVG), 출루율(OBP), 장타율(SLG)이 기록과 동시에 자동으로 계산됩니다. 수작업 불필요.</div><span class="feat-tag">AUTO</span></div>
-    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f6c23e" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="feat-title">방향 분포 분석</div><div class="feat-desc">당겨치기 / 센터 / 밀어치기 비율을 시각화합니다. 타격 패턴의 약점과 강점을 직관적으로 파악.</div><span class="feat-tag">ANALYTICS</span></div>
-    <div class="feat-card fade-up" data-delay="1"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div><div class="feat-title">9분할 투구 코스</div><div class="feat-desc">내각/중앙/외각 × 높음/중간/낮음 9개 존을 클릭 한 번으로 선택. 코스별 타격 경향을 분석.</div><span class="feat-tag">DETAIL</span></div>
-    <div class="feat-card fade-up" data-delay="2"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#f56565" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="feat-title">선수별 개인 통계</div><div class="feat-desc">라인업 전체 선수의 타석을 각각 관리합니다. 선수별 타율, 안타수, 타점을 한눈에 비교.</div><span class="feat-tag">ROSTER</span></div>
-    <div class="feat-card fade-up" data-delay="3"><div class="feat-icon"><svg width="20" height="20" fill="none" stroke="#4b8cf5" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div><div class="feat-title">경기 저장 · 불러오기</div><div class="feat-desc">경기 데이터를 저장하고 언제든 불러올 수 있습니다. 시즌 내내 누적 데이터를 관리하세요.</div><span class="feat-tag">PERSIST</span></div>
-  </div>
-</section>
-
-<section id="howto" class="how">
-  <div class="section-head centered">
-    <span class="section-label fade-up">사용법</span>
-    <h2 class="section-title fade-up" data-delay="1">야구를 몰라도 5분이면 시작</h2>
-    <p class="section-sub fade-up" data-delay="2">야구 경험이 없어도 괜찮습니다. 타석마다 탭 하나로 기록하세요.</p>
-  </div>
-  <div class="steps">
-    <div class="step fade-up" data-delay="1">
-      <div class="step-num">01</div>
-      <div class="step-title">앱 열기</div>
-      <div class="step-desc">상단 <strong>[앱 시작하기]</strong> 버튼을 누르세요. 가입·설치·로그인 없이 바로 사용 가능합니다.</div>
-      <div class="step-sub">✓ 모바일·태블릿·PC 모두 지원 &nbsp;·&nbsp; ✓ 완전 무료</div>
-    </div>
-    <div class="step fade-up" data-delay="2">
-      <div class="step-num">02</div>
-      <div class="step-title">라인업 구성</div>
-      <div class="step-desc"><strong>라인업</strong>이란 오늘 경기에서 타격 순서대로 나열된 선수 명단입니다. 왼쪽 패널에서 이름과 등번호를 입력해 홈팀 / 원정팀을 각각 만드세요.</div>
-      <div class="step-sub">이름 첫 글자가 자동으로 아바타 생성 · 선수 클릭 → 타자 선택</div>
-    </div>
-    <div class="step fade-up" data-delay="3">
-      <div class="step-num">03</div>
-      <div class="step-title">타석 기록</div>
-      <div class="step-desc">타자를 선택하고 <strong>공이 떨어진 위치를 필드에서 탭</strong>한 뒤 결과를 고르세요. <strong>안타</strong>(베이스 도달) · <strong>아웃</strong>(수비에게 잡힘) · <strong>홈런</strong> 중 선택합니다. <strong>볼넷</strong>(4번 빗나감) · <strong>삼진</strong>(스트라이크 3개)은 하단 버튼으로 기록.</div>
-      <div class="step-sub">투구 종류·코스 선택은 선택 사항 — 건너뛰어도 됩니다</div>
-    </div>
-    <div class="step fade-up" data-delay="4">
-      <div class="step-num">04</div>
-      <div class="step-title">통계 확인</div>
-      <div class="step-desc">오른쪽 탭에서 자동 계산된 통계를 확인하세요. <strong>타율(AVG)</strong>은 안타÷타석 수(0.300 = 10번 중 3안타), <strong>출루율(OBP)</strong>은 볼넷 포함 출루 빈도, <strong>장타율(SLG)</strong>은 홈런·장타가 많을수록 높아집니다.</div>
-      <div class="step-sub">차트 탭 → 스프레이 차트 · 히트맵 · PNG 내보내기</div>
-    </div>
-    <div class="step fade-up" data-delay="5">
-      <div class="step-num">05</div>
-      <div class="step-title">저장 · 공유</div>
-      <div class="step-desc">경기 종료 후 <strong>[저장]</strong> 버튼으로 데이터를 기기에 보관하세요. QR코드·링크로 팀원과 공유하거나 PNG 이미지·엑셀 파일로 내보낼 수 있습니다.</div>
-      <div class="step-sub">Ctrl+Z — 마지막 기록 취소 &nbsp;·&nbsp; Ctrl+S — 빠른 저장</div>
-    </div>
-  </div>
-  <div style="margin-top:44px;max-width:760px;margin-left:auto;margin-right:auto;display:flex;flex-direction:column;gap:16px">
-    <div class="fade-up" style="background:var(--raised);border:1px solid var(--border2);border-radius:12px;padding:22px 24px">
-      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:16px">야구 용어 한눈에 보기</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 28px;font-size:12.5px">
-        <div><strong style="color:var(--blue)">안타 (Hit / H)</strong><span style="color:var(--text2);margin-left:6px">공을 쳐서 베이스에 안전히 도달</span></div>
-        <div><strong style="color:var(--blue)">2루타 / 3루타</strong><span style="color:var(--text2);margin-left:6px">2번째 / 3번째 베이스까지 도달</span></div>
-        <div><strong style="color:var(--blue)">홈런 (HR)</strong><span style="color:var(--text2);margin-left:6px">담장 밖으로 넘어가 바로 득점</span></div>
-        <div><strong style="color:var(--blue)">볼넷 (BB / 4볼)</strong><span style="color:var(--text2);margin-left:6px">투수가 4번 빗나가 1루 자동 진루</span></div>
-        <div><strong style="color:var(--blue)">삼진 (K)</strong><span style="color:var(--text2);margin-left:6px">스트라이크 3개로 타석 종료</span></div>
-        <div><strong style="color:var(--blue)">타석 (At-bat)</strong><span style="color:var(--text2);margin-left:6px">타자가 공을 치는 한 번의 차례</span></div>
-        <div><strong style="color:var(--blue)">당겨치기 (Pull)</strong><span style="color:var(--text2);margin-left:6px">우타자 기준 왼쪽(3루 방향)으로 친 타구</span></div>
-        <div><strong style="color:var(--blue)">밀어치기 (Oppo)</strong><span style="color:var(--text2);margin-left:6px">반대 방향(1루 쪽)으로 보내는 기술</span></div>
-        <div><strong style="color:var(--blue)">타율 AVG</strong><span style="color:var(--text2);margin-left:6px">안타 ÷ 타석 수 (0.300 = 10번 중 3안타)</span></div>
-        <div><strong style="color:var(--blue)">출루율 OBP</strong><span style="color:var(--text2);margin-left:6px">볼넷 포함, 얼마나 자주 베이스에 나가는지</span></div>
-        <div><strong style="color:var(--blue)">장타율 SLG</strong><span style="color:var(--text2);margin-left:6px">홈런·장타가 많을수록 높아지는 파워 지표</span></div>
-        <div><strong style="color:var(--blue)">스프레이 차트</strong><span style="color:var(--text2);margin-left:6px">타구 위치를 필드 위에 점으로 표시한 지도</span></div>
-      </div>
-    </div>
-    <div class="fade-up" style="background:var(--raised);border:1px solid var(--border2);border-radius:12px;padding:20px 24px">
-      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin-bottom:14px">단축키 &amp; 팁</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;font-size:12px;color:var(--text2)">
-        <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+Z</span>&nbsp; 마지막 기록 취소</div>
-        <div><span style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--blue)">Ctrl+S</span>&nbsp; 경기 빠른 저장</div>
-        <div>🏟️ 필드 탭 → 결과 팝업이 자동으로 표시</div>
-        <div>📸 차트 탭 → PNG로 카카오톡·SNS 공유</div>
-        <div>📊 투구 코스 선택은 선택 사항 — 건너뛰기 가능</div>
-        <div>🔗 공유 버튼 → QR코드 즉시 생성</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="preview" style="background:var(--bg)">
-  <div class="section-head centered">
-    <span class="section-label fade-up">미리보기</span>
-    <h2 class="section-title fade-up" data-delay="1">실제 앱 화면</h2>
-  </div>
-
-  <div class="mockup-pair fade-up">
-
-    <!-- PHONE 1: 라인업 + 필드 입력 -->
-    <div class="mockup-unit">
-      <div class="phone-frame">
-        <div class="phone-notch"></div>
-        <div class="phone-screen">
-          <!-- 앱 상단 바 -->
-          <div class="ph-bar">
-            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
-            <span class="ph-time">7회말 · 3:2</span>
-          </div>
-          <!-- 라인업 + 필드 그리드 -->
-          <div style="display:grid;grid-template-columns:76px 1fr;min-height:220px">
-            <!-- 라인업 열 -->
-            <div class="ph-lineup-col">
-              <div class="ph-section-lbl">라인업</div>
-              <div class="ph-player on">
-                <div class="ph-av">김</div>
-                <div class="ph-pname">#7 김정철</div>
-              </div>
-              <div class="ph-player">
-                <div class="ph-av">이</div>
-                <div class="ph-pname">#12 이민준</div>
-              </div>
-              <div class="ph-player">
-                <div class="ph-av">박</div>
-                <div class="ph-pname">#3 박성현</div>
-              </div>
-              <div class="ph-player">
-                <div class="ph-av">최</div>
-                <div class="ph-pname">#21 최준혁</div>
-              </div>
-              <div class="ph-player">
-                <div class="ph-av">정</div>
-                <div class="ph-pname">#9 정우성</div>
-              </div>
-            </div>
-            <!-- 필드 영역 -->
-            <div class="ph-field-wrap">
-              <div class="ph-field-label">#7 김정철 타석 준비</div>
-              <!-- SVG 필드 다이어그램 -->
-              <svg width="96" height="96" viewBox="0 0 96 96" fill="none" style="flex-shrink:0">
-                <!-- 잔디 배경 -->
-                <path d="M48 8 L88 88 L8 88 Z" fill="#0c1e0f" stroke="#1a3520" stroke-width="1"/>
-                <!-- 내야 다이아몬드 -->
-                <path d="M48 52 L62 66 L48 80 L34 66 Z" fill="#12280f" stroke="#1d4020" stroke-width="1"/>
-                <!-- 파울 라인 -->
-                <line x1="48" y1="80" x2="10" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
-                <line x1="48" y1="80" x2="86" y2="10" stroke="#1d4020" stroke-width="0.8" opacity=".7"/>
-                <!-- 타구 점들 -->
-                <circle cx="58" cy="38" r="3.5" fill="#2dd4a0" opacity=".9"/>
-                <circle cx="26" cy="48" r="3.5" fill="#f56565" opacity=".9"/>
-                <circle cx="70" cy="55" r="3.5" fill="#2dd4a0" opacity=".9"/>
-                <circle cx="48" cy="30" r="3.5" fill="#4b8cf5" opacity=".9"/>
-                <!-- 홈플레이트 -->
-                <circle cx="48" cy="82" r="2.5" fill="#374151"/>
-              </svg>
-              <div style="font-size:7px;color:#374151">필드를 탭하여 기록</div>
-            </div>
-          </div>
-          <!-- 결과 입력 바 -->
-          <div class="ph-input-bar">
-            <div class="ph-section-lbl">결과 선택</div>
-            <div class="ph-chips">
-              <span class="ph-chip on">안타</span>
-              <span class="ph-chip">2루타</span>
-              <span class="ph-chip">홈런</span>
-              <span class="ph-chip">아웃</span>
-              <span class="ph-chip">볼넷</span>
-              <span class="ph-chip">삼진</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="mockup-caption">
-        <div class="mockup-cap-num">1</div>
-        <div class="mockup-cap-title">라인업 · 타석 기록</div>
-        <div class="mockup-cap-sub">선수 선택 후 필드를 탭</div>
-      </div>
-    </div>
-
-    <!-- PHONE 2: 통계 결과 -->
-    <div class="mockup-unit">
-      <div class="phone-frame">
-        <div class="phone-notch"></div>
-        <div class="phone-screen">
-          <!-- 앱 상단 바 -->
-          <div class="ph-bar">
-            <span class="ph-brand">Spray<span style="color:#4b8cf5">Lab</span></span>
-            <span class="ph-time" style="color:#2dd4a0;font-weight:700">STATS</span>
-          </div>
-          <div style="padding:8px">
-            <!-- 팀 타격 지표 -->
-            <div class="ph-stat-card">
-              <div class="ph-stat-title">팀 타격</div>
-              <div class="ph-stat-grid">
-                <div>
-                  <div class="ph-sv" style="color:#2dd4a0">.318</div>
-                  <div class="ph-sl">AVG</div>
-                </div>
-                <div>
-                  <div class="ph-sv" style="color:#4b8cf5">.389</div>
-                  <div class="ph-sl">OBP</div>
-                </div>
-                <div>
-                  <div class="ph-sv" style="color:#f6c23e">.455</div>
-                  <div class="ph-sl">SLG</div>
-                </div>
-              </div>
-            </div>
-            <!-- 타구 방향 -->
-            <div class="ph-stat-card">
-              <div class="ph-stat-title">타구 방향</div>
-              <div class="ph-dir-bars">
-                <div class="ph-dir-bar" style="height:22px;background:#f56565"></div>
-                <div class="ph-dir-bar" style="height:14px;background:#2dd4a0"></div>
-                <div class="ph-dir-bar" style="height:9px;background:#4b8cf5"></div>
-              </div>
-              <div class="ph-dir-lbl">
-                <span>당겨 48%</span><span>센터 32%</span><span>밀어 20%</span>
-              </div>
-            </div>
-            <!-- 선수별 -->
-            <div class="ph-stat-card">
-              <div class="ph-stat-title">선수별 타율</div>
-              <div class="ph-prow">
-                <span>#7 김정철</span>
-                <span style="font-family:var(--mono);color:#2dd4a0">.333</span>
-              </div>
-              <div class="ph-prow">
-                <span>#12 이민준</span>
-                <span style="font-family:var(--mono);color:#4b8cf5">.500</span>
-              </div>
-              <div class="ph-prow">
-                <span>#3 박성현</span>
-                <span style="font-family:var(--mono);color:#374151">.000</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="mockup-caption">
-        <div class="mockup-cap-num">2</div>
-        <div class="mockup-cap-title">통계 결과</div>
-        <div class="mockup-cap-sub">타율 · 방향 · 선수별 분석</div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<section id="target" class="targets">
-  <div class="section-head centered">
-    <span class="section-label fade-up">대상</span>
-    <h2 class="section-title fade-up" data-delay="1">누구를 위한 앱인가요?</h2>
-  </div>
-  <div class="tgt-grid">
-    <div class="tgt-card fade-up" data-delay="1"><span class="tgt-emoji">⚾</span><div class="tgt-title">사회인야구 선수</div><div class="tgt-desc">경기 중 빠르게 기록하고, 시즌이 끝난 후 나의 타격 패턴을 분석하세요.</div><ul class="tgt-list"><li>내 당겨치기 비율이 얼마나 되지?</li><li>외각 슬라이더에서 자꾸 아웃되는 이유</li><li>안타 방향이 한쪽으로 몰려있지 않나?</li></ul></div>
-    <div class="tgt-card fade-up" data-delay="2"><span class="tgt-emoji">📋</span><div class="tgt-title">감독 · 코치</div><div class="tgt-desc">팀 전체 타석을 경기 중 실시간으로 기록하고, 선수별 통계를 즉시 파악하세요.</div><ul class="tgt-list"><li>누가 오늘 컨디션이 좋은지 데이터로 확인</li><li>상대 투수 패턴에 팀이 어떻게 반응하는지</li><li>이닝별 타석 기록으로 흐름 파악</li></ul></div>
-    <div class="tgt-card fade-up" data-delay="3"><span class="tgt-emoji">📊</span><div class="tgt-title">야구 데이터 팬</div><div class="tgt-desc">Baseball Savant 스타일로 직접 데이터를 만들어보고 싶은 분들을 위한 도구입니다.</div><ul class="tgt-list"><li>직접 기록한 스프레이 차트 시각화</li><li>세이버메트릭스 지표를 일상에서 경험</li><li>경기별 데이터 누적 및 비교</li></ul></div>
-  </div>
-</section>
-
-<section class="cta-section">
-  <div class="cta-glow"></div>
-  <span class="section-label fade-up" style="display:block;margin-bottom:12px">지금 시작하세요</span>
-  <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
-  <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
-  <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      SprayLab 시작하기
-    </button>
-    <div class="cta-free"><strong>✓ 완전 무료</strong> &nbsp;·&nbsp; <strong>✓ 광고 없음</strong> &nbsp;·&nbsp; <strong>✓ 로그인 불필요</strong></div>
-  </div>
-</section>
-
-<footer>
-  <div class="foot-top">
-    <div class="foot-brand">
-      <div class="foot-brand-name">Spray<em>Lab</em></div>
-      <div class="foot-desc">사회인야구와 아마추어 야구를 위한<br>스프레이 차트 & 타석 분석 도구.<br>야구를 데이터로 즐기세요.</div>
-    </div>
-    <div><div class="foot-links-title">서비스</div><ul class="foot-links"><li><a onclick="showApp()">앱 시작하기</a></li><li><a href="#features">주요 기능</a></li><li><a href="#howto">사용법</a></li></ul></div>
-    <div><div class="foot-links-title">분석 지표</div><ul class="foot-links"><li><a href="#">타율 AVG</a></li><li><a href="#">출루율 OBP</a></li><li><a href="#">장타율 SLG</a></li><li><a href="#">방향 분포 PULL/OPPO%</a></li></ul></div>
-  </div>
-  <div class="foot-bottom">
-    <span class="foot-copy">© <span id="footYear">2025</span> SprayLab. Built for baseball.</span>
-    <div class="foot-tags"><span class="foot-tag">v1.0</span><span class="foot-tag">사회인야구</span><span class="foot-tag">spray-chart</span></div>
-  </div>
-</footer>
-
-</div><div id="app-page">
+</div>
+<div id="app-page">
 
 <div class="tt-box" id="ttBox"></div>
 
@@ -2430,7 +2275,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=93"></script>
+<script defer src="js/core.js?v=94"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=16"></script>
 <script>

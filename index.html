@@ -61,37 +61,10 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=66">
-<link rel="stylesheet" href="css/features.css?v=23">
-<link rel="stylesheet" href="css/shell.css?v=4">
+<link rel="stylesheet" href="css/styles.css?v=67">
+<link rel="stylesheet" href="css/features.css?v=24">
+<link rel="stylesheet" href="css/shell.css?v=5">
 <style>
-/* ── Onboarding overlay ── */
-.onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:none}
-.onboard-card{background:#1a1a24;border-top:1px solid #2a2a3a;border-radius:20px 20px 0 0;padding:24px 20px max(28px,env(safe-area-inset-bottom));overflow-y:auto;max-height:80vh;pointer-events:auto}
-.onboard-header{margin-bottom:18px}
-.onboard-title{font-size:17px;font-weight:800;color:#f0f0f4;margin-bottom:4px}
-.onboard-sub{font-size:12px;color:#6b6b88}
-.onboard-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
-.onboard-step{display:flex;align-items:flex-start;gap:12px;background:#111118;border:1px solid #2a2a3a;border-radius:12px;padding:14px 14px}
-.onboard-step-num{width:26px;height:26px;border-radius:50%;background:#4b8cf5;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.onboard-step-body{flex:1;min-width:0}
-.onboard-step-label{font-size:13px;font-weight:700;color:#f0f0f4;margin-bottom:3px}
-.onboard-step-desc{font-size:11.5px;color:#9898b0;line-height:1.55}
-.onboard-step-arrow{font-size:18px;color:#4b8cf5;flex-shrink:0;align-self:center;animation:onboard-nudge .9s ease-in-out infinite}
-.onboard-btn{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:.3px}
-.onboard-btn:active{opacity:.82}
-/* Pointing arrow above the card for step 1 */
-.onboard-up-arrow{display:block;text-align:center;font-size:24px;color:#4b8cf5;margin-bottom:6px;animation:onboard-nudge-up .9s ease-in-out infinite}
-/* Ring on the 경기 시작 button */
-.onboard-ring{box-shadow:0 0 0 3px #4b8cf5,0 0 0 7px rgba(75,140,245,.28)!important;animation:onboard-ring-pulse 1.3s ease-in-out infinite!important;position:relative;z-index:601}
-@keyframes onboard-ring-pulse{0%,100%{box-shadow:0 0 0 3px #4b8cf5,0 0 0 7px rgba(75,140,245,.28)}50%{box-shadow:0 0 0 3px #4b8cf5,0 0 0 13px rgba(75,140,245,0)}}
-@keyframes onboard-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
-@keyframes onboard-nudge-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-@media(max-width:720px){
-  .onboard-card{padding:18px 14px max(28px,env(safe-area-inset-bottom))}
-  .onboard-title{font-size:15px}
-  .onboard-step{padding:12px 12px;gap:10px}
-}
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
 .net-badge::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0}
@@ -172,10 +145,6 @@ var _kakaoSdkLoaded = false;
   .sl-ob-cta-title{font-size:14px}
   .sl-ob-cta-main{font-size:15px;padding:14px}
 }
-/* ── 홈화면 미니 스프레이차트 프리뷰 ── */
-.aw-preview-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 auto 16px;max-width:340px;width:100%}
-.aw-preview-canvas{width:100%;max-width:300px;height:130px;border-radius:12px;background:#0d1117;border:1px solid #1e2a3a;display:block}
-.aw-preview-hint{font-size:11px;color:#6b6b88;text-align:center;line-height:1.5}
 /* ── 방향별 성공률 ── */
 .dir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .dir-it{background:#12122a;border-radius:8px;padding:7px 6px;text-align:center}
@@ -190,9 +159,6 @@ var _kakaoSdkLoaded = false;
 .fth-ring{width:52px;height:52px;border-radius:50%;border:3px solid rgba(75,140,245,.7);animation:fth-pulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(75,140,245,.4)}
 @keyframes fth-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(75,140,245,.4)}50%{transform:scale(1.1);box-shadow:0 0 0 12px rgba(75,140,245,0)}}
 .fth-txt{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;line-height:1.5;text-shadow:0 1px 6px rgba(0,0,0,.8);background:rgba(7,9,15,.55);padding:7px 14px;border-radius:20px;backdrop-filter:blur(4px)}
-/* ── 처음 쓰시나요 버튼 ── */
-.btn-first-use{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;border:1px solid rgba(75,140,245,.4);background:rgba(75,140,245,.08);color:rgba(75,140,245,.9);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-top:12px}
-.btn-first-use:active{opacity:.8}
 /* ── Stadium selector (sl-st-) ── */
 .sl-st-bar{display:flex;gap:6px;padding:6px 8px 2px;overflow-x:auto;scrollbar-width:none}
 .sl-st-bar::-webkit-scrollbar{display:none}
@@ -203,70 +169,6 @@ var _kakaoSdkLoaded = false;
 .sl-st-on{border-color:#4b8cf5!important;background:#1a2a48!important}
 .sl-st-on .sl-st-name{color:#7ab0f5!important}
 @media(max-width:720px){.sl-st-btn{padding:5px 8px;min-width:46px}.sl-st-btn .sl-st-emoji{font-size:16px}}
-/* ── App Preview Modal ── */
-#appPreviewModal{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;background:rgba(4,6,12,.85);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .3s}
-#appPreviewModal.show{opacity:1;pointer-events:auto}
-.apm-card{background:#0d1117;border:1px solid #1e2a3a;border-radius:24px;width:min(440px,calc(100vw - 32px));max-height:calc(100svh - 40px);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.8)}
-.apm-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
-.apm-logo{font-size:15px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
-.apm-logo em{color:#4b8cf5;font-style:normal}
-.apm-skip{background:none;border:1px solid #2a2a3a;border-radius:8px;color:#9898b0;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
-.apm-skip:hover{border-color:#4b8cf5;color:#c0c8e0}
-.apm-slides-wrap{overflow:hidden;flex:1;min-height:0;position:relative;margin:16px 0 0}
-.apm-slides{display:flex;transition:transform .4s cubic-bezier(.4,0,.2,1);height:100%}
-.apm-slide{flex:0 0 100%;display:flex;flex-direction:column;align-items:center;padding:0 20px}
-.apm-slide-visual{width:100%;flex:1;min-height:160px;border-radius:14px;overflow:hidden;background:#07090f;border:1px solid #1a2030;position:relative}
-.apm-slide-cap{font-size:13px;color:#c0c8e0;text-align:center;margin:10px 0 2px;font-weight:500;line-height:1.4}
-.apm-dots{display:flex;justify-content:center;gap:6px;padding:8px 0}
-.apm-dot{width:7px;height:7px;border-radius:50%;background:#2a2a3a;transition:background .2s,transform .2s;cursor:pointer}
-.apm-dot.on{background:#4b8cf5;transform:scale(1.3)}
-.apm-foot{padding:12px 20px max(16px,env(safe-area-inset-bottom))}
-.apm-cta{width:100%;padding:14px;background:#4b8cf5;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px;transition:opacity .15s}
-.apm-cta:active{opacity:.82}
-/* ── Mobile Preview Modal ── */
-#mpm{position:fixed;inset:0;z-index:8500;background:#080b14;opacity:0;pointer-events:none;transition:opacity .35s;display:flex;flex-direction:column;overflow:hidden}
-#mpm.show{opacity:1;pointer-events:auto}
-.mpm-head{display:flex;align-items:center;justify-content:space-between;padding:max(52px,env(safe-area-inset-top)) 24px 0}
-.mpm-logo{font-size:18px;font-weight:900;color:#f0f0f4;letter-spacing:-.3px}
-.mpm-logo em{color:#4b8cf5;font-style:normal}
-.mpm-skip{background:none;border:none;color:#6b6b88;font-size:13px;font-weight:600;padding:8px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
-.mpm-slides-wrap{flex:1;min-height:0;overflow:hidden;position:relative;margin-top:16px}
-.mpm-slides{display:flex;height:100%;transition:transform .38s cubic-bezier(.4,0,.2,1)}
-.mpm-slide{flex:0 0 100%;display:flex;flex-direction:column;padding:0 20px}
-.mpm-visual{flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#0d1117;border:1px solid #1a2030;position:relative}
-.mpm-caption{padding:18px 4px 0;text-align:center}
-.mpm-cap-title{font-size:20px;font-weight:800;color:#f0f0f4;letter-spacing:-.4px;margin:0 0 6px}
-.mpm-cap-desc{font-size:13px;color:#9898b0;line-height:1.55;margin:0}
-.mpm-dots{display:flex;justify-content:center;gap:7px;padding:16px 0 10px}
-.mpm-dot{height:8px;width:8px;border-radius:4px;background:#2a2a3a;transition:all .25s;cursor:pointer}
-.mpm-dot.on{background:#4b8cf5;width:26px}
-.mpm-foot{padding:0 20px max(28px,env(safe-area-inset-bottom))}
-.mpm-cta{width:100%;padding:17px;background:#4b8cf5;color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;letter-spacing:.2px;transition:opacity .15s}
-.mpm-cta:active{opacity:.82}
-/* mock elements inside mobile slides */
-.mpm-qb{display:flex;gap:8px;padding:14px 14px 0;flex-wrap:wrap}
-.mpm-qbtn{border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;border:none;font-family:inherit;cursor:default}
-.mpm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:20px 16px 0}
-.mpm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:14px;padding:14px 8px;text-align:center}
-.mpm-stat-val{font-size:26px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
-.mpm-stat-lbl{font-size:11px;color:#6b6b88;margin-top:4px;font-weight:600}
-.mpm-stat-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #1a1a2a}
-.mpm-stat-name{font-size:13px;font-weight:700;color:#c0c8e0;width:60px;flex-shrink:0}
-.mpm-stat-bar-wrap{flex:1;height:6px;background:#1e2030;border-radius:3px;overflow:hidden}
-.mpm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
-.mpm-stat-num{font-size:12px;font-weight:700;color:#9898b0;width:38px;text-align:right;font-family:'JetBrains Mono',monospace}
-/* mock UI inside slides */
-.apm-mock-qb{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
-.apm-mock-btn{border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;border:none;font-family:inherit}
-.apm-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 14px 0}
-.apm-stat-cell{background:#111118;border:1px solid #1e2a3a;border-radius:10px;padding:11px 8px;text-align:center}
-.apm-stat-val{font-size:22px;font-weight:900;color:#4b8cf5;font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
-.apm-stat-lbl{font-size:10px;color:#6b6b88;margin-top:3px;font-weight:600}
-.apm-stat-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1a1a2a}
-.apm-stat-name{font-size:12px;font-weight:700;color:#c0c8e0;width:56px;flex-shrink:0}
-.apm-stat-bar-wrap{flex:1;height:5px;background:#1e2030;border-radius:3px;overflow:hidden}
-.apm-stat-bar{height:100%;border-radius:3px;background:#4b8cf5}
-.apm-stat-num{font-size:11px;font-weight:700;color:#9898b0;width:36px;text-align:right;font-family:'JetBrains Mono',monospace}
 </style>
 </head>
 <body>
@@ -296,136 +198,10 @@ var _kakaoSdkLoaded = false;
   <button onclick="document.getElementById('kakao-warn').style.display='none'" style="margin:4px 4px 0;padding:5px 10px;background:none;border:1px solid #888;border-radius:6px;font-size:11px;cursor:pointer">✕ 계속 사용</button>
 </div>
 
-<!-- ████ 모바일 프리뷰 모달 ████ -->
-<div id="mpm">
-  <div class="mpm-head">
-    <div class="mpm-logo">Spray<em>Lab</em></div>
-    <button class="mpm-skip" onclick="mpmSkip()">건너뛰기</button>
-  </div>
-  <div class="mpm-slides-wrap" id="mpmSlidesWrap">
-    <div class="mpm-slides" id="mpmSlides">
-      <!-- Slide 1: 타석 기록 -->
-      <div class="mpm-slide">
-        <div class="mpm-visual">
-          <div class="mpm-qb">
-            <button class="mpm-qbtn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
-            <button class="mpm-qbtn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
-            <button class="mpm-qbtn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
-            <button class="mpm-qbtn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
-          </div>
-          <canvas id="mpmCanvas0" style="width:100%;display:block;margin-top:8px"></canvas>
-        </div>
-        <div class="mpm-caption">
-          <p class="mpm-cap-title">필드를 탭해 타구를 기록</p>
-          <p class="mpm-cap-desc">이닝별 타석을 실시간으로 기록하고<br>결과를 한 번에 확인하세요</p>
-        </div>
-      </div>
-      <!-- Slide 2: 스프레이차트 -->
-      <div class="mpm-slide">
-        <div class="mpm-visual">
-          <canvas id="mpmCanvas1" style="width:100%;display:block"></canvas>
-        </div>
-        <div class="mpm-caption">
-          <p class="mpm-cap-title">스프레이차트로 한눈에</p>
-          <p class="mpm-cap-desc">타구 분포와 방향 패턴을<br>시각적으로 파악하세요</p>
-        </div>
-      </div>
-      <!-- Slide 3: 통계 -->
-      <div class="mpm-slide">
-        <div class="mpm-visual" style="overflow-y:auto">
-          <div class="mpm-stat-grid">
-            <div class="mpm-stat-cell"><div class="mpm-stat-val">.312</div><div class="mpm-stat-lbl">타율 AVG</div></div>
-            <div class="mpm-stat-cell"><div class="mpm-stat-val">.405</div><div class="mpm-stat-lbl">출루율 OBP</div></div>
-            <div class="mpm-stat-cell"><div class="mpm-stat-val">.832</div><div class="mpm-stat-lbl">OPS</div></div>
-          </div>
-          <div style="padding:14px 16px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
-          <div class="mpm-stat-row"><span class="mpm-stat-name">김민준</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:88%"></div></div><span class="mpm-stat-num">.388</span></div>
-          <div class="mpm-stat-row"><span class="mpm-stat-name">이도현</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:72%"></div></div><span class="mpm-stat-num">.312</span></div>
-          <div class="mpm-stat-row"><span class="mpm-stat-name">박지훈</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:60%"></div></div><span class="mpm-stat-num">.267</span></div>
-          <div class="mpm-stat-row"><span class="mpm-stat-name">최성원</span><div class="mpm-stat-bar-wrap"><div class="mpm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="mpm-stat-num">.233</span></div>
-        </div>
-        <div class="mpm-caption">
-          <p class="mpm-cap-title">타율·출루율·OPS 자동 계산</p>
-          <p class="mpm-cap-desc">기록하는 순간 모든 지표가<br>실시간으로 업데이트됩니다</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="mpm-dots" id="mpmDots">
-    <div class="mpm-dot on" onclick="mpmGoTo(0)"></div>
-    <div class="mpm-dot" onclick="mpmGoTo(1)"></div>
-    <div class="mpm-dot" onclick="mpmGoTo(2)"></div>
-  </div>
-  <div class="mpm-foot">
-    <button class="mpm-cta" onclick="mpmStart()">지금 시작하기 →</button>
-  </div>
-</div>
-
-<!-- ████ 앱 프리뷰 모달 ████ -->
-<div id="appPreviewModal">
-  <div class="apm-card">
-    <div class="apm-head">
-      <div class="apm-logo">Spray<em>Lab</em></div>
-      <button class="apm-skip" onclick="apmSkip()">바로 시작 →</button>
-    </div>
-    <div class="apm-slides-wrap" id="apmSlidesWrap">
-      <div class="apm-slides" id="apmSlides">
-        <!-- Slide 1: 필드 기록 -->
-        <div class="apm-slide">
-          <div class="apm-slide-visual">
-            <div class="apm-mock-qb">
-              <button class="apm-mock-btn" style="background:#1a3a20;color:#2dd4a0">안타 1B</button>
-              <button class="apm-mock-btn" style="background:#3a1a1a;color:#f56565">아웃 G/O</button>
-              <button class="apm-mock-btn" style="background:#2a1a3a;color:#a78bfa">삼진 K</button>
-              <button class="apm-mock-btn" style="background:#3a2a10;color:#f6c23e">볼넷 BB</button>
-            </div>
-            <canvas id="apmCanvas0" style="width:100%;display:block;margin-top:6px"></canvas>
-          </div>
-          <div class="apm-slide-cap">⚾ 필드를 탭해 타구 위치를 기록하세요</div>
-        </div>
-        <!-- Slide 2: 스프레이차트 -->
-        <div class="apm-slide">
-          <div class="apm-slide-visual">
-            <canvas id="apmCanvas1" style="width:100%;display:block"></canvas>
-          </div>
-          <div class="apm-slide-cap">🗺️ 타구 분포를 스프레이차트로 한눈에</div>
-        </div>
-        <!-- Slide 3: 통계 카드 -->
-        <div class="apm-slide">
-          <div class="apm-slide-visual" style="overflow-y:auto">
-            <div class="apm-stat-grid">
-              <div class="apm-stat-cell"><div class="apm-stat-val">.312</div><div class="apm-stat-lbl">타율 AVG</div></div>
-              <div class="apm-stat-cell"><div class="apm-stat-val">.405</div><div class="apm-stat-lbl">출루율 OBP</div></div>
-              <div class="apm-stat-cell"><div class="apm-stat-val">.832</div><div class="apm-stat-lbl">OPS</div></div>
-            </div>
-            <div style="padding:12px 14px 6px;font-size:11px;font-weight:700;color:#6b6b88;letter-spacing:.5px">선수별 순위</div>
-            <div class="apm-stat-row"><span class="apm-stat-name">김민준</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:88%"></div></div><span class="apm-stat-num">.388</span></div>
-            <div class="apm-stat-row"><span class="apm-stat-name">이도현</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:72%"></div></div><span class="apm-stat-num">.312</span></div>
-            <div class="apm-stat-row"><span class="apm-stat-name">박지훈</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:60%"></div></div><span class="apm-stat-num">.267</span></div>
-            <div class="apm-stat-row"><span class="apm-stat-name">최성원</span><div class="apm-stat-bar-wrap"><div class="apm-stat-bar" style="width:48%;background:#2dd4a0"></div></div><span class="apm-stat-num">.233</span></div>
-          </div>
-          <div class="apm-slide-cap">📊 타율·출루율·OPS를 자동으로 계산</div>
-        </div>
-      </div>
-    </div>
-    <div class="apm-dots" id="apmDots">
-      <div class="apm-dot on" onclick="apmGoTo(0)"></div>
-      <div class="apm-dot" onclick="apmGoTo(1)"></div>
-      <div class="apm-dot" onclick="apmGoTo(2)"></div>
-    </div>
-    <div class="apm-foot">
-      <button class="apm-cta" onclick="apmStart()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        지금 시작하기
-      </button>
-    </div>
-  </div>
-</div>
-
 <div id="landing-page">
 
 <nav id="mainNav">
-  <a class="nav-brand" onclick="goHome()">
+  <a class="nav-brand" onclick="window.scrollTo({top:0,behavior:'smooth'})">
     <img class="nav-logo" src="player-logo.png" alt="SprayLab">
     <span class="nav-name">Spray<em>Lab</em></span>
   </a>
@@ -435,7 +211,7 @@ var _kakaoSdkLoaded = false;
     <li><a href="#preview">미리보기</a></li>
     <li><a href="#target">대상</a></li>
   </ul>
-  <button class="nav-cta" onclick="showPreviewModal()">
+  <button class="nav-cta" onclick="showApp()">
     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     앱 시작하기
   </button>
@@ -467,7 +243,7 @@ var _kakaoSdkLoaded = false;
       </div>
     </div>
     <div class="hero-btns">
-      <button class="btn-hero-primary" onclick="showPreviewModal()">
+      <button class="btn-hero-primary" onclick="showApp()">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         무료로 시작하기
       </button>
@@ -768,7 +544,7 @@ var _kakaoSdkLoaded = false;
   <h2 class="cta-title fade-up" data-delay="1">모든 타석이<br>데이터가 됩니다</h2>
   <p class="cta-sub fade-up" data-delay="2">가입 불필요 · 설치 불필요 · 완전 무료<br>지금 바로 시작하세요</p>
   <div class="fade-up" data-delay="3">
-    <button class="btn-hero-primary" onclick="showPreviewModal()" style="font-size:15px;padding:16px 36px">
+    <button class="btn-hero-primary" onclick="showApp()" style="font-size:15px;padding:16px 36px">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       SprayLab 시작하기
     </button>
@@ -794,152 +570,6 @@ var _kakaoSdkLoaded = false;
 </div><div id="app-page">
 
 <div class="tt-box" id="ttBox"></div>
-
-
-<div class="ob-overlay" id="obOverlay" style="display:none">
-  <div class="ob-card">
-    <div class="ob-icon" id="obIcon">🏟️</div>
-    <div class="ob-step" id="obStep">STEP 1 · 타구 기록</div>
-    <div class="ob-title" id="obTitle">필드를 터치해<br>타구 위치를 기록하세요</div>
-    <div class="ob-desc" id="obDesc">공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.<br><b>필드 아래 결과 버튼</b>으로 더욱 빠르게 기록할 수 있어요.</div>
-    <div class="ob-highlight" id="obHighlight">안타 · 2루타 · 아웃 · 삼진 · 볼넷</div>
-    <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div><div class="ob-dot" id="d3"></div><div class="ob-dot" id="d4"></div></div>
-    <label class="ob-no-show">
-      <input type="checkbox" id="obNoShow"><span>다시 보지 않기</span>
-    </label>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-ghost" onclick="obSkip()" style="padding:10px 14px;flex-shrink:0;font-size:12px">건너뛰기</button>
-      <button class="btn btn-primary" style="flex:1;justify-content:center;padding:10px" id="obBtn" onclick="obNext()">다음 →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ████ FTU 온보딩 위저드 ████ -->
-<div id="ftuOverlay" class="hidden">
-  <div class="ftu-card">
-    <div class="ftu-dots">
-      <div class="ftu-dot on" id="ftuDRole"></div>
-      <div class="ftu-dot" id="ftuD0"></div>
-      <div class="ftu-dot" id="ftuD1"></div>
-      <div class="ftu-dot" id="ftuD2"></div>
-    </div>
-    <!-- Step Role: 역할 선택 -->
-    <div id="ftuStepRole">
-      <div class="ftu-icon">🎯</div>
-      <div class="ftu-title">어떤 역할로 사용하실 건가요?</div>
-      <div class="ftu-sub">역할에 맞게 화면이 최적화됩니다<br>나중에 설정에서 변경할 수 있어요</div>
-      <div class="ftu-role-list">
-        <button class="ftu-role-card" onclick="ftuSelectRole('recorder')">
-          <span class="ftu-role-icon">📋</span>
-          <div class="ftu-role-body">
-            <div class="ftu-role-title">기록원</div>
-            <div class="ftu-role-desc">경기 중 타석 기록이 주목적</div>
-          </div>
-          <span class="ftu-role-arrow">›</span>
-        </button>
-        <button class="ftu-role-card" onclick="ftuSelectRole('coach')">
-          <span class="ftu-role-icon">👔</span>
-          <div class="ftu-role-body">
-            <div class="ftu-role-title">감독 / 코치</div>
-            <div class="ftu-role-desc">팀 통계·선수 비교 분석이 주목적</div>
-          </div>
-          <span class="ftu-role-arrow">›</span>
-        </button>
-        <button class="ftu-role-card" onclick="ftuSelectRole('player')">
-          <span class="ftu-role-icon">⚾</span>
-          <div class="ftu-role-body">
-            <div class="ftu-role-title">선수</div>
-            <div class="ftu-role-desc">내 타석·패턴 분석이 주목적</div>
-          </div>
-          <span class="ftu-role-arrow">›</span>
-        </button>
-      </div>
-    </div>
-    <!-- Step 0: 팀 이름 -->
-    <div id="ftuStep0" style="display:none">
-      <div class="ftu-icon">⚾</div>
-      <div class="ftu-title">SprayLab에 오신 걸 환영합니다!</div>
-      <div class="ftu-sub">사회인야구 스프레이차트 기록앱<br>3단계로 빠르게 시작해봐요</div>
-      <input class="ftu-inp" id="ftuTeamInp" placeholder="우리 팀 이름을 입력하세요" maxlength="10" onkeydown="if(event.key==='Enter')ftuStep1()">
-      <button class="ftu-btn" onclick="ftuStep1()">다음 →</button>
-    </div>
-    <!-- Step 1: 선수 추가 -->
-    <div id="ftuStep1" style="display:none">
-      <div class="ftu-icon">👤</div>
-      <div class="ftu-title">선수를 등록해봐요</div>
-      <div class="ftu-sub">이름과 등번호를 입력하고<br>+ 버튼으로 추가하세요</div>
-      <div class="ftu-player-row">
-        <input class="ftu-inp" id="ftuPlayerName" placeholder="이름" maxlength="8" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
-        <input class="ftu-inp num" id="ftuPlayerNum" placeholder="#" maxlength="3" type="number" onkeydown="if(event.key==='Enter')ftuAddPlayer()">
-        <button class="ftu-add-btn" onclick="ftuAddPlayer()">+</button>
-      </div>
-      <div id="ftuPlayerAdded" style="display:none;color:#2dd4a0;font-size:13px;text-align:center;margin-bottom:8px">✓ 등록 완료!</div>
-      <button class="ftu-btn" id="ftuStep1Next" style="opacity:.4;pointer-events:none" onclick="ftuStep2()">다음 →</button>
-    </div>
-    <!-- Step 2: 필드 체험 -->
-    <div id="ftuStep2" style="display:none">
-      <div class="ftu-icon">📍</div>
-      <div class="ftu-title">타석을 직접 찍어보세요</div>
-      <div class="ftu-sub">아래 필드에서 공이 떨어진 위치를<br>탭하면 타석이 기록됩니다</div>
-      <canvas id="ftuFieldCanvas" width="220" height="170" class="ftu-canvas" onclick="ftuFieldTap(event)"></canvas>
-      <div id="ftuTapHint" style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">👆 위 필드를 탭해보세요</div>
-      <button class="ftu-btn" id="ftuFinishBtn" style="margin-top:12px;opacity:.4;pointer-events:none" onclick="ftuDone()">완료 — 시작하기! 🚀</button>
-    </div>
-    <button class="ftu-skip" onclick="ftuDone()">건너뛰기</button>
-  </div>
-</div>
-
-<!-- ████ 앱 홈 화면 ████ -->
-<div id="appWelcome" class="hidden">
-  <div class="aw-logo">
-    <img class="aw-logo-icon" src="player-logo.png" alt="SprayLab">
-    <div class="aw-logo-name">Spray<em>Lab</em></div>
-    <div class="aw-logo-tag">YOUR SWING, VISUALIZED</div>
-  </div>
-  <!-- 미니 스프레이차트 프리뷰 -->
-  <div class="aw-preview-wrap">
-    <canvas id="awPreviewCanvas" class="aw-preview-canvas"></canvas>
-    <div class="aw-preview-hint">필드를 탭해 타구를 기록 → 스프레이차트 자동 생성</div>
-  </div>
-  <div class="aw-main-btns">
-    <button class="aw-btn-start" onclick="hideAppWelcome();openGameWizard()">
-      <span style="font-size:26px;flex-shrink:0">⚾</span>
-      <div class="aw-btn-inner">
-        <span>새 경기 시작</span>
-        <span class="aw-btn-sub">필드 탭하면 바로 기록</span>
-      </div>
-    </button>
-    <button class="aw-btn-load" onclick="hideAppWelcome();openLoad()">
-      <span style="font-size:20px;flex-shrink:0">📋</span>
-      <div class="aw-btn-inner">
-        <span>최근 경기 이어하기</span>
-        <span class="aw-btn-sub">저장된 경기 불러오기</span>
-      </div>
-    </button>
-    <button class="aw-btn-season" onclick="hideAppWelcome();openPlayerProfile()">
-      <span style="font-size:20px;flex-shrink:0">📅</span>
-      <div class="aw-btn-inner">
-        <span>시즌 보기</span>
-        <span class="aw-btn-sub" style="color:rgba(246,194,62,.6)">선수별 시즌 누적 성적</span>
-      </div>
-    </button>
-  </div>
-  <div class="mobile-aw-links">
-    <button onclick="hideAppWelcome();openGameWizard()">새 경기 시작</button>
-    <button onclick="hideAppWelcome();openLoad()">경기 불러오기</button>
-    <button onclick="hideAppWelcome();openPlayerProfile()">시즌 보기</button>
-  </div>
-  <!-- 팀 셀렉터: 팀이 있을 때만 표시 (JS에서 제어) -->
-  <div class="team-sel-bar" id="awTeamSelBar" style="display:none">
-    <span class="tsb-label">현재 팀</span>
-    <select class="tsb-sel" id="tsbSelect" onchange="tsbChange(this.value)">
-      <option value="">팀 없음</option>
-    </select>
-  </div>
-  <div class="aw-recent" id="awRecent"></div>
-  <button class="aw-btn-more" onclick="awMoreOpen()">⋯ 설정 · 내보내기</button>
-  <button class="btn-first-use" onclick="showHelpModal()">? 처음 쓰시나요</button>
-</div>
 
 
 <!-- ████ 공유된 팀 배너 ████ -->
@@ -979,71 +609,6 @@ var _kakaoSdkLoaded = false;
       <button class="tcm-btn-ok" onclick="createTeam()">팀 생성</button>
     </div>
   </div>
-</div>
-
-<!-- ████ 더보기 바텀시트 ████ -->
-<div class="aw-more-overlay" id="awMoreOverlay" onclick="if(event.target===this)awMoreClose()">
-  <div class="aw-more-sheet">
-    <div class="aw-more-item" onclick="awMoreClose();openTeamCreate()">
-      <span class="aw-more-item-icon">🏟️</span>팀 만들기
-    </div>
-    <div class="aw-more-divider"></div>
-    <div class="aw-more-item" onclick="awMoreClose();openRoleChangeSheet()">
-      <span class="aw-more-item-icon">🎯</span>역할 변경
-    </div>
-    <div class="aw-more-divider"></div>
-    <div class="aw-more-item" onclick="awMoreClose();localStorage.removeItem('sl_preview_seen');showMobilePreviewModal?showMobilePreviewModal():showPreviewModal()">
-      <span class="aw-more-item-icon">▶</span>앱 소개 다시 보기
-    </div>
-    <div class="aw-more-divider"></div>
-    <div class="aw-more-item" onclick="awMoreClose();hideAppWelcome();showHelpModal()">
-      <span class="aw-more-item-icon">❓</span>도움말 · 처음 쓰시나요?
-    </div>
-    <div class="aw-more-divider"></div>
-    <div class="aw-more-item" onclick="awMoreClose();exportFullReport()">
-      <span class="aw-more-item-icon">📊</span>전체 리포트 내보내기
-    </div>
-    <div class="aw-more-divider"></div>
-    <div class="aw-more-item" onclick="awMoreClose();goLanding()">
-      <span class="aw-more-item-icon">←</span>랜딩 화면으로
-    </div>
-    <button class="aw-more-cancel" onclick="awMoreClose()">취소</button>
-  </div>
-</div>
-
-<!-- ████ 역할 변경 바텀시트 ████ -->
-<div id="roleChangeBackdrop" onclick="closeRoleChangeSheet()" style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.55)"></div>
-<div id="roleChangeSheet" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);z-index:9201;width:100%;max-width:480px;background:#1a1a24;border-radius:20px 20px 0 0;border-top:1px solid #2a2a3a;padding:22px 18px max(24px,env(safe-area-inset-bottom));box-sizing:border-box;transition:transform .3s cubic-bezier(.32,1,.24,1)">
-  <div style="width:36px;height:4px;border-radius:2px;background:#3a3a4a;margin:0 auto 18px"></div>
-  <div style="font-size:15px;font-weight:800;color:#f0f0f4;margin-bottom:4px">역할 변경</div>
-  <div style="font-size:11.5px;color:#6b6b88;margin-bottom:16px">역할에 맞게 화면이 최적화됩니다</div>
-  <div class="ftu-role-list">
-    <button class="ftu-role-card" id="roleCardRecorder" onclick="applyRoleLayout('recorder');closeRoleChangeSheet()">
-      <span class="ftu-role-icon">📋</span>
-      <div class="ftu-role-body">
-        <div class="ftu-role-title">기록원</div>
-        <div class="ftu-role-desc">경기 중 타석 기록이 주목적</div>
-      </div>
-      <span class="ftu-role-arrow" id="roleCheckRecorder"></span>
-    </button>
-    <button class="ftu-role-card" id="roleCardCoach" onclick="applyRoleLayout('coach');closeRoleChangeSheet()">
-      <span class="ftu-role-icon">👔</span>
-      <div class="ftu-role-body">
-        <div class="ftu-role-title">감독 / 코치</div>
-        <div class="ftu-role-desc">팀 통계·선수 비교 분석이 주목적</div>
-      </div>
-      <span class="ftu-role-arrow" id="roleCheckCoach"></span>
-    </button>
-    <button class="ftu-role-card" id="roleCardPlayer" onclick="applyRoleLayout('player');closeRoleChangeSheet()">
-      <span class="ftu-role-icon">⚾</span>
-      <div class="ftu-role-body">
-        <div class="ftu-role-title">선수</div>
-        <div class="ftu-role-desc">내 타석·패턴 분석이 주목적</div>
-      </div>
-      <span class="ftu-role-arrow" id="roleCheckPlayer"></span>
-    </button>
-  </div>
-  <button onclick="closeRoleChangeSheet()" style="width:100%;padding:12px;background:none;border:1px solid #2a2a3a;border-radius:12px;color:#9898b0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">취소</button>
 </div>
 
 <!-- ████ OCR 라인업 임포트 모달 ████ -->
@@ -1104,7 +669,7 @@ var _kakaoSdkLoaded = false;
     <div class="gw-field">
       <div class="gw-label">우리 팀</div>
       <div style="position:relative">
-        <input class="gw-inp" id="gwHome" placeholder="우리팀" maxlength="10"
+        <input class="gw-inp" id="gwHome" placeholder="내 팀" maxlength="10"
           oninput="gwAutoComplete('home',this.value)"
           onblur="setTimeout(function(){var l=document.getElementById('gwHomeAc');if(l)l.classList.remove('show');},200)"
           onkeydown="if(event.key==='Enter')document.getElementById('gwAway').focus()">
@@ -1122,12 +687,12 @@ var _kakaoSdkLoaded = false;
       </div>
     </div>
     <div style="display:flex;gap:8px">
-      <button class="gw-load-recent" style="flex:1" onclick="closeGameWizard();showAppWelcome();openLoad()">📋 이전 경기 불러오기</button>
+      <button class="gw-load-recent" style="flex:1" onclick="closeGameWizard();openLoad()">📋 이전 경기 불러오기</button>
       <button class="gw-load-recent" style="flex:1" onclick="applyLastLineup()">👥 이전 라인업</button>
     </div>
     <div class="gw-divider"></div>
     <div class="gw-btns">
-      <button class="gw-btn-cancel" onclick="closeGameWizard();showAppWelcome()">← 취소</button>
+      <button class="gw-btn-cancel" onclick="closeGameWizard()">← 취소</button>
       <button class="gw-btn-start" onclick="startFromWizard()">기록 시작 →</button>
     </div>
   </div>
@@ -1280,23 +845,6 @@ var _kakaoSdkLoaded = false;
   </div>
 </div>
 
-<!-- ████ FAB 퀵 액션 ████ -->
-<div class="fab-wrap" id="fabWrap">
-  <div class="fab-pop" id="fabPop">
-    <button class="fab-pop-btn" onclick="fabRecord('안타');fabToggle()">안타</button>
-    <button class="fab-pop-btn" onclick="fabRecord('아웃');fabToggle()">아웃</button>
-    <button class="fab-pop-btn" onclick="fabRecord('삼진');fabToggle()">삼진</button>
-    <button class="fab-pop-btn" onclick="fabRecord('볼넷');fabToggle()">볼넷</button>
-    <button class="fab-pop-btn repeat" onclick="recallLastAtBat();fabToggle()">↩ 반복</button>
-    <div class="fab-pop-sep"></div>
-    <button class="fab-pop-btn repeat" onclick="fabToggle();openQR()">📱 전체화면 기록</button>
-    <button class="fab-pop-btn repeat" onclick="undoLast();fabToggle()">⎌ 직전 취소</button>
-    <button class="fab-pop-btn repeat" onclick="fabEditLast();fabToggle()">✏️ 최근 수정</button>
-    <button class="fab-pop-btn danger" onclick="fabToggle();showPostGameReport()">🏁 경기 종료</button>
-  </div>
-  <button class="fab-btn" id="fabBtn" onclick="fabToggle()" data-help-title="⚡ FAB 퀵 액션" data-help="안타·아웃·삼진·볼넷을 즉시 기록하는 <b>플로팅 퀵 액션</b>입니다.<br>↩ 반복 버튼으로 바로 전 타석 결과를 그대로 반복 입력할 수 있습니다.">⚡</button>
-</div>
-
 <!-- ████ 도움말 모드 인디케이터 & 툴팁 ████ -->
 <div id="helpModeIndicator">💡 도움말 모드 ON</div>
 <div id="helpModeTooltip">
@@ -1370,12 +918,8 @@ var _kakaoSdkLoaded = false;
 </div>
 
 <header class="app-hdr">
-  <div class="app-brand" onclick="goHome()">
-    <img src="player-logo.png" alt="SprayLab" style="width:36px;height:36px;border-radius:8px;object-fit:cover">
-    <div><div class="app-brand-name">Spray<em>Lab</em></div><div class="app-brand-tag">YOUR SWING, VISUALIZED</div></div>
-  </div>
   <div class="scoreboard">
-    <div class="team-blk"><input class="team-inp" id="tHome" value="홈팀" maxlength="6"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('h',-1)">−</button><span class="sc-val" id="scH" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.hs=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('h',1)">+</button></div></div>
+    <div class="team-blk"><input class="team-inp" id="tHome" value="내 팀" maxlength="6"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('h',-1)">−</button><span class="sc-val" id="scH" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.hs=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('h',1)">+</button></div></div>
     <span class="vs">VS</span> 
     <div class="team-blk"><div class="sc-ctrl"><button class="sc-btn" onclick="chSc('a',-1)">−</button><span class="sc-val" id="scA" contenteditable="true" inputmode="numeric" style="cursor:text;min-width:28px;border-radius:4px;padding:1px 3px;outline:none" onblur="AS.as=parseInt(this.textContent)||0" onkeydown="if(event.key==='Enter')this.blur()">0</span><button class="sc-btn" onclick="chSc('a',1)">+</button></div><input class="team-inp" id="tAway" value="원정팀" maxlength="6"></div>
   </div>
@@ -1399,8 +943,6 @@ var _kakaoSdkLoaded = false;
         <button class="mm-item" onclick="showHelpMenu();closeMoreMenu()">❓ 도움말</button>
         <button class="mm-item" onclick="fieldFeedbackOpen();closeMoreMenu()">💬 피드백</button>
         <button class="mm-item btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내 모드</button>
-        <div class="mm-divider"></div>
-        <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
       </div>
     </div>
     <span id="teamBadge" onclick="openLoginModal()" style="cursor:pointer"></span>
@@ -1561,8 +1103,6 @@ var _kakaoSdkLoaded = false;
     <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
     <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
     <button class="mab-sheet-btn" onclick="fieldFeedbackOpen();mabMoreClose()">💬 피드백</button>
-    <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
-    <button class="mab-sheet-btn" style="color:#6b7280" onclick="goHome();mabMoreClose()">← 홈으로</button>
   </div>
 </div>
 
@@ -1713,46 +1253,7 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
-    <div id="onboardOverlay" class="onboard-overlay" style="display:none">
-      <span class="onboard-up-arrow">↑</span>
-      <div class="onboard-card">
-        <div class="onboard-header">
-          <div class="onboard-title">⚾ 시작하는 방법</div>
-          <div class="onboard-sub">아래 3단계를 따라해 보세요</div>
-        </div>
-        <div class="onboard-steps">
-          <div class="onboard-step">
-            <div class="onboard-step-num">1</div>
-            <div class="onboard-step-body">
-              <div class="onboard-step-label">선수 추가</div>
-              <div class="onboard-step-desc">위쪽 타자 칩을 눌러 라인업을 열고 이름·번호를 입력하세요</div>
-            </div>
-            <div class="onboard-step-arrow">›</div>
-          </div>
-          <div class="onboard-step">
-            <div class="onboard-step-num">2</div>
-            <div class="onboard-step-body">
-              <div class="onboard-step-label">타자 선택</div>
-              <div class="onboard-step-desc">추가된 선수를 탭해 현재 타자로 지정하세요</div>
-            </div>
-            <div class="onboard-step-arrow">›</div>
-          </div>
-          <div class="onboard-step">
-            <div class="onboard-step-num">3</div>
-            <div class="onboard-step-body">
-              <div class="onboard-step-label">필드 탭</div>
-              <div class="onboard-step-desc">타구가 떨어진 위치를 필드에서 탭하면 기록됩니다</div>
-            </div>
-            <div class="onboard-step-arrow">›</div>
-          </div>
-        </div>
-        <button class="onboard-btn" onclick="document.getElementById('onboardOverlay').style.display='none';shellDrawer(true);setTimeout(function(){document.getElementById('pName').focus()},250)">+ 선수 추가하기</button>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="showHelpMenu()" style="background:none;border:none;color:#6b7280;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline;padding:0">❓ 도움말 보기</button>
-        </div>
-      </div>
-    </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint no-batter"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt">타자를 먼저 선택하세요</div></div></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 아래 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
     <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
@@ -2126,24 +1627,6 @@ var _kakaoSdkLoaded = false;
       </div>
       <!-- ████ 팀 대시보드 패널 ████ -->
       <div class="tab-pnl" id="pnl-team">
-        <style>
-          .pro-gate{position:relative}
-          .pro-gate-badge{display:none}
-          body.plan-free .pro-gate .pro-gate-content{filter:blur(5px);pointer-events:none;user-select:none}
-          body.plan-free .pro-gate .pro-gate-badge{display:flex;position:absolute;inset:0;z-index:5;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,14,22,.55);border-radius:12px;text-align:center;padding:20px}
-          .pro-gate-badge-title{font-size:14px;font-weight:800;color:#fff}
-          .pro-gate-badge-desc{font-size:11px;color:#cbd5e1;max-width:260px;line-height:1.5}
-          .pro-gate-btn{background:linear-gradient(135deg,#4b8cf5,#7c9cfc);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:12px;font-weight:800;cursor:pointer}
-          body.plan-free .pro-btn::before{content:'🔒 '}
-        </style>
-        <div class="pro-gate" id="teamDashGate">
-        <div class="pro-gate-content">
-        <!-- 역할 스위처 -->
-        <div class="role-sw">
-          <button class="role-sw-btn" data-r="coach" onclick="setRole('coach')">👔 감독</button>
-          <button class="role-sw-btn on" data-r="scorer" onclick="setRole('scorer')">📋 기록원</button>
-          <button class="role-sw-btn" data-r="player" onclick="setRole('player')">⚾ 선수</button>
-        </div>
         <!-- 팀 헤더 (JS로 렌더) -->
         <div id="teamPanelHdr"></div>
         <!-- 시즌 기록 -->
@@ -2180,13 +1663,6 @@ var _kakaoSdkLoaded = false;
             <button class="team-share-btn" onclick="shareTeamURL()">🔗 URL 공유</button>
             <button class="team-share-btn" onclick="shareTeamURL()">📱 QR 코드</button>
           </div>
-        </div>
-        </div>
-        <div class="pro-gate-badge">
-          <div class="pro-gate-badge-title">🔒 감독 대시보드는 Pro 전용입니다</div>
-          <div class="pro-gate-badge-desc">팀 리더보드 · 이닝별 흐름 · 시즌 트렌드를 Pro에서 확인하세요</div>
-          <button class="pro-gate-btn" onclick="setPlan('pro')">✨ Pro로 전환</button>
-        </div>
         </div>
       </div>
     </div>
@@ -2305,23 +1781,13 @@ var _kakaoSdkLoaded = false;
 
     <div style="padding-top:10px;border-top:1px solid var(--border2);margin-bottom:14px">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">클라우드</div>
-      <button class="btn btn-ghost pro-btn" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');if(window.requirePro('클라우드 동기화'))openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
     </div>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('dataSettingsOverlay')">닫기</button>
   </div>
 </div>
 
-<!-- 🔒 PRO 업그레이드 안내 -->
-<div class="overlay" id="upgradeOverlay">
-  <div class="modal" style="width:min(320px,92vw);text-align:center">
-    <div style="font-size:32px;margin-bottom:8px">🔒</div>
-    <div class="modal-title" style="margin-bottom:6px">Pro 전용 기능</div>
-    <div class="modal-sub" id="upgradeFeatureName" style="margin-bottom:16px">이 기능은 Pro에서 사용할 수 있습니다</div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="setPlan('pro');closeOverlay('upgradeOverlay')">✨ Pro로 전환 (데모)</button>
-    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('upgradeOverlay')">닫기</button>
-  </div>
-</div>
 
 <!-- ☁️ CLOUD OVERLAY -->
 <div class="overlay" id="cloudOverlay">
@@ -2431,7 +1897,7 @@ var _kakaoSdkLoaded = false;
 
 <div class="toast" id="toast">
   <span id="toastTxt"></span>
-  <button class="toast-undo" id="toastUndo" onclick="undoLast()">↩ 실행취소</button>
+  <button class="toast-undo" id="toastUndo" onclick="undoLast()">되돌리기</button>
 </div>
 <div id="cloudUpsellToast" onclick="if(window.openLoginModal)openLoginModal()" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:8000;background:#1e2a40;border:1px solid #3a5080;border-radius:12px;padding:11px 16px;font-size:12px;font-weight:600;color:#a0c4ff;cursor:pointer;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:calc(100vw - 32px);text-align:center;line-height:1.5">
   저장 완료 · 클라우드 동기화로 다른 기기에서도 이어보기 →
@@ -2592,12 +2058,6 @@ var _kakaoSdkLoaded = false;
       <div class="set-title">구장</div>
       <div id="setStadiumSlot"></div>
     </div>
-    <div class="set-sec">
-      <div class="set-title">사용 모드</div>
-      <div class="set-row">
-        <button class="set-btn" onclick="openRoleChangeSheet()">🎭 역할 변경 (기록원·코치·선수)</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -2659,6 +2119,9 @@ var _kakaoSdkLoaded = false;
   <div class="sl-pop-hd"><span>메뉴</span><button type="button" class="sl-pop-x" onclick="shellMenu(false)" aria-label="닫기">✕</button></div>
   <div class="slm-sec">
     <div class="slm-title">경기</div>
+    <button type="button" class="slm-item" onclick="shellRecSheet(true)">📋 최근 기록 <small id="slmRecCount"></small></button>
+    <button type="button" class="slm-item" onclick="shellPitchInput()">🎯 투구 입력 <small>구종 · 코스</small></button>
+    <button type="button" class="slm-item" onclick="openGameWizard()">⚾ 새 경기</button>
     <button type="button" class="slm-item" onclick="showSaveSheet()">💾 경기 저장 <small>불러오기 목록 · 클라우드</small></button>
     <button type="button" class="slm-item" onclick="openLoad()">📂 불러오기</button>
     <div id="slmUndoSlot"></div>
@@ -2673,7 +2136,7 @@ var _kakaoSdkLoaded = false;
   </div>
   <div class="slm-sec">
     <div class="slm-title">동기화 · 계정</div>
-    <button type="button" class="slm-item" onclick="if(!window.requirePro||window.requirePro('클라우드 동기화'))openCloudOverlay()">☁️ 클라우드 동기화 <span id="slmSyncStatus" class="slm-sync"></span></button>
+    <button type="button" class="slm-item" onclick="openCloudOverlay()">☁️ 클라우드 동기화 <span id="slmSyncStatus" class="slm-sync"></span></button>
     <div id="slmAuthSlot" class="slm-auth"></div>
     <button type="button" class="slm-item" onclick="openOverlay('dataSettingsOverlay')">⚙️ 데이터 관리</button>
   </div>
@@ -2682,7 +2145,6 @@ var _kakaoSdkLoaded = false;
     <div id="slmViewSlot"></div>
     <button type="button" class="slm-item" onclick="showHelpMenu()">❓ 도움말</button>
     <button type="button" class="slm-item" onclick="fieldFeedbackOpen()">💬 피드백</button>
-    <button type="button" class="slm-item slm-home" onclick="goHome()">← 홈으로</button>
   </div>
 </div>
 
@@ -2864,61 +2326,6 @@ function mabMoreClose() {
   var m = document.getElementById('mabMoreModal');
   if (m) m.style.display = 'none';
 }
-
-// FAB 자유 드래그 — #fabWrap, #qrFab 공통 적용
-function _makeDraggable(el, ignoreSelector) {
-  if (!el) return;
-  var startX, startY, startL, startT, moved;
-  el.style.touchAction = 'none';
-
-  function onStart(cx, cy, pid) {
-    var r = el.getBoundingClientRect();
-    // right/bottom → left/top 으로 변환
-    el.style.left   = r.left + 'px';
-    el.style.top    = r.top  + 'px';
-    el.style.right  = 'auto';
-    el.style.bottom = 'auto';
-    startX = cx; startY = cy;
-    startL = r.left; startT = r.top;
-    moved  = false;
-    if (pid != null) { try { el.setPointerCapture(pid); } catch(e){} }
-  }
-
-  function onMove(cx, cy) {
-    var dx = cx - startX, dy = cy - startY;
-    if (!moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-    moved = true;
-    var W = el.offsetWidth  || 60;
-    var H = el.offsetHeight || 60;
-    var x = Math.max(0, Math.min(window.innerWidth  - W, startL + dx));
-    var y = Math.max(0, Math.min(window.innerHeight - H, startT + dy));
-    el.style.left = x + 'px';
-    el.style.top  = y + 'px';
-  }
-
-  el.addEventListener('pointerdown', function(e) {
-    if (ignoreSelector && e.target.closest(ignoreSelector)) return;
-    e.preventDefault();
-    onStart(e.clientX, e.clientY, e.pointerId);
-    el.addEventListener('pointermove', onPM);
-    el.addEventListener('pointerup',   onPU);
-    el.addEventListener('pointercancel', onPU);
-  }, {passive: false});
-
-  function onPM(e) { onMove(e.clientX, e.clientY); }
-  function onPU(e) {
-    el.removeEventListener('pointermove', onPM);
-    el.removeEventListener('pointerup',   onPU);
-    el.removeEventListener('pointercancel', onPU);
-    // 드래그 아니면 click 이벤트 직접 발생 (팝업 열기)
-    if (!moved) el.click();
-  }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
-
-});
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -3020,9 +2427,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=92"></script>
+<script defer src="js/core.js?v=93"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=15"></script>
+<script type="module" src="js/app.js?v=16"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

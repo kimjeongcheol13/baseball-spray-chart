@@ -206,214 +206,6 @@ function showDataModal(jsonStr, fileName) {
 
 
 // ───── PAGE ROUTING ─────
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   앱 프리뷰 모달
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-(function(){
-  var _cur=0, _total=3, _timer=null, _startX=0;
-
-  function _dots(){
-    var ds=document.querySelectorAll('.apm-dot');
-    ds.forEach(function(d,i){d.classList.toggle('on',i===_cur);});
-  }
-  function _goto(n,animate){
-    _cur=(n+_total)%_total;
-    var sl=document.getElementById('apmSlides');
-    if(sl) sl.style.transition=animate===false?'none':'transform .4s cubic-bezier(.4,0,.2,1)';
-    if(sl) sl.style.transform='translateX(-'+(_cur*100)+'%)';
-    _dots();
-    _resetTimer();
-  }
-  function _resetTimer(){
-    clearTimeout(_timer);
-    _timer=setTimeout(function(){_goto(_cur+1,true);},3000);
-  }
-  function _drawField(cv,dots){
-    var w=cv.width,h=cv.height,ctx=cv.getContext('2d');
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#07090f'; ctx.fillRect(0,0,w,h);
-    var cx=w/2,by=h-4,r=Math.min(w,h)*0.88;
-    // outfield
-    ctx.beginPath(); ctx.arc(cx,by,r,Math.PI*1.08,Math.PI*1.92);
-    ctx.strokeStyle='rgba(75,140,245,.35)'; ctx.lineWidth=1.5; ctx.stroke();
-    // foul lines
-    ctx.beginPath(); ctx.moveTo(cx,by); ctx.lineTo(cx-r*.72,by-r*.72);
-    ctx.moveTo(cx,by); ctx.lineTo(cx+r*.72,by-r*.72);
-    ctx.strokeStyle='rgba(75,140,245,.2)'; ctx.lineWidth=1; ctx.stroke();
-    // infield diamond
-    var ds=h*.24;
-    ctx.beginPath(); ctx.moveTo(cx,by-ds*1.96); ctx.lineTo(cx+ds,by-ds*.98);
-    ctx.lineTo(cx,by-.1); ctx.lineTo(cx-ds,by-ds*.98); ctx.closePath();
-    ctx.strokeStyle='rgba(75,140,245,.5)'; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.fillStyle='rgba(75,140,245,.05)'; ctx.fill();
-    // home plate
-    ctx.beginPath(); ctx.arc(cx,by-2,4,0,Math.PI*2);
-    ctx.fillStyle='rgba(75,140,245,.7)'; ctx.fill();
-    // dots
-    if(dots) dots.forEach(function(d){
-      ctx.beginPath(); ctx.arc(d.x*w,d.y*h,d.r||5,0,Math.PI*2);
-      ctx.fillStyle=d.c; ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1; ctx.stroke();
-    });
-  }
-  function _initCanvases(){
-    var wrap=document.querySelector('.apm-slides-wrap');
-    var wrapH=wrap?wrap.clientHeight:0;
-    var cardW=document.querySelector('.apm-card');
-    var availW=cardW?(cardW.clientWidth-40):Math.min(window.innerWidth-40,400);
-    var h=wrapH>0?Math.round(wrapH*0.72):Math.round(availW*0.62);
-    if(h<140)h=140;
-    // slide 0: 기록 화면 (타구 3개)
-    var c0=document.getElementById('apmCanvas0');
-    if(c0){c0.width=c0.offsetWidth||availW;c0.height=h;
-      _drawField(c0,[
-        {x:.42,y:.52,c:'rgba(45,212,160,.9)',r:6},
-        {x:.62,y:.38,c:'rgba(45,212,160,.9)',r:6},
-        {x:.28,y:.44,c:'rgba(245,101,101,.85)',r:6},
-      ]);}
-    // slide 1: 스프레이차트 (점 많이)
-    var c1=document.getElementById('apmCanvas1');
-    if(c1){c1.width=c1.offsetWidth||availW;c1.height=h+30;
-      _drawField(c1,[
-        {x:.38,y:.55,c:'rgba(45,212,160,.9)',r:5},{x:.60,y:.40,c:'rgba(45,212,160,.9)',r:5},
-        {x:.45,y:.32,c:'rgba(45,212,160,.9)',r:5},{x:.55,y:.60,c:'rgba(45,212,160,.85)',r:5},
-        {x:.33,y:.38,c:'rgba(246,194,62,.9)',r:7},{x:.68,y:.35,c:'rgba(246,194,62,.85)',r:6},
-        {x:.50,y:.22,c:'rgba(246,194,62,.9)',r:8},
-        {x:.25,y:.50,c:'rgba(245,101,101,.8)',r:5},{x:.72,y:.52,c:'rgba(245,101,101,.8)',r:5},
-        {x:.40,y:.68,c:'rgba(245,101,101,.75)',r:5},{x:.62,y:.65,c:'rgba(245,101,101,.75)',r:5},
-        {x:.48,y:.75,c:'rgba(245,101,101,.7)',r:5},
-      ]);}
-  }
-
-  window.showPreviewModal=function(){
-    if(window._cancelHeroAnim){window._cancelHeroAnim();window._cancelHeroAnim=null;}
-    var isMobile=window.innerWidth<=480||('ontouchstart' in window&&window.innerWidth<768);
-    if(isMobile){if(typeof showMobilePreviewModal==='function')showMobilePreviewModal();return;}
-    var m=document.getElementById('appPreviewModal');
-    if(!m) return showApp();
-    m.classList.add('show');
-    _cur=0;
-    setTimeout(function(){
-      _initCanvases();
-      _goto(0,false);
-    },50);
-    // swipe
-    var wrap=document.getElementById('apmSlidesWrap');
-    if(wrap&&!wrap._apmBound){
-      wrap._apmBound=true;
-      wrap.addEventListener('touchstart',function(e){_startX=e.touches[0].clientX;},{ passive:true });
-      wrap.addEventListener('touchend',function(e){
-        var dx=e.changedTouches[0].clientX-_startX;
-        if(Math.abs(dx)>40) _goto(dx<0?_cur+1:_cur-1,true);
-      });
-      wrap.addEventListener('mousedown',function(e){_startX=e.clientX;});
-      wrap.addEventListener('mouseup',function(e){
-        var dx=e.clientX-_startX;
-        if(Math.abs(dx)>40) _goto(dx<0?_cur+1:_cur-1,true);
-      });
-    }
-  };
-  window.apmGoTo=function(n){_goto(n,true);};
-  window.apmStart=function(){
-    var m=document.getElementById('appPreviewModal');
-    clearTimeout(_timer);
-    if(m){m.classList.remove('show');}
-    showApp();
-  };
-  window.apmSkip=function(){
-    var m=document.getElementById('appPreviewModal');
-    clearTimeout(_timer);
-    if(m){m.classList.remove('show');}
-    showApp();
-  };
-})();
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   모바일 프리뷰 모달
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-(function(){
-  var _cur=0,_total=3,_timer=null,_sx=0;
-  function _close(){
-    var m=document.getElementById('mpm');
-    clearTimeout(_timer);
-    if(m) m.classList.remove('show');
-  }
-  function _dots(){
-    var ds=document.querySelectorAll('#mpmDots .mpm-dot');
-    ds.forEach(function(d,i){d.classList.toggle('on',i===_cur);});
-  }
-  function _goto(n,animate){
-    _cur=(n+_total)%_total;
-    var sl=document.getElementById('mpmSlides');
-    if(sl){sl.style.transition=animate===false?'none':'transform .38s cubic-bezier(.4,0,.2,1)';sl.style.transform='translateX(-'+(_cur*100)+'%)';}
-    _dots();
-    clearTimeout(_timer);
-    _timer=setTimeout(function(){_goto(_cur+1,true);},3000);
-  }
-  function _drawField(cv,dots){
-    var w=cv.width,h=cv.height,ctx=cv.getContext('2d');
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#07090f';ctx.fillRect(0,0,w,h);
-    var cx=w/2,by=h-4,r=Math.min(w,h)*0.88;
-    ctx.beginPath();ctx.arc(cx,by,r,Math.PI*1.08,Math.PI*1.92);
-    ctx.strokeStyle='rgba(75,140,245,.35)';ctx.lineWidth=2;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(cx,by);ctx.lineTo(cx-r*.72,by-r*.72);
-    ctx.moveTo(cx,by);ctx.lineTo(cx+r*.72,by-r*.72);
-    ctx.strokeStyle='rgba(75,140,245,.2)';ctx.lineWidth=1.5;ctx.stroke();
-    var ds=h*.24;
-    ctx.beginPath();ctx.moveTo(cx,by-ds*1.96);ctx.lineTo(cx+ds,by-ds*.98);
-    ctx.lineTo(cx,by-.1);ctx.lineTo(cx-ds,by-ds*.98);ctx.closePath();
-    ctx.strokeStyle='rgba(75,140,245,.5)';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle='rgba(75,140,245,.06)';ctx.fill();
-    ctx.beginPath();ctx.arc(cx,by-2,5,0,Math.PI*2);
-    ctx.fillStyle='rgba(75,140,245,.8)';ctx.fill();
-    if(dots) dots.forEach(function(d){
-      ctx.beginPath();ctx.arc(d.x*w,d.y*h,d.r||7,0,Math.PI*2);
-      ctx.fillStyle=d.c;ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1.5;ctx.stroke();
-    });
-  }
-  function _initCanvases(){
-    var wrap=document.querySelector('#mpm .mpm-slides-wrap');
-    var cardW=document.getElementById('mpm');
-    var availW=cardW?cardW.clientWidth-40:Math.min(window.innerWidth-40,380);
-    var wrapH=wrap?wrap.clientHeight:0;
-    var h=wrapH>0?Math.round(wrapH*0.75):Math.round(availW*0.65);
-    if(h<160)h=160;
-    var c0=document.getElementById('mpmCanvas0');
-    if(c0){c0.width=c0.offsetWidth||availW;c0.height=h;
-      _drawField(c0,[{x:.42,y:.52,c:'rgba(45,212,160,.9)',r:8},{x:.62,y:.38,c:'rgba(45,212,160,.9)',r:8},{x:.28,y:.44,c:'rgba(245,101,101,.85)',r:8}]);}
-    var c1=document.getElementById('mpmCanvas1');
-    if(c1){c1.width=c1.offsetWidth||availW;c1.height=h+40;
-      _drawField(c1,[
-        {x:.38,y:.55,c:'rgba(45,212,160,.9)',r:7},{x:.60,y:.40,c:'rgba(45,212,160,.9)',r:7},
-        {x:.45,y:.32,c:'rgba(45,212,160,.9)',r:7},{x:.55,y:.60,c:'rgba(45,212,160,.85)',r:7},
-        {x:.33,y:.38,c:'rgba(246,194,62,.9)',r:9},{x:.68,y:.35,c:'rgba(246,194,62,.85)',r:8},
-        {x:.50,y:.22,c:'rgba(246,194,62,.9)',r:10},{x:.72,y:.50,c:'rgba(245,101,101,.85)',r:7},
-        {x:.25,y:.50,c:'rgba(245,101,101,.85)',r:7},{x:.48,y:.68,c:'rgba(245,101,101,.85)',r:7},
-        {x:.40,y:.45,c:'rgba(45,212,160,.8)',r:6},{x:.58,y:.48,c:'rgba(45,212,160,.8)',r:6}
-      ]);}
-  }
-  window.showMobilePreviewModal=function(){
-    var m=document.getElementById('mpm');
-    if(!m) return showApp();
-    m.classList.add('show');
-    _cur=0;
-    setTimeout(function(){_initCanvases();_goto(0,false);},80);
-    var wrap=document.getElementById('mpmSlidesWrap');
-    if(wrap&&!wrap._mpmBound){
-      wrap._mpmBound=true;
-      wrap.addEventListener('touchstart',function(e){_sx=e.touches[0].clientX;},{passive:true});
-      wrap.addEventListener('touchend',function(e){
-        var dx=e.changedTouches[0].clientX-_sx;
-        if(Math.abs(dx)>40)_goto(dx<0?_cur+1:_cur-1,true);
-      });
-    }
-  };
-  window.mpmGoTo=function(n){_goto(n,true);};
-  window.mpmStart=function(){localStorage.setItem('sl_preview_seen','1');_close();};
-  window.mpmSkip=function(){localStorage.setItem('sl_preview_seen','1');_close();};
-})();
 
 function showApp(){
   // 히어로 캔버스 애니메이션 루프 중단
@@ -447,213 +239,58 @@ function showApp(){
     });
   });
   initApp();
-  // 저장된 역할 적용 (FTU 완료 후 재방문 시)
-  var _savedRole=localStorage.getItem('sl_role_type');
-  if(_savedRole) applyRoleLayout(_savedRole);
-  ftuCheck();
-  // Show savant bottom nav — 홈 화면이면 숨김 유지
-  if(!document.body.classList.contains('on-welcome')){
-    var nav=document.getElementById('savantNav');
-    if(nav)nav.style.display='flex';
-  }
-  // Show mobile action bar
-  if(!document.body.classList.contains('on-welcome')){
-    var mab=document.getElementById('mobileActionBar');
-    if(mab)mab.style.display='';
-  }
-  var mit=document.getElementById('mobileInputTab');
-  if(mit&&window.innerWidth<=720)mit.style.display='';
+  // 뒤로가기 한 번은 랜딩으로 돌아가도록 앱 진입을 히스토리에 남김
+  if(!(history.state&&history.state.page==='app'))history.pushState({page:'app'},'','');
+  var nav=document.getElementById('savantNav');
+  if(nav)nav.style.display='flex';
+  // 모바일은 core.js 실행 도중(autoSkipLanding)에 여기로 오므로,
+  // storageManager 등 아래쪽 정의가 끝난 뒤에 마지막 경기를 연다
+  setTimeout(function(){_openLastGame();updateFieldTapHint();},0);
 }
-function goHome(){
-  // 앱 내에 있으면 홈 화면(welcom)으로 복귀
-  showAppWelcome();
+
+// 필드는 항상 마지막 경기 상태로 연다: 진행 중 자동저장 → 가장 최근 저장 경기 → 빈 필드
+function _hasRecoveryData(){
+  var rec=storageManager.getRecovery(),d=rec&&rec.data;
+  return !!(d&&((d.abs&&d.abs.length)||(d.home_lineup&&d.home_lineup.length)||(d.away_lineup&&d.away_lineup.length)));
+}
+function _openLastGame(){
+  if(AS.abs.length||AS.home_lineup.length||AS.away_lineup.length)return;
+  if(_hasRecoveryData()){archRecoverAutosave();return;}
+  var saves=[];try{saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');}catch(e){}
+  if(!saves.length)return;
+  var last=saves.reduce(function(a,b){return (b.ts||0)>=(a.ts||0)?b:a;});
+  if(!localStorage.getItem(last.key))return;
+  restoreGame(last.key);
+  showToast('마지막 경기를 열었어요',false);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ① FTU 온보딩 위저드
+// ① 첫 사용 말풍선 (필드 위 #fieldTapHint): 빈 필드에서만 표시, 첫 타구 저장 시 사라지고 다시 안 뜸
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // sl_ftu_done이 어떤 이유로든 안 남아있어도(구버전 세션·스토리지 정리 등),
-// 저장된 경기가 하나라도 있으면 신규 유저가 아니므로 온보딩 카드 대상에서 제외
+// 저장된 경기가 하나라도 있으면 신규 유저가 아니므로 말풍선 대상에서 제외
 function _isReturningUser(){
   if(localStorage.getItem('sl_ftu_done'))return true;
   try{return JSON.parse(localStorage.getItem('sl_saves')||'[]').length>0;}catch(e){return false;}
 }
-function ftuCheck(){
-  // ?showpreview=1 파라미터로 강제 표시
-  if(new URLSearchParams(location.search).get('showpreview')==='1'){
-    localStorage.removeItem('sl_preview_seen');
-    history.replaceState(null,'',location.pathname);
-  }
-  if(localStorage.getItem('sl_ftu_done')){showAppWelcome();return;}
-  var ov=document.getElementById('ftuOverlay');
-  ov.classList.remove('hidden');
-  if(!localStorage.getItem('sl_role_type')){
-    _ftuSetStep(-1);
-  } else {
-    _ftuSetStep(0);
-    setTimeout(ftuDrawField,80);
-  }
-}
-function _ftuSetStep(n){
-  // role step (-1)
-  var roleEl=document.getElementById('ftuStepRole');
-  if(roleEl) roleEl.style.display=n===-1?'':'none';
-  // steps 0-2
-  for(var i=0;i<3;i++){
-    var el=document.getElementById('ftuStep'+i);
-    if(el) el.style.display=i===n?'':'none';
-  }
-  // dots: ftuDRole + ftuD0,1,2
-  var dRole=document.getElementById('ftuDRole');
-  if(dRole) dRole.classList.toggle('on',n>=-1);
-  for(var i=0;i<3;i++){
-    var d=document.getElementById('ftuD'+i);
-    if(d) d.classList.toggle('on',n>=0&&i<=n);
-  }
-}
-function ftuSelectRole(role){
-  localStorage.setItem('sl_role_type',role);
-  applyRoleLayout(role);
-  _ftuSetStep(0);
-  setTimeout(ftuDrawField,80);
-}
-/* ── 역할별 탭 레이아웃 적용 ── */
-function applyRoleLayout(role){
-  localStorage.setItem('sl_role_type',role);
-  var ALL=['tab-rec','tab-batter','tab-stat','tab-chart','tab-pitcher','tab-team'];
-  var HIDE={
-    recorder:['tab-batter','tab-chart','tab-pitcher'],
-    coach:[],
-    player:['tab-stat','tab-team']
-  };
-  var DEFAULT_TAB={recorder:'rec',coach:'stat',player:'batter'};
-  // 모든 탭 표시
-  ALL.forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.style.display='';
-  });
-  // 역할별 숨김
-  (HIDE[role]||[]).forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.style.display='none';
-  });
-  // 기본 탭 전환
-  var def=DEFAULT_TAB[role]||'rec';
-  var tabEl=document.getElementById('tab-'+def);
-  if(tabEl&&typeof swTab==='function') swTab(def,tabEl);
-  // 역할 변경 시트 체크 표시 업데이트
-  ['recorder','coach','player'].forEach(function(r){
-    var el=document.getElementById('roleCheck'+r.charAt(0).toUpperCase()+r.slice(1));
-    if(el) el.textContent=r===role?'✓':'›';
-    var card=document.getElementById('roleCard'+r.charAt(0).toUpperCase()+r.slice(1));
-    if(card) card.style.borderColor=r===role?'#4b8cf5':'';
-  });
-}
-function openRoleChangeSheet(){
-  var role=localStorage.getItem('sl_role_type')||'recorder';
-  applyRoleLayout(role);
-  var bd=document.getElementById('roleChangeBackdrop');
-  var sh=document.getElementById('roleChangeSheet');
-  if(!bd||!sh) return;
-  bd.style.display='block';
-  setTimeout(function(){sh.style.transform='translateX(-50%) translateY(0)';},16);
-}
-function closeRoleChangeSheet(){
-  var sh=document.getElementById('roleChangeSheet');
-  var bd=document.getElementById('roleChangeBackdrop');
-  if(sh) sh.style.transform='translateX(-50%) translateY(100%)';
-  setTimeout(function(){if(bd) bd.style.display='none';},300);
-}
-function ftuDrawField(){
-  var cv=document.getElementById('ftuFieldCanvas');
-  if(!cv)return;
-  var ctx=cv.getContext('2d');
-  var w=cv.width,h=cv.height;
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle='#0d1117';
-  ctx.fillRect(0,0,w,h);
-  var cx=w/2,by=h-6,r=Math.min(w,h)*0.9;
-  // outfield arc
-  ctx.beginPath();
-  ctx.arc(cx,by,r,Math.PI*1.1,Math.PI*1.9);
-  ctx.strokeStyle='rgba(75,140,245,.4)';
-  ctx.lineWidth=1.5;
-  ctx.stroke();
-  // infield foul lines
-  ctx.beginPath();
-  ctx.moveTo(cx,by);
-  ctx.lineTo(cx-r*0.7,by-r*0.7);
-  ctx.moveTo(cx,by);
-  ctx.lineTo(cx+r*0.7,by-r*0.7);
-  ctx.strokeStyle='rgba(75,140,245,.25)';
-  ctx.lineWidth=1;
-  ctx.stroke();
-  // diamond
-  var ds=h*0.26;
-  ctx.beginPath();
-  ctx.moveTo(cx,by-ds*1.95);
-  ctx.lineTo(cx+ds,by-ds*0.98);
-  ctx.lineTo(cx,by-0.1);
-  ctx.lineTo(cx-ds,by-ds*0.98);
-  ctx.closePath();
-  ctx.strokeStyle='rgba(75,140,245,.55)';
-  ctx.lineWidth=1.5;
-  ctx.stroke();
-  ctx.fillStyle='rgba(75,140,245,.06)';
-  ctx.fill();
-  // home plate
-  ctx.beginPath();
-  ctx.arc(cx,by-2,4,0,Math.PI*2);
-  ctx.fillStyle='rgba(75,140,245,.7)';
-  ctx.fill();
-}
-function ftuStep1(){
-  var nm=(document.getElementById('ftuTeamInp').value||'').trim();
-  if(nm){AS.th=nm;var el=document.getElementById('tHome');if(el)el.value=nm;}
-  _ftuSetStep(1);
-  setTimeout(function(){document.getElementById('ftuPlayerName').focus();},120);
-}
-function ftuAddPlayer(){
-  var nm=(document.getElementById('ftuPlayerName').value||'').trim();
-  if(!nm)return;
-  var num=(document.getElementById('ftuPlayerNum').value||'').trim();
-  if(!AS.home_lineup)AS.home_lineup=[];
-  var p={id:Date.now()+Math.random(),name:nm,num:num||(AS.home_lineup.length+1)+'',pos:'',bh:'',isStarter:true};
-  AS.home_lineup.push(p);
-  if(typeof renderLP==='function')renderLP();
-  if(typeof renderMob==='function')renderMob();
-  if(AS.home_lineup.length===1&&typeof selBatter==='function')selBatter(p.id);
-  document.getElementById('ftuPlayerAdded').style.display='block';
-  var nb=document.getElementById('ftuStep1Next');
-  nb.style.opacity='1';nb.style.pointerEvents='';
-}
-function ftuStep2(){
-  _ftuSetStep(2);
-  setTimeout(ftuDrawField,80);
-}
-function ftuFieldTap(ev){
-  var cv=document.getElementById('ftuFieldCanvas');
-  if(!cv)return;
-  var rect=cv.getBoundingClientRect();
-  var scaleX=cv.width/rect.width,scaleY=cv.height/rect.height;
-  var x=(ev.clientX-rect.left)*scaleX,y=(ev.clientY-rect.top)*scaleY;
-  var ctx=cv.getContext('2d');
-  ctx.beginPath();
-  ctx.arc(x,y,7,0,Math.PI*2);
-  ctx.fillStyle='rgba(75,140,245,.9)';
-  ctx.fill();
-  ctx.strokeStyle='#fff';
-  ctx.lineWidth=1.5;
-  ctx.stroke();
-  var fb=document.getElementById('ftuFinishBtn');
-  fb.style.opacity='1';fb.style.pointerEvents='';
-  document.getElementById('ftuTapHint').textContent='✓ 탭 완료! 이제 시작할 수 있어요';
-}
+function _isFirstUse(){return !AS.abs.length&&!_isReturningUser();}
 function ftuDone(){
-  localStorage.setItem('sl_ftu_done','1');
-  var ov=document.getElementById('ftuOverlay');
-  ov.style.opacity='0';
-  setTimeout(function(){ov.classList.add('hidden');ov.style.opacity='';showAppWelcome();},320);
+  if(localStorage.getItem('sl_ftu_done'))return;
+  try{localStorage.setItem('sl_ftu_done','1');}catch(e){}
+  updateFieldTapHint();
+}
+
+// 선수 없이 필드를 탭하면 "타자 1"을 만들어 현재 타자로 지정 (이름은 라인업에서 ✏️로 변경)
+function _ensureBatter(){
+  if(AS.batter)return true;
+  var lu=getActiveLineup();
+  if(lu.length)return false;
+  var p={id:Date.now()+Math.random(),name:'타자 1',num:'1',pos:'',bh:'',isStarter:true};
+  lu.push(p);
+  selBatter(p.id);
+  AS.batterFilter=false;
+  var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+  return !!AS.batter;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -791,7 +428,6 @@ function toggleAnalysisPanel(){
   },280);
 }
 function goLanding(){
-  hideAppWelcome();
   document.getElementById('app-page').style.display='none';
   document.getElementById('landing-page').style.display='block';
   document.body.style.overflowY='';
@@ -930,37 +566,6 @@ function _applyDPR(){[fCtx,hCtx,oCtx].forEach(function(c){if(c)c.scale(DPR,DPR);
 let _nearbyHitId=null,_nearbyCloseTimer=null;
 let _FORCE_SHOW_HITDETAIL_DEBUG=false;
 
-const OB=[
-  {icon:'🏟️',step:'STEP 1 · 타구 기록',title:'필드를 터치해\n타구 위치를 기록하세요',desc:'공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.\n<b>필드 아래 결과 버튼</b>으로 더욱 빠르게 기록할 수 있어요.',highlight:'안타 · 2루타 · 아웃 · 삼진 · 볼넷'},
-  {icon:'▶',step:'STEP 2 · 경기 운영 모드',title:'타순·아웃카운트·이닝이\n자동으로 진행됩니다',desc:'<b>▶ 경기운영</b> 버튼을 탭하면 기록할 때마다 타순이 자동으로 넘어갑니다.\n3아웃 시 이닝이 전환되고, 종료 시 최종 요약 카드가 표시됩니다.',highlight:'경기운영 버튼 → 자동 타순 · 아웃카운트 · 이닝 전환'},
-  {icon:'📊',step:'STEP 3 · 패턴 분석',title:'타격 패턴을\n자동으로 분석합니다',desc:'타자 탭 하단에서 <b>📊 패턴 분석</b>을 확인하세요.\n2타석 이상 기록하면 당겨치기 성향·삼진 패턴·강점 코스를 자동 감지합니다.',highlight:'타율 트렌드 · 방향 편중 · 약점 코스 자동 감지'},
-  {icon:'✅',step:'STEP 4 · 저장하기',title:'경기 종료 후\n[저장]을 눌러 보관하세요',desc:'기록된 데이터는 기기에 자동 보관됩니다.\n경기가 끝나면 <b>[저장]</b> 버튼으로 영구 저장하세요.',highlight:'가입 불필요 · 클라우드 미사용 · 완전 무료'},
-  {icon:'📊',step:'STEP 5 · 자동 분석',title:'기록은 통계와 차트로\n자동 분석됩니다',desc:'타율 · 출루율 · 장타율이 자동 계산되고,\n타구 방향과 <b>약점 패턴</b>을 시각화해 보여줍니다.',highlight:'AVG · OBP · SLG · OPS 자동 계산'},
-];
-let obIdx=0;
-function obNext(){
-  obIdx++;
-  if(obIdx>=OB.length){
-    localStorage.setItem('sl_ob3','1');
-    document.getElementById('obOverlay').style.display='none';
-    return;
-  }
-  const o=OB[obIdx];
-  document.getElementById('obIcon').textContent=o.icon;
-  document.getElementById('obStep').textContent=o.step;
-  document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');
-  document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');
-  const hl=document.getElementById('obHighlight');
-  if(hl){hl.textContent=o.highlight||'';hl.style.display=o.highlight?'block':'none';}
-  for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===obIdx);
-  document.getElementById('obBtn').textContent=obIdx===OB.length-1?'시작하기 →':'다음 →';
-}
-function obSkip(){
-  if(document.getElementById('obNoShow')&&document.getElementById('obNoShow').checked){
-    localStorage.setItem('sl_ob3','1');
-  }
-  document.getElementById('obOverlay').style.display='none';
-}
 /* ===== TOOLTIP JS ===== */
 let ttHideTimer;
 function showTT(el,title,body){
@@ -978,148 +583,8 @@ function showTT(el,title,body){
 }
 function hideTT(){ttHideTimer=setTimeout(()=>document.getElementById('ttBox').classList.remove('vis'),120);}
 
-/* ===== INTERACTIVE TOUR JS ===== */
-const TOUR=[
-  {sel:'.pnl-left', title:'① 타자 선택', desc:'라인업에서 이름을 탭해 현재 타자를 선택합니다.\n선수가 없으면 이름·등번호를 입력하고 <b>+</b> 버튼으로 추가하세요.', card:'right', cursor:true},
-  {sel:'#cwrap', title:'② 필드 탭', desc:'타자가 친 공이 <b>떨어진 위치를 탭</b>하세요.\n탭하면 결과 입력 팝업이 자동으로 나타납니다.\n⚡ 상단 <b>퀵버튼 바</b>로 필드 탭 없이 바로 기록도 가능합니다.', card:'right', cursor:true},
-  {sel:null, title:'③ 결과 입력', desc:'팝업에서 타격 결과를 선택하세요:\n<b>안타 / 2루타 / 3루타 / 홈런 / 아웃 / 볼넷 / 삼진</b>\n\n스와이프로 빠르게: <kbd>→</kbd> 안타 &nbsp;<kbd>←</kbd> 아웃 &nbsp;<kbd>↑</kbd> 볼넷 &nbsp;<kbd>↓</kbd> 삼진', card:'center', cursor:false},
-  {sel:'.pnl-right .tabs', title:'④ 통계 확인', desc:'오른쪽 패널에서 자동 계산된 통계를 확인하세요.\n• <b>타자</b> 탭 — 개인 타율·OBP·패턴 분석\n• <b>팀통계</b> 탭 — 팀 전체 타율·방향 분포\n• <b>차트</b> 탭 — 스프레이차트 PNG 내보내기', card:'left', cursor:true},
-  {sel:null, title:'⑤ 저장', desc:'경기가 끝나면 상단 툴바의 <b>[저장]</b> 버튼을 꼭 눌러주세요.\n기기에 영구 저장됩니다 — 가입·클라우드 불필요.\n⌨️ <b>Ctrl+S</b> 로도 빠르게 저장할 수 있어요.', card:'center', cursor:false},
-  {sel:null, title:'⑥ 공유', desc:'<b>🔗 공유</b> 버튼을 탭하면 QR코드와 링크가 생성됩니다.\n팀원이 링크를 열면 배너로 자동 안내됩니다.\n<b>차트</b> 탭 → 개인(9:16)·팀(1:1) 성적카드 PNG 저장 후 SNS 공유', card:'center', cursor:false},
-  {sel:'#savantNav', title:'⑦ 하단 탭', desc:'<b>기록 · 분석 · 경기설정</b> 3개 탭으로 이동합니다.\n📊 <b>분석</b> — 스프레이·타자·투수·비교·프로필·스카우트·팀\n⚙ <b>경기설정</b> — 경기 운영·팀·라인업·구장', card:'top', cursor:true},
-  {sel:null, title:'⑧ 스프레이 필터', desc:'필드 아래 <b>필터</b> 버튼으로 타구를 세분화해 분석합니다.\n구종 · 결과 · 투수 손 · 카운트 조건을 선택하면\n스프레이차트와 통계가 실시간으로 반영됩니다.', card:'center', cursor:false},
-];
-let tourIdx=0,tourActive=false;
-
-function startTour(){
-  // 투어 제거됨 — 도움말 모드로 대체
-  toggleHelpMode();
-}
-
-function tourNext(){
-  tourIdx++;
-  if(tourIdx>=TOUR.length){tourSkip();return;}
-  tourGo(tourIdx);
-}
-
-function tourSkip(){
-  tourActive=false;
-  const ov=document.getElementById('tourOv');if(ov)ov.classList.remove('on');
-  const spot=document.getElementById('tourSpot');if(spot)spot.style.cssText='';
-  const card=document.getElementById('tourCard');if(card)card.classList.remove('vis');
-  if(typeof hideTourCursor==='function')hideTourCursor();
-}
-
-function tourGo(idx){
-  const step=TOUR[idx];
-  const card=document.getElementById('tourCard');if(!card)return;
-  const spot=document.getElementById('tourSpot');
-  const cursor=document.getElementById('tourCursor');
-  const ring=document.getElementById('tourRing');
-
-  // Progress
-  document.getElementById('tourProgTxt').textContent=(idx+1)+' / '+TOUR.length;
-  document.getElementById('tourProgFill').style.width=((idx+1)/TOUR.length*100)+'%';
-
-  // Content
-  card.classList.remove('vis');
-  document.getElementById('tourTitle').textContent=step.title;
-  document.getElementById('tourDesc').innerHTML=step.desc.replace(/\n/g,'<br>');
-  document.getElementById('tourNextBtn').textContent=idx===TOUR.length-1?'완료 ✓':'다음 →';
-
-  const el=step.sel?document.querySelector(step.sel):(step.sels?document.querySelector(step.sels):null);
-
-  if(!el||step.sel===null){
-    // Center card, no spotlight
-    spot.style.cssText='display:none';
-    cursor.style.opacity='0';
-    ring.style.opacity='0';
-    card.style.top='50%';
-    card.style.left='50%';
-    card.style.transform='translate(-50%,-50%)';
-    setTimeout(()=>{card.style.transform='translate(-50%,-48%)';card.classList.add('vis');},40);
-    return;
-  }
-
-  const pad=step.sel==='.pnl-left'||step.sel==='.pnl-right .tabs'?6:8;
-  const r=el.getBoundingClientRect();
-  const sw=window.innerWidth,sh=window.innerHeight;
-
-  // Spotlight
-  spot.style.display='block';
-  spot.style.top=(r.top-pad)+'px';
-  spot.style.left=(r.left-pad)+'px';
-  spot.style.width=(r.width+pad*2)+'px';
-  spot.style.height=(r.height+pad*2)+'px';
-
-  // Cursor/ring on center of element
-  if(step.cursor){
-    const cx=r.left+r.width/2,cy=r.top+r.height/2;
-    cursor.style.opacity='1';
-    cursor.style.left=(cx-13)+'px';
-    cursor.style.top=(cy-13)+'px';
-    cursor.className='tCursorAnim';
-    ring.style.opacity='1';
-    ring.style.left=(cx-20)+'px';
-    ring.style.top=(cy-20)+'px';
-    ring.style.width='40px';ring.style.height='40px';
-    ring.className='tRingPulse';
-  } else {
-    cursor.style.opacity='0';
-    ring.style.opacity='0';
-  }
-
-  // Card position (prefer step.card direction, fallback if no space)
-  const cw=Math.min(300,sw*0.88),ch=220;
-  const margin=16;
-  let top,left;
-  const pos=step.card||'right';
-
-  if(pos==='right'&&r.right+cw+margin<sw){left=r.right+margin;top=Math.min(r.top,sh-ch-margin);}
-  else if(pos==='left'&&r.left-cw-margin>0){left=r.left-cw-margin;top=Math.min(r.top,sh-ch-margin);}
-  else if(pos==='top'&&r.top-ch-margin>0){top=r.top-ch-margin;left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
-  else if(pos==='bottom'&&r.bottom+ch+margin<sh){top=r.bottom+margin;left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
-  else{
-    // fallback: pick side with most room
-    const spaces={right:sw-r.right,left:r.left,top:r.top,bottom:sh-r.bottom};
-    const best=Object.entries(spaces).sort((a,b)=>b[1]-a[1])[0][0];
-    if(best==='right'){left=r.right+margin;top=Math.min(Math.max(margin,r.top),sh-ch-margin);}
-    else if(best==='left'){left=Math.max(margin,r.left-cw-margin);top=Math.min(Math.max(margin,r.top),sh-ch-margin);}
-    else if(best==='top'){top=Math.max(margin,r.top-ch-margin);left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
-    else{top=Math.min(sh-ch-margin,r.bottom+margin);left=Math.max(margin,Math.min(r.left+r.width/2-cw/2,sw-cw-margin));}
-  }
-  top=Math.max(margin,top);
-  left=Math.max(margin,Math.min(left,sw-cw-margin));
-
-  card.style.transform='';
-  card.style.width=cw+'px';
-  card.style.top=top+'px';
-  card.style.left=left+'px';
-  setTimeout(()=>card.classList.add('vis'),40);
-}
-
-function hideTourCursor(){
-  document.getElementById('tourCursor').style.opacity='0';
-  document.getElementById('tourRing').style.opacity='0';
-}
-
 function showHelpMenu(){
   showHelpModal();
-}
-
-function showTutorial(){
-  obIdx=0;
-  const o=OB[0];
-  document.getElementById('obIcon').textContent=o.icon;
-  document.getElementById('obStep').textContent=o.step;
-  document.getElementById('obTitle').innerHTML=o.title.replace(/\n/g,'<br>');
-  document.getElementById('obDesc').innerHTML=o.desc.replace(/\n/g,'<br>');
-  const hl=document.getElementById('obHighlight');
-  if(hl){hl.textContent=o.highlight||'';hl.style.display=o.highlight?'block':'none';}
-  for(let i=0;i<5;i++)document.getElementById('d'+i).classList.toggle('on',i===0);
-  document.getElementById('obBtn').textContent='다음 →';
-  if(document.getElementById('obNoShow'))document.getElementById('obNoShow').checked=false;
-  document.getElementById('obOverlay').style.display='flex';
 }
 
 function initApp(){
@@ -1226,17 +691,31 @@ function delPlayer(id,e){
   selBatter(null);
 }
 
+// 선수 이름 변경 (자동 생성된 "타자 1" 등) — 이미 기록된 타석의 이름도 함께 바꿈
+function renamePlayer(id,e){
+  if(e)e.stopPropagation();
+  const p=getActiveLineup().find(x=>String(x.id)===String(id));
+  if(!p)return;
+  const nm=(prompt('선수 이름',p.name)||'').trim().slice(0,8);
+  if(!nm||nm===p.name)return;
+  p.name=nm;
+  AS.abs.forEach(a=>{if(String(a.bid)===String(id))a.bname=nm;});
+  if(AS.batter&&String(AS.batter.id)===String(id)){
+    AS.batter=p;
+    const d=document.getElementById('batterDisp');
+    if(d)d.innerHTML=`<span class="batter-display">#${p.num} ${_escHtml(nm)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
+  }
+  renderMob();updateAll();
+}
+
 function renderLP(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
-  var ov=document.getElementById('onboardOverlay');
   if(!targetLineup.length){
     el.innerHTML='<div style="padding:24px 16px;text-align:center"><div style="font-size:28px;margin-bottom:8px">👤</div><div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:4px">+ 선수 추가로 시작하세요</div><div style="font-size:11px;color:var(--text3);line-height:1.6">이름과 번호를 입력하고<br>+ 버튼을 누르세요</div></div>';
-    if(ov)ov.style.display=_isReturningUser()?'none':'flex';
     return;
   }
-  if(ov)ov.style.display='none';
   const noab=['볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
   el.innerHTML=targetLineup.map((p,idx)=>{
     const pAbs=AS.abs.filter(a=>a.bid===p.id);
@@ -1257,6 +736,7 @@ function renderLP(){
         <div class="p-name">${p.name}${posHtml}${bhHtml}</div>
         <div class="p-mini">${oab>0?oab+'AB '+av:'기록없음'}</div>
       </div>
+      <button class="p-edit" onclick="renamePlayer('${p.id}',event)" title="이름 변경" aria-label="이름 변경">✏️</button>
       <button class="starter-btn ${sCls}" onclick="toggleStarter('${p.id}',event)">${sTxt}</button>
       <button class="p-del" onclick="delPlayer('${p.id}',event)">✕</button>
     </div>`;
@@ -1635,8 +1115,8 @@ var _ftLabelTimer;
 function onFClick(e){
   // 팝업 열린 상태에서 field 클릭 이벤트 차단
   if(document.querySelector('.overlay.show'))return;
-  // 타자 미선택 시 차단
-  if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
+  // 타자 미선택: 라인업이 비어 있으면 "타자 1" 자동 생성, 아니면 선택 요청
+  if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
@@ -1687,7 +1167,7 @@ function recHit(res){
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
-  AS.abs.push(r);closeHit();updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true);
+  AS.abs.push(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
   _showMiniSprayAfterRecord();
   gfAfterRecord(res,r.rbi);
 }
@@ -1701,7 +1181,7 @@ function recOther(res){
   var _infieldY=res==='내야안타'?0.55:null;
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
-  AS.abs.push(r);updateAll();showToast(`#${r.bnum} ${r.bname} — ${res}`,true);
+  AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
   gfAfterRecord(res,0);
 }
@@ -1849,10 +1329,10 @@ function _drawMiniSpray(canvas, abs){
 function updateFieldTapHint(){
   var hint=document.getElementById('fieldTapHint'),txt=document.getElementById('fieldTapHintTxt');
   if(!hint||!txt)return;
-  var msg=!AS.batter?'타자를 먼저 선택하세요':(!AS.abs.some(a=>a.bid===AS.batter.id)?'첫 타구를 기록하세요':'');
-  txt.textContent=msg;
-  hint.classList.toggle('hidden',!msg);
-  hint.classList.toggle('no-batter',!AS.batter);
+  // 필드 위 안내는 첫 사용 말풍선 하나만 (타자 미선택 상태는 타자 칩이 알려줌)
+  var first=_isFirstUse();
+  txt.textContent=first?'필드를 탭하면 타구가 기록돼요':'';
+  hint.classList.toggle('hidden',!first);
 }
 function safeRender(){
   updateFieldTapHint();
@@ -2548,17 +2028,9 @@ function closeOverlay(id){document.getElementById(id).classList.remove('show');i
 function closeHit(){closeOverlay('hitOverlay');}
 
 let _tt;
-function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,6000);}
+function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,typeof autoHide==='number'?autoHide:6000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
-// ── 플랜 게이트 (Free/Pro, 결제 없는 데모용 토글) ──
-function getPlan(){return localStorage.getItem('sl_plan')==='pro'?'pro':'free';}
-function isPro(){return getPlan()==='pro';}
-function setPlan(p){localStorage.setItem('sl_plan',p);applyPlanGate();if(p==='pro')showToast('✨ Pro로 전환되었습니다 (데모)',false);}
-function showUpgradeModal(feature){const d=document.getElementById('upgradeFeatureName');if(d)d.textContent=(feature?feature+' 기능은':'이 기능은')+' Pro에서 사용할 수 있습니다';openOverlay('upgradeOverlay');}
-function requirePro(feature){if(isPro())return true;showUpgradeModal(feature);return false;}
-function applyPlanGate(){document.body.classList.toggle('plan-free',!isPro());}
-applyPlanGate();
 
 // ── 저장 상태 UI 헬퍼 ──
 function _updateSaveUI(unsaved){
@@ -4870,13 +4342,13 @@ function importExcel(input) {
 _loadSharedGame();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 재방문 랜딩 스킵: 공유 링크가 아닌 재방문이면 바로 앱 홈으로
+// 랜딩 스킵: 공유 링크이거나 모바일이면 바로 필드 화면으로
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function autoSkipLanding(){
   var sp=new URLSearchParams(location.search);
   var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
   if(hasShare){showApp();return;}
-  // 모바일은 항상 랜딩 스킵 → 바로 앱 (프리뷰 모달은 앱 홈에서 표시)
+  // 모바일은 항상 랜딩 스킵 → 바로 필드
   var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
   if(isMobile) showApp();
 })();
@@ -5196,7 +4668,6 @@ function loadSharedGame(){
   history.replaceState(null,'',location.pathname);
   dismissSharedBanner();
   showApp();
-  hideAppWelcome();
   setTimeout(function(){
     refreshZoneDisplay(); renderCount();
     updateAll();
@@ -5366,7 +4837,7 @@ function runGameCompare(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const _QUICK_HITS=['안타','2루타','3루타','홈런'];
 function recQuick(res){
-  if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
+  if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   if(_QUICK_HITS.includes(res)){
     AS.pendingQuickRes=res;
     _showFieldTapPrompt(res);
@@ -6211,17 +5682,6 @@ function _roundRect(ctx,x,y,w,h,r){
 // exportShareCard를 카드 미리보기로 교체
 function exportShareCard(){openCardPreview();}
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   앱 홈 화면 (APP WELCOME SCREEN)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-function _updateMobAwLinks(){
-  var el=document.getElementById('appWelcome');
-  if(!el)return;
-  var saves=[];try{saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');}catch(e){}
-  if(saves.length===0){el.classList.add('mobile-no-saves');el.classList.remove('mobile-has-saves');}
-  else{el.classList.add('mobile-has-saves');el.classList.remove('mobile-no-saves');}
-}
-
 function openMobMoreSheet(){
   var s=document.getElementById('mobMoreSheet');
   if(s){s.style.display='flex';}
@@ -6254,90 +5714,6 @@ function _autoExpandPtIfNeeded(pt){
   if(_PT_EXTRA.indexOf(pt)===-1)return;
   if(!_ptExpanded){_ptExpanded=true;var el=document.getElementById('ptGroupMore');var btn=document.getElementById('ptMoreBtn');if(el)el.style.display='flex';if(btn)btn.textContent='접기 ▴';}
   if(!_mobPtExpanded){_mobPtExpanded=true;var el2=document.getElementById('mobPtMore');var btn2=document.getElementById('mobPtMoreBtn');if(el2)el2.style.display='flex';if(btn2)btn2.textContent='접기 ▴';}
-}
-
-function showAppWelcome(){
-  var el=document.getElementById('appWelcome');
-  if(!el)return;
-  el.classList.remove('hidden');
-  el.style.display='';
-  el.style.pointerEvents='';
-  // 홈 화면에서 savantNav / mobileActionBar 숨김
-  document.body.classList.add('on-welcome');
-  var mab=document.getElementById('mobileActionBar');
-  if(mab)mab.style.display='none';
-  var nav=document.getElementById('savantNav');
-  if(nav)nav.style.display='none';
-  _updateMobAwLinks();
-  renderAwRecent();
-  renderAwPreview();
-  // 첫 방문 시 프리뷰 모달 표시 (모바일에서만 진입 가능한 경로)
-  if(!localStorage.getItem('sl_preview_seen')){
-    setTimeout(function(){
-      if(typeof showMobilePreviewModal==='function') showMobilePreviewModal();
-    },300);
-  }
-  // 홈으로 돌아왔을 때 복구 배너 재확인
-  setTimeout(function(){
-    var banner=document.getElementById('archRecoveryBanner');
-    if(!banner)return;
-    if(storageManager.hasRecovery()&&!(AS.abs&&AS.abs.length>0)){
-      banner.classList.remove('arch-rec-hidden');
-    }
-  },200);
-}
-
-function hideAppWelcome(){
-  var el=document.getElementById('appWelcome');
-  if(el){el.classList.add('hidden');el.style.display='none';el.style.pointerEvents='none';}
-  document.body.classList.remove('on-welcome');
-  var mab=document.getElementById('mobileActionBar');
-  if(mab)mab.style.display='';
-  var nav=document.getElementById('savantNav');
-  if(nav)nav.style.display='flex';
-  history.pushState({page:'game'},'','');
-  // 게임 화면으로 전환 시 복구 배너를 즉시 숨김
-  var banner=document.getElementById('archRecoveryBanner');
-  if(banner)banner.classList.add('arch-rec-hidden');
-}
-
-function renderAwRecent(){
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  var el=document.getElementById('awRecent');
-  if(!el)return;
-  if(!saves.length){
-    el.innerHTML='<div class="aw-empty">아직 저장된 경기가 없습니다.<br>첫 경기를 기록해보세요!</div>';
-    return;
-  }
-  var recent=[...saves].reverse();
-  var html='<div class="aw-recent-title">최근 경기</div><div class="aw-recent-scroll">';
-  recent.forEach(function(s){
-    var raw=localStorage.getItem(s.key);
-    if(!raw)return;
-    var d=JSON.parse(raw);
-    var score=(d.hs||0)+' : '+(d.as||0);
-    var title=_escHtml(_gameTitle(d.th,d.ta,d.ts));
-    var date=_escHtml(d.d||'');
-    html+='<div class="aw-recent-item" onclick="loadRecentGame(\''+s.key+'\')">'
-      +'<div class="aw-ri-icon">⚾</div>'
-      +'<div class="aw-ri-body"><div class="aw-ri-label">'+title+'</div><div class="aw-ri-date">'+date+'</div></div>'
-      +'<div class="aw-ri-score">'+score+'</div>'
-      +'<button class="aw-ri-del" onclick="event.stopPropagation();deleteRecentGame(\''+s.key+'\')" title="삭제">✕</button>'
-      +'</div>';
-  });
-  html+='</div>';
-  el.innerHTML=html;
-}
-
-function renderAwPreview(){
-  var canvas=document.getElementById('awPreviewCanvas');
-  if(!canvas)return;
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  if(!saves.length){_drawMiniSpray(canvas,[]);return;}
-  var last=saves[saves.length-1];
-  var raw=localStorage.getItem(last.key);
-  if(!raw){_drawMiniSpray(canvas,[]);return;}
-  try{var d=JSON.parse(raw);_drawMiniSpray(canvas,d.abs||[]);}catch(e){_drawMiniSpray(canvas,[]);}
 }
 
 // ── Savant 탭 전환 (nav 버튼 onclick 핸들러) ──
@@ -6382,23 +5758,6 @@ function switchSavantView(view, btn){
   },0);
 }
 
-// ── 최근 경기 삭제 ──
-function deleteRecentGame(key){
-  if(!confirm('이 경기를 삭제할까요?'))return;
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  saves=saves.filter(function(s){return s.key!==key;});
-  localStorage.setItem('sl_saves',JSON.stringify(saves));
-  localStorage.removeItem(key);
-  if(window.cloudDelete)cloudDelete(key);
-  renderAwRecent();
-}
-
-function loadRecentGame(key){
-  hideAppWelcome();
-  restoreGame(key);
-  showToast('경기를 불러왔습니다 ✓',false);
-}
-
 function _escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _gameTitle(th,ta,ts){
   var h=(th||'').trim(),a=(ta||'').trim();
@@ -6435,20 +5794,18 @@ function openGameWizard(){
     }
   }
   el.classList.add('show');
-  var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='none';
   setTimeout(function(){var h=document.getElementById('gwHome');if(h)h.focus();},200);
 }
 
 function closeGameWizard(){
   var el=document.getElementById('gameWizard');
   if(el)el.classList.remove('show');
-  if(getActiveLineup().length===0&&!_isReturningUser()){var ov=document.getElementById('onboardOverlay');if(ov)ov.style.display='flex';}
 }
 
 function startFromWizard(){
   var homeInp=document.getElementById('gwHome');
   var awayInp=document.getElementById('gwAway');
-  var home=(homeInp&&homeInp.value.trim())||homeInp.placeholder||'홈팀';
+  var home=(homeInp&&homeInp.value.trim())||homeInp.placeholder||'내 팀';
   var away=(awayInp&&awayInp.value.trim())||awayInp.placeholder||'원정팀';
 
   // ── 새 경기: AS 상태 완전 초기화 ──
@@ -6484,7 +5841,6 @@ function startFromWizard(){
   document.getElementById('tHome').value=home;
   document.getElementById('tAway').value=away;
   closeGameWizard();
-  hideAppWelcome();
   if(homeInp)homeInp.value='';
   if(awayInp)awayInp.value='';
   // 이전 라인업이 대기 중이면 적용
@@ -6773,31 +6129,6 @@ function showGameSummary(){
 function closeGameSummary(){
   var ov=document.getElementById('gameSummaryOv');
   if(ov)ov.classList.remove('show');
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FAB 퀵 액션
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-var _fabOpen=false;
-function fabToggle(){
-  _fabOpen=!_fabOpen;
-  var pop=document.getElementById('fabPop');
-  var btn=document.getElementById('fabBtn');
-  if(pop)pop.classList.toggle('open',_fabOpen);
-  if(btn)btn.style.transform=_fabOpen?'rotate(45deg)':'';
-}
-function fabRecord(res){
-  if(!AS.batter){showToast('타자를 먼저 선택하세요',true);return;}
-  var inn=document.getElementById('innSel');
-  var ts=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-  var ab={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,team:AS.curTeam,
-    res:res,pt:AS.pt||null,zone:AS.zone||null,rbi:AS.rbi||0,
-    x:null,y:null,deg:null,dir:null,ft:null,
-    inn:inn?inn.value:1,ts:ts,
-    count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[]};
-  AS.abs.push(ab);
-  updateAll();scheduleAutoSave();
-  showToast(res+' 기록됨',true);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -7526,23 +6857,10 @@ function createTeam(){
   var team={id:'t'+Date.now(),name:name,color:_tcmColor,stadium:stadium,
     createdAt:new Date().toLocaleDateString('ko-KR'),games:[]};
   _TD.teams.push(team);_TD.activeTeamId=team.id;tdSave();
-  closeTeamCreate();renderTeamSelector();renderTeamDashboard();
+  closeTeamCreate();renderTeamDashboard();
   showToast('🏟️ '+name+' 팀 생성 완료',false);
 }
 
-// ── 팀 셀렉터 (AppWelcome) ──
-function renderTeamSelector(){
-  tdLoad();
-  var bar=document.getElementById('awTeamSelBar');
-  if(bar)bar.style.display=_TD.teams.length?'':'none';
-  var sel=document.getElementById('tsbSelect');if(!sel)return;
-  if(!_TD.teams.length){sel.innerHTML='<option value="">팀 없음</option>';return;}
-  sel.innerHTML='<option value="">팀 선택 안함</option>'
-    +_TD.teams.map(function(t){
-      return '<option value="'+t.id+'"'+( t.id===_TD.activeTeamId?' selected':'')+'>'+_escHtml(t.name)+'</option>';
-    }).join('');
-}
-function tsbChange(val){tdLoad();_TD.activeTeamId=val||null;tdSave();renderTeamDashboard();}
 
 // ── 경기 → 팀 연결 ──
 function _computeMVP(abs){
@@ -7737,18 +7055,7 @@ function importSharedTeam(){
     createdAt:new Date().toLocaleDateString('ko-KR'),games:p.games||[]};
   _TD.teams.push(team);_TD.activeTeamId=team.id;tdSave();
   var b=document.getElementById('teamSharedBanner');if(b)b.style.display='none';
-  renderTeamSelector();
   showToast('🏟️ '+p.name+' 팀 데이터를 가져왔습니다',false);
-}
-
-// ── 역할 스위처 ──
-var _role='scorer';
-function setRole(r){
-  _role=r;
-  document.body.className=document.body.className.replace(/\brole-\w+/g,'').trim();
-  document.body.classList.add('role-'+r);
-  document.querySelectorAll('.role-sw-btn').forEach(function(b){b.classList.toggle('on',b.dataset.r===r);});
-  try{localStorage.setItem('sl_role',r);}catch(e){}
 }
 
 // ── saveGame 패치: 저장 후 팀에 자동 연결 ──
@@ -7771,48 +7078,20 @@ function setRole(r){
 // ── 초기화 ──
 (function _teamInit(){
   tdLoad();
-  var savedRole=localStorage.getItem('sl_role')||'scorer';
-  setTimeout(function(){
-    renderTeamSelector();
-    setRole(savedRole);
-  },250);
 })();
 
 // ══════════════════════════════════════════════
 // UI 단순화 + 경기 중 UX 최적화
 // ══════════════════════════════════════════════
 
-// ── 더보기 바텀시트 ──
-function awMoreOpen(){
-  var ov=document.getElementById('awMoreOverlay');
-  if(ov){ov.classList.add('on');}
-}
-function awMoreClose(){
-  var ov=document.getElementById('awMoreOverlay');
-  if(ov){ov.classList.remove('on');}
-}
-
 // ── 집중 모드 (경기 시작 시 자동 진입) ──
 function enterFocusMode(){
   document.body.classList.add('game-focus');
-}
-function exitFocusMode(){
-  document.body.classList.remove('game-focus');
 }
 (function patchFocusMode(){
   var _orig=startFromWizard;
   startFromWizard=function(){
     _orig.apply(this,arguments);
-    enterFocusMode();
-  };
-  var _origShow=showAppWelcome;
-  showAppWelcome=function(){
-    _origShow.apply(this,arguments);
-    exitFocusMode();
-  };
-  var _origLoad=loadRecentGame;
-  loadRecentGame=function(key){
-    _origLoad.apply(this,arguments);
     enterFocusMode();
   };
 })();
@@ -7837,90 +7116,6 @@ function toggleAdvanced(){
     setTimeout(function(){sec.style.maxHeight='none';},300);
   }
 }
-
-// ── FAB: 최근 기록 수정 ──
-function fabEditLast(){
-  if(!AS.abs.length){showToast('수정할 기록이 없습니다',true);return;}
-  var last=AS.abs[AS.abs.length-1];
-  openEditRec(last.id);
-}
-
-// ── 자동 다음 타자 이동 ──
-function autoAdvanceBatter(){
-  if(!AS.batter)return;
-  var lu=getActiveLineup();
-  if(!lu.length)return;
-  var idx=lu.findIndex(function(p){return p.id===AS.batter.id;});
-  if(idx===-1)return;
-  var next=lu[(idx+1)%lu.length];
-  if(next&&next.id!==AS.batter.id)selBatter(next.id);
-}
-(function patchAutoNext(){
-  var _orig=fabRecord;
-  fabRecord=function(res){
-    _orig.apply(this,arguments);
-    if(AS.abs.length)setTimeout(autoAdvanceBatter,80);
-  };
-})();
-
-// ── 최근 경기 카드 강화 (MVP + 요약) ──
-var _origRenderAwRecent=renderAwRecent;
-renderAwRecent=function(){
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  var el=document.getElementById('awRecent');
-  if(!el)return;
-  if(!saves.length){
-    el.innerHTML='<div class="aw-empty" style="color:var(--text3);font-size:12px;padding:16px 0;text-align:center">아직 저장된 경기가 없습니다.<br>첫 경기를 기록해보세요 ⚾</div>';
-    return;
-  }
-  var recent=[...saves].reverse();
-  var html='<div class="aw-recent-title">최근 경기</div><div class="aw-recent-scroll">';
-  recent.forEach(function(s){
-    var raw=localStorage.getItem(s.key);
-    if(!raw)return;
-    var d;try{d=JSON.parse(raw);}catch(e){return;}
-    var hs=d.hs||0,as=d.as||0;
-    var th=_escHtml(d.th||'홈팀');
-    var ta=_escHtml(d.ta||'원정팀');
-    var date=_escHtml(d.d||'');
-    var outcome=hs>as?'WIN':hs<as?'LOSE':'DRAW';
-    var outcomeColor=hs>as?'var(--green)':hs<as?'var(--red)':'var(--text3)';
-    // MVP 계산
-    var mvpHtml='';
-    if(d.abs&&d.abs.length){
-      var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
-      var pm={};
-      d.abs.forEach(function(a){
-        if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,rbi:0};
-        if(hits.includes(a.res))pm[a.bid].h++;
-        if(!noab.includes(a.res))pm[a.bid].ab++;
-        pm[a.bid].rbi+=(a.rbi||0);
-      });
-      var best=Object.values(pm).filter(function(p){return p.ab>0;}).sort(function(a,b){
-        return (b.h/b.ab+b.rbi*.15)-(a.h/a.ab+a.rbi*.15);
-      })[0];
-      if(best&&best.h>0){
-        var avg=best.ab?(best.h/best.ab).toFixed(3).replace('0.','.'):'---';
-        mvpHtml='<div class="aw-ri-mvp">⭐ MVP #'+best.num+' '+_escHtml(best.name)+' · '+avg+(best.rbi>0?' · '+best.rbi+'타점':'')+'</div>';
-      }
-    }
-    html+='<div class="aw-recent-item" onclick="loadRecentGame(\''+s.key+'\')">'
-      +'<div class="aw-ri-icon">⚾</div>'
-      +'<div class="aw-ri-body">'
-      +'<div class="aw-ri-label">'+th+' vs '+ta+'</div>'
-      +'<div class="aw-ri-date">'+date+'</div>'
-      +mvpHtml
-      +'</div>'
-      +'<div class="aw-ri-meta">'
-      +'<div class="aw-ri-meta-score">'+hs+' : '+as+'</div>'
-      +'<div class="aw-ri-meta-result" style="color:'+outcomeColor+'">'+outcome+'</div>'
-      +'</div>'
-      +'<button class="aw-ri-del" onclick="event.stopPropagation();deleteRecentGame(\''+s.key+'\')" title="삭제">✕</button>'
-      +'</div>';
-  });
-  html+='</div>';
-  el.innerHTML=html;
-};
 
 // ══════════════════════════════════════════════
 // ARCH v1.2.0 — 안정화 + 아키텍처 정리
@@ -8033,9 +7228,6 @@ var undoManager=(function(){
   // 볼넷·삼진 등 기타 결과 경로
   var _ro=recOther;
   recOther=function(res){_ro.apply(this,arguments);};
-  // FAB 빠른 기록 (patchAutoNext가 이미 감싼 버전)
-  var _f=fabRecord;
-  fabRecord=function(res){undoManager.push();_f.apply(this,arguments);};
   // 삭제 / 전체 삭제
   var _d=delRec;
   delRec=function(id){undoManager.push();_d.apply(this,arguments);};
@@ -8093,21 +7285,7 @@ document.addEventListener('visibilitychange',function(){
       },0);
     }
   } else {
-    // 백그라운드 복귀: 웰컴 화면이면 자동 복구 시도
     setTimeout(function(){
-      var welcome=document.getElementById('appWelcome');
-      var isWelcomeVisible=welcome&&welcome.style.display!=='none'&&!welcome.classList.contains('hidden');
-      if(isWelcomeVisible&&storageManager.hasRecovery()){
-        var rec=storageManager.getRecovery();
-        if(rec&&rec.data){
-          var d=rec.data;
-          var hasData=(d.abs&&d.abs.length>0)||(d.home_lineup&&d.home_lineup.length>0)||(d.away_lineup&&d.away_lineup.length>0);
-          if(hasData&&!(AS.abs&&AS.abs.length>0)){
-            archRecoverAutosave();
-            return;
-          }
-        }
-      }
       // 캔버스 컨텍스트 재복구
       try{
         if(fC&&hC&&oC){
@@ -8183,7 +7361,6 @@ function archRecoverAutosave(){
   if(a&&d.ta)a.value=d.ta;
   var banner=document.getElementById('archRecoveryBanner');
   if(banner)banner.style.display='none';
-  hideAppWelcome();
   var ap=document.getElementById('app-page');
   if(ap)ap.style.display='flex';
   updateAll();
@@ -8297,7 +7474,6 @@ function recoverHiddenAutosave(key){
     if(h&&d.th)h.value=d.th;
     if(a&&d.ta)a.value=d.ta;
     closeOverlay('loadOverlay');
-    hideAppWelcome();
     var ap=document.getElementById('app-page');
     if(ap)ap.style.display='flex';
     updateAll();
@@ -9048,28 +8224,17 @@ var _origRecordPitch=recordPitch;
 document.addEventListener('DOMContentLoaded',function(){
   initIbZoneCanvas();
   initPitcherZoneCanvas();
-  // 뒤로가기 → 홈 화면
+  // 뒤로가기 → 랜딩 화면 (기록은 메모리·자동저장에 그대로 남음)
   window.addEventListener('popstate',function(){
-    var welcome=document.getElementById('appWelcome');
-    var isHidden=!welcome||welcome.style.display==='none'||welcome.classList.contains('hidden');
-    if(isHidden){
-      goHome();
-      history.pushState({page:'game'},'','');
-    }
+    var lp=document.getElementById('landing-page');
+    if(lp&&lp.style.display==='none')goLanding();
   });
   // 이전 세션 자동 복구: autosave 있고 현재 기록 없으면 바로 게임 화면으로
   setTimeout(function(){
-    if(!storageManager.hasRecovery())return;
-    var rec=storageManager.getRecovery();
-    if(!rec||!rec.data)return;
-    var d=rec.data;
-    var hasData=(d.abs&&d.abs.length>0)||(d.home_lineup&&d.home_lineup.length>0)||(d.away_lineup&&d.away_lineup.length>0);
-    if(!hasData)return;
-    if(AS.abs&&AS.abs.length>0)return;
-    // 앱 화면이 이미 열려 있거나 랜딩 페이지에 있을 때 자동 복구
+    if(!_hasRecoveryData()||AS.abs.length)return;
     var lp=document.getElementById('landing-page');
     if(lp&&lp.style.display!=='none')showApp();
-    archRecoverAutosave();
+    else _openLastGame();
   },300);
 });
 // swTab 후에도 초기화

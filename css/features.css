@@ -704,7 +704,6 @@
 .bh-badge { background: rgba(239,68,68,.15); color: #ef4444; border-color: rgba(239,68,68,.3); }
 .b-2b { background: rgba(251,146,60,.14); color: #fb923c; }   /* 2루타 stays distinct (orange) */
 .hb-2b { border-color: #fb923c; }
-.fab { background: #ef4444; box-shadow: 0 4px 18px rgba(239,68,68,.45),0 0 0 4px rgba(239,68,68,.12); }
 .ops-avg { background: rgba(239,68,68,.15); color: #ef4444; }
 .cond-chip.on { background: rgba(239,68,68,.18); }
 .qr-more-toggle.open { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }

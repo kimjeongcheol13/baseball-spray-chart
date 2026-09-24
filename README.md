@@ -177,7 +177,8 @@ erDiagram
 localStorage
 ├── sl_saves          JSON   저장 경기 인덱스 배열 [{key, label, ts}, ...]
 ├── sl_<timestamp>    JSON   경기 전체 데이터 (GAME + 중첩 배열)
-├── sl_ob3            "1"    온보딩 완료 플래그
+├── sl_autosave       JSON   진행 중 경기 자동저장 (앱을 열면 이 경기로 바로 복귀)
+├── sl_ftu_done       "1"    첫 타구 저장 완료 (필드 말풍선 다시 안 띄움)
 ├── sl_visited        "1"    첫 방문 플래그
 └── sl_teams          JSON   팀 시스템 데이터 (추후 개발 예정)
 ```

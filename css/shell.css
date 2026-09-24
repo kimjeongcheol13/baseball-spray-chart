@@ -354,3 +354,10 @@
 }
 
 @media(min-width:721px){.pnl-center .qb-btn{min-height:40px}}
+
+/* 투구·결과 입력 바: 하단 탭(z-index 400)에 가려져 아래쪽(코스·즉시 기록)이 잘리던 문제 → 하단 탭 바로 위에 띄움 */
+.input-bar{
+  bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+  max-height:calc(100vh - var(--nav-h) - env(safe-area-inset-bottom,0px) - 64px);
+  max-width:1200px;margin:0 auto;box-sizing:border-box;
+}

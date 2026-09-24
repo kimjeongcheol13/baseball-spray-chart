@@ -63,7 +63,7 @@ var _kakaoSdkLoaded = false;
 </script>
 <link rel="stylesheet" href="css/styles.css?v=66">
 <link rel="stylesheet" href="css/features.css?v=23">
-<link rel="stylesheet" href="css/shell.css?v=1">
+<link rel="stylesheet" href="css/shell.css?v=2">
 <style>
 /* ── Onboarding overlay ── */
 .onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:none}
@@ -1651,7 +1651,7 @@ var _kakaoSdkLoaded = false;
 
   <div class="pnl-center">
     <div class="batter-bar" style="flex-wrap:wrap;gap:5px">
-  <div id="batterDisp" style="flex:1;min-width:120px"><span class="batter-empty">← 타자를 선택하세요</span></div>
+  <div id="batterDisp" style="flex:1;min-width:120px"><span class="batter-empty">타자를 선택하세요</span></div>
   <div class="count-board" id="countBoard">
     <div class="cnt-grp" onclick="chCount('b')" title="볼 (+1)">
       <div class="cnt-dots" id="cntBalls"><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div><div class="cnt-dot"></div></div>
@@ -1725,7 +1725,7 @@ var _kakaoSdkLoaded = false;
             <div class="onboard-step-num">1</div>
             <div class="onboard-step-body">
               <div class="onboard-step-label">선수 추가</div>
-              <div class="onboard-step-desc">왼쪽 패널에서 이름·번호를 입력하고 + 버튼을 누르세요</div>
+              <div class="onboard-step-desc">위쪽 타자 칩을 눌러 라인업을 열고 이름·번호를 입력하세요</div>
             </div>
             <div class="onboard-step-arrow">›</div>
           </div>
@@ -1746,7 +1746,7 @@ var _kakaoSdkLoaded = false;
             <div class="onboard-step-arrow">›</div>
           </div>
         </div>
-        <button class="onboard-btn" onclick="document.getElementById('onboardOverlay').style.display='none';document.getElementById('pName').focus()">+ 선수 추가하기</button>
+        <button class="onboard-btn" onclick="document.getElementById('onboardOverlay').style.display='none';shellDrawer(true);setTimeout(function(){document.getElementById('pName').focus()},250)">+ 선수 추가하기</button>
         <div style="text-align:center;margin-top:14px">
           <button onclick="showHelpMenu()" style="background:none;border:none;color:#6b7280;font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline;padding:0">❓ 도움말 보기</button>
         </div>
@@ -2580,7 +2580,7 @@ var _kakaoSdkLoaded = false;
         <label class="set-field">원정팀<input class="inp" id="setAway" maxlength="6" oninput="shellTeamName('away',this.value)"></label>
       </div>
       <div class="set-row">
-        <button class="set-btn primary" onclick="openMobPlayerModal()">👥 라인업 편집</button>
+        <button class="set-btn primary" onclick="shellDrawer(true)">👥 라인업 편집</button>
         <button class="set-btn" onclick="ocrModalOpen()">📷 사진/CSV로 입력</button>
       </div>
       <div class="set-row">
@@ -2645,6 +2645,16 @@ var _kakaoSdkLoaded = false;
   </div>
   <div id="archDebugBody"></div>
 </div>
+
+<!-- ═══ 라인업 서랍 (현재 타자 칩으로 열기) ═══ -->
+<div id="lineupDrawerBackdrop" class="ld-backdrop" onclick="shellDrawer(false)"></div>
+<aside id="lineupDrawer" class="ld" role="dialog" aria-modal="true" aria-label="라인업" aria-hidden="true">
+  <div class="ld-hd">
+    <div><div class="ld-title">라인업</div><div class="ld-sub">선수를 누르면 현재 타자로 지정 · 기록 후 다음 타순으로 자동 진행</div></div>
+    <button class="ld-x" type="button" onclick="shellDrawer(false)" aria-label="닫기">✕</button>
+  </div>
+  <div class="ld-body" id="lineupDrawerBody"></div>
+</aside>
 
 <!-- ═══ Bottom Navigation ═══ -->
 <nav id="savantNav" class="savant-nav" role="tablist" aria-label="메인 탭">
@@ -2970,9 +2980,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=89"></script>
+<script defer src="js/core.js?v=90"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=12"></script>
+<script type="module" src="js/app.js?v=13"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

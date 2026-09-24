@@ -41,6 +41,34 @@ function _mount() {
   // 구장 선택 → 경기설정
   const st = $('slStBar');
   if (st) { st.style.display = ''; _move(st, $('setStadiumSlot')); }
+
+  // 왼쪽 라인업 패널(홈/원정 탭 · 명단 · 선수 추가 입력부) → 라인업 서랍
+  const lp = document.querySelector('.pnl-left');
+  const ldBody = $('lineupDrawerBody');
+  if (lp && ldBody) {
+    [':scope > .tabs', ':scope > .pnl-hd', ':scope > #lpList', ':scope > .add-row'].forEach((sel) => {
+      _move(lp.querySelector(sel), ldBody);
+    });
+  }
+
+  // 현재 타자 칩: 기존 #batterDisp를 버튼 안으로 옮김 (selBatter가 계속 내용을 갱신)
+  const bar = document.querySelector('.pnl-center .batter-bar');
+  const disp = $('batterDisp');
+  if (bar && disp && !$('curBatterChip')) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.id = 'curBatterChip';
+    chip.className = 'cur-batter-chip';
+    chip.setAttribute('aria-haspopup', 'dialog');
+    chip.setAttribute('aria-controls', 'lineupDrawer');
+    chip.onclick = () => shellDrawer(true);
+    bar.insertBefore(chip, bar.firstChild);
+    chip.appendChild(disp);
+    const meta = document.createElement('span');
+    meta.className = 'cbc-meta';
+    meta.innerHTML = '<span class="cbc-next" id="cbcNext"></span><span class="cbc-open">라인업 ▾</span>';
+    chip.appendChild(meta);
+  }
 }
 
 // ── 스프레이: 기록 필드 캔버스 3겹을 그대로 복사 ────────────
@@ -176,6 +204,144 @@ function shellNav(tab, sub) {
 
 function shellOpenAnalysis(sub) { shellNav('analysis', sub); }
 
+// ── 라인업 서랍 ─────────────────────────────────────────────
+function shellDrawer(open) {
+  const d = $('lineupDrawer'), bd = $('lineupDrawerBackdrop'), chip = $('curBatterChip');
+  if (!d) return;
+  d.classList.toggle('open', !!open);
+  d.setAttribute('aria-hidden', open ? 'false' : 'true');
+  if (bd) bd.classList.toggle('open', !!open);
+  if (chip) chip.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    try { if (window.renderLP) window.renderLP(); } catch (e) {}
+    const cur = d.querySelector('.player-row.active');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// ── 현재 타자 / 타순 ────────────────────────────────────────
+const _gfOn = () => typeof GF !== 'undefined' && GF.active;
+const _lineup = () => { try { return window.getActiveLineup ? window.getActiveLineup() || [] : []; } catch (e) { return []; } };
+
+// selBatter()는 같은 선수를 다시 누르면 해제(토글)하므로 먼저 비우고 지정
+function _selectBatter(id) {
+  if (!window.selBatter || typeof AS === 'undefined') return;
+  AS.batter = null;
+  window.selBatter(id);
+  // 자동 이동으로 바뀐 타자는 필드를 그 타자로 거르지 않음 (최근 기록 링이 보이도록)
+  AS.batterFilter = false;
+  const fb = $('filterBtn');
+  if (fb) fb.classList.remove('btn-primary');
+  try { if (window.safeRender) window.safeRender(); } catch (e) {}
+}
+
+function _updateChipNext() {
+  const el = $('cbcNext');
+  if (!el) return;
+  const lu = _lineup();
+  const cur = typeof AS !== 'undefined' ? AS.batter : null;
+  const i = cur ? lu.findIndex((p) => String(p.id) === String(cur.id)) : -1;
+  const next = i >= 0 && lu.length > 1 ? lu[(i + 1) % lu.length] : null;
+  el.textContent = next ? '다음 ' + (next.num ? '#' + next.num + ' ' : '') + next.name : '';
+}
+
+// 기록 후 다음 타순으로 (경기 운영 모드는 기존 gfNextBatter가 처리)
+function _advanceBatter() {
+  if (_gfOn() || typeof AS === 'undefined' || !AS.batter) return;
+  const lu = _lineup();
+  const i = lu.findIndex((p) => String(p.id) === String(AS.batter.id));
+  if (i < 0 || lu.length < 2) return;
+  _selectBatter(lu[(i + 1) % lu.length].id);
+}
+
+function _patchBatterFlow() {
+  const origAfter = window.gfAfterRecord;
+  if (typeof origAfter === 'function') {
+    window.gfAfterRecord = function () {
+      const r = origAfter.apply(this, arguments);
+      _advanceBatter();
+      return r;
+    };
+  }
+
+  // 되돌리기: 기록을 지우고 그 타석의 타자로 돌아감
+  const origUndo = window.undoLast;
+  if (typeof origUndo === 'function') {
+    window.undoLast = function () {
+      const last = typeof AS !== 'undefined' && AS.abs.length ? AS.abs[AS.abs.length - 1] : null;
+      const r = origUndo.apply(this, arguments);
+      if (last && !_gfOn() && (last.team || 'home') === AS.curTeam && _lineup().some((p) => String(p.id) === String(last.bid))) {
+        _selectBatter(last.bid);
+      }
+      return r;
+    };
+  }
+
+  // 최근 기록 항목에 되돌리기 버튼
+  const origRecs = window.renderRecs;
+  if (typeof origRecs === 'function') {
+    window.renderRecs = function () {
+      const r = origRecs.apply(this, arguments);
+      _markLatestRec();
+      return r;
+    };
+  }
+
+  const origLP = window.renderLP;
+  if (typeof origLP === 'function') {
+    window.renderLP = function () {
+      const r = origLP.apply(this, arguments);
+      _updateChipNext();
+      return r;
+    };
+  }
+
+  // 필드: 가장 최근 기록을 파란 링으로 표시
+  const origDot = window.drawDot;
+  if (typeof origDot === 'function') {
+    window.drawDot = function (r) {
+      const out = origDot.apply(this, arguments);
+      _ringLatest(r);
+      return out;
+    };
+  }
+}
+
+function _latest() {
+  return typeof AS !== 'undefined' && AS.abs && AS.abs.length ? AS.abs[AS.abs.length - 1] : null;
+}
+
+function _markLatestRec() {
+  const last = _latest();
+  const list = $('recList');
+  if (!last || !list) return;
+  const del = list.querySelector('.rec-del[onclick="delRec(' + last.id + ')"]');
+  const item = del && del.closest('.rec-item');
+  if (!item || item.querySelector('.rec-undo')) return;
+  item.classList.add('rec-latest');
+  const btn = document.createElement('button');
+  btn.className = 'rec-undo';
+  btn.type = 'button';
+  btn.textContent = '↶ 되돌리기';
+  btn.title = '가장 최근 기록 취소 (Ctrl+Z)';
+  btn.onclick = (e) => { e.stopPropagation(); window.undoLast(); };
+  (item.querySelector('.rec-info') || item).appendChild(btn);
+}
+
+function _ringLatest(r) {
+  const last = _latest();
+  if (!r || r !== last || !r.x || typeof hCtx === 'undefined' || !hCtx || typeof FS === 'undefined') return;
+  if (window._sfPass && !window._sfPass(r)) return;
+  const x = r.x * FS, y = r.y * FS;
+  hCtx.save();
+  hCtx.beginPath();
+  hCtx.arc(x, y, 11, 0, Math.PI * 2);
+  hCtx.strokeStyle = '#4b8cf5';
+  hCtx.lineWidth = 2.5;
+  hCtx.stroke();
+  hCtx.restore();
+}
+
 // ── 기존 진입점 호환 ────────────────────────────────────────
 function _patchLegacy() {
   // 기존 switchSavantView('spray'|'profile'|'compare'|'scout'|'record') 호출 → 새 탭으로
@@ -201,6 +367,17 @@ document.addEventListener('click', (e) => {
   setTimeout(_mirrorSpray, 350);
 }, true);
 
+// 서랍에서 타자를 고르면 닫기 (버튼·입력·드래그 핸들은 제외)
+// selBatter가 클릭 중 목록을 다시 그리므로 캡처 단계에서 판정
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('#lineupDrawer .player-row');
+  if (!row || e.target.closest('button, input, select, .drag-handle')) return;
+  setTimeout(() => shellDrawer(false), 120);
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('lineupDrawer') && $('lineupDrawer').classList.contains('open')) shellDrawer(false);
+});
+
 // 기록 탭에서 GF 켜기/끄기 등이 바뀌면 설정 화면 표시도 맞춤
 document.addEventListener('visibilitychange', () => { if (_tab === 'settings') _syncSettings(); });
 
@@ -211,10 +388,13 @@ window.shellTeamName = shellTeamName;
 window.shellGfToggle = shellGfToggle;
 window.shellSyncSettings = _syncSettings;
 window.shellMirrorSpray = _mirrorSpray;
+window.shellDrawer = shellDrawer;
 
 function _init() {
   _mount();
   _patchLegacy();
+  _patchBatterFlow();
+  _updateChipNext();
 }
 
 if (document.readyState === 'loading') {

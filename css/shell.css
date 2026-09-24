@@ -11,6 +11,16 @@
   --nav-h:54px;
 }
 
+/* #app-page 밖에 있는 셸 요소에도 앱 색상 토큰 적용 (styles.css #app-page 블록과 동일 값) */
+.ld,#analysisView,#settingsView{
+  --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
+  --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
+  --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;
+  --text:#eef0f8;--text2:#8892a4;--text3:#434c5e;
+  --border:#1c1c26;--border2:#252532;
+  --r:10px;--r2:14px;--font:'Noto Sans KR',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+
 /* ── 하단 탭: 모든 폭에서 동일 위치 (오른쪽 세로 레일 폐지) ── */
 #savantNav.savant-nav{
   position:fixed!important;
@@ -131,3 +141,67 @@
 
 /* 모바일 ⚡ 빠른 기록 버튼: 하단 탭 위로 (드래그 시 인라인 위치가 우선) */
 .fab-wrap{bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 12px)}
+
+/* ═══ 3단계: 라인업 서랍 · 현재 타자 칩 · 되돌리기 ═══ */
+
+/* 왼쪽 라인업 패널과 모바일 타자 줄은 서랍으로 대체 */
+.pnl-left,
+.mob-batter-wrap{display:none!important}
+@media(min-width:721px){
+  .app-layout,
+  .app-layout.panel-collapsed,
+  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr) var(--rp-w,minmax(280px,1fr))!important}
+  .app-layout.panel-collapsed{grid-template-columns:minmax(0,1fr) 0px!important}
+  .pnl-center{grid-column:1!important}
+  .pnl-right{grid-column:2!important}
+}
+
+/* 현재 타자 칩 */
+.cur-batter-chip{
+  flex:1 1 180px;min-width:0;min-height:40px;
+  display:flex;align-items:center;gap:8px;
+  padding:6px 12px;border-radius:999px;
+  background:rgba(75,140,245,.1);border:1px solid rgba(75,140,245,.45);
+  color:var(--text);font:inherit;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.cur-batter-chip:active{background:rgba(75,140,245,.2)}
+.cur-batter-chip:focus-visible{outline:2px solid var(--sl-signal);outline-offset:2px}
+.cur-batter-chip #batterDisp{flex:1 1 auto!important;min-width:0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbc-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cbc-next{font-size:10px;color:var(--text3);white-space:nowrap}
+.cbc-open{font-size:11px;font-weight:800;color:var(--sl-signal);white-space:nowrap}
+@media(max-width:420px){.cbc-next{display:none}}
+
+/* 서랍 */
+.ld-backdrop{position:fixed;inset:0;z-index:440;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s}
+.ld-backdrop.open{opacity:1;pointer-events:auto}
+.ld{
+  position:fixed;top:0;bottom:0;left:0;z-index:450;
+  width:min(380px,88vw);
+  display:flex;flex-direction:column;
+  background:var(--bg-card);border-right:1px solid var(--border2);
+  box-shadow:8px 0 32px rgba(0,0,0,.45);
+  transform:translateX(-102%);transition:transform .24s cubic-bezier(.4,0,.2,1);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  visibility:hidden;
+}
+.ld.open{transform:none;visibility:visible}
+.ld-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 10px;border-bottom:1px solid var(--border)}
+.ld-title{font-size:15px;font-weight:800;color:var(--text)}
+.ld-sub{font-size:10.5px;color:var(--text3);margin-top:3px;line-height:1.4}
+.ld-x{flex-shrink:0;width:36px;height:36px;border-radius:10px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:16px;cursor:pointer}
+.ld-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.ld-body>.tabs{flex-shrink:0}
+.ld-body>.lineup-list{flex:1;min-height:0;overflow-y:auto}
+.ld-body .player-row{min-height:48px}
+
+/* 최근 기록 + 되돌리기 */
+.rec-item.rec-latest{border-color:rgba(75,140,245,.55)!important;box-shadow:inset 3px 0 0 var(--sl-signal)}
+.rec-undo{
+  display:inline-flex;align-items:center;margin-top:6px;
+  padding:5px 10px;border-radius:8px;
+  border:1px solid var(--sl-signal);background:rgba(75,140,245,.12);
+  color:var(--sl-signal);font:700 11px var(--font);cursor:pointer;white-space:nowrap;
+}
+.rec-undo:active{background:rgba(75,140,245,.25)}

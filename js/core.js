@@ -1191,7 +1191,7 @@ function selBatter(id){
   renderMob();
   const d=document.getElementById('batterDisp');
   if(AS.batter) d.innerHTML=`<span class="batter-display">#${AS.batter.num} ${AS.batter.name}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
-  else d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  else d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   closeHitDetail();
   // 새 타자 선택 시 인게임 코스 초기화 (에러 방지용 try-catch)
   try{AS.currentPitches=[];AS.zone=null;AS.pt=null;AS.zoneX=null;AS.zoneY=null;
@@ -2954,7 +2954,7 @@ function cycleTeamFilter(){
     // 전체로 돌아올 때 타자 필터도 해제
     AS.batter=null;AS.batterFilter=false;
     const fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
-    const d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+    const d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
     if(btn){btn.textContent='전체';btn.classList.remove('btn-primary');}
   }
   safeRender();
@@ -6472,7 +6472,7 @@ function startFromWizard(){
   if(innSel){innSel.value='1회초';var innD=document.getElementById('innDisp');if(innD)innD.textContent='1회초';}
   // 타자 표시 초기화
   var bd=document.getElementById('batterDisp');
-  if(bd)bd.innerHTML='<span class="batter-empty">← 타자를 선택하세요</span>';
+  if(bd)bd.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   // 자동저장 복구 데이터 완전 삭제 (새 경기 시작 시 복구 배너 안 뜨도록)
   storageManager.cancelPendingAutosave();
   storageManager.clearRecovery();

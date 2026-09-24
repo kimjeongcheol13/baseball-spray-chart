@@ -447,7 +447,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { shellClo
 function _mountRecordLayout() {
   const fw = document.querySelector('.pnl-center .field-wrap');
   const qb = $('quickBar');
-  if (fw && qb) fw.after(qb);
+  if (fw && qb) ($('liveStatLine') || fw).after(qb); // 필드 → 지표 줄 → 결과 버튼
 
   // 기존 타석기록 패널을 "최근 기록" 시트로 사용 (수정·삭제·선수별 보기·순서 변경 그대로)
   const pr = document.querySelector('.pnl-right');

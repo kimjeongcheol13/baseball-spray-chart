@@ -899,6 +899,18 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tp-hr{background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.38)}
 .tp-out{background:rgba(67,76,94,.25);color:#94a3b8;border:1.5px solid rgba(67,76,94,.45)}
 
+/* 필드 아래 즉시 갱신 지표 줄 */
+.live-stat-line{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;width:100%;box-sizing:border-box;padding:3px 4px;background:var(--bg-card);border-top:1px solid var(--border);flex-shrink:0}
+.lsl-cell{display:flex;flex-direction:column;align-items:center;min-width:0;padding:2px 0;border-radius:6px;transition:background-color .3s}
+.lsl-k{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.3px;line-height:1.25;white-space:nowrap}
+.lsl-v{display:flex;align-items:baseline;justify-content:center;gap:2px;white-space:nowrap;line-height:1.3}
+.lsl-v b{font:700 13px var(--mono);color:var(--text);transition:color .3s}
+.lsl-prev{display:none;font:600 9px var(--mono);letter-spacing:-.5px;color:var(--text2)}
+.lsl-cell.lsl-flash{background:rgba(246,194,62,.14)}
+.lsl-cell.lsl-flash .lsl-prev{display:inline}
+.lsl-cell.lsl-flash b{color:var(--yellow)}
+.live-stat-line.lsl-empty .lsl-v b{color:var(--text2)}
+
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    SWIPE HINT (?앹뾽 ?ㅼ??댄봽 ?뚰듃)
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/

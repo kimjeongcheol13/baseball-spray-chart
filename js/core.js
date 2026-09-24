@@ -2647,7 +2647,78 @@ var _NOAB=['볼넷','사구','희타','희비'],_HITS=['안타','내야안타','
 // 구종 컬러맵 (전역 공유)
 var _PT_COL={'직구':'#e53935','싱커':'#ff7043','커터':'#795548','체인지업':'#43a047','스플리터':'#2e7d32','포크볼':'#aeea00','스크류볼':'#7cb9a8','커브':'#29b6f6','너클커브':'#7b1fa2','슬로우커브':'#1565c0','슬라이더':'#fdd835','스위퍼':'#ffc400','슬러브':'#4e6b8c','너클볼':'#006994','이퓨스볼':'#555555','팜볼':'#888888'};
 var _PT_ABR={'직구':'F','싱커':'SK','커터':'CT','체인지업':'CH','스플리터':'SP','포크볼':'FK','스크류볼':'SC','커브':'C','너클커브':'KC','슬로우커브':'LC','슬라이더':'S','스위퍼':'SW','슬러브':'SL','너클볼':'KN','이퓨스볼':'EP','팜볼':'PB'};
+// ── 필드 아래 즉시 갱신 지표 줄: 현재 타자 AVG · OBP · PULL% · CENTER% · OPPO% ──
+// 방향: 그려진 파울라인(drawField: π*.28 / π*.72 → 50.4°~129.6°) 사이 페어 지역을 각도로 3등분
+var _LSL_FL=50.4,_LSL_FR=129.6,_LSL_T=(_LSL_FR-_LSL_FL)/3;
+var _LSL_NOBALL=['삼진','볼넷','사구']; // 타구 없는 결과 → 방향 분포 제외
+var _LSL_ITEMS=[{k:'avg',l:'AVG'},{k:'obp',l:'OBP'},{k:'pull',l:'PULL%'},{k:'ctr',l:'CENTER%'},{k:'oppo',l:'OPPO%'}];
+var _lslLast={bid:null,v:null},_lslTimers={};
+function _lslDeg(a){
+  if(a.deg!=null)return a.deg;
+  if(a.x==null||a.y==null)return null;
+  return (Math.atan2(a.y-1,a.x-.5)+Math.PI)*180/Math.PI;
+}
+function _lslCalc(b){
+  var bAbs=AS.abs.filter(function(a){return a.bid===b.id;});
+  var ab=0,h=0,bb=0,hbp=0,sf=0,l=0,c=0,r=0;
+  bAbs.forEach(function(a){
+    if(!_NOAB.includes(a.res))ab++;
+    if(_HITS.includes(a.res))h++;
+    if(a.res==='볼넷')bb++;
+    if(a.res==='사구')hbp++;
+    if(a.res==='희비')sf++;
+    if(_LSL_NOBALL.includes(a.res))return;
+    var d=_lslDeg(a);
+    if(d==null)return;
+    if(d<_LSL_FL+_LSL_T)l++;else if(d<=_LSL_FR-_LSL_T)c++;else r++;
+  });
+  // TODO: 좌우타 정보(bh)가 없거나 스위치(S)면 우타 기준으로 계산 — 스위치 타자는 타석별 좌/우 기록이 생기면 반영
+  var lefty=(b.bh||b.bats)==='L';
+  var n=l+c+r,obpDen=ab+bb+hbp+sf;
+  return {
+    avg:ab?h/ab:null,
+    obp:obpDen?(h+bb+hbp)/obpDen:null,
+    pull:n?(lefty?r:l)/n:null,
+    ctr:n?c/n:null,
+    oppo:n?(lefty?l:r)/n:null
+  };
+}
+function _lslFmt(k,v){
+  if(v==null)return k==='avg'||k==='obp'?'.---':'—';
+  return k==='avg'||k==='obp'?v.toFixed(3).replace(/^0\./,'.'):Math.round(v*100)+'%';
+}
+function _updLiveStatLine(){
+  var el=document.getElementById('liveStatLine');
+  if(!el)return;
+  if(!el.firstChild){
+    el.innerHTML=_LSL_ITEMS.map(function(it){
+      return '<div class="lsl-cell" data-k="'+it.k+'"><span class="lsl-k">'+it.l+'</span><span class="lsl-v"><small class="lsl-prev"></small><b></b></span></div>';
+    }).join('');
+  }
+  var b=AS.batter,calc=b?_lslCalc(b):{};
+  var v={};_LSL_ITEMS.forEach(function(it){v[it.k]=_lslFmt(it.k,calc[it.k]);});
+  // 같은 타자일 때만 바뀐 값 강조 (타자 전환 시엔 강조 없이 교체)
+  var same=b&&_lslLast.v&&_lslLast.bid===b.id;
+  el.classList.toggle('lsl-empty',!b);
+  _LSL_ITEMS.forEach(function(it){
+    var cell=el.querySelector('[data-k="'+it.k+'"]');
+    cell.querySelector('b').textContent=v[it.k];
+    if(same&&_lslLast.v[it.k]!==v[it.k]){
+      var pv=_lslLast.v[it.k];
+      cell.querySelector('.lsl-prev').textContent=(pv==='.---'||pv==='—')?'':pv+' →';
+      cell.classList.remove('lsl-flash');void cell.offsetWidth;cell.classList.add('lsl-flash');
+      clearTimeout(_lslTimers[it.k]);
+      _lslTimers[it.k]=setTimeout(function(){cell.classList.remove('lsl-flash');},1500);
+    }else if(!same){
+      clearTimeout(_lslTimers[it.k]);cell.classList.remove('lsl-flash');
+    }
+  });
+  _lslLast={bid:b?b.id:null,v:b?v:null};
+}
+document.addEventListener('DOMContentLoaded',_updLiveStatLine);
+
 function updBatterStat(){
+  _updLiveStatLine();
   var ph=document.getElementById('batter-analysis-placeholder');
   var pc=document.getElementById('batter-analysis-content');
   if(!ph||!pc)return;

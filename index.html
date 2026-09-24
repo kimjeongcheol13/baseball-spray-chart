@@ -63,7 +63,7 @@ var _kakaoSdkLoaded = false;
 </script>
 <link rel="stylesheet" href="css/styles.css?v=66">
 <link rel="stylesheet" href="css/features.css?v=23">
-<link rel="stylesheet" href="css/shell.css?v=3">
+<link rel="stylesheet" href="css/shell.css?v=4">
 <style>
 /* ── Onboarding overlay ── */
 .onboard-overlay{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(to top,rgba(7,9,15,.95) 45%,rgba(7,9,15,.45) 100%);pointer-events:none}
@@ -801,7 +801,7 @@ var _kakaoSdkLoaded = false;
     <div class="ob-icon" id="obIcon">🏟️</div>
     <div class="ob-step" id="obStep">STEP 1 · 타구 기록</div>
     <div class="ob-title" id="obTitle">필드를 터치해<br>타구 위치를 기록하세요</div>
-    <div class="ob-desc" id="obDesc">공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.<br><b>상단 퀵버튼</b>으로 더욱 빠르게 기록할 수 있어요.</div>
+    <div class="ob-desc" id="obDesc">공이 떨어진 위치를 탭하면 결과 입력 창이 자동으로 나타납니다.<br><b>필드 아래 결과 버튼</b>으로 더욱 빠르게 기록할 수 있어요.</div>
     <div class="ob-highlight" id="obHighlight">안타 · 2루타 · 아웃 · 삼진 · 볼넷</div>
     <div class="ob-dots"><div class="ob-dot on" id="d0"></div><div class="ob-dot" id="d1"></div><div class="ob-dot" id="d2"></div><div class="ob-dot" id="d3"></div><div class="ob-dot" id="d4"></div></div>
     <label class="ob-no-show">
@@ -1753,7 +1753,7 @@ var _kakaoSdkLoaded = false;
       </div>
     </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint no-batter"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt">타자를 먼저 선택하세요</div></div></div></div>
-    <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 위 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
+    <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 아래 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
     <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
     <div id="miniSprayWrap" style="display:none;position:relative" onclick="_expandMainField()">
@@ -2646,6 +2646,8 @@ var _kakaoSdkLoaded = false;
   <div id="archDebugBody"></div>
 </div>
 
+<div id="recSheetBackdrop" class="rec-sheet-backdrop" onclick="shellRecSheet(false)"></div>
+
 <!-- ═══ ☰ 통합 메뉴 / 스코어 수정 (상단 바) ═══ -->
 <div id="slPopBackdrop" class="sl-pop-backdrop" onclick="shellClosePops()"></div>
 <div id="scoreEditor" class="sl-pop se-pop" role="dialog" aria-label="스코어 수정" aria-hidden="true">
@@ -3018,9 +3020,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=91"></script>
+<script defer src="js/core.js?v=92"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=14"></script>
+<script type="module" src="js/app.js?v=15"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

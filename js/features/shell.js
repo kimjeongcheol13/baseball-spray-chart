@@ -283,6 +283,7 @@ function _patchBatterFlow() {
     window.renderRecs = function () {
       const r = origRecs.apply(this, arguments);
       _markLatestRec();
+      _renderRecentMini();
       return r;
     };
   }
@@ -464,7 +465,7 @@ function shellClosePops() { shellMenu(false); shellScore(false); }
 document.addEventListener('click', (e) => {
   if (e.target.closest('#slMenu button')) setTimeout(() => shellMenu(false), 0);
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') shellClosePops(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { shellClosePops(); shellRecSheet(false); } });
 
 // ── 자동 저장 상태 표시 (저장 로직은 core.js 기존 엔진 그대로) ──
 function _setSaveState(state) {
@@ -500,6 +501,64 @@ function _patchAutoSave() {
     };
   }
   _setSaveState('idle');
+}
+
+// ── 기록 화면 배치: 칩 → 필드 → 결과 버튼 → (1024px 미만) 최근 기록 2개 ──
+const REC_BADGE = { '안타': 'b-hit', '내야안타': 'b-hit', '2루타': 'b-2b', '3루타': 'b-3b', '홈런': 'b-hr', '볼넷': 'b-walk', '사구': 'b-hbp', '삼진': 'b-k', '플라이 아웃': 'b-out', '땅볼 아웃': 'b-out', '희타': 'b-other', '희비': 'b-other', '병살': 'b-out' };
+const _esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function _mountRecordLayout() {
+  const fw = document.querySelector('.pnl-center .field-wrap');
+  const qb = $('quickBar');
+  if (fw && qb) fw.after(qb);
+
+  if (qb && !$('recentMini')) {
+    const rm = document.createElement('section');
+    rm.id = 'recentMini';
+    rm.className = 'recent-mini';
+    rm.setAttribute('aria-label', '최근 기록');
+    rm.innerHTML = '<div class="rm-hd"><span class="rm-title">최근 기록</span>'
+      + '<button type="button" class="rm-all" onclick="shellRecSheet(true)">전체 보기 <span id="rmCount"></span> ›</button></div>'
+      + '<div class="rm-list" id="rmList"></div>';
+    qb.after(rm);
+  }
+
+  // 1024px 미만: 기존 타석기록 패널을 "전체 보기" 시트로 사용 (수정·삭제·선수별 보기·순서 변경 그대로)
+  const pr = document.querySelector('.pnl-right');
+  if (pr && !pr.querySelector('.rec-sheet-hd')) {
+    const hd = document.createElement('div');
+    hd.className = 'rec-sheet-hd';
+    hd.innerHTML = '<span>타석 기록</span><button type="button" class="sl-pop-x" onclick="shellRecSheet(false)" aria-label="닫기">✕</button>';
+    pr.insertBefore(hd, pr.firstChild);
+  }
+  _renderRecentMini();
+}
+
+function _renderRecentMini() {
+  const list = $('rmList');
+  if (!list || typeof AS === 'undefined') return;
+  const abs = AS.abs || [];
+  const cnt = $('rmCount');
+  if (cnt) cnt.textContent = abs.length ? '(' + abs.length + ')' : '';
+  if (!abs.length) {
+    list.innerHTML = '<div class="rm-empty">타석을 기록하면 여기에 표시됩니다</div>';
+    return;
+  }
+  list.innerHTML = abs.slice(-2).reverse().map((a, i) => {
+    const who = (a.bnum ? '#' + a.bnum + ' ' : '') + (a.bname || '');
+    const detail = [a.inn, a.dir, a.rbi > 0 ? a.rbi + '타점' : ''].filter(Boolean).join(' · ');
+    return '<div class="rm-item' + (i === 0 ? ' rec-latest' : '') + '">'
+      + '<span class="badge ' + (REC_BADGE[a.res] || 'b-other') + '">' + _esc(a.res) + '</span>'
+      + '<div class="rm-info"><b>' + _esc(who) + '</b><small>' + _esc(detail) + '</small></div>'
+      + (i === 0 ? '<button type="button" class="rec-undo" onclick="undoLast()" title="가장 최근 기록 취소">↶ 되돌리기</button>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function shellRecSheet(open) {
+  document.body.classList.toggle('rec-sheet-open', !!open);
+  const bd = $('recSheetBackdrop');
+  if (bd) bd.classList.toggle('open', !!open);
 }
 
 // ── 기존 진입점 호환 ────────────────────────────────────────
@@ -552,6 +611,7 @@ window.shellDrawer = shellDrawer;
 window.shellMenu = shellMenu;
 window.shellScore = shellScore;
 window.shellClosePops = shellClosePops;
+window.shellRecSheet = shellRecSheet;
 
 function _init() {
   _mount();
@@ -560,6 +620,7 @@ function _init() {
   _updateChipNext();
   _mountHeader();
   _patchAutoSave();
+  _mountRecordLayout();
 }
 
 if (document.readyState === 'loading') {

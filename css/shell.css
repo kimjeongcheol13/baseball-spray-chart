@@ -147,14 +147,7 @@
 /* 왼쪽 라인업 패널과 모바일 타자 줄은 서랍으로 대체 */
 .pnl-left,
 .mob-batter-wrap{display:none!important}
-@media(min-width:721px){
-  .app-layout,
-  .app-layout.panel-collapsed,
-  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr) var(--rp-w,minmax(280px,1fr))!important}
-  .app-layout.panel-collapsed{grid-template-columns:minmax(0,1fr) 0px!important}
-  .pnl-center{grid-column:1!important}
-  .pnl-right{grid-column:2!important}
-}
+/* (5단계) 열 구성은 아래 '데스크톱 레이아웃' 블록에서 폭별로 정의 */
 
 /* 현재 타자 칩 */
 .cur-batter-chip{
@@ -350,3 +343,72 @@
 /* ☰로 옮겨온 기존 버튼(고대비·안내 모드)도 메뉴 항목 크기로 */
 .slm #hcToggleBtn,.slm #helpModeBtn{padding:10px!important;font:600 13px var(--font)!important;border:none!important;border-radius:10px!important;color:var(--text)!important;background:none!important}
 .slm #helpModeBtn.active{color:#f6c23e!important}
+
+
+/* ═══ 5단계: 데스크톱 레이아웃 (모바일 구조 재사용 + 1024px↑ 오른쪽 기록 패널) ═══ */
+
+/* 전체 콘텐츠 최대 폭 1200px, 가운데 정렬 */
+.app-layout{width:100%;max-width:1200px;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
+.app-hdr{
+  padding-left:max(12px,calc((100% - 1200px) / 2 + 12px))!important;
+  padding-right:max(12px,calc((100% - 1200px) / 2 + 12px))!important;
+}
+@media(min-width:721px){
+  .sl-pop{right:max(12px,calc((100vw - 1200px) / 2 + 12px))}
+}
+
+/* 결과 버튼: 필드 바로 아래 */
+.pnl-center .quick-bar{margin:0;border-top:1px solid var(--border)}
+
+/* 최근 기록 2개 + 전체 보기 (1024px 미만) */
+.recent-mini{flex-shrink:0;align-self:stretch;width:100%;box-sizing:border-box;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--bg-card)}
+.rm-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.rm-title{font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.3px}
+.rm-all{background:none;border:none;color:var(--sl-signal);font:700 12px var(--font);cursor:pointer;padding:6px 2px;min-height:32px}
+.rm-list{display:flex;flex-direction:column;gap:6px}
+.rm-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg-raised)}
+.rm-item.rec-latest{border-color:rgba(75,140,245,.55);box-shadow:inset 3px 0 0 var(--sl-signal)}
+.rm-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.rm-info b{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-info small{font-size:10.5px;color:var(--text3)}
+.rm-item .rec-undo{margin-top:0}
+.rm-empty{font-size:11px;color:var(--text3);text-align:center;padding:10px 0}
+
+/* 1024px 미만: 한 열 (모바일과 같은 구조), 오른쪽 패널은 '전체 보기' 시트로만 */
+.rec-sheet-hd{display:none}
+.rec-sheet-backdrop{display:none}
+@media(max-width:1023px){
+  .app-layout,
+  .app-layout.panel-collapsed,
+  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr)!important}
+  .pnl-center{grid-column:1!important}
+  .pnl-right{display:none!important}
+  .pnl-right>.pnl-resize-handle{display:none!important}
+
+  body.rec-sheet-open .pnl-right{
+    display:flex!important;flex-direction:column;
+    position:fixed;left:0;right:0;bottom:0;top:12vh;z-index:470;
+    max-height:none;min-height:0;width:auto;max-width:720px;margin:0 auto;
+    background:var(--bg-card);border:1px solid var(--border2);border-bottom:none;
+    border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);
+    padding-bottom:env(safe-area-inset-bottom,0px);overflow:hidden;
+  }
+  body.rec-sheet-open .rec-sheet-hd{
+    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+    padding:10px 12px 6px 16px;font-size:14px;font-weight:800;color:var(--text);
+  }
+  body.rec-sheet-open .pnl-right .tab-body{flex:1;min-height:0;overflow-y:auto;display:block}
+  body.rec-sheet-open .pnl-right .tab-pnl{width:auto;padding-bottom:16px}
+  .rec-sheet-backdrop.open{display:block;position:fixed;inset:0;z-index:465;background:rgba(0,0,0,.5)}
+}
+
+/* 1024px 이상: 필드 | 타석기록 목록 */
+@media(min-width:1024px){
+  .app-layout,
+  body.game-focus .app-layout{grid-template-columns:minmax(0,1fr) var(--rp-w,380px)!important}
+  .app-layout.panel-collapsed{grid-template-columns:minmax(0,1fr) 0px!important}
+  .pnl-center{grid-column:1!important}
+  .pnl-right{grid-column:2!important;display:flex!important}
+  .recent-mini{display:none}
+}
+@media(min-width:721px){.pnl-center .qb-btn{min-height:40px}}

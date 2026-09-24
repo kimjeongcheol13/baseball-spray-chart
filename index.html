@@ -61,7 +61,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=65">
+<link rel="stylesheet" href="css/styles.css?v=66">
 <link rel="stylesheet" href="css/features.css?v=23">
 <style>
 /* ── Onboarding overlay ── */
@@ -1396,6 +1396,7 @@ var _kakaoSdkLoaded = false;
         <button class="mm-item" id="authBtn" onclick="openLoginModal();closeMoreMenu()" title="로그인하면 다른 기기에서도 이어서 사용할 수 있어요">👤 로그인</button>
         <div class="mm-divider"></div>
         <button class="mm-item" onclick="showHelpMenu();closeMoreMenu()">❓ 도움말</button>
+        <button class="mm-item" onclick="fieldFeedbackOpen();closeMoreMenu()">💬 피드백</button>
         <button class="mm-item btn-help-mode" id="helpModeBtn" onclick="toggleHelpMode()" title="도움말 모드 — 궁금한 버튼을 탭하면 설명이 표시됩니다">💡 안내 모드</button>
         <div class="mm-divider"></div>
         <button class="mm-item mm-home" onclick="goHome()">← 홈으로</button>
@@ -1558,6 +1559,7 @@ var _kakaoSdkLoaded = false;
     <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
     <button class="mab-sheet-btn" onclick="showHelpMenu();mabMoreClose()">❓ 도움말</button>
     <button class="mab-sheet-btn" onclick="toggleHelpMode();mabMoreClose()">💡 안내 모드</button>
+    <button class="mab-sheet-btn" onclick="fieldFeedbackOpen();mabMoreClose()">💬 피드백</button>
     <div style="height:1px;background:#2a2a3a;margin:4px 16px"></div>
     <button class="mab-sheet-btn" style="color:#6b7280" onclick="goHome();mabMoreClose()">← 홈으로</button>
   </div>
@@ -1580,6 +1582,7 @@ var _kakaoSdkLoaded = false;
     <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('chart',document.getElementById('tab-chart'))">📤 내보내기</button>
     <button class="mab-sheet-btn" onclick="closeMobMoreSheet();swTab('team',document.getElementById('tab-team'));renderTeamDashboard()">🏟️ 팀 대시보드</button>
     <button class="mab-sheet-btn" id="mobAccountBtn" onclick="closeMobMoreSheet();openLoginModal()">👤 계정 / 팀 관리</button>
+    <button class="mab-sheet-btn" onclick="closeMobMoreSheet();fieldFeedbackOpen()">💬 피드백</button>
   </div>
 </div>
 
@@ -2526,8 +2529,7 @@ var _kakaoSdkLoaded = false;
   <span id="fieldOfflineCount" style="font-weight:400;opacity:.75"></span>
 </div>
 
-<!-- FIELD: Feedback Button & Modal -->
-<button id="fieldFeedbackBtn" onclick="fieldFeedbackOpen()">💬 피드백</button>
+<!-- FIELD: Feedback Modal (진입점: 메뉴 → 💬 피드백) -->
 
 <div id="fieldFeedbackModal" onclick="fieldFeedbackClose()">
   <div class="ffm-sheet" onclick="event.stopPropagation()">
@@ -2797,7 +2799,6 @@ function _makeDraggable(el, ignoreSelector) {
 
 document.addEventListener('DOMContentLoaded', function() {
   _makeDraggable(document.getElementById('fabWrap'), '.fab-pop');
-  _makeDraggable(document.getElementById('fieldFeedbackBtn'), null);
 
 });
 </script>

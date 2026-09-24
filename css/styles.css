@@ -880,6 +880,24 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 @media(max-width:720px){.quick-bar{padding:4px 6px;gap:4px;width:100%}.qb-btn{min-height:44px;font-size:13px;border-radius:10px}}
 /* 데스크톱: 빠른입력 버튼줄을 조금 더 얇게 해서 필드가 쓸 수 있는 세로 공간을 넓힘 */
 @media(min-width:721px){.quick-bar{padding:3px 10px}.qb-btn{min-height:30px}.batter-bar{padding:4px 14px}}
+.qb-hbp{background:rgba(147,197,253,.14);color:#93c5fd;border:1.5px solid rgba(147,197,253,.34)}
+/* 타구 없는 결과(삼진·볼넷·사구): 필드 밖 작은 버튼 — 터치 타겟 44px 유지 */
+.quick-bar.qb-noball{justify-content:center}
+.quick-bar.qb-noball .qb-btn{flex:0 1 96px;min-height:44px!important;font-size:12px!important;flex-direction:row;gap:4px}
+.quick-bar.qb-noball .qb-btn small{font-size:9px!important}
+
+/* 탭 자리 결과 팝업 */
+.tap-pop{position:absolute;z-index:11;display:flex;flex-direction:column;gap:3px;padding:5px;background:var(--bg-raised,#18181f);border:1px solid var(--border2);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:default;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.tap-pop[hidden],.tap-pop .tp-row[hidden]{display:none}
+.tp-sub{font:600 10px var(--mono);color:var(--text2);text-align:center;line-height:1.2}
+.tp-row{display:flex;gap:4px}
+.tp-btn{min-width:50px;min-height:44px;padding:0 8px;border-radius:9px;font:800 13px var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .1s}
+.tp-btn:active{transform:scale(.93)}
+.tp-hit{background:rgba(45,212,160,.2);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.4)}
+.tp-xbh,.tp-2b{background:rgba(75,140,245,.2);color:#4b8cf5;border:1.5px solid rgba(75,140,245,.4)}
+.tp-3b{background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.38)}
+.tp-hr{background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.38)}
+.tp-out{background:rgba(67,76,94,.25);color:#94a3b8;border:1.5px solid rgba(67,76,94,.45)}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    SWIPE HINT (?앹뾽 ?ㅼ??댄봽 ?뚰듃)

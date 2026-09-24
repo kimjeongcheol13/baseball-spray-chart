@@ -62,7 +62,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=67">
+<link rel="stylesheet" href="css/styles.css?v=68">
 <link rel="stylesheet" href="css/features.css?v=24">
 <link rel="stylesheet" href="css/shell.css?v=6">
 <style>
@@ -1086,11 +1086,10 @@ var _kakaoSdkLoaded = false;
       <span id="curPitchZone" style="font-size:10px;color:#9ca3af"></span>
     </div>
     <!-- 상단 고정 퀵버튼 바 -->
-    <div class="quick-bar" id="quickBar" data-help-title="⚡ 퀵버튼 바" data-help="필드를 탭하지 않고 결과만 <b>즉시 1탭으로 기록</b>하는 버튼입니다.<br>타자를 선택한 뒤 버튼을 탭하면 바로 기록됩니다:<br>• 안타(1B) · 아웃(G/O) · 삼진(K) · 볼넷(BB)">
-      <button class="qb-btn qb-hit" onclick="recQuick('안타')" title="안타 즉시 기록">안타<small>1B</small></button>
-      <button class="qb-btn qb-out" onclick="recQuick('땅볼 아웃')" title="아웃 즉시 기록">아웃<small>G/O</small></button>
+    <div class="quick-bar qb-noball" id="quickBar" data-help-title="⚡ 타구 없는 결과" data-help="타구 위치가 없는 결과를 <b>즉시 1탭으로 기록</b>합니다.<br>• 삼진(K) · 볼넷(BB) · 사구(HBP)<br>안타·장타·아웃은 필드를 탭하면 그 자리에 뜨는 팝업에서 고르세요.">
       <button class="qb-btn qb-k" onclick="recQuick('삼진')" title="삼진 즉시 기록">삼진<small>K</small></button>
       <button class="qb-btn qb-bb" onclick="recQuick('볼넷')" title="볼넷 즉시 기록">볼넷<small>BB</small></button>
+      <button class="qb-btn qb-hbp" onclick="recQuick('사구')" title="사구 즉시 기록">사구<small>HBP</small></button>
     </div>
     <div class="sl-st-bar" id="slStBar" style="display:none">
       <button class="sl-st-btn sl-st-on" data-st="standard" onclick="setStadium('standard')"><span class="sl-st-emoji">⚾</span><span class="sl-st-name">표준</span></button>
@@ -1098,7 +1097,7 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭하면 결과 입력 창이 나타납니다.<br>팝업에서 <b>스와이프</b>하면 더욱 빠르게:<br>→ 안타 &nbsp; ← 아웃 &nbsp; ↑ 볼넷 &nbsp; ↓ 삼진"><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭한 자리 옆에 뜨는 팝업에서 <b>안타 · 장타 · 아웃</b>을 고르세요.<br>팝업 바깥을 탭하면 취소됩니다."><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="tapPop" class="tap-pop" role="dialog" aria-label="타구 결과 선택" hidden><div class="tp-sub" id="tapPopSub"></div><div class="tp-row" id="tapPopMain"><button type="button" class="tp-btn tp-hit" data-res="안타">안타</button><button type="button" class="tp-btn tp-xbh" data-act="xbh">장타</button><button type="button" class="tp-btn tp-out" data-res="땅볼 아웃">아웃</button></div><div class="tp-row" id="tapPopXbh" hidden><button type="button" class="tp-btn tp-2b" data-res="2루타">2B</button><button type="button" class="tp-btn tp-3b" data-res="3루타">3B</button><button type="button" class="tp-btn tp-hr" data-res="홈런">HR</button></div></div><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 아래 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
     <!-- 미니 스프레이차트 (기록 직후 즉시 표시) -->
@@ -2275,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=94"></script>
+<script defer src="js/core.js?v=95"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=16"></script>
 <script>

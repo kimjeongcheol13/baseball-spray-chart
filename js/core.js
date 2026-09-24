@@ -1113,6 +1113,8 @@ window.setStadium = function setStadium(id){
 
 var _ftLabelTimer;
 function onFClick(e){
+  // 탭 자리 결과 팝업이 열려 있으면: 필드 탭 = 취소
+  if(_tp){_tpCancel();return;}
   // 팝업 열린 상태에서 field 클릭 이벤트 차단
   if(document.querySelector('.overlay.show'))return;
   // 타자 미선택: 라인업이 비어 있으면 "타자 1" 자동 생성, 아니면 선택 요청
@@ -1122,27 +1124,13 @@ function onFClick(e){
   const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
   if(dy>0||dist>FS*.97)return;
   closeHitDetail();
-  oCtx.clearRect(0,0,FS,FS);
-  if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
-  oCtx.beginPath();oCtx.arc(x,y,10,0,Math.PI*2);oCtx.fillStyle='rgba(255,255,255,.2)';oCtx.fill();
-  oCtx.beginPath();oCtx.arc(x,y,4.5,0,Math.PI*2);oCtx.fillStyle='#fff';oCtx.fill();
-  oC.classList.add('show');
   const ang=Math.atan2(dy,dx);const deg=(ang+Math.PI)*180/Math.PI;
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
   var _st=STADIUMS[AS.stadium]||STADIUMS.standard;
   var _lf=Math.round(_st.lfDist*3.281),_cf=Math.round(_st.cfDist*3.281),_rf=Math.round(_st.rfDist*3.281);
   var _wallFt={LF:_lf,LC:Math.round((_lf+_cf)/2),CF:_cf,RC:Math.round((_cf+_rf)/2),RF:_rf};
   const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
-  // ── 클릭 위치 거리 말풍선 (2초 후 자동 소거) ──
   clearTimeout(_ftLabelTimer);
-  var _estM=Math.round(estFt*0.3048);
-  oCtx.save();oCtx.font='bold '+Math.floor(FS*.042)+'px monospace';oCtx.fillStyle='rgba(255,255,255,.9)';oCtx.textAlign='left';
-  oCtx.fillText(_estM+'m',Math.min(x+14,FS-46),Math.max(y-14,14));oCtx.restore();
-  _ftLabelTimer=setTimeout(function(){
-    oCtx.clearRect(0,0,FS,FS);if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
-    oCtx.beginPath();oCtx.arc(x,y,10,0,Math.PI*2);oCtx.fillStyle='rgba(255,255,255,.2)';oCtx.fill();
-    oCtx.beginPath();oCtx.arc(x,y,4.5,0,Math.PI*2);oCtx.fillStyle='#fff';oCtx.fill();
-  },2000);
   AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
@@ -1153,9 +1141,100 @@ function onFClick(e){
     return;
   }
   AS.rbi=0;document.getElementById('rbiVal').textContent='0';
-  document.getElementById('hitSub').textContent=`방향: ${dir} · ${Math.round(estFt*0.3048)}m (${estFt}ft)`;
-  openOverlay('hitOverlay');
+  _tpOpen(x,y,`${dir} · ${Math.round(estFt*0.3048)}m`);
 }
+
+// ── 탭 자리 결과 팝업: 탭 지점 옆에서 [안타][장타][아웃] → 장타는 [2B][3B][HR] ──
+// 선택 시 기존 recHit()으로 저장하므로 타석 기록 형식은 그대로
+var _tp=null; // 열려 있을 때 {x,y} (FS 좌표)
+var _TP_GAP=24; // 손가락에 가리지 않도록 탭 지점과 띄우는 거리(px)
+function _tpMarker(x,y){
+  oCtx.clearRect(0,0,FS,FS);
+  if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
+  oCtx.save();
+  oCtx.setLineDash([4,3]);
+  oCtx.beginPath();oCtx.arc(x,y,12,0,Math.PI*2);
+  oCtx.strokeStyle='rgba(255,255,255,.95)';oCtx.lineWidth=2;oCtx.stroke();
+  oCtx.restore();
+  oC.classList.add('show');
+}
+function _tpOpen(x,y,sub){
+  var pop=document.getElementById('tapPop'),w=document.getElementById('cwrap');
+  if(!pop||!w){openOverlay('hitOverlay');return;}
+  _tp={x:x,y:y,w:w.clientWidth};
+  _tpMarker(x,y);
+  document.getElementById('tapPopSub').textContent=sub||'';
+  document.getElementById('tapPopMain').hidden=false;
+  document.getElementById('tapPopXbh').hidden=true;
+  pop.hidden=false;
+  _tpPlace();
+}
+// 기본: 탭 지점 우측 상단. 넘치면 좌/하로 뒤집고, 양쪽 다 안 되면 위/아래 + 가로 클램프
+function _tpPlace(){
+  if(!_tp)return;
+  var pop=document.getElementById('tapPop'),w=document.getElementById('cwrap');
+  var W=w.clientWidth,H=w.clientHeight,k=W/FS;
+  var px=_tp.x*k,py=_tp.y*k,pw=pop.offsetWidth,ph=pop.offsetHeight,G=_TP_GAP;
+  var clamp=function(v,max){return Math.max(0,Math.min(v,max));};
+  var fitR=px+G+pw<=W,fitL=px-G-pw>=0,fitT=py-G-ph>=0,fitB=py+G+ph<=H;
+  var left,top;
+  if(fitR||fitL){
+    left=fitR?px+G:px-G-pw;
+    top=fitT?py-G-ph:(fitB?py+G:clamp(py-ph/2,H-ph));
+  }else{
+    left=clamp(px-pw/2,W-pw);
+    top=fitT?py-G-ph:(fitB?py+G:clamp(py-G-ph,H-ph));
+  }
+  pop.style.left=Math.round(left)+'px';
+  pop.style.top=Math.round(top)+'px';
+}
+function _tpClose(){
+  _tp=null;
+  var pop=document.getElementById('tapPop');
+  if(pop)pop.hidden=true;
+}
+function _tpCancel(){
+  if(!_tp)return;
+  _tpClose();
+  AS.pending=null;
+  if(oCtx){oCtx.clearRect(0,0,FS,FS);if(AS.showHotCold&&AS.batter){_drawHotColdOnCtx();oC&&oC.classList.add('show');}else{oC&&oC.classList.remove('show');}}
+}
+function _tpPick(res){
+  if(!_tp||!AS.pending)return;
+  _tpClose();
+  recHit(res);
+}
+document.addEventListener('DOMContentLoaded',function(){
+  var pop=document.getElementById('tapPop');
+  if(!pop)return;
+  pop.addEventListener('click',function(e){
+    var b=e.target.closest('button');
+    if(!b)return;
+    e.stopPropagation();
+    if(b.dataset.act==='xbh'){
+      document.getElementById('tapPopMain').hidden=true;
+      document.getElementById('tapPopXbh').hidden=false;
+      _tpPlace();
+      return;
+    }
+    if(b.dataset.res)_tpPick(b.dataset.res);
+  });
+  // 팝업 위 움직임이 필드의 '근처 타구 상세' 카드를 띄우지 않도록
+  pop.addEventListener('pointermove',function(e){e.stopPropagation();});
+  // 팝업 바깥 탭 → 취소 (필드 캔버스 탭은 onFClick에서 취소 처리)
+  document.addEventListener('pointerdown',function(e){
+    if(!_tp||pop.contains(e.target)||e.target===fC)return;
+    _tpCancel();
+  },true);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')_tpCancel();});
+  // 필드 크기가 바뀌면 좌표가 어긋나므로 취소
+  window.addEventListener('resize',function(){
+    setTimeout(function(){
+      var w=document.getElementById('cwrap');
+      if(_tp&&w&&w.clientWidth!==_tp.w)_tpCancel();
+    },200);
+  });
+});
 
 function recHit(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);closeHit();return;}

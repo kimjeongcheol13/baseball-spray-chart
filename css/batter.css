@@ -191,3 +191,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .bt-dot { animation: none; } }
+
+/* ── 모바일 터치 타겟 44×44px 이상 ── */
+@media (max-width: 720px) {
+  .bt-chip { height: 44px; line-height: 42px; }
+  .bt-live-btn, .bt-link-pill { min-height: 44px; }
+}

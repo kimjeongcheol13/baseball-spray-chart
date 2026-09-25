@@ -121,3 +121,11 @@
   .sp-main { grid-template-columns: 1.35fr 1fr; align-items: start; }
   .sp-acts { max-width: 560px; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 ── */
+@media (max-width: 720px) {
+  .sp-who { height: 48px; }
+  .sp-who select { height: 44px; }
+  .sp-more, .sp-rc { height: 44px; }
+  .an-link-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
+}

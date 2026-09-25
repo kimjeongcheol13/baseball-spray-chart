@@ -253,3 +253,8 @@
   body.sc-printing .an-card, body.sc-printing .sc-hero { break-inside: avoid; }
   body.sc-printing { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 ── */
+@media (max-width: 720px) {
+  #scoutInfoBanner .mobile-info-banner-close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}

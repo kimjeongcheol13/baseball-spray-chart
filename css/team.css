@@ -256,3 +256,9 @@
   .tm-inn-bar { height: 96px; }
   .tm .an-trend { max-width: 560px; margin: 0 auto; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 ── */
+@media (max-width: 720px) {
+  .tm-ldr-tabs button { height: 44px; }
+  .tm-roster thead button { min-height: 44px; min-width: 44px; }
+}

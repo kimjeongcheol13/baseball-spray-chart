@@ -370,3 +370,14 @@
 @media (min-width: 721px) {
   .ana-sub { min-height: 44px; min-width: 44px; }
 }
+
+/* ── 상단 바(점수 칩 · ☰) 터치 타겟 44px (모바일) ── */
+@media (max-width: 720px) {
+  .score-chip { min-height: 44px; }
+  .hdr-menu-btn { width: 44px; height: 44px; }
+}
+/* ── 상단 바(점수 칩 · ☰) 터치 타겟 44px (데스크톱: 이번만 예외) ── */
+@media (min-width: 721px) {
+  .score-chip { min-height: 44px; }
+  .hdr-menu-btn { width: 44px; height: 44px; }
+}

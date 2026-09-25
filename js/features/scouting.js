@@ -759,54 +759,17 @@ function _drawScoutFieldCanvas(allAbs) {
   const W = c.width, H = c.height;
   ctx.clearRect(0, 0, W, H);
 
-  const cx = W / 2, cy = H * 0.88;
-  const R = W * 0.46;
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, -Math.PI, 0);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(22,40,30,0.85)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(45,212,120,0.25)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  const sqR = R * 0.38;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - sqR);
-  ctx.lineTo(cx + sqR, cy);
-  ctx.lineTo(cx, cy + sqR);
-  ctx.lineTo(cx - sqR, cy);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(180,130,60,0.3)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx - R, cy - 0.05); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + R, cy - 0.05); ctx.stroke();
-
   const RES_COL = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
     '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
     '삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd'};
   const HITS_SET = new Set(['안타','내야안타','2루타','3루타','홈런']);
 
-  allAbs.forEach(ab => {
-    if (ab.x == null || ab.y == null) return;
-    const px = ab.x * W;
-    const py = ab.y * H * (220 / 440);
-    const isOut = !HITS_SET.has(ab.res);
-    const col = RES_COL[ab.res] || '#94a3b8';
-    ctx.beginPath();
-    ctx.arc(px, py, isOut ? 2.5 : 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = col + 'cc';
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
+  // 기록 필드와 같은 부채꼴 모양 (core.js 공용 렌더러)
+  if (typeof _drawConeMini !== 'function') return;
+  _drawConeMini(ctx, W, H, allAbs, {
+    r: 3.5,
+    color: ab => RES_COL[ab.res] || '#94a3b8',
+    isOut: ab => !HITS_SET.has(ab.res),
   });
 }
 

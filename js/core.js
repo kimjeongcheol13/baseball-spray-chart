@@ -392,6 +392,7 @@ function setTabMode(mode,el){
 // ③ 데이터 백업 안내
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _gameSaved=true;
+var _curSaveKey=null;   // 지금 화면 경기의 저장 키 — 다시 저장하면 새 항목 대신 이 항목을 덮어쓴다 (새 경기·공유 경기 = null)
 var _saveReminderShown=false;
 var _saveReminderTimer=null;
 function checkSaveReminder(){
@@ -2286,16 +2287,23 @@ function saveGame(){
     var th=(document.getElementById('tHome').value||'홈팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'홈팀';
     var ta=(document.getElementById('tAway').value||'원정팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'원정팀';
     var ds=new Date().toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\. /g,'').replace(/\./g,'');
-    const key='sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
-    const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),cond:getGameCond(),pitchers:AS.pitchers};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-    saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
+    // 이미 저장한 경기(불러온 경기 포함)를 다시 저장하면 기존 항목을 덮어쓴다 — 경기 날짜·목록 순서(ts)는 그대로
+    const si=_curSaveKey?saves.findIndex(function(s){return s.key===_curSaveKey;}):-1;
+    let prev=null;
+    if(si>=0){try{prev=JSON.parse(localStorage.getItem(_curSaveKey));}catch(e){prev=null;}}
+    const key=prev?_curSaveKey:'sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
+    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers});
+    const label=_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as;
+    if(prev)saves[si].label=label;
+    else saves.push({key,label,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
-    if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
+    _curSaveKey=key;
+    if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
-    showToast('경기 저장 완료 ✓',false);
+    showToast(prev?'저장한 경기를 업데이트했어요 ✓':'경기 저장 완료 ✓',false);
     triggerSavePulse();
     if(_afterSaveCb){var cb=_afterSaveCb;_afterSaveCb=null;setTimeout(cb,300);}   // 새 경기 저장 확인에서 온 저장: 요약 대신 새 경기
     else setTimeout(showGameSummary, 400);
@@ -2553,6 +2561,7 @@ function importGames(input) {
 
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
+  _curSaveKey=key;   // 이 경기를 다시 저장하면 이 항목을 덮어씀
   AS.curGame=d.ts||key.replace('sl_',''); // Fix: 자동저장 key를 이 게임에 고정
   document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
   AS.hs=d.hs||0;AS.as=d.as||0;document.getElementById('scH').textContent=AS.hs;document.getElementById('scA').textContent=AS.as;
@@ -2579,6 +2588,7 @@ function restoreGame(key){
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
   _updateSaveUI(false);
   updateAll();
+  _gameSaved=true;_updateSaveUI(false);   // updateAll이 '저장 안 됨'으로 바꾸므로 되돌림 (불러온 직후엔 새 기록 없음)
   showToast('경기 불러오기 완료',false);
 }
 
@@ -4887,6 +4897,7 @@ function _restorePitchersFromPayload(payloadPitchers){
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
+  _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
   /* 팀명 · 점수 */
   AS.hs=payload.hs||0; AS.as=payload.as||0;
   var tH=document.getElementById('tHome'); if(tH)tH.value=payload.ht||'홈팀';
@@ -6204,6 +6215,7 @@ function startFromWizard(){
   var away=(awayInp&&awayInp.value.trim())||awayInp.placeholder||'원정팀';
 
   // ── 새 경기: AS 상태 완전 초기화 ──
+  _curSaveKey=null;   // 새 경기는 처음 저장할 때 새 항목
   AS.hs=0; AS.as=0;
   AS.home_lineup=[]; AS.away_lineup=[];
   AS.abs=[]; AS.batter=null; AS.batterFilter=false;
@@ -7778,6 +7790,7 @@ function _archQuietSave(){
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
         localStorage.setItem('sl_saves',JSON.stringify(saves));
+        _curSaveKey=latest.key;_gameSaved=true;
         return;
       }
     }
@@ -7791,6 +7804,7 @@ function _archQuietSave(){
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
+    _curSaveKey=key;_gameSaved=true;
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
 }
 

@@ -102,7 +102,14 @@ function _refreshSpray() {
 function _renderSub(sub) {
   try {
     switch (sub) {
-      case 'spray': _refreshSpray(); break;
+      case 'spray':
+        _refreshSpray();   // 기록 필드 캔버스는 PNG 저장 등에 쓰이므로 계속 갱신
+        if (window.openSprayView) {
+          const sec = document.querySelector('#anaBody .ana-sec[data-sub="spray"]');
+          if (sec) sec.classList.add('sp-on');
+          window.openSprayView();
+        }
+        break;
       case 'batter': if (window.openBatterView) window.openBatterView(); break;
       case 'pitcher': if (window.openPitcherView) window.openPitcherView(); break;
       case 'team': if (window.openTeamView) window.openTeamView(); break;

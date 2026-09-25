@@ -171,8 +171,9 @@ export function sprayFigure(P, mark = '') {
   const pts = P.abs.filter(a => a.x != null && a.y != null);
   let field = '', dots = '';
   if (fp) {
+    // 각도를 파울라인 바로 안쪽으로: deg 0에서 sin(-π)의 반올림 오차로 y가 정확히 1이 되면 반대편(180°)으로 계산됨
     const at = (deg, dist) => {
-      const ang = deg * Math.PI / 180 - Math.PI;
+      const ang = Math.max(0.5, Math.min(179.5, deg)) * Math.PI / 180 - Math.PI;
       const p = fp({ x: 0.5 + Math.cos(ang) * dist, y: 1 + Math.sin(ang) * dist });
       return (p[0] * 100).toFixed(1) + ',' + (p[1] * 100).toFixed(1);
     };

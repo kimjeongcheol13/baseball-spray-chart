@@ -5352,14 +5352,16 @@ function _hidePzCard(){if(_pzCardEl){_pzCardEl.remove();_pzCardEl=null;}}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE D: 성적 카드 PNG (개인 9:16 / 팀 1:1 / 시즌)
+// 디자인: 랜딩 페이지와 같은 "종이 기록지" 톤 — 크림 종이 + 잉크 + 빨간 펜
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _cardType='personal';
 var _cardBid=null; // 개인 카드 대상 선수 id
 
-// 카드 공통 팔레트/폰트 — 브랜드 컬러(Navy Black / Signal Blue / Hit Red / Amber / Teal)
-var CARD_C={bg:'#0a0e17',ink:'#eef0f8',sub:'rgba(238,240,248,.66)',mute:'rgba(238,240,248,.42)',line:'rgba(238,240,248,.12)',panel:'rgba(238,240,248,.04)',blue:'#4b8cf5',red:'#f56565',amber:'#f6c23e',teal:'#2dd4a0'};
-var CARD_F={kr:'"Noto Sans KR",sans-serif',mono:'"JetBrains Mono",monospace'};
-var CARD_SCALE=2; // 540x960 논리 좌표 → 1080x1920 PNG (인스타 스토리 해상도)
+// 팔레트: 종이 / 잉크(Navy Black) / 빨간 펜(Hit Red) / 파란 펜(Signal Blue)
+var CARD_C={paper:'#F4EFE3',paper2:'#F7F2E7',rule:'#E2D9C6',ink:'#14192B',ink2:'#4A4F62',faint:'#B3AA98',red:'#D8352F',blue:'#2456D9'};
+var CARD_F={disp:'"Black Han Sans","Noto Sans KR",sans-serif',mono:'"IBM Plex Mono",monospace',pen:'"Nanum Pen Script",cursive',kr:'"Noto Sans KR",sans-serif'};
+var CARD_SCALE=2; // 논리 좌표 540 기준 → 1080px PNG
+var CARD_HITS=['안타','내야안타','2루타','3루타','홈런'];
 
 function openCardPreview(){
   _cardType='personal';
@@ -5371,9 +5373,11 @@ function openCardPreview(){
   // 웹폰트가 늦게 로드되면 캔버스가 기본 글꼴로 그려지므로 로드 후 한 번 더 그림
   if(document.fonts&&document.fonts.load){
     Promise.all([
-      document.fonts.load('900 40px "Noto Sans KR"','가'),
-      document.fonts.load('700 20px "Noto Sans KR"','가'),
-      document.fonts.load('700 20px "JetBrains Mono"','0')
+      document.fonts.load('400 40px "Black Han Sans"','가0'),
+      document.fonts.load('400 24px "Nanum Pen Script"','가0'),
+      document.fonts.load('600 14px "IBM Plex Mono"','A0'),
+      document.fonts.load('500 14px "IBM Plex Mono"','A0'),
+      document.fonts.load('700 16px "Noto Sans KR"','가')
     ]).then(_drawCard).catch(function(){});
   }
 }
@@ -5430,17 +5434,7 @@ function _fillCardPlayerSel(){
 }
 function setCardPlayer(id){_cardBid=id;_drawCard();}
 
-/* ── 공통 헬퍼 ────────────────────────────────── */
-function _cardCtx(W,H){
-  var cvs=document.getElementById('cardPreviewCanvas');
-  if(!cvs)return null;
-  cvs.width=W*CARD_SCALE;cvs.height=H*CARD_SCALE;
-  cvs.style.width='100%';cvs.style.maxHeight='62vh';cvs.style.objectFit='contain';
-  var ctx=cvs.getContext('2d');
-  ctx.setTransform(CARD_SCALE,0,0,CARD_SCALE,0,0);
-  ctx.fillStyle=CARD_C.bg;ctx.fillRect(0,0,W,H);
-  return ctx;
-}
+/* ── 데이터 헬퍼 ──────────────────────────────── */
 // .333 / 1.250 형식 (1 이상이면 정수부 표시)
 function _cardFmt(v){
   if(v==null||isNaN(v))return '-';
@@ -5461,38 +5455,7 @@ function _cardStats(abs){
   var avg=ab?h/ab:0,obp=obpD?(h+bb+hbp)/obpD:0,slg=ab?tb/ab:0;
   return {pa:pa,ab:ab,h:h,s1:s1,s2:s2,s3:s3,hr:hr,bb:bb,hbp:hbp,sf:sf,so:so,rbi:rbi,tb:tb,avg:avg,obp:obp,slg:slg,ops:obp+slg};
 }
-// 긴 텍스트는 폭에 맞춰 글자 크기를 줄임
-function _cardFitFont(ctx,text,weight,size,family,maxW,minSize){
-  var s=size;
-  do{ctx.font=weight+' '+s+'px '+family;if(ctx.measureText(text).width<=maxW)break;s-=1;}while(s>(minSize||10));
-  return s;
-}
-function _cardSpacing(ctx,px){if('letterSpacing' in ctx)ctx.letterSpacing=px+'px';}
-
-// 상단: 워드마크 + 날짜
-function _cardHeader(ctx,W,right){
-  ctx.textBaseline='alphabetic';ctx.textAlign='left';
-  ctx.font='700 15px '+CARD_F.mono;_cardSpacing(ctx,3);
-  ctx.fillStyle=CARD_C.blue;ctx.fillText('SPRAY',32,44);
-  var w=ctx.measureText('SPRAY').width;
-  ctx.fillStyle=CARD_C.teal;ctx.fillText('LAB',32+w,44);
-  _cardSpacing(ctx,0);
-  ctx.font='500 13px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.textAlign='right';
-  ctx.fillText(right||_cardDate(),W-32,44);
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(32,64,W-64,1);
-}
-// 하단: 태그라인 + 계정
-function _cardFooter(ctx,W,H){
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(32,H-56,W-64,1);
-  ctx.textBaseline='alphabetic';
-  ctx.font='600 11px '+CARD_F.mono;_cardSpacing(ctx,2);
-  ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
-  ctx.fillText('YOUR SWING, VISUALIZED',32,H-26);
-  _cardSpacing(ctx,0);
-  ctx.textAlign='right';ctx.fillText('@spraylab2026',W-32,H-26);
-}
-
-// 결과 → 중계 문구 (좌전 안타, 우월 홈런, 중견수 뜬공 …)
+// 결과 → 기록지 문구 (좌전 안타, 우월 홈런, 중견수 뜬공 …)
 function _cardAbText(a){
   var d=a.dir,r=a.res;
   var HIT={LF:'좌전',LC:'좌중간',CF:'중전',RC:'우중간',RF:'우전'};
@@ -5507,171 +5470,316 @@ function _cardAbText(a){
   return {'사구':'몸에 맞는 공','희타':'희생번트','희비':'희생플라이','병살':'병살타'}[r]||r;
 }
 function _cardInn(inn){
-  if(inn==null||inn==='')return '';
+  if(inn==null||inn==='')return '-';
   var s=String(inn).replace(/[초말]$/,'');
   return /^\d+$/.test(s)?s+'회':s;
 }
 
-// 스프레이 차트: 앱 필드와 같은 좌표계 (홈 = (0.5,1), 펜스 반지름 0.97)
-function _cardField(ctx,cx,cy,S,abs,dots){
-  var st=STADIUMS[AS.stadium]||STADIUMS.standard;
+/* ── 그리기 헬퍼 ──────────────────────────────── */
+function _cardCtx(W,H){
+  var cvs=document.getElementById('cardPreviewCanvas');
+  if(!cvs)return null;
+  cvs.width=W*CARD_SCALE;cvs.height=H*CARD_SCALE;
+  // 비율 유지한 채 화면 높이 60% 안에 맞춤 (레터박스 없이)
+  cvs.style.width='100%';cvs.style.height='auto';cvs.style.maxWidth='calc(60vh * '+(W/H).toFixed(4)+')';cvs.style.margin='0 auto';
+  var ctx=cvs.getContext('2d');
+  ctx.setTransform(CARD_SCALE,0,0,CARD_SCALE,0,0);
+  ctx.textBaseline='alphabetic';
+  _cardPaper(ctx,W,H);
+  return ctx;
+}
+// 결정적 난수 (다시 그려도 종이 결이 같도록)
+function _cardRng(seed){var s=seed;return function(){s=(s*16807)%2147483647;return (s-1)/2147483646;};}
+// 크림 종이 + 괘선 + 미세한 종이 결
+function _cardPaper(ctx,W,H){
+  ctx.fillStyle=CARD_C.paper;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=CARD_C.rule;
+  for(var y=31;y<H;y+=32)ctx.fillRect(0,y,W,1);
+  var rnd=_cardRng(7);
+  ctx.fillStyle='rgba(20,25,43,.05)';
+  for(var i=0;i<W*H/90;i++)ctx.fillRect(rnd()*W,rnd()*H,.7,.7);
+}
+function _cardFont(ctx,weight,size,family){ctx.font=weight+' '+size+'px '+family;}
+// 긴 텍스트는 폭에 맞춰 글자 크기를 줄임 — 최종 크기 반환
+function _cardFit(ctx,text,weight,size,family,maxW,minSize){
+  var s=size;
+  do{_cardFont(ctx,weight,s,family);if(ctx.measureText(text).width<=maxW)break;s-=1;}while(s>(minSize||10));
+  return s;
+}
+function _cardSpacing(ctx,px){if('letterSpacing' in ctx)ctx.letterSpacing=px+'px';}
+function _cardText(ctx,text,x,y,color,align){ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.fillText(text,x,y);}
+
+// 상단: SPRAYLAB | 경기일 ____ / 상대 ____ (값은 파란 펜 손글씨)
+function _cardHeader(ctx,W,fields){
+  var X=28;
+  _cardFont(ctx,'400',28,CARD_F.disp);
+  _cardText(ctx,'SPRAYLAB',X,56,CARD_C.ink);
+  var fx=X+ctx.measureText('SPRAYLAB').width+16;
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(fx,26,2,38);
+  fx+=16;
+  fields.forEach(function(f,i){
+    var y=40+i*26;
+    _cardFont(ctx,'500',11,CARD_F.mono);
+    _cardText(ctx,f[0],fx,y,CARD_C.ink2);
+    var lx=fx+ctx.measureText(f[0]).width+8;
+    ctx.fillStyle=CARD_C.ink;ctx.fillRect(lx,y+4,W-X-lx,1);
+    _cardFit(ctx,f[1],'400',22,CARD_F.pen,W-X-lx-8,12);
+    _cardText(ctx,f[1],lx+4,y+2,CARD_C.blue);
+  });
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(X,80,W-X*2,4);
+}
+// 하단: 잉크 띠 + 태그라인
+function _cardFooter(ctx,W,H){
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(0,H-46,W,46);
+  _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
+  _cardText(ctx,'YOUR SWING, VISUALIZED',28,H-18,CARD_C.paper);
+  _cardSpacing(ctx,0);
+  _cardText(ctx,'@spraylab2026',W-28,H-18,'rgba(244,239,227,.6)','right');
+}
+// 빨간 도장
+function _cardStamp(ctx,cx,cy,text,rot){
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
+  _cardFont(ctx,'600',15,CARD_F.mono);_cardSpacing(ctx,3);
+  var w=ctx.measureText(text).width+22,h=34;
+  ctx.globalAlpha=.9;
+  ctx.strokeStyle=CARD_C.red;ctx.lineWidth=3;ctx.strokeRect(-w/2,-h/2,w,h);
+  ctx.fillStyle=CARD_C.red;ctx.textAlign='center';ctx.fillText(text,1.5,5);
+  _cardSpacing(ctx,0);
+  ctx.restore();
+}
+// 빨간 펜 밑줄 (살짝 흔들리는 손그림)
+function _cardSquiggle(ctx,x1,x2,y){
   ctx.save();
-  var g=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
-  g.addColorStop(0,st.grass[0]);g.addColorStop(1,st.grass[2]);
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.closePath();
-  ctx.fillStyle=g;ctx.fill();
-  // 워닝트랙
-  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.arc(cx,cy,S*.9,0,-Math.PI,true);ctx.closePath();
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fill();
-  // 내야
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.41,-Math.PI,0);ctx.closePath();ctx.fillStyle=st.if;ctx.globalAlpha=.75;ctx.fill();
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.33,-Math.PI,0);ctx.closePath();ctx.fillStyle=st.grass[0];ctx.globalAlpha=1;ctx.fill();
-  // 베이스 라인 다이아몬드
-  var br=S*.42;
-  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-br*.46,cy-br*.33);ctx.lineTo(cx,cy-br*.65);ctx.lineTo(cx+br*.46,cy-br*.33);ctx.closePath();ctx.stroke();
-  // 펜스
-  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.strokeStyle=CARD_C.red;ctx.lineWidth=5;ctx.lineCap='round';ctx.globalAlpha=.9;
+  ctx.beginPath();ctx.moveTo(x1,y+1);
+  var n=Math.max(2,Math.round((x2-x1)/70)),step=(x2-x1)/n;
+  for(var i=0;i<n;i++)ctx.quadraticCurveTo(x1+step*(i+.5),y+(i%2?2.5:-2.5),x1+step*(i+1),y+(i===n-1?-1:0));
+  ctx.stroke();ctx.restore();
+}
+// 잉크 테두리 박스 + 오프셋 그림자 (랜딩 페이지 CTA와 같은 느낌)
+function _cardBox(ctx,x,y,w,h,fill,shadow){
+  ctx.fillStyle=shadow||CARD_C.rule;ctx.fillRect(x+6,y+6,w,h);
+  ctx.fillStyle=fill||CARD_C.paper2;ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle=CARD_C.ink;ctx.lineWidth=3;ctx.strokeRect(x+1.5,y+1.5,w-3,h-3);
+}
+// 지표 박스 (라벨 + 큰 숫자). hl=true면 잉크로 채움
+function _cardStatBox(ctx,x,y,w,h,label,val,hl){
+  _cardBox(ctx,x,y,w,h,hl?CARD_C.ink:CARD_C.paper2,hl?CARD_C.red:CARD_C.rule);
+  _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,1.5);
+  _cardText(ctx,label,x+12,y+22,hl?'rgba(244,239,227,.7)':CARD_C.ink2);
+  _cardSpacing(ctx,0);
+  _cardFit(ctx,val,'400',30,CARD_F.disp,w-24,14);
+  _cardText(ctx,val,x+12,y+h-14,hl?CARD_C.paper:CARD_C.ink);
+}
+// 숫자 + 단위 토큰 한 줄 ("4타수 2안타 …") — 폭에 맞춰 축소, 끝 x 반환
+function _cardTokens(ctx,parts,x,y,nSize,maxW){
+  var uSize,measure=function(){
+    var w=0;parts.forEach(function(t,i){
+      _cardFont(ctx,'400',nSize,CARD_F.disp);w+=ctx.measureText(String(t[0])).width+3;
+      _cardFont(ctx,'400',uSize,CARD_F.disp);w+=ctx.measureText(t[1]).width+(i<parts.length-1?14:0);
+    });return w;};
+  do{uSize=Math.round(nSize*.62);if(measure()<=maxW)break;nSize--;}while(nSize>16);
+  var lx=x;
+  parts.forEach(function(t){
+    _cardFont(ctx,'400',nSize,CARD_F.disp);_cardText(ctx,String(t[0]),lx,y,t[2]||CARD_C.ink);
+    lx+=ctx.measureText(String(t[0])).width+3;
+    _cardFont(ctx,'400',uSize,CARD_F.disp);_cardText(ctx,t[1],lx,y,CARD_C.ink2);
+    lx+=ctx.measureText(t[1]).width+14;
+  });
+  return lx-14;
+}
+
+// 스프레이 차트 (앱 필드와 같은 좌표계: 홈=(0.5,1), 펜스 반지름 0.97) — 잉크 선화
+function _cardField(ctx,cx,cy,S,abs,dots){
+  var R=S*.97;
+  ctx.save();
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,-Math.PI,0);ctx.closePath();
+  ctx.fillStyle='rgba(36,86,217,.045)';ctx.fill();
+  // 거리 호
+  ctx.strokeStyle=CARD_C.faint;ctx.lineWidth=1;ctx.setLineDash([4,5]);
+  [.62,.8].forEach(function(k){ctx.beginPath();ctx.arc(cx,cy,S*k,-Math.PI,0);ctx.stroke();});
+  ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(cx,cy,S*.41,-Math.PI,0);ctx.stroke();
+  // 다이아몬드 + 베이스
+  var br=S*.42,bases=[[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33]];
+  ctx.strokeStyle=CARD_C.ink;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(cx,cy);bases.forEach(function(b){ctx.lineTo(b[0],b[1]);});ctx.closePath();ctx.stroke();
+  ctx.fillStyle=CARD_C.ink;
+  bases.forEach(function(b){ctx.save();ctx.translate(b[0],b[1]);ctx.rotate(Math.PI/4);ctx.fillRect(-3.5,-3.5,7,7);ctx.restore();});
+  // 펜스 + 파울라인
+  ctx.lineWidth=2.5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx+R,cy);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R,-Math.PI,0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-6);ctx.lineTo(cx+5,cy-2);ctx.lineTo(cx+5,cy+1);ctx.lineTo(cx-5,cy+1);ctx.lineTo(cx-5,cy-2);ctx.closePath();ctx.fill();
   ctx.restore();
 
-  // 타구: 궤적 선 → 번호 점 (dots=true면 궤적 없이 작은 점만 — 시즌 카드용)
   var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
-  if(dots){
+  var pos=function(a){return [cx+(a.x-.5)*S,cy+(a.y-1)*S];};
+  if(dots){ // 시즌 카드: 작은 점 (안타 빨강, 아웃 잉크 ×)
     pts.forEach(function(p){
-      var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S,col=RC[p.a.res]||'#94a3b8';
-      var out=p.a.res.indexOf('아웃')!==-1||p.a.res==='병살';
-      ctx.beginPath();ctx.arc(x,y,out?3:4.5,0,Math.PI*2);
-      ctx.fillStyle=col;ctx.globalAlpha=out?.55:.95;ctx.fill();ctx.globalAlpha=1;
+      var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;
+      if(hit){
+        ctx.beginPath();ctx.arc(xy[0],xy[1],4.5,0,Math.PI*2);ctx.fillStyle=CARD_C.red;ctx.fill();
+        if(p.a.res==='홈런'){ctx.beginPath();ctx.arc(xy[0],xy[1],8,0,Math.PI*2);ctx.strokeStyle=CARD_C.red;ctx.lineWidth=1.5;ctx.stroke();}
+      }else{
+        ctx.strokeStyle='rgba(20,25,43,.55)';ctx.lineWidth=1.6;
+        ctx.beginPath();ctx.moveTo(xy[0]-3.5,xy[1]-3.5);ctx.lineTo(xy[0]+3.5,xy[1]+3.5);ctx.moveTo(xy[0]+3.5,xy[1]-3.5);ctx.lineTo(xy[0]-3.5,xy[1]+3.5);ctx.stroke();
+      }
     });
     return;
   }
+  // 개인 카드: 궤적 선 → 번호 표시
   pts.forEach(function(p){
-    var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S;
-    var col=RC[p.a.res]||'#94a3b8',out=p.a.res.indexOf('아웃')!==-1||p.a.res==='병살';
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);
-    ctx.strokeStyle=col;ctx.globalAlpha=out?.3:.6;ctx.lineWidth=out?1.2:2;
-    if(out)ctx.setLineDash([3,4]);
+    var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(xy[0],xy[1]);
+    ctx.strokeStyle=hit?CARD_C.red:CARD_C.ink;ctx.globalAlpha=hit?.85:.45;ctx.lineWidth=hit?2.2:1.3;
+    if(!hit)ctx.setLineDash([4,4]);
     ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
   });
-  pts.forEach(function(p){
-    var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S;
-    _cardBadge(ctx,x,y,p.i+1,p.a.res,11);
+  pts.forEach(function(p){var xy=pos(p.a);_cardMark(ctx,xy[0],xy[1],p.i+1,p.a.res,10);});
+}
+// 타구 표시: 안타 = 빨간 원, 장타 = 링 1개, 홈런 = 링 2개, 아웃 = 잉크 테두리
+function _cardMark(ctx,x,y,num,res,r){
+  var hit=CARD_HITS.indexOf(res)!==-1;
+  if(res==='홈런'||res==='2루타'||res==='3루타'){
+    ctx.strokeStyle=CARD_C.red;ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.arc(x,y,r+4,0,Math.PI*2);ctx.stroke();
+    if(res==='홈런'){ctx.beginPath();ctx.arc(x,y,r+8,0,Math.PI*2);ctx.stroke();}
+  }
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fillStyle=hit?CARD_C.red:CARD_C.paper2;ctx.fill();
+  if(!hit){ctx.strokeStyle=CARD_C.ink;ctx.lineWidth=2;ctx.stroke();}
+  _cardFont(ctx,'600',Math.round(r*1.15),CARD_F.mono);
+  ctx.textBaseline='middle';
+  _cardText(ctx,String(num),x,y+1,hit?CARD_C.paper:CARD_C.ink,'center');
+  ctx.textBaseline='alphabetic';
+}
+// 범례 (오른쪽 정렬)
+function _cardLegend(ctx,rightX,y,items){
+  _cardFont(ctx,'500',11,CARD_F.mono);
+  var x=rightX;
+  items.slice().reverse().forEach(function(it){
+    var tw=ctx.measureText(it[0]).width;
+    _cardText(ctx,it[0],x,y,CARD_C.ink2,'right');
+    x-=tw+14;
+    it[1](x,y-4);
+    x-=22;
   });
 }
-// 번호 배지 (필드 점과 타석 기록 목록에서 같이 사용)
-function _cardBadge(ctx,x,y,num,res,r){
-  var col=RC[res]||'#94a3b8';
-  ctx.beginPath();ctx.arc(x,y,r+2,0,Math.PI*2);ctx.fillStyle=CARD_C.bg;ctx.fill();
-  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
-  ctx.font='700 '+Math.round(r*1.05)+'px '+CARD_F.mono;
-  ctx.fillStyle=CARD_C.bg;ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(String(num),x,y+.5);
-  ctx.textBaseline='alphabetic';
+// 기본 범례 항목: 안타 / 장타 / 아웃
+function _cardLegendItems(ctx){
+  var dot=function(x,y,fill,stroke,ring){
+    if(ring){ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.strokeStyle=CARD_C.red;ctx.lineWidth=1.3;ctx.stroke();}
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.6;ctx.stroke();}
+  };
+  return [
+    ['안타',function(x,y){dot(x,y,CARD_C.red);}],
+    ['장타',function(x,y){dot(x,y,CARD_C.red,null,true);}],
+    ['아웃',function(x,y){dot(x,y,CARD_C.paper2,CARD_C.ink);}]
+  ];
+}
+
+// 타석 기록표 (기록지 칸)
+function _cardAbTable(ctx,x,y,w,list,startNo,more){
+  var rows=5,hh=26,rh=30,h=hh+rows*rh;
+  _cardBox(ctx,x,y,w,h);
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(x,y,w,hh);
+  var cols=[['타석',.14,'center'],['이닝',.18,'center'],['결과',.5,'left'],['타점',.18,'center']];
+  var cx=[],acc=x;
+  cols.forEach(function(c){cx.push(acc);acc+=w*c[1];});
+  _cardFont(ctx,'600',11,CARD_F.mono);
+  cols.forEach(function(c,i){
+    var cw=w*c[1];
+    _cardText(ctx,c[0],c[2]==='center'?cx[i]+cw/2:cx[i]+10,y+17,CARD_C.paper,c[2]);
+  });
+  ctx.fillStyle='rgba(20,25,43,.28)';
+  for(var r=1;r<rows;r++)ctx.fillRect(x+3,y+hh+r*rh,w-6,1);
+  for(var c=1;c<cols.length;c++)ctx.fillRect(cx[c],y+hh,1,rows*rh-3);
+  list.forEach(function(a,i){
+    var ry=y+hh+i*rh+rh/2;
+    if(more&&i===rows-1){
+      _cardFont(ctx,'400',22,CARD_F.pen);
+      _cardText(ctx,'외 '+more+'타석',cx[2]+10,ry+7,CARD_C.ink2);
+      return;
+    }
+    var hit=CARD_HITS.indexOf(a.res)!==-1,pen=hit?CARD_C.red:CARD_C.blue;
+    _cardFont(ctx,'600',13,CARD_F.mono);
+    _cardText(ctx,String(startNo+i),cx[0]+w*cols[0][1]/2,ry+5,CARD_C.ink,'center');
+    _cardFont(ctx,'500',13,CARD_F.mono);
+    _cardText(ctx,_cardInn(a.inn),cx[1]+w*cols[1][1]/2,ry+5,CARD_C.ink2,'center');
+    var t=_cardAbText(a);
+    _cardFit(ctx,t,'400',24,CARD_F.pen,w*cols[2][1]-16,14);
+    _cardText(ctx,t,cx[2]+10,ry+7,pen);
+    if(a.rbi){_cardFont(ctx,'400',24,CARD_F.pen);_cardText(ctx,String(a.rbi),cx[3]+w*cols[3][1]/2,ry+7,pen,'center');}
+  });
+}
+// 빈 상태 (파란 펜 메모)
+function _cardEmpty(ctx,W,y,main,sub){
+  _cardFont(ctx,'400',34,CARD_F.pen);_cardText(ctx,main,W/2,y,CARD_C.blue,'center');
+  _cardFont(ctx,'500',12,CARD_F.mono);_cardText(ctx,sub,W/2,y+30,CARD_C.ink2,'center');
 }
 
 /* ── 개인 카드 (9:16) ─────────────────────────── */
 function _drawPersonalCard(){
   var W=540,H=960,ctx=_cardCtx(W,H);
   if(!ctx)return;
-  var X=32,CW=W-64;
-  _cardHeader(ctx,W);
+  var X=28,CW=W-X*2;
 
   var p=_cardPlayers().filter(function(q){return String(q.id)===String(_cardBid);})[0];
+  var hn=(document.getElementById('tHome')||{}).value||'홈',an=(document.getElementById('tAway')||{}).value||'원정';
   if(!p){
-    ctx.textAlign='center';ctx.fillStyle=CARD_C.sub;
-    ctx.font='700 20px '+CARD_F.kr;ctx.fillText('아직 기록된 타석이 없어요',W/2,H/2-10);
-    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
-    ctx.fillText('타석을 기록하면 선수별 카드가 만들어져요',W/2,H/2+20);
+    _cardHeader(ctx,W,[['경기일',_cardDate()],['상대','-']]);
+    _cardEmpty(ctx,W,H/2-20,'아직 기록된 타석이 없어요','타석을 기록하면 선수 카드가 만들어져요');
     _cardFooter(ctx,W,H);
     return;
   }
   var abs=AS.abs.filter(function(a){return String(a.bid)===String(p.id);});
   var s=_cardStats(abs);
-
-  // 경기 정보
-  var hn=(document.getElementById('tHome')||{}).value||'홈',an=(document.getElementById('tAway')||{}).value||'원정';
   var isHome=p.team!=='away';
   var myT=isHome?hn:an,opT=isHome?an:hn,myS=isHome?AS.hs:AS.as,opS=isHome?AS.as:AS.hs;
-  ctx.textAlign='left';ctx.font='500 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-  ctx.fillText(myT+'  vs  '+opT,X,100);
-  if(myS||opS){ctx.textAlign='right';ctx.font='700 14px '+CARD_F.mono;ctx.fillStyle=CARD_C.sub;ctx.fillText(myS+' : '+opS,W-X,100);}
+  _cardHeader(ctx,W,[['경기일',_cardDate()],['상대',opT+(myS||opS?'  '+myS+' : '+opS:'')]]);
 
   // 선수
-  var numStr=p.num!=null&&p.num!==''?'No.'+p.num:'';
-  ctx.textAlign='left';
-  if(numStr){ctx.font='700 14px '+CARD_F.mono;ctx.fillStyle=CARD_C.amber;ctx.fillText(numStr,X,144);}
-  _cardFitFont(ctx,p.name,'900',48,CARD_F.kr,CW,24);
-  ctx.fillStyle=CARD_C.ink;ctx.fillText(p.name,X,numStr?196:186);
+  var tag=(p.num!=null&&p.num!==''?'NO.'+p.num+'  ·  ':'')+myT;
+  _cardFont(ctx,'600',12,CARD_F.mono);_cardSpacing(ctx,1.5);
+  _cardText(ctx,tag,X,120,CARD_C.ink2);_cardSpacing(ctx,0);
+  _cardFit(ctx,p.name,'400',70,CARD_F.disp,CW,32);
+  _cardText(ctx,p.name,X,196,CARD_C.ink);
+  var stamp=s.hr?'HOME RUN':s.h>=3?'3 HITS':s.h>=2?'MULTI HIT':null;
+  if(stamp)_cardStamp(ctx,W-X-72,114,stamp,-.08);
 
-  // 한 줄 성적: 4타수 2안타 1홈런 3타점
-  var parts=[[s.ab,'타수'],[s.h,'안타']];
-  if(s.hr)parts.push([s.hr,'홈런']);
+  // 한 줄 성적 + 빨간 펜 밑줄
+  var parts=[[s.ab,'타수'],[s.h,'안타',s.h?CARD_C.red:null]];
+  if(s.hr)parts.push([s.hr,'홈런',CARD_C.red]);
   if(s.rbi)parts.push([s.rbi,'타점']);
   if(s.bb)parts.push([s.bb,'볼넷']);
   if(s.hbp)parts.push([s.hbp,'사구']);
-  var nSize=26,uSize=17,measure=function(){
-    var w=0;parts.forEach(function(t,i){
-      ctx.font='700 '+nSize+'px '+CARD_F.mono;w+=ctx.measureText(String(t[0])).width+2;
-      ctx.font='500 '+uSize+'px '+CARD_F.kr;w+=ctx.measureText(t[1]).width+(i<parts.length-1?12:0);
-    });return w;};
-  while(measure()>CW&&nSize>16){nSize--;uSize=Math.round(nSize*.65);}
-  var lx=X;
-  parts.forEach(function(t,i){
-    ctx.font='700 '+nSize+'px '+CARD_F.mono;ctx.fillStyle=t[1]==='홈런'?CARD_C.amber:t[1]==='안타'&&t[0]>0?CARD_C.teal:CARD_C.ink;
-    ctx.fillText(String(t[0]),lx,246);lx+=ctx.measureText(String(t[0])).width+2;
-    ctx.font='500 '+uSize+'px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-    ctx.fillText(t[1],lx,246);lx+=ctx.measureText(t[1]).width+12;
-  });
+  var end=_cardTokens(ctx,parts,X,248,36,CW);
+  _cardSquiggle(ctx,X,end,260);
 
   // 스프레이 차트
-  _cardField(ctx,W/2,560,252,abs);
+  var by=284,bh=312;
+  _cardBox(ctx,X,by,CW,bh);
+  _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
+  _cardText(ctx,'SPRAY CHART',X+14,by+24,CARD_C.ink);_cardSpacing(ctx,0);
+  _cardLegend(ctx,W-X-14,by+24,_cardLegendItems(ctx));
+  _cardField(ctx,W/2,by+bh-14,236,abs);
 
-  // 범례
-  var lg=[['안타','#2dd4a0'],['홈런','#f59e0b'],['아웃','#94a3b8'],['삼진','#ef4444'],['볼넷','#4b8cf5']];
-  ctx.font='500 12px '+CARD_F.kr;
-  var lw=lg.reduce(function(w,l){return w+18+ctx.measureText(l[0]).width+14;},-14),gx=(W-lw)/2;
-  lg.forEach(function(l){
-    ctx.beginPath();ctx.arc(gx+5,591,5,0,Math.PI*2);ctx.fillStyle=l[1];ctx.fill();
-    ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';ctx.fillText(l[0],gx+16,595);
-    gx+=18+ctx.measureText(l[0]).width+14;
-  });
-
-  // 타석 기록 (필드 번호와 연결)
-  var top=640;
-  ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
-  ctx.fillText('타석 기록',X,top);
-  var rows=abs.slice(0,10),twoCol=rows.length>5,colW=twoCol?CW/2:CW,rowH=32;
-  rows.forEach(function(a,i){
-    var col=twoCol?Math.floor(i/5):0,row=twoCol?i%5:i;
-    if(twoCol&&abs.length>10&&i===9){
-      ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
-      ctx.fillText('외 '+(abs.length-9)+'타석',X+col*colW,top+30+row*rowH+4);
-      return;
-    }
-    var rx=X+col*colW,ry=top+30+row*rowH;
-    _cardBadge(ctx,rx+11,ry,i+1,a.res,11);
-    var inn=_cardInn(a.inn);
-    ctx.textAlign='left';
-    ctx.font='500 13px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;
-    ctx.fillText(inn,rx+32,ry+5);
-    var txt=_cardAbText(a)+(a.rbi?'  '+a.rbi+'타점':'');
-    _cardFitFont(ctx,txt,'500',15,CARD_F.kr,colW-84,11);
-    var hit=['안타','내야안타','2루타','3루타','홈런'].indexOf(a.res)!==-1;
-    ctx.fillStyle=hit?CARD_C.ink:CARD_C.sub;
-    ctx.fillText(txt,rx+72,ry+5);
-  });
+  // 타석 기록표 (필드 번호와 같은 번호)
+  var ty=626;
+  if(abs.length<=5){
+    _cardAbTable(ctx,X,ty,CW,abs,1,0);
+  }else{
+    var tw=(CW-14)/2,more=abs.length>10?abs.length-9:0;
+    _cardAbTable(ctx,X,ty,tw,abs.slice(0,5),1,0);
+    _cardAbTable(ctx,X+tw+14,ty,tw,abs.slice(5,10),6,more);
+  }
 
   // 슬래시 라인
-  var sy=820;
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,sy,CW,1);
-  var sl=[['AVG',s.avg],['OBP',s.obp],['SLG',s.slg],['OPS',s.ops]],cw=CW/4;
-  sl.forEach(function(v,i){
-    var x=X+cw*i;
-    ctx.textAlign='left';
-    ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;_cardSpacing(ctx,1.5);
-    ctx.fillText(v[0],x,sy+28);_cardSpacing(ctx,0);
-    ctx.font='700 24px '+CARD_F.mono;ctx.fillStyle=i===3?CARD_C.ink:CARD_C.sub;
-    ctx.fillText(s.ab||s.pa?_cardFmt(v[1]):'-',x,sy+60);
+  var sy=812,gap=12,bw=(CW-gap*3)/4;
+  [['AVG',s.avg],['OBP',s.obp],['SLG',s.slg],['OPS',s.ops]].forEach(function(v,i){
+    _cardStatBox(ctx,X+(bw+gap)*i,sy,bw,70,v[0],_cardFmt(v[1]),i===3);
   });
 
   _cardFooter(ctx,W,H);
@@ -5681,57 +5789,60 @@ function _drawPersonalCard(){
 function _drawTeamCard(){
   var W=540,H=540,ctx=_cardCtx(W,H);
   if(!ctx)return;
-  var X=32,CW=W-64;
-  _cardHeader(ctx,W);
-
+  var X=28,CW=W-X*2;
   var hn=(document.getElementById('tHome')||{}).value||'홈',an=(document.getElementById('tAway')||{}).value||'원정';
+  _cardHeader(ctx,W,[['경기일',_cardDate()],['구분','팀 기록']]);
 
-  // 스코어
-  ctx.textAlign='left';_cardFitFont(ctx,hn,'700',18,CARD_F.kr,CW/2-70,12);ctx.fillStyle=CARD_C.sub;ctx.fillText(hn,X,100);
-  ctx.textAlign='right';_cardFitFont(ctx,an,'700',18,CARD_F.kr,CW/2-70,12);ctx.fillText(an,W-X,100);
-  var hw=AS.hs>AS.as,aw=AS.as>AS.hs;
-  ctx.font='700 56px '+CARD_F.mono;
-  ctx.textAlign='left';ctx.fillStyle=hw?CARD_C.ink:CARD_C.mute;ctx.fillText(String(AS.hs),X,160);
-  ctx.textAlign='right';ctx.fillStyle=aw?CARD_C.ink:CARD_C.mute;ctx.fillText(String(AS.as),W-X,160);
-  ctx.textAlign='center';ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
-  ctx.fillText(AS.hs===AS.as?'무승부':(hw?hn:an)+' 승',W/2,146);
-
-  // 팀 타격 (홈/원정)
+  // 스코어보드
   var hs=_cardStats(AS.abs.filter(function(a){return (a.team||'home')==='home';}));
   var as=_cardStats(AS.abs.filter(function(a){return a.team==='away';}));
-  var ty=196;
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,ty,CW,1);
-  var cols=[['H',function(s){return String(s.h);}],['AVG',function(s){return _cardFmt(s.avg);}],['OBP',function(s){return _cardFmt(s.obp);}],['OPS',function(s){return _cardFmt(s.ops);}]];
-  var c0=150,cw=(CW-(c0-X))/cols.length;
-  ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.textAlign='right';
-  cols.forEach(function(c,i){ctx.fillText(c[0],c0+cw*(i+1)-8,ty+26);});
-  [[hn,hs],[an,as]].forEach(function(r,ri){
-    var y=ty+56+ri*30;
-    ctx.textAlign='left';_cardFitFont(ctx,r[0],'700',15,CARD_F.kr,c0-X-8,11);ctx.fillStyle=CARD_C.ink;ctx.fillText(r[0],X,y);
-    ctx.font='600 16px '+CARD_F.mono;ctx.textAlign='right';ctx.fillStyle=r[1].pa?CARD_C.ink:CARD_C.mute;
-    cols.forEach(function(c,i){ctx.fillText(r[1].pa?c[1](r[1]):'-',c0+cw*(i+1)-8,y);});
+  var ty=104,hh=26,rh=50;
+  _cardBox(ctx,X,ty,CW,hh+rh*2);
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(X,ty,CW,hh);
+  var cols=[['팀',.4,'left'],['안타',.14,'center'],['AVG',.16,'center'],['OPS',.16,'center'],['득점',.14,'center']];
+  var cx=[],acc=X;cols.forEach(function(c){cx.push(acc);acc+=CW*c[1];});
+  var mid=function(i){return cx[i]+CW*cols[i][1]/2;};
+  _cardFont(ctx,'600',11,CARD_F.mono);
+  cols.forEach(function(c,i){_cardText(ctx,c[0],c[2]==='center'?mid(i):cx[i]+12,ty+17,CARD_C.paper,c[2]);});
+  ctx.fillStyle='rgba(20,25,43,.28)';ctx.fillRect(X+3,ty+hh+rh,CW-6,1);
+  var hw=AS.hs>AS.as,aw=AS.as>AS.hs;
+  [[hn,hs,AS.hs,hw],[an,as,AS.as,aw]].forEach(function(r,i){
+    var y=ty+hh+rh*i+rh/2;
+    _cardFit(ctx,r[0],'400',24,CARD_F.disp,CW*cols[0][1]-20,12);
+    _cardText(ctx,r[0],cx[0]+12,y+9,CARD_C.ink);
+    _cardFont(ctx,'600',15,CARD_F.mono);
+    _cardText(ctx,String(r[1].h),mid(1),y+6,CARD_C.ink,'center');
+    _cardText(ctx,r[1].pa?_cardFmt(r[1].avg):'-',mid(2),y+6,CARD_C.ink,'center');
+    _cardText(ctx,r[1].pa?_cardFmt(r[1].ops):'-',mid(3),y+6,CARD_C.ink,'center');
+    _cardFont(ctx,'400',34,CARD_F.disp);
+    _cardText(ctx,String(r[2]),mid(4),y+13,CARD_C.ink,'center');
+    if(r[3]){ // 이긴 팀 점수에 빨간 펜 동그라미
+      ctx.save();ctx.translate(mid(4),y+1);ctx.rotate(-.12);
+      ctx.beginPath();ctx.ellipse(0,0,27,20,0,.15*Math.PI,2.08*Math.PI);
+      ctx.strokeStyle=CARD_C.red;ctx.lineWidth=3;ctx.lineCap='round';ctx.globalAlpha=.9;ctx.stroke();
+      ctx.restore();
+    }
   });
 
-  // 오늘의 타자 (안타 → 루타 → 타점 순)
-  var py=ty+120;
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,py,CW,1);
-  ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
-  ctx.fillText('오늘의 타자',X,py+28);
+  // 오늘의 타자 (안타 → 루타 → 타점 순) — 공책 괘선에 맞춰 적음
+  _cardFont(ctx,'400',22,CARD_F.disp);_cardText(ctx,'오늘의 타자',X,280,CARD_C.ink);
+  _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
+  _cardText(ctx,'TOP HITTERS',W-X,280,CARD_C.ink2,'right');_cardSpacing(ctx,0);
+  ctx.fillStyle=CARD_C.ink;ctx.fillRect(X,290,CW,2);
   var players=_cardPlayers().map(function(p){
-    var st=_cardStats(AS.abs.filter(function(a){return String(a.bid)===String(p.id);}));
-    return {p:p,s:st};
+    return {p:p,s:_cardStats(AS.abs.filter(function(a){return String(a.bid)===String(p.id);}))};
   }).filter(function(o){return o.s.h>0||o.s.rbi>0;})
-    .sort(function(a,b){return b.s.h-a.s.h||b.s.tb-a.s.tb||b.s.rbi-a.s.rbi;}).slice(0,4);
+    .sort(function(a,b){return b.s.h-a.s.h||b.s.tb-a.s.tb||b.s.rbi-a.s.rbi;}).slice(0,5);
   if(!players.length){
-    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
-    ctx.fillText('아직 안타 기록이 없어요',X,py+64);
+    _cardFont(ctx,'400',28,CARD_F.pen);_cardText(ctx,'아직 안타 기록이 없어요',X,346,CARD_C.blue);
   }
   players.forEach(function(o,i){
-    var y=py+62+i*32,s=o.s;
+    var y=32*(10+i)-5,s=o.s; // 괘선(32px) 위에 글씨
+    _cardFont(ctx,'600',12,CARD_F.mono);_cardText(ctx,'0'+(i+1),X,y,CARD_C.ink2);
     var nm=(o.p.num!=null&&o.p.num!==''?'#'+o.p.num+' ':'')+o.p.name;
-    ctx.textAlign='left';_cardFitFont(ctx,nm,'700',16,CARD_F.kr,190,11);ctx.fillStyle=i===0?CARD_C.amber:CARD_C.ink;ctx.fillText(nm,X,y);
+    _cardFit(ctx,nm,'700',18,CARD_F.kr,190,11);_cardText(ctx,nm,X+30,y,CARD_C.ink);
     var line=s.ab+'타수 '+s.h+'안타'+(s.hr?' '+s.hr+'홈런':'')+(s.rbi?' '+s.rbi+'타점':'');
-    ctx.textAlign='right';_cardFitFont(ctx,line,'500',15,CARD_F.kr,CW-200,11);ctx.fillStyle=CARD_C.sub;ctx.fillText(line,W-X,y);
+    _cardFit(ctx,line,'400',26,CARD_F.pen,CW-240,14);_cardText(ctx,line,W-X,y+1,s.hr?CARD_C.red:CARD_C.blue,'right');
   });
 
   _cardFooter(ctx,W,H);
@@ -5741,8 +5852,7 @@ function _drawTeamCard(){
 function _drawSeasonCard(){
   var W=540,H=960,ctx=_cardCtx(W,H);
   if(!ctx)return;
-  var X=32,CW=W-64;
-  _cardHeader(ctx,W);
+  var X=28,CW=W-X*2;
 
   // 저장된 경기 데이터 집계
   var myTeam=(document.getElementById('tHome')?document.getElementById('tHome').value:'')||'';
@@ -5769,72 +5879,47 @@ function _drawSeasonCard(){
   var wD=s.ab+s.bb+s.hbp+s.sf;
   var woba=wD?(WOBA_W.bb*s.bb+WOBA_W.hbp*s.hbp+WOBA_W.s1*s.s1+WOBA_W.s2*s.s2+WOBA_W.s3*s.s3+WOBA_W.hr*s.hr)/wD:0;
 
+  _cardHeader(ctx,W,[['기준일',_cardDate()],['경기 수',totalG+'경기']]);
+
   // 타이틀
+  _cardFont(ctx,'600',12,CARD_F.mono);_cardSpacing(ctx,2);
+  _cardText(ctx,'SEASON RECORD',X,120,CARD_C.ink2);_cardSpacing(ctx,0);
   var title=myTeam||'전체 경기';
-  ctx.textAlign='left';_cardFitFont(ctx,title,'900',40,CARD_F.kr,CW,20);ctx.fillStyle=CARD_C.ink;ctx.fillText(title,X,124);
-  ctx.font='500 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-  ctx.fillText('시즌 기록 · '+totalG+'경기',X,152);
+  _cardFit(ctx,title,'400',60,CARD_F.disp,CW,28);_cardText(ctx,title,X,186,CARD_C.ink);
 
   if(totalG===0){
-    ctx.textAlign='center';ctx.font='700 18px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-    ctx.fillText('저장된 경기가 없어요',W/2,H/2);
-    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
-    ctx.fillText('경기를 저장하면 시즌 기록이 쌓여요',W/2,H/2+28);
+    _cardEmpty(ctx,W,H/2+20,'저장된 경기가 없어요','경기를 저장하면 시즌 기록이 쌓여요');
     _cardFooter(ctx,W,H);
     return;
   }
 
-  // 전적: 5승 1무 2패
-  var rec=[[wins,'승'],[draws,'무'],[losses,'패']],lx=X;
-  rec.forEach(function(r){
-    ctx.font='700 40px '+CARD_F.mono;ctx.fillStyle=r[1]==='승'?CARD_C.amber:CARD_C.ink;ctx.textAlign='left';
-    ctx.fillText(String(r[0]),lx,218);lx+=ctx.measureText(String(r[0])).width+3;
-    ctx.font='500 20px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-    ctx.fillText(r[1],lx,218);lx+=ctx.measureText(r[1]).width+16;
-  });
-  var wp=wins+losses?wins/(wins+losses):0;
-  ctx.textAlign='right';ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.fillText('승률',W-X,194);
-  ctx.font='700 22px '+CARD_F.mono;ctx.fillStyle=CARD_C.ink;ctx.fillText(wins+losses?_cardFmt(wp):'-',W-X,218);
+  // 전적 + 승률 도장
+  var end=_cardTokens(ctx,[[wins,'승',CARD_C.red],[draws,'무'],[losses,'패']],X,250,44,CW-170);
+  _cardSquiggle(ctx,X,end,262);
+  if(wins+losses)_cardStamp(ctx,W-X-78,232,'승률 '+_cardFmt(wins/(wins+losses)),-.07);
 
   // 지표 2줄
-  var grid=[
-    [['AVG',_cardFmt(s.avg)],['OBP',_cardFmt(s.obp)],['SLG',_cardFmt(s.slg)],['OPS',_cardFmt(s.ops)]],
-    [['wOBA',_cardFmt(woba)],['HR',String(s.hr)],['RBI',String(s.rbi)],['PA',String(s.pa)]]
-  ];
-  var gy=248,cw=CW/4;
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,gy,CW,1);
-  grid.forEach(function(row,ri){
-    row.forEach(function(c,i){
-      var x=X+cw*i,y=gy+30+ri*70;
-      ctx.textAlign='left';ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;_cardSpacing(ctx,1.5);
-      ctx.fillText(c[0],x,y);_cardSpacing(ctx,0);
-      ctx.font='700 24px '+CARD_F.mono;ctx.fillStyle=c[0]==='OPS'||c[0]==='wOBA'?CARD_C.ink:CARD_C.sub;
-      ctx.fillText(s.pa?c[1]:'-',x,y+32);
-    });
+  var gap=12,bw=(CW-gap*3)/4;
+  [['AVG',_cardFmt(s.avg)],['OBP',_cardFmt(s.obp)],['SLG',_cardFmt(s.slg)],['OPS',_cardFmt(s.ops)]].forEach(function(v,i){
+    _cardStatBox(ctx,X+(bw+gap)*i,292,bw,70,v[0],s.pa?v[1]:'-',i===3);
+  });
+  [['wOBA',_cardFmt(woba)],['HR',String(s.hr)],['RBI',String(s.rbi)],['PA',String(s.pa)]].forEach(function(v,i){
+    _cardStatBox(ctx,X+(bw+gap)*i,380,bw,70,v[0],s.pa?v[1]:'-',false);
   });
 
-  // 시즌 스프레이 차트
-  var cy2=gy+170;
-  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,cy2,CW,1);
-  ctx.textAlign='left';ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
-  ctx.fillText('시즌 타구 분포',X,cy2+30);
-  _cardField(ctx,W/2,778,236,allAbs,true);
+  // 시즌 타구 분포
+  var by=478,bh=340;
+  _cardBox(ctx,X,by,CW,bh);
+  _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
+  _cardText(ctx,'SEASON SPRAY',X+14,by+24,CARD_C.ink);_cardSpacing(ctx,0);
+  _cardLegend(ctx,W-X-14,by+24,_cardLegendItems(ctx));
+  _cardField(ctx,W/2,by+bh-14,236,allAbs,true);
 
-  // 범례 + 방향
-  var lg=[['안타','#2dd4a0'],['홈런','#f59e0b'],['아웃','#94a3b8']];
-  ctx.font='500 12px '+CARD_F.kr;
-  var gx=X;
-  lg.forEach(function(l){
-    ctx.beginPath();ctx.arc(gx+5,818,5,0,Math.PI*2);ctx.fillStyle=l[1];ctx.fill();
-    ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';ctx.fillText(l[0],gx+16,822);
-    gx+=18+ctx.measureText(l[0]).width+14;
-  });
   var dabs=allAbs.filter(function(a){return a.deg!=null;}),tot=dabs.length;
   if(tot){
     var pull=dabs.filter(_isPull).length,ctr=dabs.filter(_isCtr).length,oppo=tot-pull-ctr;
-    var dirTxt='당겨 '+Math.round(pull/tot*100)+'%  ·  센터 '+Math.round(ctr/tot*100)+'%  ·  밀어 '+Math.round(oppo/tot*100)+'%';
-    ctx.textAlign='right';ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
-    ctx.fillText(dirTxt,W-X,822);
+    var t='당겨 '+Math.round(pull/tot*100)+'%  /  센터 '+Math.round(ctr/tot*100)+'%  /  밀어 '+Math.round(oppo/tot*100)+'%';
+    _cardFit(ctx,t,'400',26,CARD_F.pen,CW,14);_cardText(ctx,t,X+4,862,CARD_C.blue);
   }
 
   _cardFooter(ctx,W,H);

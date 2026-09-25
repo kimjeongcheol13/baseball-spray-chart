@@ -13,7 +13,7 @@ import './features/pitcher.js?v=1';
 import './features/batter.js?v=1';
 import './features/spray.js?v=1';
 import './features/shell.js?v=12';
-import './features/record.js?v=2';
+import './features/record.js?v=3';
 import './features/settings.js?v=1';
 
 // ── Bottom Navigation ──

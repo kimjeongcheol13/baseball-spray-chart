@@ -74,6 +74,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/batter.css?v=2">
 <link rel="stylesheet" href="css/spray.css?v=3">
 <link rel="stylesheet" href="css/record.css?v=3">
+<link rel="stylesheet" href="css/settings.css?v=1">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -1870,28 +1871,41 @@ var _kakaoSdkLoaded = false;
 
 <!-- ═══ 경기설정 탭 ═══ -->
 <div id="settingsView" class="savant-view">
-  <div class="shell-inner">
+  <div class="shell-inner st">
     <div class="savant-view-header">
       <div class="svh-title">경기설정</div>
-      <div class="svh-sub">경기 운영 · 팀 · 라인업 · 구장</div>
+      <div class="svh-sub">경기 운영 · 팀 · 라인업 · 구장 · 저장 · 내보내기</div>
     </div>
-    <div class="set-sec">
-      <div class="set-title">경기 운영</div>
-      <div class="set-row">
-        <button class="set-btn" id="setGfBtn" onclick="shellGfToggle()">▶ 경기 운영 시작</button>
+
+    <!-- 현재 경기 -->
+    <div class="set-sec st-hero" id="stHero">
+      <div class="set-title st-eyebrow"><span class="st-dot"></span><span id="stState">경기 준비</span></div>
+      <div class="st-match" id="stMatch"></div>
+      <div class="set-hint st-meta" id="stMeta"></div>
+      <div class="set-row st-cta">
+        <button class="set-btn st-go" id="setGfBtn" onclick="shellGfToggle()">▶ 경기 운영 시작</button>
         <button class="set-btn danger" id="setGfEnd" style="display:none" onclick="gfEndConfirm()">경기 종료</button>
       </div>
       <div class="set-row">
         <button class="set-btn" onclick="openGameWizard()">＋ 새 경기 시작</button>
       </div>
-      <div class="set-hint">경기 운영을 켜면 타순·아웃카운트·이닝·주자가 자동으로 진행됩니다.</div>
+      <div class="set-hint">경기 운영을 켜면 타순·아웃·이닝·주자가 자동으로 넘어갑니다.</div>
     </div>
+
+    <!-- 경기 전 체크 -->
+    <div class="set-sec st-ready">
+      <div class="set-title st-hd">경기 전 체크 <span class="st-badge" id="stReadyN"></span></div>
+      <div class="set-row st-checks" id="stReady"></div>
+    </div>
+
+    <!-- 팀 · 라인업 -->
     <div class="set-sec">
-      <div class="set-title">팀 · 라인업</div>
+      <div class="set-title st-hd">팀 · 라인업</div>
       <div class="set-row">
         <label class="set-field">홈팀<input class="inp" id="setHome" maxlength="6" oninput="shellTeamName('home',this.value)"></label>
         <label class="set-field">원정팀<input class="inp" id="setAway" maxlength="6" oninput="shellTeamName('away',this.value)"></label>
       </div>
+      <div class="st-lu" id="stLineup"></div>
       <div class="set-row">
         <button class="set-btn primary" onclick="shellDrawer(true)">👥 라인업 편집</button>
         <button class="set-btn" onclick="ocrModalOpen()">📷 사진/CSV로 입력</button>
@@ -1901,10 +1915,57 @@ var _kakaoSdkLoaded = false;
         <button class="set-btn" onclick="openTeamCreate()">🏟️ 팀 만들기</button>
       </div>
     </div>
-    <div class="set-sec">
-      <div class="set-title">구장</div>
+
+    <!-- 구장 -->
+    <div class="set-sec" id="stStadiumSec">
+      <div class="set-title st-hd">구장</div>
       <div id="setStadiumSlot"></div>
+      <div class="set-hint st-st-info" id="stStInfo"></div>
     </div>
+
+    <!-- 기록 · 저장 -->
+    <div class="set-sec st-group">
+      <div class="set-title st-hd">기록 · 저장</div>
+      <div class="set-hint st-sub" id="stSaveMeta"></div>
+      <div class="set-row st-list">
+        <button class="set-btn" onclick="showSaveSheet()"><i>💾</i><span>경기 저장 <small>불러오기 목록 · 클라우드</small></span></button>
+        <button class="set-btn" onclick="openLoad()"><i>📂</i><span>불러오기 <small id="stLoadSub">저장한 경기 열기</small></span></button>
+        <button class="set-btn" onclick="showPostGameReport()"><i>📊</i><span>경기 리포트 <small>이번 경기 요약</small></span></button>
+        <button class="set-btn" onclick="shellRecSheet(true)"><i>📋</i><span>최근 기록 <small>수정 · 삭제</small></span></button>
+      </div>
+    </div>
+
+    <!-- 내보내기 · 공유 -->
+    <div class="set-sec st-group">
+      <div class="set-title st-hd">내보내기 · 공유</div>
+      <div class="set-row st-list">
+        <button class="set-btn" onclick="shareGameLink()"><i>🔗</i><span>경기 공유 <small>QR · 링크</small></span></button>
+        <button class="set-btn" onclick="exportSprayPNG()"><i>🖼</i><span>스프레이차트 PNG <small>필드 이미지 저장</small></span></button>
+        <button class="set-btn" onclick="exportShareCard()"><i>🪪</i><span>성적 카드 이미지 <small>SNS 공유용</small></span></button>
+        <button class="set-btn" onclick="exportCurrentGameToExcel()"><i>📥</i><span>엑셀 내보내기 <small>타석 기록 전체</small></span></button>
+      </div>
+    </div>
+
+    <!-- 동기화 · 데이터 -->
+    <div class="set-sec st-group">
+      <div class="set-title st-hd">동기화 · 데이터</div>
+      <div class="set-hint st-sub" id="stDataMeta"></div>
+      <div class="set-row st-list">
+        <button class="set-btn" onclick="openCloudOverlay()"><i>☁️</i><span>클라우드 동기화 <small>다른 기기에서 이어서</small></span></button>
+        <button class="set-btn" onclick="openOverlay('dataSettingsOverlay')"><i>⚙️</i><span>데이터 관리 <small>백업 · 가져오기 · 전체 내보내기</small></span></button>
+      </div>
+    </div>
+
+    <!-- 도움말 -->
+    <div class="set-sec st-group">
+      <div class="set-title st-hd">도움말</div>
+      <div class="set-row st-list">
+        <button class="set-btn" onclick="showHelpMenu()"><i>❓</i><span>사용 방법 <small>기능 안내</small></span></button>
+        <button class="set-btn" onclick="fieldFeedbackOpen()"><i>💬</i><span>피드백 보내기 <small>버그 · 제안</small></span></button>
+        <button class="set-btn" onclick="goLanding()"><i>←</i><span>처음 화면으로 <small>기록은 그대로 유지</small></span></button>
+      </div>
+    </div>
+    <div class="set-hint st-foot">SprayLab · YOUR SWING, VISUALIZED</div>
   </div>
 </div>
 
@@ -2279,7 +2340,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=102"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=28"></script>
+<script type="module" src="js/app.js?v=29"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

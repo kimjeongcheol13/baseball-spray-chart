@@ -971,15 +971,16 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??*/
 .card-preview-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:800;display:none;align-items:center;justify-content:center;padding:16px;flex-direction:column;gap:12px}
 .card-preview-ov.show{display:flex}
-.card-preview-box{background:#0e1018;border:1px solid #252532;border-radius:18px;padding:16px;max-width:min(520px,96vw);width:100%;display:flex;flex-direction:column;gap:10px}
-.card-preview-canvas{width:100%;border-radius:10px;display:block}
-.card-player-sel{width:100%;padding:10px 12px;background:var(--bg-raised,#141420);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;font-family:var(--font);outline:none}
-.card-preview-tabs{display:flex;gap:6px;margin-bottom:4px}
-.cpt-btn{flex:1;padding:7px;border:1.5px solid var(--border2);border-radius:8px;background:none;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .1s;text-align:center}
-.cpt-btn.on{background:var(--blue-dim);border-color:var(--blue);color:var(--blue)}
-.card-dl-btn{width:100%;padding:12px;background:var(--blue);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;transition:filter .1s}
-.card-dl-btn:active{filter:brightness(.85)}
-.card-cancel-btn{width:100%;padding:10px;background:none;border:1px solid var(--border2);border-radius:12px;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer}
+.card-preview-box{background:#F4EFE3;border:3px solid #14192B;border-radius:4px;padding:16px;max-width:min(480px,96vw);width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:8px 8px 0 rgba(0,0,0,.45);max-height:calc(100dvh - 32px);overflow-y:auto}
+.card-preview-canvas{width:100%;display:block;outline:2px solid #14192B;background:#F4EFE3}
+.card-player-sel{width:100%;padding:10px 12px;background:#F7F2E7;border:2px solid #14192B;border-radius:0;color:#14192B;font-size:15px;font-weight:700;font-family:var(--font);outline:none}
+.card-player-sel:focus-visible{outline:3px solid #2456D9;outline-offset:2px}
+.card-preview-tabs{display:flex;gap:6px}
+.cpt-btn{flex:1;padding:9px 4px;border:2px solid #14192B;border-radius:0;background:transparent;color:#14192B;font-size:14px;font-family:'Black Han Sans',var(--font);cursor:pointer;transition:background .1s,color .1s;text-align:center;line-height:1.1}
+.cpt-btn.on{background:#14192B;color:#F4EFE3}
+.card-dl-btn{width:100%;padding:14px;background:#14192B;border:none;border-radius:0;color:#F4EFE3;font-size:19px;font-family:'Black Han Sans',var(--font);cursor:pointer;box-shadow:5px 5px 0 #D8352F;transition:transform .1s,box-shadow .1s;margin-bottom:5px}
+.card-dl-btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 #D8352F}
+.card-cancel-btn{width:100%;padding:10px;background:none;border:2px solid #14192B;border-radius:0;color:#14192B;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer}
 
 /* ?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺?곣봺??
    SHARED GAME BANNER

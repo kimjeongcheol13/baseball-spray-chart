@@ -1,7 +1,6 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=4';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=2';
 import { hotColdFigure } from './zonefig.js?v=1';
 
 let _sel = null;        // 선택된 선수 이름
@@ -88,11 +87,6 @@ export function toggleProfileLog() {
   _renderProfile();
 }
 
-// 분석 엑셀 (차트 포함) — 지금 기록으로 새로 모아서 만든다
-export function exportProfileExcel() {
-  if (_sel) exportBatterXlsx(playerData(buildData(), _sel));
-}
-
 // ── 렌더 ─────────────────────────────────────────────────────
 function _renderProfile() {
   const el = document.getElementById('profileContent');
@@ -146,7 +140,6 @@ function _renderProfile() {
     </section>
     ${_gameLog(P)}
     ${_pitchAndCounts(P)}
-    ${xlsxButton('exportProfileExcel', '요약 · 타구 차트 · 투구 위치 · 핫/콜드 존 · 원본 기록')}
   `;
 }
 
@@ -448,5 +441,4 @@ if (typeof window !== 'undefined') {
   window.renderProfilePlayerList = renderProfilePlayerList;
   window.setProfileTrend = setProfileTrend;
   window.toggleProfileLog = toggleProfileLog;
-  window.exportProfileExcel = exportProfileExcel;
 }

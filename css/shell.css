@@ -361,3 +361,12 @@
   max-height:calc(100vh - var(--nav-h) - env(safe-area-inset-bottom,0px) - 64px);
   max-width:1200px;margin:0 auto;box-sizing:border-box;
 }
+
+/* ── 분석 서브탭 터치 타겟 44px (모바일) ── */
+@media (max-width: 720px) {
+  .ana-sub { min-height: 44px; min-width: 44px; }
+}
+/* ── 분석 서브탭 터치 타겟 44px (데스크톱: 이번만 예외) ── */
+@media (min-width: 721px) {
+  .ana-sub { min-height: 44px; min-width: 44px; }
+}

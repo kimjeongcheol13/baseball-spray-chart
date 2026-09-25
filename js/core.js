@@ -5589,32 +5589,63 @@ function _cardTokens(ctx,parts,x,y,nSize,maxW){
   return lx-14;
 }
 
-// 스프레이 차트 (앱 필드와 같은 좌표계: 홈=(0.5,1), 펜스 반지름 0.97) — 잉크 선화
+// 스프레이 차트 — 실제 야구장처럼 90° 부채꼴(콘) 모양 잉크 선화
+// 앱 필드는 파울라인 사이를 180° 반원으로 기록하므로, 저장된 각도(0~180°)를 90° 부채꼴로 옮기고
+// 거리는 "펜스까지 몇 %"를 유지해 구장별 펜스(좌·우 짧고 중앙 깊은 곡선)에 맞춰 찍는다.
+// S = 중앙 펜스까지 거리(px). 각도 phi는 왼쪽 수평선 기준 — 좌측 폴 π/4, 중앙 π/2, 우측 폴 3π/4
 function _cardField(ctx,cx,cy,S,abs,dots){
-  var R=S*.97;
+  var st=STADIUMS[AS.stadium]||STADIUMS.standard;
+  var kl=st.lfDist/st.cfDist,kr=st.rfDist/st.cfDist,m=S/st.cfDist; // m = 1m당 px
+  var Q=Math.PI/4;
+  var P=function(phi,r){return [cx-r*Math.cos(phi),cy-r*Math.sin(phi)];};
+  var fence=function(phi){ // 폴 → 중앙으로 부드럽게 깊어지는 펜스
+    var t=(phi-Q)/(2*Q);
+    return t<.5?S*(kl+(1-kl)*Math.sin(t*Math.PI)):S*(kr+(1-kr)*Math.sin((1-t)*Math.PI));
+  };
+  var arcPath=function(k){for(var i=0;i<=60;i++){var ph=Q+2*Q*i/60,p=P(ph,fence(ph)*k);ctx.lineTo(p[0],p[1]);}};
   ctx.save();
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,-Math.PI,0);ctx.closePath();
-  ctx.fillStyle='rgba(36,86,217,.045)';ctx.fill();
-  // 거리 호
+  // 페어 지역
+  ctx.beginPath();ctx.moveTo(cx,cy);arcPath(1);ctx.closePath();
+  ctx.fillStyle='rgba(36,86,217,.05)';ctx.fill();
+  ctx.save();ctx.clip();
+  // 워닝트랙
   ctx.strokeStyle=CARD_C.faint;ctx.lineWidth=1;ctx.setLineDash([4,5]);
-  [.62,.8].forEach(function(k){ctx.beginPath();ctx.arc(cx,cy,S*k,-Math.PI,0);ctx.stroke();});
+  ctx.beginPath();var w0=P(Q,fence(Q)*.92);ctx.moveTo(w0[0],w0[1]);arcPath(.92);ctx.stroke();
   ctx.setLineDash([]);
-  ctx.beginPath();ctx.arc(cx,cy,S*.41,-Math.PI,0);ctx.stroke();
-  // 다이아몬드 + 베이스
-  var br=S*.42,bases=[[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33]];
+  // 내야 흙 경계 (마운드 중심 반지름 29m)
+  var md=P(2*Q,18.44*m);
+  ctx.beginPath();ctx.arc(md[0],md[1],29*m,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+  // 다이아몬드 + 베이스 + 마운드
+  var b=27.43*m,b1=P(3*Q,b),b2=P(2*Q,b*Math.SQRT2),b3=P(Q,b);
   ctx.strokeStyle=CARD_C.ink;ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(cx,cy);bases.forEach(function(b){ctx.lineTo(b[0],b[1]);});ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);ctx.lineTo(b3[0],b3[1]);ctx.closePath();ctx.stroke();
   ctx.fillStyle=CARD_C.ink;
-  bases.forEach(function(b){ctx.save();ctx.translate(b[0],b[1]);ctx.rotate(Math.PI/4);ctx.fillRect(-3.5,-3.5,7,7);ctx.restore();});
-  // 펜스 + 파울라인
-  ctx.lineWidth=2.5;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx+R,cy);ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,R,-Math.PI,0);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx,cy-6);ctx.lineTo(cx+5,cy-2);ctx.lineTo(cx+5,cy+1);ctx.lineTo(cx-5,cy+1);ctx.lineTo(cx-5,cy-2);ctx.closePath();ctx.fill();
+  [b1,b2,b3].forEach(function(p){ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(Math.PI/4);ctx.fillRect(-3.5,-3.5,7,7);ctx.restore();});
+  ctx.beginPath();ctx.arc(md[0],md[1],3,0,Math.PI*2);ctx.fill();
+  // 파울라인 + 펜스
+  var lp=P(Q,fence(Q)),rp=P(3*Q,fence(3*Q));
+  ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(lp[0],lp[1]);ctx.lineTo(cx,cy);ctx.lineTo(rp[0],rp[1]);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(lp[0],lp[1]);arcPath(1);ctx.stroke();
+  // 홈플레이트
+  ctx.beginPath();ctx.moveTo(cx,cy+3);ctx.lineTo(cx+5,cy-1);ctx.lineTo(cx+5,cy-5);ctx.lineTo(cx-5,cy-5);ctx.lineTo(cx-5,cy-1);ctx.closePath();ctx.fill();
+  // 펜스 거리 표기
+  _cardFont(ctx,'500',10,CARD_F.mono);
+  var lt=P(Q,fence(Q)+14),ct=P(2*Q,S+10),rt=P(3*Q,fence(3*Q)+14);
+  _cardText(ctx,st.lfDist+'m',lt[0],lt[1]+4,CARD_C.ink2,'center');
+  _cardText(ctx,st.cfDist+'m',ct[0],ct[1],CARD_C.ink2,'center');
+  _cardText(ctx,st.rfDist+'m',rt[0],rt[1]+4,CARD_C.ink2,'center');
   ctx.restore();
 
   var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
-  var pos=function(a){return [cx+(a.x-.5)*S,cy+(a.y-1)*S];};
+  var pos=function(a){
+    var dx=a.x-.5,dy=Math.min(a.y-1,0);
+    var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;          // 0 = 좌측 파울라인, 180 = 우측
+    var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);        // 펜스까지 비율
+    var phi=Q+Math.max(0,Math.min(180,deg))/180*2*Q;
+    return P(phi,frac*fence(phi));
+  };
   if(dots){ // 시즌 카드: 작은 점 (안타 빨강, 아웃 잉크 ×)
     pts.forEach(function(p){
       var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;
@@ -5764,7 +5795,7 @@ function _drawPersonalCard(){
   _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
   _cardText(ctx,'SPRAY CHART',X+14,by+24,CARD_C.ink);_cardSpacing(ctx,0);
   _cardLegend(ctx,W-X-14,by+24,_cardLegendItems(ctx));
-  _cardField(ctx,W/2,by+bh-14,236,abs);
+  _cardField(ctx,W/2,by+bh-18,250,abs);
 
   // 타석 기록표 (필드 번호와 같은 번호)
   var ty=626;
@@ -5913,7 +5944,7 @@ function _drawSeasonCard(){
   _cardFont(ctx,'600',11,CARD_F.mono);_cardSpacing(ctx,2);
   _cardText(ctx,'SEASON SPRAY',X+14,by+24,CARD_C.ink);_cardSpacing(ctx,0);
   _cardLegend(ctx,W-X-14,by+24,_cardLegendItems(ctx));
-  _cardField(ctx,W/2,by+bh-14,236,allAbs,true);
+  _cardField(ctx,W/2,by+bh-18,276,allAbs,true);
 
   var dabs=allAbs.filter(function(a){return a.deg!=null;}),tot=dabs.length;
   if(tot){

@@ -1,4 +1,5 @@
 // 기록 탭 — 입력 흐름(필드 탭 팝업·즉시 기록 버튼·저장)은 core.js 그대로 두고, 그 둘레를 새로 짠다
+//   모바일: 필드 아래 즉시 지표 줄(기록 직후 1.5초 강조) · 기록 뒤 필드 접힘 없음
 //   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록(모바일 3개 · 데스크톱 6개) + 되돌리기
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3 } from './batdata.js?v=4';
@@ -51,8 +52,23 @@ function _mount() {
   const mini = $('miniSprayWrap');
   if (mini) fw.after(mini);
 
+  _absN = ((window.AS || {}).abs || []).length;
   _hookLegacy();
   renderRecordPanel();
+
+  // 모바일: 타자 카드 높이가 바뀌면(타자 선택 등) 필드 크기를 다시 계산 — core는 resize 때만 재서
+  // 카드가 커지면 필드 위쪽이 카드 밑에 가려졌다
+  if (window.ResizeObserver) {
+    let t = 0, h0 = 0;
+    new ResizeObserver(entries => {
+      const h = Math.round(entries[0].contentRect.height);
+      if (h === h0) return;
+      h0 = h;
+      if (window.innerWidth > 720) return;
+      clearTimeout(t);
+      t = setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 80);
+    }).observe(top);
+  }
 }
 
 export function renderRecordPanel() {
@@ -196,8 +212,15 @@ function _hookLegacy() {
     const orig = window[fn];
     if (typeof orig !== 'function' || orig._rv) return;
     const wrapped = function () {
+      if (fn === 'updateAll') _lslRelease();
       const r = orig.apply(this, arguments);
-      if (fn === 'updateAll') _season = null;   // 새 기록이 생겼으니 시즌 캐시도 새로
+      if (fn === 'updateAll') {
+        _season = null;   // 새 기록이 생겼으니 시즌 캐시도 새로
+        // core는 AS.abs에 넣은 뒤 updateAll()을 부르므로, 직전에 본 개수보다 하나 늘었으면 새 기록
+        const n = ((window.AS || {}).abs || []).length;
+        if (n === _absN + 1) _lslHoldStart();   // 경기 불러오기처럼 한꺼번에 늘면 강조 안 함
+        _absN = n;
+      }
       try { renderRecordPanel(); } catch (e) { console.warn('[record] render', e); }
       return r;
     };
@@ -218,6 +241,60 @@ function _hookLegacy() {
     wrappedFS._rv = true;
     window._fieldFS = wrappedFS;
   }
+
+  // 모바일: 기록 직후 필드를 2.5초 접고 미니 스프레이를 띄우던 동작을 끈다 (필드가 계속 보여 바로 다음 타구 기록)
+  const origMini = window._showMiniSprayAfterRecord;
+  if (typeof origMini === 'function' && !origMini._rv) {
+    const wrappedMini = function () {
+      if (window.innerWidth <= 720) return;
+      return origMini.apply(this, arguments);
+    };
+    wrappedMini._rv = true;
+    window._showMiniSprayAfterRecord = wrappedMini;
+  }
+
+  // 즉시 지표 줄(core _updLiveStatLine): 강조 중에는 다음 타자로 바꾸지 않고, 누구 기준인지 표시
+  const origLsl = window._updLiveStatLine;
+  if (typeof origLsl === 'function' && !origLsl._rv) {
+    const wrappedLsl = function () {
+      if (_lslHold) return;
+      const r = origLsl.apply(this, arguments);
+      const b = (window.AS || {}).batter;
+      _lslWho(b ? `${b.name} · 이번 경기` : '타자를 고르면 이번 경기 지표가 보여요');
+      return r;
+    };
+    wrappedLsl._rv = true;
+    window._updLiveStatLine = wrappedLsl;
+    try { wrappedLsl(); } catch (e) {}
+  }
+}
+
+// ── 즉시 지표 줄: 기록 직후 1.5초는 방금 친 타자의 '이전 → 새값'을 유지 ──
+// core는 같은 타자일 때만 바뀐 값을 강조하는데, 기록 뒤 자동으로 다음 타순이 선택되면 강조가 바로 덮인다.
+const LSL_HOLD = 1500;
+let _lslHold = false, _lslHoldT = 0;
+let _absN = Infinity;   // 마지막으로 본 타석 수 (마운트 때 채움)
+function _lslWho(txt) { const el = $('liveStatLine'); if (el) el.dataset.who = txt || ''; }
+function _lslHoldStart() {
+  if (window.innerWidth > 720) return;
+  const AS = window.AS || {};
+  const last = (AS.abs || [])[AS.abs.length - 1];
+  if (!last) return;
+  const [tx] = SHORT[last.res] || [last.res];
+  _lslWho(`${last.bname || ''} · ${tx} 반영`);
+  const el = $('liveStatLine');
+  if (el) el.classList.add('lsl-hold');
+  _lslHold = true;
+  clearTimeout(_lslHoldT);
+  _lslHoldT = setTimeout(_lslRelease, LSL_HOLD);
+}
+function _lslRelease() {
+  clearTimeout(_lslHoldT);
+  if (!_lslHold) return;
+  _lslHold = false;
+  const el = $('liveStatLine');
+  if (el) el.classList.remove('lsl-hold');
+  try { if (window._updLiveStatLine) window._updLiveStatLine(); } catch (e) {}
 }
 
 function _init() {

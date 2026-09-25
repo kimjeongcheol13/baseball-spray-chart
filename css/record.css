@@ -127,6 +127,44 @@
   .rv-today { margin-top: 4px; }
   .rv-order { margin-top: 4px; }
   .rv-recent ol > li:nth-child(n+4) { display: none; }   /* 최근 기록: 모바일은 3개 */
+  /* 필드: 남는 칸(flex 1 1 0)에 끼우지 않고 core가 잰 크기 그대로 → 위가 타자 카드 밑에 가려지지 않음.
+     넘치는 아래(추가 버튼·최근 기록)는 .app-layout 스크롤, 끝은 하단 탭(54px)에 안 가리게 */
+  .rec-v2 .pnl-center { overflow: visible !important; }
+  .rec-v2 .pnl-center > .field-wrap { flex: none !important; }
+  .rec-v2 .pnl-center > #recBelow { padding-bottom: 70px; }
+  /* 즉시 지표 줄: 필드 바로 아래 (기록 직후 바뀐 값은 core의 lsl-flash로 1.5초 강조) · 누구 기준인지는 테두리 위 작은 이름표 */
+  .rec-v2 .pnl-center > #liveStatLine {
+    position: relative;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    width: auto;
+    margin: 12px 12px 0;
+    padding: 7px 4px 3px;
+    border: 1px solid var(--rv-line);
+    border-radius: 12px;
+    background: var(--rv-card);
+  }
+  .rec-v2 #liveStatLine::before {
+    content: attr(data-who);
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    max-width: calc(100% - 20px);
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--rv-card);
+    font: 700 10px/15px var(--font);
+    color: var(--rv-ink3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rec-v2 #liveStatLine.lsl-hold::before { color: #f6c23e; }
+  .rec-v2 #liveStatLine .lsl-cell { padding: 1px 0; }
+  .rec-v2 #liveStatLine .lsl-k { font-size: 9.5px; color: var(--rv-ink3); }
+  .rec-v2 #liveStatLine .lsl-v b { font-size: 14px; }
+  .rec-v2 #liveStatLine .lsl-prev { font-size: 9px; }
 }
 
 /* ── 데스크톱 터치 타겟 44×44px 이상 (이번 개편은 데스크톱 배치도 함께 바꾸기로 한 예외) ── */

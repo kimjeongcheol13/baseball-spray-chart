@@ -23,10 +23,10 @@ function _analyze(abs) {
   var out = [];
   if (!abs || abs.length < 3) return out;
 
-  // 방향 있는 타구
+  // 방향 있는 타구 (당김/밀어는 좌·우타 기준 — core.js _isPull/_isOppo)
   var bd   = abs.filter(function(a) { return a.deg != null; });
-  var pull = bd.filter(function(a) { return a.deg < 72; });
-  var oppo = bd.filter(function(a) { return a.deg > 108; });
+  var pull = bd.filter(function(a) { return window._isPull && window._isPull(a); });
+  var oppo = bd.filter(function(a) { return window._isOppo && window._isOppo(a); });
   var pullR = bd.length ? pull.length / bd.length : 0;
   var oppoR = bd.length ? oppo.length / bd.length : 0;
 

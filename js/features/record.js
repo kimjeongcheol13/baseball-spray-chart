@@ -2,7 +2,7 @@
 //   모바일: 필드 아래 즉시 지표 줄(기록 직후 1.5초 강조) · 기록 뒤 필드 접힘 없음
 //   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록(모바일 3개 · 데스크톱 6개) + 되돌리기
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3 } from './batdata.js?v=4';
+import { buildData, playerData, calcStats, f3 } from './batdata.js?v=5';
 
 const $ = id => document.getElementById(id);
 const SHORT = {
@@ -141,7 +141,7 @@ function _batterHtml() {
   const t = calcStats(today);
   const s = _seasonOf(b.name);
   const bats = b.bats || b.bh;
-  const meta = [i >= 0 ? `${i + 1}번` : '', POS[b.pos] || b.pos || '', bats === 'L' ? '좌타' : bats === 'R' ? '우타' : '', AS.curTeam === 'away' ? '원정' : '홈'].filter(Boolean).join(' · ');
+  const meta = [i >= 0 ? `${i + 1}번` : '', POS[b.pos] || b.pos || '', bats === 'L' ? '좌타' : bats === 'R' ? '우타' : bats === 'S' ? '스위치' : '', AS.curTeam === 'away' ? '원정' : '홈'].filter(Boolean).join(' · ');
   const line = t.pa ? `${t.ab}타수 ${t.h}안타${t.rbi ? ` ${t.rbi}타점` : ''}${t.bb + t.hbp ? ` ${t.bb + t.hbp}사사구` : ''}` : '첫 타석';
   const ns = next ? _seasonOf(next.name) : null;
   return `

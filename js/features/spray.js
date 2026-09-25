@@ -1,6 +1,6 @@
 // 스프레이 차트 — 타구 위치를 필드 위에: 대상(팀/선수) · 범위(이번 경기/시즌) · 결과 필터 · 상세 필터(filter.js) · 점/구역 보기
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, emptyState } from './batdata.js?v=4';
+import { buildData, calcStats, f3, pct, emptyState } from './batdata.js?v=5';
 
 let _scope = 'game';     // game | season
 let _who = 'all';        // all | home | away | p:<이름>

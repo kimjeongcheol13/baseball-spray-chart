@@ -62,8 +62,17 @@ const STADIUMS = {
 window.STADIUMS = STADIUMS;
 
 // ── 좌타/우타 당겨치기·밀어치기 헬퍼 ──
-function _isPull(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg>108:a.deg<72;}
-function _isOppo(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg<72:a.deg>108;}
+// 타석 좌/우 (읽을 때만 보정): 예전 recHit/recOther는 선수 bh를 무시하고 'R'로 저장했다.
+// bats가 'R'이거나 없으면 이번 경기 라인업에서 bid로 선수를 찾아 bh가 L/S면 그 값으로 읽는다. 저장값은 그대로.
+function _batsOf(a){
+  if(!a)return 'R';
+  if(a.bats&&a.bats!=='R')return a.bats;
+  var S=window.AS,lus=S?[S.home_lineup,S.away_lineup]:[];
+  for(var j=0;j<lus.length;j++){var lu=lus[j]||[];for(var i=0;i<lu.length;i++){var p=lu[i];if(p&&(p.bh==='L'||p.bh==='S')&&String(p.id)===String(a.bid))return p.bh;}}
+  return a.bats||'R';
+}
+function _isPull(a){if(!a||a.deg==null)return false;return _batsOf(a)==='L'?a.deg>108:a.deg<72;}
+function _isOppo(a){if(!a||a.deg==null)return false;return _batsOf(a)==='L'?a.deg<72:a.deg>108;}
 function _isCtr(a){if(!a||a.deg==null)return false;return !_isPull(a)&&!_isOppo(a);}
 
 // ── 필드 기하: 화면은 실제 야구장처럼 90° 부채꼴 ──
@@ -1338,7 +1347,7 @@ function recHit(res){
   var _evRaw=parseFloat((document.getElementById('evInput')||{}).value);var _ev=isNaN(_evRaw)?null:_evRaw;
   var _laRaw=parseFloat((document.getElementById('laInput')||{}).value);var _la=isNaN(_laRaw)?null:_laRaw;
   var _laType=_la===null?null:(_la<10?'땅볼':_la<25?'라인드라이브':'플라이볼');
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
@@ -1354,7 +1363,7 @@ function recOther(res){
   var _infieldDir=res==='내야안타'?'CF':null;
   var _infieldX=res==='내야안타'?0.5:null;
   var _infieldY=res==='내야안타'?0.55:null;
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
@@ -2182,7 +2191,7 @@ function _initTrendInteraction(c){
       +'<div class="tt-row">#'+d.cumAB+'번째 타수 · '+(ab.bname||'?')+'</div>'
       +'<div class="tt-row" style="color:'+rCol+'">→ '+ab.res+'</div>'
       +(ab.pt?'<div class="tt-row">구종: '+ab.pt+'</div>':'')
-      +(ab.dir?'<div class="tt-row">방향: '+(_dirLbl(ab.dir,ab.bats)||ab.dir)+'</div>':'')
+      +(ab.dir?'<div class="tt-row">방향: '+(_dirLbl(ab.dir,_batsOf(ab))||ab.dir)+'</div>':'')
       +'<div class="tt-row">누적 '+d.cumH+'안타 / '+d.cumAB+'타수</div>'
       +(ab.inn?'<div class="tt-row" style="color:var(--text3)">'+ab.inn+'</div>':'');
     tip.style.display='block';
@@ -3564,7 +3573,7 @@ function showHitDetail(ab, clientX, clientY) {
     :(document.getElementById('tAway')||{value:'원정'}).value;
   let rows='';
   if(ab.inn) rows+=`<div class="hdc-row">📍 <span>${ab.inn} · ${teamLbl}</span></div>`;
-  if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${_dirLbl(ab.dir,ab.bats)||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
+  if(ab.dir) rows+=`<div class="hdc-row">↗ <span>${_dirLbl(ab.dir,_batsOf(ab))||ab.dir}${ab.ft?' · '+ab.ft+'ft':''}</span></div>`;
   // 카운트 (볼·스트라이크·아웃)
   if(ab.count!=null){
     const c=ab.count;
@@ -3706,7 +3715,7 @@ function exportAllGamesToExcel() {
     (d.abs||[]).forEach(function(a){
       var team=a.team||'home';
       allAbRows.push([d.d||'',th,ta,a.inn||'',team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
-        a.dir?(_dirLbl(a.dir,a.bats)||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+        a.dir?(_dirLbl(a.dir,_batsOf(a))||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
     });
   });
 
@@ -4408,7 +4417,7 @@ function _doExportToExcel(data) {
   var abRows=[['이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간']];
   abs.forEach(function(a){
     abRows.push([a.inn||'',a.team==='home'?th:ta,a.bname||'',a.bnum||'',a.res||'',
-      a.dir?(_dirLbl(a.dir,a.bats)||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
+      a.dir?(_dirLbl(a.dir,_batsOf(a))||a.dir):'',a.rbi||0,a.ft||'',a.pt||'',a.zone||'',a.ts||'']);
   });
 
   var wb=XLSX.utils.book_new();
@@ -4727,7 +4736,7 @@ function shareGameLink(){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,t:a.team,ba:a.bats||'R',tm:a.ts||'',
+      ft:a.ft,t:a.team,ba:_batsOf(a),tm:a.ts||'',
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -4748,7 +4757,7 @@ function shareGameLink(){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
       x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
-      ft:a.ft,t:a.team,ba:a.bats||'R',
+      ft:a.ft,t:a.team,ba:_batsOf(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
     };})
   };

@@ -1,7 +1,7 @@
 // 타자 — 경기 중 "지금 타석에 선 타자" 브리핑: 오늘 기록 · 시즌/최근 폼 · 오늘 타석별 공 순서 · 본 공 위치 · 공략 메모
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=4';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=2';
+import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=5';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=3';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -154,7 +154,7 @@ function _hero(P, info, order, today, live) {
   const t = calcStats(today);
   const s = P.st;
   const isLive = live && live.name === P.name;
-  const meta = [order >= 0 ? `${order + 1}번 타자` : '', info.pos || '', P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : ''].filter(Boolean).join(' · ');
+  const meta = [order >= 0 ? `${order + 1}번 타자` : '', info.pos || '', P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
   const line = t.pa
     ? `${t.ab}타수 ${t.h}안타${t.hr ? ` ${t.hr}홈런` : ''}${t.rbi ? ` ${t.rbi}타점` : ''}${t.bb + t.hbp ? ` ${t.bb + t.hbp}사사구` : ''}${t.k ? ` ${t.k}삼진` : ''}`
     : '오늘 아직 타석 없음';

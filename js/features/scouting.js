@@ -1,6 +1,6 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=4';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=5';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -243,7 +243,7 @@ function _render() {
 function _hero(P, A) {
   const s = P.st;
   const smp = sampleBadge(s.pa);
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const kpi = (l, v) => `<div class="sc-kpi"><span>${l}</span><b>${v}</b></div>`;
   return `
     <section class="sc-hero">
@@ -443,7 +443,7 @@ function _textReport(P, A, plan) {
   const L = [];
   const TAG = { attack: '[공략]', avoid: '[주의]', field: '[수비]' };
   L.push(`■ ${P.name} 공략 리포트 (SprayLab)`);
-  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
+  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
   L.push(`타율 ${f3(s.avg)} / 출루율 ${f3(s.obp)} / 장타율 ${f3(s.slg)} · 삼진 ${pct(s.kRate)} · 볼넷 ${pct(s.bbRate)}`);
   L.push('');
   L.push('[공략 포인트]');

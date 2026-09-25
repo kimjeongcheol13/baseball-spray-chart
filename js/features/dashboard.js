@@ -4,7 +4,7 @@
 //   계산은 batdata.js calcStats 그대로 (wOBA · BABIP · K% · BB% = CLAUDE.md 공식, WOBA_W 공유)
 //   필드는 기록 탭과 같은 그리기(scorebook.js sbPaint) · 방향 구간은 기록 탭과 같은 경계(LF <54 · LC <78 · CF <102 · RC <126 · RF)
 import { HITS, esc } from '../constants.js';
-import { buildData, calcStats, f3, pct } from './batdata.js?v=4';
+import { buildData, calcStats, f3, pct } from './batdata.js?v=5';
 
 const $ = id => document.getElementById(id);
 

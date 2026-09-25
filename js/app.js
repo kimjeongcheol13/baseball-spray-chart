@@ -1,22 +1,22 @@
 // Amateur Baseball Savant — Entry Point
 // Imports new feature modules and initializes the Savant navigation
 
-import './features/profile.js?v=10';
-import './features/compare.js?v=5';
-import './features/scouting.js?v=6';
+import './features/profile.js?v=11';
+import './features/compare.js?v=6';
+import './features/scouting.js?v=7';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
-import './features/insights.js';
+import './features/insights.js?v=1';
 import './features/perf.js?v=2';
-import './features/team.js?v=2';
-import './features/pitcher.js?v=4';
-import './features/batter.js?v=3';
-import './features/spray.js?v=1';
+import './features/team.js?v=3';
+import './features/pitcher.js?v=5';
+import './features/batter.js?v=4';
+import './features/spray.js?v=2';
 import './features/shell.js?v=13';
-import './features/record.js?v=3';
+import './features/record.js?v=4';
 import './features/settings.js?v=1';
 import './features/scorebook.js?v=8';
-import './features/dashboard.js?v=3';
+import './features/dashboard.js?v=4';
 import './features/setup.js?v=1';
 
 // ── Bottom Navigation ──
@@ -150,8 +150,8 @@ function enhancedInsights(bAbs) {
   // Direction
   const fd = bAbs.filter(a => a.deg != null);
   const tot = fd.length || 1;
-  const pull = fd.filter(a => a.deg < 72).length;
-  const oppo = fd.filter(a => a.deg > 108).length;
+  const pull = fd.filter(a => window._isPull && window._isPull(a)).length;   // 좌·우타 기준
+  const oppo = fd.filter(a => window._isOppo && window._isOppo(a)).length;
   const center = fd.length - pull - oppo;
   const pullR = pull / tot;
   const oppoR = oppo / tot;

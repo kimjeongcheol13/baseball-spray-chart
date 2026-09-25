@@ -287,3 +287,8 @@
   .an-seg button { height: 44px; min-width: 48px; }
   .an-chip { height: 44px; line-height: 42px; }
 }
+
+/* ── 분석 엑셀 받기 (프로필 · 투수 맨 아래) ── */
+.an-xlsx { display: flex; flex-direction: column; align-items: stretch; gap: 6px; max-width: 480px; margin: 16px auto 8px; }
+.an-xlsx .sc-act { min-height: 44px; }
+.an-xlsx small { font-size: 11px; line-height: 1.5; color: var(--an-ink3); text-align: center; }

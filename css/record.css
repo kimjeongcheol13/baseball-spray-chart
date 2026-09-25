@@ -127,3 +127,13 @@
   .rv-today { margin-top: 4px; }
   .rv-order { margin-top: 4px; }
 }
+
+/* ── 데스크톱 터치 타겟 44×44px 이상 (이번 개편은 데스크톱 배치도 함께 바꾸기로 한 예외) ── */
+@media (min-width: 721px) {
+  .rv-inn { height: 46px; }
+  .rv-inn select { height: 44px; }
+  .rv-inn-b { width: 44px; height: 44px; }
+  .rv-cg { height: 44px; min-width: 44px; }
+  .rv-reset, .rv-open, .rv-undo, .rv-all, .rv-more button { height: 44px; }
+  .rv-order button { height: 44px; min-width: 64px; }
+}

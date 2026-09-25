@@ -74,7 +74,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/batter.css?v=2">
 <link rel="stylesheet" href="css/spray.css?v=3">
 <link rel="stylesheet" href="css/record.css?v=3">
-<link rel="stylesheet" href="css/settings.css?v=1">
+<link rel="stylesheet" href="css/settings.css?v=2">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -1878,7 +1878,7 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 현재 경기 -->
-    <div class="set-sec st-hero" id="stHero">
+    <div class="set-sec st-hero" id="stHero" data-area="hero">
       <div class="set-title st-eyebrow"><span class="st-dot"></span><span id="stState">경기 준비</span></div>
       <div class="st-match" id="stMatch"></div>
       <div class="set-hint st-meta" id="stMeta"></div>
@@ -1893,13 +1893,13 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 경기 전 체크 -->
-    <div class="set-sec st-ready">
+    <div class="set-sec st-ready" data-area="ready">
       <div class="set-title st-hd">경기 전 체크 <span class="st-badge" id="stReadyN"></span></div>
       <div class="set-row st-checks" id="stReady"></div>
     </div>
 
     <!-- 팀 · 라인업 -->
-    <div class="set-sec">
+    <div class="set-sec" data-area="team">
       <div class="set-title st-hd">팀 · 라인업</div>
       <div class="set-row">
         <label class="set-field">홈팀<input class="inp" id="setHome" maxlength="6" oninput="shellTeamName('home',this.value)"></label>
@@ -1917,14 +1917,14 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 구장 -->
-    <div class="set-sec" id="stStadiumSec">
+    <div class="set-sec" id="stStadiumSec" data-area="stadium">
       <div class="set-title st-hd">구장</div>
       <div id="setStadiumSlot"></div>
       <div class="set-hint st-st-info" id="stStInfo"></div>
     </div>
 
     <!-- 기록 · 저장 -->
-    <div class="set-sec st-group">
+    <div class="set-sec st-group" data-area="save">
       <div class="set-title st-hd">기록 · 저장</div>
       <div class="set-hint st-sub" id="stSaveMeta"></div>
       <div class="set-row st-list">
@@ -1936,7 +1936,7 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 내보내기 · 공유 -->
-    <div class="set-sec st-group">
+    <div class="set-sec st-group" data-area="export">
       <div class="set-title st-hd">내보내기 · 공유</div>
       <div class="set-row st-list">
         <button class="set-btn" onclick="shareGameLink()"><i>🔗</i><span>경기 공유 <small>QR · 링크</small></span></button>
@@ -1947,7 +1947,7 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 동기화 · 데이터 -->
-    <div class="set-sec st-group">
+    <div class="set-sec st-group" data-area="data">
       <div class="set-title st-hd">동기화 · 데이터</div>
       <div class="set-hint st-sub" id="stDataMeta"></div>
       <div class="set-row st-list">
@@ -1957,7 +1957,7 @@ var _kakaoSdkLoaded = false;
     </div>
 
     <!-- 도움말 -->
-    <div class="set-sec st-group">
+    <div class="set-sec st-group" data-area="help">
       <div class="set-title st-hd">도움말</div>
       <div class="set-row st-list">
         <button class="set-btn" onclick="showHelpMenu()"><i>❓</i><span>사용 방법 <small>기능 안내</small></span></button>

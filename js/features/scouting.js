@@ -290,7 +290,7 @@ function _planCard(P, plan) {
 
 // 발산형 색: 타자에게 약함(Signal Blue = 공략) → 회색 → 강함(Hit Red = 위험). 기준 = 이 타자의 통산 타율
 function _zoneColor(avg, base) {
-  const lo = [75, 140, 245], mid = [58, 66, 82], hi = [224, 82, 90];
+  const lo = [137, 155, 183], mid = [251, 247, 238], hi = [223, 139, 131];   // 종이 팔레트 (펜 파랑 · 종이 · 펜 빨강)
   const span = Math.max(0.15, base);
   const t = Math.max(-1, Math.min(1, (avg - base) / span));
   const to = t < 0 ? lo : hi;

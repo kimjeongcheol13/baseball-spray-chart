@@ -1,7 +1,7 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=5';
-import { hotColdFigure } from './zonefig.js?v=2';
+import { hotColdFigure } from './zonefig.js?v=3';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -215,7 +215,7 @@ function _rankTable(P) {
 
 // 발산형 색: 낮음(Signal Blue) → 중간(회색) → 높음(Hit Red)
 function _pctColor(p) {
-  const lo = [75, 140, 245], mid = [91, 100, 117], hi = [224, 82, 90];
+  const lo = [137, 155, 183], mid = [251, 247, 238], hi = [223, 139, 131];   // 종이 팔레트 (펜 파랑 · 종이 · 펜 빨강)
   const t = Math.abs(p - 50) / 50;
   const to = p < 50 ? lo : hi;
   const c = mid.map((m, i) => Math.round(m + (to[i] - m) * t));

@@ -275,3 +275,9 @@
   .an-spray svg { max-width: 360px; margin: 0 auto; }
   .an-trend { max-width: 640px; margin: 0 auto; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 (CLAUDE.md 규칙) ── */
+@media (max-width: 720px) {
+  .an-seg button { height: 44px; min-width: 48px; }
+  .an-chip { height: 44px; line-height: 42px; }
+}

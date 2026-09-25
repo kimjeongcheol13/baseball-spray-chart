@@ -163,3 +163,16 @@
   .pc-2col { grid-template-columns: 1fr 1fr; align-items: start; }
   .pc-plot, .pc-plot-ax { max-width: 300px; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 (분석/투구 기록 전환 + 기존 투구 입력 패널) ── */
+@media (max-width: 720px) {
+  .pc-mode .an-seg button { height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .inp { min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .btn { min-width: 44px; min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .chip { min-height: 44px; padding-left: 12px !important; padding-right: 12px !important; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag { min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pt-result-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .ptr-btn { min-height: 44px; min-width: 44px; flex: 1 1 56px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-collapse-toggle { min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-entry { min-height: 44px; }
+}

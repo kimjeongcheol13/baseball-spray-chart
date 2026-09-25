@@ -256,3 +256,8 @@
 @media (prefers-reduced-motion: reduce) {
   .pf-mix-bar i { transition: none; }
 }
+
+/* ── 모바일 터치 타겟 44×44px 이상 ── */
+@media (max-width: 720px) {
+  .pf-more { height: 44px; }
+}

@@ -129,3 +129,11 @@
   .sp-more, .sp-rc { height: 44px; }
   .an-link-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
 }
+
+/* ── 데스크톱 터치 타겟 44×44px 이상 (분석 탭 데스크톱은 이번만 예외로 모바일과 같게) ── */
+@media (min-width: 721px) {
+  .sp-who { height: 48px; }
+  .sp-who select { height: 44px; }
+  .sp-more, .sp-rc { height: 44px; }
+  .an-link-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
+}

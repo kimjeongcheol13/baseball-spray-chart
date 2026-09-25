@@ -197,3 +197,9 @@
   .bt-chip { height: 44px; line-height: 42px; }
   .bt-live-btn, .bt-link-pill { min-height: 44px; }
 }
+
+/* ── 데스크톱 터치 타겟 44×44px 이상 (분석 탭 데스크톱은 이번만 예외로 모바일과 같게) ── */
+@media (min-width: 721px) {
+  .bt-chip { height: 44px; line-height: 42px; }
+  .bt-live-btn, .bt-link-pill { min-height: 44px; }
+}

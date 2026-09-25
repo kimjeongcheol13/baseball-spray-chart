@@ -258,3 +258,8 @@
 @media (max-width: 720px) {
   #scoutInfoBanner .mobile-info-banner-close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 }
+
+/* ── 데스크톱 터치 타겟 44×44px 이상 (분석 탭 데스크톱은 이번만 예외로 모바일과 같게) ── */
+@media (min-width: 721px) {
+  #scoutInfoBanner .mobile-info-banner-close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}

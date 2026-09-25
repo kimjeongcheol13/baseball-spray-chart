@@ -392,7 +392,8 @@ function setTabMode(mode,el){
 // ③ 데이터 백업 안내
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _gameSaved=true;
-var _curSaveKey=null;   // 지금 화면 경기의 저장 키 — 다시 저장하면 새 항목 대신 이 항목을 덮어쓴다 (새 경기·공유 경기 = null)
+var _curSaveKey=null;
+var _lastSaveUpdated=false;   // 마지막 저장이 기존 항목 덮어쓰기였는지 (클라우드 안내창 문구용)   // 지금 화면 경기의 저장 키 — 다시 저장하면 새 항목 대신 이 항목을 덮어쓴다 (새 경기·공유 경기 = null)
 var _saveReminderShown=false;
 var _saveReminderTimer=null;
 function checkSaveReminder(){
@@ -2229,6 +2230,8 @@ function _showCloudUpsellToast() {
   clearTimeout(_cloudUpsellTimer);
   var el = document.getElementById('cloudUpsellToast');
   if (!el) return;
+  // 저장 안내 토스트를 이 창이 가리므로, 앞부분에 저장 결과를 그대로 적는다
+  el.textContent = (_lastSaveUpdated ? '저장한 경기를 업데이트했어요 ✓' : '저장 완료 ✓') + ' · 클라우드 동기화로 다른 기기에서도 이어보기 →';
   el.style.opacity = '1';
   el.style.transform = 'translateX(-50%) translateY(0)';
   el.style.pointerEvents = 'auto';
@@ -2299,7 +2302,7 @@ function saveGame(){
     else saves.push({key,label,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
-    _curSaveKey=key;
+    _curSaveKey=key;_lastSaveUpdated=!!prev;
     if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);

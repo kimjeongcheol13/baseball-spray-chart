@@ -520,6 +520,7 @@ window.shellScore = shellScore;
 window.shellClosePops = shellClosePops;
 window.shellRecSheet = shellRecSheet;
 window.shellPitchInput = shellPitchInput;
+window.shellSelectBatter = _selectBatter;
 
 function _init() {
   _mount();

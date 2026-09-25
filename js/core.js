@@ -6787,26 +6787,50 @@ function gfShowEndCard(){
 }
 
 // ─── 미니 스프레이 차트 ───
+// ─── 작은 부채꼴 스프레이 차트 (경기 요약·저장 요약·스카우팅 공용) ───
+// ctx는 w×h 좌표계. 기록 필드와 같은 변환(_semiToCone)으로 타구를 찍는다.
+// opt.r: 점 반지름, opt.color(a): 색, opt.isOut(a): 아웃이면 작게
+var _MINI_COL={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
+function _drawConeMini(ctx,w,h,abs,opt){
+  opt=opt||{};
+  var g=_fieldGeo(w,h),Q=_FQ,m=g.m,i,ph,p;
+  var fence=function(){for(i=0;i<=48;i++){ph=Q+2*Q*i/48;p=_conePt(g,ph,_fenceR(g,ph));ctx.lineTo(p[0],p[1]);}};
+  var lp=_conePt(g,Q,_fenceR(g,Q)),rp=_conePt(g,3*Q,_fenceR(g,3*Q));
+  ctx.save();
+  // 페어 지역 잔디 + 내야 흙
+  ctx.beginPath();ctx.moveTo(g.cx,g.cy);fence();ctx.closePath();
+  var bg=ctx.createRadialGradient(g.cx,g.cy,0,g.cx,g.cy,g.R);
+  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.clip();
+  var md=_conePt(g,2*Q,18.44*m);
+  ctx.beginPath();ctx.arc(md[0],md[1],29*m,0,Math.PI*2);ctx.fillStyle='rgba(125,80,40,.45)';ctx.fill();
+  ctx.restore();
+  // 펜스 · 파울라인 · 다이아몬드
+  ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=Math.max(.7,w/200);
+  ctx.beginPath();ctx.moveTo(lp[0],lp[1]);ctx.lineTo(g.cx,g.cy);ctx.lineTo(rp[0],rp[1]);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(lp[0],lp[1]);fence();ctx.stroke();
+  var b=27.43*m,b1=_conePt(g,3*Q,b),b2=_conePt(g,2*Q,b*Math.SQRT2),b3=_conePt(g,Q,b);
+  ctx.beginPath();ctx.moveTo(g.cx,g.cy);ctx.lineTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);ctx.lineTo(b3[0],b3[1]);ctx.closePath();ctx.stroke();
+  // 타구
+  var r=opt.r||Math.max(2.4,w/38);
+  var hits=['안타','내야안타','2루타','3루타','홈런'];
+  (abs||[]).forEach(function(a){
+    if(a.x==null||a.y==null)return;
+    var q=_semiToCone(g,a.x,a.y);
+    var col=opt.color?opt.color(a):(_MINI_COL[a.res]||'#94a3b8');
+    var out=opt.isOut?opt.isOut(a):hits.indexOf(a.res)===-1;
+    ctx.beginPath();ctx.arc(q[0],q[1],out?r*.6:r,0,Math.PI*2);
+    ctx.fillStyle=col+'aa';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=.7;ctx.stroke();
+  });
+}
 function _gfDrawMini(){
   var c=document.getElementById('gfeMini');
   if(!c)return;
-  var ctx=c.getContext('2d'),S=110,cx=S/2,cy=S;
+  var ctx=c.getContext('2d'),S=110;
   ctx.clearRect(0,0,S,S);
-  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
-  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
-  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
-  ctx.fillStyle=bg;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=0.7;
-  var br=S*.42,bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
-  ctx.beginPath();bps.forEach(function(p,i){i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);});ctx.stroke();
-  var RC2={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
-  AS.abs.forEach(function(a){
-    if(!a.x||!a.y)return;
-    var x=a.x*S,y=a.y*S,col=RC2[a.res]||'#94a3b8',out=a.res.includes('아웃');
-    ctx.beginPath();ctx.arc(x,y,out?1.8:3,0,Math.PI*2);
-    ctx.fillStyle=col+'aa';ctx.fill();
-    ctx.strokeStyle=col;ctx.lineWidth=0.7;ctx.stroke();
-  });
+  _drawConeMini(ctx,S,S,AS.abs,{r:3});
 }
 
 // ─── 한줄 코멘트 생성 (규칙 기반) ───
@@ -7009,23 +7033,9 @@ function _pgBuild(){
 function _pgDrawMini(id,S){
   var c=document.getElementById(id);
   if(!c)return;
-  var ctx=c.getContext('2d'),cx=S/2,cy=S;
+  var ctx=c.getContext('2d');
   ctx.clearRect(0,0,S,S);
-  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
-  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
-  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
-  ctx.fillStyle=bg;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=.8;
-  var br=S*.42,bp=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
-  ctx.beginPath();bp.forEach(function(p,i){i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
-  var RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
-  AS.abs.forEach(function(a){
-    if(!a.x||!a.y)return;
-    var col=RC[a.res]||'#94a3b8',out=!_HITS.includes(a.res)&&!_NOAB.includes(a.res);
-    ctx.beginPath();ctx.arc(a.x*S,a.y*S,out?1.8:3,0,Math.PI*2);
-    ctx.fillStyle=col+'aa';ctx.fill();
-    ctx.strokeStyle=col;ctx.lineWidth=.7;ctx.stroke();
-  });
+  _drawConeMini(ctx,S,S,AS.abs,{r:3});
 }
 
 function pgDoSave(){
@@ -7134,24 +7144,8 @@ function pgExport(W,H,mode){
 }
 
 function _pgDrawMiniOnCanvas(ctx,S){
-  var cx=S/2,cy=S;
   ctx.clearRect(0,0,S,S);
-  var bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
-  bg.addColorStop(0,'#1f4d24');bg.addColorStop(.55,'#193f1d');bg.addColorStop(1,'#0f2010');
-  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();
-  ctx.fillStyle=bg;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=Math.max(.7,S/160);
-  var br=S*.42,bp=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
-  ctx.beginPath();bp.forEach(function(p,i){i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);});ctx.stroke();
-  var RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565'};
-  var r=Math.max(2,S/38);
-  AS.abs.forEach(function(a){
-    if(!a.x||!a.y)return;
-    var col=RC[a.res]||'#94a3b8',out=!_HITS.includes(a.res)&&!_NOAB.includes(a.res);
-    ctx.beginPath();ctx.arc(a.x*S,a.y*S,out?r*.55:r,0,Math.PI*2);
-    ctx.fillStyle=col+'aa';ctx.fill();
-    ctx.strokeStyle=col;ctx.lineWidth=.7;ctx.stroke();
-  });
+  _drawConeMini(ctx,S,S,AS.abs,{r:Math.max(2,S/38)});
 }
 
 function _pgRRect(ctx,x,y,w,h,r){

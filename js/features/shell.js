@@ -82,7 +82,8 @@ function _mirrorSpray() {
   }
   const ctx = dst.getContext('2d');
   ctx.clearRect(0, 0, dst.width, dst.height);
-  ['fldCanvas', 'hitCanvas', 'ovrCanvas'].forEach((id) => {
+  // hmCanvas = 밀도 히트맵 (heatmap.js가 fldCanvas 바로 위에 끼워 넣음)
+  ['fldCanvas', 'hmCanvas', 'hitCanvas', 'ovrCanvas'].forEach((id) => {
     const c = $(id);
     if (c && c.width) ctx.drawImage(c, 0, 0, dst.width, dst.height);
   });

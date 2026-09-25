@@ -59,6 +59,8 @@ function _getList() {
 }
 
 // ── Main render ───────────────────────────────────────────────
+// 1/4 해상도 격자에 가우시안 커널을 더해 밀도를 직접 계산하고,
+// 가장 몰린 곳을 최대 색으로 정규화한다 (타구가 적고 흩어져 있어도 보이도록)
 function _render() {
   var cvs = document.getElementById('hmCanvas');
   if (!cvs) return;
@@ -75,52 +77,63 @@ function _render() {
   var pts = _getList();
   if (!pts.length) return;
 
-  // --- Offscreen accumulation at 1/4 resolution (performance) ---
+  // --- 밀도 격자 (1/4 해상도) ---
   var SC = 4;
   var W = Math.ceil(S / SC);
-  if (!_offCvs) _offCvs = document.createElement('canvas');
-  _offCvs.width  = W;
-  _offCvs.height = W;
-
-  // willReadFrequently: true tells browser not to GPU-upload this canvas
-  var oCtx = _offCvs.getContext('2d', { willReadFrequently: true });
-  oCtx.clearRect(0, 0, W, W);
-
-  var R     = Math.max(9, Math.floor(S * 0.10 / SC)); // kernel radius (scaled)
-  var baseA = Math.max(0.06, Math.min(0.28, 1.8 / pts.length)); // adaptive alpha
-
-  oCtx.globalCompositeOperation = 'source-over';
+  var R = Math.max(6, Math.round(W * 0.09));   // 커널 반경 (격자 칸)
+  var R2 = R * R, sig2 = 2 * Math.pow(R / 2.2, 2);
+  var dens = new Float32Array(W * W), maxD = 0;
   pts.forEach(function(a) {
     // 기록 필드는 부채꼴로 그려지므로 화면 위치로 변환
     var fp = window._fieldPos ? window._fieldPos(a) : [a.x, a.y];
     var px = fp[0] * W, py = fp[1] * W;
-    var grd = oCtx.createRadialGradient(px, py, 0, px, py, R);
-    grd.addColorStop(0,    'rgba(255,255,255,' + baseA + ')');
-    grd.addColorStop(0.45, 'rgba(255,255,255,' + (baseA * 0.38).toFixed(4) + ')');
-    grd.addColorStop(1,    'rgba(255,255,255,0)');
-    oCtx.fillStyle = grd;
-    oCtx.beginPath();
-    oCtx.arc(px, py, R, 0, Math.PI * 2);
-    oCtx.fill();
+    var x0 = Math.max(0, Math.floor(px - R)), x1 = Math.min(W - 1, Math.ceil(px + R));
+    var y0 = Math.max(0, Math.floor(py - R)), y1 = Math.min(W - 1, Math.ceil(py + R));
+    for (var y = y0; y <= y1; y++) {
+      for (var x = x0; x <= x1; x++) {
+        var dx = x - px, dy = y - py, d2 = dx * dx + dy * dy;
+        if (d2 > R2) continue;
+        var i = y * W + x, v = dens[i] + Math.exp(-d2 / sig2);
+        dens[i] = v;
+        if (v > maxD) maxD = v;
+      }
+    }
   });
+  // 가장 몰린 곳 = 최대 색. 타구가 1~2개뿐일 때 과장되지 않게 최소 기준 2
+  var norm = Math.max(maxD, 2);
 
-  // --- Apply color LUT: read alpha as density → remap to red/orange/yellow ---
-  var img = oCtx.getImageData(0, 0, W, W);
+  // --- Apply color LUT ---
+  if (!_offCvs) _offCvs = document.createElement('canvas');
+  _offCvs.width = W;
+  _offCvs.height = W;
+  var oCtx = _offCvs.getContext('2d');
+  var img = oCtx.createImageData(W, W);
   var d = img.data;
-  for (var i = 0; i < d.length; i += 4) {
-    var density = d[i + 3]; // alpha channel = accumulated density
-    if (density < 10) { d[i + 3] = 0; continue; }
-    var li = density * 4;
-    d[i]     = _LUT[li];
-    d[i + 1] = _LUT[li + 1];
-    d[i + 2] = _LUT[li + 2];
-    d[i + 3] = _LUT[li + 3];
+  for (var k = 0; k < dens.length; k++) {
+    if (!dens[k]) continue;
+    var li = Math.min(255, Math.round(dens[k] / norm * 255)) * 4;
+    var o = k * 4;
+    d[o]     = _LUT[li];
+    d[o + 1] = _LUT[li + 1];
+    d[o + 2] = _LUT[li + 2];
+    d[o + 3] = _LUT[li + 3];
   }
   oCtx.putImageData(img, 0, 0);
 
-  // --- Scale up to display canvas; blur for smooth gradients ---
+  // --- Scale up to display canvas; blur for smooth gradients (페어 지역 안에만) ---
   var blurPx = Math.max(2, Math.round(S * 0.012));
   ctx.save();
+  if (window._fieldGeo && window._conePt && window._fenceR) {
+    var g = window._fieldGeo(S), Q = Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(g.cx, g.cy);
+    for (var j = 0; j <= 48; j++) {
+      var ph = Q + 2 * Q * j / 48, p = window._conePt(g, ph, window._fenceR(g, ph));
+      ctx.lineTo(p[0], p[1]);
+    }
+    ctx.closePath();
+    ctx.clip();
+  }
   ctx.globalAlpha = 0.88;
   if ('filter' in ctx) {
     ctx.filter = 'blur(' + blurPx + 'px)';

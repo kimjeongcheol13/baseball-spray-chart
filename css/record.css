@@ -110,3 +110,20 @@
 /* 삼진·볼넷·사구 (기존 즉시 기록 버튼): 패널 폭에 맞춰 크게 */
 .rec-v2 .pnl-center > #quickBar { width: 100%; box-sizing: border-box; gap: 6px; padding: 8px 12px 0; border-top: 0; background: none; }
 .rec-v2 .pnl-center > #quickBar .qb-btn { flex: 1 1 0; min-height: 50px; border-radius: 12px; }
+
+/* ── 모바일 터치 타겟 44×44px 이상 (CLAUDE.md 규칙) ── */
+@media (max-width: 720px) {
+  .rv-inn { height: 46px; }
+  .rv-inn select { height: 44px; }
+  .rv-inn-b { width: 44px; height: 44px; }
+  .rv-cg { height: 44px; min-width: 44px; padding: 0 6px; }
+  .rv-reset { height: 44px; padding: 0 12px; }
+  .rv-order button { height: 44px; min-width: 64px; }
+  .rv-open { height: 44px; }
+  .rv-more button { height: 44px; }
+  .rv-undo, .rv-all { height: 44px; }
+  .rv-top { gap: 6px; padding-top: 6px; }
+  .rv-bat { padding: 6px 10px 8px; }
+  .rv-today { margin-top: 4px; }
+  .rv-order { margin-top: 4px; }
+}

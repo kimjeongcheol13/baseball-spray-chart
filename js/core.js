@@ -2393,12 +2393,21 @@ function _doDownload(blob, fileName, isIOS) {
   setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 2000);
 }
 
+function togglePasteArea(force) {
+  var a = document.getElementById('paste-area'), b = document.getElementById('pasteTglBtn');
+  if (!a) return;
+  var on = force !== undefined ? force : a.style.display === 'none' || !a.style.display;
+  a.style.display = on ? 'block' : 'none';
+  if (b) b.textContent = on ? '붙여넣기 닫기' : '텍스트 붙여넣기';
+  if (on) { var t = document.getElementById('paste-json'); if (t) t.focus(); }
+}
+
 function importFromPaste() {
   var text = (document.getElementById('paste-json') || {}).value;
   if (!text || !text.trim()) { showToast('붙여넣을 내용이 없습니다', false); return; }
   _doImportText(text);
   document.getElementById('paste-json').value = '';
-  document.getElementById('paste-area').style.display = 'none';
+  togglePasteArea(false);
 }
 
 function _doImportText(text) {

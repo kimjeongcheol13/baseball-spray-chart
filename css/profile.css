@@ -271,3 +271,10 @@
 @media (min-width: 721px) {
   .pf .an-trend { max-width: 470px; }
 }
+
+/* ── 데스크톱 경기 로그: 2열 (왼→오, 위→아래 순서로 최신부터 · 이번만 예외) ── */
+@media (min-width: 721px) {
+  .pf-log { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+  .pf-log li + li { border-top: 0; }
+  .pf-log li:nth-child(n+3) { border-top: 1px solid var(--an-line); }
+}

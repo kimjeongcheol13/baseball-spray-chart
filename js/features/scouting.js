@@ -243,7 +243,7 @@ function _render() {
 function _hero(P, A) {
   const s = P.st;
   const smp = sampleBadge(s.pa);
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const kpi = (l, v) => `<div class="sc-kpi"><span>${l}</span><b>${v}</b></div>`;
   return `
     <section class="sc-hero">
@@ -443,7 +443,7 @@ function _textReport(P, A, plan) {
   const L = [];
   const TAG = { attack: '[공략]', avoid: '[주의]', field: '[수비]' };
   L.push(`■ ${P.name} 공략 리포트 (SprayLab)`);
-  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
+  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
   L.push(`타율 ${f3(s.avg)} / 출루율 ${f3(s.obp)} / 장타율 ${f3(s.slg)} · 삼진 ${pct(s.kRate)} · 볼넷 ${pct(s.bbRate)}`);
   L.push('');
   L.push('[공략 포인트]');

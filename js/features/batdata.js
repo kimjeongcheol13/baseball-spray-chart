@@ -138,7 +138,7 @@ export function playerData(data, name) {
   Object.keys(byPt).forEach(pt => { pitch[pt] = calcStats(byPt[pt]); });
 
   const bc = info.bats || {};
-  const bats = (bc.L || 0) > (bc.R || 0) ? 'L' : (bc.R || bc.L) ? 'R' : null;
+  const bats = (bc.S || 0) > Math.max(bc.L || 0, bc.R || 0) ? 'S' : (bc.L || 0) > (bc.R || 0) ? 'L' : (bc.R || bc.L) ? 'R' : null;
   return { ...info, bats, games: games.length, gameList: games, abs, trend, pitch, st: calcStats(abs) };
 }
 

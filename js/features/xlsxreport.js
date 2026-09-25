@@ -569,7 +569,7 @@ export function exportBatterXlsx(P) {
   const st = P.st;
   const rows = [];
   P.gameList.forEach(g => g.abs.forEach(a => rows.push({ a, game: g.label })));
-  const bats = P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '';
+  const bats = P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '';
   const dirOf = a => (a.dir ? (window._dirLbl ? window._dirLbl(a.dir, a.bats || P.bats) || a.dir : a.dir) : '');
   const zoneOf = a => a.zone || (a.pitches && a.pitches.length ? a.pitches[a.pitches.length - 1].zone : '') || '';
 

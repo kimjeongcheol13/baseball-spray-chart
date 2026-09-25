@@ -141,7 +141,7 @@ function _batterHtml() {
   const t = calcStats(today);
   const s = _seasonOf(b.name);
   const bats = b.bats || b.bh;
-  const meta = [i >= 0 ? `${i + 1}번` : '', POS[b.pos] || b.pos || '', bats === 'L' ? '좌타' : bats === 'R' ? '우타' : '', AS.curTeam === 'away' ? '원정' : '홈'].filter(Boolean).join(' · ');
+  const meta = [i >= 0 ? `${i + 1}번` : '', POS[b.pos] || b.pos || '', bats === 'L' ? '좌타' : bats === 'R' ? '우타' : bats === 'S' ? '스위치' : '', AS.curTeam === 'away' ? '원정' : '홈'].filter(Boolean).join(' · ');
   const line = t.pa ? `${t.ab}타수 ${t.h}안타${t.rbi ? ` ${t.rbi}타점` : ''}${t.bb + t.hbp ? ` ${t.bb + t.hbp}사사구` : ''}` : '첫 타석';
   const ns = next ? _seasonOf(next.name) : null;
   return `

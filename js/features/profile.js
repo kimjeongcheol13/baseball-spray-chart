@@ -146,7 +146,7 @@ function _renderProfile() {
 function _hero(P, pool) {
   const s = P.st;
   const smp = s.pa ? sampleBadge(s.pa) : null;
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const idx = pool.woba > 0 && s.pa ? Math.round(s.woba / pool.woba * 100) : null;
   const tags = s.pa ? _types(s, pool) : [];
   const tile = (k, label) => {

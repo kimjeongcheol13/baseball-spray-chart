@@ -4,11 +4,11 @@
 import './features/profile.js';
 import './features/compare.js';
 import './features/scouting.js?v=3';
-import './features/heatmap.js?v=2';
+import './features/heatmap.js?v=3';
 import './features/filter.js?v=2';
 import './features/insights.js';
 import './features/perf.js?v=2';
-import './features/shell.js?v=7';
+import './features/shell.js?v=8';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

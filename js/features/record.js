@@ -2,7 +2,7 @@
 //   모바일: 필드 아래 즉시 지표 줄(기록 직후 1.5초 강조) · 기록 뒤 필드 접힘 없음
 //   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록(모바일 3개 · 데스크톱 6개) + 되돌리기
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3 } from './batdata.js?v=4';
+import { buildData, playerData, calcStats, f3 } from './batdata.js?v=5';
 
 const $ = id => document.getElementById(id);
 const SHORT = {

@@ -37,9 +37,18 @@ function _loadGames() {
   };
   return raw.map(g => ({
     ...g,
-    abs: g.abs.filter(a => uniq(seen, a)),
+    abs: _fixBats(g.abs.filter(a => uniq(seen, a)), g.lineups),
     pitchers: (g.pitchers || []).map(p => ({ ...p, pitches: (p.pitches || []).filter(x => uniq(seenP, x)) })),
   }));
+}
+
+// 과거 타석 좌/우 보정 (읽을 때만): 예전 recHit/recOther는 선수의 bh를 무시하고 항상 'R'로 저장했다.
+// 같은 경기 라인업에서 bid로 선수를 찾아 bh가 L/S면 그 값으로 읽는다.
+// 저장값·AS.abs는 바꾸지 않도록 보정할 타석만 복사본을 만든다.
+function _fixBats(abs, lineups) {
+  const bh = {};
+  lineups.forEach(p => { if (p && (p.bh === 'L' || p.bh === 'S')) bh[String(p.id)] = p.bh; });
+  return abs.map(a => (a && (!a.bats || a.bats === 'R') && bh[String(a.bid)] ? { ...a, bats: bh[String(a.bid)] } : a));
 }
 
 function _gameLabel(d, s) {

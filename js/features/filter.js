@@ -30,8 +30,9 @@ function _pass(a) {
 function _isActive() {
   return _SF.pt.length > 0 || _SF.res.length > 0 || _SF.hand != null || _SF.count != null;
 }
-// 외부 노출 (heatmap.js 등에서 사용)
+// 외부 노출 (heatmap.js·spray.js 등에서 사용)
 window._sfPass = _pass;
+window._sfCount = function() { return _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0); };
 
 // ── 함수 패치: _build() 안에서 DOMContentLoaded 이후 호출 ─────
 function _applyPatches() {

@@ -1,4 +1,4 @@
-// 스프레이 차트 — 타구 위치를 필드 위에: 대상(팀/선수) · 범위(이번 경기/시즌) · 결과 필터 · 점/구역 보기
+// 스프레이 차트 — 타구 위치를 필드 위에: 대상(팀/선수) · 범위(이번 경기/시즌) · 결과 필터 · 상세 필터(filter.js) · 점/구역 보기
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, emptyState } from './batdata.js?v=4';
 
@@ -80,46 +80,65 @@ function _geo(a) {
 }
 
 // ── 필드 SVG ─────────────────────────────────────────────────
+// 기록 탭 drawField와 같은 기하·색 (1×1 박스 → ×100): 구장별 펜스, 27.43m 베이스, 마운드 중심 29m 내야 흙, 워닝트랙
+function _geoBox() {
+  const st = (window.STADIUMS || {})[(window.AS || {}).stadium] || (window.STADIUMS || {}).standard
+    || { lfDist: 90, cfDist: 120, rfDist: 90, grass: ['#1f4d24', '#193f1d', '#112b14'], dirt: '#4a2e10', if: '#7d5028' };
+  const kl = st.lfDist / st.cfDist, kr = st.rfDist / st.cfDist;
+  const R = Math.min(0.9, 0.47 / (Math.SQRT1_2 * Math.max(kl, kr))) * 100;
+  const Q = Math.PI / 4;
+  const g = { cx: 50, cy: 96.5, R, kl, kr, m: R / st.cfDist, st, Q };
+  g.F = phi => { const t = (phi - Q) / (2 * Q); return t < 0.5 ? R * (kl + (1 - kl) * Math.sin(t * Math.PI)) : R * (kr + (1 - kr) * Math.sin((1 - t) * Math.PI)); };
+  g.P = (phi, r) => [g.cx - r * Math.cos(phi), g.cy - r * Math.sin(phi)];
+  return g;
+}
+
 function _field(abs) {
   const fp = window._fieldPos;
   if (!fp) return '';
-  // 각도를 파울라인 바로 안쪽으로: deg 0에서 sin(-π)의 반올림 오차로 y가 정확히 1이 되면 반대편(180°)으로 계산됨
-  const at = (deg, dist) => {
-    const ang = Math.max(0.5, Math.min(179.5, deg)) * Math.PI / 180 - Math.PI;
-    const p = fp({ x: 0.5 + Math.cos(ang) * dist, y: 1 + Math.sin(ang) * dist });
-    return [p[0] * 100, p[1] * 100];
-  };
-  const P = (deg, dist) => at(deg, dist).map(v => v.toFixed(2)).join(',');
-  const arc = (dist, a = 0, b = 180, step = 4) => { const o = []; for (let d = a; d <= b + 1e-9; d += step) o.push(P(Math.min(d, b), dist)); return o; };
-  const home = P(90, 0);
-  const st = (window.STADIUMS || {})[(window.AS || {}).stadium] || { lfDist: 90, cfDist: 120, rfDist: 90 };
-
-  // 내야 다이아몬드: 1·3루는 파울라인 위(펜스까지의 약 30%), 2루는 중앙
-  const b1 = at(180, 0.3), b2 = at(90, 0.33), b3 = at(0, 0.3), hp = at(90, 0);
-  const diamond = [hp, b1, b2, b3].map(p => p.map(v => v.toFixed(2)).join(',')).join(' ');
+  const g = _geoBox(), st = g.st, Q = g.Q, m = g.m;
+  const xy = p => p.map(v => v.toFixed(2)).join(',');
+  const fence = (k, rev) => { const o = []; for (let i = 0; i <= 72; i++) { const ph = rev ? 3 * Q - 2 * Q * i / 72 : Q + 2 * Q * i / 72; o.push(xy(g.P(ph, g.F(ph) * k))); } return o.join(' '); };
+  const home = xy([g.cx, g.cy]);
+  const fair = `${home} ${fence(1)}`;
+  const b = 27.43 * m, md = g.P(2 * Q, 18.44 * m);
+  const b1 = g.P(3 * Q, b), b2 = g.P(2 * Q, b * Math.SQRT2), b3 = g.P(Q, b);
+  const dc = g.P(2 * Q, b * Math.SQRT1_2), ins = p => [dc[0] + (p[0] - dc[0]) * 0.8, dc[1] + (p[1] - dc[1]) * 0.8];
+  const ig = [[g.cx, g.cy], b1, b2, b3].map(ins).map(xy).join(' ');
+  let stripes = '';
+  for (let r = 6 * m, i = 0; r < g.R * 1.1; r += 6 * m, i++) if (!(i % 2)) stripes += `<circle cx="${g.cx}" cy="${g.cy}" r="${(r + 3 * m).toFixed(2)}" stroke-width="${(6 * m).toFixed(2)}"/>`;
+  const base = p => `<rect x="${(p[0] - 1.1).toFixed(2)}" y="${(p[1] - 1.1).toFixed(2)}" width="2.2" height="2.2" transform="rotate(45 ${p[0].toFixed(2)} ${p[1].toFixed(2)})"/>`;
+  const lbl = (phi, k, txt) => { const p = g.P(phi, g.F(phi) * k); return `<text class="sp-dist" x="${p[0].toFixed(1)}" y="${(p[1] + 1).toFixed(1)}">${txt}</text>`; };
 
   let layer = '';
   if (_view === 'zones') {
+    // 구역 칸: 저장 좌표(deg·펜스 비율) 기준 → 화면은 _fieldPos로 변환
+    const at = (deg, dist) => {
+      const ang = Math.max(0.5, Math.min(179.5, deg)) * Math.PI / 180 - Math.PI;
+      const p = fp({ x: 0.5 + Math.cos(ang) * dist, y: 1 + Math.sin(ang) * dist });
+      return [p[0] * 100, p[1] * 100];
+    };
+    const arc = (dist, a, b2_, step = 3) => { const o = []; for (let d = a; d <= b2_ + 1e-9; d += step) o.push(xy(at(Math.min(d, b2_), dist))); return o; };
     const tot = abs.length || 1;
     const cells = [];
     DIRS.forEach(d => DEPTHS.forEach(z => {
-      const list = abs.filter(a => { const g = _geo(a); return g.deg >= d.a && g.deg < (d.b === 180 ? 181 : d.b) && g.frac >= z.a && g.frac < z.b; });
+      const list = abs.filter(a => { const q = _geo(a); return q.deg >= d.a && q.deg < (d.b === 180 ? 181 : d.b) && q.frac >= z.a && q.frac < z.b; });
       cells.push({ d, z, list });
     }));
     const max = Math.max(1, ...cells.map(c => c.list.length));
     layer = cells.map(({ d, z, list }) => {
       const r1 = z.a, r2 = Math.min(z.b, 1.0);
-      const pts = [...arc(r2 * 0.97, d.a, d.b, 3), ...arc(Math.max(r1, 0.001) * 0.97, d.a, d.b, 3).reverse()];
+      const pts = [...arc(r2 * 0.97, d.a, d.b), ...arc(Math.max(r1, 0.001) * 0.97, d.a, d.b).reverse()];
       const share = list.length / tot;
       const h = list.filter(a => HITS.includes(a.res)).length;
       const mid = at((d.a + d.b) / 2, ((r1 + r2) / 2) * 0.97);
-      const alpha = list.length ? 0.12 + 0.7 * (list.length / max) : 0;
-      return `<polygon class="sp-cell" points="${pts.join(' ')}" style="fill:rgba(75,140,245,${alpha.toFixed(2)})"><title>${d.l} ${z.l}: 타구 ${list.length}개 (${pct(share)}) · 안타 ${h}</title></polygon>`
+      const alpha = list.length ? 0.15 + 0.65 * (list.length / max) : 0.04;
+      return `<polygon class="sp-cell" points="${pts.join(' ')}" style="fill:rgba(12,20,40,${alpha.toFixed(2)})"><title>${d.l} ${z.l}: 타구 ${list.length}개 (${pct(share)}) · 안타 ${h}</title></polygon>`
         + (list.length ? `<text class="sp-cell-t" x="${mid[0].toFixed(1)}" y="${(mid[1] + 1.3).toFixed(1)}">${Math.round(share * 100)}%</text>` : '');
     }).join('');
   } else {
     const order = { out: 0, '1b': 1, xbh: 2, hr: 3 };
-    layer = abs.slice().sort((a, b) => order[TYPE(a)] - order[TYPE(b)]).map(a => {
+    layer = abs.slice().sort((a, b_) => order[TYPE(a)] - order[TYPE(b_)]).map(a => {
       const p = fp(a);
       const x = (p[0] * 100).toFixed(1), y = (p[1] * 100).toFixed(1), t = TYPE(a);
       const tip = `<title>${_esc(a.bname || '')} · ${_esc(a.res)}${a.inn ? ' · ' + _esc(a.inn) : ''}</title>`;
@@ -128,16 +147,30 @@ function _field(abs) {
       return `<circle class="d-${t}" cx="${x}" cy="${y}" r="${t === 'out' ? 1.5 : 1.8}">${tip}</circle>`;
     }).join('');
   }
-  const lbl = (deg, dist, txt) => { const p = at(deg, dist); return `<text class="sp-dist" x="${p[0].toFixed(1)}" y="${p[1].toFixed(1)}">${txt}</text>`; };
+  const lp = g.P(Q, g.F(Q)), rp = g.P(3 * Q, g.F(3 * Q));
+  // 거리 표기는 구역 보기에서 칸 숫자와 겹쳐서 점 보기에서만
   return `
-    <svg class="sp-field" viewBox="-2 6 104 94" role="img" aria-label="스프레이 차트 · 타구 ${abs.length}개">
-      <polygon class="sp-grass" points="${home} ${arc(0.97).join(' ')}"/>
-      <polygon class="sp-warn" points="${arc(0.97).join(' ')} ${arc(0.9).reverse().join(' ')}"/>
-      <polygon class="sp-dirt" points="${home} ${arc(0.42).join(' ')}"/>
-      <polygon class="sp-inf" points="${diamond}"/>
-      <polyline class="sp-fence" points="${arc(0.97).join(' ')}"/>
-      <polyline class="sp-line" points="${P(0, 0.97)} ${home} ${P(180, 0.97)}"/>
-      ${lbl(8, 0.86, st.lfDist + 'm')}${lbl(90, 0.88, st.cfDist + 'm')}${lbl(172, 0.86, st.rfDist + 'm')}
+    <svg class="sp-field" viewBox="0 0 100 100" role="img" aria-label="스프레이 차트 · 타구 ${abs.length}개">
+      <defs>
+        <linearGradient id="spFoul" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${st.grass[2]}"/><stop offset="1" stop-color="${st.grass[1]}"/></linearGradient>
+        <radialGradient id="spFair" gradientUnits="userSpaceOnUse" cx="${g.cx}" cy="${g.cy}" r="${g.R.toFixed(2)}"><stop offset="0" stop-color="${st.grass[0]}"/><stop offset=".55" stop-color="${st.grass[1]}"/><stop offset="1" stop-color="${st.grass[2]}"/></radialGradient>
+        <clipPath id="spFairClip"><polygon points="${fair}"/></clipPath>
+      </defs>
+      <rect width="100" height="100" fill="url(#spFoul)"/><rect width="100" height="100" fill="rgba(0,0,0,.38)"/>
+      <polygon points="${fair}" fill="url(#spFair)"/>
+      <g clip-path="url(#spFairClip)">
+        <g class="sp-stripes">${stripes}</g>
+        <circle cx="${md[0].toFixed(2)}" cy="${md[1].toFixed(2)}" r="${(29 * m).toFixed(2)}" fill="${st.if}"/>
+      </g>
+      <polygon points="${fence(1)} ${fence(0.93, true)}" fill="${st.dirt}"/>
+      <polygon points="${ig}" fill="${st.grass[0]}"/>
+      <circle cx="${md[0].toFixed(2)}" cy="${md[1].toFixed(2)}" r="${(2.9 * m).toFixed(2)}" fill="${st.if}"/>
+      <circle cx="${g.cx}" cy="${g.cy}" r="${(4 * m).toFixed(2)}" fill="${st.if}"/>
+      <polyline class="sp-fence" points="${fence(1)}"/>
+      <polyline class="sp-line" points="${xy(lp)} ${home} ${xy(rp)}"/>
+      <polyline class="sp-bline" points="${xy(b1)} ${xy(b2)} ${xy(b3)}"/>
+      <g class="sp-bases">${base(b1)}${base(b2)}${base(b3)}</g>
+      ${_view === 'zones' ? '' : lbl(Q + 0.1, 0.84, st.lfDist + 'm') + lbl(2 * Q, 0.86, st.cfDist + 'm') + lbl(3 * Q - 0.1, 0.84, st.rfDist + 'm')}
       ${layer}
     </svg>`;
 }
@@ -147,7 +180,10 @@ function _render() {
   const v = document.getElementById('sprayView');
   if (!v) return;
   const src = _source();
-  const scoped = _filterWho(src);
+  // 상세 필터(구종·결과·투수 손·카운트): filter.js 패널과 같은 판정을 그대로 쓴다
+  const pass = window._sfPass || (() => true);
+  const nFilter = window._sfCount ? window._sfCount() : 0;
+  const scoped = _filterWho(src).filter(a => pass(a));
   const bip = scoped.filter(a => a.x != null && a.y != null);
   const shown = bip.filter(a => _res[TYPE(a)]);
   const st = calcStats(scoped);
@@ -172,12 +208,20 @@ function _render() {
           ${ps.map(p => `<option value="p:${_esc(p.n)}"${_who === 'p:' + p.n ? ' selected' : ''}>${_esc(p.n)} (${p.c}타석)</option>`).join('')}
         </select>
       </label>
+      <button type="button" class="sp-more${nFilter ? ' on' : ''}" onclick="_sfOpen && _sfOpen()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        상세 필터${nFilter ? `<b>${nFilter}</b>` : ''}
+      </button>
       <div class="sp-res" role="group" aria-label="결과 필터">
         ${RES.map(([k, l]) => `<button type="button" class="sp-rc k-${k}${_res[k] ? ' on' : ''}" aria-pressed="${_res[k]}" onclick="setSprayView('res','${k}')"><i></i>${l}<small>${counts[k]}</small></button>`).join('')}
       </div>
     </div>`;
 
   if (!bip.length) {
+    if (nFilter) {
+      v.innerHTML = ctrls + emptyState('필터에 맞는 타구가 없어요', `상세 필터 ${nFilter}개가 켜져 있어요. <button type="button" class="an-link-btn" onclick="_sfReset && _sfReset()">필터 초기화</button>`);
+      return;
+    }
     v.innerHTML = ctrls + emptyState(_scope === 'game' ? '이번 경기에 기록된 타구가 없어요' : '기록된 타구가 없어요', '기록 탭 필드에서 타구 위치를 누르면 여기에 쌓여요.');
     return;
   }
@@ -239,7 +283,22 @@ function _render() {
     </div>`;
 }
 
+// 상세 필터 패널의 적용·초기화 뒤 새 화면도 다시 그린다 (패널 버튼은 onclick 문자열로 window 함수를 부름)
+function _hookFilter() {
+  ['_sfApply', '_sfReset'].forEach(fn => {
+    const orig = window[fn];
+    if (typeof orig !== 'function' || orig._sp) return;
+    const wrapped = function () {
+      try { orig.apply(this, arguments); } catch (e) {}
+      if (document.getElementById('sprayView')) openSprayView();
+    };
+    wrapped._sp = true;
+    window[fn] = wrapped;
+  });
+}
+
 if (typeof window !== 'undefined') {
+  _hookFilter();
   window.openSprayView = openSprayView;
   window.setSprayView = setSprayView;
 }

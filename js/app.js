@@ -5,7 +5,7 @@ import './features/profile.js?v=4';
 import './features/compare.js?v=5';
 import './features/scouting.js?v=5';
 import './features/heatmap.js?v=3';
-import './features/filter.js?v=2';
+import './features/filter.js?v=3';
 import './features/insights.js';
 import './features/perf.js?v=2';
 import './features/team.js?v=2';

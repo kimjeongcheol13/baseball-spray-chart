@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════
    스프레이 차트 (Spray) — 공용 토큰·카드는 analysis.css
-   타구 점: 단타 Teal · 2·3루타 Purple(■) · 홈런 Red(◆) · 아웃 회색 빈 원 (다크 배경 기준 검증)
+   타구 점: 단타 Teal · 2·3루타 Purple(■) · 홈런 Red(◆) · 아웃 빈 원 — 잔디 색 위에서도 검증 + 흰 테두리
    ═══════════════════════════════════════════ */
 #anaBody .sp { display: block; }
 /* 옛 미러 캔버스·아이콘 버튼 줄은 새 화면이 대신한다 (DOM은 유지: 기록 탭 필터 버튼이 여기 붙어 있음) */
@@ -33,6 +33,22 @@
 }
 .sp-who select option { background: var(--an-card); }
 .sp-res { display: flex; flex-wrap: wrap; gap: 4px; }
+.sp-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--an-line);
+  border-radius: 10px;
+  background: var(--an-card);
+  color: var(--an-ink2);
+  font: 700 12px var(--font);
+  cursor: pointer;
+}
+.sp-more.on { border-color: var(--an-accent); color: var(--an-ink); background: var(--an-accent-soft); }
+.sp-more b { min-width: 16px; padding: 0 5px; border-radius: 8px; background: var(--an-accent); color: #fff; font-size: 10px; line-height: 16px; text-align: center; }
+.an-link-btn { margin-left: 4px; padding: 0; border: 0; background: none; color: #a9c7fa; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .sp-rc {
   display: inline-flex;
   align-items: center;
@@ -56,20 +72,21 @@
 .sp-rc.k-out i { border: 1.5px solid var(--c-out); background: none; }
 
 .sp-main { display: grid; grid-template-columns: 1fr; gap: 12px; max-width: 960px; margin: 0 auto; }
-.sp-field-card { padding: 10px 10px 12px; }
-.sp-field { display: block; width: 100%; height: auto; }
-.sp-grass { fill: #10251a; }
-.sp-warn { fill: #231d15; }
-.sp-dirt { fill: #251e16; }
-.sp-inf { fill: #133021; stroke: rgba(255, 255, 255, .25); stroke-width: .35; }
-.sp-fence { fill: none; stroke: #8a95a8; stroke-width: .7; }
-.sp-line { fill: none; stroke: rgba(255, 255, 255, .45); stroke-width: .35; }
-.sp-dist { font: 700 3px var(--mono); fill: rgba(238, 240, 248, .45); text-anchor: middle; }
-.sp-field .d-1b { fill: var(--c-1b); stroke: #0b1410; stroke-width: .45; }
-.sp-field .d-xbh { fill: var(--c-xbh); stroke: #0b1410; stroke-width: .45; }
-.sp-field .d-hr { fill: var(--c-hr); stroke: #0b1410; stroke-width: .45; }
-.sp-field .d-out { fill: none; stroke: #8a95a8; stroke-width: .6; }
-.sp-cell { stroke: rgba(14, 16, 24, .85); stroke-width: .35; }
+.sp-field-card { padding: 6px 6px 12px; }
+.sp-field { display: block; width: 100%; height: auto; border-radius: 10px; }
+/* 필드 색은 구장 설정(STADIUMS)의 잔디·흙 색을 SVG에 직접 넣는다 */
+.sp-stripes circle { fill: none; stroke: rgba(255, 255, 255, .025); }
+.sp-fence { fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: .5; }
+.sp-line { fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: .35; }
+.sp-bline { fill: none; stroke: rgba(255, 255, 255, .3); stroke-width: .25; }
+.sp-bases rect { fill: rgba(255, 255, 255, .75); }
+.sp-dist { font: 700 3px var(--mono); fill: rgba(255, 255, 255, .85); text-anchor: middle; }
+/* 잔디 위에서도 보이도록 흰 테두리 (모양 ●■◆○ 로도 구분) */
+.sp-field .d-1b { fill: var(--c-1b); stroke: rgba(255, 255, 255, .9); stroke-width: .45; }
+.sp-field .d-xbh { fill: var(--c-xbh); stroke: rgba(255, 255, 255, .9); stroke-width: .45; }
+.sp-field .d-hr { fill: var(--c-hr); stroke: rgba(255, 255, 255, .9); stroke-width: .45; }
+.sp-field .d-out { fill: rgba(0, 0, 0, .25); stroke: rgba(226, 232, 240, .85); stroke-width: .5; }
+.sp-cell { stroke: rgba(255, 255, 255, .22); stroke-width: .3; }
 .sp-cell-t { font: 800 3.4px var(--mono); fill: #eef0f8; text-anchor: middle; paint-order: stroke; stroke: rgba(7, 9, 15, .6); stroke-width: .6; }
 .sp-key-note { color: var(--an-ink3); }
 

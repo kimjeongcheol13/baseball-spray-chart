@@ -404,7 +404,7 @@ function checkSaveReminder(){
 function _startSaveReminderTimer(){
   clearTimeout(_saveReminderTimer);
   _saveReminderTimer=setTimeout(function(){
-    if(!_gameSaved&&AS.abs&&AS.abs.length>0&&!_saveReminderShown){
+    if(_unsavedCounts().any&&!_saveReminderShown){
       _saveReminderShown=true;
       showToast('💾 10분 경과 — 지금 저장하세요!',false,true);
     }
@@ -413,8 +413,8 @@ function _startSaveReminderTimer(){
 // 경기 시작 시 타이머 시작 (openGameWizard 이후 호출 포인트에서도 동작하도록 전역 감지)
 document.addEventListener('DOMContentLoaded',function(){
   window.addEventListener('beforeunload',function(e){
-    if(!_gameSaved&&AS&&AS.abs&&AS.abs.length>0){
-      var msg='저장되지 않은 타석 기록이 있습니다. 페이지를 떠나면 데이터가 사라질 수 있습니다.';
+    if(_unsavedCounts().any){
+      var msg='저장되지 않은 타석·투구 기록이 있습니다. 페이지를 떠나면 데이터가 사라질 수 있습니다.';
       e.preventDefault();
       e.returnValue=msg;
       return msg;
@@ -2297,7 +2297,8 @@ function saveGame(){
     _updateSaveUI(false);
     showToast('경기 저장 완료 ✓',false);
     triggerSavePulse();
-    setTimeout(showGameSummary, 400);
+    if(_afterSaveCb){var cb=_afterSaveCb;_afterSaveCb=null;setTimeout(cb,300);}   // 새 경기 저장 확인에서 온 저장: 요약 대신 새 경기
+    else setTimeout(showGameSummary, 400);
   }, 300);
 }
 
@@ -5247,6 +5248,7 @@ function recordPitch(result){
   renderPitchLog();
   renderPitcherStats();
   scheduleAutoSave();
+  _gameSaved=false;   // 투구만 기록해도 '저장 안 된 기록'으로 (새 경기 저장 확인·창 닫기 경고)
   // 피드백
   var icons={'볼':'🟢','스트라이크':'🟡','파울':'🟣','안타':'🟢','2루타':'🔵','3루타':'🟡','홈런':'🔴'};
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result,false,true);
@@ -6139,9 +6141,11 @@ function _fmtTs(ts){
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    경기 시작 마법사 (GAME START WIZARD)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-function openGameWizard(){
+function openGameWizard(force){
   var el=document.getElementById('gameWizard');
   if(!el)return;
+  // 저장 안 한 타석·투구 기록이 있으면 먼저 묻는다 (새 경기를 시작하면 화면에서 사라지므로)
+  if(force!==true&&_unsavedCounts().any){openNewGameGuard();return;}
   // 이전 경기 팀명 자동완성 힌트
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
   if(saves.length){
@@ -6156,6 +6160,36 @@ function openGameWizard(){
   }
   el.classList.add('show');
   setTimeout(function(){var h=document.getElementById('gwHome');if(h)h.focus();},200);
+}
+
+// ── 새 경기 전 저장 확인 ──
+// 저장 안 한 기록 수: 타석(AS.abs) · 투구(모든 투수의 pitches). any = 저장 뒤 새로 기록한 게 있음
+var _afterSaveCb=null;   // saveGame이 끝난 뒤 요약 대신 실행할 일
+function _unsavedCounts(){
+  var pa=(AS&&AS.abs||[]).length;
+  var pc=(AS&&AS.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
+  return {pa:pa,pc:pc,any:!_gameSaved&&(pa>0||pc>0)};
+}
+function openNewGameGuard(){
+  var el=document.getElementById('newGameGuard');
+  if(!el){openGameWizard(true);return;}
+  var u=_unsavedCounts();
+  var sub=document.getElementById('ngSub');
+  if(sub)sub.textContent='마지막 저장 뒤에 기록한 내용이 있어요 (지금 경기: '+[u.pa?'타석 '+u.pa+'개':'',u.pc?'투구 '+u.pc+'개':''].filter(Boolean).join(' · ')+'). 저장하지 않고 새 경기를 시작하면 그 내용은 사라져요.';
+  el.style.display='flex';
+}
+function closeNewGameGuard(){
+  var el=document.getElementById('newGameGuard');
+  if(el)el.style.display='none';
+}
+function newGameGuardSave(){
+  closeNewGameGuard();
+  _afterSaveCb=function(){openGameWizard(true);};
+  saveGame();
+}
+function newGameGuardSkip(){
+  closeNewGameGuard();
+  openGameWizard(true);
 }
 
 function closeGameWizard(){

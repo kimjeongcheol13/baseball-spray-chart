@@ -2,6 +2,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=4';
 import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=2';
+import { hotColdFigure } from './zonefig.js?v=1';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -124,6 +125,10 @@ function _renderProfile() {
       <div class="an-spray-key">
         <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
       </div>
+    </section>
+    <section class="an-card">
+      <header class="an-hd"><h3>코스별 핫/콜드 존</h3><span class="an-hd-note">타석 결과가 나온 공 기준 · 타율</span></header>
+      ${hotColdFigure(P.abs, P.st.avg, P.st.pa) || '<div class="an-note">코스(존)가 기록된 타석이 없어요. 기록할 때 존을 함께 누르면 코스별 핫/콜드 존이 나와요.</div>'}
     </section>
     <div class="pf-2col">
       ${_mixCard(P, _data.pool)}

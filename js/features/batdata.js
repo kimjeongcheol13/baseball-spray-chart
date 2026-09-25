@@ -17,23 +17,28 @@ function _loadGames() {
     if (d) raw.push({
       label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
       key: s.key, d: d.d || '', ts: d.ts || s.ts || 0, th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0,
+      pitchers: d.pitchers || [],
     });
   });
   const val = id => ((document.getElementById(id) || {}).value || '').trim();
   raw.push({
     label: '현재 경기', abs: AS.abs || [], lineups: [...(AS.home_lineup || []), ...(AS.away_lineup || [])], current: true,
     th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0,
+    pitchers: AS.pitchers || [],
   });
 
   const seen = new Set();
+  const seenP = new Set();   // 투구 기록도 같은 방식으로 중복 제거
+  const uniq = (set, x) => {
+    if (!x || x.id == null) return !!x;
+    if (set.has(x.id)) return false;
+    set.add(x.id);
+    return true;
+  };
   return raw.map(g => ({
     ...g,
-    abs: g.abs.filter(a => {
-      if (!a || a.id == null) return !!a;
-      if (seen.has(a.id)) return false;
-      seen.add(a.id);
-      return true;
-    }),
+    abs: g.abs.filter(a => uniq(seen, a)),
+    pitchers: (g.pitchers || []).map(p => ({ ...p, pitches: (p.pitches || []).filter(x => uniq(seenP, x)) })),
   }));
 }
 

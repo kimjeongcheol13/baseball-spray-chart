@@ -104,7 +104,7 @@ function _renderSub(sub) {
     switch (sub) {
       case 'spray': _refreshSpray(); break;
       case 'batter': if (window.updBatterStat) window.updBatterStat(); break;
-      case 'pitcher': if (window.renderPitcherStats) window.renderPitcherStats(); break;
+      case 'pitcher': if (window.openPitcherView) window.openPitcherView(); break;
       case 'team': if (window.openTeamView) window.openTeamView(); break;
       case 'profile': if (window.openProfileView) window.openProfileView(); break;
       case 'compare': if (window.openCompareView) window.openCompareView(); break;

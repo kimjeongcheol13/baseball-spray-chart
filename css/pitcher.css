@@ -1,0 +1,165 @@
+/* ═══════════════════════════════════════════
+   투수 (Pitcher) — 공용 토큰·카드는 analysis.css
+   투구 위치 점: 스트라이크 Blue · 인플레이 아웃 Teal · 삼진 Amber · 피안타 Red(◆) · 볼 회색 빈 원
+   ═══════════════════════════════════════════ */
+.pc {
+  --pz-strike: #4b8cf5;
+  --pz-out: #1fa98a;
+  --pz-k: #bf8a22;
+  --pz-hit: #e0525a;
+  --pz-ball: #7a8499;
+}
+#anaBody .pc { display: block; }
+
+/* 분석 모드에서는 기존 입력 패널을 숨기고, 입력 모드에서만 보인다 */
+#anaBody #anaSecPitcher:not(.pc-input) #pnl-pitcher { display: none !important; }
+#anaBody #anaSecPitcher .pc-legacy-stats { display: none !important; }
+
+.pc-mode { display: flex; justify-content: center; margin: 0 auto 12px; }
+.pc-mode .an-seg button { min-width: 88px; height: 34px; font-size: 12.5px; }
+.pc-ctrls { display: flex; justify-content: center; margin: 0 auto 10px; }
+.pc-result { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+/* ── 헤더 ── */
+.pc-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 16px 14px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(191, 138, 34, .14), transparent 60%),
+    var(--an-card);
+}
+.pc-id { min-width: 0; }
+.pc-eyebrow { font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--an-ink3); }
+.pc-name { display: flex; align-items: center; gap: 8px; margin-top: 2px; font-size: 22px; font-weight: 900; letter-spacing: -.5px; color: var(--an-ink); }
+.pc-live-tag { padding: 2px 7px; border-radius: 999px; background: rgba(224, 82, 90, .18); color: #f7b3b7; font-size: 10px; font-weight: 800; letter-spacing: 0; }
+.pc-meta { margin-top: 2px; font-size: 11px; color: var(--an-ink2); }
+.pc-ip { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+.pc-ip b { font: 400 40px var(--display); letter-spacing: 1px; line-height: .9; color: var(--an-ink); white-space: nowrap; }
+.pc-ip small { font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--an-ink3); }
+.pc-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.pc-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px;
+  border-radius: 10px;
+  background: rgba(7, 9, 15, .45);
+  border: 1px solid var(--an-line);
+  text-align: center;
+}
+.pc-kpi span { font-size: 10px; font-weight: 700; color: var(--an-ink3); }
+.pc-kpi b { font: 700 15px var(--mono); color: var(--an-ink); }
+.pc-kpi small { font: 500 9px var(--mono); color: var(--an-ink3); }
+
+.pc-2col { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.pc-note { display: block; margin-top: 8px; line-height: 1.45; text-align: center; }
+
+/* ── 구종 구성 ── */
+.pc-mix { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pc-mix th, .pc-mix td { padding: 8px 4px; text-align: center; }
+.pc-mix thead th { font-size: 10px; font-weight: 700; color: var(--an-ink3); border-bottom: 1px solid var(--an-line); white-space: nowrap; }
+.pc-mix tbody th { text-align: left; font-weight: 700; color: var(--an-ink); white-space: nowrap; }
+.pc-mix td { font: 600 12.5px var(--mono); color: var(--an-ink2); }
+.pc-mix td small { font-size: 9.5px; color: var(--an-ink3); }
+.pc-mix tbody tr + tr > * { border-top: 1px solid var(--an-line); }
+.pc-mix tr.thin > * { opacity: .5; }
+.pc-mix-use { display: grid; grid-template-columns: 1fr 38px 22px; align-items: center; gap: 6px; min-width: 110px; }
+.pc-mix-use b { color: var(--an-ink); text-align: right; }
+.pc-bar { height: 8px; border-radius: 4px; background: var(--an-raised); }
+.pc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--an-accent); }
+
+/* ── 투구 위치 ── */
+.pc-plot { display: block; width: 100%; max-width: 260px; height: auto; margin: 0 auto; }
+.pc-plot .pz-box { fill: rgba(75, 140, 245, .06); stroke: var(--an-ink2); stroke-width: .8; }
+.pc-plot .pz-grid { fill: none; stroke: var(--an-line); stroke-width: .5; }
+.pc-plot-ax { display: flex; justify-content: space-between; max-width: 260px; margin: 0 auto 4px; font-size: 10px; font-weight: 700; color: var(--an-ink3); }
+.pc-plot .pz-plate { fill: none; stroke: var(--an-ink3); stroke-width: .6; }
+.pc-plot .pz-strike { fill: var(--pz-strike); stroke: var(--an-card); stroke-width: .6; }
+.pc-plot .pz-out { fill: var(--pz-out); stroke: var(--an-card); stroke-width: .6; }
+.pc-plot .pz-k { fill: var(--pz-k); stroke: var(--an-card); stroke-width: .6; }
+.pc-plot .pz-hit { fill: var(--pz-hit); stroke: var(--an-card); stroke-width: .6; }
+.pc-plot .pz-ball { fill: none; stroke: var(--pz-ball); stroke-width: .8; }
+.pc-plot-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; margin-top: 6px; font-size: 10px; color: var(--an-ink2); }
+.pc-plot-key span { display: inline-flex; align-items: center; gap: 4px; }
+.pc-plot-key i { width: 8px; height: 8px; border-radius: 50%; }
+.pc-plot-key .k-strike { background: var(--pz-strike); }
+.pc-plot-key .k-out { background: var(--pz-out); }
+.pc-plot-key .k-k { background: var(--pz-k); }
+.pc-plot-key .k-hit { background: var(--pz-hit); border-radius: 1px; transform: rotate(45deg) scale(.9); }
+.pc-plot-key .k-ball { border: 1.5px solid var(--pz-ball); }
+
+/* ── 카운트 운영 ── */
+.pc-cnts { display: flex; flex-direction: column; }
+.pc-cnt { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 12px; padding: 9px 0; }
+.pc-cnt + .pc-cnt { border-top: 1px solid var(--an-line); }
+.pc-cnt div { grid-row: 1 / 3; display: flex; flex-direction: column; }
+.pc-cnt div b { font-size: 12.5px; font-weight: 800; color: var(--an-ink); }
+.pc-cnt div small { font-size: 10px; color: var(--an-ink3); }
+.pc-cnt strong { font: 400 24px var(--display); letter-spacing: 1px; color: var(--an-ink); text-align: right; line-height: 1; }
+.pc-cnt em { font: 500 9.5px var(--mono); font-style: normal; color: var(--an-ink3); text-align: right; }
+
+/* ── 상대 타자 ── */
+.pc-bat { list-style: none; display: flex; flex-direction: column; }
+.pc-bat li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 8px 0; }
+.pc-bat li + li { border-top: 1px solid var(--an-line); }
+.pc-bat-who { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pc-bat-who b { font-size: 12.5px; font-weight: 800; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-bat-who small { flex: none; font: 500 10px var(--mono); color: var(--an-ink3); }
+.pc-bat-res { display: flex; flex-wrap: wrap; gap: 3px; }
+
+/* ── 등판 기록 ── */
+.pc-apps-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+.pc-apps { width: 100%; min-width: 360px; border-collapse: collapse; font-size: 12px; }
+.pc-apps th, .pc-apps td { padding: 8px 5px; text-align: center; white-space: nowrap; }
+.pc-apps thead th { font-size: 10px; font-weight: 700; color: var(--an-ink3); border-bottom: 1px solid var(--an-line); }
+.pc-apps tbody th { text-align: left; font-size: 11px; font-weight: 600; color: var(--an-ink); max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.pc-apps td { font: 600 12px var(--mono); color: var(--an-ink); }
+.pc-apps tbody tr + tr > * { border-top: 1px solid var(--an-line); }
+
+/* ── 투구 기록 모드: 현재 투수 요약 + 기존 입력 패널 ── */
+.pc-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  max-width: 960px;
+  margin: 0 auto 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 14px;
+  background: var(--an-card);
+}
+.pc-live-empty { justify-content: center; font-size: 12px; color: var(--an-ink2); text-align: center; }
+.pc-live-who { display: flex; flex-direction: column; }
+.pc-live-who small { font-size: 9.5px; font-weight: 800; color: #f7b3b7; }
+.pc-live-who b { font-size: 15px; font-weight: 900; color: var(--an-ink); }
+.pc-live-kpis { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; min-width: 260px; }
+.pc-live-kpis div { display: flex; flex-direction: column; align-items: center; }
+.pc-live-kpis span { font-size: 9.5px; font-weight: 700; color: var(--an-ink3); }
+.pc-live-kpis b { font: 700 14px var(--mono); color: var(--an-ink); white-space: nowrap; }
+
+#anaSecPitcher.pc-input #pnl-pitcher { max-width: 960px; margin: 0 auto; }
+#anaSecPitcher.pc-input #pnl-pitcher .stat-card {
+  background: #0e1018;
+  border: 1px solid #1e2535;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+#anaSecPitcher.pc-input #pnl-pitcher .sc-title { font-size: 13px; font-weight: 800; color: #eef0f8; letter-spacing: -.2px; text-transform: none; margin-bottom: 10px; }
+
+/* ── 넓은 화면 ── */
+@media (min-width: 720px) {
+  .pc-hero { padding: 20px 22px 16px; }
+  .pc-name { font-size: 28px; }
+  .pc-ip b { font-size: 52px; }
+  .pc-kpis { grid-template-columns: repeat(8, 1fr); }
+  .pc-kpi b { font-size: 17px; }
+  .pc-2col { grid-template-columns: 1fr 1fr; align-items: start; }
+  .pc-plot, .pc-plot-ax { max-width: 300px; }
+}

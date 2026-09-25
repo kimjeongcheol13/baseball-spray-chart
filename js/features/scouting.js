@@ -1,861 +1,480 @@
-import { HITS, NOAB, BASE, esc as _esc } from '../constants.js';
-const OUTS = ['플라이 아웃','땅볼 아웃','삼진','병살'];
-const ZONE_LABELS = [
+// 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
+import { HITS, esc as _esc } from '../constants.js';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=2';
+
+// 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
+const ZONES = [
   '내각 높음', '중앙 높음', '외각 높음',
   '내각 중간', '중앙 중간', '외각 중간',
-  '내각 낮음', '중앙 낮음', '외각 낮음'
+  '내각 낮음', '중앙 낮음', '외각 낮음',
 ];
-const SEVERITY = { HIGH: 'high', MED: 'med', LOW: 'low' };
+const ZONE_SHORT = ZONES.map(z => (z === '중앙 중간' ? '한가운데' : z.replace('내각', '몸쪽').replace('외각', '바깥쪽').replace('중앙', '가운데')));
+const MIN_ZONE_AB = 3;   // 코스·구종 판단 최소 타수
+const MIN_SPLIT = 5;     // 카운트 판단 최소 타석
 
-let _currentReportText = '';
-let _lastAnalysis = null;   // openScoutView 재진입 시 canvas 재드로우용
-let _lastAllAbs = null;
+let _sel = null;
+let _zoneMode = 'avg';   // 코스 칸 표시: avg | pa
+let _data = null;
+let _reportText = '';
 
+const SHORT = {
+  '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
+  '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '희타': ['희타', 'out'], '희비': ['희비', 'out'],
+  '땅볼 아웃': ['땅볼', 'out'], '플라이 아웃': ['뜬공', 'out'], '병살': ['병살', 'out'],
+};
+
+// ── 진입 ──────────────────────────────────────────────────────
 export function openScoutView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
-  document.getElementById('scoutView').classList.add('active');
-  _currentReportText = '';
+  const view = document.getElementById('scoutView');
+  if (view) view.classList.add('active');
+  _data = buildData();
+  const names = _data.players.map(p => p.name);
+  if (!names.includes(_sel)) _sel = null;
+  if (!_sel) _sel = (_data.players.find(p => p.pa > 0) || {}).name || null;
   renderScoutPlayerSelect();
-  // 이미 선수가 선택되어 canvas가 생성된 상태라면 view 활성화 후 재드로우
-  const sel = document.getElementById('scoutPlayerSelect');
-  if (sel && sel.value) {
-    setTimeout(() => {
-      const c1 = document.getElementById('scoutStrengthCanvas');
-      const c2 = document.getElementById('scoutWeaknessCanvas');
-      const c3 = document.getElementById('scoutZoneCanvas');
-      // canvas가 존재하면 재드로우 (_lastAnalysis 체크 제거)
-      if (c1 && _lastAnalysis) {
-        _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
-        _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
-        _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
-        _drawDirCanvas(_lastAnalysis);
-        if (_lastAllAbs) _drawScoutFieldCanvas(_lastAllAbs);
-      }
-    }, 50);
-  }
+  _render();
 }
 
 export function renderScoutPlayerSelect() {
-  const sel = document.getElementById('scoutPlayerSelect');
-  if (!sel) return;
-
-  const players = _getAllPlayers();
-  if (!players.length) {
-    sel.innerHTML = '<option value="">선수 없음</option>';
-    return;
-  }
-
-  sel.innerHTML = '<option value="">선수 선택</option>' +
-    players.map(p => `<option value="${_esc(p.name)}">#${p.num} ${_esc(p.name)}</option>`).join('');
-
-  sel.onchange = () => {
-    if (sel.value) generateScoutReport(sel.value);
-  };
+  const el = document.getElementById('scoutPlayerList');
+  if (!el) return;
+  if (!_data) _data = buildData();
+  el.innerHTML = playerChips(_data.players, _sel, 'generateScoutReport');
+  const on = el.querySelector('.an-chip.on');
+  if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
-export function generateScoutReport(playerName) {
-  const allAbs = _gatherPlayerAbs(playerName);
-  if (!allAbs.length) {
-    const el = document.getElementById('scoutContent');
-    if (el) el.innerHTML = '<div class="empty-state">해당 선수의 데이터가 없습니다</div>';
-    _currentReportText = '';
-    return;
-  }
+export function generateScoutReport(name) {
+  _sel = name || null;
+  document.querySelectorAll('#scoutPlayerList .an-chip').forEach(b => {
+    const on = b.dataset.name === _sel;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  _render();
+}
 
-  const analysis = _analyzePlayer(playerName, allAbs);
-  const findings = _generateFindings(analysis);
-  const strategy = _generateStrategy(analysis, findings);
-
-  // 재진입 시 canvas 재드로우를 위해 캐시
-  _lastAnalysis = analysis;
-  _lastAllAbs = allAbs;
-
-  _renderScoutReport(playerName, analysis, findings, strategy, allAbs);
-  _currentReportText = _buildTextReport(playerName, analysis, findings, strategy);
-
-  // _renderScoutReport 내 setTimeout(50)과 별개로, view가 아직 hidden일 때를 대비한 추가 드로우
-  setTimeout(() => {
-    if (!_lastAnalysis) return;
-    _paintZoneHeatmap('scoutStrengthCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'strength');
-    _paintZoneHeatmap('scoutWeaknessCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'weakness');
-    _paintZoneHeatmap('scoutZoneCanvas', _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, 'all');
-  }, 50);
+export function setScoutZoneMode(mode) {
+  _zoneMode = mode === 'pa' ? 'pa' : 'avg';
+  _render();
 }
 
 export function exportScoutReport() {
-  if (!_currentReportText) return;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(_currentReportText).then(() => {
-      const btn = document.getElementById('scoutExportBtn');
-      if (btn) {
-        const orig = btn.textContent;
-        btn.textContent = '복사 완료!';
-        setTimeout(() => { btn.textContent = orig; }, 1500);
-      }
-    });
-  } else {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = _currentReportText;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+  if (!_reportText) return;
+  const done = () => {
     const btn = document.getElementById('scoutExportBtn');
-    if (btn) {
-      const orig = btn.textContent;
-      btn.textContent = '복사 완료!';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
-    }
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '복사 완료!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(_reportText).then(done, () => window.showToast && window.showToast('복사하지 못했어요'));
+    return;
   }
+  const ta = document.createElement('textarea');
+  ta.value = _reportText;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  done();
 }
 
+// 인쇄: 스카우트 리포트만 보이도록 body 에 표시 클래스를 잠깐 붙인다
 export function exportScoutPDF() {
+  const b = document.body;
+  const off = () => { b.classList.remove('sc-printing'); window.removeEventListener('afterprint', off); };
+  b.classList.add('sc-printing');
+  window.addEventListener('afterprint', off);
   window.print();
 }
 
-export function exportScoutImage() {
-  const c = document.getElementById('scoutZoneCanvas');
-  if (!c) { window.showToast && window.showToast('내보낼 리포트가 없습니다'); return; }
-  window._downloadCanvas(c, 'scout_report_' + Date.now() + '.png');
-}
+// ── 분석 ─────────────────────────────────────────────────────
+function _analyze(P, pool) {
+  const abs = P.abs;
+  const s = P.st;
 
-function _getAllPlayers() {
-  const map = {};
-  const AS = window.AS;
-
-  const _add = p => {
-    if (!p || !p.name) return;
-    if (!map[p.name]) map[p.name] = { id: p.id, name: p.name, num: p.num };
-  };
-
-  [...(AS.home_lineup||[]), ...(AS.away_lineup||[])].forEach(_add);
-
-  const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.slice().reverse().forEach(s => {
-    try {
-      const d = JSON.parse(localStorage.getItem(s.key));
-      if (!d) return;
-      [...(d.home_lineup||[]), ...(d.away_lineup||[])].forEach(_add);
-    } catch(e) {}
+  // 코스 (결과가 나온 공의 코스)
+  const zones = ZONES.map((z, i) => {
+    const list = abs.filter(a => a.zone === z);
+    const c = calcStats(list);
+    return { i, z, label: ZONE_SHORT[i], pa: c.pa, ab: c.ab, h: c.h, avg: c.avg, slg: c.slg, k: c.k };
   });
+  const zoned = zones.reduce((n, z) => n + z.pa, 0);
 
-  return Object.values(map);
+  // 구종 (결과가 나온 공의 구종)
+  const byPt = {};
+  abs.forEach(a => { if (a.pt) (byPt[a.pt] = byPt[a.pt] || []).push(a); });
+  const pitches = Object.keys(byPt).map(pt => ({ pt, ...calcStats(byPt[pt]) })).sort((x, y) => y.pa - x.pa);
+
+  // 카운트 — 결과가 나온 순간의 볼·스트라이크
+  const cnt = abs.filter(a => a.count && a.count.s != null && a.count.b != null);
+  const counts = [
+    { k: 'pitcher', l: '투수 유리', d: '스트라이크 > 볼', abs: cnt.filter(a => a.count.s > a.count.b) },
+    { k: 'even', l: '이븐', d: '볼 = 스트라이크', abs: cnt.filter(a => a.count.s === a.count.b) },
+    { k: 'batter', l: '타자 유리', d: '볼 > 스트라이크', abs: cnt.filter(a => a.count.b > a.count.s) },
+    { k: 'two', l: '2스트라이크', d: '스트라이크 2개', abs: cnt.filter(a => a.count.s >= 2) },
+  ].map(c => ({ ...c, st: calcStats(c.abs) }));
+
+  // 타구 성격: 인플레이 아웃 중 땅볼/뜬공
+  const go = abs.filter(a => a.res === '땅볼 아웃' || a.res === '병살').length;
+  const fo = abs.filter(a => a.res === '플라이 아웃' || a.res === '희비').length;
+  const gdp = abs.filter(a => a.res === '병살').length;
+  const dist = abs.filter(a => HITS.includes(a.res) && a.ft).map(a => a.ft);
+
+  // 위협도: 전체 평균 대비 wOBA
+  const r = pool.woba > 0 ? s.woba / pool.woba : 1;
+  const threat = s.pa < 5 ? { k: 'na', l: '판단 보류', d: '타석이 너무 적어요' }
+    : r >= 1.15 ? { k: 'high', l: '위험 타자', d: '전체 평균보다 확실히 강한 타자' }
+    : r >= 1.0 ? { k: 'mid', l: '경계', d: '전체 평균 이상' }
+    : r >= 0.85 ? { k: 'low', l: '보통', d: '전체 평균보다 조금 약함' }
+    : { k: 'easy', l: '공략 가능', d: '전체 평균보다 확실히 약한 타자' };
+
+  return { zones, zoned, pitches, counts, go, fo, gdp, dist, threat, idx: pool.woba > 0 ? Math.round(r * 100) : null };
 }
 
-function _gatherPlayerAbs(name) {
-  const allAbs = [];
-  const AS = window.AS;
-  const currentAbs = (AS.abs||[]).filter(a => a.bname === name);
-  if (currentAbs.length) allAbs.push(...currentAbs);
+// 공략 포인트: type = attack(공략) · avoid(주의) · field(수비) — 모든 항목에 근거 숫자와 표본을 붙인다
+function _plan(P, A, pool) {
+  const s = P.st;
+  const out = [];
+  const add = (type, title, why, n) => out.push({ type, title, why, n });
 
-  const saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  saves.forEach(s => {
-    try {
-      const d = JSON.parse(localStorage.getItem(s.key));
-      if (!d || !d.abs) return;
-      const pAbs = d.abs.filter(a => a.bname === name);
-      if (pAbs.length) allAbs.push(...pAbs);
-    } catch(e) {}
-  });
-  return allAbs;
+  // 코스
+  const zq = A.zones.filter(z => z.ab >= MIN_ZONE_AB);
+  zq.filter(z => z.avg <= 0.15).sort((x, y) => x.avg - y.avg || y.ab - x.ab).slice(0, 2)
+    .forEach(z => add('attack', `${z.label} 코스로 승부`, `이 코스 타율 ${f3(z.avg)} (${z.h}/${z.ab})`, z.ab));
+  zq.filter(z => z.avg >= 0.4).sort((x, y) => y.avg - x.avg).slice(0, 2)
+    .forEach(z => add('avoid', `${z.label} 코스는 피하기`, `이 코스 타율 ${f3(z.avg)} (${z.h}/${z.ab})`, z.ab));
+
+  // 구종
+  const pq = A.pitches.filter(p => p.ab >= MIN_ZONE_AB);
+  const best = pq.slice().sort((x, y) => x.woba - y.woba)[0];
+  // 결정구: 이 타자 평균보다 확실히 약하고, 그 자체로도 잘 막힌 구종만
+  if (best && best.woba < s.woba - 0.03 && (best.avg <= 0.25 || best.kRate >= 0.3)) add('attack', `결정구 후보: ${best.pt}`, `${best.pt}에 타율 ${f3(best.avg)}, 삼진 ${pct(best.kRate)} (${best.pa}타석)`, best.pa);
+  pq.filter(p => p !== best && p.avg >= 0.4).slice(0, 1)
+    .forEach(p => add('avoid', `${p.pt} 조심`, `${p.pt}에 타율 ${f3(p.avg)}, 장타율 ${f3(p.slg)} (${p.pa}타석)`, p.pa));
+
+  // 카운트
+  const C = Object.fromEntries(A.counts.map(c => [c.k, c.st]));
+  if (C.pitcher.pa >= MIN_SPLIT && C.pitcher.avg <= 0.15) add('attack', '초반 스트라이크로 카운트 선점', `투수 유리 카운트에서 타율 ${f3(C.pitcher.avg)} (${C.pitcher.pa}타석)`, C.pitcher.pa);
+  if (C.batter.pa >= MIN_SPLIT && C.batter.avg >= 0.4) add('avoid', '볼 카운트가 몰리면 위험', `타자 유리 카운트에서 타율 ${f3(C.batter.avg)} (${C.batter.pa}타석)`, C.batter.pa);
+  if (C.two.pa >= MIN_SPLIT && C.two.kRate >= 0.35) add('attack', '2스트라이크 후 유인구', `2스트라이크에서 삼진 ${pct(C.two.kRate)} (${C.two.pa}타석)`, C.two.pa);
+  else if (C.two.pa >= MIN_SPLIT && C.two.avg >= 0.35) add('avoid', '2스트라이크에도 끈질김', `2스트라이크에서 타율 ${f3(C.two.avg)} (${C.two.pa}타석)`, C.two.pa);
+
+  // 선구안 · 파워 (전체 평균 대비)
+  if (s.pa >= 10 && s.kRate >= pool.kRate + 0.08) add('attack', '삼진을 노릴 만한 타자', `삼진 ${pct(s.kRate)} · 전체 ${pct(pool.kRate)}`, s.pa);
+  if (s.pa >= 10 && s.bbRate <= 0.04) add('attack', '존 안으로 적극 승부', `볼넷 ${pct(s.bbRate)} — 볼을 잘 골라내지 않아요`, s.pa);
+  else if (s.pa >= 10 && s.bbRate >= pool.bbRate + 0.05) add('avoid', '볼넷 주의', `볼넷 ${pct(s.bbRate)} · 전체 ${pct(pool.bbRate)} — 존을 벗어나면 참아요`, s.pa);
+  if (s.ab >= 10 && s.iso >= Math.max(0.2, pool.iso + 0.08)) add('avoid', '장타 경계', `ISO ${f3(s.iso)} · 전체 ${f3(pool.iso)}`, s.ab);
+
+  // 수비 위치
+  if (s.dn >= 6) {
+    const pullP = s.pull / s.dn, oppoP = s.oppo / s.dn;
+    const side = P.bats === 'L' ? ['1루', '3루'] : ['3루', '1루'];
+    if (pullP >= 0.55) add('field', `${side[0]} 쪽(당김)으로 수비 이동`, `타구 ${Math.round(pullP * 100)}%가 당김 방향 (${s.pull}/${s.dn})`, s.dn);
+    else if (oppoP >= 0.45) add('field', `${side[1]} 쪽(밀어)으로 수비 이동`, `타구 ${Math.round(oppoP * 100)}%가 밀어치기 방향 (${s.oppo}/${s.dn})`, s.dn);
+  }
+  const outs = A.go + A.fo;
+  if (outs >= 6) {
+    const ratio = A.fo ? A.go / A.fo : A.go;
+    if (ratio >= 1.5) add('field', '땅볼 타자 — 내야 대비·병살 노리기', `땅볼 아웃 ${A.go} : 뜬공 아웃 ${A.fo}${A.gdp ? ` · 병살 ${A.gdp}` : ''}`, outs);
+    else if (ratio <= 0.67) add('field', '뜬공 타자 — 외야 한 발 뒤로', `땅볼 아웃 ${A.go} : 뜬공 아웃 ${A.fo}`, outs);
+  }
+
+  const order = { attack: 0, avoid: 1, field: 2 };
+  return out.sort((x, y) => order[x.type] - order[y.type]);
 }
 
-function _analyzePlayer(name, allAbs) {
-  const pa = allAbs.length;
-  const ab = allAbs.filter(a => !NOAB.includes(a.res)).length;
-  const h = allAbs.filter(a => HITS.includes(a.res)).length;
-  // bb = 볼넷만 (사구 제외) — OBP 이중계산 방지
-  const bb = allAbs.filter(a => a.res === '볼넷').length;
-  const hbp = allAbs.filter(a => a.res === '사구').length;
-  const k = allAbs.filter(a => a.res === '삼진').length;
-  const hr = allAbs.filter(a => a.res === '홈런').length;
-  const tb = allAbs.reduce((s, a) => s + (BASE[a.res]||0), 0);
-  const sf = allAbs.filter(a => a.res === '희비').length;
-  const gdp = allAbs.filter(a => a.res === '병살').length;
-  const flyout = allAbs.filter(a => a.res === '플라이 아웃').length;
-  const groundout = allAbs.filter(a => a.res === '땅볼 아웃').length;
-
-  const avg = ab ? h / ab : 0;
-  // 표준 OBP: (H + BB + HBP) / (AB + BB + HBP + SF)
-  const obp = (ab + bb + hbp + sf) ? (h + bb + hbp) / (ab + bb + hbp + sf) : 0;
-  const slg = ab ? tb / ab : 0;
-  const kRate = pa ? k / pa : 0;
-  const bbRate = pa ? bb / pa : 0; // 볼넷% (사구 제외)
-  const isoP = slg - avg;
-  const goAo = flyout ? groundout / flyout : groundout;
-
-  // Zone analysis (3x3 grid based on zone property 1-9)
-  const zoneHits = Array(9).fill(0);
-  const zoneOuts = Array(9).fill(0);
-  const zoneTotal = Array(9).fill(0);
-  const zoneAvg = Array(9).fill(0);
-
-  allAbs.forEach(a => {
-    if (a.zone) {
-      const idx = ZONE_LABELS.indexOf(a.zone);
-      if (idx !== -1) {
-        zoneTotal[idx]++;
-        if (HITS.includes(a.res)) zoneHits[idx]++;
-        if (OUTS.includes(a.res)) zoneOuts[idx]++;
-      }
-    }
-  });
-
-  for (let i = 0; i < 9; i++) {
-    const zab = zoneTotal[i] - allAbs.filter(a => a.zone === ZONE_LABELS[i] && NOAB.includes(a.res)).length;
-    zoneAvg[i] = zab > 0 ? zoneHits[i] / zab : 0;
-  }
-
-  // Direction analysis
-  const dabs = allAbs.filter(a => a.deg != null);
-  const pull = dabs.filter(a => _isPull(a));
-  const center = dabs.filter(a => _isCtr(a));
-  const oppo = dabs.filter(a => _isOppo(a));
-
-  const dirAvg = (arr) => {
-    const dab = arr.filter(a => !NOAB.includes(a.res)).length;
-    const dh = arr.filter(a => HITS.includes(a.res)).length;
-    return dab > 0 ? dh / dab : 0;
-  };
-
-  const pullAvg = dirAvg(pull);
-  const centerAvg = dirAvg(center);
-  const oppoAvg = dirAvg(oppo);
-  const pullPct = dabs.length ? pull.length / dabs.length : 0;
-  const centerPct = dabs.length ? center.length / dabs.length : 0;
-  const oppoPct = dabs.length ? oppo.length / dabs.length : 0;
-
-  // Count-based analysis
-  const countStats = {};
-  allAbs.forEach(a => {
-    if (a.count) {
-      const key = `${a.count.b}-${a.count.s}`;
-      if (!countStats[key]) countStats[key] = { pa: 0, h: 0, k: 0, bb: 0, ab: 0 };
-      countStats[key].pa++;
-      if (!NOAB.includes(a.res)) countStats[key].ab++;
-      if (HITS.includes(a.res)) countStats[key].h++;
-      if (a.res === '삼진') countStats[key].k++;
-      if (a.res === '볼넷' || a.res === '사구') countStats[key].bb++;
-    }
-  });
-
-  // Ahead/behind/even count grouping
-  const aheadAbs = allAbs.filter(a => a.count && a.count.s > a.count.b);
-  const behindAbs = allAbs.filter(a => a.count && a.count.b > a.count.s);
-  const evenAbs = allAbs.filter(a => a.count && a.count.b === a.count.s);
-
-  const countGroupAvg = (arr) => {
-    const cab = arr.filter(a => !NOAB.includes(a.res)).length;
-    const ch = arr.filter(a => HITS.includes(a.res)).length;
-    return cab > 0 ? ch / cab : 0;
-  };
-
-  const aheadAvg = countGroupAvg(aheadAbs);
-  const behindAvg = countGroupAvg(behindAbs);
-  const evenAvg = countGroupAvg(evenAbs);
-
-  // First-pitch result
-  const firstPitchSwing = allAbs.filter(a => a.pitches && a.pitches.length > 0 && a.pitches[0] !== 'B');
-  const firstPitchHit = firstPitchSwing.filter(a => HITS.includes(a.res));
-
-  // Distance analysis
-  const hitAbs = allAbs.filter(a => HITS.includes(a.res) && a.ft);
-  const avgDist = hitAbs.length ? hitAbs.reduce((s, a) => s + a.ft, 0) / hitAbs.length : 0;
-
-  return {
-    name, pa, ab, h, bb, k, hr, tb, avg, obp, slg, kRate, bbRate, isoP, goAo,
-    gdp, flyout, groundout,
-    zoneHits, zoneOuts, zoneTotal, zoneAvg,
-    pullAvg, centerAvg, oppoAvg, pullPct, centerPct, oppoPct,
-    pullCount: pull.length, centerCount: center.length, oppoCount: oppo.length, dabsCount: dabs.length,
-    countStats, aheadAvg, behindAvg, evenAvg,
-    aheadCount: aheadAbs.length, behindCount: behindAbs.length, evenCount: evenAbs.length,
-    firstPitchSwingPct: allAbs.length ? firstPitchSwing.length / allAbs.length : 0,
-    avgDist, sf
-  };
-}
-
-function _generateFindings(a) {
-  const findings = [];
-
-  // Rule 1: High strikeout rate
-  if (a.kRate > 0.25) {
-    findings.push({ severity: SEVERITY.HIGH, category: '삼진', text: `삼진율 ${Math.round(a.kRate*100)}%로 매우 높음. 체이스 유도 가능.` });
-  } else if (a.kRate > 0.20) {
-    findings.push({ severity: SEVERITY.MED, category: '삼진', text: `삼진율 ${Math.round(a.kRate*100)}%로 평균 이상.` });
-  }
-
-  // Rule 2: Low walk rate
-  if (a.bbRate < 0.05 && a.pa >= 10) {
-    findings.push({ severity: SEVERITY.HIGH, category: '선구안', text: `볼넷율 ${Math.round(a.bbRate*100)}%로 매우 낮음. 적극적인 스트라이크 투구 가능.` });
-  } else if (a.bbRate < 0.08) {
-    findings.push({ severity: SEVERITY.MED, category: '선구안', text: `볼넷율 ${Math.round(a.bbRate*100)}%로 낮음.` });
-  }
-
-  // Rule 3: Low ISO (no power)
-  if (a.isoP < 0.100 && a.ab >= 10) {
-    findings.push({ severity: SEVERITY.MED, category: '파워', text: `ISO ${a.isoP.toFixed(3)}으로 장타력 부족. 스트라이크존 안에서 대결 가능.` });
-  }
-
-  // Rule 4: High ISO (power hitter)
-  if (a.isoP > 0.200) {
-    findings.push({ severity: SEVERITY.HIGH, category: '파워', text: `ISO ${a.isoP.toFixed(3)}으로 장타력 높음. 존 안 직구 주의.` });
-  }
-
-  // Rule 5: Pull-heavy hitter
-  if (a.pullPct > 0.50 && a.dabsCount >= 5) {
-    findings.push({ severity: SEVERITY.HIGH, category: '방향', text: `당기는 타구 ${Math.round(a.pullPct*100)}%. 바깥쪽 공략 유리.` });
-  }
-
-  // Rule 6: Oppo-heavy hitter
-  if (a.oppoPct > 0.40 && a.dabsCount >= 5) {
-    findings.push({ severity: SEVERITY.MED, category: '방향', text: `밀어치는 타구 ${Math.round(a.oppoPct*100)}%. 몸쪽 공략 고려.` });
-  }
-
-  // Rule 7: Worse when behind in count
-  if (a.behindAvg < 0.150 && a.behindCount >= 5) {
-    findings.push({ severity: SEVERITY.HIGH, category: '카운트', text: `불리한 카운트 타율 ${a.behindAvg.toFixed(3)}. 초반 스트라이크 선취가 핵심.` });
-  }
-
-  // Rule 8: Better when ahead in count
-  if (a.aheadAvg > 0.350 && a.aheadCount >= 3) {
-    findings.push({ severity: SEVERITY.MED, category: '카운트', text: `유리한 카운트 타율 ${a.aheadAvg.toFixed(3)}. 카운트를 내주지 않아야 함.` });
-  }
-
-  // Rule 9: Ground ball double play tendency
-  if (a.gdp >= 2) {
-    findings.push({ severity: SEVERITY.MED, category: '땅볼', text: `병살 ${a.gdp}개. 낮은 공에 땅볼 유도 가능.` });
-  }
-
-  // Rule 10: High GO/AO ratio
-  if (a.goAo > 1.5 && (a.groundout + a.flyout) >= 5) {
-    findings.push({ severity: SEVERITY.MED, category: '타구성격', text: `GO/AO ${a.goAo.toFixed(1)}로 땅볼 타자. 낮은 공 유도 전략.` });
-  }
-
-  // Rule 11: Low GO/AO (fly ball hitter)
-  if (a.goAo < 0.7 && (a.groundout + a.flyout) >= 5) {
-    findings.push({ severity: SEVERITY.LOW, category: '타구성격', text: `GO/AO ${a.goAo.toFixed(1)}로 플라이볼 타자.` });
-  }
-
-  // Rule 12: Weak zones (out rate > 70% with >= 3 PA)
-  for (let i = 0; i < 9; i++) {
-    if (a.zoneTotal[i] >= 3) {
-      const outRate = a.zoneOuts[i] / a.zoneTotal[i];
-      if (outRate > 0.70) {
-        findings.push({ severity: SEVERITY.HIGH, category: '존', text: `${ZONE_LABELS[i]} 존 아웃률 ${Math.round(outRate*100)}% (${a.zoneTotal[i]}타석). 적극 공략 존.` });
-      }
-    }
-  }
-
-  // Rule 13: Strong zones (avg > .350 with >= 3 AB)
-  for (let i = 0; i < 9; i++) {
-    if (a.zoneTotal[i] >= 3 && a.zoneAvg[i] > 0.350) {
-      findings.push({ severity: SEVERITY.HIGH, category: '존', text: `${ZONE_LABELS[i]} 존 타율 ${a.zoneAvg[i].toFixed(3)}. 위험 존 - 피해야 함.` });
-    }
-  }
-
-  // Rule 14: First pitch aggression
-  if (a.firstPitchSwingPct > 0.50 && a.pa >= 5) {
-    findings.push({ severity: SEVERITY.MED, category: '접근', text: `초구 스윙률 ${Math.round(a.firstPitchSwingPct*100)}%. 초구 변화구로 카운트 선취 가능.` });
-  }
-
-  // Rule 15: Patient hitter
-  if (a.firstPitchSwingPct < 0.20 && a.pa >= 5) {
-    findings.push({ severity: SEVERITY.LOW, category: '접근', text: `초구 스윙률 ${Math.round(a.firstPitchSwingPct*100)}%. 초구 스트라이크 유도.` });
-  }
-
-  // Rule 16: Overall weak average
-  if (a.avg < 0.200 && a.ab >= 10) {
-    findings.push({ severity: SEVERITY.LOW, category: '전체', text: `통산 타율 ${a.avg.toFixed(3)}. 전반적으로 부진한 타자.` });
-  }
-
-  // Rule 17: Pull direction but weak
-  if (a.pullPct > 0.40 && a.pullAvg < 0.200 && a.pullCount >= 3) {
-    findings.push({ severity: SEVERITY.MED, category: '방향', text: `당기는 방향 타율 ${a.pullAvg.toFixed(3)}로 낮음. 당기게 유도하면 아웃 확률 높음.` });
-  }
-
-  // Rule 18: Strong center hitter
-  if (a.centerAvg > 0.350 && a.centerCount >= 3) {
-    findings.push({ severity: SEVERITY.MED, category: '방향', text: `중앙 방향 타율 ${a.centerAvg.toFixed(3)}. 중앙 라인드라이브 주의.` });
-  }
-
-  // Rule 19: Small sample warning
-  if (a.pa < 10) {
-    findings.push({ severity: SEVERITY.LOW, category: '샘플', text: `총 ${a.pa}타석으로 표본이 적음. 분석 신뢰도 낮음.` });
-  }
-
-  // Rule 20: Even count performance
-  if (a.evenAvg > 0.300 && a.evenCount >= 3) {
-    findings.push({ severity: SEVERITY.LOW, category: '카운트', text: `이븐 카운트 타율 ${a.evenAvg.toFixed(3)}. 이븐에서도 경계 필요.` });
-  }
-
-  return findings.sort((a, b) => {
-    const order = { high: 0, med: 1, low: 2 };
-    return order[a.severity] - order[b.severity];
-  });
-}
-
-function _generateStrategy(analysis, findings) {
-  const strategies = [];
-
-  // Zone-based strategies
-  const weakZones = [];
-  const dangerZones = [];
-
-  for (let i = 0; i < 9; i++) {
-    if (analysis.zoneTotal[i] >= 2) {
-      if (analysis.zoneAvg[i] < 0.200) weakZones.push(i);
-      if (analysis.zoneAvg[i] > 0.350) dangerZones.push(i);
-    }
-  }
-
-  if (weakZones.length > 0) {
-    strategies.push({
-      zone: '약점 존 공략',
-      detail: weakZones.map(z => ZONE_LABELS[z]).join(', ') + ' 위주로 투구',
-      priority: 'high'
-    });
-  }
-
-  if (dangerZones.length > 0) {
-    strategies.push({
-      zone: '위험 존 회피',
-      detail: dangerZones.map(z => ZONE_LABELS[z]).join(', ') + ' 존 회피',
-      priority: 'high'
-    });
-  }
-
-  // Direction strategy
-  if (analysis.pullPct > 0.45) {
-    strategies.push({
-      zone: '바깥쪽 공략',
-      detail: '당기는 타구가 많으므로 바깥쪽 변화구 위주. 안쪽은 주의.',
-      priority: 'med'
-    });
-  }
-
-  // Count strategy
-  if (analysis.kRate > 0.20) {
-    strategies.push({
-      zone: '스트라이크 선취',
-      detail: '초구 스트라이크 후 체이스 볼로 삼진 유도.',
-      priority: 'high'
-    });
-  }
-
-  if (analysis.behindAvg < 0.200 && analysis.behindCount >= 3) {
-    strategies.push({
-      zone: '카운트 유리 유지',
-      detail: '불리한 카운트에서 약한 타자. 초반 스트라이크 필수.',
-      priority: 'med'
-    });
-  }
-
-  // Ground ball strategy
-  if (analysis.goAo > 1.2) {
-    strategies.push({
-      zone: '낮은 존 활용',
-      detail: '땅볼 타자. 낮은 존 싱커/슬라이더로 병살 유도.',
-      priority: 'med'
-    });
-  }
-
-  // Power strategy
-  if (analysis.isoP > 0.180) {
-    strategies.push({
-      zone: '직구 위치 주의',
-      detail: '장타력 높음. 존 안 직구 최소화, 변화구 위주.',
-      priority: 'high'
-    });
-  }
-
-  return strategies;
-}
-
-function _renderScoutReport(name, analysis, findings, strategy, allAbs) {
+// ── 렌더 ─────────────────────────────────────────────────────
+function _render() {
   const el = document.getElementById('scoutContent');
   if (!el) return;
-
-  const f3 = v => v.toFixed(3).replace('0.','.');
-  const pct = v => Math.round(v * 100) + '%';
-  const sevClass = s => s === SEVERITY.HIGH ? 'finding-high' : s === SEVERITY.MED ? 'finding-med' : 'finding-low';
-  const sevLabel = s => s === SEVERITY.HIGH ? '⚠️ 주의' : s === SEVERITY.MED ? '📌 참고' : 'ℹ️ 정보';
-  const prioClass = p => p === 'high' ? 'strat-high' : p === 'med' ? 'strat-med' : 'strat-low';
-
-  // 카운트 위험도 배경색
-  const countBg = avg => avg > 0.350 ? 'rgba(220,38,38,0.25)' : avg > 0.250 ? 'rgba(251,146,60,0.2)' : 'rgba(45,212,160,0.15)';
-  const countColor = avg => avg > 0.350 ? '#f87171' : avg > 0.250 ? '#fb923c' : '#2dd4a0';
-
-  // 최근 타구 10개 (위치 있는 것)
-  const recent10 = [...allAbs].reverse().filter(a => a.res).slice(0, 10);
-  const RES_COLOR = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
-    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
-    '삼진':'#94a3b8','볼넷':'#60a5fa','사구':'#93c5fd','병살':'#dc2626','희타':'#fb923c','희비':'#fb923c'};
+  if (!_data) _data = buildData();
+  _reportText = '';
+  if (!_data.players.length) {
+    el.innerHTML = emptyState('아직 기록된 타자가 없어요', '기록 탭에서 상대 타자의 타석을 입력하면 공략 리포트가 만들어져요.');
+    return;
+  }
+  if (!_sel) {
+    el.innerHTML = emptyState('분석할 타자를 선택하세요', '위 목록에서 타자를 누르면 공략 리포트가 나와요.');
+    return;
+  }
+  const P = playerData(_data, _sel);
+  if (!P.st.pa) {
+    el.innerHTML = emptyState('아직 이 타자의 타석 기록이 없어요', '라인업에는 있지만 기록된 타석이 없어요.');
+    return;
+  }
+  const pool = _data.pool;
+  const A = _analyze(P, pool);
+  const plan = _plan(P, A, pool);
+  _reportText = _textReport(P, A, plan);
 
   el.innerHTML = `
-    <div class="scout-header">
-      <div class="scout-name">${_esc(name)} 스카우팅 리포트</div>
-      <button id="scoutExportBtn" class="scout-export-btn" onclick="window.exportScoutReport()">리포트 복사</button>
-      <button class="scout-export-btn" onclick="window.exportScoutPDF()">PDF 내보내기</button>
-      <button class="scout-export-btn" onclick="window.exportScoutImage()">이미지 내보내기</button>
+    ${_hero(P, A)}
+    ${_planCard(P, plan)}
+    <div class="sc-2col">
+      ${_zoneCard(P, A)}
+      ${_pitchCard(P, A)}
     </div>
-
-    <div class="scout-overview">
-      <div class="so-item"><span class="so-val" style="color:#f6c23e">${f3(analysis.avg)}</span><span class="so-lbl">AVG</span></div>
-      <div class="so-item"><span class="so-val" style="color:#f56565">${pct(analysis.kRate)}</span><span class="so-lbl">K%</span></div>
-      <div class="so-item"><span class="so-val" style="color:#2dd4a0">${pct(analysis.bbRate)}</span><span class="so-lbl">BB%</span></div>
-      <div class="so-item"><span class="so-val" style="color:#4b8cf5">${f3(analysis.isoP)}</span><span class="so-lbl">ISO</span></div>
-      <div class="so-item"><span class="so-val">${analysis.goAo.toFixed(1)}</span><span class="so-lbl">GO/AO</span></div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">🎯 스트라이크존 히트맵</div>
-      <div class="scout-heatmap-tabs">
-        <button class="sht-btn active" onclick="switchScoutHeatmapTab('strength',this)">강점 존</button>
-        <button class="sht-btn" onclick="switchScoutHeatmapTab('weakness',this)">약점 존</button>
-        <button class="sht-btn" onclick="switchScoutHeatmapTab('all',this)">종합</button>
+    ${_countCard(A)}
+    <section class="an-card">
+      <header class="an-hd"><h3>타구 방향 · 수비 위치</h3><span class="an-hd-note">${P.bats === 'L' ? '좌타' : '우타'} 기준 당김/밀어</span></header>
+      <div class="sc-spray">
+        ${sprayFigure(P)}
+        ${_battedCard(P, A)}
       </div>
-      <div class="scout-zone-canvases" style="justify-content:center">
-        <div class="szc-wrap" id="scoutHmPanel-strength">
-          <canvas id="scoutStrengthCanvas" width="200" height="200"></canvas>
-        </div>
-        <div class="szc-wrap" id="scoutHmPanel-weakness" style="display:none">
-          <canvas id="scoutWeaknessCanvas" width="200" height="200"></canvas>
-        </div>
-        <div class="szc-wrap" id="scoutHmPanel-all" style="display:none">
-          <canvas id="scoutZoneCanvas" width="200" height="200"></canvas>
-        </div>
+      <div class="an-spray-key">
+        <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
       </div>
-      <div class="scout-zone-legend">
-        <span class="szl-item" style="background:rgba(220,38,38,0.65)">≥.350 위험</span>
-        <span class="szl-item" style="background:rgba(251,146,60,0.5)">≥.250</span>
-        <span class="szl-item" style="background:rgba(75,140,245,0.25)">보통</span>
-        <span class="szl-item" style="background:rgba(45,212,160,0.5)">≤.200 취약</span>
-        <span class="szl-item" style="background:rgba(100,116,139,0.2)">데이터 없음</span>
-      </div>
+    </section>
+    ${_recentCard(P)}
+    ${_pitchLogCard(P)}
+    <div class="sc-actions">
+      <button type="button" id="scoutExportBtn" class="sc-act" onclick="exportScoutReport()">리포트 텍스트 복사</button>
+      <button type="button" class="sc-act" onclick="exportScoutPDF()">인쇄 · PDF 저장</button>
     </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">📐 타구 방향 분포</div>
-      <canvas id="scoutDirCanvas" width="300" height="60" style="width:100%;max-width:300px;display:block;margin:0 auto;border-radius:8px"></canvas>
-      <div class="scout-dir-labels">
-        <span style="color:#ef4444">당김 ${pct(analysis.pullPct)} · AVG ${f3(analysis.pullAvg)}</span>
-        <span style="color:#2dd4a0">중앙 ${pct(analysis.centerPct)} · AVG ${f3(analysis.centerAvg)}</span>
-        <span style="color:#fb923c">밀어 ${pct(analysis.oppoPct)} · AVG ${f3(analysis.oppoAvg)}</span>
-      </div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">📊 카운트별 타율</div>
-      <div class="scout-count-grid">
-        <div class="sc-item" style="background:${countBg(analysis.aheadAvg)}">
-          <div class="sc-label">투수 유리</div>
-          <div class="sc-val" style="color:${countColor(analysis.aheadAvg)}">${f3(analysis.aheadAvg)}</div>
-          <div class="sc-pa">${analysis.aheadCount}PA</div>
-        </div>
-        <div class="sc-item" style="background:${countBg(analysis.evenAvg)}">
-          <div class="sc-label">이븐</div>
-          <div class="sc-val" style="color:${countColor(analysis.evenAvg)}">${f3(analysis.evenAvg)}</div>
-          <div class="sc-pa">${analysis.evenCount}PA</div>
-        </div>
-        <div class="sc-item" style="background:${countBg(analysis.behindAvg)}">
-          <div class="sc-label">타자 유리</div>
-          <div class="sc-val" style="color:${countColor(analysis.behindAvg)}">${f3(analysis.behindAvg)}</div>
-          <div class="sc-pa">${analysis.behindCount}PA</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">🏟️ 타구 분포 (필드)</div>
-      <canvas id="scoutFieldCanvas" width="240" height="220" style="display:block;margin:0 auto;border-radius:10px"></canvas>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">🕐 최근 타석 기록</div>
-      <div class="scout-recent-abs">
-        ${recent10.length ? recent10.map(a => {
-          const col = RES_COLOR[a.res] || '#94a3b8';
-          const dirTxt = a.deg != null ? (_isPull(a) ? '당김' : a.deg <= 108 ? '중앙' : '밀어') : '-';
-          const angTxt = a.deg != null ? Math.round(a.deg)+'°' : '';
-          return `<div class="sra-item">
-            <span class="sra-res" style="color:${col}">${_esc(a.res)}</span>
-            <span class="sra-dir">${dirTxt}${angTxt ? ' ' + angTxt : ''}</span>
-            <span class="sra-inn">${a.inn||''}</span>
-          </div>`;
-        }).join('') : '<div class="empty-state" style="padding:8px">타석 기록 없음</div>'}
-      </div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">분석 결과 (${findings.length}건)</div>
-      <div class="scout-findings">
-        ${findings.map(f => `
-          <div class="scout-finding ${sevClass(f.severity)}">
-            <span class="sf-badge">${sevLabel(f.severity)}</span>
-            <span class="sf-cat">[${_esc(f.category)}]</span>
-            ${_esc(f.text)}
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <div class="scout-section">
-      <div class="scout-section-title">투구 전략 제안</div>
-      <div class="scout-strategies">
-        ${strategy.map(s => `
-          <div class="scout-strategy ${prioClass(s.priority)}">
-            <div class="ss-title">${_esc(s.zone)}</div>
-            <div class="ss-detail">${_esc(s.detail)}</div>
-          </div>
-        `).join('')}
-        ${strategy.length === 0 ? '<div class="empty-state">충분한 데이터가 없어 전략 제안이 어렵습니다.</div>' : ''}
-      </div>
-    </div>
-    ${_buildPitcherSection(name)}
   `;
-
-  // display:none 상태에서 canvas.width=0 방지 → 50ms 후 실행
-  setTimeout(() => {
-    _paintZoneHeatmap('scoutStrengthCanvas', analysis.zoneAvg, analysis.zoneTotal, 'strength');
-    _paintZoneHeatmap('scoutWeaknessCanvas', analysis.zoneAvg, analysis.zoneTotal, 'weakness');
-    _paintZoneHeatmap('scoutZoneCanvas', analysis.zoneAvg, analysis.zoneTotal, 'all');
-    _drawDirCanvas(analysis);
-    _drawScoutFieldCanvas(allAbs);
-  }, 50);
 }
 
-// ── 타자 존별 타율 히트맵 (독립 draw 함수) ──
-// ── 투수 분석 섹션 빌더 (pitchLog 기반, 자동 집계) ──
-function _buildPitcherSection(name) {
-  try {
-    const log = (window.AS && window.AS.pitchLog || []).filter(function(p){return p.batter===name;});
-    if (!log.length) return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석</div><div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투수 탭에서 투구를 기록하면 자동 분석됩니다</div></div>';
-    const total = log.length;
-    const HIT_RES = ['안타','2루타','3루타','홈런','타격됨'];
-    const ptCnts = {};
-    log.forEach(function(p){if(p.pt)ptCnts[p.pt]=(ptCnts[p.pt]||0)+1;});
-    const ptEntries = Object.entries(ptCnts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
-    const ptBars = ptEntries.map(function(e){
-      const pt=e[0],n=e[1];
-      const c=(window._PT_COL&&window._PT_COL[pt])||'#7c8898';
-      const pct=Math.round(n/total*100);
-      return '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:10px">'
-        +'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+c+';flex-shrink:0"></span>'
-        +'<span style="flex:1;color:var(--text2)">'+pt+'</span>'
-        +'<div style="flex:2;background:rgba(255,255,255,.08);border-radius:2px;height:5px;overflow:hidden"><div style="width:'+pct+'%;background:'+c+';height:5px"></div></div>'
-        +'<span style="font-family:var(--mono);font-size:9px;min-width:22px;text-align:right;color:var(--text3)">'+pct+'%</span></div>';
-    }).join('');
-    const zH=Array(9).fill(0),zT=Array(9).fill(0);
-    log.forEach(function(p){const i=ZONE_LABELS.indexOf(p.zone);if(i!==-1){zT[i]++;if(HIT_RES.includes(p.result))zH[i]++;}});
-    const zGrid=ZONE_LABELS.map(function(_,i){
-      const n=zT[i];const bg=n<1?'rgba(255,255,255,.05)':zH[i]/n>=0.4?'rgba(239,68,68,.65)':zH[i]>0?'rgba(251,146,60,.45)':'rgba(45,212,160,.40)';
-      return '<div style="aspect-ratio:1;border-radius:3px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;font-family:var(--mono);color:#fff">'+(n||'')+'</div>';
-    }).join('');
-    const kCnt=log.filter(function(p){return p.result==='삼진';}).length;
-    const hitCnt=log.filter(function(p){return HIT_RES.includes(p.result);}).length;
-    const hitRate=Math.round(hitCnt/total*100);
-    const strat=[];
-    if(kCnt>=2)strat.push('✓ 삼진 '+kCnt+'개 — 현재 투구 패턴 유효.');
-    if(hitRate>30)strat.push('⚠ 피안타율 '+hitRate+'% — 구종·코스 변화 필요.');
-    if(ptEntries.length)strat.push('주 투구: '+ptEntries[0][0]+' ('+Math.round(ptEntries[0][1]/total*100)+'%).');
-    return '<div class="scout-section"><div class="scout-section-title">⚾ 투수 분석 ('+total+'구)</div>'
-      +'<div style="margin-bottom:8px">'+ptBars+'</div>'
-      +'<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">코스별 피안타</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:108px;margin-bottom:8px">'+zGrid+'</div>'
-      +(strat.length?'<div style="font-size:9px;color:var(--text2);line-height:1.8">'+strat.join('<br>')+'</div>':'')
-      +'</div>';
-  } catch(e) {
-    console.warn('[Scout] 투수분석 오류',e);
-    return '';
+function _hero(P, A) {
+  const s = P.st;
+  const smp = sampleBadge(s.pa);
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const kpi = (l, v) => `<div class="sc-kpi"><span>${l}</span><b>${v}</b></div>`;
+  return `
+    <section class="sc-hero">
+      <div class="sc-id">
+        <div class="sc-eyebrow">상대 타자 공략 리포트</div>
+        <div class="sc-name">${_esc(P.name)}</div>
+        <div class="sc-meta">${meta}</div>
+        ${smp ? `<span class="an-badge ${smp.cls}">${smp.txt}</span>` : ''}
+      </div>
+      <div class="sc-threat ${A.threat.k}">
+        <small>위협도</small>
+        <b>${A.threat.l}</b>
+        <span>${A.idx != null && s.pa >= 5 ? `wOBA+ ${A.idx} · ` : ''}${A.threat.d}</span>
+      </div>
+      <div class="sc-kpis">
+        ${kpi('타율', f3(s.avg))}${kpi('출루율', f3(s.obp))}${kpi('장타율', f3(s.slg))}${kpi('삼진%', pct(s.kRate))}${kpi('볼넷%', pct(s.bbRate))}
+      </div>
+    </section>`;
+}
+
+function _planCard(P, plan) {
+  const TAG = { attack: '공략', avoid: '주의', field: '수비' };
+  const ICON = {
+    attack: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>',
+    avoid: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    field: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21L3 12l9-9 9 9z"/><path d="M12 3v18"/></svg>',
+  };
+  const low = P.st.pa < 10;
+  const body = plan.length
+    ? `<ol class="sc-plan">${plan.map(p => `
+        <li class="sc-plan-${p.type}">
+          <span class="sc-plan-ic">${ICON[p.type]}</span>
+          <div><b>${_esc(p.title)}</b><span>${_esc(p.why)}</span></div>
+          <em>${TAG[p.type]}</em>
+        </li>`).join('')}</ol>`
+    : `<div class="an-note">아직 뚜렷한 약점·강점이 보이지 않아요. 코스·구종·카운트를 함께 기록할수록 공략 포인트가 정확해져요.</div>`;
+  return `
+    <section class="an-card">
+      <header class="an-hd"><h3>${_esc(P.name)} 공략 포인트</h3><span class="an-hd-note">공략 → 주의 → 수비 순</span></header>
+      ${body}
+      ${low ? `<p class="an-warn">⚠ 타석이 ${P.st.pa}개뿐이라 참고용이에요. 경기를 거듭할수록 판단이 정확해져요.</p>` : ''}
+    </section>`;
+}
+
+// 발산형 색: 타자에게 약함(Signal Blue = 공략) → 회색 → 강함(Hit Red = 위험). 기준 = 이 타자의 통산 타율
+function _zoneColor(avg, base) {
+  const lo = [75, 140, 245], mid = [58, 66, 82], hi = [224, 82, 90];
+  const span = Math.max(0.15, base);
+  const t = Math.max(-1, Math.min(1, (avg - base) / span));
+  const to = t < 0 ? lo : hi;
+  const c = mid.map((m, i) => Math.round(m + (to[i] - m) * Math.abs(t)));
+  return `rgb(${c.join(',')})`;
+}
+
+function _zoneCard(P, A) {
+  const base = P.st.avg;
+  const cells = A.zones.map(z => {
+    const ok = z.ab >= MIN_ZONE_AB;
+    const bg = ok ? _zoneColor(z.avg, base) : 'transparent';
+    const main = _zoneMode === 'pa' ? (z.pa || '') : (z.ab ? f3(z.avg) : '');
+    const sub = _zoneMode === 'pa' ? (z.pa ? '타석' : '') : (z.ab ? `${z.h}/${z.ab}` : z.pa ? `${z.pa}타석` : '');
+    return `<div class="sc-zc${ok ? '' : ' thin'}" style="background:${bg}" title="${z.label}: ${z.pa}타석 · 타율 ${z.ab ? f3(z.avg) : '—'} (${z.h}/${z.ab})"><b>${main || '—'}</b><small>${sub}</small></div>`;
+  }).join('');
+  return `
+    <section class="an-card">
+      <header class="an-hd">
+        <h3>코스별 결과</h3>
+        <div class="an-seg" role="tablist" aria-label="코스 표시">
+          <button role="tab" class="${_zoneMode === 'avg' ? 'on' : ''}" aria-selected="${_zoneMode === 'avg'}" onclick="setScoutZoneMode('avg')">타율</button>
+          <button role="tab" class="${_zoneMode === 'pa' ? 'on' : ''}" aria-selected="${_zoneMode === 'pa'}" onclick="setScoutZoneMode('pa')">타석</button>
+        </div>
+      </header>
+      ${A.zoned ? `
+      <div class="sc-zone">
+        <div class="sc-zone-top"><span>몸쪽</span><span>가운데</span><span>바깥쪽</span></div>
+        <div class="sc-zone-side"><span>높음</span><span>중간</span><span>낮음</span></div>
+        <div class="sc-zone-grid">${cells}</div>
+      </div>
+      <div class="sc-zone-key">
+        <span class="k-lo">공략 코스</span><i></i><span class="k-hi">위험 코스</span>
+      </div>
+      <div class="an-hd-note sc-zone-note">결과가 나온 공의 코스 · 색은 이 타자 통산 타율(${f3(base)}) 대비 · ${MIN_ZONE_AB}타수 미만은 색 없음 · 코스 기록 ${A.zoned}/${P.st.pa}타석</div>`
+      : '<div class="an-note">코스(존)가 기록된 타석이 없어요. 기록할 때 존을 함께 누르면 코스별 결과가 나와요.</div>'}
+    </section>`;
+}
+
+function _pitchCard(P, A) {
+  const body = A.pitches.length ? `
+    <table class="sc-pt">
+      <thead><tr><th scope="col">구종</th><th scope="col">타석</th><th scope="col">타율</th><th scope="col">장타율</th><th scope="col">삼진%</th></tr></thead>
+      <tbody>${A.pitches.map(p => `
+        <tr${p.ab < MIN_ZONE_AB ? ' class="thin"' : ''}>
+          <th scope="row">${_esc(p.pt)}</th><td>${p.pa}</td><td><b>${p.ab ? f3(p.avg) : '—'}</b></td><td>${p.ab ? f3(p.slg) : '—'}</td><td>${pct(p.kRate)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="an-hd-note sc-zone-note">결과가 나온 공의 구종 · 흐린 줄은 ${MIN_ZONE_AB}타수 미만</div>`
+    : '<div class="an-note">구종이 기록된 타석이 없어요.</div>';
+  return `
+    <section class="an-card">
+      <header class="an-hd"><h3>구종별 결과</h3></header>
+      ${body}
+    </section>`;
+}
+
+function _countCard(A) {
+  const has = A.counts.some(c => c.st.pa);
+  const body = has ? `
+    <div class="sc-counts">${A.counts.map(c => `
+      <div class="sc-count${c.st.pa < MIN_SPLIT ? ' thin' : ''}">
+        <div class="sc-count-hd"><b>${c.l}</b><small>${c.d}</small></div>
+        <div class="sc-count-v">${c.st.ab ? f3(c.st.avg) : '—'}<small>타율</small></div>
+        <dl>
+          <div><dt>타석</dt><dd>${c.st.pa}</dd></div>
+          <div><dt>출루율</dt><dd>${c.st.pa ? f3(c.st.obp) : '—'}</dd></div>
+          <div><dt>삼진%</dt><dd>${c.st.pa ? pct(c.st.kRate) : '—'}</dd></div>
+        </dl>
+      </div>`).join('')}
+    </div>` : '<div class="an-note">볼카운트가 기록된 타석이 없어요.</div>';
+  return `
+    <section class="an-card">
+      <header class="an-hd"><h3>카운트별 결과</h3><span class="an-hd-note">결과가 나온 순간의 볼·스트라이크 · 흐린 칸은 ${MIN_SPLIT}타석 미만</span></header>
+      ${body}
+    </section>`;
+}
+
+function _battedCard(P, A) {
+  const s = P.st;
+  const outs = A.go + A.fo;
+  const goP = outs ? A.go / outs : 0;
+  const avgFt = A.dist.length ? Math.round(A.dist.reduce((x, y) => x + y, 0) / A.dist.length) : null;
+  const dirAvg = f => {
+    const list = P.abs.filter(a => a.deg != null && f(a));
+    const h = list.filter(a => HITS.includes(a.res)).length;
+    return list.length ? `${f3(h / list.length)}` : '—';
+  };
+  return `
+    <div class="sc-batted">
+      <div class="sc-batted-row">
+        <span class="sc-bl">방향별 타구 타율</span>
+        <div class="sc-dir3">
+          <div><i class="an-sw pull"></i>당김<b>${dirAvg(a => window._isPull(a))}</b><small>${s.pull}개</small></div>
+          <div><i class="an-sw ctr"></i>센터<b>${dirAvg(a => window._isCtr(a))}</b><small>${s.center}개</small></div>
+          <div><i class="an-sw oppo"></i>밀어<b>${dirAvg(a => window._isOppo(a))}</b><small>${s.oppo}개</small></div>
+        </div>
+      </div>
+      <div class="sc-batted-row">
+        <span class="sc-bl">아웃 타구 성격 <small>(땅볼 : 뜬공)</small></span>
+        ${outs ? `
+        <div class="sc-gofo" role="img" aria-label="땅볼 아웃 ${A.go}, 뜬공 아웃 ${A.fo}">
+          ${A.go ? `<i class="go" style="flex:${A.go}">땅볼 ${A.go}</i>` : ''}${A.fo ? `<i class="fo" style="flex:${A.fo}">뜬공 ${A.fo}</i>` : ''}
+        </div>
+        <small class="sc-gofo-note">${goP >= 0.6 ? '땅볼이 많은 타자' : goP <= 0.4 ? '뜬공이 많은 타자' : '땅볼·뜬공 비슷'}${A.gdp ? ` · 병살 ${A.gdp}` : ''}</small>`
+        : '<small class="sc-gofo-note">인플레이 아웃 기록이 없어요</small>'}
+      </div>
+      ${avgFt ? `<div class="sc-batted-row"><span class="sc-bl">안타 평균 비거리</span><b class="sc-ft">${avgFt}ft</b></div>` : ''}
+    </div>`;
+}
+
+function _recentCard(P) {
+  const list = P.abs.slice(-10).reverse();
+  const dir = a => (a.deg == null ? '' : window._isPull(a) ? '당김' : window._isOppo(a) ? '밀어' : '센터');
+  return `
+    <section class="an-card">
+      <header class="an-hd"><h3>최근 타석</h3><span class="an-hd-note">최근 ${list.length}타석 · 최신순</span></header>
+      <ol class="sc-recent">${list.map(a => {
+        const [t, cls] = SHORT[a.res] || [a.res, 'out'];
+        const info = [a.inn, dir(a), a.pt, a.zone ? ZONE_SHORT[ZONES.indexOf(a.zone)] || a.zone : '', a.count && a.count.s != null ? `${a.count.b}-${a.count.s}` : ''].filter(Boolean);
+        return `<li><i class="r-${cls}">${_esc(t)}</i><span>${info.map(_esc).join(' · ') || '추가 정보 없음'}</span></li>`;
+      }).join('')}</ol>
+    </section>`;
+}
+
+// 이번 경기 투구 기록 (투수 탭 pitchLog, 현재 경기만)
+function _pitchLogCard(P) {
+  const log = ((window.AS && window.AS.pitchLog) || []).filter(p => p.batter === P.name);
+  if (!log.length) return '';
+  const HIT_RES = ['안타', '2루타', '3루타', '홈런', '타격됨'];
+  const ptCnt = {};
+  log.forEach(p => { if (p.pt) ptCnt[p.pt] = (ptCnt[p.pt] || 0) + 1; });
+  const mix = Object.entries(ptCnt).sort((a, b) => b[1] - a[1]);
+  const top = mix.length ? mix[0][1] : 1;
+  const k = log.filter(p => p.result === '삼진').length;
+  const hits = log.filter(p => HIT_RES.includes(p.result)).length;
+  return `
+    <section class="an-card">
+      <header class="an-hd"><h3>이번 경기 투구 기록</h3><span class="an-hd-note">투수 탭 기록 · ${log.length}구 · 삼진 ${k} · 피안타 ${hits}</span></header>
+      <div class="sc-mix">${mix.map(([pt, n]) => `
+        <div class="sc-mix-row"><span>${_esc(pt)}</span><span class="sc-mix-bar"><i style="width:${n / top * 100}%"></i></span><b>${n}<small>${Math.round(n / log.length * 100)}%</small></b></div>`).join('')}
+      </div>
+    </section>`;
+}
+
+// ── 텍스트 리포트 (복사용) ───────────────────────────────────
+function _textReport(P, A, plan) {
+  const s = P.st;
+  const L = [];
+  const TAG = { attack: '[공략]', avoid: '[주의]', field: '[수비]' };
+  L.push(`■ ${P.name} 공략 리포트 (SprayLab)`);
+  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
+  L.push(`타율 ${f3(s.avg)} / 출루율 ${f3(s.obp)} / 장타율 ${f3(s.slg)} · 삼진 ${pct(s.kRate)} · 볼넷 ${pct(s.bbRate)}`);
+  L.push('');
+  L.push('[공략 포인트]');
+  if (plan.length) plan.forEach(p => L.push(`${TAG[p.type]} ${p.title} — ${p.why}`));
+  else L.push('- 아직 뚜렷한 포인트 없음');
+  if (A.zoned) {
+    L.push('');
+    L.push('[코스별 타율] (몸쪽 | 가운데 | 바깥쪽)');
+    ['높음', '중간', '낮음'].forEach((r, i) => {
+      L.push(`${r}: ` + A.zones.slice(i * 3, i * 3 + 3).map(z => (z.ab ? `${f3(z.avg)}(${z.h}/${z.ab})` : '—')).join(' | '));
+    });
   }
-}
-
-function _paintZoneHeatmap(canvasId, zoneAvg, zoneTotal, mode) {
-  const c = document.getElementById(canvasId);
-  if (!c) return;
-  const dpr = window.devicePixelRatio || 1;
-  const SIZE = c.parentElement && c.parentElement.offsetWidth > 50
-    ? Math.min(c.parentElement.offsetWidth - 8, 200) : 200;
-  c.width = SIZE * dpr; c.height = SIZE * dpr;
-  c.style.width = SIZE + 'px'; c.style.height = SIZE + 'px';
-  const ctx = c.getContext('2d');
-  ctx.scale(dpr, dpr);
-  const cellW = SIZE / 3, cellH = SIZE / 3;
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      const i = row * 3 + col;
-      const avg = zoneAvg[i] || 0;
-      const total = zoneTotal[i] || 0;
-      let bg;
-      if (total < 2)       bg = 'rgba(255,255,255,0.05)';
-      else if (avg >= 0.350) bg = 'rgba(239,68,68,0.75)';
-      else if (avg >= 0.250) bg = 'rgba(251,146,60,0.60)';
-      else if (avg >= 0.150) bg = 'rgba(75,140,245,0.45)';
-      else                   bg = 'rgba(45,212,160,0.65)';
-      ctx.fillStyle = bg;
-      ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.font = `bold ${11 * dpr}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const label = total >= 2 ? avg.toFixed(3).replace('0.', '.') : '-';
-      ctx.save(); ctx.scale(1 / dpr, 1 / dpr);
-      ctx.fillText(label, (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.45) * dpr);
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.font = `${9 * dpr}px sans-serif`;
-      ctx.fillText(total + 'PA', (col * cellW + cellW / 2) * dpr, (row * cellH + cellH * 0.72) * dpr);
-      ctx.restore();
-    }
+  const cs = A.counts.filter(c => c.st.pa);
+  if (cs.length) {
+    L.push('');
+    L.push('[카운트별 타율]');
+    cs.forEach(c => L.push(`${c.l}: ${c.st.ab ? f3(c.st.avg) : '—'} (${c.st.pa}타석, 삼진 ${pct(c.st.kRate)})`));
   }
-}
-
-// ── 존 히트맵 캔버스 (3×3) ──
-// ── 타구 방향 바차트 캔버스 ──
-function _drawDirCanvas(analysis) {
-  const c = document.getElementById('scoutDirCanvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const W = 300, H = 60;
-  c.width = W * dpr; c.height = H * dpr;
-  c.style.width = W + 'px'; c.style.height = H + 'px';
-  ctx.scale(dpr, dpr);
-
-  ctx.fillStyle = 'rgba(14,16,24,0.4)';
-  ctx.fillRect(0, 0, W, H);
-
-  const total = analysis.pullCount + analysis.centerCount + analysis.oppoCount || 1;
-  const segs = [
-    { count: analysis.pullCount,   avg: analysis.pullAvg,   color: 'rgba(239,68,68,0.75)',   label: '당김' },
-    { count: analysis.centerCount, avg: analysis.centerAvg, color: 'rgba(45,212,160,0.75)',   label: '중앙' },
-    { count: analysis.oppoCount,   avg: analysis.oppoAvg,   color: 'rgba(251,146,60,0.75)',   label: '밀어' },
-  ];
-
-  const BAR_H = 24, BAR_Y = 14;
-  let xOff = 0;
-  segs.forEach(seg => {
-    const w = Math.max((seg.count / total) * W, seg.count > 0 ? 2 : 0);
-    ctx.fillStyle = seg.color;
-    ctx.fillRect(xOff, BAR_Y, w - 1, BAR_H);
-    if (w > 28) {
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold 10px "JetBrains Mono",monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillText(seg.avg.toFixed(3).replace('0.','.'), xOff + w/2, BAR_Y + BAR_H/2 + 4);
-    }
-    xOff += w;
-  });
-}
-
-// ── 미니 필드 캔버스 ──
-function _drawScoutFieldCanvas(allAbs) {
-  const c = document.getElementById('scoutFieldCanvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  const W = c.width, H = c.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const RES_COL = {'안타':'#22c55e','내야안타':'#4ade80','2루타':'#86efac','3루타':'#bbf7d0',
-    '홈런':'#fbbf24','플라이 아웃':'#f87171','땅볼 아웃':'#ef4444',
-    '삼진':'#6b7280','볼넷':'#60a5fa','사구':'#93c5fd'};
-  const HITS_SET = new Set(['안타','내야안타','2루타','3루타','홈런']);
-
-  // 기록 필드와 같은 부채꼴 모양 (core.js 공용 렌더러)
-  if (typeof _drawConeMini !== 'function') return;
-  _drawConeMini(ctx, W, H, allAbs, {
-    r: 3.5,
-    color: ab => RES_COL[ab.res] || '#94a3b8',
-    isOut: ab => !HITS_SET.has(ab.res),
-  });
-}
-
-function _buildTextReport(name, analysis, findings, strategy) {
-  const f3 = v => v.toFixed(3);
-  const pct = v => Math.round(v * 100) + '%';
-  const lines = [];
-
-  lines.push(`========================================`);
-  lines.push(`  스카우팅 리포트: ${name}`);
-  lines.push(`========================================`);
-  lines.push(``);
-  lines.push(`[기본 성적]`);
-  lines.push(`  타율: ${f3(analysis.avg)} | K%: ${pct(analysis.kRate)} | BB%: ${pct(analysis.bbRate)}`);
-  lines.push(`  ISO: ${f3(analysis.isoP)} | GO/AO: ${analysis.goAo.toFixed(1)}`);
-  lines.push(`  타석: ${analysis.pa} | 안타: ${analysis.h} | 홈런: ${analysis.hr}`);
-  lines.push(``);
-
-  lines.push(`[존별 타율]`);
-  for (let row = 0; row < 3; row++) {
-    const cells = [];
-    for (let col = 0; col < 3; col++) {
-      const i = row * 3 + col;
-      const t = analysis.zoneTotal[i];
-      cells.push(t > 0 ? f3(analysis.zoneAvg[i]).padStart(6) : '  -   ');
-    }
-    lines.push(`  ${cells.join(' | ')}`);
+  if (s.dn) {
+    L.push('');
+    L.push(`[타구 방향] 당김 ${Math.round(s.pull / s.dn * 100)}% · 센터 ${Math.round(s.center / s.dn * 100)}% · 밀어 ${Math.round(s.oppo / s.dn * 100)}% (${s.dn}타구)`);
   }
-  lines.push(``);
-
-  lines.push(`[타구 방향]`);
-  lines.push(`  당김: ${pct(analysis.pullPct)} (타율 ${f3(analysis.pullAvg)})`);
-  lines.push(`  중앙: ${pct(analysis.centerPct)} (타율 ${f3(analysis.centerAvg)})`);
-  lines.push(`  밀어: ${pct(analysis.oppoPct)} (타율 ${f3(analysis.oppoAvg)})`);
-  lines.push(``);
-
-  lines.push(`[카운트별 타율]`);
-  lines.push(`  투수 유리: ${f3(analysis.aheadAvg)} (${analysis.aheadCount}타석)`);
-  lines.push(`  이븐:     ${f3(analysis.evenAvg)} (${analysis.evenCount}타석)`);
-  lines.push(`  타자 유리: ${f3(analysis.behindAvg)} (${analysis.behindCount}타석)`);
-  lines.push(``);
-
-  lines.push(`[분석 결과]`);
-  findings.forEach((f, i) => {
-    const tag = f.severity === SEVERITY.HIGH ? '[!]' : f.severity === SEVERITY.MED ? '[*]' : '[-]';
-    lines.push(`  ${tag} [${f.category}] ${f.text}`);
-  });
-  lines.push(``);
-
-  lines.push(`[투구 전략]`);
-  strategy.forEach(s => {
-    lines.push(`  > ${s.zone}: ${s.detail}`);
-  });
-
-  lines.push(``);
-  lines.push(`========================================`);
-
-  return lines.join('\n');
+  if (s.pa < 10) L.push('', `※ 표본 ${s.pa}타석 — 참고용`);
+  return L.join('\n');
 }
 
-function switchScoutHeatmapTab(tab, btn) {
-  ['strength','weakness','all'].forEach(t => {
-    const panel = document.getElementById('scoutHmPanel-' + t);
-    if (panel) panel.style.display = t === tab ? '' : 'none';
-  });
-  const tabBar = btn && btn.closest('.scout-heatmap-tabs');
-  if (tabBar) {
-    tabBar.querySelectorAll('.sht-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  // 탭 전환 시 canvas 재드로우 (display:none → 보이기 직후 크기 정상화)
-  if (_lastAnalysis) {
-    const idMap = { strength: 'scoutStrengthCanvas', weakness: 'scoutWeaknessCanvas', all: 'scoutZoneCanvas' };
-    requestAnimationFrame(() => _paintZoneHeatmap(idMap[tab], _lastAnalysis.zoneAvg, _lastAnalysis.zoneTotal, tab));
-  }
-}
-
-// _esc imported from constants.js
-
-// Expose to window for onclick handlers
 if (typeof window !== 'undefined') {
   window.openScoutView = openScoutView;
   window.renderScoutPlayerSelect = renderScoutPlayerSelect;
   window.generateScoutReport = generateScoutReport;
+  window.setScoutZoneMode = setScoutZoneMode;
   window.exportScoutReport = exportScoutReport;
   window.exportScoutPDF = exportScoutPDF;
-  window.exportScoutImage = exportScoutImage;
-  window.switchScoutHeatmapTab = switchScoutHeatmapTab;
 }

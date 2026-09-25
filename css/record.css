@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════
+   기록 탭 (Record) — 입력 흐름은 core.js 그대로, 둘레 배치만 새로
+   카운트: 볼 Teal · 스트라이크 Amber · 아웃 Red (앱 기존 카운트 색 계열)
+   ═══════════════════════════════════════════ */
+.rec-v2 {
+  --rv-card: #0e1018;
+  --rv-raised: #141720;
+  --rv-line: #1e2535;
+  --rv-ink: #eef0f8;
+  --rv-ink2: #9aa4b4;
+  --rv-ink3: #5d6878;
+}
+/* 옛 타자 칩 줄·지표 한 줄은 새 타자 카드가 대신 (DOM은 유지: core.js가 계속 값을 씀) */
+.rec-v2 .pnl-center > .batter-bar,
+.rec-v2 .pnl-center > #liveStatLine { display: none !important; }
+/* 작은 화면에서 넘치면 스크롤 (필드 아래 추가 버튼·최근 기록) */
+@media (max-width: 720px) { .rec-v2 .app-layout { overflow-y: auto !important; -webkit-overflow-scrolling: touch; } }
+
+/* ── 이닝 ◀ ▶ ── */
+.rv-inn { display: inline-flex; align-items: center; height: 40px; border: 1px solid var(--rv-line); border-radius: 10px; background: var(--rv-card); overflow: hidden; flex-shrink: 0; }
+.rv-inn select { display: block !important; height: 38px; border: 0 !important; background: none !important; padding: 0 2px !important; color: var(--rv-ink); font: 800 14px var(--font); text-align: center; text-align-last: center; appearance: none; -webkit-appearance: none; }
+.rv-inn-b { width: 30px; height: 38px; border: 0; background: none; color: var(--rv-ink3); font-size: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rv-inn-b:active { color: var(--rv-ink); background: var(--rv-raised); }
+
+/* ── 위쪽: 카운트 + 현재 타자 ── */
+.rv-top { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; }
+.rv-count { display: flex; align-items: center; gap: 4px; padding: 3px 6px 3px 4px; border: 1px solid var(--rv-line); border-radius: 12px; background: var(--rv-card); }
+.rv-cg { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px; border: 0; border-radius: 8px; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rv-cg:active { background: var(--rv-raised); }
+.rv-cg.ro { cursor: default; }
+.rv-cg > span { font: 800 12px var(--mono); color: var(--rv-ink3); margin-right: 2px; }
+.rv-cg i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--rv-line); display: inline-block; }
+.rv-cg i.on.b { background: #1fa98a; border-color: #1fa98a; }
+.rv-cg i.on.s { background: #e3b341; border-color: #e3b341; }
+.rv-cg i.on.o { background: #e0525a; border-color: #e0525a; }
+.rv-count small { margin-left: auto; font-size: 10px; color: var(--rv-ink3); white-space: nowrap; }
+.rv-reset { height: 28px; padding: 0 10px; border: 1px solid var(--rv-line); border-radius: 8px; background: var(--rv-raised); color: var(--rv-ink2); font: 700 11px var(--font); white-space: nowrap; cursor: pointer; }
+
+.rv-bat {
+  padding: 8px 10px;
+  border: 1px solid rgba(224, 82, 90, .4);
+  border-radius: 14px;
+  background: radial-gradient(120% 90% at 100% 0%, rgba(75, 140, 245, .14), transparent 60%), var(--rv-card);
+}
+.rv-bat.empty { display: flex; align-items: center; gap: 10px; border-color: var(--rv-line); }
+.rv-bat.empty b { display: block; font-size: 14px; font-weight: 800; color: var(--rv-ink); }
+.rv-bat.empty small { font-size: 10.5px; color: var(--rv-ink2); }
+.rv-open { margin-left: auto; flex-shrink: 0; height: 36px; padding: 0 14px; border: 1px solid rgba(75, 140, 245, .5); border-radius: 10px; background: rgba(75, 140, 245, .14); color: #a9c7fa; font: 800 12px var(--font); cursor: pointer; }
+.rv-bat-row { display: flex; align-items: flex-start; gap: 8px; }
+.rv-who { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 0; border: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.rv-ey { display: inline-flex; align-items: center; gap: 5px; font: 700 9px var(--mono); letter-spacing: 1.2px; color: #f7b3b7; }
+.rv-ey i { width: 6px; height: 6px; border-radius: 50%; background: #e0525a; }
+.rv-nm { display: flex; align-items: baseline; gap: 5px; max-width: 100%; font-size: 19px; font-weight: 900; letter-spacing: -.5px; color: var(--rv-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-nm small { font: 600 11px var(--mono); color: var(--rv-ink3); }
+.rv-nm em { font-style: normal; font-size: 11px; color: #a9c7fa; }
+.rv-meta { font-size: 10.5px; color: var(--rv-ink2); }
+.rv-ssn { margin-left: auto; text-align: right; flex-shrink: 0; }
+.rv-ssn small { display: block; font-size: 9px; font-weight: 700; color: var(--rv-ink3); }
+.rv-ssn b { font: 400 28px var(--display); letter-spacing: 1px; line-height: .95; color: var(--rv-ink); }
+.rv-today { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 8px; border-radius: 10px; background: rgba(7, 9, 15, .45); border: 1px solid var(--rv-line); min-width: 0; }
+.rv-today small { flex: none; font-size: 9.5px; font-weight: 800; color: var(--rv-ink3); }
+.rv-today b { flex: none; font-size: 12.5px; font-weight: 800; color: var(--rv-ink); }
+.rv-chips { display: flex; gap: 3px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.rv-chips::-webkit-scrollbar { display: none; }
+.rv-chips i { flex: none; }
+.rv-order { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.rv-order button { height: 28px; padding: 0 10px; border: 1px solid var(--rv-line); border-radius: 8px; background: var(--rv-raised); color: var(--rv-ink2); font: 700 11.5px var(--font); cursor: pointer; }
+.rv-order button:disabled { opacity: .4; cursor: default; }
+.rv-next { flex: 1; min-width: 0; text-align: right; font-size: 12.5px; font-weight: 700; color: var(--rv-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-next small { margin-right: 4px; font-size: 9.5px; color: var(--rv-ink3); }
+.rv-next em { font: 600 10.5px var(--mono); font-style: normal; color: var(--rv-ink3); }
+
+/* ── 아래쪽: 그 밖의 결과 + 최근 기록 ── */
+.rv-below { width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 8px 12px 16px; }
+.rv-more { display: flex; flex-wrap: wrap; gap: 5px; }
+.rv-more button { height: 36px; padding: 0 13px; border: 1px solid var(--rv-line); border-radius: 999px; background: var(--rv-raised); color: var(--rv-ink2); font: 700 12px var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rv-more button:active { color: var(--rv-ink); border-color: var(--rv-ink3); }
+.rv-recent { padding: 8px 12px; border: 1px solid var(--rv-line); border-radius: 14px; background: var(--rv-card); }
+.rv-recent header { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.rv-recent h3 { font-size: 13px; font-weight: 800; color: var(--rv-ink); margin-right: auto; }
+.rv-undo { height: 30px; padding: 0 12px; border: 1px solid rgba(224, 82, 90, .45); border-radius: 999px; background: rgba(224, 82, 90, .1); color: #f7b3b7; font: 700 11.5px var(--font); cursor: pointer; }
+.rv-all { height: 30px; padding: 0 8px; border: 0; background: none; color: var(--rv-ink2); font: 700 11px var(--font); cursor: pointer; }
+.rv-recent ol { list-style: none; }
+.rv-recent li { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; }
+.rv-recent li + li { border-top: 1px solid var(--rv-line); }
+.rv-recent li small { min-width: 38px; font: 600 10px var(--mono); color: var(--rv-ink3); }
+.rv-recent li b { color: var(--rv-ink); font-weight: 800; }
+.rv-recent li span { margin-left: auto; font-size: 10.5px; color: var(--rv-ink2); }
+.rv-none { padding: 6px 0 4px; font-size: 11.5px; color: var(--rv-ink2); }
+
+/* ── 넓은 화면: 필드 왼쪽 · 패널 오른쪽 ── */
+@media (min-width: 1024px) {
+  .rec-v2 .pnl-center {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    column-gap: 8px;
+  }
+  .rec-v2 .pnl-center > * { grid-column: 1; }
+  .rec-v2 .pnl-center > #gfBar { grid-column: 1 / -1; grid-row: 1; }
+  .rec-v2 .pnl-center > .field-wrap,
+  .rec-v2 .pnl-center > #miniSprayWrap { grid-row: 2 / 5; }
+  .rec-v2 .pnl-center > #recTop { grid-column: 2; grid-row: 2; padding: 12px 12px 0 0; }
+  .rec-v2 .pnl-center > #quickBar { grid-column: 2; grid-row: 3; border-top: 0; padding: 8px 12px 0 0; }
+  .rec-v2 .pnl-center > #recBelow { grid-column: 2; grid-row: 4; overflow-y: auto; padding: 8px 12px 16px 0; }
+  .rv-nm { font-size: 24px; }
+  .rv-ssn b { font-size: 34px; }
+}
+
+/* 삼진·볼넷·사구 (기존 즉시 기록 버튼): 패널 폭에 맞춰 크게 */
+.rec-v2 .pnl-center > #quickBar { width: 100%; box-sizing: border-box; gap: 6px; padding: 8px 12px 0; border-top: 0; background: none; }
+.rec-v2 .pnl-center > #quickBar .qb-btn { flex: 1 1 0; min-height: 50px; border-radius: 12px; }
+
+/* ── 모바일 터치 타겟 44×44px 이상 (CLAUDE.md 규칙) ── */
+@media (max-width: 720px) {
+  .rv-inn { height: 46px; }
+  .rv-inn select { height: 44px; }
+  .rv-inn-b { width: 44px; height: 44px; }
+  .rv-cg { height: 44px; min-width: 44px; padding: 0 6px; }
+  .rv-reset { height: 44px; padding: 0 12px; }
+  .rv-order button { height: 44px; min-width: 64px; }
+  .rv-open { height: 44px; }
+  .rv-more button { height: 44px; }
+  .rv-undo, .rv-all { height: 44px; }
+  .rv-top { gap: 6px; padding-top: 6px; }
+  .rv-bat { padding: 6px 10px 8px; }
+  .rv-today { margin-top: 4px; }
+  .rv-order { margin-top: 4px; }
+}
+
+/* ── 데스크톱 터치 타겟 44×44px 이상 (이번 개편은 데스크톱 배치도 함께 바꾸기로 한 예외) ── */
+@media (min-width: 721px) {
+  .rv-inn { height: 46px; }
+  .rv-inn select { height: 44px; }
+  .rv-inn-b { width: 44px; height: 44px; }
+  .rv-cg { height: 44px; min-width: 44px; }
+  .rv-reset, .rv-open, .rv-undo, .rv-all, .rv-more button { height: 44px; }
+  .rv-order button { height: 44px; min-width: 64px; }
+}

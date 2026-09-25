@@ -65,6 +65,72 @@ window.STADIUMS = STADIUMS;
 function _isPull(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg>108:a.deg<72;}
 function _isOppo(a){if(!a||a.deg==null)return false;return a.bats==='L'?a.deg<72:a.deg>108;}
 function _isCtr(a){if(!a||a.deg==null)return false;return !_isPull(a)&&!_isOppo(a);}
+
+// ── 필드 기하: 화면은 실제 야구장처럼 90° 부채꼴 ──
+// 저장 좌표는 기존 그대로 유지: x,y = 필드 크기 대비 비율, 홈=(0.5,1),
+// 파울라인=수평(deg 0 좌측 ~ 180 우측), 펜스=반지름 0.97 → 과거 기록·방향 판정·통계는 그대로.
+// 화면에는 deg 0~180을 파울라인 사이 90°로 옮기고(방향 구간별 매핑), 거리는 "펜스까지 비율"을 유지해
+// 구장별 펜스 곡선(좌·우 폴은 짧고 중앙은 깊게)에 맞춰 그린다.
+var _FQ=Math.PI/4; // 좌측 폴 각도 (왼쪽 수평선 기준). 중앙 = 2Q, 우측 폴 = 3Q
+function _fieldGeo(w,h){
+  var st=STADIUMS[AS.stadium]||STADIUMS.standard;
+  var kl=st.lfDist/st.cfDist,kr=st.rfDist/st.cfDist;
+  h=h||w;
+  var R=Math.min(h*.9,(w*.47)/(Math.SQRT1_2*Math.max(kl,kr))); // R = 중앙 펜스까지 px
+  return {cx:w/2,cy:h*.965,R:R,kl:kl,kr:kr,m:R/st.cfDist,st:st};
+}
+function _fenceR(g,phi){
+  var t=(phi-_FQ)/(2*_FQ);
+  return t<.5?g.R*(g.kl+(1-g.kl)*Math.sin(t*Math.PI)):g.R*(g.kr+(1-g.kr)*Math.sin((1-t)*Math.PI));
+}
+function _conePt(g,phi,r){return [g.cx-r*Math.cos(phi),g.cy-r*Math.sin(phi)];}
+// 저장 각도 ↔ 화면 각도: 방향 구간(LF <54 · LC <78 · CF <102 · RC <126 · RF)이
+// 부채꼴에서 18°씩 같은 폭이 되도록 구간별 선형 매핑 → 보이는 위치와 방향 이름이 일치
+var _FZ_DEG=[0,54,78,102,126,180],_FZ_PHI=[45,63,81,99,117,135];
+function _degToPhi(deg){
+  deg=Math.max(0,Math.min(180,deg));
+  for(var i=0;i<4&&deg>_FZ_DEG[i+1];i++);
+  return (_FZ_PHI[i]+(deg-_FZ_DEG[i])/(_FZ_DEG[i+1]-_FZ_DEG[i])*18)*Math.PI/180;
+}
+function _phiToDeg(phi){
+  var p=Math.max(45,Math.min(135,phi*180/Math.PI));
+  for(var i=0;i<4&&p>_FZ_PHI[i+1];i++);
+  return _FZ_DEG[i]+(p-_FZ_PHI[i])/18*(_FZ_DEG[i+1]-_FZ_DEG[i]);
+}
+// 저장 좌표 → 화면 좌표
+function _semiToCone(g,x,y){
+  var dx=x-.5,dy=Math.min(y-1,0);
+  var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;
+  var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);
+  var phi=_degToPhi(deg);
+  return _conePt(g,phi,frac*_fenceR(g,phi));
+}
+// 화면 좌표 → 저장 좌표 (파울 지역·펜스 밖이면 null)
+function _coneToSemi(g,px,py){
+  var dx=px-g.cx,dy=py-g.cy;
+  if(dy>0)return null;
+  var phi=Math.atan2(-dy,-dx),tol=Math.PI/60; // 파울라인 바로 바깥(3°)은 라인 위로
+  if(phi<_FQ-tol||phi>3*_FQ+tol)return null;
+  phi=Math.max(_FQ,Math.min(3*_FQ,phi));
+  var frac=Math.sqrt(dx*dx+dy*dy)/_fenceR(g,phi);
+  if(frac>1.08)return null;
+  frac=Math.min(frac,1);
+  var deg=_phiToDeg(phi),dist=frac*.97,ang=deg*Math.PI/180-Math.PI;
+  return {x:.5+Math.cos(ang)*dist,y:1+Math.sin(ang)*dist,deg:deg,dist:dist};
+}
+// 저장 좌표 구역(deg1~deg2, 반지름 r1~r2: 필드 비율) → 화면 경로 (핫/콜드 존용)
+function _coneSectorPath(ctx,g,deg1,deg2,r1,r2){
+  var n=12,i,phi,p;
+  ctx.beginPath();
+  for(i=0;i<=n;i++){phi=_degToPhi(deg1+(deg2-deg1)*i/n);p=_conePt(g,phi,r2/.97*_fenceR(g,phi));if(i)ctx.lineTo(p[0],p[1]);else ctx.moveTo(p[0],p[1]);}
+  for(i=n;i>=0;i--){phi=_degToPhi(deg1+(deg2-deg1)*i/n);p=_conePt(g,phi,r1/.97*_fenceR(g,phi));ctx.lineTo(p[0],p[1]);}
+  ctx.closePath();
+}
+// 저장 좌표 → 기록 필드 기준 비율 [x,y] (heatmap.js·shell.js 등 외부 모듈용)
+function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y);}
+window._fieldPos=_fieldPos;
+// 저장 좌표 → 기록 필드 캔버스 px
+function _fieldPx(a){var p=_fieldPos(a);return [p[0]*FS,p[1]*FS];}
 function _dirLbl(dir,bats){
   if(!dir)return '';
   var rh={LF:'당겨치기',LC:'좌중간',CF:'센터',RC:'우중간',RF:'밀어치기'};
@@ -994,7 +1060,7 @@ function _getNearestHit(src){
   if(AS.teamFilter) visList=visList.filter(a=>(a.team||'home')===AS.teamFilter);
   const THR=Math.max(40,FS*0.1);
   let closest=null, closestD=Infinity;
-  visList.forEach(a=>{const d=Math.hypot(x-a.x*FS,y-a.y*FS); if(d<THR && d<closestD){closestD=d; closest=a;}});
+  visList.forEach(a=>{const p=_fieldPx(a),d=Math.hypot(x-p[0],y-p[1]); if(d<THR && d<closestD){closestD=d; closest=a;}});
   return closest?{hit:closest,x:x,y:y}:null;
 }
 
@@ -1009,8 +1075,9 @@ function _showNearDot(event){
       _nearbyHitId=nearest.hit.id;
       try{
         const rect=fC.getBoundingClientRect();
-        const cx = (event && event.clientX!=null)? event.clientX : (rect.left + nearest.hit.x * rect.width);
-        const cy = (event && event.clientY!=null)? event.clientY : (rect.top + nearest.hit.y * rect.height);
+        const hp = _fieldPos(nearest.hit);
+        const cx = (event && event.clientX!=null)? event.clientX : (rect.left + hp[0] * rect.width);
+        const cy = (event && event.clientY!=null)? event.clientY : (rect.top + hp[1] * rect.height);
         console.log('[debug] showHitDetail using coords', {cx,cy});
         showHitDetail(nearest.hit, cx, cy);
         // ensure card is on top for debug cases
@@ -1025,7 +1092,8 @@ function _showNearDot(event){
         if(typeof _debugRingTimer!=='undefined' && _debugRingTimer)clearTimeout(_debugRingTimer);
         oCtx.clearRect(0,0,FS,FS);
         oCtx.beginPath();
-        oCtx.arc(nearest.hit.x*FS, nearest.hit.y*FS, 14, 0, Math.PI*2);
+        const np=_fieldPx(nearest.hit);
+        oCtx.arc(np[0], np[1], 14, 0, Math.PI*2);
         oCtx.strokeStyle='rgba(45,212,160,0.95)'; oCtx.lineWidth=3; oCtx.stroke();
         oC.classList.add('show');
         _debugRingTimer=setTimeout(function(){
@@ -1050,55 +1118,76 @@ function setFieldOverlay(k,on){
 document.body.classList.toggle('ov-legend',!!_fieldOv.legend);
 function drawField(){
   if(!fCtx||!fC||FS<=0)return;
-  const st=STADIUMS[AS.stadium]||STADIUMS.standard;
-  const ctx=fCtx,S2=FS,cx=S2/2,cy=S2;ctx.clearRect(0,0,S2,S2);
-  // 배경 그라디언트
-  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,S2);
+  const g=_fieldGeo(FS),st=g.st,ctx=fCtx,S2=FS,cx=g.cx,cy=g.cy,Q=_FQ,m=g.m;
+  const P=(phi,r)=>_conePt(g,phi,r),F=phi=>_fenceR(g,phi);
+  const fenceTo=(k,rev)=>{for(let i=0;i<=72;i++){const ph=rev?3*Q-2*Q*i/72:Q+2*Q*i/72,p=P(ph,F(ph)*k);ctx.lineTo(p[0],p[1]);}};
+  const fair=()=>{ctx.beginPath();ctx.moveTo(cx,cy);fenceTo(1);ctx.closePath();};
+  ctx.clearRect(0,0,S2,S2);
+  // 파울 지역 (캔버스 전체) — 어두운 잔디
+  const fg=ctx.createLinearGradient(0,0,0,S2);fg.addColorStop(0,st.grass[2]);fg.addColorStop(1,st.grass[1]);
+  ctx.fillStyle=fg;ctx.fillRect(0,0,S2,S2);
+  ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(0,0,S2,S2);
+  // 페어 지역 잔디 + 잔디 깎은 줄무늬
+  fair();
+  const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,g.R);
   bg.addColorStop(0,st.grass[0]);bg.addColorStop(.55,st.grass[1]);bg.addColorStop(1,st.grass[2]);
-  ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=bg;ctx.fill();
-  // 돔 구장: 외곽 링
-  if(st.dome){ctx.beginPath();ctx.arc(cx,cy,S2*.975,-Math.PI,0);ctx.strokeStyle='rgba(180,200,255,0.3)';ctx.lineWidth=3;ctx.stroke();}
-  // 파울 존 흙
-  ctx.beginPath();ctx.arc(cx,cy,S2*.97,-Math.PI,0);ctx.arc(cx,cy,S2*.89,0,-Math.PI,true);ctx.closePath();ctx.fillStyle=st.dirt;ctx.fill();
-  // 내야 흙
-  ctx.beginPath();ctx.arc(cx,cy,S2*.41,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=st.if;ctx.fill();
-  // 내야 잔디
-  ctx.beginPath();ctx.arc(cx,cy,S2*.33,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.fillStyle=st.grass[0];ctx.fill();
+  ctx.fillStyle=bg;ctx.fill();
+  ctx.save();fair();ctx.clip();
+  ctx.fillStyle='rgba(255,255,255,.025)';
+  for(let r=0,i=0;r<g.R*1.1;r+=6*m,i++){if(i%2)continue;ctx.beginPath();ctx.arc(cx,cy,r+6*m,Math.PI,2*Math.PI);ctx.arc(cx,cy,r,2*Math.PI,Math.PI,true);ctx.fill();}
+  // 내야 흙 (마운드 중심 반지름 29m)
+  const md=P(2*Q,18.44*m),b=27.43*m,b1=P(3*Q,b),b2=P(2*Q,b*Math.SQRT2),b3=P(Q,b);
+  ctx.beginPath();ctx.arc(md[0],md[1],29*m,0,Math.PI*2);ctx.fillStyle=st.if;ctx.fill();
+  ctx.restore();
+  // 워닝트랙
+  ctx.beginPath();const w0=P(Q,F(Q));ctx.moveTo(w0[0],w0[1]);fenceTo(1);fenceTo(.93,true);ctx.closePath();
+  ctx.fillStyle=st.dirt;ctx.fill();
+  // 내야 잔디 (다이아몬드 안쪽)
+  const dc=P(2*Q,b*Math.SQRT1_2),ins=p=>[dc[0]+(p[0]-dc[0])*.8,dc[1]+(p[1]-dc[1])*.8];
+  const ig=[[cx,cy],b1,b2,b3].map(ins);
+  ctx.beginPath();ig.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+  ctx.fillStyle=st.grass[0];ctx.fill();
+  // 마운드 · 홈 주변 흙
+  ctx.fillStyle=st.if;
+  ctx.beginPath();ctx.arc(md[0],md[1],2.9*m,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,4*m,0,Math.PI*2);ctx.fill();
+  // 펜스
+  ctx.beginPath();ctx.moveTo(w0[0],w0[1]);fenceTo(1);
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;ctx.stroke();
+  if(st.dome){ctx.strokeStyle='rgba(180,200,255,0.3)';ctx.lineWidth=3;ctx.beginPath();const d0=P(Q,F(Q)*1.03);ctx.moveTo(d0[0],d0[1]);fenceTo(1.03);ctx.stroke();}
   // 파울라인
-  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-S2*.97,cy);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+S2*.97,cy);ctx.stroke();
-  ctx.setLineDash([3,5]);ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
-  [[Math.PI*.72],[Math.PI*.28]].forEach(([a])=>{ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a+Math.PI)*S2*.97,cy+Math.sin(a+Math.PI)*S2*.97);ctx.stroke();});
-  ctx.setLineDash([]);
-  ctx.beginPath();ctx.arc(cx,cy,S2*.89,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;ctx.stroke();
-  // 베이스
-  const br=S2*.42;[[cx,cy-br*.65],[cx-br*.46,cy-br*.33],[cx+br*.46,cy-br*.33]].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(-5.5,-5.5,11,11);ctx.restore();});
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx+6,cy-2);ctx.lineTo(cx+6,cy+3);ctx.lineTo(cx-6,cy+3);ctx.lineTo(cx-6,cy-2);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy-S2*.32,7,0,Math.PI*2);ctx.fillStyle=st.if;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=1;ctx.stroke();
+  const lp=P(Q,F(Q)),rp=P(3*Q,F(3*Q));
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(lp[0],lp[1]);ctx.lineTo(cx,cy);ctx.lineTo(rp[0],rp[1]);ctx.stroke();
+  // 베이스라인 + 베이스
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(b1[0],b1[1]);ctx.lineTo(b2[0],b2[1]);ctx.lineTo(b3[0],b3[1]);ctx.stroke();
+  const bs=Math.max(8,S2*.022);
+  [b1,b2,b3].forEach(([bx,by])=>{ctx.save();ctx.translate(bx,by);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillRect(-bs/2,-bs/2,bs,bs);ctx.restore();});
+  ctx.beginPath();ctx.arc(md[0],md[1],Math.max(2,S2*.006),0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.55)';ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.8)';ctx.beginPath();ctx.moveTo(cx,cy+3);ctx.lineTo(cx+5,cy-1);ctx.lineTo(cx+5,cy-5);ctx.lineTo(cx-5,cy-5);ctx.lineTo(cx-5,cy-1);ctx.closePath();ctx.fill();
   // LF/CF/RF 거리 표기 (구장별 실제 거리)
-  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`bold ${Math.floor(S2*.025)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';
-  ctx.fillText(st.lfDist+'m',cx-S2*.32,cy-S2*.58);ctx.fillText(st.cfDist+'m',cx,cy-S2*.72);ctx.fillText(st.rfDist+'m',cx+S2*.32,cy-S2*.58);
+  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`bold ${Math.floor(S2*.03)}px 'JetBrains Mono',monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+  const lt=P(Q+.1,F(Q+.1)*.84),ct=P(2*Q,F(2*Q)*.86),rt=P(3*Q-.1,F(3*Q-.1)*.84);
+  ctx.fillText(st.lfDist+'m',lt[0],lt[1]);ctx.fillText(st.cfDist+'m',ct[0],ct[1]);ctx.fillText(st.rfDist+'m',rt[0],rt[1]);
+  ctx.textBaseline='alphabetic';
   // 방향 레이블
   if(_fieldOv.dir){
-  const dl=Math.floor(S2*.019);ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;
-  ctx.fillStyle='rgba(245,101,101,.85)';ctx.fillText('당겨치기',cx-S2*.23,cy-S2*.37);
-  ctx.fillStyle='rgba(45,212,160,.85)';ctx.fillText('센터',cx,cy-S2*.45);
-  ctx.fillStyle='rgba(75,140,245,.85)';ctx.fillText('밀어치기',cx+S2*.23,cy-S2*.37);
+    const dl=Math.floor(S2*.026),lab=(deg,t,c)=>{const ph=_degToPhi(deg),p=P(ph,F(ph)*.6);ctx.fillStyle=c;ctx.fillText(t,p[0],p[1]);};
+    ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;
+    lab(27,'당겨치기','rgba(245,101,101,.85)');lab(90,'센터','rgba(45,212,160,.85)');lab(153,'밀어치기','rgba(75,140,245,.85)');
   }
-  // 베이스라인
-  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1;
-  const bps=[[cx,cy],[cx-br*.46,cy-br*.33],[cx,cy-br*.65],[cx+br*.46,cy-br*.33],[cx,cy]];
-  ctx.beginPath();bps.forEach(([x,y],i)=>i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));ctx.stroke();
-  // 거리 링 (구장 CF 기준 정규화)
+  // 거리 링 (홈 기준 실제 거리)
   if(!_fieldOv.arcs)return;
   const cfRef=st.cfDist;
-  ctx.setLineDash([3,6]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
-  ctx.fillStyle='rgba(255,255,255,0.38)';ctx.font=Math.floor(S2*.022)+'px sans-serif';ctx.textAlign='left';
-  [Math.round(cfRef*.41),Math.round(cfRef*.66),Math.round(cfRef*.82)].forEach(function(m){
-    var r=S2*m/cfRef;ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI,0);ctx.stroke();ctx.fillText(m+'m',cx+r*.35+2,cy-r*.93+4);
+  ctx.save();fair();ctx.clip();
+  ctx.setLineDash([3,6]);ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;
+  ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font=Math.floor(S2*.024)+'px sans-serif';ctx.textAlign='left';
+  [Math.round(cfRef*.41),Math.round(cfRef*.66),Math.round(cfRef*.82)].forEach(function(mm){
+    const r=mm*m;ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,2*Math.PI);ctx.stroke();
+    const tp=P(2*Q-.18,r);ctx.fillText(mm+'m',tp[0]+3,tp[1]-3);
   });
-  ctx.setLineDash([]);
+  ctx.setLineDash([]);ctx.restore();
 }
 
 // ── 구장 선택 ──
@@ -1107,6 +1196,7 @@ window.setStadium = function setStadium(id){
   AS.stadium=id;
   try{localStorage.setItem('sl_stadium',id);}catch(e){}
   drawField();
+  safeRender(); // 구장마다 펜스 모양이 달라 타구 위치도 다시 그림
   // 선택 UI 업데이트
   document.querySelectorAll('.sl-st-btn').forEach(function(b){b.classList.toggle('sl-st-on',b.dataset.st===id);});
 }
@@ -1121,17 +1211,18 @@ function onFClick(e){
   if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
-  const cx=FS/2,cy=FS,dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
-  if(dy>0||dist>FS*.97)return;
+  // 화면(부채꼴) 좌표 → 저장 좌표(기존 반원 기준)
+  const sp=_coneToSemi(_fieldGeo(FS),x,y);
+  if(!sp)return;
   closeHitDetail();
-  const ang=Math.atan2(dy,dx);const deg=(ang+Math.PI)*180/Math.PI;
+  const deg=sp.deg;
   let dir;if(deg<54)dir='LF';else if(deg<78)dir='LC';else if(deg<102)dir='CF';else if(deg<126)dir='RC';else dir='RF';
   var _st=STADIUMS[AS.stadium]||STADIUMS.standard;
   var _lf=Math.round(_st.lfDist*3.281),_cf=Math.round(_st.cfDist*3.281),_rf=Math.round(_st.rfDist*3.281);
   var _wallFt={LF:_lf,LC:Math.round((_lf+_cf)/2),CF:_cf,RC:Math.round((_cf+_rf)/2),RF:_rf};
-  const estFt=Math.round(dist/FS*(_wallFt[dir]||370));
+  const estFt=Math.round(sp.dist*(_wallFt[dir]||370));
   clearTimeout(_ftLabelTimer);
-  AS.pending={x:x/FS,y:y/FS,deg,dir,ft:estFt};
+  AS.pending={x:sp.x,y:sp.y,deg,dir,ft:estFt};
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
     var res=AS.pendingQuickRes;
@@ -1273,9 +1364,9 @@ function _showMiniSprayAfterRecord(){
   var fieldWrap=document.getElementById('cwrap');
   var mini=document.getElementById('miniSprayCanvas');
   if(!wrap||!fieldWrap||!mini)return;
-  _drawMiniSpray(mini,AS.abs);
   fieldWrap.style.display='none';
   wrap.style.display='block';
+  _drawMiniSpray(mini,AS.abs); // 보인 뒤에 그려야 실제 크기(clientWidth)로 그려짐
   clearTimeout(_miniSprayTimer);
   _miniSprayTimer=setTimeout(_expandMainField,2500);
 }
@@ -1362,7 +1453,7 @@ const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#14b8a6','3루�
 const LTC={'땅볼':'#f97316','라인드라이브':'#38bdf8','플라이볼':'#e2e8f0'};
 function drawDot(r){
   if(!r.x)return;
-  const x=r.x*FS,y=r.y*FS;
+  const [x,y]=_fieldPx(r);
   const col=RC[r.res]||'#94a3b8';
   const out=r.res.includes('아웃')||r.res==='삼진';
   const ltCol=r.launchType?LTC[r.launchType]:null;
@@ -1390,13 +1481,16 @@ function _drawMiniSpray(canvas, abs){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,w,h);
   if(!abs||!abs.length)return;
-  var cx=w/2, cy=h*0.95, R=Math.max(w,h*2)*0.48;
-  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,-Math.PI,0);ctx.closePath();
+  // 기록 필드와 같은 부채꼴 모양
+  var g=_fieldGeo(w,h);
+  ctx.beginPath();ctx.moveTo(g.cx,g.cy);
+  for(var i=0;i<=40;i++){var ph=_FQ+2*_FQ*i/40,p=_conePt(g,ph,_fenceR(g,ph));ctx.lineTo(p[0],p[1]);}
+  ctx.closePath();
   ctx.fillStyle='rgba(75,140,245,0.07)';ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.stroke();
   abs.forEach(function(a){
     if(a.x==null||a.y==null)return;
-    var x=a.x*w, y=a.y*h;
+    var q=_semiToCone(g,a.x,a.y),x=q[0],y=q[1];
     var col=RC[a.res]||'#94a3b8';
     var out=a.res.indexOf('아웃')!==-1||a.res==='삼진';
     ctx.beginPath();ctx.arc(x,y,out?2:3,0,Math.PI*2);
@@ -1836,9 +1930,9 @@ function drawHotZoneOverlay(){
   if(!pts.length)return;
   var color={hit:'rgba(45,212,160,',out:'rgba(245,101,101,',hr:'rgba(251,146,60,'};
   var c=color[_hzMode];
-  var r=Math.max(20,W*0.07);
+  var r=Math.max(20,FS*0.07);
   pts.forEach(function(a){
-    var px=a.x*W,py=a.y*H;
+    var pp=_fieldPx(a),px=pp[0],py=pp[1];
     var grd=ctx.createRadialGradient(px,py,0,px,py,r);
     grd.addColorStop(0,c+'0.18)');grd.addColorStop(1,c+'0)');
     ctx.fillStyle=grd;ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
@@ -2564,14 +2658,7 @@ function _drawHotColdOnCtx(){
       else if(hitRate>=0.25){r=246;g=194;b=62;}
       else{r=245;g=101;b=101;}
       var alpha=0.1+intensity*0.35;
-      var a1=(a*36)*Math.PI/180-Math.PI;
-      var a2=((a+1)*36)*Math.PI/180-Math.PI;
-      var r1=(d===0?0.08:d===1?0.35:0.65)*FS;
-      var r2=(d===0?0.35:d===1?0.65:0.97)*FS;
-      oCtx.beginPath();
-      oCtx.arc(cx,cy,r2,a1,a2);
-      oCtx.arc(cx,cy,r1,a2,a1,true);
-      oCtx.closePath();
+      _coneSectorPath(oCtx,_fieldGeo(FS),a*36,(a+1)*36,d===0?0.08:d===1?0.35:0.65,d===0?0.35:d===1?0.65:0.97);
       oCtx.fillStyle='rgba('+r+','+g+','+b+','+alpha+')';
       oCtx.fill();
     }
@@ -2604,14 +2691,7 @@ function _drawFieldHeatmap(){
       else if(intensity<0.55){r=246;g=194;b=62;}  // 노랑(보통)
       else{r=245;g=101;b=101;}                    // 빨강(핫)
       var alpha=0.1+intensity*0.42;
-      var a1=(a*(180/ANGS))*Math.PI/180-Math.PI;
-      var a2=((a+1)*(180/ANGS))*Math.PI/180-Math.PI;
-      var r1=(d===0?0.08:d===1?0.35:0.65)*FS;
-      var r2=(d===0?0.35:d===1?0.65:0.97)*FS;
-      oCtx.beginPath();
-      oCtx.arc(cx,cy,r2,a1,a2);
-      oCtx.arc(cx,cy,r1,a2,a1,true);
-      oCtx.closePath();
+      _coneSectorPath(oCtx,_fieldGeo(FS),a*(180/ANGS),(a+1)*(180/ANGS),d===0?0.08:d===1?0.35:0.65,d===0?0.35:d===1?0.65:0.97);
       oCtx.fillStyle='rgba('+r+','+g+','+b+','+alpha+')';
       oCtx.fill();
     }
@@ -5595,13 +5675,10 @@ function _cardTokens(ctx,parts,x,y,nSize,maxW){
 // S = 중앙 펜스까지 거리(px). 각도 phi는 왼쪽 수평선 기준 — 좌측 폴 π/4, 중앙 π/2, 우측 폴 3π/4
 function _cardField(ctx,cx,cy,S,abs,dots){
   var st=STADIUMS[AS.stadium]||STADIUMS.standard;
-  var kl=st.lfDist/st.cfDist,kr=st.rfDist/st.cfDist,m=S/st.cfDist; // m = 1m당 px
-  var Q=Math.PI/4;
-  var P=function(phi,r){return [cx-r*Math.cos(phi),cy-r*Math.sin(phi)];};
-  var fence=function(phi){ // 폴 → 중앙으로 부드럽게 깊어지는 펜스
-    var t=(phi-Q)/(2*Q);
-    return t<.5?S*(kl+(1-kl)*Math.sin(t*Math.PI)):S*(kr+(1-kr)*Math.sin((1-t)*Math.PI));
-  };
+  var g={cx:cx,cy:cy,R:S,kl:st.lfDist/st.cfDist,kr:st.rfDist/st.cfDist},m=S/st.cfDist;
+  var Q=_FQ;
+  var P=function(phi,r){return _conePt(g,phi,r);};
+  var fence=function(phi){return _fenceR(g,phi);};
   var arcPath=function(k){for(var i=0;i<=60;i++){var ph=Q+2*Q*i/60,p=P(ph,fence(ph)*k);ctx.lineTo(p[0],p[1]);}};
   ctx.save();
   // 페어 지역
@@ -5639,13 +5716,7 @@ function _cardField(ctx,cx,cy,S,abs,dots){
   ctx.restore();
 
   var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
-  var pos=function(a){
-    var dx=a.x-.5,dy=Math.min(a.y-1,0);
-    var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;          // 0 = 좌측 파울라인, 180 = 우측
-    var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);        // 펜스까지 비율
-    var phi=Q+Math.max(0,Math.min(180,deg))/180*2*Q;
-    return P(phi,frac*fence(phi));
-  };
+  var pos=function(a){return _semiToCone(g,a.x,a.y);};
   if(dots){ // 시즌 카드: 작은 점 (안타 빨강, 아웃 잉크 ×)
     pts.forEach(function(p){
       var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;

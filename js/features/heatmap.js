@@ -91,7 +91,9 @@ function _render() {
 
   oCtx.globalCompositeOperation = 'source-over';
   pts.forEach(function(a) {
-    var px = a.x * W, py = a.y * W;
+    // 기록 필드는 부채꼴로 그려지므로 화면 위치로 변환
+    var fp = window._fieldPos ? window._fieldPos(a) : [a.x, a.y];
+    var px = fp[0] * W, py = fp[1] * W;
     var grd = oCtx.createRadialGradient(px, py, 0, px, py, R);
     grd.addColorStop(0,    'rgba(255,255,255,' + baseA + ')');
     grd.addColorStop(0.45, 'rgba(255,255,255,' + (baseA * 0.38).toFixed(4) + ')');

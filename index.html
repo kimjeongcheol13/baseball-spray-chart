@@ -63,11 +63,12 @@ var _kakaoSdkLoaded = false;
 })();
 </script>
 <link rel="stylesheet" href="css/styles.css?v=72">
-<link rel="stylesheet" href="css/features.css?v=26">
+<link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=7">
-<link rel="stylesheet" href="css/analysis.css?v=1">
+<link rel="stylesheet" href="css/analysis.css?v=2">
 <link rel="stylesheet" href="css/compare.css?v=2">
-<link rel="stylesheet" href="css/profile.css?v=1">
+<link rel="stylesheet" href="css/profile.css?v=2">
+<link rel="stylesheet" href="css/scout.css?v=1">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -1796,7 +1797,7 @@ var _kakaoSdkLoaded = false;
     <div class="svh-title">선수 프로필</div>
     <div class="svh-sub">한 타자의 통산 기록 · 팀 내 위치 · 상황별 성적</div>
   </div>
-  <div id="profilePlayerList" class="pf-pick" role="radiogroup" aria-label="선수 선택"></div>
+  <div id="profilePlayerList" class="an-pick" role="radiogroup" aria-label="선수 선택"></div>
   <div id="profileContent" class="pf-result"></div>
 </div>
 
@@ -1817,21 +1818,17 @@ var _kakaoSdkLoaded = false;
 </div>
 
 <!-- Scout View -->
-<div id="scoutView" class="savant-view">
+<div id="scoutView" class="savant-view sc">
   <div id="scoutInfoBanner" class="mobile-info-banner">
-    <div class="mobile-info-banner-text">🔍 <strong>분석</strong> — 약점 패턴·카운트 히트맵·누적 트렌드를 분석합니다</div>
+    <div class="mobile-info-banner-text">🔍 <strong>스카우트</strong> — 상대 타자의 공략 코스·구종·카운트·수비 위치를 한 번에 정리합니다</div>
     <button class="mobile-info-banner-close" onclick="closeScoutInfoBanner()" aria-label="닫기">✕</button>
   </div>
   <div class="savant-view-header">
     <div class="svh-title">스카우팅 리포트</div>
-    <div class="svh-sub">상대 타자 분석 · 투구 전략</div>
+    <div class="svh-sub">상대 타자를 어떻게 잡을지 · 기록 기반 공략 포인트</div>
   </div>
-  <div class="scout-player-select">
-    <select id="scoutPlayerSelect" class="compare-select" style="max-width:200px" onchange="generateScoutReport(this.value)"></select>
-  </div>
-  <div id="scoutContent" class="scout-content">
-    <div class="empty-state">분석할 선수를 선택하세요</div>
-  </div>
+  <div id="scoutPlayerList" class="an-pick" role="radiogroup" aria-label="타자 선택"></div>
+  <div id="scoutContent" class="sc-result"></div>
 </div>
 
 
@@ -2277,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=102"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=22"></script>
+<script type="module" src="js/app.js?v=23"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -3,7 +3,9 @@
    카드 · 요약 · 스프레이 필드 · 흐름 차트 · 구종 표
    점/막대 색은 다크 배경 기준 색약 구분 검증값
    ═══════════════════════════════════════════ */
-.cmp, .pf {
+.cmp, .pf, .sc {
+  --an-accent: #4b8cf5;
+  --an-accent-soft: rgba(75, 140, 245, .14);
   --c-1b: #1fa98a;
   --c-xbh: #8b6cf0;
   --c-hr: #e0525a;
@@ -18,7 +20,47 @@
   --an-ink2: #9aa4b4;
   --an-ink3: #5d6878;
 }
-.cmp .savant-view-header, .pf .savant-view-header { text-align: center; }
+.cmp .savant-view-header, .pf .savant-view-header, .sc .savant-view-header { text-align: center; }
+
+/* ── 선수 선택 (가로 스크롤 칩) ── */
+.an-pick {
+  display: flex;
+  gap: 6px;
+  max-width: 960px;
+  margin: 0 auto 14px;
+  padding: 2px 2px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 24px), transparent);
+}
+.an-pick::-webkit-scrollbar { display: none; }
+.an-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 999px;
+  background: var(--an-card);
+  color: var(--an-ink2);
+  font-family: var(--font);
+  line-height: 38px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.an-chip:first-child { margin-left: 10px; }
+.an-chip b { font-size: 13px; font-weight: 800; }
+.an-chip span { font: 600 10px var(--mono); color: var(--an-ink3); }
+.an-chip small { font-size: 10px; color: var(--an-ink3); }
+.an-chip.on { border-color: var(--an-accent); background: var(--an-accent-soft); color: var(--an-ink); }
+.an-chip.on span, .an-chip.on small { color: var(--an-ink2); }
+@media (hover: hover) { .an-chip:hover { color: var(--an-ink); border-color: var(--an-ink3); } }
 
 /* ── 빈 상태 ── */
 .an-empty {
@@ -156,6 +198,28 @@
 .an-spray-key .k-hr { background: var(--c-hr); border-radius: 1px; transform: rotate(45deg) scale(.9); }
 .an-spray-key .k-out { border: 1.5px solid var(--c-out); }
 
+.an-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.an-sw.pull { background: var(--c-pull); }
+.an-sw.ctr { background: var(--c-ctr); }
+.an-sw.oppo { background: var(--c-oppo); }
+
+/* ── 타석 결과 칩 (안타·볼넷·삼진…) ── */
+.an-card i[class^="r-"] {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  border: 1px solid transparent;
+}
+.an-card i.r-1b { background: rgba(31, 169, 138, .18); color: #7fe0c7; }
+.an-card i.r-xbh { background: rgba(139, 108, 240, .2); color: #c3b4fb; }
+.an-card i.r-hr { background: rgba(224, 82, 90, .22); color: #f7b3b7; }
+.an-card i.r-bb { background: rgba(75, 140, 245, .18); color: #a9c7fa; }
+.an-card i.r-k { border-color: var(--an-line); color: var(--an-ink2); }
+.an-card i.r-out { color: var(--an-ink3); border-color: var(--an-line); }
+
 /* ── 경기별 흐름 ── */
 .an-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--an-raised); border: 1px solid var(--an-line); }
 .an-seg button {
@@ -205,6 +269,8 @@
 
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {
+  .an-pick { flex-wrap: wrap; overflow: visible; mask-image: none; justify-content: center; }
+  .an-chip:first-child { margin-left: 0; }
   .an-spray-row { gap: 20px; }
   .an-spray svg { max-width: 360px; margin: 0 auto; }
   .an-trend { max-width: 640px; margin: 0 auto; }

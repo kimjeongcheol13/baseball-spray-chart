@@ -1,6 +1,6 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=1';
+import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=2';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -60,19 +60,15 @@ export function renderProfilePlayerList() {
   if (!_data) _data = buildData();
   const ps = _data.players;
   if (!ps.length) { el.innerHTML = ''; return; }
-  el.innerHTML = ps.map(p => `
-    <button type="button" class="pf-chip${p.name === _sel ? ' on' : ''}" role="radio" aria-checked="${p.name === _sel}"
-      data-name="${_esc(p.name)}" onclick="selectProfilePlayer(this.dataset.name)">
-      <b>${_esc(p.name)}</b>${p.num !== '' && p.num != null ? `<span>#${_esc(p.num)}</span>` : ''}<small>${p.pa ? p.pa + '타석' : '기록 없음'}</small>
-    </button>`).join('');
-  const on = el.querySelector('.pf-chip.on');
+  el.innerHTML = playerChips(ps, _sel, 'selectProfilePlayer');
+  const on = el.querySelector('.an-chip.on');
   if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
 export function selectProfilePlayer(name) {
   _sel = name || null;
   _logAll = false;
-  document.querySelectorAll('#profilePlayerList .pf-chip').forEach(b => {
+  document.querySelectorAll('#profilePlayerList .an-chip').forEach(b => {
     const on = b.dataset.name === _sel;
     b.classList.toggle('on', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -266,7 +262,7 @@ function _dirTable(P) {
       <caption>방향별 성적 <small>(안타 ÷ 타구)</small></caption>
       <thead><tr><th scope="col">방향</th><th scope="col">타구</th><th scope="col">안타</th><th scope="col">장타</th><th scope="col">타구 타율</th></tr></thead>
       <tbody>${rows.map(r => `
-        <tr><th scope="row"><i class="pf-sw ${r.c}"></i>${r.l}</th><td>${r.n}</td><td>${r.h}</td><td>${r.xbh}</td><td><b>${r.n ? f3(r.avg) : '—'}</b></td></tr>`).join('')}
+        <tr><th scope="row"><i class="an-sw ${r.c}"></i>${r.l}</th><td>${r.n}</td><td>${r.h}</td><td>${r.xbh}</td><td><b>${r.n ? f3(r.avg) : '—'}</b></td></tr>`).join('')}
       </tbody>
     </table>`;
 }

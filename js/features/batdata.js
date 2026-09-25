@@ -139,6 +139,15 @@ export function josa(name, withB, noB) {
   return `${withB}(${noB})`;
 }
 
+// 선수 선택 칩 (가로 스크롤) — onclick 은 window 함수 이름
+export function playerChips(players, sel, fn) {
+  return players.map(p => `
+    <button type="button" class="an-chip${p.name === sel ? ' on' : ''}" role="radio" aria-checked="${p.name === sel}"
+      data-name="${_esc(p.name)}" onclick="${fn}(this.dataset.name)">
+      <b>${_esc(p.name)}</b>${p.num !== '' && p.num != null ? `<span>#${_esc(p.num)}</span>` : ''}<small>${p.pa ? p.pa + '타석' : '기록 없음'}</small>
+    </button>`).join('');
+}
+
 export function emptyState(title, sub) {
   return `<div class="an-empty"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5M11 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5"/></svg><b>${title}</b><span>${sub}</span></div>`;
 }

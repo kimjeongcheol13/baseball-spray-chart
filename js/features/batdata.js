@@ -1,4 +1,4 @@
-// 분석 탭 공용 — 기록 모으기 · 타격 지표 계산 · 스프레이/흐름/구종 표 렌더 (비교 · 프로필)
+// 분석 탭 공용 — 기록 모으기 · 타격 지표 계산 · 스프레이/흐름/구종 표 렌더 (비교 · 프로필 · 스카우트 · 팀)
 import { HITS, NOAB, BASE, WOBA_W, esc as _esc } from '../constants.js';
 
 // ── 데이터 ────────────────────────────────────────────────────
@@ -14,9 +14,16 @@ function _loadGames() {
   const raw = [];
   saves.forEach(s => {
     const d = _read(s.key);
-    if (d) raw.push({ label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])] });
+    if (d) raw.push({
+      label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
+      key: s.key, d: d.d || '', ts: d.ts || s.ts || 0, th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0,
+    });
   });
-  raw.push({ label: '현재 경기', abs: AS.abs || [], lineups: [...(AS.home_lineup || []), ...(AS.away_lineup || [])], current: true });
+  const val = id => ((document.getElementById(id) || {}).value || '').trim();
+  raw.push({
+    label: '현재 경기', abs: AS.abs || [], lineups: [...(AS.home_lineup || []), ...(AS.away_lineup || [])], current: true,
+    th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0,
+  });
 
   const seen = new Set();
   return raw.map(g => ({

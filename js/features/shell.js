@@ -333,7 +333,7 @@ function _ringLatest(r) {
   const last = _latest();
   if (!r || r !== last || !r.x || typeof hCtx === 'undefined' || !hCtx || typeof FS === 'undefined') return;
   if (window._sfPass && !window._sfPass(r)) return;
-  const x = r.x * FS, y = r.y * FS;
+  const [x, y] = typeof _fieldPx === 'function' ? _fieldPx(r) : [r.x * FS, r.y * FS];
   hCtx.save();
   hCtx.beginPath();
   hCtx.arc(x, y, 11, 0, Math.PI * 2);

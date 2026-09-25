@@ -110,7 +110,8 @@
       var best = null, bestD = Infinity;
       for (var i = 0, n = vis.length; i < n; i++) {
         var a  = vis[i];
-        var dx = x - a.x * FS, dy = y - a.y * FS;
+        var fp = window._fieldPos ? window._fieldPos(a) : [a.x, a.y];
+        var dx = x - fp[0] * FS, dy = y - fp[1] * FS;
         var d2 = dx * dx + dy * dy;
         if (d2 < bestD && d2 < THR2) { bestD = d2; best = a; }
       }

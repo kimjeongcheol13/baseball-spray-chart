@@ -3,7 +3,7 @@
    카드 · 요약 · 스프레이 필드 · 흐름 차트 · 구종 표
    점/막대 색은 다크 배경 기준 색약 구분 검증값
    ═══════════════════════════════════════════ */
-.cmp, .pf, .sc, .tm, .pc {
+.cmp, .pf, .sc, .tm, .pc, .bt {
   --an-accent: #4b8cf5;
   --an-accent-soft: rgba(75, 140, 245, .14);
   --c-1b: #1fa98a;
@@ -20,7 +20,7 @@
   --an-ink2: #9aa4b4;
   --an-ink3: #5d6878;
 }
-.cmp .savant-view-header, .pf .savant-view-header, .sc .savant-view-header, .tm .savant-view-header, .pc .savant-view-header { text-align: center; }
+.cmp .savant-view-header, .pf .savant-view-header, .sc .savant-view-header, .tm .savant-view-header, .pc .savant-view-header, .bt .savant-view-header { text-align: center; }
 
 /* ── 선수 선택 (가로 스크롤 칩) ── */
 .an-pick {
@@ -204,7 +204,7 @@
 .an-sw.oppo { background: var(--c-oppo); }
 
 /* ── 타석 결과 칩 (안타·볼넷·삼진…) ── */
-.an-card i[class^="r-"] {
+.an-card i[class^="r-"], .an-rchips i[class^="r-"] {
   padding: 1px 5px;
   border-radius: 4px;
   font-style: normal;
@@ -213,12 +213,12 @@
   line-height: 16px;
   border: 1px solid transparent;
 }
-.an-card i.r-1b { background: rgba(31, 169, 138, .18); color: #7fe0c7; }
-.an-card i.r-xbh { background: rgba(139, 108, 240, .2); color: #c3b4fb; }
-.an-card i.r-hr { background: rgba(224, 82, 90, .22); color: #f7b3b7; }
-.an-card i.r-bb { background: rgba(75, 140, 245, .18); color: #a9c7fa; }
-.an-card i.r-k { border-color: var(--an-line); color: var(--an-ink2); }
-.an-card i.r-out { color: var(--an-ink3); border-color: var(--an-line); }
+.an-card i.r-1b, .an-rchips i.r-1b { background: rgba(31, 169, 138, .18); color: #7fe0c7; }
+.an-card i.r-xbh, .an-rchips i.r-xbh { background: rgba(139, 108, 240, .2); color: #c3b4fb; }
+.an-card i.r-hr, .an-rchips i.r-hr { background: rgba(224, 82, 90, .22); color: #f7b3b7; }
+.an-card i.r-bb, .an-rchips i.r-bb { background: rgba(75, 140, 245, .18); color: #a9c7fa; }
+.an-card i.r-k, .an-rchips i.r-k { border-color: var(--an-line); color: var(--an-ink2); }
+.an-card i.r-out, .an-rchips i.r-out { color: var(--an-ink3); border-color: var(--an-line); }
 
 /* ── 경기별 흐름 ── */
 .an-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--an-raised); border: 1px solid var(--an-line); }

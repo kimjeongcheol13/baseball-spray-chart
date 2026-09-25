@@ -266,3 +266,8 @@
 @media (min-width: 721px) {
   .pf-more { height: 44px; }
 }
+
+/* ── 데스크톱 누적 흐름 차트: 높이 약 300 → 220px (이번만 예외) ── */
+@media (min-width: 721px) {
+  .pf .an-trend { max-width: 470px; }
+}

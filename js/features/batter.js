@@ -1,6 +1,7 @@
 // 타자 — 경기 중 "지금 타석에 선 타자" 브리핑: 오늘 기록 · 시즌/최근 폼 · 오늘 타석별 공 순서 · 본 공 위치 · 공략 메모
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=4';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=2';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -55,6 +56,11 @@ export function openBatterIn(sub) {
   if (sub === 'profile' && window.selectProfilePlayer) window.selectProfilePlayer(_sel);
   if (sub === 'scout' && window.generateScoutReport) window.generateScoutReport(_sel);
   window.shellSub(sub);
+}
+
+// 타자 분석 엑셀 (차트 포함) — 고른 타자의 시즌 전체 기록 (이번 경기 포함)
+export function exportBatterExcel() {
+  if (_sel) exportBatterXlsx(playerData(buildData(), _sel));
 }
 
 // ── 데이터 ───────────────────────────────────────────────────
@@ -140,6 +146,7 @@ function _render() {
         <button type="button" class="tm-act" onclick="openBatterIn('profile')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg></span><b>프로필에서 자세히</b><small>팀 내 위치 · 상황별 · 경기 로그</small></button>
         <button type="button" class="tm-act" onclick="openBatterIn('scout')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span><b>스카우트 리포트</b><small>공략 코스 · 구종 · 수비 위치</small></button>
       </div>
+      ${P.abs.length ? xlsxButton('exportBatterExcel', '시즌 전체 타석 · 요약 · 타구 차트 · 투구 위치 · 핫/콜드 존 · 원본 기록') : ''}
     </div>`;
 }
 
@@ -321,4 +328,5 @@ if (typeof window !== 'undefined') {
   window.setBatterView = setBatterView;
   window.selectBatterSeason = name => setBatterView('sel', name);
   window.openBatterIn = openBatterIn;
+  window.exportBatterExcel = exportBatterExcel;
 }

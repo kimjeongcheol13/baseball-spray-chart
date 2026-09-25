@@ -6900,7 +6900,7 @@ function _gfComment(h,hr,k,bb,avg,mainDir,hs,as){
   var pool=[];
   if(hr>=2)pool.push('홈런 '+hr+'개! 오늘 타선의 파워가 빛났습니다.');
   else if(hr===1)pool.push('결정적인 홈런 1개가 경기의 흐름을 바꿨습니다.');
-  if(avg>=0.40)pool.push('팀 타율 '+Math.round(avg*100)+'% — 오늘은 타선이 뜨거웠습니다!');
+  if(avg>=0.40)pool.push('팀 타율 '+avg.toFixed(3).replace('0.','.')+' — 오늘은 타선이 뜨거웠습니다!');
   else if(avg>=0.28)pool.push('타율 '+avg.toFixed(3).replace('0.','.')+' — 안정적인 타격 내용이었습니다.');
   else if(avg<0.15&&h>0)pool.push('타선이 고전했지만, 이 데이터로 다음 경기를 준비하세요!');
   if(mainDir==='당겨치기')pool.push('오늘은 당겨치기 타구가 집중됐습니다. 외각 공략이 관건이었습니다.');

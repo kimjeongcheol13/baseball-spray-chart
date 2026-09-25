@@ -1,5 +1,5 @@
 // 기록 탭 — 입력 흐름(필드 탭 팝업·즉시 기록 버튼·저장)은 core.js 그대로 두고, 그 둘레를 새로 짠다
-//   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록 3개 + 되돌리기
+//   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록(모바일 3개 · 데스크톱 6개) + 되돌리기
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3 } from './batdata.js?v=4';
 
@@ -172,7 +172,7 @@ function _moreHtml() {
 // ── 최근 기록 ────────────────────────────────────────────────
 function _recentHtml() {
   const AS = window.AS || {};
-  const list = (AS.abs || []).slice(-3).reverse();
+  const list = (AS.abs || []).slice(-6).reverse();   // 모바일은 CSS로 3개만 보임
   const row = a => {
     const [tx, c] = SHORT[a.res] || [a.res, 'out'];
     const extra = [a.dir ? DIR[a.dir] || a.dir : '', a.rbi ? `${a.rbi}타점` : ''].filter(Boolean).join(' · ');

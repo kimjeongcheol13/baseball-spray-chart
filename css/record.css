@@ -126,6 +126,7 @@
   .rv-bat { padding: 6px 10px 8px; }
   .rv-today { margin-top: 4px; }
   .rv-order { margin-top: 4px; }
+  .rv-recent ol > li:nth-child(n+4) { display: none; }   /* 최근 기록: 모바일은 3개 */
 }
 
 /* ── 데스크톱 터치 타겟 44×44px 이상 (이번 개편은 데스크톱 배치도 함께 바꾸기로 한 예외) ── */

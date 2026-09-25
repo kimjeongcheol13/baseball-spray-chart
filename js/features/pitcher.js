@@ -1,6 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=4';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=1';
 
 const HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];
 const TB = { '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
@@ -202,6 +203,7 @@ function _stats(P) {
     </div>
     ${_battersCard(S)}
     ${_scope === 'season' ? _appsCard(P) : ''}
+    ${xlsxButton('exportPitcherExcel', `${_scope === 'game' ? '이번 경기' : '시즌 전체'} 투구 · 구종별 투구 위치 · 코스 분포 · 타구 허용 · 원본 기록`)}
   `;
 }
 
@@ -454,6 +456,12 @@ function _insights(P, S) {
     </section>`;
 }
 
+// 분석 엑셀 (차트 포함) — 화면에 보이는 범위(시즌 전체 / 이번 경기) 그대로
+export function exportPitcherExcel() {
+  const P = _pitchers().find(p => p.name === _sel);
+  if (P) exportPitcherXlsx(P, _calc(P.apps), _calc);
+}
+
 // 투구를 기록하거나 투수를 고르면 core.js가 renderPitcherStats를 부른다 → 투수 탭이 열려 있으면 새 화면도 갱신
 function _hookLegacy() {
   const orig = window.renderPitcherStats;
@@ -470,4 +478,5 @@ if (typeof window !== 'undefined') {
   _hookLegacy();
   window.openPitcherView = openPitcherView;
   window.setPitcherView = setPitcherView;
+  window.exportPitcherExcel = exportPitcherExcel;
 }

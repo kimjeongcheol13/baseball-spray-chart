@@ -12,7 +12,7 @@ import './features/team.js?v=2';
 import './features/pitcher.js?v=3';
 import './features/batter.js?v=2';
 import './features/spray.js?v=1';
-import './features/shell.js?v=12';
+import './features/shell.js?v=13';
 import './features/record.js?v=3';
 import './features/settings.js?v=1';
 

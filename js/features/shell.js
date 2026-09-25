@@ -133,6 +133,7 @@ function _renderSub(sub) {
 function shellSub(sub) {
   if (ANA_SUBS.indexOf(sub) < 0) sub = 'spray';
   _sub = sub;
+  _trackTab('analysis', sub);
   document.querySelectorAll('#anaSubnav .ana-sub').forEach((b) => {
     const on = b.dataset.sub === sub;
     b.classList.toggle('on', on);
@@ -177,6 +178,15 @@ function shellGfToggle() {
 }
 
 // ── 하단 탭 ─────────────────────────────────────────────────
+// GA4: 어느 탭을 얼마나 보는지 (탭 정리 판단용) — 탭 이름만 보내고 선수·기록 내용은 보내지 않는다
+let _lastTrack = '';
+function _trackTab(tab, sub) {
+  const k = tab + '/' + (sub || '');
+  if (k === _lastTrack) return;   // 같은 탭을 연달아 다시 그릴 때는 한 번만
+  _lastTrack = k;
+  try { if (typeof window.gtag === 'function') window.gtag('event', 'analysis_tab_view', sub ? { tab, sub } : { tab }); } catch (e) {}
+}
+
 function shellNav(tab, sub) {
   if (['record', 'analysis', 'settings'].indexOf(tab) < 0) tab = 'record';
   _tab = tab;
@@ -187,6 +197,8 @@ function shellNav(tab, sub) {
   });
   const ap = $('app-page');
   document.querySelectorAll('.savant-view').forEach((v) => v.classList.remove('active'));
+
+  if (tab !== 'analysis') _trackTab(tab);   // 분석 탭은 shellSub에서 하위 탭과 함께
 
   if (tab === 'record') {
     if (ap) ap.style.display = 'flex';

@@ -3,7 +3,7 @@
    카드 · 요약 · 스프레이 필드 · 흐름 차트 · 구종 표
    점/막대 색은 다크 배경 기준 색약 구분 검증값
    ═══════════════════════════════════════════ */
-.cmp, .pf, .sc, .tm {
+.cmp, .pf, .sc, .tm, .pc {
   --an-accent: #4b8cf5;
   --an-accent-soft: rgba(75, 140, 245, .14);
   --c-1b: #1fa98a;
@@ -20,7 +20,7 @@
   --an-ink2: #9aa4b4;
   --an-ink3: #5d6878;
 }
-.cmp .savant-view-header, .pf .savant-view-header, .sc .savant-view-header, .tm .savant-view-header { text-align: center; }
+.cmp .savant-view-header, .pf .savant-view-header, .sc .savant-view-header, .tm .savant-view-header, .pc .savant-view-header { text-align: center; }
 
 /* ── 선수 선택 (가로 스크롤 칩) ── */
 .an-pick {

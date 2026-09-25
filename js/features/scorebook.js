@@ -57,10 +57,19 @@ function _stripEmojiIn(root) {
   const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const hit = [];
   for (let n = tw.nextNode(); n; n = tw.nextNode()) { _EMO.lastIndex = 0; if (_EMO.test(n.nodeValue)) hit.push(n); }
-  hit.forEach(n => { n.nodeValue = _noEmoji(n.nodeValue); });
+  // 이모지만 있던 글자(아이콘 칸)는 노드째 지움 → CSS :empty로 빈 아이콘 칸을 숨길 수 있게
+  hit.forEach(n => { const v = _noEmoji(n.nodeValue); if (v.trim()) n.nodeValue = v; else n.remove(); });
+  // 글자 ✕ 닫기 버튼 → 선 아이콘 (동작·onclick은 그대로)
+  root.querySelectorAll('button').forEach(b => {
+    if (b.children.length || !/^[\u2715\u00D7]$/.test(b.textContent.trim())) return;
+    b.innerHTML = ICON.close;
+    if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', '닫기');
+  });
 }
 function _cleanLegacy() {
   ['slMenu', 'lineupDrawer', 'recList'].forEach(id => _stripEmojiIn($(id)));
+  _stripEmojiIn(document.querySelector('.input-bar'));
+  _stripEmojiIn($('curPitchBadge'));
   // 라인업 서랍의 ✏️ 버튼 → 선 아이콘
   document.querySelectorAll('#lpList .p-edit').forEach(b => { if (!b.querySelector('svg')) b.innerHTML = ICON.pencil; });
 }
@@ -88,6 +97,7 @@ function tok(force) {
     paper: g('--paper', '#F3EDDF'), paper2: g('--paper-2', '#FBF7EE'), ink: g('--ink', '#1F2A23'),
     grass: g('--grass', '#3E7A5B'), dirt: g('--dirt', '#D3A670'), mound: g('--mound', '#BF915C'),
     red: g('--pen-red', '#C8322B'), blue: g('--pen-blue', '#2C4F8A'), hl: g('--highlight', '#D9A441'),
+    inkSoft: g('--ink-soft', '#55605A'), rule: g('--rule', '#C9BFA9'),
   };
   _Tat = performance.now();
   return _T;
@@ -113,7 +123,9 @@ function paintField(ctx, S, T) {
     }
   };
   const fair = () => { ctx.beginPath(); ctx.moveTo(cx, cy); fenceAt(0); ctx.closePath(); };
-  const md = P(2 * Q, 18.44 * m), b = 27.43 * m, b1 = P(3 * Q, b), b2 = P(2 * Q, b * Math.SQRT2), b3 = P(Q, b);
+  // 베이스·투수판 거리: 기본 90ft(27.43m)·60.5ft(18.44m), 구장에 base/mound가 있으면 그 값 (리틀야구 60ft·46ft)
+  const baseM = st.base || 27.43, ifR = 29 * baseM / 27.43 * m;
+  const md = P(2 * Q, (st.mound || 18.44) * m), b = baseM * m, b1 = P(3 * Q, b), b2 = P(2 * Q, b * Math.SQRT2), b3 = P(Q, b);
   const w0 = P(Q, F(Q));
 
   ctx.save();
@@ -129,7 +141,7 @@ function paintField(ctx, S, T) {
   [0.42, 0.6, 0.78].forEach(k => { ctx.beginPath(); ctx.arc(cx, cy, g.R * k, Math.PI, 2 * Math.PI); ctx.stroke(); });
   ctx.globalAlpha = 1;
   // 내야 흙 (마운드 중심 29m) → 내야 잔디 → 베이스라인 흙 20px → 홈 주변 흙
-  ctx.beginPath(); ctx.arc(md[0], md[1], 29 * m, 0, Math.PI * 2); ctx.fillStyle = T.dirt; ctx.fill();
+  ctx.beginPath(); ctx.arc(md[0], md[1], ifR, 0, Math.PI * 2); ctx.fillStyle = T.dirt; ctx.fill();
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(b1[0], b1[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(b3[0], b3[1]); ctx.closePath();
   ctx.fillStyle = T.grass; ctx.fill();
   ctx.lineJoin = 'round'; ctx.lineWidth = 20 * u; ctx.strokeStyle = T.dirt; ctx.stroke();
@@ -236,6 +248,53 @@ function paperDot(r) {
   }
 }
 
+// 투구 코스 캔버스 (core _drawZoneCanvas 대체) — 존 기하(0.22~0.78 × 0.15~0.85)·점 좌표는 core와 같음
+//   입력바 · 투수 입력 · 모바일 투구 시트 · 타자 상세(bsPitchCanvas)가 모두 이 함수를 전역 이름으로 부름
+function paperZone(cvs, dots, isSmall) {
+  if (!cvs || !cvs.getContext) return;
+  // 선명도: 처음 크기(width/height 속성)를 화면 크기로 고정하고 픽셀만 DPR배 — 클릭·hover 좌표는 core가 화면 비율로 계산하므로 그대로
+  if (!cvs._zs) {
+    cvs._zs = [cvs.width, cvs.height];
+    if (!cvs.style.width) { cvs.style.width = cvs.width + 'px'; cvs.style.height = cvs.height + 'px'; }
+  }
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), W = cvs._zs[0], H = cvs._zs[1];
+  if (cvs.width !== Math.round(W * dpr)) { cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr); }
+  const T = tok(), ctx = cvs.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = T.paper2;
+  ctx.fillRect(0, 0, W, H);
+  const zx1 = W * 0.22, zx2 = W * 0.78, zy1 = H * 0.15, zy2 = H * 0.85;
+  const dz = (zx2 - zx1) / 3, dh = (zy2 - zy1) / 3;
+  ctx.fillStyle = T.paper;
+  ctx.fillRect(zx1, zy1, zx2 - zx1, zy2 - zy1);
+  ctx.strokeStyle = T.rule; ctx.lineWidth = 0.75;
+  for (let i = 1; i < 3; i++) {
+    ctx.beginPath(); ctx.moveTo(zx1 + dz * i, zy1); ctx.lineTo(zx1 + dz * i, zy2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(zx1, zy1 + dh * i); ctx.lineTo(zx2, zy1 + dh * i); ctx.stroke();
+  }
+  ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5;
+  ctx.strokeRect(zx1, zy1, zx2 - zx1, zy2 - zy1);
+  const fs = isSmall ? 8 : 9;
+  ctx.fillStyle = T.inkSoft; ctx.font = '700 ' + fs + 'px "Gowun Batang", serif'; ctx.textAlign = 'center';
+  ctx.fillText('볼', W / 2, zy1 - 3);
+  ctx.fillText('볼', W / 2, zy2 + fs + 2);
+  ctx.save(); ctx.translate(zx1 - 3, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('볼', 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(zx2 + 3, H / 2); ctx.rotate(Math.PI / 2); ctx.fillText('볼', 0, 0); ctx.restore();
+  const col = {
+    '볼': T.blue, '스트라이크': T.hl, '파울': T.inkSoft, '안타': T.red, '2루타': T.hl, '3루타': T.hl,
+    '홈런': T.red, '타격됨': T.red, '직구': T.red, '슬라이더': T.hl, '커브': T.blue, '체인지업': T.grass,
+    '포크볼': T.mound, '커터': T.inkSoft, 'preview': T.paper2,
+  };
+  (dots || []).forEach(d => {
+    ctx.beginPath(); ctx.arc(d.cx * W, d.cy * H, isSmall ? 4 : 5, 0, Math.PI * 2);
+    ctx.fillStyle = col[d.result] || T.hl; ctx.fill();
+    ctx.strokeStyle = T.ink; ctx.lineWidth = 1.25;
+    if (d.result === 'preview') ctx.setLineDash([2, 2]);
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+}
+
 // 기록 직후 미니 스프레이 (core _drawMiniSpray 대체, 같은 기하)
 function paperMiniSpray(canvas, abs) {
   if (!canvas) return;
@@ -266,13 +325,16 @@ function _lsHtml() {
   const AS = _AS(), cur = _inn();
   const th = _val('tHome', '내 팀'), ta = _val('tAway', '원정팀');
   const hits = t => (AS.abs || []).filter(a => (a.team || 'home') === t && HITS.includes(a.res)).length;
-  const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  // 이닝 칸 = 경기 정보의 이닝 수(5·7·9, 기본 9) — 연장으로 넘어가면 그만큼 늘림
+  const info = window.gameInfo ? window.gameInfo() : { innings: 9, side: 'home' };
+  const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0) }, (_, i) => i + 1);
   const head = `<tr><th scope="col" class="t">TEAM</th>${cols.map(n => `<th scope="col"${cur.n === n ? ' class="cur"' : ''}>${n}</th>`).join('')}<th scope="col" class="r">R</th><th scope="col">H</th><th scope="col">E</th></tr>`;
   const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}></td>`).join('')}`
     + `<td class="r">${runs}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
   // R 칸은 44px 터치 타겟이 안 나와서 점수 수정은 옆 버튼으로 (기존 스코어 수정 팝오버)
   return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — 이닝별 득점은 기록하지 않아 비워 둡니다</caption>`
-    + `<thead>${head}</thead><tbody>${row(th, 'home', AS.hs || 0)}${row(ta, 'away', AS.as || 0)}</tbody></table></div>`
+    // 윗줄 = 초 공격(원정) 팀: 내 팀이 원정이면 내 팀이 위 (야구 라인스코어 표기)
+    + `<thead>${head}</thead><tbody>${info.side === 'away' ? row(th, 'home', AS.hs || 0) + row(ta, 'away', AS.as || 0) : row(ta, 'away', AS.as || 0) + row(th, 'home', AS.hs || 0)}</tbody></table></div>`
     + `<button type="button" class="sb-score-btn" onclick="shellScore(true)" aria-label="스코어 수정">${ICON.pencil}<span>점수</span></button>`;
 }
 
@@ -463,7 +525,13 @@ function _mountShell() {
     if (v && !v.querySelector('.sb-vhdr')) v.insertAdjacentHTML('afterbegin', `<header class="sb-hdr sb-vhdr">${_brand(sub)}<div class="sb-hdr-mid"></div></header>`);
   });
   // 경기 리포트 오버레이: #app-page 안에 있어서 분석·경기설정 탭에서 열면 숨은 부모 때문에 보이지 않았다 → body로 옮김
-  ['pgFade', 'pgReport'].forEach(id => { const el = $(id); if (el && el.parentElement !== document.body) document.body.appendChild(el); });
+  // 같은 이유로 #app-page 안에 있던 창들(새 경기 · 경기 종료 · 저장 방식 · 로그인 · 팀 만들기 · 사진/CSV · 도움말 등)도 body로
+  //   → 경기설정·분석 탭에서 버튼을 눌러도 0×0으로 안 보이던 문제 (ID·핸들러는 그대로)
+  ['pgFade', 'pgReport', 'teamCreateModal', 'ocrModal', 'gameWizard', 'newGameGuard', 'helpModal', 'gfEndOv', 'gameSummaryOv',
+    'saveMethodBackdrop', 'saveMethodSheet', 'loginModal', 'profileModal'].forEach(id => {
+    const el = $(id);
+    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+  });
   _stripEmojiIn($('pgReport'));
   // 하단 바인더 탭: 오른쪽 끝 태그라인
   const nav = $('savantNav');
@@ -509,10 +577,11 @@ function _hook() {
     window[fn] = w;
   });
   // 그리기 3종 교체 (기하·좌표 계산 함수는 core 그대로 호출)
-  paperDrawField._sb = paperDot._sb = paperMiniSpray._sb = true;
+  paperDrawField._sb = paperDot._sb = paperMiniSpray._sb = paperZone._sb = true;
   window.drawField = paperDrawField;
   window.drawDot = paperDot;
   window._drawMiniSpray = paperMiniSpray;
+  window._drawZoneCanvas = paperZone;
 
   // 리포트 내용(core _pgBuild)을 그린 뒤 이모지 제거
   const pg = window._pgBuild;
@@ -531,6 +600,13 @@ function _hook() {
     const w = function (id) { if (id === 'pgMini' && $(id)) return paperMiniSpray($(id), (window.AS || {}).abs || []); return pm.apply(this, arguments); };
     w._sb = true;
     window._pgDrawMini = w;
+  }
+  // 경기 종료 카드의 작은 스프레이(#gfeMini): 종이 필드로 (이미지 저장용 그리기는 그대로)
+  const gm = window._gfDrawMini;
+  if (typeof gm === 'function' && !gm._sb) {
+    const w = function () { const c = $('gfeMini'); if (c) paperMiniSpray(c, (window.AS || {}).abs || []); };
+    w._sb = true;
+    window._gfDrawMini = w;
   }
   // 기록 직후 필드를 2.5초 접고 미니 스프레이를 띄우던 효과(데스크톱): 새 배치에선 필드 카드가 비어 보여서 끔
   // (모바일은 record.js가 이미 끔) — 방금 기록은 필드의 형광펜 링과 오른쪽 타석 기록에서 바로 보인다
@@ -600,17 +676,30 @@ function _hook() {
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('sb-order-open')) sbOrderSheet(false); });
 
-  // 분석 탭: 서브탭들이 그린 문구의 이모지(⚠ · 🔍 등)도 화면에서만 걸러냄 (새 노드가 붙을 때만 → 글자 수정은 다시 감지 안 됨)
-  const ana = $('analysisView');
-  if (ana && window.MutationObserver) {
-    let q = 0;
-    new MutationObserver(() => { if (!q) q = requestAnimationFrame(() => { q = 0; _stripEmojiIn(ana); }); }).observe(ana, { childList: true, subtree: true });
-    _stripEmojiIn(ana);
+  // 분석 · 경기설정 탭과 각종 창: 기존 문구의 이모지(⚠ · 🔍 · 📷 등)를 화면에서만 걸러냄
+  //   (새 노드가 붙을 때만 → 글자를 고쳐도 다시 감지되지 않아 반복 없음)
+  if (window.MutationObserver) {
+    ['analysisView', 'settingsView', 'gameWizard', 'gameSummaryOv', 'helpModal', 'teamCreateModal', 'ocrModal', 'newGameGuard', 'gfEndOv',
+      'saveMethodSheet', 'loginModal', 'profileModal', 'cloudOverlay', 'dataSettingsOverlay', 'fieldFeedbackModal', 'loadOverlay',
+      'mobPitchModal', 'mabMoreModal', 'archRecoveryBanner', 'sharedBanner', 'kakao-warn', 'hitDetailCard', 'cloudUpsellToast',
+      'cardCtxSheet', 'scoutIntroSheet', 'helpModeIndicator', 'helpModeTooltip', 'sfPanel'].forEach(id => {
+      const root = $(id);
+      if (!root) return;
+      let q = 0;
+      new MutationObserver(() => { if (!q) q = requestAnimationFrame(() => { q = 0; _stripEmojiIn(root); }); }).observe(root, { childList: true, subtree: true });
+      _stripEmojiIn(root);
+    });
   }
 }
 
 function _redraw() {
   try { if (window.drawField) window.drawField(); if (window.safeRender) window.safeRender(); } catch (e) {}
+  // 투구 코스 캔버스 (core가 먼저 그렸어도 종이 색으로 다시)
+  try {
+    if (typeof window.ibZoneRedraw === 'function') window.ibZoneRedraw();
+    const pz = $('pitcherZoneCanvas'), A = window.AS || {};
+    if (pz) paperZone(pz, A.pitcherZoneX != null && A.pitcherZoneY != null ? [{ cx: A.pitcherZoneX, cy: A.pitcherZoneY, result: '스트라이크' }] : [], true);
+  } catch (e) {}
 }
 
 function _init() {

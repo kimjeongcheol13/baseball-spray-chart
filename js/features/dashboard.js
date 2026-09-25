@@ -63,10 +63,13 @@ function _gameMeta() {
     const n = buildData().games.filter(g => g.abs.length).length;
     return `시즌 누적 · ${n}경기`;
   }
+  // 날짜·구장: 경기설정의 경기 정보 → 없으면 저장 날짜 → 오늘
+  const info = window.gameInfo ? window.gameInfo() : {};
   let d = '';
-  try { if (typeof _curSaveKey !== 'undefined' && _curSaveKey) d = (JSON.parse(localStorage.getItem(_curSaveKey)) || {}).d || ''; } catch (e) {}
+  if (info.date) { const [y, m, dd] = info.date.split('-'); d = `${y}. ${+m}. ${+dd}.`; }
+  try { if (!d && typeof _curSaveKey !== 'undefined' && _curSaveKey) d = (JSON.parse(localStorage.getItem(_curSaveKey)) || {}).d || ''; } catch (e) {}
   if (!d) d = new Date().toLocaleDateString('ko-KR');
-  return `${d} · ${th} vs ${ta}`;
+  return [d, info.venue, `${th} vs ${ta}`].filter(Boolean).join(' · ');
 }
 
 // ── 필드 (캔버스): 기록 탭과 같은 필드 + 5구역 점선 + 구역별 타구 수 ──

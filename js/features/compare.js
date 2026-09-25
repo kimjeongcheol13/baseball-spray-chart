@@ -1,5 +1,6 @@
 // 선수 비교 — 두 타자를 같은 기준(내 기록 전체)으로 나란히 놓고 분석
-import { HITS, NOAB, BASE, WOBA_W, esc as _esc } from '../constants.js';
+import { esc as _esc } from '../constants.js';
+import { buildData, playerData, f3, pct, fmt, sampleBadge as _sample, josa as _j, emptyState as _empty, sprayFigure, trendChart, pitchTable } from './batdata.js?v=1';
 
 let _a = null;          // 선택된 선수 이름 (A / B)
 let _b = null;
@@ -42,7 +43,7 @@ export function openCompareView() {
   document.querySelectorAll('.savant-view').forEach(v => v.classList.remove('active'));
   const view = document.getElementById('compareView');
   if (view) view.classList.add('active');
-  _cache = _build();
+  _cache = buildData();
   const names = _cache.players.map(p => p.name);
   if (!names.includes(_a)) _a = null;
   if (!names.includes(_b)) _b = null;
@@ -58,7 +59,7 @@ export function renderComparePlayerSelects() {
   const s1 = document.getElementById('compareSelect1');
   const s2 = document.getElementById('compareSelect2');
   if (!s1 || !s2) return;
-  if (!_cache) _cache = _build();
+  if (!_cache) _cache = buildData();
   const ps = _cache.players;
   if (!ps.length) {
     s1.innerHTML = s2.innerHTML = '<option value="">선수 없음</option>';
@@ -87,7 +88,7 @@ export function setCompareTrend(key) {
 export function runPlayerCompare() {
   const el = document.getElementById('compareResult');
   if (!el) return;
-  if (!_cache) _cache = _build();
+  if (!_cache) _cache = buildData();
   const s1 = document.getElementById('compareSelect1');
   const s2 = document.getElementById('compareSelect2');
   if (s1) _a = s1.value || null;
@@ -105,151 +106,9 @@ export function runPlayerCompare() {
     el.innerHTML = _empty('같은 선수가 선택됐어요', '서로 다른 두 선수를 선택해주세요.');
     return;
   }
-  const A = _playerStats(_a);
-  const B = _playerStats(_b);
+  const A = playerData(_cache, _a);
+  const B = playerData(_cache, _b);
   el.innerHTML = _render(A, B, _cache.pool);
-}
-
-// ── 데이터 ────────────────────────────────────────────────────
-function _read(key) {
-  try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
-}
-
-// 저장 경기(오래된 순) + 현재 경기. 같은 타석(id)이 두 번 세어지지 않게 한다
-// (현재 경기를 저장했거나 저장 경기를 불러온 경우 같은 id가 양쪽에 있음)
-function _loadGames() {
-  const AS = window.AS || {};
-  const saves = (_read('sl_saves') || []).slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
-  const raw = [];
-  saves.forEach(s => {
-    const d = _read(s.key);
-    if (d) raw.push({ label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])] });
-  });
-  raw.push({ label: '현재 경기', abs: AS.abs || [], lineups: [...(AS.home_lineup || []), ...(AS.away_lineup || [])], current: true });
-
-  const seen = new Set();
-  return raw.map(g => ({
-    ...g,
-    abs: g.abs.filter(a => {
-      if (!a || a.id == null) return !!a;
-      if (seen.has(a.id)) return false;
-      seen.add(a.id);
-      return true;
-    }),
-  }));
-}
-
-function _gameLabel(d, s) {
-  const opp = d.th && d.ta ? `${d.th} vs ${d.ta}` : (s.label || '경기');
-  return d.d ? `${d.d} ${opp}` : opp;
-}
-
-function _build() {
-  const games = _loadGames();
-  const map = {};
-  const add = (name, num, bats) => {
-    if (!name) return null;
-    if (!map[name]) map[name] = { name, num: num ?? '', bats: {}, pa: 0 };
-    if ((map[name].num === '' || map[name].num == null) && num != null) map[name].num = num;
-    if (bats) map[name].bats[bats] = (map[name].bats[bats] || 0) + 1;
-    return map[name];
-  };
-  // 최신 경기 라인업이 번호를 먼저 정하도록 역순
-  games.slice().reverse().forEach(g => g.lineups.forEach(p => p && add(p.name, p.num, p.bats || p.ba)));
-  const all = [];
-  games.forEach(g => g.abs.forEach(a => {
-    const p = add(a.bname, a.bnum, a.bats);
-    if (p) p.pa++;
-    all.push(a);
-  }));
-  const players = Object.values(map).sort((x, y) => y.pa - x.pa || String(x.name).localeCompare(String(y.name), 'ko'));
-  return { games, players, pool: _calc(all) };
-}
-
-function _calc(abs) {
-  const n = r => abs.filter(a => a.res === r).length;
-  const pa = abs.length;
-  const ab = abs.filter(a => !NOAB.includes(a.res)).length;
-  const h = abs.filter(a => HITS.includes(a.res)).length;
-  const s1 = n('안타') + n('내야안타'), s2 = n('2루타'), s3 = n('3루타'), hr = n('홈런');
-  const bb = n('볼넷');   // 볼넷만 (사구 제외)
-  const hbp = n('사구');
-  const k = n('삼진');
-  const sf = n('희비'), sh = n('희타');
-  const rbi = abs.reduce((s, a) => s + (a.rbi || 0), 0);
-  const tb = abs.reduce((s, a) => s + (BASE[a.res] || 0), 0);
-  const den = ab + bb + hbp + sf;
-
-  const avg = ab ? h / ab : 0;
-  const obp = den ? (h + bb + hbp) / den : 0;
-  const slg = ab ? tb / ab : 0;
-  const babipDen = ab - k - hr + sf;
-  const woba = den ? (WOBA_W.bb * bb + WOBA_W.hbp * hbp + WOBA_W.s1 * s1 + WOBA_W.s2 * s2 + WOBA_W.s3 * s3 + WOBA_W.hr * hr) / den : 0;
-  const r = x => (pa ? x / pa : 0);
-
-  const dabs = abs.filter(a => a.deg != null);
-  const pull = dabs.filter(a => window._isPull && window._isPull(a)).length;
-  const center = dabs.filter(a => window._isCtr && window._isCtr(a)).length;
-
-  return {
-    pa, ab, h, s1, s2, s3, hr, bb, hbp, k, sf, sh, rbi, tb,
-    avg, obp, slg, ops: obp + slg, iso: slg - avg, woba,
-    babip: babipDen > 0 ? (h - hr) / babipDen : 0,
-    kRate: r(k), bbRate: r(bb), xbhRate: r(s2 + s3 + hr),
-    mix1b: r(s1), mixXbh: r(s2 + s3), mixHr: r(hr), mixBb: r(bb + hbp), mixK: r(k),
-    mixOut: r(pa - s1 - s2 - s3 - hr - bb - hbp - k),
-    dn: dabs.length, pull, center, oppo: dabs.length - pull - center,
-  };
-}
-
-function _playerStats(name) {
-  const info = _cache.players.find(p => p.name === name) || { name, num: '', bats: {} };
-  const abs = [];
-  const games = [];
-  _cache.games.forEach(g => {
-    const mine = g.abs.filter(a => a.bname === name);
-    if (!mine.length) return;
-    abs.push(...mine);
-    games.push({ label: g.label, abs: mine });
-  });
-  // 경기별 누적 흐름
-  const acc = [];
-  const trend = games.map(g => {
-    acc.push(...g.abs);
-    const c = _calc(acc);
-    return { label: g.label, avg: c.avg, ops: c.ops, pa: g.abs.length };
-  });
-  // 구종별 (마지막 공 구종 기준)
-  const byPt = {};
-  abs.forEach(a => { if (a.pt) (byPt[a.pt] = byPt[a.pt] || []).push(a); });
-  const pitch = {};
-  Object.keys(byPt).forEach(pt => { pitch[pt] = _calc(byPt[pt]); });
-
-  const bc = info.bats || {};
-  const bats = (bc.L || 0) > (bc.R || 0) ? 'L' : (bc.R || bc.L) ? 'R' : null;
-  return { ...info, bats, games: games.length, abs, trend, pitch, st: _calc(abs) };
-}
-
-// ── 포맷 ─────────────────────────────────────────────────────
-const f3 = v => (v >= 1 ? v.toFixed(3) : v.toFixed(3).replace(/^0/, ''));
-const pct = v => (v * 100).toFixed(v > 0 && v < 0.1 ? 1 : 0) + '%';
-const fmt = (v, t) => (t === 'pct' ? pct(v) : t === 'int' ? String(v) : f3(v));
-
-function _sample(pa) {
-  if (pa < 10) return { cls: 'low', txt: '표본 매우 적음' };
-  if (pa < 30) return { cls: 'mid', txt: '표본 적음' };
-  return null;
-}
-
-// 받침 유무로 조사 선택 (한글이 아니면 병기)
-function _j(name, withB, noB) {
-  const c = String(name).trim().slice(-1).charCodeAt(0);
-  if (c >= 0xAC00 && c <= 0xD7A3) return (c - 0xAC00) % 28 ? withB : noB;
-  return `${withB}(${noB})`;
-}
-
-function _empty(title, sub) {
-  return `<div class="cmp-empty"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5M11 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5"/></svg><b>${title}</b><span>${sub}</span></div>`;
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────
@@ -264,8 +123,8 @@ function _render(A, B, pool) {
   return `
     ${_hero(A, B, tally)}
     ${_insights(A, B, pool)}
-    <section class="cmp-card">
-      <header class="cmp-hd"><h3>지표 맞대결</h3><span class="cmp-hd-note">작은 숫자·세로선 = 내 기록 전체 평균</span></header>
+    <section class="an-card">
+      <header class="an-hd"><h3>지표 맞대결</h3><span class="an-hd-note">작은 숫자·세로선 = 내 기록 전체 평균</span></header>
       <div class="cmp-groups">${GROUPS.map(g => `
         <div class="cmp-group">
           <div class="cmp-gtitle">${g.title}</div>
@@ -273,35 +132,35 @@ function _render(A, B, pool) {
           <div class="cmp-gdesc">${g.desc}</div>
         </div>`).join('')}</div>
     </section>
-    <section class="cmp-card">
-      <header class="cmp-hd"><h3>타석 결과 구성</h3><span class="cmp-hd-note">타석 대비 비율</span></header>
+    <section class="an-card">
+      <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">타석 대비 비율</span></header>
       <div class="cmp-mix">${MIX.map(m => _duel({ ...m, fmt: 'pct', max: _mixMax(A.st, B.st, m.k) }, A.st[m.k], B.st[m.k], null, false)).join('')}</div>
     </section>
-    <section class="cmp-card">
-      <header class="cmp-hd"><h3>누적 기록</h3></header>
+    <section class="an-card">
+      <header class="an-hd"><h3>누적 기록</h3></header>
       ${_counts(A, B)}
     </section>
-    <section class="cmp-card">
-      <header class="cmp-hd"><h3>타구 방향</h3><span class="cmp-hd-note">좌·우타 기준 당김/밀어 자동 판정</span></header>
-      <div class="cmp-spray-row">
-        ${_spray(A, 'a')}
-        ${_spray(B, 'b')}
+    <section class="an-card">
+      <header class="an-hd"><h3>타구 방향</h3><span class="an-hd-note">좌·우타 기준 당김/밀어 자동 판정</span></header>
+      <div class="an-spray-row">
+        ${sprayFigure(A, '<i class="cmp-dot a"></i>')}
+        ${sprayFigure(B, '<i class="cmp-dot b"></i>')}
       </div>
-      <div class="cmp-spray-key">
+      <div class="an-spray-key">
         <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
       </div>
     </section>
-    <section class="cmp-card">
-      <header class="cmp-hd">
+    <section class="an-card">
+      <header class="an-hd">
         <h3>경기별 누적 흐름</h3>
-        <div class="cmp-seg" role="tablist" aria-label="흐름 지표">
+        <div class="an-seg" role="tablist" aria-label="흐름 지표">
           <button role="tab" class="${_trendKey === 'avg' ? 'on' : ''}" aria-selected="${_trendKey === 'avg'}" onclick="setCompareTrend('avg')">타율</button>
           <button role="tab" class="${_trendKey === 'ops' ? 'on' : ''}" aria-selected="${_trendKey === 'ops'}" onclick="setCompareTrend('ops')">OPS</button>
         </div>
       </header>
-      ${_trend(A, B)}
+      ${trendChart([{ name: A.name, cls: 'a', trend: A.trend }, { name: B.name, cls: 'b', trend: B.trend }], _trendKey, '각 선수의 N번째 출전 경기 기준 · 최근 15경기')}
     </section>
-    ${_pitchTable(A, B)}
+    ${pitchTable([{ name: A.name, cls: 'a', pitch: A.pitch }, { name: B.name, cls: 'b', pitch: B.pitch }])}
   `;
 }
 
@@ -321,7 +180,7 @@ function _hero(A, B, t) {
         <div class="cmp-meta">${meta}</div>
         <div class="cmp-big">${f3(s.woba)}<small>wOBA</small></div>
         <div class="cmp-slash" title="타율 / 출루율 / 장타율">${f3(s.avg)} / ${f3(s.obp)} / ${f3(s.slg)}</div>
-        ${smp ? `<span class="cmp-badge ${smp.cls}">${smp.txt}</span>` : ''}
+        ${smp ? `<span class="an-badge ${smp.cls}">${smp.txt}</span>` : ''}
       </div>`;
   };
   const tot = t.a + t.b + t.t || 1;
@@ -379,100 +238,6 @@ function _counts(A, B) {
   return `<div class="cmp-count-wrap">${table(items.slice(0, 6))}${table(items.slice(6))}</div>`;
 }
 
-// 필드: 기록 탭과 같은 좌표 변환(window._fieldPos, 1×1 박스)으로 부채꼴 위에 찍는다
-function _spray(P, key) {
-  const s = P.st;
-  const fp = window._fieldPos;
-  const pts = P.abs.filter(a => a.x != null && a.y != null);
-  let field = '', dots = '';
-  if (fp) {
-    const at = (deg, dist) => {
-      const ang = deg * Math.PI / 180 - Math.PI;
-      const p = fp({ x: 0.5 + Math.cos(ang) * dist, y: 1 + Math.sin(ang) * dist });
-      return (p[0] * 100).toFixed(1) + ',' + (p[1] * 100).toFixed(1);
-    };
-    const arc = dist => { const o = []; for (let d = 0; d <= 180; d += 6) o.push(at(d, dist)); return o; };
-    const home = at(90, 0);
-    field = `
-      <polygon class="f-grass" points="${home} ${arc(0.97).join(' ')}"/>
-      <polyline class="f-arc" points="${arc(0.42).join(' ')}"/>
-      <polyline class="f-line" points="${at(0, 0.97)} ${home} ${at(180, 0.97)}"/>
-      <polyline class="f-fence" points="${arc(0.97).join(' ')}"/>`;
-    const order = { out: 0, '1b': 1, xbh: 2, hr: 3 };
-    dots = pts.map(a => {
-      const t = a.res === '홈런' ? 'hr' : (a.res === '2루타' || a.res === '3루타') ? 'xbh' : HITS.includes(a.res) ? '1b' : 'out';
-      return { a, t };
-    }).sort((x, y) => order[x.t] - order[y.t]).map(({ a, t }) => {
-      const p = fp(a);
-      const x = (p[0] * 100).toFixed(1), y = (p[1] * 100).toFixed(1);
-      const tip = `<title>${_esc(a.res)}${a.inn ? ' · ' + _esc(a.inn) : ''}</title>`;
-      if (t === 'hr') return `<path class="d-hr" d="M${x} ${+y - 3.4}l3.4 3.4-3.4 3.4-3.4-3.4z">${tip}</path>`;
-      if (t === 'xbh') return `<rect class="d-xbh" x="${+x - 2.3}" y="${+y - 2.3}" width="4.6" height="4.6" rx="0.8">${tip}</rect>`;
-      return `<circle class="d-${t}" cx="${x}" cy="${y}" r="${t === 'out' ? 2 : 2.4}">${tip}</circle>`;
-    }).join('');
-  }
-  const dn = s.dn || 0;
-  const seg = (n, c, l) => (n ? `<i class="${c}" style="flex:${n}" title="${l} ${n}개">${Math.round(n / dn * 100)}%</i>` : '');
-  return `
-    <figure class="cmp-spray">
-      <figcaption><i class="cmp-dot ${key}"></i>${_esc(P.name)}<span>타구 ${pts.length}개</span></figcaption>
-      <svg viewBox="-3 3 106 96" role="img" aria-label="${_esc(P.name)} 스프레이 차트">${field}${dots}</svg>
-      ${dn ? `
-        <div class="cmp-dir" aria-label="당김 ${s.pull}, 센터 ${s.center}, 밀어 ${s.oppo}">${seg(s.pull, 'pull', '당김')}${seg(s.center, 'ctr', '센터')}${seg(s.oppo, 'oppo', '밀어')}</div>
-        <div class="cmp-dir-lbl"><span>당김 ${s.pull}</span><span>센터 ${s.center}</span><span>밀어 ${s.oppo}</span></div>`
-        : '<div class="cmp-dir-none">방향 기록 없음</div>'}
-    </figure>`;
-}
-
-function _trend(A, B) {
-  const k = _trendKey;
-  const ta = A.trend.slice(-15), tb = B.trend.slice(-15);
-  const n = Math.max(ta.length, tb.length);
-  if (n < 2) return '<div class="cmp-note">두 경기 이상 기록되면 경기별 흐름이 표시돼요.</div>';
-
-  const W = 320, H = 150, L = 34, R = 40, T = 12, Bm = 22;
-  const vmax = Math.max(...ta.map(p => p[k]), ...tb.map(p => p[k]), k === 'ops' ? 0.8 : 0.3);
-  const step = k === 'ops' ? (vmax > 1.6 ? 0.5 : 0.25) : (vmax > 0.6 ? 0.2 : 0.1);
-  const top = Math.ceil(vmax / step) * step;
-  const X = i => L + (n === 1 ? 0 : i * (W - L - R) / (n - 1));
-  const Y = v => T + (1 - v / top) * (H - T - Bm);
-  let grid = '';
-  for (let v = 0; v <= top + 1e-9; v += step) {
-    grid += `<line class="t-grid" x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="t-ax" x="${L - 5}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end">${f3(v)}</text>`;
-  }
-  const xl = [0, n - 1].concat(n > 4 ? [Math.round((n - 1) / 2)] : []);
-  xl.forEach(i => { grid += `<text class="t-ax" x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${i + 1}경기</text>`; });
-
-  const line = (pts, key, name) => {
-    if (!pts.length) return '';
-    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(p[k]).toFixed(1)}`).join('');
-    const last = pts[pts.length - 1];
-    return `<path class="t-line ${key}" d="${d}"/>` + pts.map((p, i) =>
-      `<circle class="t-pt ${key}" cx="${X(i).toFixed(1)}" cy="${Y(p[k]).toFixed(1)}" r="3.5"><title>${_esc(name)} · ${i + 1}경기 (${_esc(p.label)}) 누적 ${f3(p[k])}</title></circle>`
-    ).join('') + `<text class="t-end" x="${(X(pts.length - 1) + 6).toFixed(1)}" y="${(Y(last[k]) + 3).toFixed(1)}">${f3(last[k])}</text>`;
-  };
-  return `
-    <svg class="cmp-trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="경기별 누적 ${k === 'ops' ? 'OPS' : '타율'}">
-      ${grid}${line(ta, 'a', A.name)}${line(tb, 'b', B.name)}
-    </svg>
-    <div class="cmp-legend"><span><i class="cmp-dot a"></i>${_esc(A.name)}</span><span><i class="cmp-dot b"></i>${_esc(B.name)}</span><span class="cmp-legend-note">각 선수의 N번째 출전 경기 기준 · 최근 15경기</span></div>`;
-}
-
-function _pitchTable(A, B) {
-  const pts = [...new Set([...Object.keys(A.pitch), ...Object.keys(B.pitch)])];
-  if (!pts.length) return '';
-  pts.sort((x, y) => ((B.pitch[y] || {}).pa || 0) + ((A.pitch[y] || {}).pa || 0) - ((B.pitch[x] || {}).pa || 0) - ((A.pitch[x] || {}).pa || 0));
-  const cell = s => (s && s.pa ? `<b>${s.ab ? f3(s.avg) : '—'}</b><small>${s.h}/${s.ab} · ${s.pa}타석</small>` : '<small>—</small>');
-  return `
-    <section class="cmp-card">
-      <header class="cmp-hd"><h3>구종별 타율</h3><span class="cmp-hd-note">타석 마지막 공 기준</span></header>
-      <table class="cmp-pitch">
-        <thead><tr><th scope="col">구종</th><th scope="col"><i class="cmp-dot a"></i>${_esc(A.name)}</th><th scope="col"><i class="cmp-dot b"></i>${_esc(B.name)}</th></tr></thead>
-        <tbody>${pts.map(p => `<tr><th scope="row">${_esc(p)}</th><td>${cell(A.pitch[p])}</td><td>${cell(B.pitch[p])}</td></tr>`).join('')}</tbody>
-      </table>
-    </section>`;
-}
-
 // ── 자동 분석 코멘트 (숫자 근거를 같이 보여준다) ─────────────
 function _insights(A, B, pool) {
   const a = A.st, b = B.st;
@@ -521,12 +286,12 @@ function _insights(A, B, pool) {
 
   const minPa = Math.min(a.pa, b.pa);
   const warn = minPa < 30
-    ? `<p class="cmp-warn">⚠ ${minPa < 10 ? '타석 수가 아주 적어서' : '타석 수가 적어서'}(${a.pa} vs ${b.pa}타석) 몇 타석만 더 쌓여도 순위가 바뀔 수 있어요. 경향을 보는 참고용으로 활용하세요.</p>`
+    ? `<p class="an-warn">⚠ ${minPa < 10 ? '타석 수가 아주 적어서' : '타석 수가 적어서'}(${a.pa} vs ${b.pa}타석) 몇 타석만 더 쌓여도 순위가 바뀔 수 있어요. 경향을 보는 참고용으로 활용하세요.</p>`
     : '';
 
   return `
-    <section class="cmp-card cmp-insight">
-      <header class="cmp-hd"><h3>분석 요약</h3></header>
+    <section class="an-card an-insight">
+      <header class="an-hd"><h3>분석 요약</h3></header>
       <ul>${out.map(t => `<li>${t}</li>`).join('')}</ul>
       ${warn}
     </section>`;

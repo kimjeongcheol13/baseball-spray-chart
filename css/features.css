@@ -143,171 +143,6 @@
   color: #fff;
 }
 
-/* ── Profile View ── */
-.profile-player-list {
-  width: 100%;
-  min-height: auto;
-  display: flex;
-  flex-wrap: wrap;
-  height: auto;
-  overflow: visible;
-  gap: 8px;
-  padding: 8px 16px;
-}
-.profile-player-btn {
-  flex-shrink: 0;
-  white-space: nowrap;
-  padding: 8px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--border2);
-  background: var(--card);
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.profile-player-btn:hover {
-  border-color: var(--blue);
-  color: var(--blue);
-  background: rgba(75,140,245,0.08);
-}
-.profile-player-btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;
-}
-
-.profile-content { padding: 0; }
-
-.profile-header {
-  text-align: center;
-  padding: 16px 0 12px;
-}
-.profile-name {
-  font-size: 22px;
-  font-weight: 900;
-  color: var(--text);
-}
-.profile-meta {
-  font-size: 11px;
-  color: var(--text3);
-  margin-top: 2px;
-}
-
-/* Career stat grid */
-.career-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.career-stat-grid.small {
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-
-.career-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 6px;
-  text-align: center;
-}
-.career-card .cc-val {
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-}
-.career-stat-grid.small .cc-val {
-  font-size: 15px;
-}
-.career-card .cc-lbl {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
-}
-
-.career-card.accent-yellow .cc-val { color: var(--yellow); }
-.career-card.accent-green .cc-val { color: var(--green); }
-.career-card.accent-blue .cc-val { color: var(--blue); }
-.career-card.accent-purple .cc-val { color: var(--purple); }
-
-/* Profile sections */
-.profile-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 10px;
-}
-.profile-section-title {
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 10px;
-}
-
-/* Direction distribution bar */
-.direction-bar {
-  display: flex;
-  border-radius: 8px;
-  overflow: hidden;
-  height: 48px;
-  gap: 2px;
-}
-.dir-seg {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  min-width: 40px;
-}
-.dir-seg span {
-  font-size: 9px;
-  font-weight: 600;
-  opacity: 0.7;
-  font-family: var(--font);
-}
-.dir-seg.pull { background: rgba(75,140,245,0.3); }
-.dir-seg.center { background: rgba(45,212,160,0.3); }
-.dir-seg.oppo { background: rgba(246,194,62,0.3); }
-
-/* Profile records grid */
-.profile-records {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.pr-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.pr-val {
-  font-family: var(--mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-}
-.pr-lbl {
-  font-size: 9px;
-  color: var(--text3);
-  font-weight: 600;
-}
-
 /* ── Compare View ── */
 .compare-selects {
   display: flex;
@@ -488,9 +323,6 @@
     margin: 0 auto;
     padding: 20px 24px 72px;
   }
-  .career-stat-grid { gap: 12px; }
-  .career-card { padding: 16px 8px; }
-  .career-card .cc-val { font-size: 24px; }
 }
 
 /* ── Desktop: nav becomes vertical right sidebar ── */
@@ -615,13 +447,12 @@
 /* ── 1. Analysis views: primary accent → Savant red ──
    savant views are siblings of #app-page, so they need their
    own --orange + a red --blue. Cascades to all child rules
-   (nav active, filter chips, profile buttons, strategy cards…) */
+   (nav active, filter chips, strategy cards…) */
 .savant-view, .savant-nav, #sfPanel, #sprayFilterBar {
   --blue: #ef4444;
   --blue-dim: rgba(239,68,68,.12);
   --orange: #fb923c;
 }
-.profile-player-btn:hover, .profile-player-btn.active,
 .scout-export-btn:hover { background: rgba(239,68,68,.08); }
 
 /* low severity stays a neutral "info" tone (not red) */
@@ -637,39 +468,19 @@
 
 /* ── 3. Direction bars: pull=red · center=green · oppo=orange ── */
 .dir-oppo { background: #fb923c; }
-.dir-seg.pull { background: rgba(239,68,68,.3); }
-.dir-seg.oppo { background: rgba(251,146,60,.3); }
 
 /* ── 4. Compact dashboard spacing (간격 단순화) ── */
 .savant-view { padding: 12px 12px 58px; }
 .savant-view-header { padding: 12px 0 10px; }
-.profile-section, .scout-section { padding: 11px 12px; margin-bottom: 8px; border-radius: 9px; }
-.profile-section-title, .scout-section-title { margin-bottom: 8px; }
-.career-stat-grid { gap: 6px; margin-bottom: 8px; }
+.scout-section { padding: 11px 12px; margin-bottom: 8px; border-radius: 9px; }
+.scout-section-title { margin-bottom: 8px; }
 .filter-bar { margin: 6px 0; padding: 7px 10px; }
 .strategy-card, .scout-finding { padding: 9px 10px; margin-bottom: 5px; }
-
-/* ── 5. Savant KPI tiles: thin top accent strip ── */
-.career-card { padding: 11px 6px; border-radius: 9px; border-top: 2px solid var(--border2); }
-.career-card.accent-yellow { border-top-color: var(--yellow); }
-.career-card.accent-green  { border-top-color: var(--green); }
-.career-card.accent-blue   { border-top-color: #ef4444; }
-.career-card.accent-blue .cc-val { color: #ef4444; }
-.career-card.accent-purple { border-top-color: #fb923c; }
-.career-card.accent-purple .cc-val { color: #fb923c; }
 
 /* ── 6. Hover restraint on touch devices (mobile-first) ──
    prevent sticky tap-hover highlight from lingering */
 @media (hover: none) {
-  .profile-player-btn:hover, .scout-export-btn:hover { background: var(--card); }
-}
-
-/* ── 7. Profile player button: name first, number secondary ── */
-.profile-player-btn .ppb-num {
-  font-size: 10px;
-  font-weight: 400;
-  opacity: 0.6;
-  margin-left: 4px;
+  .scout-export-btn:hover { background: var(--card); }
 }
 
 /* ── 9. Scout overview: card layout (value on top, label below) ── */

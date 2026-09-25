@@ -127,9 +127,12 @@
   .rv-today { margin-top: 4px; }
   .rv-order { margin-top: 4px; }
   .rv-recent ol > li:nth-child(n+4) { display: none; }   /* 최근 기록: 모바일은 3개 */
+  /* 옛 모바일 기능 "쓸어내리면 필드 접기"(core.js가 #app-page.field-up으로 .pnl-center를 숨김) 무력화.
+     새 화면은 기록 패널이 .pnl-center 안에 있어 접으면 화면 전체가 사라진다. core.js에도 가드가 있지만
+     예전 core.js가 캐시돼 있어도 안전하도록 CSS로 한 번 더 (id+class 3개로 core의 주입 규칙보다 우선) */
+  body.rec-v2 #app-page.field-up .pnl-center { display: flex !important; }
   /* 필드: 남는 칸(flex 1 1 0)에 끼우지 않고 core가 잰 크기 그대로 → 위가 타자 카드 밑에 가려지지 않음.
-     .pnl-center는 내용 높이만큼만 잡고 밖으로 삐져나온 것은 잘라냄 → .app-layout 스크롤이 실제 내용 끝에서 멈춤
-     (잘라내지 않으면 보이지 않는 요소까지 스크롤 길이에 들어가 끝까지 내리면 검은 화면만 보였다) · 끝은 하단 탭(54px)에 안 가리게 */
+     .pnl-center는 내용 높이만큼만 잡고 밖으로 삐져나온 것은 잘라냄 → .app-layout 스크롤이 실제 내용 끝에서 멈춤 · 끝은 하단 탭(54px)에 안 가리게 */
   .rec-v2 .pnl-center {
     height: max-content !important;
     align-self: start !important;

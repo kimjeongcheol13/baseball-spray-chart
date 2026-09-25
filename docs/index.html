@@ -61,7 +61,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=53">
+<link rel="stylesheet" href="css/styles.css?v=54">
 <link rel="stylesheet" href="css/features.css?v=23">
 <style>
 /* ── Onboarding overlay ── */
@@ -2199,39 +2199,39 @@ var _kakaoSdkLoaded = false;
 
 <!-- ⚙️ 데이터 관리 오버레이 -->
 <div class="overlay" id="dataSettingsOverlay">
-  <div class="modal" style="width:min(380px,96vw)">
-    <div class="modal-title" style="margin-bottom:14px">⚙️ 데이터 관리</div>
+  <div class="modal dm-modal">
+    <div class="dm-hdr">
+      <div class="modal-title" style="margin-bottom:0">데이터 관리</div>
+      <button type="button" class="dm-x" onclick="closeOverlay('dataSettingsOverlay')" aria-label="닫기">✕</button>
+    </div>
+    <div class="modal-sub">경기 기록을 백업하거나 다른 기기·엑셀로 옮깁니다</div>
 
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">가져오기</div>
-      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
-        📥 파일에서 가져오기<input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)">
-      </label>
-      <button class="btn btn-ghost" id="pasteTglBtn" style="width:100%;justify-content:center;font-size:12px" onclick="(function(){var a=document.getElementById('paste-area');var on=a.style.display==='none'||!a.style.display;a.style.display=on?'block':'none';document.getElementById('pasteTglBtn').textContent=on?'▲ 닫기':'📋 붙여넣기로 가져오기';})()">📋 붙여넣기로 가져오기</button>
-      <div id="paste-area" style="display:none;margin-top:2px">
-        <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
-      </div>
-      <label class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px;cursor:pointer;box-sizing:border-box">
-        📥 엑셀로 경기 추가<input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)">
-      </label>
+    <div class="dm-lbl">가져오기</div>
+    <div class="dm-grid">
+      <label class="dm-tile"><span class="dm-ico">📄</span><b>SprayLab 파일</b><small>.spray · .json</small>
+        <input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
+      <label class="dm-tile"><span class="dm-ico">📊</span><b>엑셀</b><small>.xlsx</small>
+        <input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;padding-top:10px;border-top:1px solid var(--border2)">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">내보내기</div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGames()">📤 전체 경기 파일로 내보내기</button>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="exportAllGamesToExcel()">📊 전체 경기 엑셀로 내보내기</button>
-      <div style="font-size:9px;color:var(--text3);line-height:1.5">엑셀 서식: <a onclick="downloadGameTemplate()" style="color:var(--blue);cursor:pointer;text-decoration:underline">서식 다운로드</a></div>
+    <div class="dm-lbl">내보내기 <span>전체 경기</span></div>
+    <div class="dm-grid">
+      <button type="button" class="dm-tile" onclick="exportAllGames()"><span class="dm-ico">📄</span><b>SprayLab 파일</b><small>백업 · 기기 이동</small></button>
+      <button type="button" class="dm-tile" onclick="exportAllGamesToExcel()"><span class="dm-ico">📊</span><b>엑셀</b><small>표로 보기 · 편집</small></button>
     </div>
 
-    <div style="padding-top:10px;border-top:1px solid var(--border2);margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">클라우드</div>
-      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:12px" onclick="closeOverlay('dataSettingsOverlay');openCloudOverlay()">☁️ 클라우드 동기화 설정</button>
+    <div class="dm-links">
+      <button type="button" class="dm-link" id="pasteTglBtn" onclick="togglePasteArea()">텍스트 붙여넣기</button>
+      <span>·</span>
+      <button type="button" class="dm-link" onclick="downloadGameTemplate()">엑셀 서식 받기</button>
     </div>
-
-    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('dataSettingsOverlay')">닫기</button>
+    <div id="paste-area" style="display:none;margin-top:8px">
+      <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+    </div>
   </div>
 </div>
+
 
 <!-- ☁️ CLOUD OVERLAY -->
 <div class="overlay" id="cloudOverlay">
@@ -2838,7 +2838,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=77"></script>
+<script defer src="js/core.js?v=78"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=10"></script>
 <script>

@@ -289,6 +289,15 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
   background:var(--bg);
 }
 #app-page *{-webkit-tap-highlight-color:transparent}
+/* #app-page 밖에 있는 오버레이에도 앱 색상 토큰 적용 (#app-page 블록과 동일 값) */
+.overlay{
+  --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
+  --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
+  --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;
+  --text:#eef0f8;--text2:#8892a4;--text3:#434c5e;
+  --border:#1c1c26;--border2:#252532;--shadow:0 8px 32px rgba(0,0,0,.5);
+  --r:10px;--r2:14px;--font:'Noto Sans KR',sans-serif;--mono:'JetBrains Mono',monospace;
+}
 
 /* APP NAV */
 .app-hdr{display:flex;align-items:center;justify-content:flex-start;padding:0 16px;height:52px;background:var(--bg-card);border-bottom:1px solid var(--border);position:relative;z-index:50;flex-shrink:0;gap:12px}
@@ -500,6 +509,21 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .modal{background:var(--bg-card);border:1px solid var(--border2);border-radius:var(--r2);padding:22px;width:min(320px,92vw);transform:translateY(10px);transition:transform 180ms;box-shadow:var(--shadow)}
 .overlay.show .modal{transform:translateY(0)}
 .modal-title{font-size:15px;font-weight:800;margin-bottom:4px}.modal-sub{font-size:11px;color:var(--text3);margin-bottom:14px}
+/* 데이터 관리 모달 */
+.dm-modal{width:min(360px,94vw)}
+.dm-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.dm-x{background:none;border:none;color:var(--text3);font-size:18px;line-height:1;padding:4px 6px;margin:-4px -6px -4px 0;cursor:pointer}
+.dm-lbl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.6px;margin:0 0 6px}
+.dm-lbl span{font-weight:500;opacity:.7;margin-left:4px}
+.dm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.dm-tile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text);font-family:var(--font);text-align:left;cursor:pointer;box-sizing:border-box;transition:border-color 100ms,background 100ms}
+.dm-tile:hover,.dm-tile:active{border-color:var(--blue);background:var(--bg-hover)}
+.dm-ico{font-size:18px;line-height:1;margin-bottom:4px}
+.dm-tile b{font-size:12px;font-weight:700}
+.dm-tile small{font-size:10px;color:var(--text3)}
+.dm-links{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--text3);padding-top:12px;border-top:1px solid var(--border2)}
+.dm-link{background:none;border:none;padding:4px 2px;color:var(--text2);font-size:11px;font-family:var(--font);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.dm-link:hover{color:var(--blue)}
 .hit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
 .hit-btn{padding:12px 8px;border-radius:9px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;text-align:center}
 .hit-btn:active{transform:scale(.95)}

@@ -260,6 +260,9 @@ function showDataModal(jsonStr, fileName) {
     var dy = sy - e.touches[0].clientY;
     var ap = document.getElementById('app-page');
     if (!ap) return;
+    // 새 기록 화면(record.js, body.rec-v2)은 기록 패널이 .pnl-center 안에 있어 접을 대상이 없음
+    // — 스크롤하려고 쓸어내리면 화면 전체가 사라지던 문제
+    if (document.body.classList.contains('rec-v2')) return;
     if (!collapsed && dy > 30) {
       collapsed = true;
       ap.classList.add('field-up');

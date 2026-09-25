@@ -148,6 +148,7 @@ class Sheet {
     this.hts = {};           // r → 높이(pt)
     this.merges = [];
     this.charts = [];        // { spec, r, c }
+    this.images = [];        // { img: { bytes, w, h }, r, c } — PNG 그림
     this.freeze = 0;         // 고정할 위쪽 행 수
     this.filter = null;      // [r0, c0, r1, c1]
     this.print = 'portrait'; // 차트 시트는 한 장에 맞춰 인쇄
@@ -169,6 +170,7 @@ class Sheet {
   width(c, w) { this.cols[c] = w; return this; }
   height(r, h) { this.hts[r] = h; return this; }
   chart(spec, r, c) { this.charts.push({ spec, r, c }); return this; }
+  image(img, r, c) { this.images.push({ img, r, c }); return this; }
   // 세로 한 줄(머리글 + 값) — 차트가 가리킬 범위를 돌려준다
   column(r0, c, header, vals, hs, ds) {
     this.set(r0, c, header, hs);
@@ -259,12 +261,12 @@ function _barXml(sp) {
 function _workbookFiles(sheets) {
   const files = [];
   const ov = [];
-  let chartN = 0;
+  let chartN = 0, imageN = 0;
   sheets[0].first = true;
   sheets.forEach((sh, i) => {
     const n = i + 1;
     let rid = null;
-    if (sh.charts.length) {
+    if (sh.charts.length || sh.images.length) {
       rid = 'rId1';
       files.push([`xl/worksheets/_rels/sheet${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${n}.xml"/></Relationships>`]);
       const anchors = [], rels = [];
@@ -275,6 +277,14 @@ function _workbookFiles(sheets) {
         ov.push(`<Override PartName="/xl/charts/chart${chartN}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`);
         rels.push(`<Relationship Id="rId${j + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${chartN}.xml"/>`);
         anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>${ch.c}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${ch.r}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${ch.spec.w * EMU}" cy="${ch.spec.h * EMU}"/><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${j + 2}" name="차트 ${j + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId${j + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:oneCellAnchor>`);
+      });
+      sh.images.forEach((im, k) => {
+        imageN++;
+        const rId = `rId${sh.charts.length + k + 1}`;
+        const cx = im.img.w * EMU, cy = im.img.h * EMU;
+        files.push([`xl/media/image${imageN}.png`, im.img.bytes]);
+        rels.push(`<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${imageN}.png"/>`);
+        anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>${im.c}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${im.r}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${cx}" cy="${cy}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${100 + k}" name="그림 ${k + 1}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`);
       });
       files.push([`xl/drawings/drawing${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.join('')}</xdr:wsDr>`]);
       files.push([`xl/drawings/_rels/drawing${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`]);
@@ -291,7 +301,7 @@ function _workbookFiles(sheets) {
   files.push(['docProps/core.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>SprayLab</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created></cp:coreProperties>`]);
   files.push(['docProps/app.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>SprayLab</Application></Properties>`]);
   files.push(['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`]);
-  files.unshift(['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ov.join('')}</Types>`]);
+  files.unshift(['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ov.join('')}</Types>`]);
   return files;
 }
 
@@ -309,13 +319,13 @@ function _crc(b) {
   for (let i = 0; i < b.length; i++) c = _crcT[(c ^ b[i]) & 0xFF] ^ (c >>> 8);
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
-// 무압축(STORE) ZIP — 아마추어 기록 규모면 파일이 작아서 압축 없이도 충분
+// 무압축(STORE) ZIP — 아마추어 기록 규모면 파일이 작아서 압축 없이도 충분 (내용 = 글자 또는 Uint8Array)
 function _zip(files) {
   const enc = new TextEncoder();
   const parts = [], central = [];
   let off = 0;
   files.forEach(([name, text]) => {
-    const nb = enc.encode(name), db = enc.encode(text), crc = _crc(db);
+    const nb = enc.encode(name), db = typeof text === 'string' ? enc.encode(text) : text, crc = _crc(db);
     const lh = new DataView(new ArrayBuffer(30));
     lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
     lh.setUint16(12, 0x21, true); lh.setUint32(14, crc, true); lh.setUint32(18, db.length, true); lh.setUint32(22, db.length, true);
@@ -454,6 +464,101 @@ function _zoneGrid(sh, r, c, cell) {
   for (let i = 2; i <= 4; i++) sh.height(r + i, 58);
   return r + 6;
 }
+// ── 스트라이크존 그림 (PNG) ──────────────────────────────────
+// 9칸 + 바깥 볼 4칸(위·아래·안·밖)을 색칠한 그림. 엑셀 셀이 아니라 차트처럼 보이도록 캔버스로 그려 넣는다
+const MIN_ZONE_AB = 3;   // 핫/콜드 색칠 최소 타수 (스카우트 탭 코스 칸과 같은 값)
+const HC_LO = [75, 140, 245], HC_MID = [242, 242, 242], HC_HI = [224, 82, 90];   // Signal Blue → 회색 → Hit Red
+const SQ_LO = [242, 242, 242], SQ_HI = [36, 89, 199];
+const _mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, t))));
+// 스카우트 탭 _zoneColor와 같은 계산 (흰 바탕용 가운데 색만 밝게)
+function _hotCold(avg, base) {
+  const t = Math.max(-1, Math.min(1, (avg - base) / Math.max(0.15, base)));
+  return _mix(HC_MID, t < 0 ? HC_LO : HC_HI, Math.abs(t));
+}
+const ZW = 454, ZH = 522;
+// cell(z) → { fill: [r,g,b] | null, main, sub }, key = { lo, hi, loInk, hiInk, stops, notes }
+// 캔버스를 못 쓰는 환경이면 null
+function _zonePng(cell, key) {
+  let cv = null;
+  try { cv = document.createElement('canvas'); } catch (e) { return null; }
+  const ctx = cv && typeof cv.getContext === 'function' ? cv.getContext('2d') : null;
+  if (!ctx || typeof cv.toDataURL !== 'function') return null;
+  const K = 2;   // 2배로 그려서 확대해도 선명하게
+  cv.width = ZW * K; cv.height = ZH * K;
+  ctx.scale(K, K);
+  const FONT = '"Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+  const font = (w, px) => `${w} ${px}px ${FONT}`;
+  const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+  const ink = c => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2] < 150 ? '#FFFFFF' : '#1F2937');
+  const L = 86, T = 100, CW = 94, CH = 96, G = 6, SIDE = 62, BAND = 50;
+  const R = L + 3 * CW, B = T + 3 * CH;
+
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, ZW, ZH);
+  ctx.strokeStyle = '#' + C.line; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, ZW - 1, ZH - 1);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = font(700, 11); ctx.fillStyle = '#6B7280';
+  ['내각', '중앙', '외각'].forEach((t, i) => ctx.fillText(t, L + CW * (i + 0.5), 26));
+
+  // mode: in = 9칸 · h = 위/아래 띠(한 줄) · v = 양옆 띠(세로로 쌓기)
+  const paint = (x, y, w, h, z, mode) => {
+    const c = cell(z);
+    ctx.fillStyle = c.fill ? hex(c.fill) : '#FFFFFF';
+    ctx.fillRect(x, y, w, h);
+    if (mode !== 'in') { ctx.strokeStyle = '#' + C.line; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); }
+    const main = c.fill ? ink(c.fill) : '#374151', sub = c.fill ? ink(c.fill) : '#9AA3B2';
+    const cx = x + w / 2, cy = y + h / 2;
+    if (mode === 'in') {
+      ctx.font = font(800, 20); ctx.fillStyle = main; ctx.fillText(c.main, cx, cy - 9);
+      ctx.font = font(400, 11); ctx.fillStyle = sub; ctx.fillText(c.sub, cx, cy + 15);
+    } else if (mode === 'h') {
+      ctx.font = font(700, 11); ctx.fillStyle = sub; ctx.fillText(z, cx - 96, cy);
+      ctx.font = font(800, 17); ctx.fillStyle = main; ctx.fillText(c.main, cx, cy);
+      ctx.font = font(400, 11); ctx.fillStyle = sub; ctx.fillText(c.sub, cx + 92, cy);
+    } else {
+      const subs = String(c.sub).split(' · ');
+      const top = cy - 12 - subs.length * 7;
+      ctx.font = font(700, 11); ctx.fillStyle = sub; ctx.fillText(z, cx, top);
+      ctx.font = font(800, 16); ctx.fillStyle = main; ctx.fillText(c.main, cx, top + 24);
+      ctx.font = font(400, 10); ctx.fillStyle = sub;
+      subs.forEach((t, i) => ctx.fillText(t, cx, top + 44 + i * 14));
+    }
+  };
+  paint(L, T - G - BAND, 3 * CW, BAND, '볼 위', 'h');
+  paint(L, B + G, 3 * CW, BAND, '볼 아래', 'h');
+  paint(L - G - SIDE, T, SIDE, 3 * CH, '볼 내', 'v');
+  paint(R + G, T, SIDE, 3 * CH, '볼 외', 'v');
+  ZONES_9.forEach((z, i) => paint(L + CW * (i % 3), T + CH * Math.floor(i / 3), CW, CH, z, 'in'));
+  // 칸 구분선(흰색) + 스트라이크존 테두리(Navy)
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  [1, 2].forEach(k => { ctx.moveTo(L + CW * k, T); ctx.lineTo(L + CW * k, B); ctx.moveTo(L, T + CH * k); ctx.lineTo(R, T + CH * k); });
+  ctx.stroke();
+  ctx.strokeStyle = '#B8C2D6'; ctx.lineWidth = 0.75;
+  ctx.beginPath();
+  [1, 2].forEach(k => { ctx.moveTo(L + CW * k, T); ctx.lineTo(L + CW * k, B); ctx.moveTo(L, T + CH * k); ctx.lineTo(R, T + CH * k); });
+  ctx.stroke();
+  ctx.strokeStyle = '#' + C.navy; ctx.lineWidth = 3;
+  ctx.strokeRect(L, T, 3 * CW, 3 * CH);
+
+  // 범례
+  const gx = ZW / 2 - 80, gy = 466, gw = 160, gh = 10;
+  const grd = ctx.createLinearGradient(gx, 0, gx + gw, 0);
+  key.stops.forEach(([t, c]) => grd.addColorStop(t, hex(c)));
+  ctx.fillStyle = grd; ctx.fillRect(gx, gy, gw, gh);
+  ctx.strokeStyle = '#' + C.line; ctx.lineWidth = 1; ctx.strokeRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1);
+  ctx.font = font(700, 11);
+  ctx.textAlign = 'right'; ctx.fillStyle = key.loInk; ctx.fillText(key.lo, gx - 8, gy + gh / 2);
+  ctx.textAlign = 'left'; ctx.fillStyle = key.hiInk; ctx.fillText(key.hi, gx + gw + 8, gy + gh / 2);
+  ctx.textAlign = 'center'; ctx.font = font(400, 11); ctx.fillStyle = '#6B7280';
+  key.notes.forEach((t, i) => ctx.fillText(t, ZW / 2, 492 + i * 16));
+
+  let bin;
+  try { bin = atob(cv.toDataURL('image/png').split(',')[1]); } catch (e) { return null; }
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, w: ZW, h: ZH };
+}
+
 const _f3 = v => (v >= 1 ? v.toFixed(3) : v.toFixed(3).replace(/^0/, ''));
 const _pct = v => (v * 100).toFixed(1) + '%';
 
@@ -664,27 +769,43 @@ export function exportBatterXlsx(P) {
   const zs = {};
   ZONES_13.forEach(z => { zs[z] = calcStats(rows.filter(o => zoneOf(o.a) === z).map(o => o.a)); });
   const zoned = ZONES_13.reduce((s, z) => s + zs[z].pa, 0);
-  const band = s => {
-    if (!s.ab) return 'zna';
-    const d = s.avg - st.avg;
-    return 'h' + (d < -0.15 ? 0 : d < -0.075 ? 1 : d < -0.025 ? 2 : d <= 0.025 ? 3 : d <= 0.075 ? 4 : d <= 0.15 ? 5 : 6);
-  };
-  let rr = _zoneGrid(hz, 4, 0, z => {
+  // 스트라이크존 그림 (앱 스카우트 탭 코스 칸과 같은 기준: 3타수 이상만 색, 선수 전체 타율 대비)
+  const png = _zonePng(z => {
     const s = zs[z];
-    if (!s.pa) return { text: `${z}\n—`, style: 'zna' };
-    return { text: `${z}\n${s.ab ? _f3(s.avg) : '—'}\n${s.h}/${s.ab} · ${s.pa}타석`, style: band(s) };
+    return { fill: s.ab >= MIN_ZONE_AB ? _hotCold(s.avg, st.avg) : null, main: s.ab ? _f3(s.avg) : '—', sub: s.pa ? `${s.h}/${s.ab} · ${s.pa}타석` : '기록 없음' };
+  }, {
+    lo: '콜드 (약함)', hi: '핫 (강함)', loInk: '#2F5FD0', hiInk: '#C2323B', stops: [[0, HC_LO], [0.5, HC_MID], [1, HC_HI]],
+    notes: [`색 = 이 선수 전체 타율(${_f3(st.avg)}) 대비 · ${MIN_ZONE_AB}타수 미만 칸은 색 없음`, '기록 화면 기준: 왼쪽 = 내각, 위 = 높음'],
   });
-  hz.line(rr + 1, 0, ['색상 범례', '콜드 (−.075↓)', '평균 (±.025)', '핫 (+.075↑)'], ['axis', 'h1', 'h3', 'h5']).height(rr + 1, 24);
-  rr += 3;
+  let rr;
+  if (png) {
+    hz.image(png, 4, 0);
+    for (let i = 0; i <= 6; i++) hz.width(i, 15);
+    rr = 4 + Math.ceil(png.h / 22) + 1;
+  } else {
+    // 캔버스를 못 쓰면 셀 표로
+    const band = s => {
+      if (s.ab < MIN_ZONE_AB) return 'zna';
+      const d = s.avg - st.avg;
+      return 'h' + (d < -0.15 ? 0 : d < -0.075 ? 1 : d < -0.025 ? 2 : d <= 0.025 ? 3 : d <= 0.075 ? 4 : d <= 0.15 ? 5 : 6);
+    };
+    rr = _zoneGrid(hz, 4, 0, z => {
+      const s = zs[z];
+      if (!s.pa) return { text: `${z}\n—`, style: 'zna' };
+      return { text: `${z}\n${s.ab ? _f3(s.avg) : '—'}\n${s.h}/${s.ab} · ${s.pa}타석`, style: band(s) };
+    });
+    hz.line(rr + 1, 0, ['색상 범례', '콜드 (−.075↓)', '평균 (±.025)', '핫 (+.075↑)'], ['axis', 'h1', 'h3', 'h5']).height(rr + 1, 24);
+    rr += 3;
+  }
   hz.set(rr, 0, '■ 주요 분석', 'sec');
-  const cand = ZONES_13.filter(z => zs[z].ab >= 3);
+  const cand = ZONES_13.filter(z => zs[z].ab >= MIN_ZONE_AB);
   const byAvg = cand.slice().sort((x, y) => zs[y].avg - zs[x].avg);
   const most = ZONES_13.slice().sort((x, y) => zs[y].pa - zs[x].pa)[0];
   const ins = [];
   if (byAvg.length) ins.push(`가장 강한 코스: ${byAvg[0]} — 타율 ${_f3(zs[byAvg[0]].avg)} (${zs[byAvg[0]].h}/${zs[byAvg[0]].ab})`);
   if (byAvg.length > 1) { const w = byAvg[byAvg.length - 1]; ins.push(`가장 약한 코스: ${w} — 타율 ${_f3(zs[w].avg)} (${zs[w].h}/${zs[w].ab})`); }
   if (zoned) ins.push(`가장 많이 승부한 코스: ${most} — ${zs[most].pa}타석 (${_pct(zs[most].pa / zoned)})`);
-  ins.push(`코스가 기록된 타석 ${zoned} / 전체 ${st.pa}타석 · 강약 비교는 3타수 이상인 코스만`);
+  ins.push(`코스가 기록된 타석 ${zoned} / 전체 ${st.pa}타석 · 강약 비교는 ${MIN_ZONE_AB}타수 이상인 코스만`);
   rr = _bullets(hz, rr + 1, 0, ins) + 1;
   hz.set(rr, 0, '■ 코스별 기록', 'sec');
   _table(hz, rr + 1, 0, ['코스', '타석', '타수', '안타', '장타', '타율', '장타율'],
@@ -816,14 +937,29 @@ export function exportPitcherXlsx(P, S, calc) {
   });
   const zN = ZONES_13.reduce((s, z) => s + zc[z].n, 0);
   const zMax = Math.max(1, ...ZONES_13.map(z => zc[z].n));
-  let rr = _zoneGrid(hz, 4, 0, z => {
+  const png = _zonePng(z => {
     const o = zc[z];
-    if (!o.n) return { text: `${z}\n—`, style: 'zna' };
-    const q = Math.min(5, 1 + Math.floor(o.n / zMax * 4.999));
-    return { text: `${z}\n${_pct(o.n / zN)}\n${o.n}구 · 피안타 ${o.h}`, style: 'q' + q };
+    return { fill: o.n ? _mix(SQ_LO, SQ_HI, 0.15 + 0.85 * o.n / zMax) : null, main: o.n ? _pct(o.n / zN) : '—', sub: o.n ? `${o.n}구 · 피안타 ${o.h}` : '기록 없음' };
+  }, {
+    lo: '적음', hi: '많음', loInk: '#6B7280', hiInk: '#2459C7', stops: [[0, SQ_LO], [1, SQ_HI]],
+    notes: ['색 = 던진 공 수 (가장 많이 던진 칸이 가장 진함)', '기록 화면 기준: 왼쪽 = 내각, 위 = 높음'],
   });
-  hz.line(rr + 1, 0, ['색상 범례', '적음', '중간', '많음'], ['axis', 'q1', 'q3', 'q5']).height(rr + 1, 24);
-  rr += 3;
+  let rr;
+  if (png) {
+    hz.image(png, 4, 0);
+    for (let i = 0; i <= 4; i++) hz.width(i, 15);
+    rr = 4 + Math.ceil(png.h / 22) + 1;
+  } else {
+    // 캔버스를 못 쓰면 셀 표로
+    rr = _zoneGrid(hz, 4, 0, z => {
+      const o = zc[z];
+      if (!o.n) return { text: `${z}\n—`, style: 'zna' };
+      const q = Math.min(5, 1 + Math.floor(o.n / zMax * 4.999));
+      return { text: `${z}\n${_pct(o.n / zN)}\n${o.n}구 · 피안타 ${o.h}`, style: 'q' + q };
+    });
+    hz.line(rr + 1, 0, ['색상 범례', '적음', '중간', '많음'], ['axis', 'q1', 'q3', 'q5']).height(rr + 1, 24);
+    rr += 3;
+  }
   hz.set(rr, 0, '■ 주요 분석', 'sec');
   const sorted = ZONES_13.slice().sort((x, y) => zc[y].n - zc[x].n);
   const inZ = ZONES_9.reduce((s, z) => s + zc[z].n, 0);

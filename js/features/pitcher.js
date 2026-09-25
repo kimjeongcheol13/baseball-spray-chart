@@ -1,7 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=4';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=1';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=2';
 
 const HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];
 const TB = { '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };

@@ -63,8 +63,9 @@ var _kakaoSdkLoaded = false;
 })();
 </script>
 <link rel="stylesheet" href="css/styles.css?v=72">
-<link rel="stylesheet" href="css/features.css?v=24">
+<link rel="stylesheet" href="css/features.css?v=25">
 <link rel="stylesheet" href="css/shell.css?v=7">
+<link rel="stylesheet" href="css/compare.css?v=1">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -1800,20 +1801,19 @@ var _kakaoSdkLoaded = false;
 </div>
 
 <!-- Compare View -->
-<div id="compareView" class="savant-view">
+<div id="compareView" class="savant-view cmp">
   <div class="savant-view-header">
     <div class="svh-title">선수 비교</div>
-    <div class="svh-sub">두 선수의 성적을 비교합니다</div>
+    <div class="svh-sub">두 타자를 같은 기준(내 기록 전체)으로 나란히 분석합니다</div>
   </div>
-  <div class="compare-selects">
-    <select id="compareSelect1" class="compare-select" onchange="runPlayerCompare()"></select>
-    <span class="compare-vs">VS</span>
-    <select id="compareSelect2" class="compare-select" onchange="runPlayerCompare()"></select>
+  <div class="cmp-pick">
+    <label class="cmp-pick-slot a"><span class="cmp-pick-tag">A</span><select id="compareSelect1" aria-label="선수 A"></select></label>
+    <button type="button" class="cmp-swap" onclick="swapComparePlayers()" aria-label="A와 B 바꾸기" title="A ⇄ B">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h13l-4-4M17 17H4l4 4"/></svg>
+    </button>
+    <label class="cmp-pick-slot b"><span class="cmp-pick-tag">B</span><select id="compareSelect2" aria-label="선수 B"></select></label>
   </div>
-  <div id="compareResult" class="compare-result">
-    <canvas id="radarCanvas" width="280" height="280" style="display:block;margin:0 auto"></canvas>
-    <div id="compareTable" class="compare-table"></div>
-  </div>
+  <div id="compareResult" class="cmp-result"></div>
 </div>
 
 <!-- Scout View -->
@@ -2277,7 +2277,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=102"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=20"></script>
+<script type="module" src="js/app.js?v=21"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

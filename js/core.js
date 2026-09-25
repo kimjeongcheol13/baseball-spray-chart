@@ -392,6 +392,7 @@ function setTabMode(mode,el){
 // ③ 데이터 백업 안내
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _gameSaved=true;
+var _curSaveKey=null;   // 지금 화면 경기의 저장 키 — 다시 저장하면 새 항목 대신 이 항목을 덮어쓴다 (새 경기·공유 경기 = null)
 var _saveReminderShown=false;
 var _saveReminderTimer=null;
 function checkSaveReminder(){
@@ -2286,16 +2287,23 @@ function saveGame(){
     var th=(document.getElementById('tHome').value||'홈팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'홈팀';
     var ta=(document.getElementById('tAway').value||'원정팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'원정팀';
     var ds=new Date().toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\. /g,'').replace(/\./g,'');
-    const key='sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
-    const data={key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),cond:getGameCond(),pitchers:AS.pitchers};
     const saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-    saves.push({key,label:_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as,ts:data.ts});
+    // 이미 저장한 경기(불러온 경기 포함)를 다시 저장하면 기존 항목을 덮어쓴다 — 경기 날짜·목록 순서(ts)는 그대로
+    const si=_curSaveKey?saves.findIndex(function(s){return s.key===_curSaveKey;}):-1;
+    let prev=null;
+    if(si>=0){try{prev=JSON.parse(localStorage.getItem(_curSaveKey));}catch(e){prev=null;}}
+    const key=prev?_curSaveKey:'sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
+    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers});
+    const label=_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as;
+    if(prev)saves[si].label=label;
+    else saves.push({key,label,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
-    if(window.cloudSave)cloudSave(key,data,saves[saves.length-1].label,data.ts);
+    _curSaveKey=key;
+    if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
-    showToast('경기 저장 완료 ✓',false);
+    showToast(prev?'저장한 경기를 업데이트했어요 ✓':'경기 저장 완료 ✓',false);
     triggerSavePulse();
     if(_afterSaveCb){var cb=_afterSaveCb;_afterSaveCb=null;setTimeout(cb,300);}   // 새 경기 저장 확인에서 온 저장: 요약 대신 새 경기
     else setTimeout(showGameSummary, 400);
@@ -2553,6 +2561,7 @@ function importGames(input) {
 
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
+  _curSaveKey=key;   // 이 경기를 다시 저장하면 이 항목을 덮어씀
   AS.curGame=d.ts||key.replace('sl_',''); // Fix: 자동저장 key를 이 게임에 고정
   document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
   AS.hs=d.hs||0;AS.as=d.as||0;document.getElementById('scH').textContent=AS.hs;document.getElementById('scA').textContent=AS.as;
@@ -2579,6 +2588,7 @@ function restoreGame(key){
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
   _updateSaveUI(false);
   updateAll();
+  _gameSaved=true;_updateSaveUI(false);   // updateAll이 '저장 안 됨'으로 바꾸므로 되돌림 (불러온 직후엔 새 기록 없음)
   showToast('경기 불러오기 완료',false);
 }
 
@@ -3106,7 +3116,7 @@ function _doAutoSave(){
     th:document.getElementById('tHome')?document.getElementById('tHome').value:'홈팀',
     ta:document.getElementById('tAway')?document.getElementById('tAway').value:'원정팀',
     home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
-    zoneHistory:AS.zoneHistory,pitchers:AS.pitchers,
+    zoneHistory:AS.zoneHistory,pitchers:AS.pitchers,saveKey:_curSaveKey,
     d:new Date().toLocaleDateString('ko-KR'),cond:getGameCond()
   });
   var ind=document.getElementById('saveInd');
@@ -4887,6 +4897,7 @@ function _restorePitchersFromPayload(payloadPitchers){
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
+  _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
   /* 팀명 · 점수 */
   AS.hs=payload.hs||0; AS.as=payload.as||0;
   var tH=document.getElementById('tHome'); if(tH)tH.value=payload.ht||'홈팀';
@@ -6204,6 +6215,7 @@ function startFromWizard(){
   var away=(awayInp&&awayInp.value.trim())||awayInp.placeholder||'원정팀';
 
   // ── 새 경기: AS 상태 완전 초기화 ──
+  _curSaveKey=null;   // 새 경기는 처음 저장할 때 새 항목
   AS.hs=0; AS.as=0;
   AS.home_lineup=[]; AS.away_lineup=[];
   AS.abs=[]; AS.batter=null; AS.batterFilter=false;
@@ -7652,7 +7664,7 @@ var undoManager=(function(){
       storageManager.scheduleAutosave({
         abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
         hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-        pitchers:AS.pitchers||[],
+        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
         th:(document.getElementById('tHome')||{}).value||'',
         ta:(document.getElementById('tAway')||{}).value||''
       });
@@ -7668,7 +7680,7 @@ document.addEventListener('visibilitychange',function(){
       storageManager.scheduleAutosave({
         abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
         hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-        pitchers:AS.pitchers||[],
+        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
         th:(document.getElementById('tHome')||{}).value||'',
         ta:(document.getElementById('tAway')||{}).value||''
       },0);
@@ -7756,19 +7768,21 @@ function archRecoverAutosave(){
   // updateAll의 _patchAutosave가 sl_autosave를 다시 스케줄링 → 루프 방지
   storageManager.cancelPendingAutosave();
   // 복구된 데이터를 영구 저장소에 저장해 브라우저 재시작 후에도 안전하게 보호
-  _archQuietSave();
+  _archQuietSave(d.saveKey);
   showToast('✓ 마지막 기록을 복구했습니다',false);
 }
 
-function _archQuietSave(){
+// saveKey = 복구한 기록이 원래 속한 저장 항목 (자동저장에 함께 적힘)
+function _archQuietSave(saveKey){
   if(!AS.abs||!AS.abs.length)return;
   try{
     var th=(document.getElementById('tHome')||{}).value||'홈팀';
     var ta=(document.getElementById('tAway')||{}).value||'원정팀';
     var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-    // 기존 저장이 있으면 가장 최근 항목을 복구 데이터로 덮어씀
-    if(saves.length){
-      var latest=saves[saves.length-1];
+    // 복구 기록이 속한 경기 항목에만 덮어씀. 어느 경기인지 모르면(저장한 적 없는 새 경기·예전 버전 자동저장)
+    // 다른 경기를 덮지 않도록 아래에서 새 항목으로 저장 — 예전엔 가장 최근 항목을 덮어써서 그 경기 기록이 사라졌음
+    var latest=saveKey?saves.find(function(s){return s.key===saveKey;}):null;
+    if(latest){
       var existing=JSON.parse(localStorage.getItem(latest.key)||'null');
       if(existing){
         existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
@@ -7778,6 +7792,7 @@ function _archQuietSave(){
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
         localStorage.setItem('sl_saves',JSON.stringify(saves));
+        _curSaveKey=latest.key;_gameSaved=true;
         return;
       }
     }
@@ -7791,6 +7806,7 @@ function _archQuietSave(){
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
+    _curSaveKey=key;_gameSaved=true;
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
 }
 
@@ -7867,7 +7883,7 @@ function recoverHiddenAutosave(key){
     if(ap)ap.style.display='flex';
     updateAll();
     storageManager.cancelPendingAutosave();
-    _archQuietSave();
+    _archQuietSave(d.saveKey);
     showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)',false);
   }catch(e){showToast('복구 실패: '+e.message,false);}
 }
@@ -7951,6 +7967,7 @@ function toggleHighContrast(){
       storageManager.scheduleAutosave({
         abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
         hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
+        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
         th:(document.getElementById('tHome')||{}).value||'',
         ta:(document.getElementById('tAway')||{}).value||''
       },100);

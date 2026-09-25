@@ -1,0 +1,193 @@
+/* ═══════════════════════════════════════════
+   타자 (Batter) — 공용 토큰·카드는 analysis.css, 투구 위치 SVG 모양은 pitcher.css(.pc-plot)
+   결과 난 공: 안타 Red(◆) · 아웃 Teal · 삼진 Amber · 볼넷 Blue · 나머지 본 공은 회색 작은 점
+   ═══════════════════════════════════════════ */
+.bt {
+  --pz-hit: #e0525a;
+  --pz-out: #1fa98a;
+  --pz-k: #bf8a22;
+  --pz-bb: #4b8cf5;
+  --pz-seen: #5b6475;
+}
+#anaBody .bt { display: block; }
+/* 옛 타자 패널: core.js가 계속 값을 쓰므로 DOM에는 두고 숨김 */
+#anaBody #anaSecBatter #pnl-batter { display: none !important; }
+
+.bt-ctrls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; max-width: 960px; margin: 0 auto 10px; }
+.bt-live-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(224, 82, 90, .45);
+  border-radius: 999px;
+  background: rgba(224, 82, 90, .12);
+  color: #f7b3b7;
+  font: 700 11.5px var(--font);
+  cursor: pointer;
+}
+.bt-link-pill {
+  display: block;
+  margin: 0 auto 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--an-line);
+  border-radius: 999px;
+  background: var(--an-raised);
+  color: var(--an-ink2);
+  font: 700 11px var(--font);
+  cursor: pointer;
+}
+
+/* ── 타순 칩 ── */
+.bt-chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  height: 40px;
+  padding: 0 13px 0 10px;
+  border: 1px solid var(--an-line);
+  border-radius: 999px;
+  background: var(--an-card);
+  color: var(--an-ink2);
+  font-family: var(--font);
+  line-height: 38px;
+  cursor: pointer;
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+}
+.bt-chip:first-child { margin-left: 10px; }
+.bt-chip em { font: 700 10px var(--mono); font-style: normal; color: var(--an-ink3); }
+.bt-chip b { font-size: 13px; font-weight: 800; }
+.bt-chip small { font: 600 10px var(--mono); color: var(--an-ink3); }
+.bt-chip.on { border-color: var(--an-accent); background: var(--an-accent-soft); color: var(--an-ink); }
+.bt-chip.live i {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e0525a;
+  box-shadow: 0 0 0 2px var(--an-card);
+}
+
+.bt-result { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+/* ── 헤더 ── */
+.bt-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 16px 14px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(75, 140, 245, .14), transparent 60%),
+    var(--an-card);
+}
+.bt-hero.is-live { border-color: rgba(224, 82, 90, .4); }
+.bt-id { min-width: 0; }
+.bt-eyebrow { display: flex; align-items: center; gap: 6px; font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--an-ink3); }
+.bt-hero.is-live .bt-eyebrow { color: #f7b3b7; }
+.bt-dot { width: 7px; height: 7px; border-radius: 50%; background: #e0525a; animation: bt-pulse 1.6s ease-in-out infinite; }
+@keyframes bt-pulse { 50% { opacity: .35; } }
+.bt-name { margin-top: 2px; font-size: 24px; font-weight: 900; letter-spacing: -.5px; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-meta { margin-top: 2px; font-size: 11px; color: var(--an-ink2); }
+.bt-season { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.bt-season small { font-size: 9.5px; font-weight: 700; color: var(--an-ink3); }
+.bt-season b { font: 400 40px var(--display); letter-spacing: 1px; line-height: .95; color: var(--an-ink); }
+.bt-season span { font: 600 10.5px var(--mono); color: var(--an-ink2); }
+.bt-today {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(7, 9, 15, .45);
+  border: 1px solid var(--an-line);
+}
+.bt-today small { font-size: 10px; font-weight: 800; color: var(--an-ink3); }
+.bt-today b { font-size: 14px; font-weight: 800; color: var(--an-ink); }
+.bt-today-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-left: auto; }
+
+/* ── 흐름 비교 ── */
+.bt-form { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--an-raised); color: var(--an-ink2); }
+.bt-form.up { background: rgba(31, 169, 138, .18); color: #7fe0c7; }
+.bt-form.down { background: rgba(224, 82, 90, .16); color: #f7b3b7; }
+.bt-form-t { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bt-form-t th, .bt-form-t td { padding: 8px 4px; text-align: center; white-space: nowrap; }
+.bt-form-t thead th { font-size: 10px; font-weight: 700; color: var(--an-ink3); border-bottom: 1px solid var(--an-line); }
+.bt-form-t tbody th { text-align: left; font-weight: 800; color: var(--an-ink); }
+.bt-form-t td { font: 600 12.5px var(--mono); color: var(--an-ink2); }
+.bt-form-t td b { color: var(--an-ink); }
+.bt-form-t tbody tr + tr > * { border-top: 1px solid var(--an-line); }
+.bt-note { display: block; margin-top: 8px; text-align: center; }
+
+/* ── 오늘 타석 ── */
+.bt-pas { list-style: none; display: flex; flex-direction: column; }
+.bt-pas > li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 9px 0; }
+.bt-pas > li + li { border-top: 1px solid var(--an-line); }
+.bt-pa-n {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--an-raised);
+  font: 700 10.5px var(--mono);
+  color: var(--an-ink2);
+}
+.bt-pa-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.bt-pa-top { display: flex; align-items: center; gap: 8px; }
+.bt-pa-top small { font-size: 11px; color: var(--an-ink2); }
+.bt-seq { display: flex; flex-wrap: wrap; gap: 3px; }
+.bt-seq span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--an-line);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--an-ink);
+}
+.bt-seq span small { font-size: 8.5px; font-weight: 500; color: var(--an-ink3); }
+.bt-seq span.last { border-color: currentColor; }
+.bt-seq span.last.r-1b { color: #7fe0c7; }
+.bt-seq span.last.r-xbh { color: #c3b4fb; }
+.bt-seq span.last.r-hr { color: #f7b3b7; }
+.bt-seq span.last.r-bb { color: #a9c7fa; }
+.bt-seq span.last.r-k, .bt-seq span.last.r-out { color: var(--an-ink2); }
+.bt-seq-none { font-size: 10.5px; color: var(--an-ink3); }
+
+.bt-2col { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+/* ── 본 공 위치 (pitcher.css의 .pc-plot 재사용) ── */
+.bt .pc-plot .bz-seen { fill: var(--pz-seen); }
+.bt .pc-plot .bz-hit { fill: var(--pz-hit); stroke: var(--an-card); stroke-width: .6; }
+.bt .pc-plot .bz-out { fill: var(--pz-out); stroke: var(--an-card); stroke-width: .6; }
+.bt .pc-plot .bz-k { fill: var(--pz-k); stroke: var(--an-card); stroke-width: .6; }
+.bt .pc-plot .bz-bb { fill: var(--pz-bb); stroke: var(--an-card); stroke-width: .6; }
+.bt .pc-plot-key .k-seen { background: var(--pz-seen); width: 6px; height: 6px; }
+.bt .pc-plot-key .k-bb { background: var(--pz-bb); }
+
+.bt-spray .an-spray figcaption { display: none; }
+.bt-spray .an-spray svg { max-width: 360px; margin: 0 auto; }
+
+.bt-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ── 넓은 화면 ── */
+@media (min-width: 720px) {
+  .bt-pick { flex-wrap: wrap; justify-content: center; overflow: visible; mask-image: none; }
+  .bt-chip:first-child { margin-left: 0; }
+  .bt-hero { padding: 20px 22px 16px; }
+  .bt-name { font-size: 30px; }
+  .bt-season b { font-size: 52px; }
+  .bt-2col { grid-template-columns: 1fr 1fr; align-items: start; }
+  .bt-links { max-width: 640px; margin: 0 auto; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) { .bt-dot { animation: none; } }

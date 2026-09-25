@@ -278,3 +278,9 @@
   .pf-log li + li { border-top: 0; }
   .pf-log li:nth-child(n+3) { border-top: 1px solid var(--an-line); }
 }
+
+/* ── 데스크톱 구종별 타율 | 누적 기록 나란히 (이번만 예외) ── */
+@media (min-width: 721px) {
+  .pf-pt-row { align-items: stretch; }
+  .pf-pt-row .pf-counts { grid-template-columns: repeat(4, 1fr); }
+}

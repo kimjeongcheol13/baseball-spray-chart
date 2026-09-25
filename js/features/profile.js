@@ -134,8 +134,7 @@ function _renderProfile() {
       ${trendChart([{ name: P.name, cls: 'a', trend: P.trend }], _trendKey, 'N번째 출전 경기까지의 누적 기록 · 최근 15경기')}
     </section>
     ${_gameLog(P)}
-    ${pitchTable([{ name: P.name, cls: 'a', pitch: P.pitch }])}
-    ${_counts(P)}
+    ${_pitchAndCounts(P)}
   `;
 }
 
@@ -343,6 +342,12 @@ function _gameLog(P) {
       <ol class="pf-log">${show.map(row).join('')}</ol>
       ${games.length > 8 ? `<button type="button" class="pf-more" onclick="toggleProfileLog()">${_logAll ? '최근 8경기만 보기' : `전체 ${games.length}경기 보기`}</button>` : ''}
     </section>`;
+}
+
+// 구종별 타율 + 누적 기록: 넓은 화면에서 나란히 (구종 기록이 없으면 누적 기록만)
+function _pitchAndCounts(P) {
+  const pt = pitchTable([{ name: P.name, cls: 'a', pitch: P.pitch }]);
+  return pt ? `<div class="pf-2col pf-pt-row">${pt}${_counts(P)}</div>` : _counts(P);
 }
 
 // ── 누적 기록 ────────────────────────────────────────────────

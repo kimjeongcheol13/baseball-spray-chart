@@ -16,12 +16,13 @@ function _move(node, parent) {
 
 // ── 초기 DOM 재배치 ──────────────────────────────────────────
 function _mount() {
-  // 오른쪽 패널의 타자/투수/팀통계/차트/팀 대시보드 → 분석 서브탭
+  // 오른쪽 패널의 타자/투수 → 분석 서브탭
   _move($('pnl-batter'), $('anaSecBatter'));
   _move($('pnl-pitcher'), $('anaSecPitcher'));
-  _move($('pnl-stat'), $('anaSecTeam'));
-  _move($('pnl-team'), $('anaSecTeam'));
-  _move($('pnl-chart'), $('anaSecTeam'));
+  // 옛 팀통계/차트/팀 대시보드 패널: 팀 탭은 team.js가 새로 그린다.
+  // core.js가 계속 이 패널들의 ID에 값을 쓰고 내보내기 등이 읽을 수 있으므로 지우지 않고 숨긴 채 보관
+  const legacy = $('anaTeamLegacy');
+  ['pnl-stat', 'pnl-team', 'pnl-chart'].forEach((id) => _move($(id), legacy));
 
   // 기존 프로필/비교/스카우트 뷰 → 분석 서브탭 (독립 오버레이 해제)
   [['profileView', 'anaSecProfile'], ['compareView', 'anaSecCompare'], ['scoutView', 'anaSecScout']].forEach(([v, s]) => {
@@ -104,11 +105,7 @@ function _renderSub(sub) {
       case 'spray': _refreshSpray(); break;
       case 'batter': if (window.updBatterStat) window.updBatterStat(); break;
       case 'pitcher': if (window.renderPitcherStats) window.renderPitcherStats(); break;
-      case 'team':
-        if (window.updStats) window.updStats();
-        if (window.updCharts) window.updCharts();
-        if (window.renderTeamDashboard) window.renderTeamDashboard();
-        break;
+      case 'team': if (window.openTeamView) window.openTeamView(); break;
       case 'profile': if (window.openProfileView) window.openProfileView(); break;
       case 'compare': if (window.openCompareView) window.openCompareView(); break;
       case 'scout':

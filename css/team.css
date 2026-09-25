@@ -1,0 +1,258 @@
+/* ═══════════════════════════════════════════
+   팀 대시보드 (Team) — 공용 토큰·카드는 analysis.css
+   득점 = Signal Blue · 실점 = Hit Red (색약 구분 검증값)
+   ═══════════════════════════════════════════ */
+.tm {
+  --ca: #4b8cf5;
+  --tm-for: #4b8cf5;
+  --tm-against: #e0525a;
+  --tm-w: #1fa98a;
+  --tm-l: #e0525a;
+}
+#anaBody .tm { display: block; }
+
+/* ── 범위 선택 ── */
+.tm-ctrls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 960px;
+  margin: 0 auto 12px;
+}
+.tm-scope-note { width: 100%; text-align: center; font-size: 10px; color: var(--an-ink3); }
+.tm-result { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+/* ── 헤더 ── */
+.tm-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 16px;
+  background: var(--an-card);
+  background:
+    radial-gradient(110% 120% at 0% 0%, color-mix(in srgb, var(--tm-c) 22%, transparent), transparent 60%),
+    var(--an-card);
+}
+.tm-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tm-badge {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--tm-c);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .15);
+}
+.tm-id > div { min-width: 0; }
+.tm-name { font-size: 20px; font-weight: 900; letter-spacing: -.5px; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-meta { margin-top: 2px; font-size: 11px; color: var(--an-ink2); }
+.tm-rec { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.tm-rec-main { display: flex; align-items: baseline; gap: 3px; }
+.tm-rec-main b { font: 400 34px var(--display); letter-spacing: 1px; color: var(--an-ink); line-height: 1; }
+.tm-rec-main small { margin-right: 6px; font-size: 11px; font-weight: 700; color: var(--an-ink3); }
+.tm-rec-main span { font: 400 26px var(--display); color: var(--an-ink3); }
+.tm-rec > small { font: 600 10.5px var(--mono); color: var(--an-ink2); }
+.tm-flow { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; }
+.tm-flow small { margin-right: 4px; font-size: 10px; font-weight: 700; color: var(--an-ink3); }
+.tm-flow i {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid var(--an-line);
+  color: var(--an-ink2);
+}
+.tm-flow i.w { background: rgba(31, 169, 138, .18); border-color: rgba(31, 169, 138, .45); color: #7fe0c7; }
+.tm-flow i.l { background: rgba(224, 82, 90, .16); border-color: rgba(224, 82, 90, .4); color: #f7b3b7; }
+
+/* ── 팀 지표 ── */
+.tm-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0; }
+.tm-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border-radius: 12px;
+  background: var(--an-card);
+  border: 1px solid var(--an-line);
+}
+.tm-kpi span { font-size: 10px; font-weight: 700; color: var(--an-ink3); }
+.tm-kpi b { font: 700 16px var(--mono); color: var(--an-ink); }
+.tm-kpi small { font: 500 9.5px var(--mono); color: var(--an-ink3); }
+
+.tm-2col { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+/* ── 리더보드 ── */
+.tm-ldr-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tm-ldr-tabs::-webkit-scrollbar { display: none; }
+.tm-ldr-tabs button {
+  flex: none;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--an-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--an-ink2);
+  font: 700 11px var(--font);
+  cursor: pointer;
+}
+.tm-ldr-tabs button.on { background: var(--an-accent-soft); border-color: var(--an-accent); color: var(--an-ink); }
+.tm-ldr { list-style: none; display: flex; flex-direction: column; }
+.tm-ldr li { display: grid; grid-template-columns: 26px minmax(0, 1.2fr) 1fr 50px; align-items: center; gap: 10px; padding: 8px 0; }
+.tm-ldr li + li { border-top: 1px solid var(--an-line); }
+.tm-rank {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--an-raised);
+  font: 800 11px var(--mono);
+  color: var(--an-ink2);
+}
+.tm-rank.r1 { background: #bf8a22; color: #fff; }
+.tm-rank.r2 { background: #7d8697; color: #fff; }
+.tm-rank.r3 { background: #8a5a36; color: #fff; }
+.tm-ldr-who { min-width: 0; display: flex; flex-direction: column; }
+.tm-ldr-who b { font-size: 13px; font-weight: 800; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-ldr-who small { font-size: 9.5px; color: var(--an-ink3); white-space: nowrap; }
+.tm-ldr-bar { height: 8px; border-radius: 4px; background: var(--an-raised); }
+.tm-ldr-bar i { display: block; height: 100%; border-radius: 4px; background: var(--an-accent); }
+.tm-ldr-v { font: 700 13px var(--mono); color: var(--an-ink); text-align: right; }
+
+/* ── 경기 결과 ── */
+.tm-games { list-style: none; display: flex; flex-direction: column; }
+.tm-games li { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 8px 0; }
+.tm-games li + li { border-top: 1px solid var(--an-line); }
+.tm-res {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  background: var(--an-raised);
+  color: var(--an-ink2);
+}
+.tm-res.w { background: rgba(31, 169, 138, .2); color: #7fe0c7; }
+.tm-res.l { background: rgba(224, 82, 90, .18); color: #f7b3b7; }
+.tm-g-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tm-g-main b { font-size: 12.5px; font-weight: 800; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-g-main small { font-size: 10px; color: var(--an-ink3); }
+.tm-g-main .tm-star { color: #e3bf73; }
+.tm-score { font: 400 22px var(--display); letter-spacing: 1px; color: var(--an-ink); white-space: nowrap; }
+.tm-score i { margin: 0 2px; font-style: normal; color: var(--an-ink3); }
+
+/* ── 선수별 기록 표 ── */
+.tm-roster-wrap { overflow-x: auto; margin: 0 -14px; padding: 0 14px; -webkit-overflow-scrolling: touch; }
+.tm-roster { width: 100%; min-width: 720px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.tm-roster th, .tm-roster td { padding: 8px 6px; text-align: right; white-space: nowrap; }
+.tm-roster thead th { font-size: 10px; font-weight: 700; color: var(--an-ink3); border-bottom: 1px solid var(--an-line); }
+.tm-roster thead button {
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tm-roster thead button.on { color: var(--an-ink); }
+.tm-roster td { font: 600 12px var(--mono); color: var(--an-ink2); }
+.tm-roster td.lead { color: var(--an-ink); font-weight: 800; }
+.tm-roster tbody tr + tr > * { border-top: 1px solid var(--an-line); }
+.tm-roster tr.thin td { opacity: .5; }
+.tm-roster .tm-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--an-card);
+  box-shadow: 1px 0 0 var(--an-line);
+}
+.tm-roster tbody th b { font-size: 12.5px; font-weight: 800; color: var(--an-ink); }
+.tm-roster tbody th small { margin-left: 4px; font: 500 9.5px var(--mono); color: var(--an-ink3); }
+.tm-roster tfoot > tr > * { border-top: 2px solid var(--an-line); color: var(--an-ink); font-weight: 800; }
+.tm-roster tfoot th { font-size: 11.5px; }
+
+/* ── 득실점 차트 ── */
+.tm-run.for { fill: var(--tm-for); }
+.tm-run.against { fill: var(--tm-against); }
+.tm-run-lbl { font-weight: 700; }
+.tm-run-lbl.w { fill: #7fe0c7; }
+.tm-run-lbl.l { fill: #f7b3b7; }
+.tm-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.tm-sw.for { background: var(--tm-for); }
+.tm-sw.against { background: var(--tm-against); }
+
+/* ── 이닝별 ── */
+.tm-inns { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; align-items: end; }
+.tm-inn { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.tm-inn.thin { opacity: .45; }
+.tm-inn-bar { position: relative; width: 100%; max-width: 26px; height: 72px; border-radius: 4px; background: var(--an-raised); overflow: hidden; }
+.tm-inn-bar i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px; background: var(--an-accent); }
+.tm-inn b { font: 700 9.5px var(--mono); color: var(--an-ink); letter-spacing: -.3px; }
+.tm-inn small { font-size: 9.5px; font-weight: 700; color: var(--an-ink2); }
+.tm-inn em { font: 500 9px var(--mono); font-style: normal; color: var(--an-ink3); }
+.tm-inn-note { display: block; margin-top: 8px; text-align: center; }
+.tm-sub { display: block; font-size: 9px; font-weight: 500; color: var(--an-ink3); }
+
+/* ── 팀 타구 ── */
+.tm-spray .an-spray { max-width: 420px; margin: 0 auto; }
+.tm-spray .an-spray figcaption span { margin-left: 8px; }
+
+/* ── 내보내기 · 팀 관리 ── */
+.tm-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tm-act {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--an-line);
+  border-radius: 12px;
+  background: var(--an-raised);
+  color: var(--an-ink);
+  text-align: left;
+  font-family: var(--font);
+  cursor: pointer;
+}
+.tm-act-ic { grid-row: 1 / 3; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--an-accent-soft); color: #a9c7fa; }
+.tm-act b { font-size: 12.5px; font-weight: 800; }
+.tm-act small { font-size: 10px; color: var(--an-ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { .tm-act:hover { border-color: var(--an-ink3); } }
+
+/* ── 넓은 화면 ── */
+@media (min-width: 720px) {
+  .tm-scope-note { width: auto; }
+  .tm-hero { padding: 20px 22px; }
+  .tm-name { font-size: 26px; }
+  .tm-badge { width: 56px; height: 56px; font-size: 24px; }
+  .tm-rec-main b { font-size: 42px; }
+  .tm-kpis { grid-template-columns: repeat(8, 1fr); }
+  .tm-2col { grid-template-columns: 1fr 1fr; align-items: start; }
+  .tm-acts { grid-template-columns: repeat(4, 1fr); }
+  .tm-inn-bar { height: 96px; }
+  .tm .an-trend { max-width: 560px; margin: 0 auto; }
+}

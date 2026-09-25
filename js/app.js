@@ -8,7 +8,8 @@ import './features/heatmap.js?v=3';
 import './features/filter.js?v=2';
 import './features/insights.js';
 import './features/perf.js?v=2';
-import './features/shell.js?v=8';
+import './features/team.js?v=1';
+import './features/shell.js?v=9';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

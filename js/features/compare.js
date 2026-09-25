@@ -1,6 +1,6 @@
 // 선수 비교 — 두 타자를 같은 기준(내 기록 전체)으로 나란히 놓고 분석
 import { esc as _esc } from '../constants.js';
-import { buildData, playerData, f3, pct, fmt, sampleBadge as _sample, josa as _j, emptyState as _empty, sprayFigure, trendChart, pitchTable } from './batdata.js?v=4';
+import { buildData, playerData, f3, pct, fmt, sampleBadge as _sample, josa as _j, emptyState as _empty, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
 
 let _a = null;          // 선택된 선수 이름 (A / B)
 let _b = null;
@@ -173,7 +173,7 @@ function _hero(A, B, t) {
   const side = (P, key) => {
     const s = P.st;
     const smp = _sample(s.pa);
-    const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+    const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
     return `
       <div class="cmp-side ${key}">
         <div class="cmp-name"><i class="cmp-dot ${key}"></i>${_esc(P.name)}</div>

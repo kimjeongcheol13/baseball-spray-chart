@@ -1,7 +1,7 @@
 // 코스별 핫/콜드 존 — 스트라이크존 9칸 + 바깥 볼 4칸(위·아래·안·밖)을 SVG로 그린다 (분석 탭 다크 테마)
 // 배치는 분석 엑셀 「핫콜드존」 그림(xlsxreport.js)과 같고, 색 기준은 스카우트 탭 코스 칸(_zoneColor)과 같다
 import { ZONES_9, esc as _esc } from '../constants.js';
-import { calcStats, f3 } from './batdata.js?v=4';
+import { calcStats, f3 } from './batdata.js?v=5';
 
 const MIN_AB = 3;   // 색칠 최소 타수 (스카우트 탭과 같은 값)
 const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];

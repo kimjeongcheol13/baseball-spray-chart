@@ -1,7 +1,7 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=4';
-import { hotColdFigure } from './zonefig.js?v=1';
+import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=5';
+import { hotColdFigure } from './zonefig.js?v=2';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -146,7 +146,7 @@ function _renderProfile() {
 function _hero(P, pool) {
   const s = P.st;
   const smp = s.pa ? sampleBadge(s.pa) : null;
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const idx = pool.woba > 0 && s.pa ? Math.round(s.woba / pool.woba * 100) : null;
   const tags = s.pa ? _types(s, pool) : [];
   const tile = (k, label) => {

@@ -4,7 +4,7 @@
 // SheetJS 무료판은 차트·셀 서식을 쓰지 못해서, xlsx(OOXML)를 직접 만들고 무압축 ZIP으로 묶는다 (외부 라이브러리 없음).
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
-import { buildData, calcStats } from './batdata.js?v=4';
+import { buildData, calcStats } from './batdata.js?v=5';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -569,7 +569,7 @@ export function exportBatterXlsx(P) {
   const st = P.st;
   const rows = [];
   P.gameList.forEach(g => g.abs.forEach(a => rows.push({ a, game: g.label })));
-  const bats = P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : '';
+  const bats = P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '';
   const dirOf = a => (a.dir ? (window._dirLbl ? window._dirLbl(a.dir, a.bats || P.bats) || a.dir : a.dir) : '');
   const zoneOf = a => a.zone || (a.pitches && a.pitches.length ? a.pitches[a.pitches.length - 1].zone : '') || '';
 

@@ -1,6 +1,6 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=4';
+import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 

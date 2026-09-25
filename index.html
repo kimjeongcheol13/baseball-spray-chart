@@ -553,6 +553,19 @@ var _kakaoSdkLoaded = false;
   </div>
 </div>
 
+<!-- 새 경기 전 저장 확인: 저장 안 한 타석·투구 기록이 있을 때 (core.js openNewGameGuard) -->
+<div id="newGameGuard" style="position:fixed;inset:0;z-index:470;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeNewGameGuard()">
+  <div class="gw-card" role="dialog" aria-modal="true" aria-labelledby="ngTitle">
+    <div class="gw-title" id="ngTitle">💾 저장하지 않은 기록이 있어요</div>
+    <div class="gw-sub" id="ngSub">새 경기를 시작하면 지금 경기 기록이 화면에서 사라져요.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="gw-btn-start" style="flex:none" onclick="newGameGuardSave()">저장하고 새 경기 시작</button>
+      <button class="gw-btn-cancel" style="flex:none" onclick="newGameGuardSkip()">저장하지 않고 새 경기 시작</button>
+      <button class="gw-btn-cancel" style="flex:none" onclick="closeNewGameGuard()">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- ████ 도움말 모달 ████ -->
 <div id="helpModal" onclick="if(event.target===this)closeHelpModal()">
   <div class="hm-sheet">
@@ -2338,9 +2351,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=103"></script>
+<script defer src="js/core.js?v=104"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=35"></script>
+<script type="module" src="js/app.js?v=36"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -1,11 +1,12 @@
 // 타자 — 경기 중 "지금 타석에 선 타자" 브리핑: 오늘 기록 · 시즌/최근 폼 · 오늘 타석별 공 순서 · 본 공 위치 · 공략 메모
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure } from './batdata.js?v=4';
+import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=4';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
 let _pinned = false;    // 사용자가 다른 타자를 골랐으면 true (기록 중 타자를 따라가지 않음)
 let _spray = 'today';   // today | season
+let _scope = null;      // game | season (null = 라인업이 있으면 이번 경기, 비어 있으면 시즌 전체)
 let _plot = 'today';
 
 const SHORT = {
@@ -42,6 +43,7 @@ export function setBatterView(k, v) {
   if (k === 'sel') { _sel = v || null; _pinned = !live || live.name !== _sel; }
   if (k === 'live') { _pinned = false; }
   if (k === 'side') { _side = v === 'away' ? 'away' : 'home'; _pinned = true; _sel = null; }   // 다른 팀을 보면 기록 중 타자를 따라가지 않음
+  if (k === 'scope') { _scope = v === 'season' ? 'season' : 'game'; _spray = _plot = _scope === 'season' ? 'season' : 'today'; }
   if (k === 'spray') _spray = v === 'season' ? 'season' : 'today';
   if (k === 'plot') _plot = v === 'season' ? 'season' : 'today';
   openBatterView();
@@ -73,7 +75,13 @@ function _render() {
   const side = _side || AS.curTeam || 'home';
   const lineup = _lineup(side);
   const live = AS.batter;
-  if (!_sel && lineup.length) _sel = lineup[0].name;
+  // 시즌 전체: 저장한 모든 경기 + 이번 경기의 타자 (새 경기로 라인업이 비어도 지난 기록이 보이게)
+  const scope = _scope || (lineup.length ? 'game' : 'season');
+  const data = buildData();
+  const season = data.players.filter(p => p.pa > 0);
+  if (scope === 'season') {
+    if (!season.find(p => p.name === _sel)) _sel = ((live && season.find(p => p.name === live.name)) || season[0] || {}).name || null;
+  } else if (!_sel && lineup.length) _sel = lineup[0].name;
 
   const seg = (k, cur, opts) => `<div class="an-seg" role="tablist">${opts.map(([val, l]) => `<button role="tab" class="${cur === val ? 'on' : ''}" aria-selected="${cur === val}" onclick="setBatterView('${k}','${val}')">${l}</button>`).join('')}</div>`;
   const chips = lineup.map((p, i) => {
@@ -91,30 +99,38 @@ function _render() {
       <div class="svh-sub">지금 타석에 선 타자 브리핑 · 오늘 기록과 시즌 흐름</div>
     </div>
     <div class="bt-ctrls">
-      ${seg('side', side, [['home', '홈 라인업'], ['away', '원정 라인업']])}
+      ${seg('scope', scope, [['game', '이번 경기'], ['season', '시즌 전체']])}
+      ${scope === 'game' ? seg('side', side, [['home', '홈 라인업'], ['away', '원정 라인업']]) : ''}
       ${_pinned && live ? `<button type="button" class="bt-live-btn" onclick="setBatterView('live')">● 기록 중인 타자(${_esc(live.name)})로</button>` : ''}
     </div>
-    ${lineup.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="타순">${chips}</div>` : ''}
+    ${scope === 'season'
+      ? (season.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="시즌 타자">${playerChips(season, _sel, 'selectBatterSeason')}</div>` : '')
+      : (lineup.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="타순">${chips}</div>` : '')}
     ${AS.currentPitcher ? `<button type="button" class="bt-link-pill" onclick="shellOpenAnalysis('pitcher')">⚾ ${_esc(AS.currentPitcher.name)} 투구 기록 중 · ${(AS.currentPitcher.pitches || []).length}구</button>` : ''}`;
 
+  if (scope === 'season' && !season.length) {
+    v.innerHTML = head + emptyState('아직 기록된 타자가 없어요', '기록 탭에서 타석 결과를 입력하고 경기를 저장하면 시즌 기록이 쌓여요.');
+    return;
+  }
   if (!lineup.length && !_sel) {
-    v.innerHTML = head + emptyState('라인업이 비어 있어요', '기록 탭에서 선수를 추가하고 타자를 선택하면 여기서 바로 브리핑이 나와요.');
+    v.innerHTML = head + emptyState('이번 경기 라인업이 비어 있어요', '지난 경기 타자는 위의 「시즌 전체」에서 볼 수 있어요. 기록 탭에서 선수를 추가하면 여기서 바로 브리핑이 나와요.');
     return;
   }
   if (!_sel) {
     v.innerHTML = head + emptyState('타자를 선택하세요', '위 타순에서 선수를 누르거나, 기록 탭에서 타자를 선택하세요.');
     return;
   }
-  const data = buildData();
   const P = playerData(data, _sel);
   const order = lineup.findIndex(p => p.name === _sel);
   const info = lineup[order] || {};
   const today = _todayAbs(_sel);
+  // 시즌 전체에서 오늘 타석이 없는 타자면 타구 방향·본 공 위치도 시즌 기록으로
+  if (scope === 'season' && !today.length) { _spray = 'season'; _plot = 'season'; }
   v.innerHTML = head + `
     <div class="bt-result">
       ${_hero(P, info, order, today, live)}
       ${_formCard(P, today)}
-      ${_todayCard(today)}
+      ${scope === 'season' && !today.length ? '' : _todayCard(today)}
       <div class="bt-2col">
         ${_plotCard(P, today)}
         ${_sprayCard(P, today)}
@@ -303,5 +319,6 @@ if (typeof window !== 'undefined') {
   _hookLegacy();
   window.openBatterView = openBatterView;
   window.setBatterView = setBatterView;
+  window.selectBatterSeason = name => setBatterView('sel', name);
   window.openBatterIn = openBatterIn;
 }

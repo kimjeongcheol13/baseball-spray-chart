@@ -15,6 +15,7 @@ import './features/spray.js?v=1';
 import './features/shell.js?v=13';
 import './features/record.js?v=3';
 import './features/settings.js?v=1';
+import './features/scorebook.js?v=1';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

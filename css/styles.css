@@ -973,10 +973,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .card-preview-ov.show{display:flex}
 .card-preview-box{background:#0e1018;border:1px solid #252532;border-radius:18px;padding:16px;max-width:min(520px,96vw);width:100%;display:flex;flex-direction:column;gap:10px}
 .card-preview-canvas{width:100%;border-radius:10px;display:block}
+.card-player-sel{width:100%;padding:10px 12px;background:var(--bg-raised,#141420);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;font-weight:700;font-family:var(--font);outline:none}
 .card-preview-tabs{display:flex;gap:6px;margin-bottom:4px}
 .cpt-btn{flex:1;padding:7px;border:1.5px solid var(--border2);border-radius:8px;background:none;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .1s;text-align:center}
-.cpt-btn.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
-.card-dl-btn{width:100%;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;transition:filter .1s}
+.cpt-btn.on{background:var(--blue-dim);border-color:var(--blue);color:var(--blue)}
+.card-dl-btn{width:100%;padding:12px;background:var(--blue);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;font-family:var(--font);cursor:pointer;transition:filter .1s}
 .card-dl-btn:active{filter:brightness(.85)}
 .card-cancel-btn{width:100%;padding:10px;background:none;border:1px solid var(--border2);border-radius:12px;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer}
 

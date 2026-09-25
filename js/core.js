@@ -5351,16 +5351,31 @@ function _showPzCard(e,zone,pitches){
 function _hidePzCard(){if(_pzCardEl){_pzCardEl.remove();_pzCardEl=null;}}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FEATURE D: 성적 카드 PNG (개인 9:16 / 팀 1:1)
+// FEATURE D: 성적 카드 PNG (개인 9:16 / 팀 1:1 / 시즌)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _cardType='personal';
+var _cardBid=null; // 개인 카드 대상 선수 id
+
+// 카드 공통 팔레트/폰트 — 브랜드 컬러(Navy Black / Signal Blue / Hit Red / Amber / Teal)
+var CARD_C={bg:'#0a0e17',ink:'#eef0f8',sub:'rgba(238,240,248,.66)',mute:'rgba(238,240,248,.42)',line:'rgba(238,240,248,.12)',panel:'rgba(238,240,248,.04)',blue:'#4b8cf5',red:'#f56565',amber:'#f6c23e',teal:'#2dd4a0'};
+var CARD_F={kr:'"Noto Sans KR",sans-serif',mono:'"JetBrains Mono",monospace'};
+var CARD_SCALE=2; // 540x960 논리 좌표 → 1080x1920 PNG (인스타 스토리 해상도)
 
 function openCardPreview(){
   _cardType='personal';
+  document.querySelectorAll('.cpt-btn').forEach(function(b){b.classList.remove('on');});
   document.getElementById('cptPersonal').classList.add('on');
-  document.getElementById('cptTeam').classList.remove('on');
+  _fillCardPlayerSel();
   _drawCard();
   document.getElementById('cardPreviewOv').classList.add('show');
+  // 웹폰트가 늦게 로드되면 캔버스가 기본 글꼴로 그려지므로 로드 후 한 번 더 그림
+  if(document.fonts&&document.fonts.load){
+    Promise.all([
+      document.fonts.load('900 40px "Noto Sans KR"','가'),
+      document.fonts.load('700 20px "Noto Sans KR"','가'),
+      document.fonts.load('700 20px "JetBrains Mono"','0')
+    ]).then(_drawCard).catch(function(){});
+  }
 }
 
 function switchCardType(type,el){
@@ -5381,451 +5396,448 @@ function downloadPreviewCard(){
 }
 
 function _drawCard(){
+  var sel=document.getElementById('cardPlayerSel');
+  if(sel)sel.style.display=_cardType==='personal'&&sel.options.length?'':'none';
   if(_cardType==='personal')_drawPersonalCard();
   else if(_cardType==='season')_drawSeasonCard();
   else _drawTeamCard();
 }
 
-/* ── 공통 워터마크 ────────────────────────────────── */
-function _drawCardWatermark(ctx,W,H){
-  var bh=52;
-  ctx.fillStyle='rgba(10,18,40,0.85)';
-  ctx.fillRect(0,H-bh,W,bh);
-  ctx.strokeStyle='rgba(75,140,245,0.25)';
-  ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(0,H-bh);ctx.lineTo(W,H-bh);ctx.stroke();
-
-  // 아이콘 역할의 ⚾ 도트
-  ctx.font='bold 13px sans-serif';
-  ctx.fillStyle='rgba(75,140,245,0.9)';
-  ctx.textAlign='center';
-  ctx.fillText('⚾',W/2,H-30);
-
-  ctx.font='bold 11px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.75)';
-  ctx.fillText('SprayLab으로 만들었어요',W/2,H-15);
+/* ── 개인 카드 대상 선수 목록 (이번 경기에 타석이 있는 선수만) ── */
+function _cardPlayers(){
+  var map={},order=[];
+  AS.abs.forEach(function(a){
+    var k=String(a.bid);
+    if(!map[k]){map[k]={id:a.bid,name:a.bname||'선수',num:a.bnum,team:a.team||'home',pa:0};order.push(k);}
+    map[k].pa++;
+  });
+  return order.map(function(k){return map[k];});
 }
+function _fillCardPlayerSel(){
+  var sel=document.getElementById('cardPlayerSel');
+  if(!sel)return;
+  var ps=_cardPlayers();
+  var ids=ps.map(function(p){return String(p.id);});
+  if(_cardBid==null||ids.indexOf(String(_cardBid))===-1){
+    if(AS.batter&&ids.indexOf(String(AS.batter.id))!==-1)_cardBid=AS.batter.id;
+    else if(ps.length)_cardBid=ps.slice().sort(function(a,b){return b.pa-a.pa;})[0].id;
+    else _cardBid=null;
+  }
+  sel.innerHTML=ps.map(function(p){
+    var lbl=(p.num!=null&&p.num!==''?'#'+p.num+' ':'')+p.name+' · '+p.pa+'타석';
+    return '<option value="'+_escHtml(String(p.id))+'"'+(String(p.id)===String(_cardBid)?' selected':'')+'>'+_escHtml(lbl)+'</option>';
+  }).join('');
+}
+function setCardPlayer(id){_cardBid=id;_drawCard();}
 
-function _drawPersonalCard(){
+/* ── 공통 헬퍼 ────────────────────────────────── */
+function _cardCtx(W,H){
   var cvs=document.getElementById('cardPreviewCanvas');
-  if(!cvs)return;
-  var W=540,H=960;
-  cvs.width=W;cvs.height=H;
-  cvs.style.width='100%';cvs.style.maxHeight='500px';cvs.style.objectFit='contain';
+  if(!cvs)return null;
+  cvs.width=W*CARD_SCALE;cvs.height=H*CARD_SCALE;
+  cvs.style.width='100%';cvs.style.maxHeight='62vh';cvs.style.objectFit='contain';
   var ctx=cvs.getContext('2d');
-
-  // 배경 (다크 네이비 그라디언트)
-  var bg=ctx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#07090f');bg.addColorStop(0.5,'#0a1628');bg.addColorStop(1,'#07090f');
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-
-  // 상단 로고 영역
-  ctx.fillStyle='rgba(75,140,245,.08)';
-  ctx.fillRect(0,0,W,120);
-  ctx.strokeStyle='rgba(75,140,245,.2)';
-  ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(0,120);ctx.lineTo(W,120);ctx.stroke();
-
-  // 로고 텍스트
-  ctx.font='bold 22px "Bebas Neue",sans-serif';
-  ctx.fillStyle='#4b8cf5';
-  ctx.textAlign='center';
-  ctx.fillText('SPRAY',W/2-24,52);
-  ctx.fillStyle='#2dd4a0';
-  ctx.fillText('LAB',W/2+28,52);
-  ctx.font='12px "JetBrains Mono",monospace';
-  ctx.fillStyle='rgba(255,255,255,.35)';
-  ctx.fillText(new Date().toLocaleDateString('ko-KR'),W/2,78);
-
-  // 선수 정보
-  var ht=document.getElementById('tHome')?document.getElementById('tHome').value||'홈팀':'팀';
-  ctx.font='bold 18px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,.5)';
-  ctx.textAlign='center';
-  ctx.fillText(ht,W/2,108);
-
-  // 주요 스탯 계산
-  var abs=AS.abs;
-  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
-  var ab=abs.filter(function(a){return !noab.includes(a.res);}).length;
-  var h=abs.filter(function(a){return hits.includes(a.res);}).length;
-  var bb=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
-  var tb=abs.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
-  var hr=abs.filter(function(a){return a.res==='홈런';}).length;
+  ctx.setTransform(CARD_SCALE,0,0,CARD_SCALE,0,0);
+  ctx.fillStyle=CARD_C.bg;ctx.fillRect(0,0,W,H);
+  return ctx;
+}
+// .333 / 1.250 형식 (1 이상이면 정수부 표시)
+function _cardFmt(v){
+  if(v==null||isNaN(v))return '-';
+  var s=v.toFixed(3);
+  return s.indexOf('0.')===0?s.slice(1):s;
+}
+function _cardDate(){
+  var d=new Date(),p=function(n){return (n<10?'0':'')+n;};
+  return d.getFullYear()+'.'+p(d.getMonth()+1)+'.'+p(d.getDate());
+}
+function _cardStats(abs){
+  var n=function(r){return abs.filter(function(a){return a.res===r;}).length;};
+  var s1=n('안타')+n('내야안타'),s2=n('2루타'),s3=n('3루타'),hr=n('홈런');
+  var bb=n('볼넷'),hbp=n('사구'),sf=n('희비'),sh=n('희타'),so=n('삼진');
+  var pa=abs.length,ab=pa-bb-hbp-sf-sh,h=s1+s2+s3+hr,tb=s1+2*s2+3*s3+4*hr;
   var rbi=abs.reduce(function(s,a){return s+(a.rbi||0);},0);
-  var avg=ab?h/ab:0,obp=abs.length?(h+bb)/abs.length:0,slg=ab?tb/ab:0,ops=obp+slg;
-  var fmt3=function(v){return '.'+Math.round(v*1000).toString().padStart(3,'0');};
+  var obpD=ab+bb+hbp+sf;
+  var avg=ab?h/ab:0,obp=obpD?(h+bb+hbp)/obpD:0,slg=ab?tb/ab:0;
+  return {pa:pa,ab:ab,h:h,s1:s1,s2:s2,s3:s3,hr:hr,bb:bb,hbp:hbp,sf:sf,so:so,rbi:rbi,tb:tb,avg:avg,obp:obp,slg:slg,ops:obp+slg};
+}
+// 긴 텍스트는 폭에 맞춰 글자 크기를 줄임
+function _cardFitFont(ctx,text,weight,size,family,maxW,minSize){
+  var s=size;
+  do{ctx.font=weight+' '+s+'px '+family;if(ctx.measureText(text).width<=maxW)break;s-=1;}while(s>(minSize||10));
+  return s;
+}
+function _cardSpacing(ctx,px){if('letterSpacing' in ctx)ctx.letterSpacing=px+'px';}
 
-  // OPS 크게 (중앙)
-  ctx.textAlign='center';
-  ctx.font='bold 11px "JetBrains Mono",monospace';
-  ctx.fillStyle='rgba(255,255,255,.35)';
-  ctx.fillText('OPS',W/2,170);
-  ctx.font='bold 90px "Bebas Neue",sans-serif';
-  var opsCol=ops>=0.9?'#f56565':ops>=0.75?'#2dd4a0':ops>=0.6?'#4b8cf5':'#94a3b8';
-  ctx.fillStyle=opsCol;
-  ctx.fillText(fmt3(ops).replace('.',''),W/2,255);
-  ctx.font='bold 22px "JetBrains Mono",monospace';
-  ctx.fillStyle='rgba(255,255,255,.3)';
-  ctx.fillText('.',W/2-58,215);
-
-  // AVG / OBP / SLG 3열
-  var statItems=[{l:'AVG',v:fmt3(avg)},{l:'OBP',v:fmt3(obp)},{l:'SLG',v:fmt3(slg)}];
-  var cols=['#f6c23e','#2dd4a0','#4b8cf5'];
-  statItems.forEach(function(s,i){
-    var x=90+i*180;
-    ctx.fillStyle='rgba(255,255,255,.05)';
-    _roundRect(ctx,x-75,278,150,80,10);
-    ctx.fill();
-    ctx.font='bold 34px "JetBrains Mono",monospace';
-    ctx.fillStyle=cols[i];
-    ctx.textAlign='center';
-    ctx.fillText(s.v,x,323);
-    ctx.font='bold 11px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.4)';
-    ctx.fillText(s.l,x,348);
-  });
-
-  // HR / RBI / H 박스
-  var box2=[{l:'홈런',v:hr},{l:'타점',v:rbi},{l:'안타',v:h}];
-  box2.forEach(function(b,i){
-    var x=90+i*180;
-    ctx.fillStyle='rgba(255,255,255,.03)';
-    _roundRect(ctx,x-72,378,144,56,8);ctx.fill();
-    ctx.font='bold 28px "JetBrains Mono",monospace';
-    ctx.fillStyle='#eef0f8';ctx.textAlign='center';
-    ctx.fillText(b.v,x,412);
-    ctx.font='10px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.3)';
-    ctx.fillText(b.l,x,428);
-  });
-
-  // 방향 분포
-  var fd=abs.filter(function(a){return a.deg!=null;});
-  var tot=fd.length||1;
-  var pullP=Math.round(fd.filter(function(a){return _isPull(a);}).length/tot*100);
-  var ctrP=Math.round(fd.filter(function(a){return _isCtr(a);}).length/tot*100);
-  var oppoP=100-pullP-ctrP;
-  ctx.fillStyle='rgba(255,255,255,.06)';
-  _roundRect(ctx,20,450,W-40,100,12);ctx.fill();
-  ctx.font='bold 10px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,.4)';ctx.textAlign='center';
-  ctx.fillText('타구 방향',W/2,472);
-  var dirs=[{l:'당겨치기',v:pullP,col:'#f56565'},{l:'센터',v:ctrP,col:'#2dd4a0'},{l:'밀어치기',v:oppoP,col:'#4b8cf5'}];
-  dirs.forEach(function(d,i){
-    var x=90+i*180;
-    ctx.font='bold 30px "JetBrains Mono",monospace';
-    ctx.fillStyle=d.col;ctx.textAlign='center';
-    ctx.fillText(d.v+'%',x,516);
-    ctx.font='9px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.35)';
-    ctx.fillText(d.l,x,532);
-  });
-
-  // 스프레이 차트 미니 (캔버스 복사)
-  var fld=document.getElementById('fldCanvas'),hit=document.getElementById('hitCanvas');
-  if(fld&&hit){
-    var miniSize=200;
-    var mx=(W-miniSize)/2,my=570;
-    ctx.save();
-    ctx.beginPath();ctx.arc(mx+miniSize/2,my+miniSize*0.6,miniSize*0.55,Math.PI,0);ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(fld,mx,my,miniSize,miniSize);
-    ctx.drawImage(hit,mx,my,miniSize,miniSize);
-    ctx.restore();
-    // 테두리
-    ctx.strokeStyle='rgba(75,140,245,.3)';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.arc(mx+miniSize/2,my+miniSize*0.6,miniSize*0.55,Math.PI,0);ctx.closePath();ctx.stroke();
-  }
-
-  // 골드 포인트 라인 장식
-  ctx.strokeStyle='rgba(246,194,62,.25)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(20,128);ctx.lineTo(W-20,128);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(20,H-60);ctx.lineTo(W-20,H-60);ctx.stroke();
-
-  _drawCardWatermark(ctx,W,H);
+// 상단: 워드마크 + 날짜
+function _cardHeader(ctx,W,right){
+  ctx.textBaseline='alphabetic';ctx.textAlign='left';
+  ctx.font='700 15px '+CARD_F.mono;_cardSpacing(ctx,3);
+  ctx.fillStyle=CARD_C.blue;ctx.fillText('SPRAY',32,44);
+  var w=ctx.measureText('SPRAY').width;
+  ctx.fillStyle=CARD_C.teal;ctx.fillText('LAB',32+w,44);
+  _cardSpacing(ctx,0);
+  ctx.font='500 13px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.textAlign='right';
+  ctx.fillText(right||_cardDate(),W-32,44);
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(32,64,W-64,1);
+}
+// 하단: 태그라인 + 계정
+function _cardFooter(ctx,W,H){
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(32,H-56,W-64,1);
+  ctx.textBaseline='alphabetic';
+  ctx.font='600 11px '+CARD_F.mono;_cardSpacing(ctx,2);
+  ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
+  ctx.fillText('YOUR SWING, VISUALIZED',32,H-26);
+  _cardSpacing(ctx,0);
+  ctx.textAlign='right';ctx.fillText('@spraylab2026',W-32,H-26);
 }
 
-function _drawTeamCard(){
-  var cvs=document.getElementById('cardPreviewCanvas');
-  if(!cvs)return;
-  var W=540,H=540;
-  cvs.width=W;cvs.height=H;
-  cvs.style.width='100%';cvs.style.maxHeight='500px';cvs.style.objectFit='contain';
-  var ctx=cvs.getContext('2d');
+// 결과 → 중계 문구 (좌전 안타, 우월 홈런, 중견수 뜬공 …)
+function _cardAbText(a){
+  var d=a.dir,r=a.res;
+  var HIT={LF:'좌전',LC:'좌중간',CF:'중전',RC:'우중간',RF:'우전'};
+  var XBH={LF:'좌측',LC:'좌중간',CF:'중앙',RC:'우중간',RF:'우측'};
+  var HR={LF:'좌월',LC:'좌중월',CF:'중월',RC:'우중월',RF:'우월'};
+  var FLY={LF:'좌익수',LC:'좌중간',CF:'중견수',RC:'우중간',RF:'우익수'};
+  if(r==='안타')return HIT[d]?HIT[d]+' 안타':'안타';
+  if(r==='2루타'||r==='3루타')return XBH[d]?XBH[d]+' '+r:r;
+  if(r==='홈런')return HR[d]?HR[d]+' 홈런':'홈런';
+  if(r==='플라이 아웃')return FLY[d]?FLY[d]+' 뜬공':'뜬공';
+  if(r==='땅볼 아웃')return '땅볼';
+  return {'사구':'몸에 맞는 공','희타':'희생번트','희비':'희생플라이','병살':'병살타'}[r]||r;
+}
+function _cardInn(inn){
+  if(inn==null||inn==='')return '';
+  var s=String(inn).replace(/[초말]$/,'');
+  return /^\d+$/.test(s)?s+'회':s;
+}
 
-  var bg=ctx.createLinearGradient(0,0,W,H);
-  bg.addColorStop(0,'#09090f');bg.addColorStop(1,'#0d1525');
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+// 스프레이 차트: 앱 필드와 같은 좌표계 (홈 = (0.5,1), 펜스 반지름 0.97)
+function _cardField(ctx,cx,cy,S,abs,dots){
+  var st=STADIUMS[AS.stadium]||STADIUMS.standard;
+  ctx.save();
+  var g=ctx.createRadialGradient(cx,cy,0,cx,cy,S);
+  g.addColorStop(0,st.grass[0]);g.addColorStop(1,st.grass[2]);
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.closePath();
+  ctx.fillStyle=g;ctx.fill();
+  // 워닝트랙
+  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.arc(cx,cy,S*.9,0,-Math.PI,true);ctx.closePath();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fill();
+  // 내야
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.41,-Math.PI,0);ctx.closePath();ctx.fillStyle=st.if;ctx.globalAlpha=.75;ctx.fill();
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,S*.33,-Math.PI,0);ctx.closePath();ctx.fillStyle=st.grass[0];ctx.globalAlpha=1;ctx.fill();
+  // 베이스 라인 다이아몬드
+  var br=S*.42;
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-br*.46,cy-br*.33);ctx.lineTo(cx,cy-br*.65);ctx.lineTo(cx+br*.46,cy-br*.33);ctx.closePath();ctx.stroke();
+  // 펜스
+  ctx.beginPath();ctx.arc(cx,cy,S*.97,-Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.restore();
 
-  var ht=document.getElementById('tHome')?document.getElementById('tHome').value||'홈':' 홈';
-  var at=document.getElementById('tAway')?document.getElementById('tAway').value||'원정':'원정';
-
-  // 팀명 + 스코어
-  ctx.textAlign='center';
-  ctx.font='bold 13px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,.4)';
-  ctx.fillText(new Date().toLocaleDateString('ko-KR'),W/2,30);
-
-  ctx.font='bold 20px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='#eef0f8';
-  ctx.textAlign='left';ctx.fillText(ht,36,72);
-  ctx.textAlign='right';ctx.fillText(at,W-36,72);
-
-  ctx.font='bold 60px "Bebas Neue",sans-serif';
-  ctx.fillStyle='#2dd4a0';ctx.textAlign='left';ctx.fillText(AS.hs,36,130);
-  ctx.fillStyle='rgba(255,255,255,.2)';ctx.textAlign='center';ctx.fillText(':',W/2,130);
-  ctx.fillStyle='#f56565';ctx.textAlign='right';ctx.fillText(AS.as,W-36,130);
-
-  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(20,145);ctx.lineTo(W-20,145);ctx.stroke();
-
-  // 팀 타격 통계
-  var homeAbs=AS.abs.filter(function(a){return (a.team||'home')==='home';});
-  var awayAbs=AS.abs.filter(function(a){return (a.team||'home')==='away';});
-  var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
-  function calc(arr){
-    var ab=arr.filter(function(a){return !noab.includes(a.res);}).length;
-    var h=arr.filter(function(a){return hits.includes(a.res);}).length;
-    var bb=arr.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
-    var tb=arr.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
-    var obp=arr.length?(h+bb)/arr.length:0,slg=ab?tb/ab:0;
-    return {ab:ab,h:h,avg:ab?h/ab:0,obp:obp,slg:slg,ops:obp+slg};
+  // 타구: 궤적 선 → 번호 점 (dots=true면 궤적 없이 작은 점만 — 시즌 카드용)
+  var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
+  if(dots){
+    pts.forEach(function(p){
+      var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S,col=RC[p.a.res]||'#94a3b8';
+      var out=p.a.res.indexOf('아웃')!==-1||p.a.res==='병살';
+      ctx.beginPath();ctx.arc(x,y,out?3:4.5,0,Math.PI*2);
+      ctx.fillStyle=col;ctx.globalAlpha=out?.55:.95;ctx.fill();ctx.globalAlpha=1;
+    });
+    return;
   }
-  var hStats=calc(homeAbs),aStats=calc(awayAbs);
-  var fmt3=function(v){return '.'+Math.round(v*1000).toString().padStart(3,'0');};
-  var statLabels=['AVG','OBP','SLG','OPS'];
-  var hVals=[hStats.avg,hStats.obp,hStats.slg,hStats.ops];
-  var aVals=[aStats.avg,aStats.obp,aStats.slg,aStats.ops];
-  var scols=['#f6c23e','#2dd4a0','#4b8cf5','#a78bfa'];
+  pts.forEach(function(p){
+    var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S;
+    var col=RC[p.a.res]||'#94a3b8',out=p.a.res.indexOf('아웃')!==-1||p.a.res==='병살';
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);
+    ctx.strokeStyle=col;ctx.globalAlpha=out?.3:.6;ctx.lineWidth=out?1.2:2;
+    if(out)ctx.setLineDash([3,4]);
+    ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+  });
+  pts.forEach(function(p){
+    var x=cx+(p.a.x-.5)*S,y=cy+(p.a.y-1)*S;
+    _cardBadge(ctx,x,y,p.i+1,p.a.res,11);
+  });
+}
+// 번호 배지 (필드 점과 타석 기록 목록에서 같이 사용)
+function _cardBadge(ctx,x,y,num,res,r){
+  var col=RC[res]||'#94a3b8';
+  ctx.beginPath();ctx.arc(x,y,r+2,0,Math.PI*2);ctx.fillStyle=CARD_C.bg;ctx.fill();
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  ctx.font='700 '+Math.round(r*1.05)+'px '+CARD_F.mono;
+  ctx.fillStyle=CARD_C.bg;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(String(num),x,y+.5);
+  ctx.textBaseline='alphabetic';
+}
 
-  statLabels.forEach(function(l,i){
-    var x=68+i*103;
-    ctx.font='bold 9px "JetBrains Mono",monospace';
-    ctx.fillStyle=scols[i];ctx.textAlign='center';
-    ctx.fillText(l,x,168);
-    ctx.font='bold 16px "JetBrains Mono",monospace';
-    ctx.fillStyle='#eef0f8';
-    ctx.fillText(fmt3(hVals[i]),x,190);
-    ctx.fillStyle='rgba(255,255,255,.3)';
-    ctx.fillText(fmt3(aVals[i]),x,208);
+/* ── 개인 카드 (9:16) ─────────────────────────── */
+function _drawPersonalCard(){
+  var W=540,H=960,ctx=_cardCtx(W,H);
+  if(!ctx)return;
+  var X=32,CW=W-64;
+  _cardHeader(ctx,W);
+
+  var p=_cardPlayers().filter(function(q){return String(q.id)===String(_cardBid);})[0];
+  if(!p){
+    ctx.textAlign='center';ctx.fillStyle=CARD_C.sub;
+    ctx.font='700 20px '+CARD_F.kr;ctx.fillText('아직 기록된 타석이 없어요',W/2,H/2-10);
+    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
+    ctx.fillText('타석을 기록하면 선수별 카드가 만들어져요',W/2,H/2+20);
+    _cardFooter(ctx,W,H);
+    return;
+  }
+  var abs=AS.abs.filter(function(a){return String(a.bid)===String(p.id);});
+  var s=_cardStats(abs);
+
+  // 경기 정보
+  var hn=(document.getElementById('tHome')||{}).value||'홈',an=(document.getElementById('tAway')||{}).value||'원정';
+  var isHome=p.team!=='away';
+  var myT=isHome?hn:an,opT=isHome?an:hn,myS=isHome?AS.hs:AS.as,opS=isHome?AS.as:AS.hs;
+  ctx.textAlign='left';ctx.font='500 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+  ctx.fillText(myT+'  vs  '+opT,X,100);
+  if(myS||opS){ctx.textAlign='right';ctx.font='700 14px '+CARD_F.mono;ctx.fillStyle=CARD_C.sub;ctx.fillText(myS+' : '+opS,W-X,100);}
+
+  // 선수
+  var numStr=p.num!=null&&p.num!==''?'No.'+p.num:'';
+  ctx.textAlign='left';
+  if(numStr){ctx.font='700 14px '+CARD_F.mono;ctx.fillStyle=CARD_C.amber;ctx.fillText(numStr,X,144);}
+  _cardFitFont(ctx,p.name,'900',48,CARD_F.kr,CW,24);
+  ctx.fillStyle=CARD_C.ink;ctx.fillText(p.name,X,numStr?196:186);
+
+  // 한 줄 성적: 4타수 2안타 1홈런 3타점
+  var parts=[[s.ab,'타수'],[s.h,'안타']];
+  if(s.hr)parts.push([s.hr,'홈런']);
+  if(s.rbi)parts.push([s.rbi,'타점']);
+  if(s.bb)parts.push([s.bb,'볼넷']);
+  if(s.hbp)parts.push([s.hbp,'사구']);
+  var nSize=26,uSize=17,measure=function(){
+    var w=0;parts.forEach(function(t,i){
+      ctx.font='700 '+nSize+'px '+CARD_F.mono;w+=ctx.measureText(String(t[0])).width+2;
+      ctx.font='500 '+uSize+'px '+CARD_F.kr;w+=ctx.measureText(t[1]).width+(i<parts.length-1?12:0);
+    });return w;};
+  while(measure()>CW&&nSize>16){nSize--;uSize=Math.round(nSize*.65);}
+  var lx=X;
+  parts.forEach(function(t,i){
+    ctx.font='700 '+nSize+'px '+CARD_F.mono;ctx.fillStyle=t[1]==='홈런'?CARD_C.amber:t[1]==='안타'&&t[0]>0?CARD_C.teal:CARD_C.ink;
+    ctx.fillText(String(t[0]),lx,246);lx+=ctx.measureText(String(t[0])).width+2;
+    ctx.font='500 '+uSize+'px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+    ctx.fillText(t[1],lx,246);lx+=ctx.measureText(t[1]).width+12;
   });
 
-  ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(20,220);ctx.lineTo(W-20,220);ctx.stroke();
+  // 스프레이 차트
+  _cardField(ctx,W/2,560,252,abs);
 
-  // 선수별 성적 리스트 (최대 9명)
-  var allLP=[...AS.home_lineup,...AS.away_lineup];
-  var hitsArr=['안타','내야안타','2루타','3루타','홈런'];
-  var players=allLP.map(function(p){
-    var pa=AS.abs.filter(function(a){return a.bid===p.id;});
-    var ab=pa.filter(function(a){return !noab.includes(a.res);}).length;
-    var h2=pa.filter(function(a){return hitsArr.includes(a.res);}).length;
-    return {name:p.name,num:p.num,ab:ab,h:h2,avg:ab?h2/ab:0};
-  }).filter(function(p){return p.ab>0;}).sort(function(a,b){return b.avg-a.avg;}).slice(0,9);
+  // 범례
+  var lg=[['안타','#2dd4a0'],['홈런','#f59e0b'],['아웃','#94a3b8'],['삼진','#ef4444'],['볼넷','#4b8cf5']];
+  ctx.font='500 12px '+CARD_F.kr;
+  var lw=lg.reduce(function(w,l){return w+18+ctx.measureText(l[0]).width+14;},-14),gx=(W-lw)/2;
+  lg.forEach(function(l){
+    ctx.beginPath();ctx.arc(gx+5,591,5,0,Math.PI*2);ctx.fillStyle=l[1];ctx.fill();
+    ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';ctx.fillText(l[0],gx+16,595);
+    gx+=18+ctx.measureText(l[0]).width+14;
+  });
 
-  if(players.length){
-    ctx.font='bold 9px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.25)';ctx.textAlign='left';ctx.fillText('선수',20,240);
-    ctx.textAlign='right';ctx.fillText('H/AB',W-20,240);ctx.fillText('AVG',W-74,240);
+  // 타석 기록 (필드 번호와 연결)
+  var top=640;
+  ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
+  ctx.fillText('타석 기록',X,top);
+  var rows=abs.slice(0,10),twoCol=rows.length>5,colW=twoCol?CW/2:CW,rowH=32;
+  rows.forEach(function(a,i){
+    var col=twoCol?Math.floor(i/5):0,row=twoCol?i%5:i;
+    if(twoCol&&abs.length>10&&i===9){
+      ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
+      ctx.fillText('외 '+(abs.length-9)+'타석',X+col*colW,top+30+row*rowH+4);
+      return;
+    }
+    var rx=X+col*colW,ry=top+30+row*rowH;
+    _cardBadge(ctx,rx+11,ry,i+1,a.res,11);
+    var inn=_cardInn(a.inn);
+    ctx.textAlign='left';
+    ctx.font='500 13px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;
+    ctx.fillText(inn,rx+32,ry+5);
+    var txt=_cardAbText(a)+(a.rbi?'  '+a.rbi+'타점':'');
+    _cardFitFont(ctx,txt,'500',15,CARD_F.kr,colW-84,11);
+    var hit=['안타','내야안타','2루타','3루타','홈런'].indexOf(a.res)!==-1;
+    ctx.fillStyle=hit?CARD_C.ink:CARD_C.sub;
+    ctx.fillText(txt,rx+72,ry+5);
+  });
 
-    players.forEach(function(p,i){
-      var y=258+i*30;
-      ctx.font=(i===0?'bold ':'')+'13px "Noto Sans KR",sans-serif';
-      ctx.fillStyle=i===0?'#f6c23e':'#eef0f8';ctx.textAlign='left';
-      ctx.fillText('#'+p.num+' '+p.name,20,y);
-      ctx.font='12px "JetBrains Mono",monospace';
-      ctx.fillStyle='rgba(255,255,255,.4)';ctx.textAlign='right';
-      ctx.fillText(p.h+'/'+p.ab,W-20,y);
-      ctx.fillStyle=p.avg>=0.3?'#2dd4a0':p.avg>=0.25?'#f6c23e':'#94a3b8';
-      ctx.fillText(fmt3(p.avg),W-74,y);
-    });
-  }else{
-    ctx.font='12px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.2)';ctx.textAlign='center';
-    ctx.fillText('선수 기록 없음',W/2,320);
+  // 슬래시 라인
+  var sy=820;
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,sy,CW,1);
+  var sl=[['AVG',s.avg],['OBP',s.obp],['SLG',s.slg],['OPS',s.ops]],cw=CW/4;
+  sl.forEach(function(v,i){
+    var x=X+cw*i;
+    ctx.textAlign='left';
+    ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;_cardSpacing(ctx,1.5);
+    ctx.fillText(v[0],x,sy+28);_cardSpacing(ctx,0);
+    ctx.font='700 24px '+CARD_F.mono;ctx.fillStyle=i===3?CARD_C.ink:CARD_C.sub;
+    ctx.fillText(s.ab||s.pa?_cardFmt(v[1]):'-',x,sy+60);
+  });
+
+  _cardFooter(ctx,W,H);
+}
+
+/* ── 팀 카드 (1:1) ────────────────────────────── */
+function _drawTeamCard(){
+  var W=540,H=540,ctx=_cardCtx(W,H);
+  if(!ctx)return;
+  var X=32,CW=W-64;
+  _cardHeader(ctx,W);
+
+  var hn=(document.getElementById('tHome')||{}).value||'홈',an=(document.getElementById('tAway')||{}).value||'원정';
+
+  // 스코어
+  ctx.textAlign='left';_cardFitFont(ctx,hn,'700',18,CARD_F.kr,CW/2-70,12);ctx.fillStyle=CARD_C.sub;ctx.fillText(hn,X,100);
+  ctx.textAlign='right';_cardFitFont(ctx,an,'700',18,CARD_F.kr,CW/2-70,12);ctx.fillText(an,W-X,100);
+  var hw=AS.hs>AS.as,aw=AS.as>AS.hs;
+  ctx.font='700 56px '+CARD_F.mono;
+  ctx.textAlign='left';ctx.fillStyle=hw?CARD_C.ink:CARD_C.mute;ctx.fillText(String(AS.hs),X,160);
+  ctx.textAlign='right';ctx.fillStyle=aw?CARD_C.ink:CARD_C.mute;ctx.fillText(String(AS.as),W-X,160);
+  ctx.textAlign='center';ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
+  ctx.fillText(AS.hs===AS.as?'무승부':(hw?hn:an)+' 승',W/2,146);
+
+  // 팀 타격 (홈/원정)
+  var hs=_cardStats(AS.abs.filter(function(a){return (a.team||'home')==='home';}));
+  var as=_cardStats(AS.abs.filter(function(a){return a.team==='away';}));
+  var ty=196;
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,ty,CW,1);
+  var cols=[['H',function(s){return String(s.h);}],['AVG',function(s){return _cardFmt(s.avg);}],['OBP',function(s){return _cardFmt(s.obp);}],['OPS',function(s){return _cardFmt(s.ops);}]];
+  var c0=150,cw=(CW-(c0-X))/cols.length;
+  ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.textAlign='right';
+  cols.forEach(function(c,i){ctx.fillText(c[0],c0+cw*(i+1)-8,ty+26);});
+  [[hn,hs],[an,as]].forEach(function(r,ri){
+    var y=ty+56+ri*30;
+    ctx.textAlign='left';_cardFitFont(ctx,r[0],'700',15,CARD_F.kr,c0-X-8,11);ctx.fillStyle=CARD_C.ink;ctx.fillText(r[0],X,y);
+    ctx.font='600 16px '+CARD_F.mono;ctx.textAlign='right';ctx.fillStyle=r[1].pa?CARD_C.ink:CARD_C.mute;
+    cols.forEach(function(c,i){ctx.fillText(r[1].pa?c[1](r[1]):'-',c0+cw*(i+1)-8,y);});
+  });
+
+  // 오늘의 타자 (안타 → 루타 → 타점 순)
+  var py=ty+120;
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,py,CW,1);
+  ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';
+  ctx.fillText('오늘의 타자',X,py+28);
+  var players=_cardPlayers().map(function(p){
+    var st=_cardStats(AS.abs.filter(function(a){return String(a.bid)===String(p.id);}));
+    return {p:p,s:st};
+  }).filter(function(o){return o.s.h>0||o.s.rbi>0;})
+    .sort(function(a,b){return b.s.h-a.s.h||b.s.tb-a.s.tb||b.s.rbi-a.s.rbi;}).slice(0,4);
+  if(!players.length){
+    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
+    ctx.fillText('아직 안타 기록이 없어요',X,py+64);
   }
+  players.forEach(function(o,i){
+    var y=py+62+i*32,s=o.s;
+    var nm=(o.p.num!=null&&o.p.num!==''?'#'+o.p.num+' ':'')+o.p.name;
+    ctx.textAlign='left';_cardFitFont(ctx,nm,'700',16,CARD_F.kr,190,11);ctx.fillStyle=i===0?CARD_C.amber:CARD_C.ink;ctx.fillText(nm,X,y);
+    var line=s.ab+'타수 '+s.h+'안타'+(s.hr?' '+s.hr+'홈런':'')+(s.rbi?' '+s.rbi+'타점':'');
+    ctx.textAlign='right';_cardFitFont(ctx,line,'500',15,CARD_F.kr,CW-200,11);ctx.fillStyle=CARD_C.sub;ctx.fillText(line,W-X,y);
+  });
 
-  _drawCardWatermark(ctx,W,H);
+  _cardFooter(ctx,W,H);
 }
 
 /* ── 시즌 성적 카드 (저장된 전체 경기 집계) ─────── */
 function _drawSeasonCard(){
-  var cvs=document.getElementById('cardPreviewCanvas');
-  if(!cvs)return;
-  var W=540,H=960;
-  cvs.width=W;cvs.height=H;
-  cvs.style.width='100%';cvs.style.maxHeight='500px';cvs.style.objectFit='contain';
-  var ctx=cvs.getContext('2d');
-
-  // 배경
-  var bg=ctx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#04080f');bg.addColorStop(0.6,'#091428');bg.addColorStop(1,'#04080f');
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-
-  // 그리드 장식
-  ctx.strokeStyle='rgba(75,140,245,.04)';ctx.lineWidth=1;
-  for(var gi=0;gi<W;gi+=30){ctx.beginPath();ctx.moveTo(gi,0);ctx.lineTo(gi,H);ctx.stroke();}
+  var W=540,H=960,ctx=_cardCtx(W,H);
+  if(!ctx)return;
+  var X=32,CW=W-64;
+  _cardHeader(ctx,W);
 
   // 저장된 경기 데이터 집계
-  var myTeam=(document.getElementById('tHome')?document.getElementById('tHome').value:'') || '';
+  var myTeam=(document.getElementById('tHome')?document.getElementById('tHome').value:'')||'';
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
   var games=saves.map(function(s){
     try{return JSON.parse(localStorage.getItem(s.key)||'null');}catch(e){return null;}
   }).filter(Boolean);
-
   // 팀명이 있으면 해당 팀 경기만, 없으면 전체
   var myGames=myTeam
     ? games.filter(function(g){return (g.th||'').indexOf(myTeam)!==-1||(g.ta||'').indexOf(myTeam)!==-1;})
     : games;
 
-  var totalG=myGames.length;
-  var wins=0,losses=0,draws=0;
-  var allAbs=[],totalHR=0,totalRBI=0;
-  var hits_t=['안타','내야안타','2루타','3루타','홈런'];
-  var noab_t=['볼넷','사구','희타','희비'];
-
+  var totalG=myGames.length,wins=0,losses=0,draws=0,allAbs=[];
   myGames.forEach(function(g){
     var isHome=!myTeam||(g.th||'').indexOf(myTeam)!==-1;
     var myScore=isHome?Number(g.hs||0):Number(g.as||0);
     var opScore=isHome?Number(g.as||0):Number(g.hs||0);
     if(myScore>opScore)wins++;else if(myScore<opScore)losses++;else draws++;
-    var abs=g.abs||[];
-    allAbs=allAbs.concat(abs);
-    totalHR+=abs.filter(function(a){return a.res==='홈런';}).length;
-    totalRBI+=abs.reduce(function(s,a){return s+(a.rbi||0);},0);
+    allAbs=allAbs.concat(g.abs||[]);
   });
-
-  var ab=allAbs.filter(function(a){return !noab_t.includes(a.res);}).length||1;
-  var h=allAbs.filter(function(a){return hits_t.includes(a.res);}).length;
-  var bb=allAbs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
-  var tb=allAbs.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
-  var s1=allAbs.filter(function(a){return a.res==='안타'||a.res==='내야안타';}).length;
-  var s2=allAbs.filter(function(a){return a.res==='2루타';}).length;
-  var s3=allAbs.filter(function(a){return a.res==='3루타';}).length;
-  var pa=allAbs.length||1;
-  var avg=h/ab,obp=(h+bb)/pa,slg=tb/ab,ops=obp+slg;
+  var s=_cardStats(allAbs);
+  // wOBA — constants.js WOBA_W와 동일 가중치, 분모 AB+BB+HBP+SF
   var WOBA_W={bb:0.69,hbp:0.72,s1:0.89,s2:1.27,s3:1.62,hr:2.10};
-  var hbp=allAbs.filter(function(a){return a.res==='사구';}).length;
-  var woba=(WOBA_W.bb*bb+WOBA_W.hbp*hbp+WOBA_W.s1*s1+WOBA_W.s2*s2+WOBA_W.s3*s3+WOBA_W.hr*totalHR)/(pa||1);
-  var fmt=function(v){return '.'+Math.round(v*1000).toString().padStart(3,'0');};
-  var cx=W/2,pad=W*0.08;
+  var wD=s.ab+s.bb+s.hbp+s.sf;
+  var woba=wD?(WOBA_W.bb*s.bb+WOBA_W.hbp*s.hbp+WOBA_W.s1*s.s1+WOBA_W.s2*s.s2+WOBA_W.s3*s.s3+WOBA_W.hr*s.hr)/wD:0;
 
-  // 상단 헤더
-  var hdrH=130;
-  ctx.fillStyle='rgba(75,140,245,0.08)';ctx.fillRect(0,0,W,hdrH);
-  ctx.strokeStyle='rgba(75,140,245,0.2)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(0,hdrH);ctx.lineTo(W,hdrH);ctx.stroke();
-
-  ctx.font='bold 26px sans-serif';
-  ctx.textAlign='center';
-  ctx.fillStyle='#4b8cf5';ctx.fillText('SPRAY',cx-28,58);
-  ctx.fillStyle='#2dd4a0';ctx.fillText('LAB',cx+34,58);
-  ctx.font='bold 11px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.35)';
-  ctx.fillText('시즌 성적 리포트',cx,82);
-  ctx.font='11px sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.25)';
-  ctx.fillText(new Date().toLocaleDateString('ko-KR'),cx,104);
-  if(myTeam){
-    ctx.font='bold 14px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,0.6)';
-    ctx.fillText(myTeam,cx,122);
-  }
-
-  var y=hdrH+52;
-
-  // 경기수 / 승-무-패
-  ctx.textAlign='center';
-  ctx.font='bold 10px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.3)';
-  ctx.fillText('시즌 전적',cx,y);
-  y+=36;
-  var recordStr=(totalG>0)?(wins+'승 '+draws+'무 '+losses+'패'):('경기 없음');
-  ctx.font='bold 52px sans-serif';
-  ctx.fillStyle='#f6c23e';
-  ctx.fillText(recordStr,cx,y);
-  y+=16;
-  ctx.font='11px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.25)';
-  ctx.fillText('총 '+totalG+'경기',cx,y);
-
-  y+=44;
-  ctx.strokeStyle='rgba(246,194,62,0.2)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
-
-  // OPS 크게
-  y+=44;
-  ctx.font='bold 10px sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.textAlign='center';
-  ctx.fillText('OPS',cx,y);
-  y+=68;
-  var opsCol=ops>=0.9?'#f56565':ops>=0.75?'#2dd4a0':ops>=0.6?'#4b8cf5':'#94a3b8';
-  ctx.font='bold 88px sans-serif';
-  ctx.fillStyle=opsCol;
-  ctx.fillText(fmt(ops).replace('.',''),cx,y);
-  ctx.font='bold 20px sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.3)';
-  ctx.fillText('.',cx-58,y-44);
-
-  // AVG / OBP / SLG / wOBA 4열
-  y+=36;
-  var statRow=[{l:'AVG',v:fmt(avg),col:'#f6c23e'},{l:'OBP',v:fmt(obp),col:'#2dd4a0'},{l:'SLG',v:fmt(slg),col:'#4b8cf5'},{l:'wOBA',v:fmt(woba),col:'#a78bfa'}];
-  var cw4=(W-pad*2)/4;
-  statRow.forEach(function(s,i){
-    var sx=pad+cw4*i+cw4/2;
-    ctx.fillStyle='rgba(255,255,255,0.04)';
-    _roundRect(ctx,pad+cw4*i+4,y-4,cw4-8,70,8);ctx.fill();
-    ctx.font='bold 28px sans-serif';ctx.fillStyle=s.col;ctx.textAlign='center';
-    ctx.fillText(s.v,sx,y+30);
-    ctx.font='10px "Noto Sans KR",sans-serif';ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.fillText(s.l,sx,y+52);
-  });
-
-  y+=100;
-  ctx.strokeStyle='rgba(75,140,245,0.12)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
-
-  // HR / RBI / 안타 / 타석
-  y+=48;
-  var countRow=[{l:'홈런',v:totalHR,col:'#f56565'},{l:'타점',v:totalRBI,col:'#f6c23e'},{l:'안타',v:h,col:'#2dd4a0'},{l:'타석',v:pa,col:'#94a3b8'}];
-  countRow.forEach(function(s,i){
-    var sx=pad+cw4*i+cw4/2;
-    ctx.font='bold 36px sans-serif';ctx.fillStyle=s.col;ctx.textAlign='center';
-    ctx.fillText(s.v,sx,y);
-    ctx.font='10px "Noto Sans KR",sans-serif';ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.fillText(s.l,sx,y+20);
-  });
-
-  // 방향 분포 바
-  y+=68;
-  ctx.font='bold 10px "Noto Sans KR",sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.25)';ctx.textAlign='center';
-  ctx.fillText('타구 방향 분포',cx,y);
-  y+=14;
-  var dabs=allAbs.filter(function(a){return a.deg!=null;});
-  var tot=dabs.length||1;
-  var pull=dabs.filter(function(a){return _isPull(a);}).length;
-  var ctr=dabs.filter(function(a){return _isCtr(a);}).length;
-  var oppo=dabs.length-pull-ctr;
-  var bw=W-pad*2,bh2=14;
-  var pw=Math.round(bw*pull/tot),cw2=Math.round(bw*ctr/tot),ow=bw-pw-cw2;
-  ctx.fillStyle='#4b8cf5';_roundRect(ctx,pad,y,pw,bh2,4);ctx.fill();
-  ctx.fillStyle='#2dd4a0';_roundRect(ctx,pad+pw+2,y,cw2,bh2,4);ctx.fill();
-  ctx.fillStyle='#f6c23e';_roundRect(ctx,pad+pw+cw2+4,y,ow,bh2,4);ctx.fill();
-  y+=bh2+16;
-  ctx.font='10px "Noto Sans KR",sans-serif';ctx.fillStyle='rgba(255,255,255,0.35)';
-  ctx.textAlign='left';ctx.fillText('당겨 '+Math.round(pull/tot*100)+'%',pad,y);
-  ctx.textAlign='center';ctx.fillText('중앙 '+Math.round(ctr/tot*100)+'%',cx,y);
-  ctx.textAlign='right';ctx.fillText('밀어 '+Math.round(oppo/tot*100)+'%',W-pad,y);
+  // 타이틀
+  var title=myTeam||'전체 경기';
+  ctx.textAlign='left';_cardFitFont(ctx,title,'900',40,CARD_F.kr,CW,20);ctx.fillStyle=CARD_C.ink;ctx.fillText(title,X,124);
+  ctx.font='500 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+  ctx.fillText('시즌 기록 · '+totalG+'경기',X,152);
 
   if(totalG===0){
-    ctx.font='14px "Noto Sans KR",sans-serif';
-    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.textAlign='center';
-    ctx.fillText('저장된 경기가 없습니다',cx,H/2+40);
+    ctx.textAlign='center';ctx.font='700 18px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+    ctx.fillText('저장된 경기가 없어요',W/2,H/2);
+    ctx.font='400 14px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
+    ctx.fillText('경기를 저장하면 시즌 기록이 쌓여요',W/2,H/2+28);
+    _cardFooter(ctx,W,H);
+    return;
   }
 
-  _drawCardWatermark(ctx,W,H);
+  // 전적: 5승 1무 2패
+  var rec=[[wins,'승'],[draws,'무'],[losses,'패']],lx=X;
+  rec.forEach(function(r){
+    ctx.font='700 40px '+CARD_F.mono;ctx.fillStyle=r[1]==='승'?CARD_C.amber:CARD_C.ink;ctx.textAlign='left';
+    ctx.fillText(String(r[0]),lx,218);lx+=ctx.measureText(String(r[0])).width+3;
+    ctx.font='500 20px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+    ctx.fillText(r[1],lx,218);lx+=ctx.measureText(r[1]).width+16;
+  });
+  var wp=wins+losses?wins/(wins+losses):0;
+  ctx.textAlign='right';ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;ctx.fillText('승률',W-X,194);
+  ctx.font='700 22px '+CARD_F.mono;ctx.fillStyle=CARD_C.ink;ctx.fillText(wins+losses?_cardFmt(wp):'-',W-X,218);
+
+  // 지표 2줄
+  var grid=[
+    [['AVG',_cardFmt(s.avg)],['OBP',_cardFmt(s.obp)],['SLG',_cardFmt(s.slg)],['OPS',_cardFmt(s.ops)]],
+    [['wOBA',_cardFmt(woba)],['HR',String(s.hr)],['RBI',String(s.rbi)],['PA',String(s.pa)]]
+  ];
+  var gy=248,cw=CW/4;
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,gy,CW,1);
+  grid.forEach(function(row,ri){
+    row.forEach(function(c,i){
+      var x=X+cw*i,y=gy+30+ri*70;
+      ctx.textAlign='left';ctx.font='600 11px '+CARD_F.mono;ctx.fillStyle=CARD_C.mute;_cardSpacing(ctx,1.5);
+      ctx.fillText(c[0],x,y);_cardSpacing(ctx,0);
+      ctx.font='700 24px '+CARD_F.mono;ctx.fillStyle=c[0]==='OPS'||c[0]==='wOBA'?CARD_C.ink:CARD_C.sub;
+      ctx.fillText(s.pa?c[1]:'-',x,y+32);
+    });
+  });
+
+  // 시즌 스프레이 차트
+  var cy2=gy+170;
+  ctx.fillStyle=CARD_C.line;ctx.fillRect(X,cy2,CW,1);
+  ctx.textAlign='left';ctx.font='700 12px '+CARD_F.kr;ctx.fillStyle=CARD_C.mute;
+  ctx.fillText('시즌 타구 분포',X,cy2+30);
+  _cardField(ctx,W/2,778,236,allAbs,true);
+
+  // 범례 + 방향
+  var lg=[['안타','#2dd4a0'],['홈런','#f59e0b'],['아웃','#94a3b8']];
+  ctx.font='500 12px '+CARD_F.kr;
+  var gx=X;
+  lg.forEach(function(l){
+    ctx.beginPath();ctx.arc(gx+5,818,5,0,Math.PI*2);ctx.fillStyle=l[1];ctx.fill();
+    ctx.fillStyle=CARD_C.mute;ctx.textAlign='left';ctx.fillText(l[0],gx+16,822);
+    gx+=18+ctx.measureText(l[0]).width+14;
+  });
+  var dabs=allAbs.filter(function(a){return a.deg!=null;}),tot=dabs.length;
+  if(tot){
+    var pull=dabs.filter(_isPull).length,ctr=dabs.filter(_isCtr).length,oppo=tot-pull-ctr;
+    var dirTxt='당겨 '+Math.round(pull/tot*100)+'%  ·  센터 '+Math.round(ctr/tot*100)+'%  ·  밀어 '+Math.round(oppo/tot*100)+'%';
+    ctx.textAlign='right';ctx.font='500 13px '+CARD_F.kr;ctx.fillStyle=CARD_C.sub;
+    ctx.fillText(dirTxt,W-X,822);
+  }
+
+  _cardFooter(ctx,W,H);
 }
 
 function _roundRect(ctx,x,y,w,h,r){

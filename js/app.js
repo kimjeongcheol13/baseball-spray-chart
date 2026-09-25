@@ -11,6 +11,7 @@ import './features/perf.js?v=2';
 import './features/team.js?v=2';
 import './features/pitcher.js?v=1';
 import './features/batter.js?v=1';
+import './features/spray.js?v=1';
 import './features/shell.js?v=11';
 
 // ── Bottom Navigation ──

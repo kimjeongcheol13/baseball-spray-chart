@@ -12,7 +12,7 @@
 }
 
 /* #app-page 밖에 있는 셸 요소에도 앱 색상 토큰 적용 (styles.css #app-page 블록과 동일 값) */
-.ld,.sl-pop,#analysisView,#settingsView{
+.ld,.sl-pop,.overlay,#analysisView,#settingsView{
   --bg:#09090f;--bg-card:#111118;--bg-raised:#18181f;--bg-hover:#1e1e27;
   --accent:#ef4444;--accent-dim:rgba(239,68,68,.14);--accent-dim2:rgba(239,68,68,.06);
   --green:#2dd4a0;--red:#f56565;--yellow:#f6c23e;--orange:#fb923c;--purple:#a78bfa;

@@ -321,7 +321,7 @@ function _zoneCard(S) {
         <div class="sc-zone-side"><span>높음</span><span>중간</span><span>낮음</span></div>
         <div class="sc-zone-grid">${cells.map(c => {
           const a = view === 'count' ? c.n / maxN : c.n ? c.h / c.n : 0;
-          const bg = view === 'count' ? `rgba(75,140,245,${(0.12 + a * 0.78).toFixed(2)})` : c.n >= 3 ? `rgba(224,82,90,${(0.12 + a * 0.85).toFixed(2)})` : 'transparent';
+          const bg = view === 'count' ? `rgba(44,79,138,${(0.08 + a * 0.47).toFixed(2)})` : c.n >= 3 ? `rgba(200,50,43,${(0.08 + a * 0.47).toFixed(2)})` : 'transparent';   // 종이 팔레트 · 잉크 글자 대비 유지
           const main = view === 'count' ? (c.n ? `${Math.round(c.n / zoned.length * 100)}%` : '—') : c.n ? `${c.h}/${c.n}` : '—';
           const sub = view === 'count' ? (c.n ? `${c.n}구` : '') : c.n ? '피안타/투구' : '';
           return `<div class="sc-zc${c.n ? '' : ' thin'}" style="background:${bg}" title="${c.z}: ${c.n}구 · 피안타 ${c.h}"><b>${main}</b><small>${sub}</small></div>`;

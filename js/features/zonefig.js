@@ -13,7 +13,7 @@ export function zoneOf(a) {
 
 // 발산형 색: 약함(Signal Blue) → 회색 → 강함(Hit Red). 기준 = 이 타자의 전체 타율 (스카우트 탭과 같은 계산)
 function _color(avg, base) {
-  const lo = [75, 140, 245], mid = [58, 66, 82], hi = [224, 82, 90];
+  const lo = [137, 155, 183], mid = [251, 247, 238], hi = [223, 139, 131];   // 종이 팔레트 (펜 파랑 · 종이 · 펜 빨강)
   const t = Math.max(-1, Math.min(1, (avg - base) / Math.max(0.15, base)));
   const to = t < 0 ? lo : hi;
   return `rgb(${mid.map((m, i) => Math.round(m + (to[i] - m) * Math.abs(t))).join(',')})`;

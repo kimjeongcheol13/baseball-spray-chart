@@ -98,7 +98,12 @@ function tok(force) {
 const _unit = S => S / 575;
 function paperDrawField() {
   if (typeof fCtx === 'undefined' || !fCtx || typeof FS === 'undefined' || FS <= 0) return;
-  const T = tok(true), ctx = fCtx, S = FS, u = _unit(S);
+  paintField(fCtx, FS, tok(true));
+}
+// 필드 한 장 그리기 (기록 탭 캔버스 · 분석 탭 방향도 · 이미지 저장 공용) — S = 정사각 한 변(px)
+function paintField(ctx, S, T) {
+  T = T || tok();
+  const u = _unit(S);
   const g = _fieldGeo(S), st = g.st, Q = _FQ, m = g.m, cx = g.cx, cy = g.cy;
   const P = (phi, r) => _conePt(g, phi, r), F = phi => _fenceR(g, phi);
   const fenceAt = (off, rev) => {
@@ -236,6 +241,8 @@ function paperMiniSpray(canvas, abs) {
   if (!canvas) return;
   const w = canvas.clientWidth || 300, h = canvas.clientHeight || 130, dpr = Math.min(window.devicePixelRatio || 1, 3);
   canvas.width = w * dpr; canvas.height = h * dpr;
+  // 크기를 CSS로 안 준 캔버스(리포트 #pgMini)는 화면 크기를 고정 (안 그러면 2배 크기로 늘어나 잘려 보임)
+  if (!canvas.style.width) { canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; }
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
@@ -455,6 +462,9 @@ function _mountShell() {
     const v = $(id);
     if (v && !v.querySelector('.sb-vhdr')) v.insertAdjacentHTML('afterbegin', `<header class="sb-hdr sb-vhdr">${_brand(sub)}<div class="sb-hdr-mid"></div></header>`);
   });
+  // 경기 리포트 오버레이: #app-page 안에 있어서 분석·경기설정 탭에서 열면 숨은 부모 때문에 보이지 않았다 → body로 옮김
+  ['pgFade', 'pgReport'].forEach(id => { const el = $(id); if (el && el.parentElement !== document.body) document.body.appendChild(el); });
+  _stripEmojiIn($('pgReport'));
   // 하단 바인더 탭: 오른쪽 끝 태그라인
   const nav = $('savantNav');
   if (nav && !nav.querySelector('.sb-tagline')) nav.insertAdjacentHTML('beforeend', '<span class="sb-tagline" aria-hidden="true">YOUR SWING, VISUALIZED</span>');
@@ -504,6 +514,24 @@ function _hook() {
   window.drawDot = paperDot;
   window._drawMiniSpray = paperMiniSpray;
 
+  // 리포트 내용(core _pgBuild)을 그린 뒤 이모지 제거
+  const pg = window._pgBuild;
+  if (typeof pg === 'function' && !pg._sb) {
+    const w = function () {
+      const r = pg.apply(this, arguments);
+      _stripEmojiIn($('pgReport'));
+      return r;
+    };
+    w._sb = true;
+    window._pgBuild = w;
+  }
+  // 리포트 화면의 작은 스프레이(#pgMini)만 종이 필드로 (이미지 내보내기용 _pgDrawMiniOnCanvas는 그대로)
+  const pm = window._pgDrawMini;
+  if (typeof pm === 'function' && !pm._sb) {
+    const w = function (id) { if (id === 'pgMini' && $(id)) return paperMiniSpray($(id), (window.AS || {}).abs || []); return pm.apply(this, arguments); };
+    w._sb = true;
+    window._pgDrawMini = w;
+  }
   // 기록 직후 필드를 2.5초 접고 미니 스프레이를 띄우던 효과(데스크톱): 새 배치에선 필드 카드가 비어 보여서 끔
   // (모바일은 record.js가 이미 끔) — 방금 기록은 필드의 형광펜 링과 오른쪽 타석 기록에서 바로 보인다
   const mini = window._showMiniSprayAfterRecord;
@@ -571,6 +599,14 @@ function _hook() {
   ['scH', 'scA'].forEach(id => { const el = $(id); if (el && window.MutationObserver) new MutationObserver(schedule).observe(el, { childList: true, characterData: true, subtree: true }); });
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('sb-order-open')) sbOrderSheet(false); });
+
+  // 분석 탭: 서브탭들이 그린 문구의 이모지(⚠ · 🔍 등)도 화면에서만 걸러냄 (새 노드가 붙을 때만 → 글자 수정은 다시 감지 안 됨)
+  const ana = $('analysisView');
+  if (ana && window.MutationObserver) {
+    let q = 0;
+    new MutationObserver(() => { if (!q) q = requestAnimationFrame(() => { q = 0; _stripEmojiIn(ana); }); }).observe(ana, { childList: true, subtree: true });
+    _stripEmojiIn(ana);
+  }
 }
 
 function _redraw() {
@@ -589,6 +625,8 @@ function _init() {
 }
 
 if (typeof window !== 'undefined') {
+  // 분석 탭(dashboard.js)이 같은 필드·기호로 그리도록
+  window.sbPaint = { field: paintField, mark: drawMark, tok, kindOf, abbrOf, markSvg };
   window.sbPickBatter = sbPickBatter;
   window.sbTeam = sbTeam;
   window.sbOrderSheet = sbOrderSheet;

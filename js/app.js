@@ -1,21 +1,22 @@
 // Amateur Baseball Savant — Entry Point
 // Imports new feature modules and initializes the Savant navigation
 
-import './features/profile.js?v=9';
+import './features/profile.js?v=10';
 import './features/compare.js?v=5';
-import './features/scouting.js?v=5';
+import './features/scouting.js?v=6';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
 import './features/insights.js';
 import './features/perf.js?v=2';
 import './features/team.js?v=2';
-import './features/pitcher.js?v=3';
+import './features/pitcher.js?v=4';
 import './features/batter.js?v=3';
 import './features/spray.js?v=1';
 import './features/shell.js?v=13';
 import './features/record.js?v=3';
 import './features/settings.js?v=1';
-import './features/scorebook.js?v=1';
+import './features/scorebook.js?v=5';
+import './features/dashboard.js?v=2';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

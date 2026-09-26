@@ -1,7 +1,7 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=5';
-import { buildColumn, columnText } from './column.js?v=1';
+import { buildColumn, columnText, renderColumnFigure } from './column.js?v=2';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -164,7 +164,7 @@ function _columnCard(col) {
         <p class="sc-col-sub">${_esc(col.sub)}</p>
         <div class="sc-col-meta">${_esc(col.meta)}</div>
       </header>
-      ${col.sections.map(s => `${s.h ? `<h4>${_esc(s.h)}</h4>` : ''}${s.paras.map(p => `<p>${_esc(p)}</p>`).join('')}`).join('')}
+      ${col.sections.map(s => `${s.h ? `<h4>${_esc(s.h)}</h4>` : ''}${s.paras.map(p => `<p>${_esc(p)}</p>`).join('')}${s.figs && s.figs.length ? `<div class="sc-col-figs${s.figs.length > 1 ? ' two' : ''}">${s.figs.map(renderColumnFigure).join('')}</div>` : ''}`).join('')}
       <footer class="sc-col-ft">
         ${col.notes.map(n => `<small>${_esc(n)}</small>`).join('')}
         <div class="sc-col-brand">SprayLab · YOUR SWING, VISUALIZED</div>

@@ -77,7 +77,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=5">
+<link rel="stylesheet" href="css/paper.css?v=6">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -803,7 +803,7 @@ var _kakaoSdkLoaded = false;
       <button class="btn btn-ghost" onclick="toggleMoreMenu()" id="moreMenuBtn" style="padding:4px 12px" title="메뉴" aria-label="메뉴" aria-haspopup="true" aria-expanded="false">메뉴</button>
       <div class="more-menu" id="moreMenu">
         <button class="mm-item" onclick="openLoad();closeMoreMenu()">📂 불러오기</button>
-        <button class="mm-item" id="toolbarUndoBtn" onclick="undoLast();closeMoreMenu()" title="직전 타구 취소 (Ctrl+Z)" disabled>↶ 실행 취소</button>
+        <button class="mm-item" id="toolbarUndoBtn" onclick="undoLast();closeMoreMenu()" title="직전 타구 취소 (Ctrl+Z)" disabled>실행 취소</button>
         <button class="mm-item" onclick="exportCurrentGameToExcel();closeMoreMenu()">📥 엑셀 내보내기</button>
         <button class="mm-item" onclick="shareGameLink();closeMoreMenu()" data-help-title="🔗 공유" data-help="경기 데이터를 <b>QR코드와 링크</b>로 공유합니다.">🔗 공유</button>
         <button class="mm-item" onclick="showPostGameReport();closeMoreMenu()">📊 리포트</button>
@@ -2071,7 +2071,7 @@ var _kakaoSdkLoaded = false;
     <button type="button" class="slm-item" onclick="fieldFeedbackOpen()">💬 피드백</button>
   </div>
   <div class="slm-sec">
-    <button type="button" class="slm-item" onclick="goLanding()">← 처음 화면으로 <small>기록은 그대로 유지</small></button>
+    <button type="button" class="slm-item" onclick="goLanding()">처음 화면으로 <small>기록은 그대로 유지</small></button>
   </div>
 </div>
 

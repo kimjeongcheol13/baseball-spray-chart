@@ -1,6 +1,7 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=5';
+import { buildColumn, columnText } from './column.js?v=1';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -16,6 +17,7 @@ let _sel = null;
 let _zoneMode = 'avg';   // 코스 칸 표시: avg | pa
 let _data = null;
 let _reportText = '';
+let _col = null;         // 만들어 둔 칼럼 { name, col } — 다른 타자를 고르면 비운다
 
 const SHORT = {
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
@@ -91,6 +93,88 @@ export function exportScoutPDF() {
   b.classList.add('sc-printing');
   window.addEventListener('afterprint', off);
   window.print();
+}
+
+// ── 칼럼 (column.js) ─────────────────────────────────────────
+function _colEvent(action, extra) {
+  try { if (typeof window.gtag === 'function') window.gtag('event', 'scout_column', { action, ...(extra || {}) }); } catch (e) {}
+}
+
+export function makeScoutColumn() {
+  if (!_data || !_sel) return;
+  const P = playerData(_data, _sel);
+  if (!P.st.pa) return;
+  _col = { name: _sel, col: buildColumn(P, _data) };
+  const wrap = document.getElementById('scoutColumnWrap');
+  if (!wrap) return;
+  wrap.innerHTML = _columnCard(_col.col);
+  if (wrap.scrollIntoView) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  _colEvent('make', { pa: P.st.pa });
+}
+
+export function closeScoutColumn() {
+  _col = null;
+  const wrap = document.getElementById('scoutColumnWrap');
+  if (wrap) wrap.innerHTML = '';
+}
+
+export function copyScoutColumn() {
+  if (!_col) return;
+  const text = columnText(_col.col);
+  const done = () => {
+    const btn = document.getElementById('scoutColCopyBtn');
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '복사 완료!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  };
+  _colEvent('copy');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => window.showToast && window.showToast('복사하지 못했어요'));
+    return;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  done();
+}
+
+// 인쇄: 칼럼만 (흰 종이 · 검은 글씨)
+export function exportScoutColumnPDF() {
+  if (!_col) return;
+  const b = document.body;
+  const off = () => { b.classList.remove('sc-printing', 'sc-col-print'); window.removeEventListener('afterprint', off); };
+  b.classList.add('sc-printing', 'sc-col-print');
+  window.addEventListener('afterprint', off);
+  _colEvent('pdf');
+  window.print();
+}
+
+function _columnCard(col) {
+  return `
+    <article class="sc-col" id="scoutColumn" aria-label="${_esc(col.title)}">
+      <header class="sc-col-hd">
+        <div class="sc-eyebrow">SPRAYLAB COLUMN · 기록으로 자동 작성</div>
+        <h3 class="sc-col-title">${_esc(col.title)}</h3>
+        <p class="sc-col-sub">${_esc(col.sub)}</p>
+        <div class="sc-col-meta">${_esc(col.meta)}</div>
+      </header>
+      ${col.sections.map(s => `${s.h ? `<h4>${_esc(s.h)}</h4>` : ''}${s.paras.map(p => `<p>${_esc(p)}</p>`).join('')}`).join('')}
+      <footer class="sc-col-ft">
+        ${col.notes.map(n => `<small>${_esc(n)}</small>`).join('')}
+        <div class="sc-col-brand">SprayLab · YOUR SWING, VISUALIZED</div>
+      </footer>
+      <div class="sc-col-actions">
+        <button type="button" id="scoutColCopyBtn" class="sc-act" onclick="copyScoutColumn()">칼럼 복사</button>
+        <button type="button" class="sc-act" onclick="exportScoutColumnPDF()">칼럼만 인쇄 · PDF</button>
+        <button type="button" class="sc-act sc-act-ghost" onclick="closeScoutColumn()">닫기</button>
+      </div>
+    </article>`;
 }
 
 // ── 분석 ─────────────────────────────────────────────────────
@@ -212,6 +296,7 @@ function _render() {
   const A = _analyze(P, pool);
   const plan = _plan(P, A, pool);
   _reportText = _textReport(P, A, plan);
+  if (_col && _col.name !== _sel) _col = null;
 
   el.innerHTML = `
     ${_hero(P, A)}
@@ -233,7 +318,9 @@ function _render() {
     </section>
     ${_recentCard(P)}
     ${_pitchLogCard(P)}
+    <div id="scoutColumnWrap">${_col ? _columnCard(_col.col) : ''}</div>
     <div class="sc-actions">
+      <button type="button" class="sc-act sc-act-col" onclick="makeScoutColumn()">칼럼 만들기</button>
       <button type="button" id="scoutExportBtn" class="sc-act" onclick="exportScoutReport()">리포트 텍스트 복사</button>
       <button type="button" class="sc-act" onclick="exportScoutPDF()">인쇄 · PDF 저장</button>
     </div>
@@ -477,4 +564,8 @@ if (typeof window !== 'undefined') {
   window.setScoutZoneMode = setScoutZoneMode;
   window.exportScoutReport = exportScoutReport;
   window.exportScoutPDF = exportScoutPDF;
+  window.makeScoutColumn = makeScoutColumn;
+  window.closeScoutColumn = closeScoutColumn;
+  window.copyScoutColumn = copyScoutColumn;
+  window.exportScoutColumnPDF = exportScoutColumnPDF;
 }

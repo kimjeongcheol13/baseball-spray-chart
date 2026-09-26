@@ -230,6 +230,29 @@
   cursor: pointer;
 }
 @media (hover: hover) { .sc-act:hover { border-color: var(--an-ink3); } }
+.sc-act-col { grid-column: 1 / -1; border-color: var(--an-accent); background: var(--an-accent-soft); }
+.sc-act-ghost { color: var(--an-ink2); }
+
+/* ── 칼럼 (column.js) — 읽는 글이라 카드보다 종이에 가깝게 ── */
+.sc-col {
+  padding: 18px 16px 14px;
+  border: 1px solid var(--an-line);
+  border-radius: 14px;
+  background: var(--an-card);
+  color: var(--an-ink);
+}
+.sc-col-hd { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--an-line); }
+.sc-col-title { margin-top: 4px; font-size: 20px; font-weight: 900; letter-spacing: -.4px; line-height: 1.25; color: var(--an-ink); }
+.sc-col-sub { margin-top: 4px; font-size: 14px; font-weight: 700; line-height: 1.4; color: var(--an-accent); }
+.sc-col-meta { margin-top: 6px; font: 600 11px var(--mono); color: var(--an-ink3); }
+.sc-col h4 { margin: 18px 0 6px; font-size: 14px; font-weight: 800; letter-spacing: -.2px; color: var(--an-ink); }
+.sc-col p { margin: 0 0 10px; font-size: 14px; line-height: 1.8; color: var(--an-ink); word-break: keep-all; overflow-wrap: anywhere; }
+.sc-col-ft { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--an-line); }
+.sc-col-ft small { display: block; margin-bottom: 6px; font-size: 11px; line-height: 1.55; color: var(--an-ink2); word-break: keep-all; }
+.sc-col-brand { margin-top: 8px; font: 700 10px var(--mono); letter-spacing: 1.5px; color: var(--an-ink3); }
+.sc-col-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.sc-col-actions .sc-act-ghost { grid-column: 1 / -1; }
+#scoutColumnWrap { scroll-margin-top: 72px; }   /* 칼럼으로 스크롤할 때 위 서브탭 줄(고정)에 제목이 가리지 않게 */
 
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {
@@ -242,16 +265,37 @@
   .sc-counts { grid-template-columns: repeat(4, 1fr); }
   .sc-spray { grid-template-columns: 1.1fr 1fr; align-items: center; }
   .sc-actions { max-width: 480px; margin: 0 auto; width: 100%; }
+  .sc-col { max-width: 720px; margin: 0 auto; width: 100%; padding: 28px 32px 20px; }
+  .sc-col-title { font-size: 26px; }
+  .sc-col-sub { font-size: 16px; }
+  .sc-col h4 { font-size: 15px; }
+  .sc-col p { font-size: 15px; }
+  .sc-col-actions { grid-template-columns: 1fr 1fr auto; }
+  .sc-col-actions .sc-act-ghost { grid-column: auto; padding: 0 18px; }
 }
 
 /* ── 인쇄 (리포트만) ── */
 @media print {
   body.sc-printing * { visibility: hidden !important; }
   body.sc-printing #scoutView, body.sc-printing #scoutView * { visibility: visible !important; }
-  body.sc-printing #scoutView { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+  /* 분석 탭 셸(#analysisView)이 fixed + 스크롤 컨테이너라 그대로 인쇄하면 페이지가 반복되고 스크롤된 만큼 위가 잘린다 → 인쇄 중엔 문서 흐름으로 */
+  body.sc-printing, body.sc-printing #analysisView.savant-view { position: static !important; overflow: visible !important; height: auto !important; max-height: none !important; }
+  body.sc-printing > :not(#analysisView), body.sc-printing #analysisView > :not(#anaBody), body.sc-printing #anaBody > :not(#anaSecScout) { display: none !important; }
+  body.sc-printing #scoutView { position: static; width: 100%; padding: 0; }
   body.sc-printing .sc-actions, body.sc-printing .an-pick, body.sc-printing .mobile-info-banner { display: none !important; }
   body.sc-printing .an-card, body.sc-printing .sc-hero { break-inside: avoid; }
   body.sc-printing { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.sc-printing .sc-col-actions { display: none !important; }
+  /* 칼럼만 인쇄: 나머지 카드는 접고, 흰 종이·검은 글씨로 */
+  body.sc-col-print #scoutView > :not(#scoutContent), body.sc-col-print #scoutContent > :not(#scoutColumnWrap) { display: none !important; }
+  body.sc-col-print, body.sc-col-print #app-page, body.sc-col-print #scoutView, body.sb.sc-col-print #analysisView.savant-view { background: #fff !important; }
+  body.sc-col-print .sc-col { max-width: none; padding: 0; border: 0; border-radius: 0; background: #fff; color: #111; }
+  body.sc-col-print .sc-col-title, body.sc-col-print .sc-col h4, body.sc-col-print .sc-col p { color: #111; }
+  body.sc-col-print .sc-col-sub { color: #1f3f7a; }
+  body.sc-col-print .sc-col-hd, body.sc-col-print .sc-col-ft { border-color: #111; }
+  body.sc-col-print .sc-col-meta, body.sc-col-print .sc-col-ft small, body.sc-col-print .sc-col-brand, body.sc-col-print .sc-col .sc-eyebrow { color: #444; }
+  body.sc-col-print .sc-col h4 { break-after: avoid; }
+  body.sc-col-print .sc-col p { orphans: 3; widows: 3; }
 }
 
 /* ── 모바일 터치 타겟 44×44px 이상 ── */

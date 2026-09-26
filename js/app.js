@@ -3,7 +3,7 @@
 
 import './features/profile.js?v=11';
 import './features/compare.js?v=6';
-import './features/scouting.js?v=7';
+import './features/scouting.js?v=8';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
 import './features/insights.js?v=1';

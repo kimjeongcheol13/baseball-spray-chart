@@ -328,14 +328,34 @@ function _stadHtml() {
     <p class="st-note">거리를 바꾸면 '직접 입력'으로 저장되고, 기록 탭 필드 펜스와 타구 추정 비거리에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.</p>`;
 }
 
+// 그 밖의 기능: 버튼마다 붙이는 선 아이콘 (24×24, stroke)
+const MORE_ICON = {
+  newGame: '<path d="M12 5v14M5 12h14"/>',
+  save: '<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>',
+  report: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  recent: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  lastLu: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5M9 11h6M9 15h4"/>',
+  photo: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M21 20c0-2.6-1.6-4.9-4-5.7"/>',
+  share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4"/>',
+  spray: '<path d="M12 20L3.5 11.5a12 12 0 0 1 17 0z"/><circle cx="9" cy="10.5" r=".9" fill="currentColor"/><circle cx="13.5" cy="8.5" r=".9" fill="currentColor"/><circle cx="15" cy="12.5" r=".9" fill="currentColor"/>',
+  card: '<rect x="3" y="4" width="18" height="16"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-10 10"/>',
+  excel: '<rect x="3" y="4" width="18" height="16"/><path d="M3 10h18M3 15h18M10 4v16"/>',
+  data: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',
+  feedback: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  home: '<path d="M3 11l9-7 9 7M5 9.5V20h14V9.5M10 20v-5h4v5"/>',
+};
+
 function _moreHtml() {
-  const b = (fn, t, s) => `<button type="button" class="st-more-b" onclick="${fn}"><b>${t}</b><small>${s}</small></button>`;
+  const ico = k => `<i class="st-more-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">${MORE_ICON[k]}</svg></i>`;
+  const b = (fn, t, s, k) => `<button type="button" class="st-more-b" onclick="${fn}">${ico(k)}<span class="st-more-t"><b>${t}</b><small>${s}</small></span></button>`;
   return `<header class="sb-card-hd"><h2>그 밖의 기능</h2></header>
     <div class="st-more">
-      <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제')}</div>
-      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유')}</div>
-      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체')}</div>
-      <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기')}${b('showHelpMenu()', '사용 방법', '기능 안내')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지')}</div>
+      <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로', 'newGame')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드', 'save')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약', 'report')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제', 'recent')}</div>
+      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유', 'team')}</div>
+      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지', 'spray')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용', 'card')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel')}</div>
+      <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기', 'data')}${b('showHelpMenu()', '사용 방법', '기능 안내', 'help')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안', 'feedback')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지', 'home')}</div>
     </div>`;
 }
 

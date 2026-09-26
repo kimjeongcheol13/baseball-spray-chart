@@ -3,7 +3,7 @@
 // 규칙: 표본 기준(MIN_ZONE_AB · MIN_SPLIT)에 못 미치는 코스·구종·카운트는 문장에 넣지 않는다.
 //       기록으로 확인되지 않는 해석은 쓰지 않고, 추정은 마지막 주석에 추정이라고 밝힌다.
 import { HITS, NOAB, ZONES_9 } from '../constants.js';
-import { calcStats, f3, pct, josa as _josaPick } from './batdata.js?v=5';
+import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=5';
 
 const MIN_ZONE_AB = 3;   // 코스·구종 판단 최소 타수 (scouting.js 와 동일)
 const MIN_SPLIT = 5;     // 카운트 판단 최소 타석 (scouting.js 와 동일)
@@ -67,6 +67,7 @@ function _facts(P, data) {
     st, pool, zones, pts,
     two: calcStats(twoAbs), twoK: kBy(twoAbs),
     ahead: calcStats(cnt.filter(a => a.count.s > a.count.b)),
+    even: calcStats(cnt.filter(a => a.count.s === a.count.b)),
     behind: calcStats(cnt.filter(a => a.count.b > a.count.s)),
     go: abs.filter(a => a.res === '땅볼 아웃' || a.res === '병살').length,
     fo: abs.filter(a => a.res === '플라이 아웃' || a.res === '희비').length,
@@ -206,6 +207,36 @@ export function buildColumn(P, data) {
     ],
   );
 
+  // ── 그림 — 그 얘기를 하는 섹션 뒤에 붙인다 (표본 기준·색 규칙은 문장과 동일) ──
+  const has = h => sections.find(x => (h ? x.h.startsWith(h) : x.h === ''));
+  const attach = (prefs, fig) => {
+    if (!fig) return;
+    const target = prefs.map(has).find(Boolean);
+    if (target) (target.figs = target.figs || []).push(fig);
+  };
+  if (st.dn >= 6) attach(['강점', ''], { kind: 'spray', P });
+  if (zq.length) attach([C ? '약점' : H ? '강점' : '', '약점', '강점', ''], {
+    kind: 'zone', base: st.avg, zoned: F.zoned, pa: st.pa,
+    cells: F.zones.map(z => ({ adj: z.adj, label: z.label, avg: z.avg, ab: z.ab, h: z.h, pa: z.pa, ok: z.ab >= MIN_ZONE_AB })),
+  });
+  if (F.pts.some(p => p.ab)) attach([killer ? '약점' : danger ? '강점' : '', '약점', '강점', ''], {
+    kind: 'pitch', base: st.avg, pted: F.pted, pa: st.pa,
+    rows: F.pts.filter(p => p.ab).slice().sort((a, b) => b.pa - a.pa).map(p => ({
+      pt: p.pt, avg: p.avg, ab: p.ab, h: p.h, k: p.k, pa: p.pa, ok: p.ab >= MIN_ZONE_AB,
+      role: killer && p.pt === killer.pt ? 'attack' : danger && p.pt === danger.pt ? 'avoid' : '',
+    })),
+  });
+  attach(['카운트'], {
+    kind: 'count',
+    rows: [['투수 유리', '스트라이크 > 볼', F.ahead], ['이븐', '볼 = 스트라이크', F.even], ['타자 유리', '볼 > 스트라이크', F.behind], ['2스트라이크', '스트라이크 2개', F.two]]
+      .map(([l, d, c]) => ({ l, d, pa: c.pa, ab: c.ab, avg: c.avg, obp: c.obp, kRate: c.kRate, ok: c.pa >= MIN_SPLIT })),
+  });
+  if ((P.trend || []).length >= 4) attach(['전망'], {
+    kind: 'trend', base: pool.avg, lastN: F.lastN,
+    pts: P.trend.map((t, i) => ({ i: i + 1, avg: t.avg, pa: t.pa, label: t.label })),
+    recentFrom: Math.max(0, P.trend.length - RECENT_GAMES),
+  });
+
   const notes = [
     `※ 이 리포트는 SprayLab에 기록된 ${P.games}경기 ${st.pa}타석을 바탕으로 자동 작성했다. 코스는 ${F.zoned}타석, 구종은 ${F.pted}타석, 타구 방향은 ${st.dn}타석만 기록돼 있고, ${MIN_ZONE_AB}타수가 안 되는 코스와 구종, ${MIN_SPLIT}타석이 안 되는 카운트는 판단에서 뺐다.${guessed ? ' 상대 팀이 약점을 알아챘다는 부분은 기록으로 확인한 사실이 아니라 추정이다.' : ''} 아마추어 기록 특성상 표본이 작아, 경향을 보여줄 뿐 확정은 아니다.`,
   ];
@@ -225,9 +256,131 @@ export function columnText(col) {
   col.sections.forEach(s => {
     if (s.h) L.push(`[${s.h}]`);
     s.paras.forEach(p => L.push(p));
+    (s.figs || []).filter(f => f.kind === 'count').forEach(f => {
+      L.push('(표) 카운트별 결과 — 구분 / 타석 / 타율 / 출루율 / 삼진%');
+      f.rows.forEach(r => L.push(`${r.l}: ${r.pa} / ${r.ab ? f3(r.avg) : '—'} / ${r.pa ? f3(r.obp) : '—'} / ${r.pa ? pct(r.kRate) : '—'}${r.ok ? '' : ' (표본 부족)'}`));
+    });
     L.push('');
   });
   col.notes.forEach(n => L.push(n));
   L.push('', 'SprayLab · YOUR SWING, VISUALIZED');
   return L.join('\n');
+}
+
+// ── 그림 그리기 (SVG · 표) ────────────────────────────────────
+// 색: 공략 = 펜 파랑, 위험 = 펜 빨강, 그 외 = 회색 — 종이 팔레트 (paper.css) 와 같은 값. 글자는 항상 잉크색.
+const C_ATK = '#2C4F8A', C_AVD = '#C8322B', C_MUTE = '#8F887B', C_SURF = '#FBF7EE', C_INK = '#1F2A23', C_INK2 = '#55605A', C_LINE = '#D9D2C2';
+const _e = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// 발산형 색: 이 타자 통산 타율(base) 기준으로 약하면 파랑, 강하면 빨강, 가운데는 중립 회색 (scouting.js 코스 카드와 같은 규칙)
+function _diverge(avg, base) {
+  const lo = [44, 79, 138], hi = [200, 50, 43], mid = [233, 228, 216];
+  const span = Math.max(0.15, base);
+  const t = Math.max(-1, Math.min(1, (avg - base) / span));
+  const to = t < 0 ? lo : hi;
+  const c = mid.map((m, i) => Math.round(m + (to[i] - m) * Math.abs(t)));
+  return { fill: `rgb(${c.join(',')})`, ink: Math.abs(t) >= 0.8 ? '#FFFFFF' : C_INK };
+}
+
+const _fig = (kind, body, cap) => `<figure class="sc-col-fig sc-fig-${kind}">${body}<figcaption>${cap}</figcaption></figure>`;
+
+function _zoneSvg(f) {
+  const cell = 80, gap = 2, left = 40, top = 20;
+  const W = left + cell * 3 + gap * 2, H = top + cell * 3 + gap * 2;
+  const cols = ['몸쪽', '가운데', '바깥쪽'], rows = ['높음', '중간', '낮음'];
+  let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="코스별 타율 3×3">`;
+  cols.forEach((c, i) => { out += `<text x="${left + cell * i + gap * i + cell / 2}" y="13" text-anchor="middle" class="t-lbl">${c}</text>`; });
+  rows.forEach((r, i) => { out += `<text x="${left - 6}" y="${top + cell * i + gap * i + cell / 2 + 4}" text-anchor="end" class="t-lbl">${r}</text>`; });
+  f.cells.forEach((z, i) => {
+    const x = left + (i % 3) * (cell + gap), y = top + Math.floor(i / 3) * (cell + gap);
+    const tip = `<title>${_e(z.label)}: ${z.pa}타석 · 타율 ${z.ab ? f3(z.avg) : '—'} (${z.h}/${z.ab})</title>`;
+    if (!z.ok) {
+      out += `<g>${tip}<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="#F1EDE3"/>` +
+        `<text x="${x + cell / 2}" y="${y + cell / 2 + 4}" text-anchor="middle" class="t-sub">${z.pa ? `${z.pa}타석` : '—'}</text></g>`;
+      return;
+    }
+    const c = _diverge(z.avg, f.base);
+    out += `<g>${tip}<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${c.fill}"/>` +
+      `<text x="${x + cell / 2}" y="${y + cell / 2 + 1}" text-anchor="middle" class="t-num" style="fill:${c.ink}">${f3(z.avg)}</text>` +
+      `<text x="${x + cell / 2}" y="${y + cell / 2 + 18}" text-anchor="middle" class="t-sub" style="fill:${c.ink};opacity:.85">${z.h}/${z.ab}</text></g>`;
+  });
+  out += '</svg>';
+  return _fig('zone', out, `<b>코스별 타율</b> · 몸쪽 → 바깥쪽 순 · 파랑 = 이 타자 통산 타율(${f3(f.base)})보다 약한 코스(공략), 빨강 = 강한 코스(위험) · 회색 = ${MIN_ZONE_AB}타수 미만 · 코스 기록 ${f.zoned}/${f.pa}타석`);
+}
+
+function _pitchSvg(f) {
+  const rowH = 30, top = 20, x0 = 78, maxW = 150, barH = 18, W = 320;
+  const H = top + f.rows.length * rowH + 6;
+  const scale = Math.max(0.5, ...f.rows.map(r => r.avg));
+  const xOf = v => x0 + (v / scale) * maxW;
+  let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="구종별 타율 막대">`;
+  const bx = xOf(f.base);
+  out += `<line x1="${bx}" y1="${top - 4}" x2="${bx}" y2="${H - 4}" stroke="${C_LINE}" stroke-width="1"/>` +
+    `<text x="${bx}" y="${top - 8}" text-anchor="middle" class="t-sub">통산 ${f3(f.base)}</text>` +
+    `<line x1="${x0}" y1="${top - 2}" x2="${x0}" y2="${H - 4}" stroke="${C_LINE}" stroke-width="1"/>`;
+  f.rows.forEach((r, i) => {
+    const y = top + i * rowH + (rowH - barH) / 2;
+    const w = Math.max(0, xOf(r.avg) - x0);
+    const col = r.role === 'attack' ? C_ATK : r.role === 'avoid' ? C_AVD : C_MUTE;
+    const rr = Math.min(4, w);
+    const path = w > 0 ? `M${x0} ${y}h${w - rr}a${rr} ${rr} 0 0 1 ${rr} ${rr}v${barH - rr * 2}a${rr} ${rr} 0 0 1 -${rr} ${rr}h-${w - rr}z` : '';
+    const tip = `<title>${_e(r.pt)}: ${r.pa}타석 · 타율 ${f3(r.avg)} (${r.h}/${r.ab})${r.k ? ` · 삼진 ${r.k}` : ''}</title>`;
+    out += `<g${r.ok ? '' : ' opacity=".45"'}>${tip}` +
+      `<text x="${x0 - 8}" y="${y + barH / 2 + 4}" text-anchor="end" class="t-lbl">${_e(r.pt)}</text>` +
+      (path ? `<path d="${path}" fill="${col}"/>` : '') +
+      `<text x="${xOf(r.avg) + 6}" y="${y + barH / 2 + 4}" class="t-val">${f3(r.avg)} <tspan class="t-sub">(${r.h}/${r.ab})</tspan></text></g>`;
+  });
+  out += '</svg>';
+  const key = `<div class="sc-col-key"><span><i style="background:${C_ATK}"></i>결정구 후보</span><span><i style="background:${C_AVD}"></i>조심</span><span><i style="background:${C_MUTE}"></i>그 외</span><span>흐린 막대 = ${MIN_ZONE_AB}타수 미만</span></div>`;
+  return _fig('pitch', out + key, `<b>구종별 타율</b> · 결과가 나온 공의 구종 · 세로선 = 통산 타율 · 구종 기록 ${f.pted}/${f.pa}타석`);
+}
+
+function _countTable(f) {
+  const rows = f.rows.map(r => `<tr${r.ok ? '' : ' class="thin"'}><th scope="row">${r.l}<small>${r.d}</small></th><td>${r.pa}</td><td><b>${r.ab ? f3(r.avg) : '—'}</b></td><td>${r.pa ? f3(r.obp) : '—'}</td><td>${r.pa ? pct(r.kRate) : '—'}</td></tr>`).join('');
+  const tbl = `<table class="sc-col-tbl"><thead><tr><th scope="col">구분</th><th scope="col">타석</th><th scope="col">타율</th><th scope="col">출루율</th><th scope="col">삼진%</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return _fig('count', tbl, `<b>카운트별 결과</b> · 결과가 나온 순간의 볼·스트라이크 · 흐린 줄 = ${MIN_SPLIT}타석 미만`);
+}
+
+function _trendSvg(f) {
+  const W = 320, H = 160, left = 38, right = 16, top = 16, bottom = 24;
+  const pw = W - left - right, ph = H - top - bottom;
+  const n = f.pts.length;
+  const yMax = Math.max(0.5, Math.ceil((Math.max(...f.pts.map(p => p.avg), f.base) + 0.05) * 10) / 10);
+  const xOf = i => left + (n > 1 ? (i / (n - 1)) * pw : pw / 2);
+  const yOf = v => top + ph - (v / yMax) * ph;
+  let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="경기별 누적 타율 흐름">`;
+  for (let v = 0; v <= yMax + 1e-9; v += 0.1) {
+    out += `<line x1="${left}" y1="${yOf(v)}" x2="${W - right}" y2="${yOf(v)}" stroke="${C_LINE}" stroke-width="1"/>` +
+      `<text x="${left - 5}" y="${yOf(v) + 3.5}" text-anchor="end" class="t-sub">${v === 0 ? '0' : f3(v)}</text>`;
+  }
+  if (f.recentFrom > 0 && f.recentFrom < n - 1) out += `<rect x="${xOf(f.recentFrom)}" y="${top}" width="${xOf(n - 1) - xOf(f.recentFrom)}" height="${ph}" fill="${C_ATK}" opacity=".08"/>`;
+  out += `<line x1="${left}" y1="${yOf(f.base)}" x2="${W - right}" y2="${yOf(f.base)}" stroke="${C_INK2}" stroke-width="1" stroke-dasharray="4 3"/>` +
+    `<text x="${W - right}" y="${yOf(f.base) - 4}" text-anchor="end" class="t-sub">전체 평균 ${f3(f.base)}</text>`;
+  out += `<polyline points="${f.pts.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.avg).toFixed(1)}`).join(' ')}" fill="none" stroke="${C_ATK}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  f.pts.forEach((p, i) => {
+    out += `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(p.avg).toFixed(1)}" r="4" fill="${C_ATK}" stroke="${C_SURF}" stroke-width="2"><title>${_e(p.label)} 까지 · 누적 타율 ${f3(p.avg)}</title></circle>`;
+  });
+  const last = f.pts[n - 1];
+  out += `<text x="${xOf(n - 1) - 7}" y="${yOf(last.avg) - 8}" text-anchor="end" class="t-val">${f3(last.avg)}</text>`;
+  // 가로축 숫자: 마지막 경기부터 거꾸로 같은 간격 (마지막 경기 번호는 항상 표시)
+  const step = Math.max(1, Math.ceil(n / 8));
+  f.pts.forEach((p, i) => { if ((n - 1 - i) % step === 0) out += `<text x="${xOf(i)}" y="${H - 8}" text-anchor="middle" class="t-sub">${p.i}</text>`; });
+  out += '</svg>';
+  return _fig('trend', out, `<b>경기별 누적 타율</b> · 가로축 = 경기 순서(1~${n}), 세로축 = 그 경기까지 누적 타율 · 점선 = 기록된 타자 전체 평균 · 색칠 = 최근 ${f.lastN}경기`);
+}
+
+function _sprayFig(f) {
+  const s = f.P.st;
+  return _fig('spray', sprayFigure(f.P), `<b>타구 방향</b> · 방향이 기록된 타구 ${s.dn}개 · 당김 ${s.pull} · 센터 ${s.center} · 밀어 ${s.oppo}`);
+}
+
+export function renderColumnFigure(f) {
+  try {
+    if (f.kind === 'zone') return _zoneSvg(f);
+    if (f.kind === 'pitch') return _pitchSvg(f);
+    if (f.kind === 'count') return _countTable(f);
+    if (f.kind === 'trend') return _trendSvg(f);
+    if (f.kind === 'spray') return _sprayFig(f);
+  } catch (e) { console.warn('[column] figure', f.kind, e); }
+  return '';
 }

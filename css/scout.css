@@ -254,6 +254,29 @@
 .sc-col-actions .sc-act-ghost { grid-column: 1 / -1; }
 #scoutColumnWrap { scroll-margin-top: 72px; }   /* 칼럼으로 스크롤할 때 위 서브탭 줄(고정)에 제목이 가리지 않게 */
 
+/* ── 칼럼 그림 (column.js renderColumnFigure) — 색은 표시(마크)에만, 글자는 잉크색 ── */
+.sc-col-figs { display: grid; gap: 14px; margin: 4px 0 16px; }
+.sc-col-fig { margin: 0; min-width: 0; break-inside: avoid; }
+.sc-col-fig svg { display: block; width: 100%; height: auto; max-width: 360px; }
+.sc-col-fig svg text { font-family: var(--font); fill: var(--an-ink); }
+.sc-col-fig svg .t-lbl { font-size: 11px; font-weight: 700; }
+.sc-col-fig svg .t-sub { font-size: 9.5px; fill: var(--an-ink2); }
+.sc-col-fig svg .t-num { font: 700 17px var(--mono); }
+.sc-col-fig svg .t-val { font: 700 11px var(--mono); }
+.sc-col-fig figcaption { margin-top: 6px; font-size: 11px; line-height: 1.5; color: var(--an-ink2); word-break: keep-all; }
+.sc-col-fig figcaption b { color: var(--an-ink); }
+.sc-col-key { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 4px; font-size: 10.5px; color: var(--an-ink2); }
+.sc-col-key i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 2px; vertical-align: -1px; }
+.sc-col-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sc-col-tbl th, .sc-col-tbl td { padding: 6px 6px; border: 1px solid var(--an-line); text-align: center; color: var(--an-ink); }
+.sc-col-tbl thead th { font-weight: 700; background: var(--an-raised); }
+.sc-col-tbl tbody th { font-weight: 700; text-align: left; }
+.sc-col-tbl tbody th small { display: block; font-size: 9.5px; font-weight: 500; color: var(--an-ink3); }
+.sc-col-tbl td { font-variant-numeric: tabular-nums; }
+.sc-col-tbl tr.thin td, .sc-col-tbl tr.thin th { color: var(--an-ink3); }
+.sc-col-fig .an-spray { max-width: 360px; margin: 0 auto; }
+.sc-col-fig .an-spray figcaption { margin-top: 0; }
+
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {
   .sc-hero { padding: 20px 22px 16px; }
@@ -272,6 +295,7 @@
   .sc-col p { font-size: 15px; }
   .sc-col-actions { grid-template-columns: 1fr 1fr auto; }
   .sc-col-actions .sc-act-ghost { grid-column: auto; padding: 0 18px; }
+  .sc-col-figs.two { grid-template-columns: 1fr 1fr; align-items: start; }
 }
 
 /* ── 인쇄 (리포트만) ── */
@@ -295,6 +319,11 @@
   body.sc-col-print .sc-col-hd, body.sc-col-print .sc-col-ft { border-color: #111; }
   body.sc-col-print .sc-col-meta, body.sc-col-print .sc-col-ft small, body.sc-col-print .sc-col-brand, body.sc-col-print .sc-col .sc-eyebrow { color: #444; }
   body.sc-col-print .sc-col h4 { break-after: avoid; }
+  body.sc-col-print .sc-col-fig svg text, body.sc-col-print .sc-col-tbl th, body.sc-col-print .sc-col-tbl td { color: #111; fill: #111; }
+  body.sc-col-print .sc-col-fig svg .t-sub, body.sc-col-print .sc-col-fig figcaption, body.sc-col-print .sc-col-key { color: #444; fill: #444; }
+  body.sc-col-print .sc-col-tbl th, body.sc-col-print .sc-col-tbl td { border-color: #999; }
+  body.sc-col-print .sc-col-tbl thead th { background: #eee; }
+  body.sc-col-print .sc-col-figs.two { grid-template-columns: 1fr 1fr; align-items: start; }
   body.sc-col-print .sc-col p { orphans: 3; widows: 3; }
 }
 

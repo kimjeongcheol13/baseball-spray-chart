@@ -435,7 +435,21 @@
     var db = _client();
     if (!db) return;
     var redirect = window.location.href.split('?')[0].split('#')[0];
-    db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect, queryParams: { prompt: 'select_account' } } });
+    var go = function () {
+      db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect, queryParams: { prompt: 'select_account' } } });
+    };
+    // 서버(Supabase 프로젝트)가 일시 중지되면 로그인 페이지로 넘어가지 못하고 브라우저 오류 화면만 남으므로 먼저 연결 확인
+    var msg = document.getElementById('magicMsg');
+    if (msg) { msg.textContent = '연결 확인 중...'; msg.className = 'magic-msg'; }
+    fetch(SURL + '/auth/v1/settings', { headers: { apikey: SKEY } }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (msg) { msg.textContent = ''; }
+      go();
+    }).catch(function () {
+      var t = '서버에 연결할 수 없어요 — Supabase 프로젝트가 일시 중지됐을 수 있어요. 관리자가 대시보드에서 복구(Restore)해야 합니다';
+      if (msg) { msg.textContent = t; msg.className = 'magic-msg error'; }
+      else if (typeof showToast === 'function') showToast(t, false);
+    });
   };
 
   /* 이메일 매직링크 */

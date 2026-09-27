@@ -72,6 +72,10 @@
   display:block;
   animation:none;
 }
+/* 분석·경기설정 탭(.savant-view.active z 390) 위에서 ☰ → 클라우드 동기화 · 로그인 · 데이터 관리 창(.overlay z 200)이
+   탭 뒤에 가려 안 보이던 문제 → 창은 탭 위 · 하단 탭(400) 아래로, 알림(.toast)은 창 위로 */
+.overlay{z-index:395}
+.toast{z-index:396}
 .shell-inner{max-width:960px;margin:0 auto;padding:12px 12px 28px;box-sizing:border-box}
 
 /* ── 분석 서브탭 바 ── */

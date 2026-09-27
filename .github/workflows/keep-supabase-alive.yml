@@ -1,22 +1,43 @@
 name: Keep Supabase Alive
 
+# 무료 Supabase 프로젝트는 7일간 요청이 없으면 일시 중지(pause)된다.
+# 예전엔 주 1회(정확히 7일 간격)라 경계선에 걸려 2026-08 중순에 중지됐고,
+# 중지된 뒤엔 호스트가 DNS에서 사라져 이 작업도 매주 실패만 했다 → 매일 실행.
 on:
   schedule:
-    - cron: '0 9 * * 1'  # 매주 월요일 오전 9시 (UTC) 실행
-  workflow_dispatch:      # 수동 실행도 가능
+    - cron: '17 9 * * *'   # 매일 09:17 UTC (18:17 KST)
+  workflow_dispatch:       # 수동 실행도 가능
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/shared_links?limit=1")
-          echo "Supabase ping status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "Warning: Supabase returned $STATUS"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY 시크릿이 비어 있습니다"
+            exit 1
+          fi
+          # curl 자체가 실패(DNS 등)해도 바로 끝내지 않고 원인을 남긴다
+          # (예전엔 -s + set -e 때문에 로그에 'exit code 6'만 남아 원인을 알 수 없었음)
+          set +e
+          OUT=$(curl -sS --max-time 20 -w '\n%{http_code}' \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/shared_links?limit=1" 2>&1)
+          RC=$?
+          set -e
+          STATUS=$(printf '%s\n' "$OUT" | tail -n1)
+          echo "curl exit: $RC / HTTP: $STATUS"
+          printf '%s\n' "$OUT" | head -c 500; echo
+          if [ "$RC" = "6" ]; then
+            echo "::error::호스트를 찾을 수 없음 — Supabase 프로젝트가 일시 중지(pause)됐거나 삭제된 상태. 대시보드에서 복구(Restore) 필요"
+            exit 1
+          fi
+          if [ "$RC" != "0" ] || [ "$STATUS" != "200" ]; then
+            echo "::error::Supabase ping 실패 (curl $RC, HTTP $STATUS)"
             exit 1
           fi

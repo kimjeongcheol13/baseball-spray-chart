@@ -8250,7 +8250,10 @@ function fieldFeedbackSubmit(){
       if(r.error){
         var code=r.error.code||'';
         var msg=r.error.message||JSON.stringify(r.error);
-        if(code==='42P01'||msg.indexOf('does not exist')>-1){
+        if(/Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED/i.test(msg)){
+          // 호스트에 닿지 못함 — 무료 Supabase 프로젝트가 7일 무활동으로 일시 중지되면 DNS에서 사라져 여기로 온다
+          setStatus(false,'❌ 서버에 연결할 수 없어요 — Supabase 프로젝트가 일시 중지(pause)됐을 수 있어요. 대시보드에서 복구(Restore) 후 다시 시도하세요');
+        } else if(code==='42P01'||msg.indexOf('does not exist')>-1){
           setStatus(false,'❌ 테이블 없음 — SQL 설정이 필요합니다 (아래 펼쳐보세요)');
         } else if(code==='42501'||msg.indexOf('permission')>-1||msg.indexOf('policy')>-1){
           setStatus(false,'❌ 접근 권한 없음 — RLS 정책 설정이 필요합니다 (아래 SQL 실행)');

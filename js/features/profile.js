@@ -108,6 +108,7 @@ function _renderProfile() {
   const ranks = _rankTable(P);
   el.innerHTML = `
     ${_hero(P, _data.pool)}
+    <div class="pf-report"><button type="button" class="pf-report-btn" data-name="${_esc(P.name)}" onclick="openPlayerReport({ name: this.dataset.name })">🧾 이 선수 리포트 만들기 <small>학부모 공유용 이미지</small></button></div>
     ${_insights(P, _data.pool, ranks)}
     ${_rankCard(P, ranks)}
     <section class="an-card">

@@ -78,6 +78,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/record.css?v=8">
 <link rel="stylesheet" href="css/settings.css?v=2">
 <link rel="stylesheet" href="css/paper.css?v=6">
+<link rel="stylesheet" href="css/report.css?v=1">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -263,6 +264,7 @@ var _kakaoSdkLoaded = false;
       <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;margin-top:44px">
         <button type="button" class="lp2-cta" onclick="showApp()">차트 열기 →</button>
         <span style="font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:26px;line-height:1;transform:rotate(-1deg);display:inline-block">← 주소 하나면 됨. 앱스토어 안 감.</span>
+        <button type="button" class="lp2-sample" onclick="window.openPlayerReport&&openPlayerReport({sample:true})">샘플 선수 리포트 보기</button>
       </div>
     </section>
 
@@ -2050,6 +2052,7 @@ var _kakaoSdkLoaded = false;
     <button type="button" class="slm-item" onclick="openLoad()">📂 불러오기</button>
     <div id="slmUndoSlot"></div>
     <button type="button" class="slm-item" onclick="showPostGameReport()">📊 경기 리포트</button>
+    <button type="button" class="slm-item" onclick="openPlayerReport()">🧾 선수 리포트 <small>학부모 공유용 이미지</small></button>
   </div>
   <div class="slm-sec">
     <div class="slm-title">내보내기</div>
@@ -2356,7 +2359,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=111"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=45"></script>
+<script type="module" src="js/app.js?v=46"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

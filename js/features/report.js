@@ -680,6 +680,32 @@ export function closePlayerReport() {
   if (_returnFocus && _returnFocus.focus) { try { _returnFocus.focus(); } catch (e) {} }
 }
 
+// ── 모바일 첫 진입: 모바일은 랜딩을 건너뛰고 바로 기록 화면으로 가므로(core.js autoSkipLanding)
+// 첫 사용 말풍선이 보이는 동안만 필드 아래에 샘플 리포트 링크를 둔다. 말풍선 갱신 함수를 감싸 같은 조건으로 켜고 끈다 (core.js 수정 없음)
+function _ftuLink() {
+  const wrap = document.querySelector('#cwrap') && document.querySelector('#cwrap').closest('.field-wrap');
+  if (!wrap) return;
+  let el = $('rpFtuLink');
+  if (!el) {
+    wrap.insertAdjacentHTML('afterend', '<button type="button" id="rpFtuLink" class="rp-ftu" hidden>샘플 선수 리포트 미리보기 →</button>');
+    el = $('rpFtuLink');
+    el.onclick = () => openPlayerReport({ sample: true });
+  }
+  let first = false;
+  try { first = typeof window._isFirstUse === 'function' && window._isFirstUse(); } catch (e) {}
+  el.hidden = !first;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const orig = window.updateFieldTapHint;
+  if (typeof orig !== 'function') return;
+  window.updateFieldTapHint = function () {
+    const r = orig.apply(this, arguments);
+    try { _ftuLink(); } catch (e) {}
+    return r;
+  };
+  _ftuLink();
+});
+
 if (typeof window !== 'undefined') {
   window.openPlayerReport = openPlayerReport;
   window.closePlayerReport = closePlayerReport;

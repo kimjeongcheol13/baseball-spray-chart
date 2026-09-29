@@ -123,6 +123,14 @@ html.rp-open, html.rp-open body { overflow: hidden; }
 .pf-report-btn small { margin-left: auto; font-size: 12px; color: var(--ink-soft, #55605A); }
 .pf-report-btn:hover { background: var(--highlight-soft, #FFF4C2); }
 
+.rp-ftu {
+  display: block; min-height: 44px; margin: 8px auto 0; padding: 0 16px;
+  border: 1.5px dashed var(--ink, #1F2A23); border-radius: 0;
+  background: var(--paper-2, #FBF7EE); color: var(--ink, #1F2A23);
+  font: 700 14px var(--f-body, serif); cursor: pointer;
+}
+.rp-ftu[hidden] { display: none; }
+
 #landing-page .lp2-sample {
   min-height: 48px; padding: 0 20px;
   border: 2px solid #14192B; background: transparent; color: #14192B;

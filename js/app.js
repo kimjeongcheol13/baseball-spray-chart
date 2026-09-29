@@ -18,6 +18,7 @@ import './features/settings.js?v=1';
 import './features/scorebook.js?v=8';
 import './features/dashboard.js?v=4';
 import './features/setup.js?v=2';
+import './features/report.js?v=1';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

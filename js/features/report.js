@@ -625,10 +625,10 @@ async function _render() {
   $('rpSave').disabled = !_ready; $('rpPrint').disabled = !_ready;
 }
 
+// 파일명은 영문만: 한글 파일명을 버리고 'download'로 저장하는 브라우저가 있다
 function _fileName() {
-  const { p } = _current();
-  const n = String((p && p.name) || '선수').replace(/[\\/:*?"<>|\s]/g, '');
-  return `SprayLab_리포트_${n}${S.sample ? '_SAMPLE' : ''}_${_ymd(Date.now(), true).replace(/\./g, '')}.png`;
+  const d = new Date(), p2 = v => String(v).padStart(2, '0');
+  return `SprayLab_report${S.sample ? '_SAMPLE' : ''}_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.png`;
 }
 
 function _save() {

@@ -12,7 +12,7 @@
   font-family: 'Gowun Batang', 'Nanum Myeongjo', serif; font-weight: 700;
   word-break: keep-all;
 }
-.rp[hidden] { display: none; }
+.rp[hidden], .rp [hidden] { display: none !important; }
 html.rp-open, html.rp-open body { overflow: hidden; }
 
 .rp-panel {

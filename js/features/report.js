@@ -254,14 +254,15 @@ function _draw(ctx, R, img) {
   }
 
   // 3. 핵심 스탯 — 큰 숫자 4개
-  const tiles = [['타율', s.avg], ['출루율', s.obp], ['장타율', s.slg], ['OPS', s.ops]];
+  // 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—'
+  const tiles = [['타율', s.avg, s.ab], ['출루율', s.obp, s.pa], ['장타율', s.slg, s.ab], ['OPS', s.ops, s.pa]];
   const tw = (CW - 16 * 3) / 4, th = 156;
-  tiles.forEach(([l, v], i) => {
+  tiles.forEach(([l, v, n], i) => {
     const x = M + i * (tw + 16);
     ctx.fillStyle = C.paper; ctx.fillRect(x, y, tw, th);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, tw - 2, th - 2);
     _text(ctx, l, x + tw / 2, y + 44, _font(700, 28, F.body), C.soft, 'center');
-    _text(ctx, s.pa ? f3(v) : '—', x + tw / 2, y + 130, _font(600, 76, F.num), C.ink, 'center');
+    _text(ctx, n ? f3(v) : '—', x + tw / 2, y + 130, _font(600, 76, F.num), C.ink, 'center');
   });
   y += th + 20;
 
@@ -537,6 +538,7 @@ function _open(opts) {
     if (!_players.some(p => p.key === S.key)) S.key = _players[0] ? _players[0].key : null;
   }
   S.range = DEF_RANGE;
+  _chartCache = { id: '', img: [null, null] };   // 열 때마다 새로 그림 (타석 수정 반영)
   _syncRange();
 
   const hasData = S.sample || _players.length > 0;

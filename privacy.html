@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인정보처리방침 — SprayLab</title>
+<link rel="icon" href="icon.svg">
+<style>
+  body{margin:0;background:#f6f5f2;color:#14192B;font:16px/1.7 "Pretendard","Malgun Gothic",system-ui,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:32px 16px 64px}
+  h1{font-size:26px;margin:0 0 4px}
+  h2{font-size:18px;margin:32px 0 8px;border-top:2px solid #14192B;padding-top:16px}
+  .muted{color:#5c6170;font-size:14px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+  th,td{border:1px solid #d9d6cf;padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#ecebe6}
+  a{color:#1f5ed8}
+</style>
+</head>
+<body>
+<main>
+  <h1>개인정보처리방침</h1>
+  <p class="muted">SprayLab (kimjeongcheol13.github.io/baseball-spray-chart) · 시행일 2026-09-30</p>
+
+  <p>SprayLab은 아마추어 야구 타구 기록·분석 웹앱입니다. <b>로그인 없이 쓸 수 있고, 기본적으로 모든 기록은 사용자의 기기(브라우저)에만 저장됩니다.</b> 이 문서는 선택 기능을 쓸 때 어떤 정보가 어디로 가는지 설명합니다.</p>
+
+  <h2>1. 수집하는 정보와 목적</h2>
+  <table>
+    <tr><th>상황</th><th>정보</th><th>목적</th><th>저장 위치</th></tr>
+    <tr><td>기본 사용 (로그인 없음)</td><td>경기·타석 기록, 앱 설정</td><td>기록 저장</td><td>사용자 브라우저(localStorage). 서버로 전송되지 않음</td></tr>
+    <tr><td>구글 로그인 (선택)</td><td>이메일 주소, 이름, 구글 계정 식별자</td><td>로그인 및 기기 간 기록 동기화</td><td>Supabase</td></tr>
+    <tr><td>클라우드 동기화·팀 기능 (선택)</td><td>경기 기록, 팀 이름·팀 코드·팀 소속</td><td>기기 간 동기화, 팀원 간 기록 공유</td><td>Supabase</td></tr>
+    <tr><td>의견 보내기 (선택)</td><td>작성한 의견 내용, 선택한 태그, 기록한 타석 수, 앱 버전, 브라우저 정보</td><td>버그 수정·기능 개선</td><td>Supabase, Formspree</td></tr>
+    <tr><td>방문 통계</td><td>방문 페이지, 기기·브라우저 종류, 대략적 지역 등 (Google Analytics 4)</td><td>이용 현황 파악·서비스 개선</td><td>Google</td></tr>
+  </table>
+  <p>구글 로그인으로는 위 기본 프로필 정보만 받으며, Gmail·드라이브 등 다른 구글 데이터에는 접근하지 않습니다.</p>
+
+  <h2>2. 제3자 제공 및 처리 위탁</h2>
+  <p>수집한 정보를 판매하거나 광고 목적으로 제3자에게 제공하지 않습니다. 서비스 운영을 위해 아래 서비스를 이용합니다.</p>
+  <ul>
+    <li><b>Supabase</b> — 로그인·동기화·의견 데이터 저장</li>
+    <li><b>Google</b> — 구글 로그인, Google Analytics 방문 통계</li>
+    <li><b>Formspree</b> — 의견 보내기 전달</li>
+    <li><b>Kakao</b> — 사용자가 카카오톡 공유를 누를 때 공유 기능 제공</li>
+    <li><b>GitHub Pages</b> — 웹사이트 호스팅</li>
+  </ul>
+
+  <h2>3. 보관 기간과 삭제</h2>
+  <ul>
+    <li>기기에 저장된 기록: 앱의 데이터 관리 메뉴나 브라우저 데이터 삭제로 언제든 지울 수 있습니다.</li>
+    <li>클라우드에 저장된 계정·기록: 계정 삭제를 요청하면 지체 없이 삭제합니다. 요청이 없으면 서비스 제공 기간 동안 보관합니다.</li>
+    <li>방문 통계: Google Analytics 기본 보관 기간을 따릅니다.</li>
+  </ul>
+
+  <h2>4. 이용자의 권리</h2>
+  <p>이용자는 언제든 자신의 정보 열람·수정·삭제·처리 정지를 요청할 수 있습니다. 구글 계정의 <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">타사 앱 액세스</a>에서 SprayLab 연결을 직접 해제할 수도 있습니다.</p>
+
+  <h2>5. 아동의 개인정보</h2>
+  <p>유소년 선수의 기록은 코치·보호자가 입력하는 경기 기록이며, SprayLab은 만 14세 미만 아동에게 직접 계정 생성을 요구하지 않습니다. 선수 이름 대신 별칭·등번호 사용을 권장합니다.</p>
+
+  <h2>6. 문의</h2>
+  <p>개인정보 관련 문의·삭제 요청: 인스타그램 <a href="https://instagram.com/spraylab2026" target="_blank" rel="noopener">@spraylab2026</a> DM<br>
+  운영자: 김정철 (SprayLab 1인 개발)</p>
+
+  <h2>7. 변경</h2>
+  <p>이 방침이 바뀌면 이 페이지에 시행일과 함께 공지합니다.</p>
+
+  <p class="muted"><a href="./">← SprayLab으로 돌아가기</a></p>
+</main>
+</body>
+</html>

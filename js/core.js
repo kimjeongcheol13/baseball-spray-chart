@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let uid = localStorage.getItem('sl_uid');
     if (!uid) { uid = crypto.randomUUID(); localStorage.setItem('sl_uid', uid); }
-    sb.from('visits').insert([{ uid, ts: Date.now(), ua: navigator.userAgent.slice(0, 80) }]).catch(() => {});
   } catch (e) {}
 })();
 

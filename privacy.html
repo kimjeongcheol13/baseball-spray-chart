@@ -29,7 +29,8 @@
     <tr><th>상황</th><th>정보</th><th>목적</th><th>저장 위치</th></tr>
     <tr><td>기본 사용 (로그인 없음)</td><td>경기·타석 기록, 앱 설정</td><td>기록 저장</td><td>사용자 브라우저(localStorage). 서버로 전송되지 않음</td></tr>
     <tr><td>구글 로그인 (선택)</td><td>이메일 주소, 이름, 구글 계정 식별자</td><td>로그인 및 기기 간 기록 동기화</td><td>Supabase</td></tr>
-    <tr><td>클라우드 동기화·팀 기능 (선택)</td><td>경기 기록, 팀 이름·팀 코드·팀 소속</td><td>기기 간 동기화, 팀원 간 기록 공유</td><td>Supabase</td></tr>
+    <tr><td>클라우드 동기화·팀 기능 (선택)</td><td>경기 기록, 팀 이름·팀 코드·팀 소속</td><td>로그인 또는 팀 코드 입력 시 기기 간 동기화, 팀원 간 기록 공유</td><td>Supabase</td></tr>
+    <tr><td>경기 공유 링크 (선택)</td><td>경기 기록(선수 이름·등번호·타석 상세)</td><td>공유 버튼을 누른 경기를 링크로 전달. 링크를 아는 사람은 누구나 열람 가능</td><td>Supabase</td></tr>
     <tr><td>의견 보내기 (선택)</td><td>작성한 의견 내용, 선택한 태그, 기록한 타석 수, 앱 버전, 브라우저 정보</td><td>버그 수정·기능 개선</td><td>Supabase, Formspree</td></tr>
     <tr><td>방문 통계</td><td>방문 페이지, 기기·브라우저 종류, 대략적 지역 등 (Google Analytics 4)</td><td>이용 현황 파악·서비스 개선</td><td>Google</td></tr>
   </table>

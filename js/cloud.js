@@ -1,6 +1,6 @@
 /**
  * SprayLab Cloud Sync v3
- * 익명 인증 + Google OAuth + 이메일 매직링크 + 자동 클라우드 동기화 + 팀 기능
+ * 로그인 전에는 서버 전송 없음 + Google OAuth + 이메일 매직링크 + 자동 클라우드 동기화 + 팀 기능
  */
 (function () {
   'use strict';
@@ -139,27 +139,28 @@
            window.location.hash.indexOf('access_token=') !== -1;
   }
 
-  /* ── 익명 인증 ──────────────────────────────────── */
+  /* ── 인증 확인 (로그인 전에는 서버 전송 없음) ──────── */
   function _ensureAuth() {
     return new Promise(function (resolve) {
       var db = _client();
       if (!db) { resolve(null); return; }
       db.auth.getSession().then(function (res) {
         var sess = res.data && res.data.session;
+        if (sess && sess.user && sess.user.is_anonymous) {
+          db.auth.signOut();
+          localStorage.removeItem('sl_cloud_uid');
+          resolve(null);
+          return;
+        }
         if (sess && sess.user) {
           _user = sess.user;
           localStorage.setItem('sl_cloud_uid', _user.id);
           resolve(_user);
           return;
         }
-        // OAuth 리다이렉트 직후면 익명 로그인 하지 않고 대기
+        // OAuth 리다이렉트 직후면 대기 — 로그인 전에는 서버 전송 없음
         if (_isOAuthRedirect()) { resolve(null); return; }
-        db.auth.signInAnonymously().then(function (r) {
-          if (r.error) { console.warn('[Cloud] anon:', r.error.message); resolve(null); return; }
-          _user = r.data.user;
-          localStorage.setItem('sl_cloud_uid', _user.id);
-          resolve(_user);
-        });
+        resolve(null);
       }).catch(function () { resolve(null); });
     });
   }

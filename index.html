@@ -32,7 +32,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/cloud.js?v=3"></script>
+<script src="js/cloud.js?v=4"></script>
 
 <script>
 /* Kakao Share SDK */
@@ -1675,6 +1675,7 @@ var _kakaoSdkLoaded = false;
           onkeydown="if(event.key==='Enter')setTeamCode()">
         <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;white-space:nowrap" onclick="setTeamCode()">설정</button>
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">팀 코드를 입력하면 저장할 때마다 경기 기록이 서버로 전송됩니다.</div>
       <div id="cloudTeamStatus" style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600"></div>
     </div>
 
@@ -2357,7 +2358,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=111"></script>
+<script defer src="js/core.js?v=112"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=46"></script>
 <script>

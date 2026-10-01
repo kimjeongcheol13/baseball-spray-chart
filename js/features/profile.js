@@ -337,7 +337,7 @@ function _gameLog(P) {
       <li>
         <div class="pf-log-top">
           <span class="pf-log-g">${g.current ? '<span class="pf-live">현재</span>' : ''}${_esc(g.label)}</span>
-          <span class="pf-log-st">${line}</span>
+          <span class="pf-log-st">${_esc(line)}</span>
         </div>
         <div class="pf-log-res">${res}</div>
       </li>`;
@@ -367,7 +367,7 @@ function _counts(P) {
   return `
     <section class="an-card">
       <header class="an-hd"><h3>누적 기록</h3></header>
-      <dl class="pf-counts">${items.map(([l, v]) => `<div><dt>${l}</dt><dd>${v}</dd></div>`).join('')}</dl>
+      <dl class="pf-counts">${items.map(([l, v]) => `<div><dt>${l}</dt><dd>${_esc(v)}</dd></div>`).join('')}</dl>
     </section>`;
 }
 

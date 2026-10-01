@@ -10,6 +10,11 @@
   var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
   var SESSION_KEY = 'sl_cloud_session';
 
+  // innerHTML 에 넣는 값(계정 이름 · 팀 코드 등)용 HTML 이스케이프
+  function _esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   /* ── 내부 상태 ──────────────────────────────────── */
   var _sb        = null;
   var _user      = null;
@@ -63,7 +68,7 @@
     if (btn) {
       if (isReal) {
         var initial = name.charAt(0).toUpperCase();
-        btn.innerHTML = '<span class="auth-avatar">' + initial + '</span> 내 계정';
+        btn.innerHTML = '<span class="auth-avatar">' + _esc(initial) + '</span> 내 계정';
         btn.title = name;
         btn.classList.add('auth-logged');
       } else {
@@ -78,7 +83,7 @@
     if (mabAuth) {
       if (isReal) {
         var ini = name.charAt(0).toUpperCase();
-        mabAuth.innerHTML = '<span class="auth-avatar" style="width:20px;height:20px;font-size:10px">' + ini + '</span><span class="mab-label">계정</span>';
+        mabAuth.innerHTML = '<span class="auth-avatar" style="width:20px;height:20px;font-size:10px">' + _esc(ini) + '</span><span class="mab-label">계정</span>';
         mabAuth.style.color = 'var(--accent)';
       } else {
         mabAuth.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="mab-label">계정</span>';
@@ -117,7 +122,7 @@
       sec.innerHTML =
         '<div class="team-info">' +
           '<div class="team-code-label">팀 코드</div>' +
-          '<div class="team-code-big" id="teamCodeDisplay">' + _team.code + '</div>' +
+          '<div class="team-code-big" id="teamCodeDisplay">' + _esc(_team.code) + '</div>' +
           '<button class="btn-team-copy" onclick="window._copyTeamCode()">코드 복사</button>' +
           (_team.role === 'owner'
             ? '<button class="btn-team-leave btn-team-danger" onclick="window.dissolveTeam()">팀 해산</button>'
@@ -220,12 +225,14 @@
         var added = 0;
         (r.data || []).forEach(function (row) {
           var k = row.game_key;
+          var clean = _cleanRow(k, row.data);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
+          if (!clean) return;
           var loc = JSON.parse(localStorage.getItem(k) || 'null');
           var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
           if (!loc || remoteTs > (loc.ts || 0)) {
             localStorage.setItem(k, JSON.stringify(row.data));
             if (!existMap[k]) {
-              saves.push({ key: k, label: _gameLabel(row.data), ts: row.data.ts || 0 });
+              saves.push(clean);
               added++;
             }
           }
@@ -248,6 +255,13 @@
 
   function _gameLabel(d) {
     return (d&&d.th?d.th:'홈') + ' vs ' + (d&&d.ta?d.ta:'원정') + ' ' + (d&&d.d?d.d:'');
+  }
+
+  // 클라우드 행 검증 — core.js 의 공용 검증(_cleanSaveEntry)을 쓴다.
+  // 설정 키(sl_cloud_session 등)는 통과하지 못하고, 검증 함수가 아직 없으면 안전하게 건너뛴다
+  function _cleanRow(key, data) {
+    return typeof window._cleanSaveEntry === 'function'
+      ? window._cleanSaveEntry({ key: key, label: _gameLabel(data), ts: (data && data.ts) || 0 }, data) : null;
   }
 
   /* ── 팀 정보 로드 ──────────────────────────────── */
@@ -292,6 +306,7 @@
 
   function _onTeamGameUpdate(row) {
     if (!row || !row.game_key || !row.data) return;
+    if (!_cleanRow(row.game_key, row.data)) return;   // 공용 검증: 설정 키(sl_cloud_session 등) 덮어쓰기 차단
     // 현재 열려있는 경기와 같은 key면 live 업데이트
     var curKey = window._autoKey || ('sl_auto_' + (window.AS && AS.curGame));
     if (row.game_key === curKey && window.AS) {

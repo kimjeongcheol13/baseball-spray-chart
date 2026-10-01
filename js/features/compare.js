@@ -231,8 +231,8 @@ function _counts(A, B) {
       <table class="cmp-count">
         <thead><tr><th scope="col"><span class="sr">선수</span></th>${list.map(i => `<th scope="col">${i[0]}</th>`).join('')}</tr></thead>
         <tbody>
-          <tr><th scope="row"><i class="cmp-dot a"></i><span class="sr">${_esc(A.name)}</span></th>${list.map(i => `<td>${val(A, i[1])}</td>`).join('')}</tr>
-          <tr><th scope="row"><i class="cmp-dot b"></i><span class="sr">${_esc(B.name)}</span></th>${list.map(i => `<td>${val(B, i[1])}</td>`).join('')}</tr>
+          <tr><th scope="row"><i class="cmp-dot a"></i><span class="sr">${_esc(A.name)}</span></th>${list.map(i => `<td>${_esc(val(A, i[1]))}</td>`).join('')}</tr>
+          <tr><th scope="row"><i class="cmp-dot b"></i><span class="sr">${_esc(B.name)}</span></th>${list.map(i => `<td>${_esc(val(B, i[1]))}</td>`).join('')}</tr>
         </tbody>
       </table>`;
   return `<div class="cmp-count-wrap">${table(items.slice(0, 6))}${table(items.slice(6))}</div>`;

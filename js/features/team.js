@@ -203,19 +203,19 @@ function _hero(team, S, T) {
     const us = _side === 'away' ? cur.as : cur.hs, them = _side === 'away' ? cur.hs : cur.as;
     record = _side === 'all' ? '' : `
       <div class="tm-rec">
-        <div class="tm-rec-main"><b>${us}</b><span>:</span><b>${them}</b></div>
+        <div class="tm-rec-main"><b>${_esc(us)}</b><span>:</span><b>${_esc(them)}</b></div>
         <small>진행 중 스코어</small>
       </div>`;
   } else if (res.length) {
     record = `
       <div class="tm-rec">
         <div class="tm-rec-main"><b>${W}</b><small>승</small><b>${L}</b><small>패</small>${D ? `<b>${D}</b><small>무</small>` : ''}</div>
-        <small>승률 ${wp} · 득 ${rs} / 실 ${ra} (${rs - ra >= 0 ? '+' : ''}${rs - ra})</small>
+        <small>승률 ${wp} · 득 ${_esc(rs)} / 실 ${_esc(ra)} (${rs - ra >= 0 ? '+' : ''}${rs - ra})</small>
       </div>`;
   } else record = _side === 'all' ? '' : '<div class="tm-rec"><small>저장된 경기 결과가 없어요</small></div>';
 
   return `
-    <section class="tm-hero" style="--tm-c:${color}">
+    <section class="tm-hero" style="--tm-c:${_esc(color)}">
       <div class="tm-id">
         <span class="tm-badge">${_esc(String(name).trim()[0] || '팀')}</span>
         <div>
@@ -227,7 +227,7 @@ function _hero(team, S, T) {
       ${!S.live && last5.length ? `
       <div class="tm-flow" aria-label="최근 ${last5.length}경기">
         <small>최근 ${last5.length}경기</small>
-        ${last5.map(r => `<i class="${r.r.toLowerCase()}" title="${r.us}:${r.them}">${r.r === 'W' ? '승' : r.r === 'L' ? '패' : '무'}</i>`).join('')}
+        ${last5.map(r => `<i class="${r.r.toLowerCase()}" title="${_esc(r.us)}:${_esc(r.them)}">${r.r === 'W' ? '승' : r.r === 'L' ? '패' : '무'}</i>`).join('')}
       </div>` : ''}
     </section>`;
 }
@@ -263,7 +263,7 @@ function _leaderCard(T) {
           <span class="tm-rank r${i + 1}">${i + 1}</span>
           <div class="tm-ldr-who"><b>${_esc(p.name)}</b><small>${p.num !== '' ? '#' + _esc(p.num) + ' · ' : ''}${p.games}경기 ${p.st.pa}타석</small></div>
           <span class="tm-ldr-bar"><i style="width:${p.row[L.k] / max * 100}%"></i></span>
-          <b class="tm-ldr-v">${fmt(p.row[L.k], L.fmt)}</b>
+          <b class="tm-ldr-v">${_esc(fmt(p.row[L.k], L.fmt))}</b>
         </li>`).join('')}</ol>`
         : `<div class="an-note">${L.rate ? `${QUAL_PA}타석 이상인 선수가 아직 없어요.` : '아직 기록이 없어요.'}</div>`}
     </section>`;
@@ -284,9 +284,9 @@ function _gamesCard(T, S) {
         <div class="tm-g-main">
           <b>${opp ? 'vs ' + _esc(opp) : _esc(g.label)}</b>
           <small>${_esc(g.current ? '진행 중' : g.d || '')} · ${c.pa}타석 ${c.h}/${c.ab}${c.hr ? ` · ${c.hr}홈런` : ''}</small>
-          ${star ? `<small class="tm-star">★ ${_esc(star.name)} ${star.h}/${star.ab}${star.rbi ? ` · ${star.rbi}타점` : ''}${star.hr ? ` · ${star.hr}홈런` : ''}</small>` : ''}
+          ${star ? `<small class="tm-star">★ ${_esc(star.name)} ${star.h}/${star.ab}${star.rbi ? ` · ${_esc(star.rbi)}타점` : ''}${star.hr ? ` · ${star.hr}홈런` : ''}</small>` : ''}
         </div>
-        ${R ? `<span class="tm-score">${R.us}<i>:</i>${R.them}</span>` : g.current ? `<span class="tm-score">${_side === 'away' ? g.as : g.hs}<i>:</i>${_side === 'away' ? g.hs : g.as}</span>` : ''}
+        ${R ? `<span class="tm-score">${_esc(R.us)}<i>:</i>${_esc(R.them)}</span>` : g.current ? `<span class="tm-score">${_esc(_side === 'away' ? g.as : g.hs)}<i>:</i>${_esc(_side === 'away' ? g.hs : g.as)}</span>` : ''}
       </li>`;
   };
   return `
@@ -334,13 +334,13 @@ function _rosterCard(T) {
               ${COLS.map(c => {
                 const v = p.row[c.k];
                 const top = p.st.pa >= QUAL_PA && lead[c.k] != null && v === lead[c.k] && (c.fmt !== 'int' || v > 0);
-                return `<td${top ? ' class="lead"' : ''}>${fmt(v, c.fmt)}</td>`;
+                return `<td${top ? ' class="lead"' : ''}>${_esc(fmt(v, c.fmt))}</td>`;
               }).join('')}
             </tr>`).join('')}
           </tbody>
           <tfoot><tr>
             <th scope="row" class="tm-sticky">팀 합계</th>
-            ${COLS.map(c => `<td>${c.k === 'g' ? '' : fmt(T.st[c.k], c.fmt)}</td>`).join('')}
+            ${COLS.map(c => `<td>${c.k === 'g' ? '' : _esc(fmt(T.st[c.k], c.fmt))}</td>`).join('')}
           </tr></tfoot>
         </table>
       </div>
@@ -363,7 +363,7 @@ function _runsCard(T) {
   }
   const bars = gs.map((x, i) => {
     const cx = L + slot * i + slot / 2;
-    const tip = `${_esc(x.g.d || '')} vs ${_esc((_side === 'away' ? x.g.th : x.g.ta) || '')} ${x.R.us}:${x.R.them}`;
+    const tip = `${_esc(x.g.d || '')} vs ${_esc((_side === 'away' ? x.g.th : x.g.ta) || '')} ${_esc(x.R.us)}:${_esc(x.R.them)}`;
     const bar = (v, cls, off) => `<rect class="tm-run ${cls}" x="${(cx + off).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, Y(0) - Y(v)).toFixed(1)}" rx="2"><title>${tip}</title></rect>`;
     return bar(x.R.us, 'for', -bw - 1) + bar(x.R.them, 'against', 1)
       + `<text class="t-ax tm-run-lbl ${x.R.r.toLowerCase()}" x="${cx.toFixed(1)}" y="${H - 7}" text-anchor="middle">${x.R.r === 'W' ? '승' : x.R.r === 'L' ? '패' : '무'}</text>`;

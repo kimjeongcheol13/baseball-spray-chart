@@ -154,7 +154,7 @@ function _hero(P, info, order, today, live) {
   const t = calcStats(today);
   const s = P.st;
   const isLive = live && live.name === P.name;
-  const meta = [order >= 0 ? `${order + 1}번 타자` : '', info.pos || '', P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
+  const meta = [order >= 0 ? `${order + 1}번 타자` : '', _esc(info.pos || ''), P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
   const line = t.pa
     ? `${t.ab}타수 ${t.h}안타${t.hr ? ` ${t.hr}홈런` : ''}${t.rbi ? ` ${t.rbi}타점` : ''}${t.bb + t.hbp ? ` ${t.bb + t.hbp}사사구` : ''}${t.k ? ` ${t.k}삼진` : ''}`
     : '오늘 아직 타석 없음';
@@ -172,7 +172,7 @@ function _hero(P, info, order, today, live) {
       </div>
       <div class="bt-today">
         <small>오늘</small>
-        <b>${line}</b>
+        <b>${_esc(line)}</b>
         <div class="bt-today-chips an-rchips">${today.map(a => { const [tx, c] = SHORT[a.res] || [a.res, 'out']; return `<i class="r-${c}" title="${_esc(a.inn || '')}">${_esc(tx)}</i>`; }).join('') || ''}</div>
       </div>
     </section>`;
@@ -221,7 +221,7 @@ function _todayCard(today) {
             <span class="bt-pa-n">${i + 1}</span>
             <div class="bt-pa-main">
               <div class="bt-pa-top"><i class="r-${c}">${_esc(tx)}</i><small>${_esc(info)}</small></div>
-              ${ps.length ? `<div class="bt-seq">${ps.map((p, j) => `<span class="${j === ps.length - 1 ? 'last r-' + c : ''}" title="${j + 1}구 · ${_esc(p.pt || '구종 미기록')} · ${_esc(Z_SHORT(p.zone) || '코스 미기록')}${p.balls != null ? ` · ${p.balls}-${p.strikes}` : ''}">${_esc(PT_SHORT[p.pt] || (p.pt || '?').slice(0, 2))}<small>${_esc(Z_SHORT(p.zone).replace(' ', ''))}</small></span>`).join('')}</div>` : '<div class="bt-seq-none">투구 기록 없음</div>'}
+              ${ps.length ? `<div class="bt-seq">${ps.map((p, j) => `<span class="${j === ps.length - 1 ? 'last r-' + c : ''}" title="${j + 1}구 · ${_esc(p.pt || '구종 미기록')} · ${_esc(Z_SHORT(p.zone) || '코스 미기록')}${p.balls != null ? ` · ${_esc(p.balls)}-${_esc(p.strikes)}` : ''}">${_esc(PT_SHORT[p.pt] || (p.pt || '?').slice(0, 2))}<small>${_esc(Z_SHORT(p.zone).replace(' ', ''))}</small></span>`).join('')}</div>` : '<div class="bt-seq-none">투구 기록 없음</div>'}
             </div>
           </li>`;
       }).join('')}</ol>

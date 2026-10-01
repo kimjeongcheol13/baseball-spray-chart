@@ -1,4 +1,23 @@
 // ═══ SprayLab Core ═══
+// ── 출루율(OBP) 공용 계산 — js/features/batdata.js calcStats 와 같은 공식 ──
+// OBP = (H+BB+HBP) / (AB+BB+HBP+SF). bb=볼넷만, hbp=사구, sf=희비, 희타는 분모에서 제외. 분모 0이면 null.
+var _OBP_HITS=['안타','내야안타','2루타','3루타','홈런'];
+function calcOBPFromCounts(m){
+  var den=m.ab+m.bb+m.hbp+m.sf;
+  return den?(m.h+m.bb+m.hbp)/den:null;
+}
+function calcOBP(abs){
+  var m={ab:0,h:0,bb:0,hbp:0,sf:0};
+  abs.forEach(function(a){
+    var r=a.res;
+    if(r==='볼넷')m.bb++;
+    else if(r==='사구')m.hbp++;
+    else if(r==='희비')m.sf++;
+    else if(r!=='희타'){m.ab++;if(_OBP_HITS.includes(r))m.h++;}
+  });
+  return calcOBPFromCounts(m);
+}
+
 // pnl-center, pnl-right가 app-layout 안에 있어야 grid가 적용됨
 document.addEventListener('DOMContentLoaded', function() {
   var al = document.querySelector('.app-layout');
@@ -1603,9 +1622,8 @@ function clearAll(){if(!confirm('모든 타석 기록을 삭제할까요?'))retu
 function updStats(){
   const abs=AS.abs,hits=['안타','내야안타','2루타','3루타','홈런'],base={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4},noab=['볼넷','사구','희타','희비'];
   const oab=abs.filter(a=>!noab.includes(a.res)).length,h=abs.filter(a=>hits.includes(a.res)).length;
-  const reach=abs.filter(a=>[...hits,'볼넷','사구'].includes(a.res)).length;
   const tb=abs.reduce((s,a)=>s+(base[a.res]||0),0),rbi=abs.reduce((s,a)=>s+a.rbi,0);
-  const avg=oab?h/oab:null,obp=abs.length?reach/abs.length:null,slg=oab?tb/oab:null;
+  const avg=oab?h/oab:null,obp=calcOBP(abs),slg=oab?tb/oab:null;
   const ops=(obp!=null&&slg!=null)?obp+slg:null;
   document.getElementById('sAVG').textContent=avg!=null?avg.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('sOBP').textContent=obp!=null?obp.toFixed(3).replace('0.','.'):'.---';
@@ -1739,7 +1757,7 @@ function renderZonePitchCross(abs){
 }
 
 function renderSeasonStats(){
-  var games=[];
+  var games=[],seasonAbs=[];
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
   var BM={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
   for(var i=0;i<localStorage.length;i++){
@@ -1754,7 +1772,8 @@ function renderSeasonStats(){
         var bb=d.abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
         var tb=d.abs.reduce(function(s,a){return s+(BM[a.res]||0);},0);
         var hr=d.abs.filter(function(a){return a.res==='홈런';}).length;
-        var obp=d.abs.length?(h+bb)/d.abs.length:0;
+        var obp=calcOBP(d.abs)||0;
+        seasonAbs=seasonAbs.concat(d.abs);
         var slg=ab?tb/ab:0;
         // 저장 시각 파싱 (월 추출용)
         var tsNum=0;
@@ -1776,11 +1795,9 @@ function renderSeasonStats(){
   var totH=games.reduce(function(s,g){return s+g.h;},0);
   var totRBI=games.reduce(function(s,g){return s+g.rbi;},0);
   var totHR=games.reduce(function(s,g){return s+g.hr;},0);
-  var totPA=games.reduce(function(s,g){return s+g.pa;},0);
-  var totBB=games.reduce(function(s,g){return s+g.bb;},0);
   var totTB=games.reduce(function(s,g){return s+g.tb;},0);
   var sAvg=totAB?totH/totAB:0;
-  var sObp=totPA?(totH+totBB)/totPA:0;
+  var sObp=calcOBP(seasonAbs)||0;
   var sSlg=totAB?totTB/totAB:0;
   var sOps=sObp+sSlg;
 
@@ -1973,11 +1990,10 @@ function calcMVP(){
     var pa=AS.abs.filter(function(a){return a.bid===p.id;});if(!pa.length)return;
     var oab=pa.filter(function(a){return!NOAB.includes(a.res);}).length;
     var h=pa.filter(function(a){return HITS.includes(a.res);}).length;
-    var reach=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
     var tb=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
     var rbi=pa.reduce(function(s,a){return s+a.rbi;},0);
     var hr=pa.filter(function(a){return a.res==='홈런';}).length;
-    var avg=oab?h/oab:0,obp=pa.length?reach/pa.length:0,slg=oab?tb/oab:0;
+    var avg=oab?h/oab:0,obp=calcOBP(pa)||0,slg=oab?tb/oab:0;
     var score=avg*30+obp*25+slg*20+rbi*10+hr*8+h*5;
     if(score>bestScore){bestScore=score;best={p:p,avg:avg,obp:obp,slg:slg,rbi:rbi,hr:hr,h:h,oab:oab,score:Math.round(score)};}
   });
@@ -2789,10 +2805,10 @@ function _lslCalc(b){
   });
   // TODO: 좌우타 정보(bh)가 없거나 스위치(S)면 우타 기준으로 계산 — 스위치 타자는 타석별 좌/우 기록이 생기면 반영
   var lefty=(b.bh||b.bats)==='L';
-  var n=l+c+r,obpDen=ab+bb+hbp+sf;
+  var n=l+c+r;
   return {
     avg:ab?h/ab:null,
-    obp:obpDen?(h+bb+hbp)/obpDen:null,
+    obp:calcOBPFromCounts({ab:ab,h:h,bb:bb,hbp:hbp,sf:sf}),
     pull:n?(lefty?r:l)/n:null,
     ctr:n?c/n:null,
     oppo:n?(lefty?l:r)/n:null
@@ -2845,11 +2861,11 @@ function updBatterStat(){
   var bAbs=AS.abs.filter(function(a){return a.bid===b.id;});
   var oab=bAbs.filter(function(a){return!_NOAB.includes(a.res);}).length;
   var h=bAbs.filter(function(a){return _HITS.includes(a.res);}).length;
-  var reach=bAbs.filter(function(a){return _HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
+  var obp=calcOBP(bAbs);
   var tb=bAbs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
   var rbi=bAbs.reduce(function(s,a){return s+a.rbi;},0);
   document.getElementById('bsAVG').textContent=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';
-  document.getElementById('bsOBP').textContent=bAbs.length?(reach/bAbs.length).toFixed(3).replace('0.','.'):'.---';
+  document.getElementById('bsOBP').textContent=obp!=null?obp.toFixed(3).replace('0.','.'):'.---';
   document.getElementById('bsSLG').textContent=oab?(tb/oab).toFixed(3).replace('0.','.'):'.---';
   document.getElementById('bsAB').textContent=oab;
   document.getElementById('bsH').textContent=h;
@@ -3378,10 +3394,8 @@ function exportShareCard(){
   function calcFull(abArr){
     var h=abArr.filter(function(a){return hits.includes(a.res);}).length;
     var ab=abArr.filter(function(a){return !noab.includes(a.res);}).length;
-    var bb=abArr.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
     var tb=abArr.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
-    var pa=abArr.length;
-    var obp=pa?(h+bb)/pa:0, slg=ab?tb/ab:0;
+    var obp=calcOBP(abArr)||0, slg=ab?tb/ab:0;
     return {h:h,ab:ab,avg:ab?h/ab:0,ops:obp+slg};
   }
   var hs3=calcFull(homeAbs), as3=calcFull(awayAbs);
@@ -3678,7 +3692,7 @@ function exportAllGamesToExcel() {
       var pa=normAbs.filter(function(a){return a.bid===item.p.id;});
       if(!pa.length)return;
       var key=(item.p.name||'')+'|'+(item.p.num||'');
-      if(!pmap[key])pmap[key]={name:item.p.name||'',num:item.p.num||'',games:0,pa:0,oab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sac:0,k:0,rbi:0,tb:0,reach:0,fdN:0,pull:0,ctr:0,oppo:0};
+      if(!pmap[key])pmap[key]={name:item.p.name||'',num:item.p.num||'',games:0,pa:0,oab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sh:0,sf:0,k:0,rbi:0,tb:0,fdN:0,pull:0,ctr:0,oppo:0};
       var m=pmap[key]; m.games++;
       m.pa+=pa.length;
       m.oab+=pa.filter(function(a){return!NOAB.includes(a.res);}).length;
@@ -3688,11 +3702,11 @@ function exportAllGamesToExcel() {
       m.hr+=pa.filter(function(a){return a.res==='홈런';}).length;
       m.bb+=pa.filter(function(a){return a.res==='볼넷';}).length;
       m.hbp+=pa.filter(function(a){return a.res==='사구';}).length;
-      m.sac+=pa.filter(function(a){return a.res==='희타'||a.res==='희비';}).length;
+      m.sh+=pa.filter(function(a){return a.res==='희타';}).length;
+      m.sf+=pa.filter(function(a){return a.res==='희비';}).length;
       m.k+=pa.filter(function(a){return a.res==='삼진';}).length;
       m.rbi+=pa.reduce(function(s,a){return s+a.rbi;},0);
       m.tb+=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
-      m.reach+=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
       var fd=pa.filter(function(a){return a.deg!=null;});
       m.fdN+=fd.length; m.pull+=fd.filter(function(a){return _isPull(a);}).length;
       m.ctr+=fd.filter(function(a){return _isCtr(a);}).length;
@@ -3702,8 +3716,8 @@ function exportAllGamesToExcel() {
   var aggRows=[['선수','번호','경기수','타석','타수','안타','2루타','3루타','홈런','볼넷','사구','희생','삼진','타점','타율','출루율','장타율','당겨치기%','센터%','밀어치기%']];
   Object.keys(pmap).sort(function(a,b){return pmap[b].pa-pmap[a].pa;}).forEach(function(k){
     var m=pmap[k],t=m.fdN||1;
-    aggRows.push([m.name,m.num,m.games,m.pa,m.oab,m.h,m.dbl,m.tpl,m.hr,m.bb,m.hbp,m.sac,m.k,m.rbi,
-      fmt(m.oab?m.h/m.oab:null),fmt(m.pa?m.reach/m.pa:null),fmt(m.oab?m.tb/m.oab:null),
+    aggRows.push([m.name,m.num,m.games,m.pa,m.oab,m.h,m.dbl,m.tpl,m.hr,m.bb,m.hbp,m.sh+m.sf,m.k,m.rbi,
+      fmt(m.oab?m.h/m.oab:null),fmt(calcOBPFromCounts({ab:m.oab,h:m.h,bb:m.bb,hbp:m.hbp,sf:m.sf})),fmt(m.oab?m.tb/m.oab:null),
       Math.round(m.pull/t*100)+'%',Math.round(m.ctr/t*100)+'%',Math.round(m.oppo/t*100)+'%']);
   });
 
@@ -3792,7 +3806,7 @@ function exportFullReport() {
     allLP.forEach(function(p){
       if(!p||!p.name)return;
       var key=p.name+'||'+String(p.num??'');
-      if(!pmap[key])pmap[key]={name:p.name,num:p.num,games:0,pa:0,ab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sf:0,k:0,rbi:0,tb:0,reach:0,
+      if(!pmap[key])pmap[key]={name:p.name,num:p.num,games:0,pa:0,ab:0,h:0,dbl:0,tpl:0,hr:0,bb:0,hbp:0,sf:0,k:0,rbi:0,tb:0,
         fdN:0,pull:0,ctr:0,oppo:0,
         zH:Array(9).fill(0),zO:Array(9).fill(0),zT:Array(9).fill(0),
         ahead:0,aheadH:0,aheadAB:0,behind:0,behindH:0,behindAB:0,even:0,evenH:0,evenAB:0,
@@ -3813,7 +3827,6 @@ function exportFullReport() {
       m.k+=pa.filter(function(a){return a.res==='삼진';}).length;
       m.rbi+=pa.reduce(function(s,a){return s+(a.rbi||0);},0);
       m.tb+=pa.reduce(function(s,a){return s+(BASE[a.res]||0);},0);
-      m.reach+=pa.filter(function(a){return HITS.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
       var fd=pa.filter(function(a){return a.deg!=null;});
       m.fdN+=fd.length;
       m.pull+=fd.filter(function(a){return _isPull(a);}).length;
@@ -3842,7 +3855,7 @@ function exportFullReport() {
     var t=m.fdN||1,denom=m.ab+m.bb+m.hbp+m.sf,
       avg=m.ab?m.h/m.ab:0,
       // 표준 OBP: (H+BB+HBP)/(AB+BB+HBP+SF)
-      obp=(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0,
+      obp=calcOBPFromCounts(m)||0,
       slg=m.ab?m.tb/m.ab:0,ops=obp+slg,
       singles=m.h-m.dbl-m.tpl-m.hr,
       woba=denom?(wBB*m.bb+wHBP*m.hbp+w1B*singles+w2B*m.dbl+w3B*m.tpl+wHR*m.hr)/denom:0,
@@ -3860,9 +3873,9 @@ function exportFullReport() {
   ];
   var metrics=[
     {k:'AVG',fn:function(m){return m.ab?m.h/m.ab:0},f:f3},
-    {k:'OBP',fn:function(m){return(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0},f:f3},
+    {k:'OBP',fn:function(m){return calcOBPFromCounts(m)||0},f:f3},
     {k:'SLG',fn:function(m){return m.ab?m.tb/m.ab:0},f:f3},
-    {k:'OPS',fn:function(m){var ob=(m.ab+m.bb+m.hbp+m.sf)?(m.h+m.bb+m.hbp)/(m.ab+m.bb+m.hbp+m.sf):0,sl=m.ab?m.tb/m.ab:0;return ob+sl;},f:f3},
+    {k:'OPS',fn:function(m){var ob=calcOBPFromCounts(m)||0,sl=m.ab?m.tb/m.ab:0;return ob+sl;},f:f3},
     {k:'ISO',fn:function(m){var sl=m.ab?m.tb/m.ab:0,av=m.ab?m.h/m.ab:0;return sl-av;},f:f3},
     {k:'K%',fn:function(m){return m.pa?m.k/m.pa:0},f:fpct},
     {k:'BB%',fn:function(m){return m.pa?m.bb/m.pa:0},f:fpct},
@@ -4354,19 +4367,19 @@ function _doExportToExcel(data) {
     var hr=pa.filter(function(a){return a.res==='홈런';}).length;
     var bb=pa.filter(function(a){return a.res==='볼넷';}).length;
     var hbp=pa.filter(function(a){return a.res==='사구';}).length;
-    var sac=pa.filter(function(a){return a.res==='희타'||a.res==='희비';}).length;
+    var sh=pa.filter(function(a){return a.res==='희타';}).length;
+    var sf=pa.filter(function(a){return a.res==='희비';}).length;
     var k=pa.filter(function(a){return a.res==='삼진';}).length;
     var rbi=pa.reduce(function(s,a){return s+a.rbi;},0);
     var tb=pa.reduce(function(s,a){return s+(base[a.res]||0);},0);
-    var reach=pa.filter(function(a){return hits.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
     var fd=pa.filter(function(a){return a.deg!=null;});
     var tot=fd.length||1;
     var pull=fd.filter(function(a){return _isPull(a);}).length;
     var ctr=fd.filter(function(a){return _isCtr(a);}).length;
     var oppo=fd.filter(function(a){return _isOppo(a);}).length;
     return {
-      pa:pa.length,oab:oab,h:h,dbl:dbl,tpl:tpl,hr:hr,bb:bb,hbp:hbp,sac:sac,k:k,rbi:rbi,tb:tb,
-      avg:oab?h/oab:null, obp:pa.length?reach/pa.length:null, slg:oab?tb/oab:null,
+      pa:pa.length,oab:oab,h:h,dbl:dbl,tpl:tpl,hr:hr,bb:bb,hbp:hbp,sh:sh,sf:sf,k:k,rbi:rbi,tb:tb,
+      avg:oab?h/oab:null, obp:calcOBP(pa), slg:oab?tb/oab:null,
       pull:Math.round(pull/tot*100), ctr:Math.round(ctr/tot*100), oppo:Math.round(oppo/tot*100)
     };
   }
@@ -4376,13 +4389,12 @@ function _doExportToExcel(data) {
   function teamStat(teamAbs){
     var oab=teamAbs.filter(function(a){return!noab.includes(a.res);}).length;
     var h=teamAbs.filter(function(a){return hits.includes(a.res);}).length;
-    var reach=teamAbs.filter(function(a){return hits.includes(a.res)||a.res==='볼넷'||a.res==='사구';}).length;
     var tb=teamAbs.reduce(function(s,a){return s+(base[a.res]||0);},0);
     var rbi=teamAbs.reduce(function(s,a){return s+a.rbi;},0);
     var hr=teamAbs.filter(function(a){return a.res==='홈런';}).length;
     var bb=teamAbs.filter(function(a){return a.res==='볼넷';}).length;
     var k=teamAbs.filter(function(a){return a.res==='삼진';}).length;
-    return {pa:teamAbs.length,oab:oab,h:h,rbi:rbi,hr:hr,bb:bb,k:k,avg:oab?h/oab:null,obp:teamAbs.length?reach/teamAbs.length:null,slg:oab?tb/oab:null};
+    return {pa:teamAbs.length,oab:oab,h:h,rbi:rbi,hr:hr,bb:bb,k:k,avg:oab?h/oab:null,obp:calcOBP(teamAbs),slg:oab?tb/oab:null};
   }
 
   // === Sheet 1: 경기 요약 ===
@@ -4408,7 +4420,7 @@ function _doExportToExcel(data) {
   allLP.forEach(function(item){
     var st=ps(item.p.id); if(!st) return;
     statRows.push([item.p.name||'',item.p.num||'',item.team==='home'?th:ta,
-      st.pa,st.oab,st.h,st.dbl,st.tpl,st.hr,st.bb,st.hbp,st.sac,st.k,st.rbi,
+      st.pa,st.oab,st.h,st.dbl,st.tpl,st.hr,st.bb,st.hbp,st.sh+st.sf,st.k,st.rbi,
       fmt(st.avg),fmt(st.obp),fmt(st.slg),st.pull+'%',st.ctr+'%',st.oppo+'%']);
   });
 
@@ -4985,11 +4997,13 @@ function openPlayerProfile(){
   // current game
   AS.abs.forEach(function(a){
     var key=a.bname;
-    if(!players[key])players[key]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
+    if(!players[key])players[key]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,hbp:0,sf:0,tb:0,pa:0,k:0,hr:0};
     var p=players[key];p.pa++;
     if(!noab.includes(a.res))p.ab++;
     if(hits.includes(a.res))p.h++;
-    if(a.res==='볼넷'||a.res==='사구')p.bb++;
+    if(a.res==='볼넷')p.bb++;
+    if(a.res==='사구')p.hbp++;
+    if(a.res==='희비')p.sf++;
     if(a.res==='삼진')p.k++;
     if(a.res==='홈런')p.hr++;
     if(a.rbi)p.rbi+=a.rbi;
@@ -5005,11 +5019,13 @@ function openPlayerProfile(){
       if(!d||!d.abs)continue;
       d.abs.forEach(function(a){
         var pk=a.bname;
-        if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,tb:0,pa:0,k:0,hr:0};
+        if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,hbp:0,sf:0,tb:0,pa:0,k:0,hr:0};
         var p=players[pk];p.pa++;
         if(!noab.includes(a.res))p.ab++;
         if(hits.includes(a.res))p.h++;
-        if(a.res==='볼넷'||a.res==='사구')p.bb++;
+        if(a.res==='볼넷')p.bb++;
+        if(a.res==='사구')p.hbp++;
+        if(a.res==='희비')p.sf++;
         if(a.res==='삼진')p.k++;
         if(a.res==='홈런')p.hr++;
         if(a.rbi)p.rbi+=a.rbi;
@@ -5025,7 +5041,7 @@ function openPlayerProfile(){
     +'<thead><tr style="border-bottom:1px solid var(--border);color:var(--text3)">'
     +'<th style="padding:6px 4px;text-align:left">선수</th><th style="padding:6px 4px">PA</th><th style="padding:6px 4px">AB</th><th style="padding:6px 4px">H</th><th style="padding:6px 4px">HR</th><th style="padding:6px 4px">RBI</th><th style="padding:6px 4px">AVG</th><th style="padding:6px 4px">OBP</th><th style="padding:6px 4px">OPS</th></tr></thead>'
     +'<tbody>'+list.map(function(p){
-      var avg=p.ab?p.h/p.ab:0,obp=p.pa?(p.h+p.bb)/p.pa:0,slg=p.ab?p.tb/p.ab:0,ops=obp+slg;
+      var avg=p.ab?p.h/p.ab:0,obp=calcOBPFromCounts(p)||0,slg=p.ab?p.tb/p.ab:0,ops=obp+slg;
       var f3=function(v){return v.toFixed(3).replace('0.','.'); };
       var opsColor=ops>=0.9?'#2dd4a0':ops>=0.75?'#4b8cf5':ops>=0.6?'#f6c23e':'var(--text3)';
       return '<tr style="border-bottom:1px solid var(--border)">'
@@ -5074,7 +5090,7 @@ function runGameCompare(){
       var tb=abs.reduce(function(s,a){var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};return s+(bm[a.res]||0);},0);
       var k=abs.filter(function(a){return a.res==='삼진';}).length;
       var hr=abs.filter(function(a){return a.res==='홈런';}).length;
-      var pa=abs.length,avg=ab?h/ab:0,obp=pa?(h+bb)/pa:0,slg=ab?tb/ab:0;
+      var avg=ab?h/ab:0,obp=calcOBP(abs)||0,slg=ab?tb/ab:0;
       return {ab:ab,h:h,bb:bb,k:k,hr:hr,rbi:abs.reduce(function(s,a){return s+a.rbi;},0),avg:avg,ops:obp+slg};
     }
     var c1=calc(d1.abs),c2=calc(d2.abs);
@@ -5559,8 +5575,7 @@ function _cardStats(abs){
   var bb=n('볼넷'),hbp=n('사구'),sf=n('희비'),sh=n('희타'),so=n('삼진');
   var pa=abs.length,ab=pa-bb-hbp-sf-sh,h=s1+s2+s3+hr,tb=s1+2*s2+3*s3+4*hr;
   var rbi=abs.reduce(function(s,a){return s+(a.rbi||0);},0);
-  var obpD=ab+bb+hbp+sf;
-  var avg=ab?h/ab:0,obp=obpD?(h+bb+hbp)/obpD:0,slg=ab?tb/ab:0;
+  var avg=ab?h/ab:0,obp=calcOBPFromCounts({ab:ab,h:h,bb:bb,hbp:hbp,sf:sf})||0,slg=ab?tb/ab:0;
   return {pa:pa,ab:ab,h:h,s1:s1,s2:s2,s3:s3,hr:hr,bb:bb,hbp:hbp,sf:sf,so:so,rbi:rbi,tb:tb,avg:avg,obp:obp,slg:slg,ops:obp+slg};
 }
 // 결과 → 기록지 문구 (좌전 안타, 우월 홈런, 중견수 뜬공 …)
@@ -6517,7 +6532,7 @@ function showGameSummary(){
   var rbi=abs.reduce(function(s,a){return s+a.rbi;},0);
   var tb=abs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
   var avg=oab>0?h/oab:0;
-  var obp=abs.length>0?(h+bb)/abs.length:0;
+  var obp=calcOBP(abs)||0;
   var slg=oab>0?tb/oab:0;
   var th=document.getElementById('tHome').value||'홈팀';
   var ta=document.getElementById('tAway').value||'원정팀';
@@ -6787,7 +6802,7 @@ function gfShowEndCard(){
   var rbi=abs.reduce(function(s,a){return s+a.rbi;},0);
   var tb=abs.reduce(function(s,a){return s+(_BASE[a.res]||0);},0);
   var avg=oab>0?h/oab:0;
-  var obp=abs.length>0?(h+bb)/abs.length:0;
+  var obp=calcOBP(abs)||0;
   var slg=oab>0?tb/oab:0;
 
   // 주요 타구 방향
@@ -7370,11 +7385,13 @@ function renderTeamLeaderboard(sort){
     var d;try{d=JSON.parse(raw);}catch(e){return;}
     (d.abs||[]).forEach(function(a){
       if(a.team!=='home')return;
-      if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,bb:0,tb:0,rbi:0,hr:0,gk:new Set()};
+      if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,bb:0,hbp:0,sf:0,tb:0,rbi:0,hr:0,gk:new Set()};
       var p=pm[a.bid];p.gk.add(g.key);
       if(hits.includes(a.res))p.h++;
       if(!noab.includes(a.res))p.ab++;
-      if(a.res==='볼넷'||a.res==='사구')p.bb++;
+      if(a.res==='볼넷')p.bb++;
+      if(a.res==='사구')p.hbp++;
+      if(a.res==='희비')p.sf++;
       p.tb+=(base[a.res]||0);p.rbi+=(a.rbi||0);
       if(a.res==='홈런')p.hr++;
     });
@@ -7382,7 +7399,7 @@ function renderTeamLeaderboard(sort){
   var ps=Object.values(pm).filter(function(p){return p.ab>=3;});
   ps.forEach(function(p){
     p.avg=p.ab?p.h/p.ab:0;
-    p.obp=(p.ab+p.bb)?(p.h+p.bb)/(p.ab+p.bb):0;
+    p.obp=calcOBPFromCounts(p)||0;
     p.slg=p.ab?p.tb/p.ab:0;
     p.ops=p.obp+p.slg;p.g=p.gk.size;
   });

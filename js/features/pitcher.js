@@ -209,7 +209,7 @@ function _stats(P) {
 
 function _hero(P, S) {
   const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
-  const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? ROLE[P.role] || P.role : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타자`].filter(Boolean).join(' · ');
+  const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? _esc(ROLE[P.role] || P.role) : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타자`].filter(Boolean).join(' · ');
   const kpi = (l, val, sub, tip) => `<div class="pc-kpi"${tip ? ` title="${tip}"` : ''}><span>${l}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   return `
     <section class="pc-hero">

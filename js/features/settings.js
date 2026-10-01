@@ -69,7 +69,7 @@ function render() {
   $('stState').textContent = gfOn ? 'LIVE · 경기 운영 중' : abs ? '기록 중' : '경기 준비';
   $('stMatch').innerHTML =
     '<span class="st-tm"><small>홈</small> <b>' + esc(th) + '</b></span> ' +
-    '<span class="st-score"><b>' + (AS.hs || 0) + '</b><i>:</i><b>' + (AS.as || 0) + '</b></span> ' +
+    '<span class="st-score"><b>' + esc(AS.hs || 0) + '</b><i>:</i><b>' + esc(AS.as || 0) + '</b></span> ' +
     '<span class="st-tm st-tm-r"><small>원정</small> <b>' + esc(ta) + '</b></span>';
   const inn = gfOn && window.gfInnStr ? window.gfInnStr() : (($('innSel') || {}).value || '1회초');
   const outs = gfOn ? GF.outs : (AS.outs || 0);

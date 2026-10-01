@@ -330,7 +330,7 @@ function _lsHtml() {
   const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0) }, (_, i) => i + 1);
   const head = `<tr><th scope="col" class="t">TEAM</th>${cols.map(n => `<th scope="col"${cur.n === n ? ' class="cur"' : ''}>${n}</th>`).join('')}<th scope="col" class="r">R</th><th scope="col">H</th><th scope="col">E</th></tr>`;
   const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}></td>`).join('')}`
-    + `<td class="r">${runs}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
+    + `<td class="r">${esc(runs)}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
   // R 칸은 44px 터치 타겟이 안 나와서 점수 수정은 옆 버튼으로 (기존 스코어 수정 팝오버)
   return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — 이닝별 득점은 기록하지 않아 비워 둡니다</caption>`
     // 윗줄 = 초 공격(원정) 팀: 내 팀이 원정이면 내 팀이 위 (야구 라인스코어 표기)
@@ -366,7 +366,7 @@ function _orderHtml() {
     const last = abs[abs.length - 1];
     const on = !!cur && String(cur.id) === String(p.id);
     const lastTxt = last ? abbrOf(last) : '';
-    rows.push(`<li><button type="button" class="sb-ot-row${on ? ' cur' : ''}"${on ? ' aria-current="true"' : ''} onclick="sbPickBatter('${esc(String(p.id))}')"`
+    rows.push(`<li><button type="button" class="sb-ot-row${on ? ' cur' : ''}"${on ? ' aria-current="true"' : ''} onclick="sbPickBatter(${esc(JSON.stringify(String(p.id)))})"`
       + ` aria-label="${i + 1}번 ${esc(p.name)}${lastTxt ? ', 마지막 ' + esc(lastTxt) : ''}${on ? ', 현재 타자' : ''}">`
       + `<span class="n"><i>${i + 1}</i></span><span class="nm">${esc(p.name)}${p.pos ? `<small>${esc(p.pos)}</small>` : ''}</span>`
       + `<span class="ls">${esc(lastTxt)}</span><span class="mk">${abs.map(a => markSvg(kindOf(a.res), 14)).join('')}</span></button></li>`);

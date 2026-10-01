@@ -155,7 +155,7 @@ function _batterHtml() {
         <div class="rv-ssn"><small>시즌 ${s ? s.pa : 0}타석</small><b>${s && s.ab ? f3(s.avg) : '—'}</b></div>
       </div>
       <div class="rv-today">
-        <small>오늘</small><b>${line}</b>
+        <small>오늘</small><b>${_esc(line)}</b>
         <span class="rv-chips an-rchips">${today.map(a => { const [tx, c] = SHORT[a.res] || [a.res, 'out']; return `<i class="r-${c}">${_esc(tx)}</i>`; }).join('')}</span>
       </div>
       <div class="rv-order">

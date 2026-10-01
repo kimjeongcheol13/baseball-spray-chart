@@ -2566,6 +2566,27 @@ function _cleanSaveEntry(s,d){
   return clean;
 }
 // ▲ save-validator
+
+// ▼ settings-key purge
+// 예전 버전은 가져오기 · ?import= 링크 · 클라우드 복원에서 key를 검증하지 않아, 경기 목록(sl_saves)에 설정 키를 가리키는 항목이 심어졌을 수 있다.
+// 그런 항목이 남으면 마지막 경기 열기 · 복구 · 기록 수정이 그 키를 경기 저장으로 읽고 덮어쓰고, 삭제는 그 키를 지우고, 클라우드 업로드는 그 값(세션 토큰 등)을 올린다.
+// 그래서 로드할 때 먼저 지운다: 설정 키 이름이거나 key가 문자열이 아닌 항목만 제거하고 정리된 목록을 다시 저장한다.
+// 경기 저장 key 형식(_isSaveKey)은 항상 유지하고, 형식에 없는 옛 key도 설정 키 이름이 아니면 건드리지 않는다. 목록은 앱이 경기 저장 말고 쓰는 sl_ 키 전부다.
+var _SETTINGS_KEYS=['sl_cloud_session','sl_cloud_uid','sl_saves','sl_teams','sl_team_code','sl_autosave',
+  'sl_uid','sl_visited','sl_ga_first_record','sl_ftu_done','sl_menu_moved_seen','sl_scout_intro_seen','sl_scout_info_closed',
+  'sl_lp_w','sl_lp_w_mob','sl_rp_w','sl_ev_unit','sl_stadium','sl_stadium_custom','sl_field_overlays','sl_hc','sl_feedback','sl_report_cmt'];
+function _purgeSettingsKeyEntries(){
+  try{
+    var raw=localStorage.getItem('sl_saves');if(!raw)return 0;
+    var list=JSON.parse(raw);if(!Array.isArray(list))return 0;
+    var clean=list.filter(function(s){var k=(s&&typeof s==='object')?s.key:null;return _isSaveKey(k)||(typeof k==='string'&&_SETTINGS_KEYS.indexOf(k)<0);});
+    if(clean.length<list.length)localStorage.setItem('sl_saves',JSON.stringify(clean));
+    return list.length-clean.length;
+  }catch(e){return 0;}
+}
+_purgeSettingsKeyEntries();
+// ▲ settings-key purge
+
 function _doImportText(text) {
   try {
     if (text.trim()[0] !== '{') { showToast('SprayLab 데이터가 아닙니다', false); return; }

@@ -10,14 +10,29 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `03b_verify_team_rls_fixture.sql` | 03 과 같은 확인을 **임시 가짜 사용자·팀**으로 수행 (팀이 없어도 됨). 끝에서 일부러 예외를 던져 전부 롤백 → `VERIFY_RESULT` 오류가 나오는 것이 정상 | 없음 (전부 롤백) |
 | `04_find_team_by_code_rpc.sql` | 팀 코드 "정확히 일치" 조회 RPC `find_team_by_code` (가입 화면용. `teams_select` 는 풀지 않음) | 함수 1개 생성 (authenticated 만 실행) |
 | `04b_verify_find_team_by_code.sql` | 04 검증 (임시 픽스처, 전부 롤백) | 없음 (전부 롤백) |
+| `05_public_policies_phase1_additive.sql` | [Phase 1] `request_team_code()` · `get_shared_link()` 추가 (동작 변화 없음) | 함수 2개 생성 |
+| `06_public_policies_phase3_close.sql` | [Phase 3] `games` 헤더 방식 RLS 로 교체 · `feedback.allow_select` / `shared_links.public_read` 삭제 | 정책 교체·삭제 (다시 열려면 파일 맨 아래 ROLLBACK) |
+| `06b_verify_public_policies_closed.sql` | Phase 3 검증 (기존 팀 코드로 시험, 코드·내용 비출력, 전부 롤백) | 없음 (전부 롤백) |
+
+## 공개 정책 닫기 런북 (games / feedback / shared_links)
+순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.
+1. **Phase 1** `05` 실행 (추가만 · 안전). `get_shared_link` 가 있어야 새 클라이언트의 공유 링크 열기가 동작한다.
+2. **Phase 2** 클라이언트 배포 (`core.js ?v=122`, `sw.js` 캐시 v45) 후 **게이트 확인**
+   - 배포된 페이지가 `core.js?v=122` 를 로드하는지
+   - 실서비스에서 팀 코드를 설정하고 동기화 → Network 의 `/rest/v1/games` 요청에 `x-team-code` 헤더가 있고 **200** (프리플라이트 OPTIONS 포함)
+   - 공유 링크(`?gid=…`)가 열리는지 (`rpc/get_shared_link` 200)
+   - 배포 후 충분히 지났는지(구버전 탭 정리). 로그 확인: `edge_logs` 에서 `request.path = '/rest/v1/games'` 요청량(2026-10-02 기준 24시간 4건 — 사용량이 매우 작다)
+3. **Phase 3** `06` 실행 → `06b` 실행(전부 OK) → 실서비스에서 기존 팀 코드로 동기화(GET/POST 200), 피드백 보내기, 공유 링크 열기 재확인
+4. 문제 시 `06` 맨 아래 ROLLBACK 블록으로 즉시 되돌린다. 구버전 탭은 새로고침하면 된다(실패 시 "클라우드 저장 실패 · 이 기기에는 저장됨" 알림이 뜬다).
 
 ## 적용 이력 (Supabase 프로젝트 `bsmbrngkpsdmbwoqcrps`)
 | 날짜 | 마이그레이션 | 내용 |
 |---|---|---|
 | 2026-10-02 | `fix_teams_rls_recursion` | `02` — `is_team_owner` / `is_team_member` 생성, `teams_select` / `team_members_select` USING 교체 |
 | 2026-10-02 | `add_find_team_by_code_rpc` | `04` — `find_team_by_code` 생성 |
+| 2026-10-02 | `add_public_policy_helpers_phase1` | `05` (Phase 1) — `request_team_code()` · `get_shared_link()` 생성. 정책 변경 없음(공개 정책은 아직 열려 있음). 적용 후 10개 시험 전부 OK |
 
-적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
+적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 확인 후 별도 승인으로 적용한다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 
 ## 순서
 1. `01` 실행 → `kind=cycle` / `affected` 행 확인 (결과 표를 그대로 공유하면 점검 가능)

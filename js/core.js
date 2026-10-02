@@ -8315,10 +8315,29 @@ function fieldFeedbackSubmit(){
   var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
   var _sb=null;
 
+  // 팀 코드 공유(games 테이블): 서버(RLS)가 "내 팀 코드"인 행만 허용하므로 games 요청에 x-team-code 헤더를 붙인다.
+  // 값은 base64url(UTF-8) — 한글 등 비ASCII 팀 코드를 HTTP 헤더로 안전하게 보내기 위함 (sql/05 request_team_code() 가 복원).
+  function _b64u(s){
+    var bytes=new TextEncoder().encode(s),bin='';
+    for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function _teamFetch(url,opts){
+    try{
+      var tc=window.getTeamCode&&getTeamCode();
+      if(tc&&String(url&&url.url||url).indexOf('/rest/v1/games')>-1){
+        var h=new Headers((opts&&opts.headers)||{});
+        h.set('x-team-code',_b64u(tc));
+        opts=Object.assign({},opts,{headers:h});
+      }
+    }catch(e){}
+    return fetch(url,opts);
+  }
+
   function _init(){
     if(_sb)return _sb;
     if(window.supabase&&window.supabase.createClient){
-      _sb=window.supabase.createClient(SURL,SKEY);
+      _sb=window.supabase.createClient(SURL,SKEY,{global:{fetch:_teamFetch}});
     }
     return _sb;
   }
@@ -8564,26 +8583,9 @@ function fieldFeedbackSubmit(){
     var id=_genId();
     db.from('shared_links').insert({id:id,payload:payload})
       .then(function(r){
-        if(r.error){
-          /* 테이블 없음(42P01) → 자동 생성 후 재시도 */
-          if(r.error.code==='42P01'||r.error.message&&r.error.message.indexOf('shared_links')>-1){
-            db.rpc('exec_ddl',{sql:
-              'create table if not exists shared_links(id text primary key,payload jsonb not null,created_at timestamptz default now());'+
-              'alter table shared_links enable row level security;'+
-              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon insert\') then '+
-              'create policy "anon insert" on shared_links for insert to anon with check (true);end if;end $$;'+
-              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon select\') then '+
-              'create policy "anon select" on shared_links for select to anon using (true);end if;end $$;'
-            }).then(function(){
-              return db.from('shared_links').insert({id:id,payload:payload});
-            }).then(function(r2){
-              if(r2.error){onFail(r2.error);}else{onOk(id);}
-            }).catch(onFail);
-          } else {
-            onFail(r.error);
-          }
-          return;
-        }
+        /* 실패하면 호출부가 레거시 링크 방식으로 폴백한다. (예전의 exec_ddl RPC 로 테이블·정책을 클라이언트가 만들던 자동 생성 폴백은
+           제거 — 임의 DDL 을 서버에 보내는 패턴이고, 운영에는 그 함수가 없어 어차피 동작하지 않았다. 테이블은 sql/ 로 관리) */
+        if(r.error){onFail(r.error);return;}
         onOk(id);
       })
       .catch(onFail);
@@ -8592,10 +8594,11 @@ function fieldFeedbackSubmit(){
   window.fetchSharedLink=function(id,onOk,onFail){
     var db=_init();
     if(!db){onFail('no_client');return;}
-    db.from('shared_links').select('payload').eq('id',id).single()
+    // 목록 읽기는 RLS 로 막혀 있다 → id 정확히 일치 1건만 돌려주는 RPC (sql/05 get_shared_link). 없으면 data 가 null
+    db.rpc('get_shared_link',{p_id:id})
       .then(function(r){
         if(r.error||!r.data){onFail(r.error);return;}
-        onOk(r.data.payload);
+        onOk(r.data);
       })
       .catch(onFail);
   };

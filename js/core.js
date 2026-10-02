@@ -309,6 +309,8 @@ function showApp(){
   document.getElementById('landing-page').style.display='none';
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
+  /* 랜딩 버튼이 사라지면 Tab 시작점이 그 자리에 남아 스킵 링크(문서 맨 앞)를 건너뛴다 → 시작점을 문서 처음으로 */
+  (function(){var b=document.body;b.setAttribute('tabindex','-1');b.focus({preventScroll:true});b.removeAttribute('tabindex');})();
   function _applyMobLayout(){
     var isMob=window.innerWidth<=720;
     if(isMob){ap.style.overflowY='hidden';ap.style.height='100svh';}

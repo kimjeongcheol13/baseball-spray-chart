@@ -13,6 +13,8 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `05_public_policies_phase1_additive.sql` | [Phase 1] `request_team_code()` · `get_shared_link()` 추가 (동작 변화 없음) | 함수 2개 생성 |
 | `06_public_policies_phase3_close.sql` | [Phase 3] `games` 헤더 방식 RLS 로 교체 · `feedback.allow_select` / `shared_links.public_read` 삭제 | 정책 교체·삭제 (다시 열려면 파일 맨 아래 ROLLBACK) |
 | `06b_verify_public_policies_closed.sql` | Phase 3 검증 (기존 팀 코드로 시험, 코드·내용 비출력, 전부 롤백) | 없음 (전부 롤백) |
+| `07_enable_rls_visits.sql` | `public.visits` RLS 켜기 (정책 없음 = 전면 차단). 06 과 **독립**(순서 무관). 어드바이저 ERROR `rls_disabled_in_public` | RLS 활성화 1줄 (되돌리면 `disable row level security`) |
+| `07b_verify_visits_closed.sql` | 07 검증 (임시 행, 전부 롤백) | 없음 (전부 롤백) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

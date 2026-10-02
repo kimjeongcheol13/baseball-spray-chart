@@ -275,15 +275,20 @@
       var db    = _client();
       var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
 
+      // gd.ts 가 예전 형식(ko-KR 문자열)이면 new Date(...).toISOString() 이 RangeError 를 던져, try/catch 가 그 경기를 말없이 빼 버렸다 → ts 를 숫자로 읽는다.
+      // 시각을 못 읽으면(ts 없음 포함) 예전처럼 지금 시각. 그래도 못 올리는 경기(깨진 JSON 등)는 개수를 로그로 남긴다
+      var unsent = 0;
       var rows = saves.map(function (s) {
         try {
           var gd = JSON.parse(localStorage.getItem(s.key) || 'null');
           if (!gd) return null;
+          var ti = _tsInfo(gd, s, s.key);
           return { user_id: user.id, game_key: s.key,
             team_name: (gd.th||'') + ' vs ' + (gd.ta||''), date: gd.d||null,
-            data: gd, updated_at: new Date(gd.ts||Date.now()).toISOString() };
-        } catch (e) { return null; }
+            data: gd, updated_at: new Date(ti.reliable ? ti.ts : Date.now()).toISOString() };
+        } catch (e) { unsent++; return null; }
       }).filter(Boolean);
+      if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
 
       // 업로드가 실패해도 아래 내려받기는 계속 시도하되(기존 동작), 끝에서 실패로 알린다
       var upErr = null;
@@ -306,12 +311,15 @@
           if (!clean) return;
           var loc = JSON.parse(localStorage.getItem(k) || 'null');
           var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-          if (!loc || remoteTs > (loc.ts || 0)) {
+          var li = _tsInfo(loc, null, k);   // 로컬 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
+          if (!loc || (li.reliable && remoteTs > li.ts)) {
             localStorage.setItem(k, JSON.stringify(row.data));
             if (!existMap[k]) {
               saves.push(clean);
               added++;
             }
+          } else if (!li.reliable) {
+            console.warn('[Cloud] 로컬 경기 시각을 읽지 못해 병합에서 제외:', k);
           }
         });
         if (added) {
@@ -398,7 +406,8 @@
     // localStorage 업데이트
     var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
     var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-    if (!loc || remoteTs > (loc.ts || 0)) {
+    var li = _tsInfo(loc, null, row.game_key);   // 로컬 시각을 못 읽으면 덮어쓰지 않는다
+    if (!loc || (li.reliable && remoteTs > li.ts)) {
       localStorage.setItem(row.game_key, JSON.stringify(row.data));
     }
   }

@@ -8583,26 +8583,9 @@ function fieldFeedbackSubmit(){
     var id=_genId();
     db.from('shared_links').insert({id:id,payload:payload})
       .then(function(r){
-        if(r.error){
-          /* 테이블 없음(42P01) → 자동 생성 후 재시도 */
-          if(r.error.code==='42P01'||r.error.message&&r.error.message.indexOf('shared_links')>-1){
-            db.rpc('exec_ddl',{sql:
-              'create table if not exists shared_links(id text primary key,payload jsonb not null,created_at timestamptz default now());'+
-              'alter table shared_links enable row level security;'+
-              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon insert\') then '+
-              'create policy "anon insert" on shared_links for insert to anon with check (true);end if;end $$;'+
-              'do $$ begin if not exists(select 1 from pg_policies where tablename=\'shared_links\' and policyname=\'anon select\') then '+
-              'create policy "anon select" on shared_links for select to anon using (true);end if;end $$;'
-            }).then(function(){
-              return db.from('shared_links').insert({id:id,payload:payload});
-            }).then(function(r2){
-              if(r2.error){onFail(r2.error);}else{onOk(id);}
-            }).catch(onFail);
-          } else {
-            onFail(r.error);
-          }
-          return;
-        }
+        /* 실패하면 호출부가 레거시 링크 방식으로 폴백한다. (예전의 exec_ddl RPC 로 테이블·정책을 클라이언트가 만들던 자동 생성 폴백은
+           제거 — 임의 DDL 을 서버에 보내는 패턴이고, 운영에는 그 함수가 없어 어차피 동작하지 않았다. 테이블은 sql/ 로 관리) */
+        if(r.error){onFail(r.error);return;}
         onOk(id);
       })
       .catch(onFail);

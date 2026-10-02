@@ -8315,10 +8315,29 @@ function fieldFeedbackSubmit(){
   var SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
   var _sb=null;
 
+  // 팀 코드 공유(games 테이블): 서버(RLS)가 "내 팀 코드"인 행만 허용하므로 games 요청에 x-team-code 헤더를 붙인다.
+  // 값은 base64url(UTF-8) — 한글 등 비ASCII 팀 코드를 HTTP 헤더로 안전하게 보내기 위함 (sql/05 request_team_code() 가 복원).
+  function _b64u(s){
+    var bytes=new TextEncoder().encode(s),bin='';
+    for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function _teamFetch(url,opts){
+    try{
+      var tc=window.getTeamCode&&getTeamCode();
+      if(tc&&String(url&&url.url||url).indexOf('/rest/v1/games')>-1){
+        var h=new Headers((opts&&opts.headers)||{});
+        h.set('x-team-code',_b64u(tc));
+        opts=Object.assign({},opts,{headers:h});
+      }
+    }catch(e){}
+    return fetch(url,opts);
+  }
+
   function _init(){
     if(_sb)return _sb;
     if(window.supabase&&window.supabase.createClient){
-      _sb=window.supabase.createClient(SURL,SKEY);
+      _sb=window.supabase.createClient(SURL,SKEY,{global:{fetch:_teamFetch}});
     }
     return _sb;
   }
@@ -8592,10 +8611,11 @@ function fieldFeedbackSubmit(){
   window.fetchSharedLink=function(id,onOk,onFail){
     var db=_init();
     if(!db){onFail('no_client');return;}
-    db.from('shared_links').select('payload').eq('id',id).single()
+    // 목록 읽기는 RLS 로 막혀 있다 → id 정확히 일치 1건만 돌려주는 RPC (sql/05 get_shared_link). 없으면 data 가 null
+    db.rpc('get_shared_link',{p_id:id})
       .then(function(r){
         if(r.error||!r.data){onFail(r.error);return;}
-        onOk(r.data.payload);
+        onOk(r.data);
       })
       .catch(onFail);
   };

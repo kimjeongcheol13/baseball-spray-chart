@@ -1,7 +1,7 @@
 // SprayLab Service Worker v24
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v44';
+const CACHE_NAME = 'spraylab-v45';
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -61,6 +61,10 @@ self.addEventListener('fetch', function(e) {
 
   // GET 요청만 처리 — Supabase POST/WebSocket 등은 SW 통과 (silent pass-through)
   if (req.method !== 'GET') return;
+
+  // Supabase API(GET 포함)는 SW 가 가로채지 않는다: 같은 URL 이라도 헤더(x-team-code · Authorization)에 따라 응답이 달라지는데
+  // 아래 stale-while-revalidate 는 URL 만으로 캐시해 오래된(또는 권한 변경 직후의 빈) 응답을 먼저 돌려준다
+  if (new URL(req.url).hostname.endsWith('.supabase.co')) return;
 
   // HTML 네비게이션: 네트워크 우선, 성공 시 캐시에도 저장, 실패 시 캐시 폴백
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {

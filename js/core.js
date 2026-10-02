@@ -4854,29 +4854,9 @@ function _shareGameLinkLegacy(payload){
       :'b'+btoa(unescape(encodeURIComponent(json)));
     url=location.origin+location.pathname+'?game='+encoded;
   }catch(e){url=location.href;}
-  /* URL 단축: cleanuri → 1pt.co 순서로 시도 */
-  if(url.length>300){
-    showToast('🔗 링크 생성 중…',false,true);
-    fetch('https://cleanuri.com/api/v1/shorten',{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'url='+encodeURIComponent(url)
-    })
-    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
-    .then(function(d){
-      if(d.result_url){showShareQR(d.result_url);}
-      else throw new Error('no result');
-    })
-    .catch(function(){
-      /* cleanuri 실패 → 1pt.co */
-      fetch('https://api.1pt.co/addURL?long='+encodeURIComponent(url))
-        .then(function(r){return r.json();})
-        .then(function(d){showShareQR(d.short?'https://1pt.co/'+d.short:url);})
-        .catch(function(){showShareQR(url);});
-    });
-    return;
-  }
+  /* 외부 단축 서비스로 URL을 보내지 않는다(선수 데이터 포함) — 길면 안내만 */
   showShareQR(url);
+  if(url.length>300)showToast('링크가 깁니다. QR이 안 보이면 링크 복사를 사용하세요.',false,true);
 }
 function _fallbackCopy(text){
   var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';

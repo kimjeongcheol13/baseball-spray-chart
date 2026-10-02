@@ -15,7 +15,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 배포 전 최소 검사: 실패하면 deploy 잡이 실행되지 않는다
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ?v= 경고용: 이전 커밋과 비교
+
+      - name: Pre-deploy checks (JS syntax, HTML, asset refs, ?v= warning)
+        run: python3 .github/scripts/predeploy_check.py "${{ github.event.before }}"
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
     environment:
       name: github-pages

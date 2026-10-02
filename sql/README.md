@@ -8,6 +8,16 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `02_fix_teams_rls_recursion.sql` | `teams` ↔ `team_members` 무한 재귀 제거 (`is_team_owner` / `is_team_member` + 정책 2개 교체) | 함수 2개 생성, 정책 2개 USING 교체 |
 | `03_verify_team_rls.sql` | 소유자 / 팀원 / 비팀원 / 비로그인 4가지로 읽기·쓰기 권한 확인 (실제 팀이 있어야 함) | 없음 (쓰기 시험은 전부 취소, 임시 표만 생성) |
 | `03b_verify_team_rls_fixture.sql` | 03 과 같은 확인을 **임시 가짜 사용자·팀**으로 수행 (팀이 없어도 됨). 끝에서 일부러 예외를 던져 전부 롤백 → `VERIFY_RESULT` 오류가 나오는 것이 정상 | 없음 (전부 롤백) |
+| `04_find_team_by_code_rpc.sql` | 팀 코드 "정확히 일치" 조회 RPC `find_team_by_code` (가입 화면용. `teams_select` 는 풀지 않음) | 함수 1개 생성 (authenticated 만 실행) |
+| `04b_verify_find_team_by_code.sql` | 04 검증 (임시 픽스처, 전부 롤백) | 없음 (전부 롤백) |
+
+## 적용 이력 (Supabase 프로젝트 `bsmbrngkpsdmbwoqcrps`)
+| 날짜 | 마이그레이션 | 내용 |
+|---|---|---|
+| 2026-10-02 | `fix_teams_rls_recursion` | `02` — `is_team_owner` / `is_team_member` 생성, `teams_select` / `team_members_select` USING 교체 |
+| 2026-10-02 | `add_find_team_by_code_rpc` | `04` — `find_team_by_code` 생성 |
+
+적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 
 ## 순서
 1. `01` 실행 → `kind=cycle` / `affected` 행 확인 (결과 표를 그대로 공유하면 점검 가능)

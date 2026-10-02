@@ -8355,6 +8355,130 @@ function fieldFeedbackSubmit(){
     return localStorage.getItem('sl_team_code')||'';
   };
 
+  // ── 경기 시각(ts) 정규화 + 업로드 엔진 ──
+  // 서버 games.ts 는 bigint 다. 예전 경기의 ts 는 ko-KR 문자열이라 그대로 보내면 한 행 때문에 일괄 upsert 전체가 400 이 된다.
+  // → 전송값만 숫자로 바꾼다(LocalStorage 원본은 그대로). 정규화는 cloud.js 의 _slTsInfo — 없으면 숫자 ts 만 인정하는 안전한 폴백.
+  // → 한 번에 UP_CHUNK 행씩 보내고, 데이터 오류로 청크가 실패하면 행 단위로 다시 보내 불량 행만 가려낸다(요청 UP_RETRY_CAP 까지).
+  //   권한·네트워크·서버 오류는 행 단위로 쪼개도 소용없으므로 즉시 멈춘다.
+  var UP_CHUNK=20,UP_RETRY_CAP=50;
+  function _tsInfo(gd,entry,key){
+    try{if(window._slTsInfo)return window._slTsInfo(gd,entry,key);}catch(e){}
+    var t=gd&&gd.ts,n=(typeof t==='number'&&isFinite(t)&&t>0)?Math.floor(t):0;
+    return{ts:n,reliable:n>0};
+  }
+  function _isFatal(r){
+    var e=r&&r.error;if(!e)return false;
+    var st=r.status,code=String(e.code||''),msg=String(e.message||e);
+    if(r.thrown||(typeof navigator!=='undefined'&&navigator.onLine===false))return true;   // fetch 자체 실패(오프라인·DNS)
+    if(st===0||st===401||st===403||st===404||st===408||st===429||st>=500)return true;
+    if(code==='42501'||code==='42P01'||code==='PGRST301')return true;
+    return /Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED/i.test(msg);
+  }
+  function _send(db,rows){
+    return Promise.resolve().then(function(){return db.from('games').upsert(rows,{onConflict:'team_code,game_key'});})
+      .then(function(r){return r||{error:null};},function(e){return{error:e||{message:'network'},thrown:true};});
+  }
+  function _rowOk(r){
+    return !!r&&typeof r.team_code==='string'&&r.team_code.length>0&&typeof r.game_key==='string'&&r.game_key.length>0&&
+      !!r.game_data&&typeof r.game_data==='object'&&
+      typeof r.ts==='number'&&isFinite(r.ts)&&r.ts>=0&&Math.floor(r.ts)===r.ts&&r.ts<=9007199254740991;
+  }
+  // rows → Promise<{total,uploaded,failed:[key],invalid:[key],reason,requests}> (실패해도 reject 하지 않는다)
+  function _uploadGames(db,rows){
+    var res={total:rows.length,uploaded:0,failed:[],invalid:[],reason:'',requests:0},ok=[],budget=UP_RETRY_CAP,stopped=false;
+    function note(e){if(!res.reason)res.reason=String((e&&(e.message||e.code))||e||'').replace(/\s+/g,' ').slice(0,80);}
+    rows.forEach(function(r){if(_rowOk(r))ok.push(r);else res.invalid.push(r&&typeof r.game_key==='string'?r.game_key:'?');});   // 전송 전 검증: 못 보낼 행은 요청에 넣지 않는다
+    var chain=Promise.resolve();
+    for(var i=0;i<ok.length;i+=UP_CHUNK){
+      (function(chunk){
+        chain=chain.then(function(){
+          if(stopped){chunk.forEach(function(r){res.failed.push(r.game_key);});return;}
+          res.requests++;
+          return _send(db,chunk).then(function(r){
+            if(!r.error){res.uploaded+=chunk.length;return;}
+            note(r.error);
+            if(_isFatal(r)){stopped=true;chunk.forEach(function(x){res.failed.push(x.game_key);});return;}
+            if(chunk.length===1){res.failed.push(chunk[0].game_key);return;}
+            var q=Promise.resolve();   // 데이터 오류: 한 행 때문일 수 있다 → 행 단위로 다시 보내 불량 행만 가려낸다
+            chunk.forEach(function(row){
+              q=q.then(function(){
+                if(stopped||budget<=0){res.failed.push(row.game_key);return;}
+                budget--;res.requests++;
+                return _send(db,[row]).then(function(rr){
+                  if(!rr.error){res.uploaded++;return;}
+                  res.failed.push(row.game_key);
+                  if(_isFatal(rr)){stopped=true;note(rr.error);}
+                });
+              });
+            });
+            return q;
+          });
+        });
+      })(ok.slice(i,i+UP_CHUNK));
+    }
+    return chain.then(function(){if(res.invalid.length)note('형식 오류');return res;});
+  }
+  // 서버에 있는 이 팀의 경기별 ts (가볍게 game_key,ts 만) — 서버가 더 새로운 경기를 오래된 로컬본으로 덮어쓰지 않기 위해 업로드 전에 읽는다
+  function _fetchRemoteTs(db,tc){
+    return db.from('games').select('game_key,ts').eq('team_code',tc).then(function(r){
+      if(r.error)throw r.error;
+      var m=Object.create(null);
+      (r.data||[]).forEach(function(x){if(x&&typeof x.game_key==='string')m[x.game_key]=Number(x.ts)||0;});
+      return m;
+    });
+  }
+  // 로컬 경기 → 업로드 행. remote(키→서버 ts)가 있으면 "서버가 더 새롭거나 같은" 경기는 올리지 않고,
+  // 서버에 있는데 로컬 시각을 못 읽은 경기는 어느 쪽도 덮지 않는다(held). remote=null 이면 전부 올린다(명시적 전체 업로드).
+  function _planUpload(tc,saves,remote){
+    var byKey=Object.create(null),order=[],plan={rows:[],held:[],behind:0};
+    saves.forEach(function(s){
+      if(!s||typeof s.key!=='string'||!s.key)return;
+      var gd=null;try{gd=JSON.parse(localStorage.getItem(s.key)||'null');}catch(e){gd=null;}
+      if(!gd||typeof gd!=='object')return;   // 데이터가 없는 항목은 예전처럼 조용히 건너뛴다(실패가 아님)
+      var info=_tsInfo(gd,s,s.key),cur=byKey[s.key];
+      if(!cur){order.push(s.key);byKey[s.key]={s:s,gd:gd,info:info};}
+      else if(info.ts>=cur.info.ts)byKey[s.key]={s:s,gd:gd,info:info};   // 같은 키가 두 번 있으면 더 최신 항목(한 요청에 같은 행이 두 번 들어가면 서버가 거부한다)
+    });
+    order.forEach(function(k){
+      var c=byKey[k];
+      if(remote&&(k in remote)){
+        if(!c.info.reliable){plan.held.push(k);return;}
+        if(c.info.ts<=remote[k]){plan.behind++;return;}
+      }
+      plan.rows.push({team_code:tc,game_key:k,game_data:c.gd,label:c.s.label||k,ts:c.info.ts});
+    });
+    return plan;
+  }
+  // 내려받은 서버 행(row)이 로컬 경기(loc)를 덮어쓸지: 'take' | 'keep' | 'hold'
+  //  hold = 로컬 경기의 시각을 읽을 수 없어 어느 쪽이 새로운지 알 수 없다 → 덮어쓰지 않고 경고로 센다
+  function _remoteVerdict(row,loc,entry,key){
+    if(!loc)return 'take';
+    var li=_tsInfo(loc,entry,key);
+    if(!li.reliable)return 'hold';
+    var rt=window._slParseTs?window._slParseTs(row.ts):((typeof row.ts==='number'&&row.ts>0)?row.ts:null);
+    if(!rt)return 'keep';   // 서버 쪽 시각이 없으면 예전처럼 덮어쓰지 않는다
+    return rt>li.ts?'take':'keep';
+  }
+  // 결과 → {state:'ok'|'warn'|'fail', text(상태줄용 전체 문구), short(토스트용 — 토스트는 한 줄이라 모바일에서 22자 안팎이 한계)}.
+  // 올리려던 경기 중 하나라도 못 올렸거나 시각을 못 읽어 병합에서 뺀 경기가 있으면 "완료"라고 하지 않는다.
+  function _outcome(res,heldN,extra,upOnly){
+    var fails=res.failed.length+res.invalid.length,total=res.total;
+    var why=res.reason?' · 원인: '+res.reason:'';
+    var held=heldN?'시각(ts)을 읽지 못한 '+heldN+'개는 병합에서 제외됨':'';
+    if(total>0&&res.uploaded===0&&fails>0){
+      var f=upOnly?'업로드 실패':'동기화 실패';
+      return{state:'fail',text:f+' — '+total+'개 모두 실패'+why+(held?' · '+held:'')+' (이 기기에는 저장됨)'+(extra||''),short:f+' (이 기기에는 저장됨)'};
+    }
+    if(fails>0||heldN>0){
+      var lead=upOnly?'일부만 업로드됨':'일부만 동기화됨',bits=[];
+      if(fails>0)bits.push(total+'개 중 '+fails+'개 실패'+why);
+      if(held)bits.push(held);
+      var sh=fails>0&&heldN>0?'실패 '+fails+' · 제외 '+heldN:fails>0?total+'개 중 '+fails+'개 실패':'시각 불명 '+heldN+'개 제외';
+      return{state:'warn',text:lead+' — '+bits.join(' · ')+(fails>0?' (이 기기에는 저장됨)':'')+(extra||''),short:lead+' ('+sh+')'};
+    }
+    return{state:'ok',text:null,short:null};
+  }
+
   window.openCloudOverlay=function(){
     _setCloudUI(getTeamCode());
     openOverlay('cloudOverlay');
@@ -8472,8 +8596,10 @@ function fieldFeedbackSubmit(){
   window.cloudSave=function(key,data,label,ts){
     if(!_init()||!getTeamCode())return;
     if(typeof navigator!=='undefined'&&!navigator.onLine)return; // 오프라인 시 조기 리턴
+    // ts 를 숫자로 — 예전 경기는 로케일 문자열이라 그대로 보내면 400. 읽을 수 없으면 지금 시각(방금 저장·수정한 경기)
+    var _ti=_tsInfo({ts:ts},{ts:data&&data.ts},key);
     _sb.from('games').upsert({
-      team_code:getTeamCode(),game_key:key,game_data:data,label:label||key,ts:ts||Date.now()
+      team_code:getTeamCode(),game_key:key,game_data:data,label:label||key,ts:_ti.reliable?_ti.ts:Date.now()
     },{onConflict:'team_code,game_key'}).then(function(r){
       if(r.error){
         console.warn('[SprayLab] CloudSave error:',r.error);
@@ -8512,7 +8638,8 @@ function fieldFeedbackSubmit(){
       var rows=r.data||[];
       var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
       var existMap={};saves.forEach(function(s){existMap[s.key]=true;});
-      var added=0,updated=0,skipped=0;
+      var added=0,updated=0,skipped=0,held=0;
+      var entryOf={};saves.forEach(function(s){if(s&&s.key)entryOf[s.key]=s;});
       rows.forEach(function(row){
         var k=row.game_key,gd=row.game_data;
         var clean=_cleanSaveEntry({key:k,label:row.label||k,ts:row.ts||0},gd);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
@@ -8522,9 +8649,10 @@ function fieldFeedbackSubmit(){
           localStorage.setItem(k,JSON.stringify(gd));added++;
         } else {
           var local=JSON.parse(localStorage.getItem(k)||'null');
-          if(!local||(row.ts&&row.ts>(local.ts||0))){
+          var v=_remoteVerdict(row,local,entryOf[k],k);   // 로컬 시각을 못 읽으면(hold) 덮어쓰지 않고 경고로 센다
+          if(v==='take'){
             localStorage.setItem(k,JSON.stringify(gd));updated++;
-          }
+          } else if(v==='hold')held++;
         }
       });
       localStorage.setItem('sl_saves',JSON.stringify(saves));
@@ -8533,6 +8661,7 @@ function fieldFeedbackSubmit(){
       if(updated)msg+=', '+updated+'개 업데이트';
       if(!added&&!updated)msg+=' — 이미 최신 상태';
       if(skipped)msg+=' (형식이 맞지 않는 '+skipped+'개는 건너뜀)';
+      if(held)msg+=' (시각(ts)을 읽지 못한 '+held+'개는 병합에서 제외됨)';
       var st=document.getElementById('cloudConnStatus');
       if(st){st.textContent='✅ '+msg.replace('☁️ ','');st.style.color='var(--green)';}
       showToast(msg,false);
@@ -8548,15 +8677,17 @@ function fieldFeedbackSubmit(){
     if(!saves.length){showToast('업로드할 경기가 없습니다',false);return;}
     var btn=document.getElementById('cloudUploadAllBtn');
     if(btn){btn.disabled=true;btn.textContent='⬆️ 업로드 중…';}
-    var rows=saves.map(function(s){
-      var gd=JSON.parse(localStorage.getItem(s.key)||'null');
-      if(!gd)return null;
-      return{team_code:tc,game_key:s.key,game_data:gd,label:s.label,ts:s.ts||gd.ts||0};
-    }).filter(Boolean);
-    _sb.from('games').upsert(rows,{onConflict:'team_code,game_key'}).then(function(r){
+    // 명시적 "내 기기 → 클라우드 전체 덮어쓰기"라 서버 ts 와 비교하지 않는다(remote=null). ts 는 숫자로, 일부 실패는 실패로 센다
+    var plan=_planUpload(tc,saves,null);
+    _uploadGames(_sb,plan.rows).then(function(res){
       if(btn){btn.disabled=false;btn.textContent='⬆️ 전체 업로드 — 내 기기 경기를 클라우드에 올리기';}
-      if(r.error){showToast('☁️ 업로드 오류: '+r.error.message,false,true);return;}
-      showToast('⬆️ '+rows.length+'개 경기 업로드 완료',false);
+      var o=_outcome(res,0,'',true);
+      if(res.failed.length||res.invalid.length)console.warn('[cloud] upload failed:',res.failed.length+res.invalid.length+'/'+res.total,res.reason);
+      if(o.state==='ok')showToast('⬆️ '+res.uploaded+'개 경기 업로드 완료',false);
+      else showToast((o.state==='warn'?'⚠️ ':'❌ ')+o.short,false,9000);   // 토스트는 한 줄이라 짧은 문구(원인은 콘솔)
+    }).catch(function(e){
+      if(btn){btn.disabled=false;btn.textContent='⬆️ 전체 업로드 — 내 기기 경기를 클라우드에 올리기';}
+      showToast('☁️ 업로드 오류: '+((e&&e.message)||'오류'),false,true);
     });
   };
 
@@ -8580,43 +8711,59 @@ function fieldFeedbackSubmit(){
     var btn=document.getElementById('cloudSyncBtn');
     var st=document.getElementById('cloudConnStatus');
     if(btn){btn.disabled=true;btn.textContent='☁️ 동기화 중…';}
-    function _done(msg,ok){
+    // ok: true(완료 · 초록) | 'warn'(일부만 · Amber) | false(실패 · Hit Red)
+    // msg = 상태줄(전체 문구), toastMsg = 토스트(한 줄이라 짧게 — 생략하면 msg)
+    function _done(msg,ok,toastMsg){
       if(btn){btn.disabled=false;btn.textContent='☁️ 동기화';}
-      if(st){st.textContent=ok?'✅ '+msg:'❌ '+msg;st.style.color=ok?'var(--green)':'var(--red)';}
-      showToast((ok?'✅ ':'❌ ')+msg,false);
+      var ico=ok===true?'✅ ':ok==='warn'?'⚠️ ':'❌ ';
+      if(st){st.textContent=ico+msg;st.style.color=ok===true?'var(--green)':ok==='warn'?'var(--sl-amber)':'var(--sl-hit-red)';}
+      showToast(ico+(toastMsg||msg),false,ok===true?true:9000);
     }
-    // 1. 로컬 → 클라우드 업로드
     var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-    var rows=saves.map(function(s){
-      try{var gd=JSON.parse(localStorage.getItem(s.key));if(!gd)return null;
-        return{team_code:tc,game_key:s.key,game_data:gd,label:s.label||s.key,ts:s.ts||0};}
-      catch(e){return null;}
-    }).filter(Boolean);
-    var upProm=rows.length?db.from('games').upsert(rows,{onConflict:'team_code,game_key'}):Promise.resolve({error:null});
-    // 2. 클라우드 → 로컬 다운로드
-    upProm.then(function(r){
-      if(r.error)console.warn('[cloud] upload:',r.error);
+    var heldKeys={},sentKeys={},up=null;
+    // 0. 서버의 현재 ts 를 먼저 읽는다 — 서버가 더 새로운 경기를 오래된 로컬본으로 덮어쓰지 않기 위해
+    //    (예전에는 로컬 전부를 무조건 올린 뒤 내려받아서, 서버의 최신본이 오래된 기기에 덮여 사라질 수 있었다)
+    _fetchRemoteTs(db,tc).then(function(remoteTs){
+      // 1. 로컬 → 클라우드 업로드 (ts 숫자 정규화 · 20행씩 · 불량 행만 가려냄)
+      var plan=_planUpload(tc,saves,remoteTs);
+      plan.held.forEach(function(k){heldKeys[k]=true;});
+      plan.rows.forEach(function(r){sentKeys[r.game_key]=true;});   // 이번에 올린 키는 내려받기 병합에서 건너뛴다
+      return _uploadGames(db,plan.rows);
+    }).then(function(res){
+      up=res;
+      if(res.failed.length||res.invalid.length)console.warn('[cloud] upload failed:',res.failed.length+res.invalid.length+'/'+res.total,res.reason);
+      // 2. 클라우드 → 로컬 다운로드 (업로드가 실패해도 계속한다)
       return db.from('games').select('*').eq('team_code',tc);
     }).then(function(r){
       if(r.error)throw r.error;
       var remote=r.data||[];
       var saves2=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-      var existMap={};saves2.forEach(function(s){existMap[s.key]=true;});
+      var existMap={},entryOf={};saves2.forEach(function(s){existMap[s.key]=true;if(s&&s.key)entryOf[s.key]=s;});
       var added=0,updated=0,skipped=0;
       remote.forEach(function(row){
         var k=row.game_key,gd=row.game_data;
         var clean=_cleanSaveEntry({key:k,label:row.label||k,ts:row.ts||0},gd);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
         if(!clean){skipped++;return;}
         if(!existMap[k]){saves2.push(clean);localStorage.setItem(k,JSON.stringify(gd));added++;}
-        else{var loc=JSON.parse(localStorage.getItem(k)||'null');if(!loc||(row.ts&&row.ts>(loc.ts||0))){localStorage.setItem(k,JSON.stringify(gd));updated++;}}
+        else{
+          if(sentKeys[k])return;   // 방금 올린 경기
+          var loc=JSON.parse(localStorage.getItem(k)||'null');
+          var v=_remoteVerdict(row,loc,entryOf[k],k);   // 로컬 시각을 못 읽으면(hold) 서버본으로 덮어쓰지 않고 경고로 센다
+          if(v==='take'){localStorage.setItem(k,JSON.stringify(gd));updated++;}
+          else if(v==='hold')heldKeys[k]=true;
+        }
       });
       localStorage.setItem('sl_saves',JSON.stringify(saves2));
-      var msg='동기화 완료';
-      if(added)msg+=' — '+added+'개 추가됨';
-      if(updated)msg+=', '+updated+'개 업데이트됨';
-      if(!added&&!updated)msg+=' — 최신 상태';
-      if(skipped)msg+=' (형식이 맞지 않는 '+skipped+'개는 건너뜀)';
-      _done(msg,true);
+      var parts=[];
+      if(up.uploaded)parts.push('업로드 '+up.uploaded+'개');
+      if(added)parts.push(added+'개 추가됨');
+      if(updated)parts.push(updated+'개 업데이트됨');
+      var extra=parts.length?' · '+parts.join(', '):'';
+      var skipNote=skipped?' (형식이 맞지 않는 '+skipped+'개는 건너뜀)':'';
+      var o=_outcome(up,Object.keys(heldKeys).length,extra+skipNote,false);
+      if(o.state==='ok'){
+        _done('동기화 완료 — '+(parts.length?parts.join(', '):'최신 상태')+skipNote,true);
+      }else _done(o.text,o.state==='warn'?'warn':false,o.short);
     }).catch(function(err){
       var m=(err&&(err.message||err.code))||'오류';
       _done('오류: '+m,false);

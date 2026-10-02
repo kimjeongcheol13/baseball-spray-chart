@@ -30,8 +30,9 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 |---|---|---|
 | 2026-10-02 | `fix_teams_rls_recursion` | `02` — `is_team_owner` / `is_team_member` 생성, `teams_select` / `team_members_select` USING 교체 |
 | 2026-10-02 | `add_find_team_by_code_rpc` | `04` — `find_team_by_code` 생성 |
+| 2026-10-02 | `add_public_policy_helpers_phase1` | `05` (Phase 1) — `request_team_code()` · `get_shared_link()` 생성. 정책 변경 없음(공개 정책은 아직 열려 있음). 적용 후 10개 시험 전부 OK |
 
-적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
+적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 확인 후 별도 승인으로 적용한다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 
 ## 순서
 1. `01` 실행 → `kind=cycle` / `affected` 행 확인 (결과 표를 그대로 공유하면 점검 가능)

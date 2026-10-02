@@ -8407,11 +8407,12 @@ function fieldFeedbackSubmit(){
     },{onConflict:'team_code,game_key'}).then(function(r){
       if(r.error){
         console.warn('[SprayLab] CloudSave error:',r.error);
-        // 로컬 저장이 이미 완료됐으므로 에러 토스트 표시 안 함
+        // 로컬 저장은 이미 완료됨 — 저장을 막지 않고, 클라우드만 실패했음을 알린다(cloud.js, 60초에 한 번)
+        if(window._cloudNotifyFail)_cloudNotifyFail();
       }
     }).catch(function(e){
       console.warn('[SprayLab] CloudSave network error:',e);
-      // 네트워크 오류도 조용히 무시 (로컬 저장 성공)
+      if(window._cloudNotifyFail)_cloudNotifyFail();   // 네트워크 오류도 동일 (로컬 저장 성공)
     });
   };
 

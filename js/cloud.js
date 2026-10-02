@@ -56,6 +56,25 @@
     }
   }
 
+  /* ── 동기화 결과 알림 ─────────────────────────────
+     로컬 저장은 이미 끝난 뒤에 호출되므로 여기서 로컬 저장을 막지 않는다.
+     실패했는데 "저장됨 ✓" 이 뜨지 않도록 성공/실패 표시는 반드시 이 두 함수를 거친다. */
+  var _failToastAt = 0;
+  function _syncSaved(ms) {
+    _failToastAt = 0;   // 성공하면 다음 실패는 바로 알린다
+    _setStatus('saved');
+    setTimeout(function () { _setStatus('clear'); }, ms);
+  }
+  function _notifySyncFail() {
+    _setStatus('error');
+    setTimeout(function () { _setStatus('clear'); }, 4000);
+    var now = Date.now();
+    if (now - _failToastAt < 60000) return;   // 타구마다 자동 동기화가 돌므로 토스트는 60초에 한 번만
+    _failToastAt = now;
+    if (typeof showToast === 'function') showToast('⚠️ 클라우드 저장 실패 · 이 기기에는 저장됨', false);
+  }
+  window._cloudNotifyFail = _notifySyncFail;   // core.js(팀 코드 동기화)에서도 같은 알림을 쓴다
+
   /* ── 인증 UI 업데이트 ────────────────────────────── */
   function _updateAuthUI() {
     var isReal = _user && !_user.is_anonymous;
@@ -173,7 +192,7 @@
   /* ── 게임 단건 upsert ───────────────────────────── */
   function _upsertGame(key, gameData, teamId) {
     return _ensureAuth().then(function (user) {
-      if (!user) return;
+      if (!user) return false;   // 로그인 전: 전송하지 않음 (실패가 아니므로 성공 표시도 하지 않는다)
       var row = {
         user_id:    user.id,
         game_key:   key,
@@ -184,7 +203,8 @@
       };
       if (teamId) row.team_id = teamId;
       return _client().from('user_games').upsert(row, { onConflict: 'user_id,game_key' }).then(function (r) {
-        if (r.error) console.warn('[Cloud] upsert:', r.error.message);
+        if (r.error) { console.warn('[Cloud] upsert:', r.error.message); throw r.error; }   // 호출부 .catch 가 실패로 처리
+        return true;
       });
     });
   }
@@ -212,9 +232,13 @@
         } catch (e) { return null; }
       }).filter(Boolean);
 
+      // 업로드가 실패해도 아래 내려받기는 계속 시도하되(기존 동작), 끝에서 실패로 알린다
+      var upErr = null;
       var upProm = rows.length
-        ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' })
-        : Promise.resolve({ error: null });
+        ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) {
+            if (ur && ur.error) { upErr = ur.error; console.warn('[Cloud] startup upload:', ur.error.message); }
+          })
+        : Promise.resolve();
 
       return upProm.then(function () {
         return db.from('user_games').select('game_key,data,updated_at').eq('user_id', user.id);
@@ -241,15 +265,13 @@
           localStorage.setItem('sl_saves', JSON.stringify(saves));
           if (typeof showToast === 'function') showToast('☁️ 클라우드에서 ' + added + '개 경기 복원됨', false);
         }
-        _setStatus('saved');
-        setTimeout(function () { _setStatus('clear'); }, 3000);
+        if (upErr) _notifySyncFail(); else _syncSaved(3000);
         // 팀 정보 로드
         return _loadMyTeam();
       });
     }).catch(function (e) {
       console.warn('[Cloud] startup sync error:', e);
-      _setStatus('error');
-      setTimeout(function () { _setStatus('clear'); }, 4000);
+      _notifySyncFail();
     });
   }
 
@@ -391,8 +413,8 @@
     _setStatus('syncing');
     _debTimer = setTimeout(function () {
       _upsertGame(key, data, _team ? _team.id : null)
-        .then(function () { _setStatus('saved'); setTimeout(function () { _setStatus('clear'); }, 3000); })
-        .catch(function () { _setStatus('error'); setTimeout(function () { _setStatus('clear'); }, 4000); });
+        .then(function (ok) { if (ok) _syncSaved(3000); else _setStatus('clear'); })
+        .catch(_notifySyncFail);
     }, 3000);
   };
 
@@ -412,10 +434,9 @@
         home_lineup: AS.home_lineup, away_lineup: AS.away_lineup,
         zoneHistory: AS.zoneHistory || {}, pitchers: AS.pitchers || [],
         d: new Date().toLocaleDateString('ko-KR')
-      }, _team ? _team.id : null).then(function () {
-        _setStatus('saved');
-        setTimeout(function () { _setStatus('clear'); }, 2000);
-      }).catch(function () {});
+      }, _team ? _team.id : null).then(function (ok) {
+        if (ok) _syncSaved(2000); else _setStatus('clear');
+      }).catch(_notifySyncFail);
     }, 3000);
   };
 

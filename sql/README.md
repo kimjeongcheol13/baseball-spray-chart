@@ -34,6 +34,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | 2026-10-02 | `add_find_team_by_code_rpc` | `04` — `find_team_by_code` 생성 |
 | 2026-10-02 | `add_public_policy_helpers_phase1` | `05` (Phase 1) — `request_team_code()` · `get_shared_link()` 생성. 정책 변경 없음(공개 정책은 아직 열려 있음). 적용 후 10개 시험 전부 OK |
 | 2026-10-02 | **(기록 없음 — SQL Editor 수동 적용)** | `06` (Phase 3) — `games_select/insert/update/delete`(헤더 방식) 생성, `pub_r/pub_i/pub_u/pub_d` 삭제, `feedback.allow_select` · `shared_links.public_read` 삭제. 적용 후 `06b` 23개 시험 전부 OK, 정책 상태 직접 확인 |
+| 2026-10-02 | `enable_rls_visits` | `07` — `public.visits` RLS 켜기(정책 없음 = anon/authenticated 전면 차단). MCP 도구로 적용(마이그레이션 기록 있음). 적용 후 `07b` 7/7 OK, 시험 행 잔존 0, 어드바이저 ERROR `rls_disabled_in_public` 해소(남은 INFO `rls_enabled_no_policy` 는 의도한 상태) |
 
 적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 1~4 확인 후 사용자 승인을 받아 적용했고, `06b` 23개 시험이 전부 통과했다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 

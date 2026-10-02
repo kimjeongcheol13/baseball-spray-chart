@@ -8346,7 +8346,7 @@ function fieldFeedbackSubmit(){
     var st=document.getElementById('cloudTeamStatus');
     if(st){st.textContent=tc?'✅ 팀 코드: '+tc:'팀 코드가 설정되지 않았습니다';st.style.color=tc?'var(--green)':'var(--text3)';}
     var inp=document.getElementById('teamCodeInput');
-    if(inp)inp.placeholder=tc?'현재: '+tc:'팀 코드 입력 (예: tigers2024)';
+    if(inp)inp.placeholder=tc?'현재: '+tc:'팀 코드 입력 (8자 이상)';
     var cst=document.getElementById('cloudConnStatus');
     if(cst&&!tc){cst.textContent='팀 코드를 설정하면 동기화가 시작됩니다';cst.style.color='var(--text3)';}
   }
@@ -8362,17 +8362,68 @@ function fieldFeedbackSubmit(){
     setTimeout(function(){window.cloudTest&&cloudTest();},300);
   };
 
+  // ── 팀 코드 강도: 팀 코드는 사실상 비밀번호다(서버 RLS 가 코드가 맞는 행만 허용). 추측하기 어려운 코드를 쓰게 한다.
+  // (a) 새로 설정하는 코드는 8자 이상. 단, 서버에 이미 경기가 있는 "기존 코드"는 짧아도 그대로 쓸 수 있다(기존 팀 유지).
+  // (b) "코드 만들기": 혼동 문자(0 o 1 l i)를 뺀 31자에서 crypto 난수로 10자 (≈49.5비트)
+  // ※ 길이 검사는 클라이언트 안내용이다. 서버에서 길이를 강제하면 기존 짧은 코드의 팀이 깨지므로 하지 않는다.
+  var TEAM_CODE_MIN=8,TEAM_CODE_GEN_LEN=10,_CODE_ALPHA='abcdefghjkmnpqrstuvwxyz23456789';
+  function _genTeamCode(){
+    var out='',n=_CODE_ALPHA.length,lim=256-(256%n),buf=new Uint8Array(32);
+    while(out.length<TEAM_CODE_GEN_LEN){
+      crypto.getRandomValues(buf);
+      for(var i=0;i<buf.length&&out.length<TEAM_CODE_GEN_LEN;i++){
+        if(buf[i]<lim)out+=_CODE_ALPHA.charAt(buf[i]%n);   // 거절 샘플링: 나머지 연산 편향 제거
+      }
+    }
+    return out;
+  }
+  window.generateTeamCode=function(){
+    var inp=document.getElementById('teamCodeInput');
+    if(!inp)return;
+    if(!(window.crypto&&crypto.getRandomValues)){showToast('이 브라우저에서는 코드를 만들 수 없어요. 8자 이상으로 직접 입력해 주세요',false);return;}
+    var c=_genTeamCode();
+    inp.value=c;
+    var hint='팀원에게 알려 주고 [설정]을 눌러 적용하세요';
+    try{
+      navigator.clipboard.writeText(c).then(
+        function(){showToast('🎲 팀 코드 '+c+' 복사됨 — '+hint,false);},
+        function(){showToast('🎲 팀 코드: '+c+' — '+hint,false);}
+      );
+    }catch(e){showToast('🎲 팀 코드: '+c+' — '+hint,false);}
+  };
+  // 이 코드로 서버에 이미 저장된 경기가 있는가 (= 이미 쓰고 있는 기존 코드). team_code 필터를 직접 걸어 RLS 적용 전후 모두 정확하다
+  function _teamCodeInUse(code){
+    return fetch(SURL+'/rest/v1/games?select=id&limit=1&team_code=eq.'+encodeURIComponent(code),
+      {headers:{apikey:SKEY,Authorization:'Bearer '+SKEY,'x-team-code':_b64u(code)}})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(rows){return Array.isArray(rows)&&rows.length>0;});
+  }
+  function _applyTeamCode(code,legacy){
+    var inp=document.getElementById('teamCodeInput');
+    localStorage.setItem('sl_team_code',code);
+    if(inp)inp.value='';
+    _setCloudUI(code);
+    showToast(legacy?'팀 코드 설정 완료: '+code+' (기존 코드로 확인됨 · 새 팀은 8자 이상 권장)':'팀 코드 설정 완료: '+code,false);
+    // 팀 코드 설정 후 자동 연결 확인
+    setTimeout(function(){window.cloudTest&&cloudTest();},200);
+  }
+  function _rejectShortCode(why){
+    var st=document.getElementById('cloudTeamStatus');
+    var msg='팀 코드는 '+TEAM_CODE_MIN+'자 이상이어야 해요. [🎲 코드 만들기]로 안전한 코드를 만들 수 있어요'+(why?' ('+why+')':'');
+    if(st){st.textContent='⚠️ '+msg;st.style.color='var(--red)';}
+    showToast(msg,false);
+  }
   window.setTeamCode=function(){
     var inp=document.getElementById('teamCodeInput');
     if(!inp)return;
     var code=(inp.value||'').trim().toLowerCase();
     if(!code){showToast('팀 코드를 입력해 주세요',false);return;}
-    localStorage.setItem('sl_team_code',code);
-    inp.value='';
-    _setCloudUI(code);
-    showToast('팀 코드 설정 완료: '+code,false);
-    // 팀 코드 설정 후 자동 연결 확인
-    setTimeout(function(){window.cloudTest&&cloudTest();},200);
+    if(code.length>=TEAM_CODE_MIN){_applyTeamCode(code,false);return;}
+    // 8자 미만: 이미 서버에 경기가 있는 기존 코드만 허용 (새로 만드는 짧은 코드는 거부)
+    showToast('팀 코드 확인 중…',false);
+    _teamCodeInUse(code).then(function(inUse){
+      if(inUse)_applyTeamCode(code,true);else _rejectShortCode();
+    }).catch(function(){_rejectShortCode('기존 코드 확인 실패 — 네트워크를 확인해 주세요');});
   };
 
   // 연결 테스트

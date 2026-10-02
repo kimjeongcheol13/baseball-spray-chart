@@ -1670,13 +1670,14 @@ var _kakaoSdkLoaded = false;
 
     <div style="margin-bottom:14px">
       <div style="display:flex;gap:6px">
-        <input id="teamCodeInput" type="text" placeholder="팀 코드 입력 (예: tigers2024)"
+        <input id="teamCodeInput" type="text" placeholder="팀 코드 입력 (8자 이상)"
           style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"
           oninput="this.value=this.value.replace(/[^a-zA-Z0-9가-힣_-]/g,'').toLowerCase()"
           onkeydown="if(event.key==='Enter')setTeamCode()">
         <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;white-space:nowrap" onclick="setTeamCode()">설정</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">팀 코드를 입력하면 저장할 때마다 경기 기록이 서버로 전송됩니다.</div>
+      <button class="btn btn-ghost" id="genTeamCodeBtn" style="width:100%;justify-content:center;font-size:12px;margin-top:8px;min-height:44px" onclick="generateTeamCode()">🎲 코드 만들기 <span style="color:var(--text3);font-weight:400">(추측하기 어려운 10자)</span></button>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">팀 코드를 입력하면 저장할 때마다 경기 기록이 서버로 전송됩니다. 이미 쓰던 짧은 코드도 계속 쓸 수 있어요.</div>
       <div id="cloudTeamStatus" style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600"></div>
     </div>
 
@@ -1687,8 +1688,8 @@ var _kakaoSdkLoaded = false;
       ☁️ 동기화
     </button>
 
-    <div style="font-size:9px;color:var(--text3);line-height:1.8;margin-bottom:14px">
-      팀 코드를 아는 사람 누구나 경기를 볼 수 있습니다
+    <div style="font-size:10px;color:var(--text3);line-height:1.7;margin-bottom:14px">
+      팀 코드는 비밀번호처럼 쓰입니다 — 코드를 아는 사람은 누구나 팀 경기를 보고 고칠 수 있어요. 흔한 단어(예: tigers2024)는 추측되기 쉬우니 코드 만들기를 권장해요
     </div>
 
     <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="closeOverlay('cloudOverlay')">닫기</button>
@@ -2359,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=122"></script>
+<script defer src="js/core.js?v=123"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=47"></script>
 <script>

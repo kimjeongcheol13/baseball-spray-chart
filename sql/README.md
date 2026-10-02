@@ -33,8 +33,11 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | 2026-10-02 | `fix_teams_rls_recursion` | `02` — `is_team_owner` / `is_team_member` 생성, `teams_select` / `team_members_select` USING 교체 |
 | 2026-10-02 | `add_find_team_by_code_rpc` | `04` — `find_team_by_code` 생성 |
 | 2026-10-02 | `add_public_policy_helpers_phase1` | `05` (Phase 1) — `request_team_code()` · `get_shared_link()` 생성. 정책 변경 없음(공개 정책은 아직 열려 있음). 적용 후 10개 시험 전부 OK |
+| 2026-10-02 | **(기록 없음 — SQL Editor 수동 적용)** | `06` (Phase 3) — `games_select/insert/update/delete`(헤더 방식) 생성, `pub_r/pub_i/pub_u/pub_d` 삭제, `feedback.allow_select` · `shared_links.public_read` 삭제. 적용 후 `06b` 23개 시험 전부 OK, 정책 상태 직접 확인 |
 
-적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 확인 후 별도 승인으로 적용한다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
+적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 1~4 확인 후 사용자 승인을 받아 적용했고, `06b` 23개 시험이 전부 통과했다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
+
+> **`06` 은 `supabase_migrations.schema_migrations` 에 기록되지 않는다.** Supabase MCP 도구는 `DROP` 이 들어간 문장을 사용자 확인 대기로 멈춰, 클라우드 세션에서 `06` 을 적용할 수 없었다(6회 시도, 모두 60초 타임아웃, DB 변경 없음 확인). 그래서 사용자가 SQL Editor 에서 같은 파일을 직접 실행했다. 이 표가 아니라 **`pg_policies` 가 실제 상태의 기준**이다 — 의심스러우면 `01_diagnose_rls.sql` 을 실행한다.
 
 ## 순서
 1. `01` 실행 → `kind=cycle` / `affected` 행 확인 (결과 표를 그대로 공유하면 점검 가능)
@@ -48,4 +51,5 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 - 정책을 바꿀 땐 `drop/create` 대신 `alter policy … using (…)` — 이름·대상 역할·명령이 그대로 유지된다.
 - 정책 안에서 다른 RLS 테이블을 서브쿼리로 읽지 않는다. 판정은 `security definer` 함수로 뺀다 (`stable`, `set search_path = public`, `auth.uid()` 는 함수 안에서 읽기).
 - 적용 후 `01`(순환 0건)과 `03`을 다시 실행한다.
+- `DROP` 이 들어가는 마이그레이션은 MCP 도구로 적용이 안 될 수 있다 → SQL Editor 에서 직접 실행하고, 위 이력 표에 **"수동 적용"** 으로 남긴다(마이그레이션 기록에는 안 남는다).
 - 이 폴더는 GitHub Pages 배포(`path: '.'`)에 포함되어 공개된다. service_role 키 · 실제 사용자 데이터는 넣지 않는다.

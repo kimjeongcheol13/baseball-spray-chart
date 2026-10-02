@@ -64,7 +64,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=72">
+<link rel="stylesheet" href="css/styles.css?v=74">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=10">
 <link rel="stylesheet" href="css/analysis.css?v=8">
@@ -187,6 +187,7 @@ var _kakaoSdkLoaded = false;
 </style>
 </head>
 <body>
+<a href="#fldCanvas" class="skip-link" id="skipToField">타구 입력으로 건너뛰기</a>
 <!-- 네트워크 상태 뱃지 -->
 <div id="netBadge" class="net-badge" role="status" aria-live="polite"></div>
 
@@ -1125,7 +1126,7 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="jamsil"   onclick="setStadium('jamsil')"  ><span class="sl-st-emoji">🌿</span><span class="sl-st-name">잠실</span></button>
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
-    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭한 자리 옆에 뜨는 팝업에서 <b>안타 · 장타 · 땅볼 · 플라이</b>를 고르세요.<br>팝업 바깥을 탭하면 취소됩니다."><canvas id="fldCanvas"></canvas><canvas id="hitCanvas"></canvas><canvas id="ovrCanvas"></canvas><div id="tapPop" class="tap-pop" role="dialog" aria-label="타구 결과 선택" hidden><div class="tp-sub" id="tapPopSub"></div><div class="tp-row" id="tapPopMain"><button type="button" class="tp-btn tp-hit" data-res="안타">안타</button><button type="button" class="tp-btn tp-xbh" data-act="xbh">장타</button><button type="button" class="tp-btn tp-out" data-res="땅볼 아웃">땅볼</button><button type="button" class="tp-btn tp-out" data-res="플라이 아웃">플라이</button></div><div class="tp-row" id="tapPopXbh" hidden><button type="button" class="tp-btn tp-2b" data-res="2루타">2B</button><button type="button" class="tp-btn tp-3b" data-res="3루타">3B</button><button type="button" class="tp-btn tp-hr" data-res="홈런">HR</button></div></div><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
+    <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭한 자리 옆에 뜨는 팝업에서 <b>안타 · 장타 · 땅볼 · 플라이</b>를 고르세요.<br>팝업 바깥을 탭하면 취소됩니다."><canvas id="fldCanvas" role="application" aria-label="타구 입력 필드. 방향키로 위치 이동, Shift+방향키는 크게 이동, Enter 또는 Space로 입력, Esc로 취소"></canvas><canvas id="hitCanvas" aria-hidden="true"></canvas><canvas id="ovrCanvas" aria-hidden="true"></canvas><div id="tapPop" class="tap-pop" role="dialog" aria-label="타구 결과 선택" hidden><div class="tp-sub" id="tapPopSub"></div><div class="tp-row" id="tapPopMain"><button type="button" class="tp-btn tp-hit" data-res="안타">안타</button><button type="button" class="tp-btn tp-xbh" data-act="xbh">장타</button><button type="button" class="tp-btn tp-out" data-res="땅볼 아웃">땅볼</button><button type="button" class="tp-btn tp-out" data-res="플라이 아웃">플라이</button></div><div class="tp-row" id="tapPopXbh" hidden><button type="button" class="tp-btn tp-2b" data-res="2루타">2B</button><button type="button" class="tp-btn tp-3b" data-res="3루타">3B</button><button type="button" class="tp-btn tp-hr" data-res="홈런">HR</button></div></div><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
     <div class="live-stat-line" id="liveStatLine" aria-live="polite"></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 아래 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
@@ -1769,7 +1770,7 @@ var _kakaoSdkLoaded = false;
 <div id="hitDetailCard" style="display:none;position:fixed;z-index:500;pointer-events:auto"></div>
 <div id="btnTooltip" style="display:none"></div>
 
-<div class="toast" id="toast">
+<div class="toast" id="toast" role="status" aria-live="polite">
   <span id="toastTxt"></span>
   <button class="toast-undo" id="toastUndo" onclick="undoLast()">되돌리기</button>
 </div>
@@ -2358,7 +2359,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=117"></script>
+<script defer src="js/core.js?v=120"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=47"></script>
 <script>

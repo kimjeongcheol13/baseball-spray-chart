@@ -309,6 +309,8 @@ function showApp(){
   document.getElementById('landing-page').style.display='none';
   var ap=document.getElementById('app-page');
   ap.style.display='flex';
+  /* 랜딩 버튼이 사라지면 Tab 시작점이 그 자리에 남아 스킵 링크(문서 맨 앞)를 건너뛴다 → 시작점을 문서 처음으로 */
+  (function(){var b=document.body;b.setAttribute('tabindex','-1');b.focus({preventScroll:true});b.removeAttribute('tabindex');})();
   function _applyMobLayout(){
     var isMob=window.innerWidth<=720;
     if(isMob){ap.style.overflowY='hidden';ap.style.height='100svh';}
@@ -1015,6 +1017,7 @@ function initCanvas(){
   _applyDPR();
   fC.style.touchAction='none';
   fC.style.userSelect='none';
+  _kbInit();
   drawField();
   // Retry draw on next frame in case layout wasn't ready
   requestAnimationFrame(function(){
@@ -1265,6 +1268,80 @@ function onFClick(e){
   }
   AS.rbi=0;document.getElementById('rbiVal').textContent='0';
   _tpOpen(x,y,`${dir} · ${Math.round(estFt*0.3048)}m`);
+}
+
+// ── 키보드로 타구 위치 입력: 방향키 이동(Shift=크게) · Enter/Space 입력 · Esc 취소 ──
+// 입력은 기존 onFClick(마우스·터치와 동일 경로)으로 넘기므로 저장 형식은 그대로
+var _kb={x:0,y:0,on:false,cur:null,live:null,viaKey:false};
+function _kbEls(){
+  var w=document.getElementById('cwrap');
+  if(!w)return false;
+  if(!_kb.cur){
+    _kb.cur=document.createElement('div');_kb.cur.id='fldKbCur';_kb.cur.setAttribute('aria-hidden','true');
+    w.appendChild(_kb.cur);
+  }
+  if(!_kb.live){
+    _kb.live=document.createElement('div');_kb.live.id='fldKbLive';
+    _kb.live.setAttribute('role','status');_kb.live.setAttribute('aria-live','polite');
+    w.appendChild(_kb.live);
+  }
+  return true;
+}
+function _kbSay(msg){if(_kbEls()){_kb.live.textContent='';setTimeout(function(){_kb.live.textContent=msg;},30);}}
+function _kbDescribe(sp){
+  var d=sp.deg,n=d<54?'좌익수':d<78?'좌중간':d<102?'중견수':d<126?'우중간':'우익수';
+  var depth=sp.dist<.4?'내야':sp.dist<.7?'중간 깊이':'깊은 쪽';
+  return n+' 방면, '+depth;
+}
+function _kbDraw(){
+  if(!_kbEls()||!FS)return;
+  var w=document.getElementById('cwrap'),k=w.clientWidth/FS;
+  _kb.cur.style.left=(_kb.x*k)+'px';_kb.cur.style.top=(_kb.y*k)+'px';
+  _kb.cur.classList.toggle('show',_kb.on);
+}
+function _kbInit(){
+  var skip=document.getElementById('skipToField');
+  if(skip)skip.addEventListener('click',function(e){
+    e.preventDefault();
+    if(fC.offsetParent)fC.focus();
+  });
+  fC.setAttribute('tabindex','0');
+  fC.addEventListener('keydown',function(e){
+    var k=e.key,g=_fieldGeo(FS);
+    if(!_kb.x&&!_kb.y){var c=_conePt(g,2*_FQ,.6*g.R);_kb.x=c[0];_kb.y=c[1];}
+    var step=FS*(e.shiftKey?.1:.025),dx=0,dy=0;
+    if(k==='ArrowLeft')dx=-step;else if(k==='ArrowRight')dx=step;
+    else if(k==='ArrowUp')dy=-step;else if(k==='ArrowDown')dy=step;
+    else if(k==='Enter'||k===' '||k==='Spacebar'){
+      e.preventDefault();
+      var sp0=_coneToSemi(g,_kb.x,_kb.y);
+      if(!sp0){_kbSay('필드 안쪽 위치를 선택하세요');return;}
+      var r=fC.getBoundingClientRect(),sx=FS/r.width,sy=FS/r.height;
+      onFClick({clientX:r.left+_kb.x/sx,clientY:r.top+_kb.y/sy,rect:r,sx:sx,sy:sy});
+      _kb.viaKey=true;
+      var b=_tp&&document.querySelector('#tapPop .tp-btn');
+      if(b){_kbSay(_kbDescribe(sp0)+'. 결과를 선택하세요: 안타, 장타, 땅볼, 플라이');b.focus();}
+      else _kbSay(_kbDescribe(sp0)+' 입력됨');
+      return;
+    }
+    else if(k==='Escape'){_kb.on=false;_kbDraw();_kbSay('취소됨');return;}
+    else return;
+    e.preventDefault();
+    _kb.on=true;
+    var nx=Math.max(0,Math.min(FS,_kb.x+dx)),ny=Math.max(0,Math.min(FS,_kb.y+dy));
+    var sp=_coneToSemi(g,nx,ny);
+    if(!sp){_kbSay('필드 끝입니다');_kbDraw();return;}
+    _kb.x=nx;_kb.y=ny;_kbDraw();_kbSay(_kbDescribe(sp));
+  });
+  fC.addEventListener('blur',function(){_kb.on=false;_kbDraw();});
+  fC.addEventListener('pointerdown',function(){_kb.on=false;_kbDraw();});
+  document.addEventListener('pointerdown',function(){_kb.viaKey=false;},true);
+  // 팝업에서 선택/취소(Esc)로 닫히면 포커스를 필드로 되돌림
+  var pop=document.getElementById('tapPop');
+  if(pop){
+    pop.addEventListener('click',function(){setTimeout(function(){if(_kb.viaKey&&document.activeElement===document.body)fC.focus();},0);});
+    pop.addEventListener('keydown',function(e){if(e.key==='Escape'&&_kb.viaKey)setTimeout(function(){fC.focus();_kb.on=true;_kbDraw();},0);});
+  }
 }
 
 // ── 탭 자리 결과 팝업: 탭 지점 옆에서 [안타][장타][아웃] → 장타는 [2B][3B][HR] ──

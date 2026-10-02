@@ -624,10 +624,14 @@
     if (!_user || _user.is_anonymous) { msgEl.textContent = '로그인이 필요합니다'; msgEl.className = 'magic-msg error'; return; }
     msgEl.textContent = '참가 중...'; msgEl.className = 'magic-msg';
     var db = _client();
-    db.from('teams').select('*').eq('code', code).single().then(function (r) {
-      if (r.error || !r.data) { msgEl.textContent = '팀 코드를 찾을 수 없어요'; msgEl.className = 'magic-msg error'; return; }
-      var team = r.data;
-      if (team.owner_id === _user.id) { msgEl.textContent = '내가 만든 팀이에요'; msgEl.className = 'magic-msg error'; return; }
+    // 가입 전(비팀원)에는 RLS 때문에 teams 를 직접 읽을 수 없다 → 코드가 정확히 일치할 때만
+    // id / name / is_owner 를 돌려주는 RPC 사용 (sql/04_find_team_by_code_rpc.sql)
+    db.rpc('find_team_by_code', { p_code: code }).then(function (r) {
+      if (r.error) { msgEl.textContent = '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
+      var found = r.data && r.data[0];
+      if (!found) { msgEl.textContent = '팀 코드를 찾을 수 없어요'; msgEl.className = 'magic-msg error'; return; }
+      var team = { id: found.id, name: found.name, code: code };
+      if (found.is_owner) { msgEl.textContent = '내가 만든 팀이에요'; msgEl.className = 'magic-msg error'; return; }
       return db.from('team_members').insert({ team_id: team.id, user_id: _user.id })
         .then(function (r2) {
           if (r2.error && r2.error.code !== '23505') { // 23505 = already member

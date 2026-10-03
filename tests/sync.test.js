@@ -1,5 +1,5 @@
 // cloudSyncSmart(팀 코드 games 동기화) 동작 검증 — 실제 js/core.js 를 가짜 서버(stub-supabase.js)에 붙여 돌린다.
-// 실행: node tests/run.mjs   (러너가 이 파일을 index.html 끝에 끼워 넣고 헤드리스 Chrome 에서 load 후 실행)
+// 실행: node tests/run.mjs   (러너가 tests/*.test.js 를 index.html 끝에 끼워 넣고 헤드리스 Chrome 에서 load 후 실행)
 (function () {
   var srv = window.__srv;
   var TC = 'TEST-ONLY-TEAM';                                    // 가짜 팀 코드 — 운영 데이터와 무관
@@ -8,10 +8,7 @@
   var K1 = 'sl_1779002911000', K2 = 'sl_1779002911001', K3 = 'sl_1779002911002';
   var KU = 'sl_homevsaway_260517_abc';                          // 키에 에폭이 없는 형식(ts 불명 케이스용)
 
-  function $(id) { return document.getElementById(id); }
-  function ok(c, m) { if (!c) throw new Error(m); }
-  function eq(a, b, m) { var x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(m + ' — 기대 ' + y + ', 실제 ' + x); }
-  function ls(k) { return JSON.parse(localStorage.getItem(k)); }
+  var T = window.__T, $ = T.$, ok = T.ok, eq = T.eq, ls = T.ls, test = T.test;
   // 상태줄의 ❌/✅/⚠️ 아이콘은 scorebook.js 가 cloudOverlay 안 새 글자의 이모지를 화면에서 걸러내(다음 프레임) 타이밍에 따라 있다/없다 한다.
   // → 아이콘은 검사하지 않고 문구(앞의 기호 제거)와 색으로 판정한다.
   function txt(s) { return s.status.replace(/^[^\p{L}\p{N}]+/u, ''); }
@@ -44,9 +41,6 @@
       })();
     });
   }
-
-  var tests = [];
-  function test(name, fn) { tests.push({ name: name, fn: fn }); }
 
   // ── 1. 서버 game_key,ts 를 먼저 읽는 단계가 실패하면: 업로드 중단 + 실패 표시 (예전처럼 무조건 올리면 안 됨) ──
   [
@@ -130,39 +124,5 @@
     var s = await runSync();
     eq(srv.games.map(function (r) { return r.game_key; }).sort(), [K1, K3], '정상 행만 서버에 저장');
     ok(/^일부만 동기화됨/.test(txt(s)) && s.color === 'var(--sl-amber)', 'Amber 일부만: ' + s.status + ' / ' + s.color);
-  });
-
-  // ── 5. 하네스 자체: 외부 요청 차단 장치 점검 → 마지막에 시도 0건 확인 ──
-  test('차단 장치 점검: 외부 fetch/XHR 는 거부되고 기록된다', async function () {
-    window.__netAttempts.length = 0;
-    var rejected = false;
-    try { await fetch('https://example.invalid/x'); } catch (e) { rejected = true; }
-    ok(rejected, '외부 fetch 가 거부되지 않음');
-    var threw = false;
-    try { new XMLHttpRequest().open('GET', 'https://example.invalid/y'); } catch (e) { threw = true; }
-    ok(threw, '외부 XHR 이 거부되지 않음');
-    eq(window.__netAttempts.length, 2, '시도 기록');
-    window.__netAttempts.length = 0;   // 점검용 시도는 지운다
-  });
-  test('(마지막) 테스트 전체에서 외부로 나가려던 요청 0건', async function () {
-    eq(window.__netAttempts, [], '외부 요청 시도');
-  });
-
-  async function main() {
-    ok(typeof window.cloudSyncSmart === 'function', 'core.js 가 로드되지 않음(cloudSyncSmart 없음)');
-    var results = [];
-    for (var i = 0; i < tests.length; i++) {
-      try { await tests[i].fn(); results.push({ name: tests[i].name, ok: true }); }
-      catch (e) { results.push({ name: tests[i].name, ok: false, err: String(e && e.message || e) }); }
-    }
-    return results;
-  }
-  function publish(payload) {   // 러너가 dump-dom 에서 읽어 간다(base64 — 이스케이프 문제 회피)
-    var bytes = new TextEncoder().encode(JSON.stringify(payload)), bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    var el = document.createElement('pre'); el.id = 't-result'; el.setAttribute('data-b64', btoa(bin)); document.body.appendChild(el);
-  }
-  window.addEventListener('load', function () {
-    main().then(function (r) { publish({ results: r }); }, function (e) { publish({ fatal: String(e && e.message || e) }); });
   });
 })();

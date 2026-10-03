@@ -24,13 +24,24 @@
 
   // ── 가짜 서버(메모리) ──
   // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows)→위 값
-  var srv = window.__srv = { games: [], log: [], failRead: null, failWrite: null };
-  srv.reset = function () { srv.games = []; srv.log = []; srv.failRead = null; srv.failWrite = null; };
+  var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null };
+  srv.reset = function () {
+    srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
+    srv.log = []; srv.failRead = null; srv.failWrite = null;
+  };
+  var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
+  // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다)
+  srv.signIn = function () {
+    srv.user = { id: 'TEST-USER', email: 'test@example.invalid', is_anonymous: false, user_metadata: {} };
+    if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
+    authCb('SIGNED_IN', { user: srv.user });
+  };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; return this; };
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
+  Q.prototype.maybeSingle = function () { this.single = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
   function run(q) {
@@ -46,7 +57,8 @@
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
         var out = tbl.filter(function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }); });
-        return { data: clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; }), error: null, status: 200 };
+        var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
+        return { data: q.single ? (data[0] || null) : data, error: null, status: 200 };
       }
       if (!q.o || !q.o.onConflict) throw new Error('stub: upsert 에 onConflict 필요');
       var keys = q.o.onConflict.split(',');
@@ -60,9 +72,9 @@
 
   var client = {
     from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); } }; },
-    auth: {   // 로그인 안 한 상태 고정(cloud.js 시작 동기화는 서버 전송 없이 끝난다)
-      getSession: function () { return Promise.resolve({ data: { session: null } }); },
-      onAuthStateChange: function () { return { data: { subscription: { unsubscribe: function () {} } } }; },
+    auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다
+      getSession: function () { return Promise.resolve({ data: { session: srv.user ? { user: srv.user } : null } }); },
+      onAuthStateChange: function (cb) { authCb = cb; return { data: { subscription: { unsubscribe: function () {} } } }; },
       signOut: function () { return Promise.resolve({}); }
     },
     channel: function () { var c = { on: function () { return c; }, subscribe: function () { return c; } }; return c; },

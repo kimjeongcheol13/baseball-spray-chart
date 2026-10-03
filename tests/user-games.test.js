@@ -160,27 +160,56 @@
     eq(mod(K1), 777000000000, '이름 변경이 수정 시각을 건드림');
   });
 
-  // ── 4. 전환(맨 처음 한 번): 기록이 없던 기존 경기는 "지금"으로 기록해 예전처럼 로컬이 이긴다 ──
-  test('전환: sl_cloud_mod 가 없으면 기존 경기에 지금을 기록 · 두 번째 로드는 건드리지 않음 · 첫 동기화는 로컬이 이긴다', async function () {
-    await boot();
-    seed([G(K1, T0), G(K2, T0 + 1)], {}); localStorage.removeItem(MOD);
-    function loadCloud() {   // cloud.js 를 한 번 더 로드 = 앱 시작 때 전환 처리가 도는 것과 같다(첫 인스턴스의 시작 동기화는 그대로 쓴다)
-      return new Promise(function (res, rej) {
-        var sc = document.createElement('script'); sc.src = 'js/cloud.js?again=' + Date.now(); sc.onload = res; sc.onerror = function () { rej(new Error('cloud.js 로드 실패')); }; document.body.appendChild(sc);
-      });
-    }
-    // 한 번 더 로드하면 cloud.js 가 window.cloudSave 등 전역 함수를 자기 것으로 덮어쓴다 → 로드 전 것을 저장해 두었다가 되돌려, 이 뒤에 도는 테스트를 오염시키지 않는다
-    var keep = {}; Object.keys(window).forEach(function (k) { try { if (typeof window[k] === 'function') keep[k] = window[k]; } catch (e) { /* 접근 불가 속성 */ } });
-    function restoreGlobals() { Object.keys(keep).forEach(function (k) { try { if (window[k] !== keep[k]) window[k] = keep[k]; } catch (e) { /* 읽기 전용 */ } }); }
-    var t0 = Date.now(); await loadCloud();
-    var m = ls(MOD);
-    ok(m && m[K1] >= t0 && m[K2] >= t0, '기존 경기에 지금이 기록되지 않음: ' + JSON.stringify(m));
-    var snap = JSON.stringify(m); await sleep(50); await loadCloud();
-    restoreGlobals();
-    eq(JSON.stringify(ls(MOD)), snap, '두 번째 로드가 기록을 바꿈');
-    srv.user_games = [UR(K1, T0 + 60000)];   // 서버가 로컬보다 오래된 시각이어도(= 전환 직후) 로컬이 이긴다 — 지금까지와 같은 동작
+  // ── 4. 두 기기: 같은 계정의 새 기기(최신 데이터)와 옛 기기(오래된 데이터)가 어떤 순서로 처음 열려도 새 데이터가 이겨야 한다 ──
+  // 기기 = localStorage 스냅샷(배포 전 상태라 sl_cloud_mod 없음), 서버(srv.user_games)는 둘이 공유한다.
+  // "앱 열기" = cloud.js 를 새로 로드(로드 시 도는 처리 포함) + 로그인 동기화.
+  function loadCloud() {
+    var keep = {};   // 다시 로드하면 cloud.js 가 window.cloudSave 등 전역 함수를 자기 것으로 덮어쓴다 → 로드 전 것으로 되돌려 다른 테스트를 오염시키지 않는다
+    Object.keys(window).forEach(function (k) { try { if (typeof window[k] === 'function') keep[k] = window[k]; } catch (e) { /* 접근 불가 속성 */ } });
+    return new Promise(function (res, rej) {
+      var sc = document.createElement('script'); sc.src = 'js/cloud.js?again=' + Date.now();
+      sc.onload = function () { Object.keys(keep).forEach(function (k) { try { if (window[k] !== keep[k]) window[k] = keep[k]; } catch (e) { /* 읽기 전용 */ } }); res(); };
+      sc.onerror = function () { rej(new Error('cloud.js 로드 실패')); };
+      document.body.appendChild(sc);
+    });
+  }
+  function snapshot() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return o; }
+  function mkDevice(list) { seed(list, {}); localStorage.removeItem(MOD); return { ls: snapshot() }; }
+  async function openApp(dev) {   // 이 기기의 localStorage 로 앱을 연다 → 동기화 → 바뀐 상태를 기기에 다시 저장
+    localStorage.clear(); Object.keys(dev.ls).forEach(function (k) { localStorage.setItem(k, dev.ls[k]); });
+    await loadCloud();
     var s = await runLogin();
-    eq(ups(s).length, 1, '업로드 요청 수');
-    eq(srv.user_games.filter(function (r) { return r.game_key === K1; })[0].data.hs, 1, '로컬이 서버를 덮음(전환 직후 한 번)');
+    ok(!s.timedOut, '동기화가 끝나지 않음');
+    dev.ls = snapshot();
+    return s;
+  }
+  function hsOn(dev, k) { return dev.ls[k] ? JSON.parse(dev.ls[k]).hs : undefined; }
+  function hsOnServer(k) { var r = srv.user_games.filter(function (x) { return x.game_key === k; })[0]; return r ? r.data.hs : undefined; }
+
+  // 새 기기 N: K1 을 고쳤고(타석 수정 → ts 갱신, hs=5) 새 경기 K2 도 있다. 옛 기기 O: K1 이 예전 그대로(hs=1). 서버: 예전 동기화로 올라간 K1(hs=1)
+  async function twoDevices(order) {
+    await boot();
+    var N = mkDevice([G(K1, T0 + 60000, { hs: 5 }), G(K2, T0 + 70000, { hs: 7 })]), O = mkDevice([G(K1, T0, { hs: 1 })]);
+    srv.reset(); srv.user_games = [UR(K1, T0, { hs: 1 })];
+    var dev = { N: N, O: O };
+    for (var i = 0; i < order.length; i++) await openApp(dev[order[i]]);
+    eq(hsOnServer(K1), 5, '최종 서버 K1 이 새 기기 데이터여야 함');
+    eq(hsOnServer(K2), 7, '최종 서버 K2(새 기기에만 있던 경기)');
+    eq(hsOn(N, K1), 5, '새 기기 로컬 K1'); eq(hsOn(N, K2), 7, '새 기기 로컬 K2');
+    eq(hsOn(O, K1), 5, '옛 기기도 새 데이터를 받아야 함'); eq(hsOn(O, K2), 7, '옛 기기가 K2 를 받아야 함');
+  }
+  test('두 기기: 새 기기 → 옛 기기 → 새 기기 순서로 열어도 최종 서버와 새 기기 로컬이 새 기기 데이터', function () { return twoDevices(['N', 'O', 'N']); });
+  test('두 기기: 옛 기기 → 새 기기 → 옛 기기 순서로 열어도 같은 결과(순서 무관)', function () { return twoDevices(['O', 'N', 'O']); });
+  test('두 기기: 같은 ts 에서 내용만 다른 경기(다시 저장)는 첫 동기화에서 어느 쪽도 덮지 않고, 새 기기에서 한 번 저장하면 전파된다', async function () {
+    await boot();
+    var N = mkDevice([G(K1, T0, { hs: 5 })]), O = mkDevice([G(K1, T0, { hs: 1 })]);   // ts 가 같아 어느 쪽이 새로운지 알 수 없다
+    srv.reset(); srv.user_games = [UR(K1, T0, { hs: 1 })];
+    await openApp(N); await openApp(O); await openApp(N);
+    eq(hsOn(N, K1), 5, '새 기기 로컬이 덮이면 안 됨'); eq(hsOn(O, K1), 1, '옛 기기 로컬 불변'); eq(hsOnServer(K1), 1, '서버 불변');
+    // 새 기기에서 그 경기를 저장하면(수정 시각 기록) 그 버전이 최신이 된다
+    localStorage.clear(); Object.keys(N.ls).forEach(function (k) { localStorage.setItem(k, N.ls[k]); });
+    cloudSave(K1, JSON.parse(localStorage.getItem(K1)), 'x', T0); N.ls = snapshot();
+    await openApp(N); await openApp(O);
+    eq(hsOnServer(K1), 5, '저장한 새 기기 버전이 서버에 올라감'); eq(hsOn(O, K1), 5, '옛 기기가 받음');
   });
 })();

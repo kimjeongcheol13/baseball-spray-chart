@@ -152,16 +152,10 @@
     return { ms: ms, reliable: ms > 0 };
   }
   window._slMarkMod = _markMod;
-  // 전환(맨 처음 한 번): 이 기능 이전부터 있던 로컬 경기는 수정 시각을 모른다 → 지금으로 기록해 예전처럼 로컬이 이기게 한다
-  // (첫 동기화는 지금까지와 같은 동작). 그래서 배포 직후엔 최신 데이터가 있는 기기에서 먼저 실행해야 한다.
-  (function () {
-    if (_modMap() !== null) return;
-    try {
-      var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]'), m = {}, now = Date.now();
-      if (Array.isArray(saves)) saves.forEach(function (s) { if (s && typeof s.key === 'string') m[s.key] = now; });
-      localStorage.setItem(MOD_KEY, JSON.stringify(m));
-    } catch (e) { /* 다음 로드에서 다시 시도 */ }
-  })();
+  // 기록이 없는 기존 경기(이 기능 이전부터 있던 것)는 ts 로만 비교한다 — 일부러 "지금"으로 기록하는 전환 처리를 두지 않는다.
+  // 전환 때 지금을 찍으면 나중에 처음 열린 기기의 "지금"이 더 늦어, 오래된 기기가 새 기기의 데이터를 덮는다(기기를 여는 순서에 따라 결과가 갈림).
+  // ts 만 쓰면 순서와 무관하게 더 새로운 ts 가 이기고, ts 가 같으면(다시 저장만 한 경기) 어느 쪽도 덮지 않는다.
+  // 그런 경기도 그 기기에서 한 번 저장하면 수정 시각이 기록되어 그 버전이 최신이 된다.
 
   /* ── 인증 UI 업데이트 ────────────────────────────── */
   function _updateAuthUI() {

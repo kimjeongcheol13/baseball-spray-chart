@@ -3691,6 +3691,7 @@ function _saveEditImmediate(){
           saves.push(clean);
           localStorage.setItem('sl_saves', JSON.stringify(saves));
           localStorage.setItem(targetKey, JSON.stringify(obj.data[targetKey]));
+          if (window._slMarkMod) window._slMarkMod(targetKey);   // 로컬 수정 시각 기록(cloud.js)
         }
         window.history.replaceState({}, document.title, window.location.pathname);
         setTimeout(function() {
@@ -3782,7 +3783,7 @@ function renameGame(key) {
   // 클라우드 label 업데이트
   if(window.cloudSave){
     var gd=JSON.parse(localStorage.getItem(key)||'null');
-    if(gd)cloudSave(key,gd,s.label,s.ts);
+    if(gd)cloudSave(key,gd,s.label,s.ts,true);   // 이름만 변경 — 로컬 수정 시각은 갱신하지 않는다
   }
   openLoad();
   showToast('이름이 변경되었습니다',false);
@@ -7935,6 +7936,7 @@ function _archQuietSave(saveKey){
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
         localStorage.setItem('sl_saves',JSON.stringify(saves));
+        if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
         return;
       }
@@ -7949,6 +7951,7 @@ function _archQuietSave(saveKey){
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
+    if(window._slMarkMod)window._slMarkMod(key);
     _curSaveKey=key;_gameSaved=true;
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
 }
@@ -8593,7 +8596,10 @@ function fieldFeedbackSubmit(){
     });
   };
 
-  window.cloudSave=function(key,data,label,ts){
+  window.cloudSave=function(key,data,label,ts,labelOnly){
+    // 로컬 수정 시각 기록(cloud.js sl_cloud_mod) — 저장 · 타석 수정 · 가져오기 모두 여기를 지난다. 팀 코드 없음·오프라인이어도 기록해야 하므로 맨 앞.
+    // labelOnly = 이름만 바뀐 경우: 서버(user_games)에 올라가는 내용이 안 바뀌었으므로 수정으로 치지 않는다
+    if(!labelOnly&&window._slMarkMod)window._slMarkMod(key);
     if(!_init()||!getTeamCode())return;
     if(typeof navigator!=='undefined'&&!navigator.onLine)return; // 오프라인 시 조기 리턴
     // ts 를 숫자로 — 예전 경기는 로케일 문자열이라 그대로 보내면 400. 읽을 수 없으면 지금 시각(방금 저장·수정한 경기)

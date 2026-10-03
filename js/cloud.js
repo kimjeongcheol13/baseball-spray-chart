@@ -75,6 +75,59 @@
   }
   window._cloudNotifyFail = _notifySyncFail;   // core.js(팀 코드 동기화)에서도 같은 알림을 쓴다
 
+  /* ── 경기 시각(ts) 정규화 ─────────────────────────────
+     서버 games.ts 는 bigint(ms) 인데, 예전 버전이 저장한 경기는 ts 가 ko-KR 로케일 문자열('2026. 5. 17. 오후 4:28:31')이라
+     그대로 올리면 400(invalid input syntax for type bigint) 이다. 전송값만 숫자로 바꾼다 — LocalStorage 원본은 건드리지 않는다.
+     · 예외를 던지지 않는다. 못 읽으면 ts=0, reliable=false
+     · reliable = 경기 자신의 시각을 읽은 경우(gd.ts · 저장 항목 ts · 키 속 에폭). gd.d(날짜만)로 짐작한 값은 reliable=false —
+       병합(서버본이 로컬을 덮어쓸지)에는 쓰지 않는다 */
+  var _TS_MIN = 946684800000;   // 2000-01-01 — 이보다 이르면 시각이 아니라고 본다
+  var _TS_KO = /^(\d{4})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*[.일]?\s*(?:(오전|오후|AM|PM)\s*)?(?:(\d{1,2})\s*:\s*(\d{2})(?:\s*:\s*(\d{2}))?\s*(AM|PM)?)?\s*$/i;
+  function _tsOk(n) { return typeof n === 'number' && isFinite(n) && n >= _TS_MIN && n <= Date.now() + 86400000; }
+  function _parseTs(v) {
+    try {
+      if (v == null || v === '') return null;
+      if (v instanceof Date) v = v.getTime();
+      if (typeof v === 'number') return _tsOk(v) ? Math.floor(v) : null;
+      if (typeof v !== 'string') return null;
+      var s = v.trim();
+      if (!s) return null;
+      if (/^\d{10,16}(\.\d+)?$/.test(s)) { var n = Math.floor(Number(s)); return _tsOk(n) ? n : null; }   // 숫자 문자열(ms)
+      // ko-KR 로케일 문자열 — 환경(ICU)마다 공백이 NBSP/NNBSP 로 바뀌므로 \s 로 받는다. 기기의 로컬 시간대로 해석
+      var m = _TS_KO.exec(s);
+      if (m) {
+        var ap = (m[4] || m[8] || '').toUpperCase();
+        if (m[5] == null && ap) return null;                       // '오후' 만 있고 시각이 없음
+        var h = m[5] == null ? 0 : +m[5], mi = m[6] == null ? 0 : +m[6], sc = m[7] == null ? 0 : +m[7];
+        if (ap === '오후' || ap === 'PM') { if (h < 12) h += 12; }  // 오후 4시 → 16시 (12시는 그대로)
+        else if (ap === '오전' || ap === 'AM') { if (h === 12) h = 0; }   // 오전 12시 → 0시
+        if (h > 23 || mi > 59 || sc > 59) return null;
+        var y = +m[1], mo = +m[2], d = +m[3], dt = new Date(y, mo - 1, d, h, mi, sc);
+        if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;   // 2월 30일 같은 값
+        var t = dt.getTime();
+        return _tsOk(t) ? t : null;
+      }
+      // 그 밖의 로케일/ISO 문자열 — 연도(4자리)가 있을 때만 Date.parse (짧은 숫자를 엉뚱한 날짜로 읽지 않도록)
+      if (/\d{4}/.test(s)) { var p = Date.parse(s); if (_tsOk(p)) return p; }
+    } catch (e) { /* 아래 null */ }
+    return null;
+  }
+  function _keyEpoch(key) {   // sl_1779530658875 · sl_rec_1779530658875 (밀리초 에폭이 키에 들어간 형식)
+    var m = /^sl_(?:rec_)?(\d{12,14})$/.exec(String(key == null ? '' : key));
+    return m ? _parseTs(Number(m[1])) : null;
+  }
+  // gd = 경기 데이터, entry = sl_saves 항목, key = 저장 키 (모두 없어도 된다)
+  function _tsInfo(gd, entry, key) {
+    var t = _parseTs(gd && gd.ts);
+    if (t == null) t = _parseTs(entry && entry.ts);
+    if (t == null) t = _keyEpoch(key != null ? key : (entry && entry.key));
+    if (t != null) return { ts: t, reliable: true };
+    t = _parseTs(gd && gd.d);   // 날짜만 있는 경우(자정으로 짐작): 올릴 때만 쓰는 값
+    return t != null ? { ts: t, reliable: false } : { ts: 0, reliable: false };
+  }
+  window._slParseTs = _parseTs;   // 값 하나 → ms 숫자 | null
+  window._slTsInfo = _tsInfo;     // 경기 → { ts, reliable }
+
   /* ── 인증 UI 업데이트 ────────────────────────────── */
   function _updateAuthUI() {
     var isReal = _user && !_user.is_anonymous;
@@ -222,15 +275,20 @@
       var db    = _client();
       var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
 
+      // gd.ts 가 예전 형식(ko-KR 문자열)이면 new Date(...).toISOString() 이 RangeError 를 던져, try/catch 가 그 경기를 말없이 빼 버렸다 → ts 를 숫자로 읽는다.
+      // 시각을 못 읽으면(ts 없음 포함) 예전처럼 지금 시각. 그래도 못 올리는 경기(깨진 JSON 등)는 개수를 로그로 남긴다
+      var unsent = 0;
       var rows = saves.map(function (s) {
         try {
           var gd = JSON.parse(localStorage.getItem(s.key) || 'null');
           if (!gd) return null;
+          var ti = _tsInfo(gd, s, s.key);
           return { user_id: user.id, game_key: s.key,
             team_name: (gd.th||'') + ' vs ' + (gd.ta||''), date: gd.d||null,
-            data: gd, updated_at: new Date(gd.ts||Date.now()).toISOString() };
-        } catch (e) { return null; }
+            data: gd, updated_at: new Date(ti.reliable ? ti.ts : Date.now()).toISOString() };
+        } catch (e) { unsent++; return null; }
       }).filter(Boolean);
+      if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
 
       // 업로드가 실패해도 아래 내려받기는 계속 시도하되(기존 동작), 끝에서 실패로 알린다
       var upErr = null;
@@ -253,12 +311,15 @@
           if (!clean) return;
           var loc = JSON.parse(localStorage.getItem(k) || 'null');
           var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-          if (!loc || remoteTs > (loc.ts || 0)) {
+          var li = _tsInfo(loc, null, k);   // 로컬 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
+          if (!loc || (li.reliable && remoteTs > li.ts)) {
             localStorage.setItem(k, JSON.stringify(row.data));
             if (!existMap[k]) {
               saves.push(clean);
               added++;
             }
+          } else if (!li.reliable) {
+            console.warn('[Cloud] 로컬 경기 시각을 읽지 못해 병합에서 제외:', k);
           }
         });
         if (added) {
@@ -345,7 +406,8 @@
     // localStorage 업데이트
     var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
     var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-    if (!loc || remoteTs > (loc.ts || 0)) {
+    var li = _tsInfo(loc, null, row.game_key);   // 로컬 시각을 못 읽으면 덮어쓰지 않는다
+    if (!loc || (li.reliable && remoteTs > li.ts)) {
       localStorage.setItem(row.game_key, JSON.stringify(row.data));
     }
   }

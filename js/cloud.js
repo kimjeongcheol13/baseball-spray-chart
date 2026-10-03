@@ -128,6 +128,35 @@
   window._slParseTs = _parseTs;   // 값 하나 → ms 숫자 | null
   window._slTsInfo = _tsInfo;     // 경기 → { ts, reliable }
 
+  /* ── 로컬 수정 시각 (sl_cloud_mod = { 저장키: 수정한 시각(ms) }) ─────────────
+     경기 ts 는 생성 시각이다 — saveGame 은 다시 저장해도 기존 ts 를 유지한다. 그래서 ts 만으로는 "로컬이 서버보다 나중에
+     고쳐졌는지" 알 수 없고, 서버 updated_at(업로드 시각)이 늘 더 새롭게 보여 오프라인에서 고친 내용이 서버본에 덮인다.
+     → core.js cloudSave(저장 · 타석 수정 · 가져오기 …)와 자동저장 복구가 _markMod 로 수정한 시각을 기록한다(오프라인이어도).
+     로컬 수정 시각 = max(기록값, 경기 ts). 서버 user_games.updated_at 도 같은 시계(수정한 시각)로 쓴다.
+     ponytail: 지운 경기의 항목은 남는다(맵이 작아 정리하지 않음) */
+  var MOD_KEY = 'sl_cloud_mod';
+  function _modMap() {
+    try { var m = JSON.parse(localStorage.getItem(MOD_KEY) || 'null'); return m && typeof m === 'object' && !Array.isArray(m) ? m : null; } catch (e) { return null; }
+  }
+  function _markMod(key, ms) {
+    try {
+      if (typeof key !== 'string' || !key) return;
+      var m = _modMap() || {};
+      m[key] = ms || Date.now();
+      localStorage.setItem(MOD_KEY, JSON.stringify(m));
+    } catch (e) { /* 저장 공간 부족 등 — 기록하지 못해도 경기 저장은 막지 않는다 */ }
+  }
+  function _localMod(gd, entry, key) {   // → { ms, reliable }  (reliable=false: 수정 시각을 알 수 없음)
+    var ti = _tsInfo(gd, entry, key), m = _modMap(), s = m ? Number(m[key]) : 0;
+    var ms = Math.max(ti.reliable ? ti.ts : 0, isFinite(s) && s > 0 ? s : 0);
+    return { ms: ms, reliable: ms > 0 };
+  }
+  window._slMarkMod = _markMod;
+  // 기록이 없는 기존 경기(이 기능 이전부터 있던 것)는 ts 로만 비교한다 — 일부러 "지금"으로 기록하는 전환 처리를 두지 않는다.
+  // 전환 때 지금을 찍으면 나중에 처음 열린 기기의 "지금"이 더 늦어, 오래된 기기가 새 기기의 데이터를 덮는다(기기를 여는 순서에 따라 결과가 갈림).
+  // ts 만 쓰면 순서와 무관하게 더 새로운 ts 가 이기고, ts 가 같으면(다시 저장만 한 경기) 어느 쪽도 덮지 않는다.
+  // 그런 경기도 그 기기에서 한 번 저장하면 수정 시각이 기록되어 그 버전이 최신이 된다.
+
   /* ── 인증 UI 업데이트 ────────────────────────────── */
   function _updateAuthUI() {
     var isReal = _user && !_user.is_anonymous;
@@ -252,7 +281,7 @@
         team_name:  (gameData.th || '') + ' vs ' + (gameData.ta || ''),
         date:       gameData.d || null,
         data:       gameData,
-        updated_at: new Date().toISOString()
+        updated_at: new Date(_localMod(gameData, null, key).ms || Date.now()).toISOString()   // 업로드 시각이 아니라 수정한 시각
       };
       if (teamId) row.team_id = teamId;
       return _client().from('user_games').upsert(row, { onConflict: 'user_id,game_key' }).then(function (r) {
@@ -275,50 +304,72 @@
       var db    = _client();
       var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
 
-      // gd.ts 가 예전 형식(ko-KR 문자열)이면 new Date(...).toISOString() 이 RangeError 를 던져, try/catch 가 그 경기를 말없이 빼 버렸다 → ts 를 숫자로 읽는다.
-      // 시각을 못 읽으면(ts 없음 포함) 예전처럼 지금 시각. 그래도 못 올리는 경기(깨진 JSON 등)는 개수를 로그로 남긴다
-      var unsent = 0;
-      var rows = saves.map(function (s) {
-        try {
-          var gd = JSON.parse(localStorage.getItem(s.key) || 'null');
-          if (!gd) return null;
-          var ti = _tsInfo(gd, s, s.key);
-          return { user_id: user.id, game_key: s.key,
-            team_name: (gd.th||'') + ' vs ' + (gd.ta||''), date: gd.d||null,
-            data: gd, updated_at: new Date(ti.reliable ? ti.ts : Date.now()).toISOString() };
-        } catch (e) { unsent++; return null; }
-      }).filter(Boolean);
-      if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
+      var upErr = null, sentKeys = {}, entryOf = {};
+      saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
 
-      // 업로드가 실패해도 아래 내려받기는 계속 시도하되(기존 동작), 끝에서 실패로 알린다
-      var upErr = null;
-      var upProm = rows.length
-        ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) {
-            if (ur && ur.error) { upErr = ur.error; console.warn('[Cloud] startup upload:', ur.error.message); }
-          })
-        : Promise.resolve();
+      // 0. 서버의 현재 updated_at 만 먼저 읽는다. 못 읽으면(네트워크·권한·5xx) 업로드하지 않고 아래 catch 가 실패로 알린다.
+      //    (예전에는 로컬 전부를 무조건 올려, 오래된 기기가 로그인하면 더 새로운 클라우드본을 덮어쓸 수 있었다)
+      return db.from('user_games').select('game_key,updated_at').eq('user_id', user.id).then(function (r0) {
+        if (r0.error) throw r0.error;
+        var remoteMs = Object.create(null);
+        (r0.data || []).forEach(function (x) { if (x && typeof x.game_key === 'string') remoteMs[x.game_key] = new Date(x.updated_at).getTime() || 0; });
 
-      return upProm.then(function () {
+        // 1. 올릴 경기 고르기 — 서버에 없거나, 로컬 수정 시각이 서버보다 새로운 경기만 올린다.
+        //    서버가 같거나 더 새로우면 올리지 않는다(아래 내려받기가 서버본을 가져온다). 수정 시각을 알 수 없으면 양쪽 모두 두고 로그만 남긴다
+        var byKey = Object.create(null), order = [], unsent = 0, held = 0;
+        saves.forEach(function (s) {
+          try {
+            if (!s || typeof s.key !== 'string') return;
+            var gd = JSON.parse(localStorage.getItem(s.key) || 'null');
+            if (!gd) return;
+            var lm = _localMod(gd, s, s.key), cur = byKey[s.key];
+            if (!cur) order.push(s.key);
+            if (!cur || lm.ms >= cur.lm.ms) byKey[s.key] = { gd: gd, lm: lm };   // 같은 키가 두 번 있으면 더 최신 항목(한 요청에 같은 행이 두 번 들어가면 서버가 거부한다)
+          } catch (e) { unsent++; }   // 깨진 JSON 등 — 읽을 수 없는 경기
+        });
+        var rows = [];
+        order.forEach(function (k) {
+          var c = byKey[k];
+          if (k in remoteMs) {
+            if (!c.lm.reliable) { held++; return; }
+            if (c.lm.ms <= remoteMs[k]) return;
+          }
+          sentKeys[k] = true;
+          rows.push({ user_id: user.id, game_key: k,
+            team_name: (c.gd.th||'') + ' vs ' + (c.gd.ta||''), date: c.gd.d||null,
+            data: c.gd, updated_at: new Date(c.lm.reliable ? c.lm.ms : Date.now()).toISOString() });
+        });
+        if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
+        if (held) console.warn('[Cloud] startup upload: 로컬 수정 시각을 읽지 못해 서버에 있는 경기 ' + held + '개는 올리지도 덮지도 않음');
+
+        // 업로드가 실패해도 아래 내려받기는 계속 시도하되(기존 동작), 끝에서 실패로 알린다
+        if (!rows.length) return;
+        return db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) {
+          if (ur && ur.error) { upErr = ur.error; console.warn('[Cloud] startup upload:', ur.error.message); }
+        });
+      }).then(function () {
         return db.from('user_games').select('game_key,data,updated_at').eq('user_id', user.id);
       }).then(function (r) {
         if (r.error) throw r.error;
         var existMap = {};
-        saves.forEach(function (s) { existMap[s.key] = true; });
+        saves.forEach(function (s) { if (s && typeof s.key === 'string') existMap[s.key] = true; });
         var added = 0;
         (r.data || []).forEach(function (row) {
           var k = row.game_key;
           var clean = _cleanRow(k, row.data);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
           if (!clean) return;
+          if (sentKeys[k]) return;   // 방금 올린 경기
           var loc = JSON.parse(localStorage.getItem(k) || 'null');
-          var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-          var li = _tsInfo(loc, null, k);   // 로컬 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
-          if (!loc || (li.reliable && remoteTs > li.ts)) {
+          var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
+          var lm = _localMod(loc, entryOf[k], k);   // 로컬 수정 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
+          if (!loc || (lm.reliable && remoteTs > lm.ms)) {
             localStorage.setItem(k, JSON.stringify(row.data));
+            if (remoteTs) _markMod(k, remoteTs);   // 서버본을 받았다 → 로컬 수정 시각 = 서버 시각(같은 시계)
             if (!existMap[k]) {
               saves.push(clean);
               added++;
             }
-          } else if (!li.reliable) {
+          } else if (!lm.reliable) {
             console.warn('[Cloud] 로컬 경기 시각을 읽지 못해 병합에서 제외:', k);
           }
         });
@@ -405,10 +456,11 @@
     }
     // localStorage 업데이트
     var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
-    var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-    var li = _tsInfo(loc, null, row.game_key);   // 로컬 시각을 못 읽으면 덮어쓰지 않는다
-    if (!loc || (li.reliable && remoteTs > li.ts)) {
+    var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
+    var lm = _localMod(loc, null, row.game_key);   // 로컬 수정 시각을 못 읽으면 덮어쓰지 않는다
+    if (!loc || (lm.reliable && remoteTs > lm.ms)) {
       localStorage.setItem(row.game_key, JSON.stringify(row.data));
+      if (remoteTs) _markMod(row.game_key, remoteTs);
     }
   }
 

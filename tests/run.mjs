@@ -18,7 +18,10 @@ function testPage() {
   let h = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   if (!CDN_SUPABASE.test(h)) throw new Error('index.html 에서 supabase CDN <script> 를 찾지 못했다 — 하네스 갱신 필요');
   if (!h.includes('</body>')) throw new Error('index.html 에 </body> 가 없다');
-  return h.replace(CDN_SUPABASE, '<script src="/tests/stub-supabase.js"></script>').replace('</body>', '<script src="/tests/sync.test.js"></script></body>');
+  // 공용 하네스 → tests/*.test.js(이름순) 순서로 끼운다
+  const files = fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsWith('.test.js')).sort();
+  const tags = ['harness.js', ...files].map((f) => `<script src="/tests/${f}"></script>`).join('');
+  return h.replace(CDN_SUPABASE, '<script src="/tests/stub-supabase.js"></script>').replace('</body>', tags + '</body>');
 }
 
 function findChrome() {
@@ -46,7 +49,7 @@ const port = server.address().port;
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
 const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
-  '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', '--virtual-time-budget=60000', '--enable-logging=stderr', '--v=0',
+  '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', '--virtual-time-budget=300000', '--enable-logging=stderr', '--v=0',
   ...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), '--dump-dom', `http://127.0.0.1:${port}/`];
 const child = spawn(findChrome(), args);
 let out = '', err = '';

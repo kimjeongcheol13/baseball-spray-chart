@@ -37,11 +37,12 @@
 
   // ── 가입 ──
   // 로그인 → 시작 동기화가 끝나고 팀 영역(#teamFormArea)이 그려질 때까지 기다린 뒤, 팀 한 개를 서버에 둔다
-  async function loginWithTeam(team) {
+  async function loginWithTeam(teams) {      // teams: 팀 하나 또는 배열
     await sleep(2000);
+    srv.signOut(); await sleep(1000);        // 앞선 테스트가 남긴 팀 상태를 지운다(SIGNED_OUT)
     srv.reset(); localStorage.clear();
     srv.signIn(); await sleep(1500);
-    srv.teams = [team];
+    srv.teams = [].concat(teams);
     srv.log.length = 0;                      // 이후 기록은 가입 흐름 것만
   }
   async function join(code) {
@@ -76,6 +77,39 @@
     eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
     eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
     eq(T.$('teamBadge').textContent, '팀원 · 테스트팀', '가입 후 팀 배지');
+  });
+
+  // ── 한 사람당 팀 하나(sql/10): 서버가 거부하면 그 문구를 사람이 읽을 수 있게 보여준다 ──
+  [['다른 팀의 팀원', function () { srv.team_members = [{ team_id: 'T2', user_id: 'TEST-USER' }]; }],
+   ['다른 팀의 팀장', function () { srv.teams.push({ id: 'T2', name: '내 팀', code: 'DEF567', owner_id: 'TEST-USER' }); }]].forEach(function (c) {
+    test('가입: ' + c[0] + '이면 서버의 한국어 메시지를 그대로 보여주고 가입하지 않는다', async function () {
+      await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
+      c[1]();
+      await join('ABC234');
+      eq(msg(), '이미 다른 팀에 속해 있어요. 탈퇴 후 다시 시도해 주세요', '안내 문구(앞에 "오류:" 가 붙지 않는다)');
+      eq(directInserts().length, 0, 'team_members 직접 insert');
+      eq(srv.team_members.filter(function (m) { return m.team_id === 'T1'; }), [], 'T1 에 가입된 행');
+      eq(T.$('teamBadge').style.display, 'none', '팀 배지가 보이면 안 됨');
+    });
+  });
+  [['이미 소유한 팀(23505, owner_id)', { status: 409, code: '23505', message: 'duplicate key value violates unique constraint "teams_owner_id_uniq"', details: 'Key (owner_id)=(TEST-USER) already exists.' },
+    '이미 만든 팀이 있어요. 팀은 한 사람당 하나만 만들 수 있어요'],
+   ['다른 팀의 팀원(42501)', { status: 403, code: '42501', message: 'new row violates row-level security policy for table "teams"' },
+    '이미 다른 팀에 속해 있어서 팀을 만들 수 없어요. 탈퇴 후 다시 시도해 주세요'],
+   ['팀 코드 충돌(23505, code)은 owner 문구를 쓰지 않는다', { status: 409, code: '23505', message: 'duplicate key value violates unique constraint "teams_code_key"', details: 'Key (code)=(ABC234) already exists.' },
+    '오류: duplicate key value violates unique constraint "teams_code_key"']].forEach(function (c) {
+    test('팀 만들기: ' + c[0] + ' → 문구 표시', async function () {
+      await loginWithTeam([]);
+      srv.failWrite = c[1];
+      openCreateTeam();
+      ok(T.$('teamNameInput'), '팀 만들기 폼이 그려지지 않음');
+      T.$('teamNameInput').value = '새 팀';
+      // 폼의 실제 "팀 생성" 버튼을 누른다. core.js 의 전역 createTeam()(로컬 팀 대시보드용)이 cloud.js 의 함수를 덮어쓰면 서버 요청이 나가지 않는다
+      T.$('teamFormArea').querySelector('button').click();
+      await sleep(500);
+      eq(msg(), c[2], '안내 문구');
+      eq(T.$('teamBadge').style.display, 'none', '팀 배지가 보이면 안 됨');
+    });
   });
 
   // ── 팀이 있을 때의 team_id (팀장이 되면 cloud.js 의 팀 상태가 남으므로 마지막) ──

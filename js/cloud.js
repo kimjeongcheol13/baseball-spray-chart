@@ -698,7 +698,7 @@
     area.innerHTML =
       '<div class="team-form">' +
         '<input id="teamNameInput" type="text" placeholder="팀 이름 입력" class="magic-input" maxlength="20">' +
-        '<button class="btn-magic" onclick="window.createTeam()">팀 생성</button>' +
+        '<button class="btn-magic" onclick="window.createCloudTeam()">팀 생성</button>' +
         '<div id="teamFormMsg" class="magic-msg"></div>' +
       '</div>';
     setTimeout(function () {
@@ -723,7 +723,15 @@
     }, 100);
   };
 
-  window.createTeam = function () {
+  // 팀 만들기 오류 문구 — 한 사람당 팀 하나(sql/10): 이미 소유한 팀이 있으면 owner_id unique 위반(23505), 다른 팀의 팀원이면 teams_insert 거부(42501).
+  // 23505 는 팀 코드 충돌일 수도 있어서 owner_id 가 걸린 위반일 때만 이 문구를 쓴다(PostgREST 는 details 에 "Key (owner_id)=..." 를 담는다)
+  function _createTeamErrText(e) {
+    if (e && e.code === '23505' && /owner_id/.test((e.details || '') + ' ' + (e.message || ''))) return '이미 만든 팀이 있어요. 팀은 한 사람당 하나만 만들 수 있어요';
+    if (e && e.code === '42501') return '이미 다른 팀에 속해 있어서 팀을 만들 수 없어요. 탈퇴 후 다시 시도해 주세요';
+    return '오류: ' + (e && e.message || '알 수 없는 오류');
+  }
+
+  window.createCloudTeam = function () {
     var nameEl = document.getElementById('teamNameInput');
     var msgEl  = document.getElementById('teamFormMsg');
     if (!nameEl || !msgEl) return;
@@ -736,7 +744,7 @@
     db.from('teams').insert({ code: code, owner_id: _user.id, name: name })
       .select().single()
       .then(function (r) {
-        if (r.error) { msgEl.textContent = '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
+        if (r.error) { msgEl.textContent = _createTeamErrText(r.error); msgEl.className = 'magic-msg error'; return; }
         _team = Object.assign({}, r.data, { role: 'owner' });
         _updateTeamUI();
         _subscribeTeam(_team.id);
@@ -759,8 +767,9 @@
     // 가입 전(비팀원)에는 RLS 때문에 teams 를 직접 읽을 수 없고, team_members 에 직접 insert 하지도 않는다(sql/09 에서 정책 삭제).
     // 코드가 정확히 일치할 때만 가입 처리하고 id / name / is_owner 를 돌려주는 RPC 사용 (sql/08_team_write_guards.sql).
     // 이미 팀원이면 같은 행을 그대로 돌려준다(예전의 23505 처리가 필요 없다)
+    // 다른 팀에 속해 있으면 RPC 가 한국어 메시지로 예외(P0001)를 던진다(sql/10) — 그 메시지를 그대로 보여준다
     db.rpc('join_team_by_code', { p_code: code }).then(function (r) {
-      if (r.error) { msgEl.textContent = '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
+      if (r.error) { msgEl.textContent = r.error.code === 'P0001' ? r.error.message : '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
       var found = r.data && r.data[0];
       if (!found) { msgEl.textContent = '팀 코드를 찾을 수 없어요'; msgEl.className = 'magic-msg error'; return; }
       if (found.is_owner) { msgEl.textContent = '내가 만든 팀이에요'; msgEl.className = 'magic-msg error'; return; }

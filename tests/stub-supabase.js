@@ -47,7 +47,7 @@
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; return this; };
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
-  Q.prototype.maybeSingle = function () { this.single = true; return this; };
+  Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
   function run(q) {
@@ -57,14 +57,14 @@
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
       if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
-      if (f) return { data: null, error: { message: f.message, code: f.code || '' }, status: f.status, statusText: '' };
+      if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
         var out = tbl.filter(function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }); });
         var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
-        return { data: q.single ? (data[0] || null) : data, error: null, status: 200 };
+        return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
       }
       if (q.op === 'insert') { rows.forEach(function (r) { tbl.push(clone(r)); }); return { data: null, error: null, status: 201 }; }
       if (!q.o || !q.o.onConflict) throw new Error('stub: upsert 에 onConflict 필요');
@@ -82,13 +82,16 @@
     return srv.teams.filter(function (t) { return t.code === code; }).slice(0, 1)
       .map(function (t) { return { id: t.id, name: t.name, is_owner: t.owner_id === (srv.user || {}).id }; });
   }
+  // 핸들러는 행 배열을 돌려주거나, {error:{code,message}} 로 서버 예외를 흉내 낸다
   var rpcs = {
     find_team_by_code: function (a) { return teamsByCode(a.p_code); },
-    join_team_by_code: function (a) {   // 소유자가 아니고 아직 팀원이 아니면 team_members 에 넣는다(실제 SQL 은 sql/08)
+    join_team_by_code: function (a) {   // 실제 SQL 은 sql/10: 내 팀이면 is_owner 만 · 이미 이 팀이면 같은 행 · 다른 팀 소속이면 예외 · 아니면 team_members 에 넣는다
       var rows = teamsByCode(a.p_code), uid = (srv.user || {}).id;
-      rows.forEach(function (r) {
-        if (!r.is_owner && !srv.team_members.some(function (m) { return m.team_id === r.id && m.user_id === uid; })) srv.team_members.push({ team_id: r.id, user_id: uid });
-      });
+      if (!rows.length || rows[0].is_owner) return rows;
+      var mine = srv.team_members.filter(function (m) { return m.user_id === uid; })[0];
+      if (mine && mine.team_id === rows[0].id) return rows;
+      if (mine || srv.teams.some(function (t) { return t.owner_id === uid; })) return { error: { code: 'P0001', message: '이미 다른 팀에 속해 있어요. 탈퇴 후 다시 시도해 주세요' } };
+      srv.team_members.push({ team_id: rows[0].id, user_id: uid });
       return rows;
     }
   };
@@ -99,7 +102,8 @@
       return Promise.resolve().then(function () {
         srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });
         if (!rpcs[fn]) throw new Error('stub: 지원하지 않는 rpc ' + fn);
-        return { data: rpcs[fn](args || {}), error: null, status: 200 };
+        var out = rpcs[fn](args || {});
+        return out && out.error ? { data: null, error: out.error, status: 400 } : { data: out, error: null, status: 200 };
       });
     },
     auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다

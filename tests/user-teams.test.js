@@ -1,12 +1,43 @@
-// 팀 가입 흐름 검증 — 실제 js/cloud.js 의 joinTeam 을 가짜 서버에 붙여 돌린다.
-// 배경: team_members 에 클라이언트가 직접 insert 하면 team_members_insert 정책을 닫을 수 없다(sql/08 · 09) → 가입은 RPC(join_team_by_code)로만 한다.
-// 파일 이름순으로 user-games 뒤에 돈다: 가입에 성공하면 cloud.js 의 팀 상태가 남으므로 마지막에 둔다.
+// 팀 관련 클라우드 동작 검증 — 실제 js/cloud.js 를 가짜 서버에 붙여 돌린다.
+//  · user_games upsert 의 team_id: 팀이 없으면 null 을 명시(탈퇴·강퇴·해산 뒤 옛 팀 id 가 남아 sql/08 WITH CHECK 에 걸리지 않게), 모르면 싣지 않는다
+//  · 가입: team_members 에 클라이언트가 직접 insert 하면 team_members_insert 정책을 닫을 수 없다(sql/09) → 가입은 RPC(join_team_by_code)로만 한다
+// 파일 이름순으로 user-games 뒤에 돈다. 가입에 성공하거나 팀장이 되면 cloud.js 의 팀 상태가 남으므로 그런 테스트는 뒤쪽에 둔다.
 (function () {
   var T = window.__T, srv = window.__srv, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep;
+  var K = 'sl_1779002911000', T0 = new Date(2026, 4, 17, 16, 28, 31).getTime();
 
+  // ── user_games upsert 의 team_id ──
+  // 로컬에 경기 1개를 두고 로그인 → 시작 동기화가 서버에 올린 user_games 행들을 돌려준다
+  async function startupRows(setup) {
+    await sleep(2000);                       // 앱 시작 때 도는 첫 동기화(로그인 전, 서버 전송 없음)가 끝나길 기다린다
+    srv.reset(); localStorage.clear();
+    localStorage.setItem(K, JSON.stringify({ th: '홈', ta: '원정', hs: 1, as: 0, abs: [], d: '2026. 5. 17.', ts: T0 }));
+    localStorage.setItem('sl_saves', JSON.stringify([{ key: K, label: K, ts: T0 }]));
+    localStorage.setItem('sl_cloud_mod', '{}');
+    if (setup) setup();
+    srv.signIn(); await sleep(1500);
+    var u = srv.log.filter(function (x) { return x.table === 'user_games' && x.op === 'upsert'; });
+    eq(u.length, 1, '시작 동기화 업로드 요청 수');
+    return u[0].rows;
+  }
+  test('upsert: 팀이 없을 때 본문에 team_id: null 이 들어간다(생략하지 않는다)', async function () {
+    var rows = await startupRows();
+    eq(rows.length, 1, '업로드 행 수');
+    ok('team_id' in rows[0], 'team_id 키가 없음 — 옛 팀 id 가 서버에 남는다');
+    eq(rows[0].team_id, null, 'team_id');
+  });
+  test('upsert: 팀 조회가 실패해 모르면 team_id 를 싣지 않는다(null 로 덮어 팀원의 팀 태그를 지우지 않는다)', async function () {
+    var rows = await startupRows(function () {
+      srv.failRead = function (r, table) { return table === 'teams' ? { status: 500, code: 'XX000', message: 'internal error' } : null; };
+    });
+    eq(rows.length, 1, '업로드 행 수');
+    ok(!('team_id' in rows[0]), 'team_id 가 실렸음: ' + JSON.stringify(rows[0].team_id));
+  });
+
+  // ── 가입 ──
   // 로그인 → 시작 동기화가 끝나고 팀 영역(#teamFormArea)이 그려질 때까지 기다린 뒤, 팀 한 개를 서버에 둔다
   async function loginWithTeam(team) {
-    await sleep(2000);                       // 앱 시작 때 도는 첫 동기화(로그인 전, 서버 전송 없음)가 끝나길 기다린다
+    await sleep(2000);
     srv.reset(); localStorage.clear();
     srv.signIn(); await sleep(1500);
     srv.teams = [team];
@@ -44,5 +75,12 @@
     eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
     eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
     eq(T.$('teamBadge').textContent, '팀원 · 테스트팀', '가입 후 팀 배지');
+  });
+
+  // ── 팀이 있을 때의 team_id (팀장이 되면 cloud.js 의 팀 상태가 남으므로 마지막) ──
+  test('upsert: 팀장이면 본문에 그 팀의 id 가 들어간다', async function () {
+    var rows = await startupRows(function () { srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }]; });
+    eq(rows.length, 1, '업로드 행 수');
+    eq(rows[0].team_id, 'T1', 'team_id');
   });
 })();

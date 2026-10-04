@@ -23,7 +23,7 @@
   });
 
   // ── 가짜 서버(메모리) ──
-  // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows)→위 값
+  // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows, 테이블 이름)→위 값
   var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null };
   srv.reset = function () {
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
@@ -49,7 +49,7 @@
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
       srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
-      if (typeof f === 'function') f = f(rows);
+      if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '' }, status: f.status, statusText: '' };
       var tbl = srv[q.t];

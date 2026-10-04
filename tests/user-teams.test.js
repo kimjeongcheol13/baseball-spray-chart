@@ -145,4 +145,69 @@
     eq(rows.length, 1, '팀 조회 전에 나간 upsert 행 수');
     ok(!('team_id' in rows[0]), '팀을 모르는데 team_id 가 실렸음: ' + JSON.stringify(rows[0].team_id));
   });
+
+  // ── 실시간 구독 콜백(_onTeamGameUpdate) 가드 ──
+  // 팀장이 되어 구독을 건 뒤, 서버가 보내는 user_games UPDATE 이벤트를 흉내 낸다(스텁이 구독 콜백을 기억한다)
+  async function teamChannelCb() {
+    await sleep(2000);
+    srv.signOut(); await sleep(1000);
+    srv.reset(); localStorage.clear();
+    srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }];
+    srv.signIn(); await sleep(1500);
+    var ch = srv.channels.filter(function (c) { return c.filter && c.filter.table === 'user_games'; }).pop();
+    ok(ch, 'user_games 구독이 걸리지 않음');
+    return ch.cb;
+  }
+  function teamRow(userId, abs) {
+    return { user_id: userId, game_key: K, team_id: 'T1', team_name: '홈 vs 원정', date: '2026. 5. 17.',
+      data: { th: '홈', ta: '원정', hs: 3, as: 1, abs: abs || [], d: '2026. 5. 17.', ts: T0 }, updated_at: new Date(T0 + 60000).toISOString() };
+  }
+  function modOf(k) { return (T.ls('sl_cloud_mod') || {})[k]; }
+  // 콜백이 throw 하면 그 예외를, 아니면 null 을 돌려준다
+  function call(cb, row) { try { cb({ new: row }); return null; } catch (e) { return e; } }
+
+  test('실시간: 다른 사용자(팀원)의 행은 localStorage 에 쓰지 않는다', async function () {
+    var cb = await teamChannelCb();
+    var threw = call(cb, teamRow('MEMBER-USER'));
+    ok(!threw, '콜백이 throw 함: ' + threw);
+    eq(localStorage.getItem(K), null, '팀원 경기가 localStorage 에 저장됨');
+    eq(modOf(K), undefined, '수정 시각이 기록됨');
+  });
+  test('실시간: 내 행(다른 기기에서 올린 것)은 지금처럼 localStorage 에 저장한다', async function () {
+    var cb = await teamChannelCb();
+    var threw = call(cb, teamRow('TEST-USER'));
+    ok(!threw, '콜백이 throw 함: ' + threw);
+    eq(T.ls(K).hs, 3, '저장된 경기');
+    eq(modOf(K), T0 + 60000, '로컬 수정 시각 = 서버 시각');
+  });
+  test('실시간: 열린 경기와 key 가 같으면 팀원의 타구는 그대로 합쳐진다(localStorage 에는 쓰지 않는다)', async function () {
+    var cb = await teamChannelCb();
+    var abs0 = AS.abs, key0 = window._autoKey, upd0 = window.updateAll, updated = 0;
+    try {
+      window._autoKey = K; AS.abs = [{ id: 'a1' }]; window.updateAll = function () { updated++; };
+      var threw = call(cb, teamRow('MEMBER-USER', [{ id: 'a1' }, { id: 'b2' }]));
+      ok(!threw, '콜백이 throw 함: ' + threw);
+      eq(AS.abs.map(function (a) { return a.id; }), ['a1', 'b2'], '합쳐진 타구');
+      eq(updated, 1, 'updateAll 호출');
+      eq(localStorage.getItem(K), null, '팀원 경기가 localStorage 에 저장됨');
+    } finally { AS.abs = abs0; window._autoKey = key0; window.updateAll = upd0; }
+  });
+  test('실시간: setItem 이 예외를 던져도 콜백은 throw 하지 않고 내 저장은 그대로다', async function () {
+    var cb = await teamChannelCb();
+    localStorage.setItem('sl_saves', '[]');
+    var orig = Storage.prototype.setItem, threw;
+    Storage.prototype.setItem = function (k) { if (k === K) throw new DOMException('quota', 'QuotaExceededError'); return orig.apply(this, arguments); };
+    try { threw = call(cb, teamRow('TEST-USER')); } finally { Storage.prototype.setItem = orig; }
+    ok(!threw, '콜백이 throw 함: ' + threw);
+    eq(localStorage.getItem('sl_saves'), '[]', '내 저장 목록이 바뀜');
+    localStorage.setItem('sl_probe', '1');
+    eq(localStorage.getItem('sl_probe'), '1', '이후 localStorage 쓰기');
+  });
+  test('실시간: 로컬 값이 깨진 JSON 이어도 콜백은 throw 하지 않고 그 값을 건드리지 않는다', async function () {
+    var cb = await teamChannelCb();
+    localStorage.setItem(K, '{깨진 json');
+    var threw = call(cb, teamRow('TEST-USER'));
+    ok(!threw, '콜백이 throw 함: ' + threw);
+    eq(localStorage.getItem(K), '{깨진 json', '깨진 로컬 값');
+  });
 })();

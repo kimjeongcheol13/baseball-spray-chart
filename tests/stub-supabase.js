@@ -24,10 +24,10 @@
 
   // ── 가짜 서버(메모리) ──
   // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows, 테이블 이름)→위 값
-  var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null };
+  var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null, channels: [] };   // channels: cloud.js 가 건 realtime 구독 {name, type, filter, cb}
   srv.reset = function () {
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
-    srv.log = []; srv.failRead = null; srv.failWrite = null;
+    srv.log = []; srv.failRead = null; srv.failWrite = null; srv.channels = [];
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
   // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다)
@@ -111,7 +111,10 @@
       onAuthStateChange: function (cb) { authCb = cb; return { data: { subscription: { unsubscribe: function () {} } } }; },
       signOut: function () { srv.signOut(); return Promise.resolve({}); }
     },
-    channel: function () { var c = { on: function () { return c; }, subscribe: function () { return c; } }; return c; },
+    channel: function (name) {   // 구독 콜백을 기억해 두면 테스트가 서버 이벤트를 흉내 낼 수 있다: srv.channels[i].cb({ new: 행 })
+      var c = { on: function (type, filter, cb) { srv.channels.push({ name: name, type: type, filter: filter, cb: cb }); return c; }, subscribe: function () { return c; } };
+      return c;
+    },
     removeChannel: function () {}
   };
   window.supabase = { createClient: function () { return client; } };   // URL·키 인자는 받지도 쓰지도 않는다

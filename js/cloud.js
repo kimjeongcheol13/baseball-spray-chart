@@ -472,14 +472,18 @@
         if (typeof showToast === 'function') showToast('🔴 팀원이 ' + newAbs.length + '개 타구 추가', false);
       }
     }
-    // localStorage 업데이트
-    var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
-    var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
-    var lm = _localMod(loc, null, row.game_key);   // 로컬 수정 시각을 못 읽으면 덮어쓰지 않는다
-    if (!loc || (lm.reliable && remoteTs > lm.ms)) {
-      localStorage.setItem(row.game_key, JSON.stringify(row.data));
-      if (remoteTs) _markMod(row.game_key, remoteTs);
-    }
+    // localStorage 업데이트 — 내 행(다른 기기에서 올린 것)만. 팀원의 경기는 내 저장 목록에 없는 채로 쌓이기만 하므로 쓰지 않는다
+    // (user_id 를 모르면 쓰지 않는다). 저장이 실패해도(용량 초과·깨진 값) 콜백은 throw 하지 않고 내 저장은 그대로 둔다.
+    if (!_user || row.user_id !== _user.id) return;
+    try {
+      var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
+      var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
+      var lm = _localMod(loc, null, row.game_key);   // 로컬 수정 시각을 못 읽으면 덮어쓰지 않는다
+      if (!loc || (lm.reliable && remoteTs > lm.ms)) {
+        localStorage.setItem(row.game_key, JSON.stringify(row.data));
+        if (remoteTs) _markMod(row.game_key, remoteTs);
+      }
+    } catch (e) { console.warn('[Cloud] team game local save:', e && e.message); }
   }
 
   /* ── 인증 상태 변경 감지 ─────────────────────────── */

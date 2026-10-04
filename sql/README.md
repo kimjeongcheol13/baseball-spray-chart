@@ -17,6 +17,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `07b_verify_visits_closed.sql` | 07 검증 (임시 행, 전부 롤백) | 없음 (전부 롤백) |
 | `08_team_write_guards.sql` | `user_games` insert/update 정책에 "내 행 + 내 팀의 team_id 만" 조건 추가, 가입 RPC `join_team_by_code` 생성. **클라이언트 배포 전에** 적용 | 정책 2개 교체, 함수 1개 생성 (DROP 없음) |
 | `09_drop_team_members_insert.sql` | `team_members_insert` 정책 삭제(가입은 RPC 로만). **클라이언트 배포 후** SQL Editor 에서 수동 실행 | 정책 1개 삭제 (DROP) |
+| `10_one_team_per_user.sql` | 한 사람당 팀 하나를 DB 가 강제: `teams(owner_id)` · `team_members(user_id)` unique index, `join_team_by_code` 재정의(다른 팀 소속이면 예외), `teams_insert` 에 "팀원 아님" 조건 + `is_in_any_team()`. 08 선행(가정 확인이 검사). **클라이언트 배포 전에** 적용 | 인덱스 2개·함수 1개 생성, 함수 1개 교체, 정책 1개 교체 (DROP 없음) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

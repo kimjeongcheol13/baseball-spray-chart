@@ -45,11 +45,14 @@
     srv.teams = [].concat(teams);
     srv.log.length = 0;                      // 이후 기록은 가입 흐름 것만
   }
+  // 가입 폼 안의 입력칸에 코드를 넣고 폼의 실제 "참가하기" 버튼을 누른다.
+  // (id 로 찾으면 index.html 의 정적 입력칸 teamCodeInput(games 용)과 겹쳐 버그를 가린다 — 폼 안에서 찾는다)
   async function join(code) {
     openJoinTeam();
-    ok(T.$('teamCodeInput'), '가입 폼이 그려지지 않음');
-    T.$('teamCodeInput').value = code;
-    joinTeam();
+    var area = T.$('teamFormArea'), input = area && area.querySelector('input');
+    ok(input, '가입 폼이 그려지지 않음');
+    input.value = code;
+    area.querySelector('button').click();
     await sleep(500);
   }
   function directInserts() { return srv.log.filter(function (x) { return x.table === 'team_members' && x.op === 'insert'; }); }
@@ -77,6 +80,28 @@
     eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
     eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
     eq(T.$('teamBadge').textContent, '팀원 · 테스트팀', '가입 후 팀 배지');
+  });
+  test('가입: index.html 에 정적 teamCodeInput(games 용)이 있어도 가입 폼에 넣은 코드로 RPC 가 호출된다', async function () {
+    await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
+    var stat = T.$('teamCodeInput');         // "팀 코드로 경기 공유" 입력칸 — 비어 있다
+    ok(stat && !T.$('teamFormArea').contains(stat), 'index.html 의 정적 teamCodeInput 이 DOM 에 있어야 이 테스트가 의미 있다');
+    eq(stat.value, '', '정적 입력칸이 비어 있어야 함');
+    await join('ABC234');
+    eq(msg() === '6자리 코드를 입력해 주세요', false, '엉뚱한 빈 입력칸을 읽었음');
+    eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
+    eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
+    eq(stat.value, '', '정적 입력칸은 건드리지 않음');
+  });
+  test('가입·팀 만들기 폼의 id 는 문서 전체에서 유일하다(index.html 과 겹치면 getElementById 가 엉뚱한 요소를 돌려준다)', async function () {
+    await loginWithTeam([]);
+    [openJoinTeam, openCreateTeam].forEach(function (open) {
+      open();
+      var els = T.$('teamFormArea').querySelectorAll('[id]');
+      ok(els.length >= 2, '폼에 id 가 있는 요소가 없음');
+      Array.prototype.forEach.call(els, function (el) {
+        eq(document.querySelectorAll('[id="' + el.id + '"]').length, 1, 'id 중복: ' + el.id);
+      });
+    });
   });
 
   // ── 한 사람당 팀 하나(sql/10): 서버가 거부하면 그 문구를 사람이 읽을 수 있게 보여준다 ──

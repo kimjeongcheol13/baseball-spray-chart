@@ -716,13 +716,14 @@
     if (!area) return;
     area.innerHTML =
       '<div class="team-form">' +
-        '<input id="teamCodeInput" type="text" placeholder="6자리 팀 코드 입력" class="magic-input" maxlength="6" ' +
+        // id 는 cloudTeamCodeInput: index.html 의 "팀 코드로 경기 공유" 입력칸(teamCodeInput, games 용)과 겹치면 getElementById 가 그쪽을 먼저 돌려준다
+        '<input id="cloudTeamCodeInput" type="text" placeholder="6자리 팀 코드 입력" class="magic-input" maxlength="6" ' +
           'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">' +
         '<button class="btn-magic" onclick="window.joinTeam()">참가하기</button>' +
         '<div id="teamFormMsg" class="magic-msg"></div>' +
       '</div>';
     setTimeout(function () {
-      var el = document.getElementById('teamCodeInput');
+      var el = document.getElementById('cloudTeamCodeInput');
       if (el) el.focus();
     }, 100);
   };
@@ -760,7 +761,7 @@
   };
 
   window.joinTeam = function () {
-    var codeEl = document.getElementById('teamCodeInput');
+    var codeEl = document.getElementById('cloudTeamCodeInput');
     var msgEl  = document.getElementById('teamFormMsg');
     if (!codeEl || !msgEl) return;
     var code = codeEl.value.trim().toUpperCase();

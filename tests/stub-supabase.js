@@ -36,6 +36,12 @@
     if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
     authCb('SIGNED_IN', { user: srv.user });
   };
+  // 로그아웃: 세션을 비우고 SIGNED_OUT 을 알린다(supabase-js 와 같은 순서)
+  srv.signOut = function () {
+    srv.user = null;
+    if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
+    authCb('SIGNED_OUT', null);
+  };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
@@ -99,7 +105,7 @@
     auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다
       getSession: function () { return Promise.resolve({ data: { session: srv.user ? { user: srv.user } : null } }); },
       onAuthStateChange: function (cb) { authCb = cb; return { data: { subscription: { unsubscribe: function () {} } } }; },
-      signOut: function () { return Promise.resolve({}); }
+      signOut: function () { srv.signOut(); return Promise.resolve({}); }
     },
     channel: function () { var c = { on: function () { return c; }, subscribe: function () { return c; } }; return c; },
     removeChannel: function () {}

@@ -10,6 +10,7 @@
   // 로컬에 경기 1개를 두고 로그인 → 시작 동기화가 서버에 올린 user_games 행들을 돌려준다
   async function startupRows(setup) {
     await sleep(2000);                       // 앱 시작 때 도는 첫 동기화(로그인 전, 서버 전송 없음)가 끝나길 기다린다
+    srv.signOut(); await sleep(1000);        // 앞선 테스트가 남긴 팀 상태를 지운다(SIGNED_OUT)
     srv.reset(); localStorage.clear();
     localStorage.setItem(K, JSON.stringify({ th: '홈', ta: '원정', hs: 1, as: 0, abs: [], d: '2026. 5. 17.', ts: T0 }));
     localStorage.setItem('sl_saves', JSON.stringify([{ key: K, label: K, ts: T0 }]));
@@ -82,5 +83,32 @@
     var rows = await startupRows(function () { srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }]; });
     eq(rows.length, 1, '업로드 행 수');
     eq(rows[0].team_id, 'T1', 'team_id');
+  });
+  test('upsert: 팀이 있던 상태에서 재조회 결과가 "팀 없음"이면 이후 upsert 본문에 team_id: null 이 들어간다', async function () {
+    var first = await startupRows(function () { srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }]; });
+    eq(first[0].team_id, 'T1', '팀이 있을 때 team_id');
+    srv.teams = []; srv.user_games = []; srv.log.length = 0;   // 팀이 사라졌다(해산·강퇴). 서버에 경기가 없으니 다시 올라간다
+    srv.signIn(); await sleep(1500);                           // 같은 페이지에서 재조회
+    var u = srv.log.filter(function (x) { return x.table === 'user_games' && x.op === 'upsert'; });
+    eq(u.length, 1, '재조회 뒤 업로드 요청 수');
+    ok('team_id' in u[0].rows[0], 'team_id 키가 없음');
+    eq(u[0].rows[0].team_id, null, '옛 팀 id 가 실렸음');
+  });
+  test('upsert: 로그아웃 → 재로그인 직후(팀 조회 전) upsert 본문에는 team_id 가 없다', async function () {
+    await sleep(2000);
+    srv.signOut(); await sleep(1000);
+    srv.reset(); localStorage.clear();
+    srv.signIn(); await sleep(1500);                           // 첫 계정: 팀 조회가 끝나 "팀 없음"이 확정된 상태
+    var abs0 = AS.abs;
+    try {
+      AS.abs = [{ id: 'x1' }]; srv.log.length = 0;
+      cloudAutoSyncRecord();                                   // 3초 디바운스 뒤 user_games upsert 예약(t=0)
+      srv.signOut(); await sleep(2700);
+      srv.signIn(); await sleep(1500);                         // t=2.7초 재로그인 → 시작 동기화(팀 조회)는 500ms 뒤(t=3.2초)라서 t=3초의 upsert 가 먼저 나간다
+    } finally { AS.abs = abs0; }
+    var rows = srv.log.filter(function (x) { return x.table === 'user_games' && x.op === 'upsert'; })
+      .reduce(function (a, x) { return a.concat(x.rows); }, []).filter(function (r) { return /^sl_auto_/.test(r.game_key); });
+    eq(rows.length, 1, '팀 조회 전에 나간 upsert 행 수');
+    ok(!('team_id' in rows[0]), '팀을 모르는데 team_id 가 실렸음: ' + JSON.stringify(rows[0].team_id));
   });
 })();

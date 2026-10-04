@@ -430,6 +430,10 @@
           _team = Object.assign({}, r2.data.teams, { role: 'member' });
           _updateTeamUI();
           _subscribeTeam(_team.id);
+        } else if (_team) {   // 서버에는 팀이 없는데 옛 _team 이 남아 있다(해산·강퇴 뒤 같은 페이지에서 재조회) → 비운다
+          _team = null;
+          if (_rtChannel) { db.removeChannel(_rtChannel); _rtChannel = null; }
+          _updateTeamUI();
         }
       });
     }).catch(function (e) { console.warn('[Cloud] loadMyTeam:', e && e.message); });
@@ -504,7 +508,7 @@
         }, 500);
       }
       if (event === 'SIGNED_OUT') {
-        _team = null;
+        _team = null; _teamKnown = false;   // 다음 계정의 팀은 조회 전까지 모른다 → 그 사이 upsert 에 team_id 를 싣지 않는다
         if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
         _startDone = false;
         setTimeout(_startupSync, 300);
@@ -662,7 +666,7 @@
     if (!db) return;
     db.auth.signOut().then(function () {
       _user = null;
-      _team = null;
+      _team = null; _teamKnown = false;
       _updateAuthUI();
       _startDone = false;
       setTimeout(_startupSync, 300);

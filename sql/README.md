@@ -15,6 +15,8 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `06b_verify_public_policies_closed.sql` | Phase 3 검증 (기존 팀 코드로 시험, 코드·내용 비출력, 전부 롤백) | 없음 (전부 롤백) |
 | `07_enable_rls_visits.sql` | `public.visits` RLS 켜기 (정책 없음 = 전면 차단). 06 과 **독립**(순서 무관). 어드바이저 ERROR `rls_disabled_in_public` | RLS 활성화 1줄 (되돌리면 `disable row level security`) |
 | `07b_verify_visits_closed.sql` | 07 검증 (임시 행, 전부 롤백) | 없음 (전부 롤백) |
+| `08_team_write_guards.sql` | `user_games` insert/update 정책에 "내 행 + 내 팀의 team_id 만" 조건 추가, 가입 RPC `join_team_by_code` 생성. **클라이언트 배포 전에** 적용 | 정책 2개 교체, 함수 1개 생성 (DROP 없음) |
+| `09_drop_team_members_insert.sql` | `team_members_insert` 정책 삭제(가입은 RPC 로만). **클라이언트 배포 후** SQL Editor 에서 수동 실행 | 정책 1개 삭제 (DROP) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

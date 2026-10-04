@@ -23,7 +23,7 @@
   });
 
   // ── 가짜 서버(메모리) ──
-  // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows)→위 값
+  // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows, 테이블 이름)→위 값
   var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null };
   srv.reset = function () {
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
@@ -36,6 +36,12 @@
     if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
     authCb('SIGNED_IN', { user: srv.user });
   };
+  // 로그아웃: 세션을 비우고 SIGNED_OUT 을 알린다(supabase-js 와 같은 순서)
+  srv.signOut = function () {
+    srv.user = null;
+    if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
+    authCb('SIGNED_OUT', null);
+  };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
@@ -46,10 +52,10 @@
 
   function run(q) {
     return Promise.resolve().then(function () {
-      var rows = q.op === 'upsert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
+      var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
       srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
-      if (typeof f === 'function') f = f(rows);
+      if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '' }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
@@ -60,6 +66,7 @@
         var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
         return { data: q.single ? (data[0] || null) : data, error: null, status: 200 };
       }
+      if (q.op === 'insert') { rows.forEach(function (r) { tbl.push(clone(r)); }); return { data: null, error: null, status: 201 }; }
       if (!q.o || !q.o.onConflict) throw new Error('stub: upsert 에 onConflict 필요');
       var keys = q.o.onConflict.split(',');
       rows.forEach(function (r) {
@@ -70,12 +77,35 @@
     });
   }
 
+  // 서버 쪽 함수(rpc) 흉내 — 목록에 없는 함수는 예외. 호출은 srv.log 에 {table:null, op:'rpc', fn, args} 로 남는다
+  function teamsByCode(code) {
+    return srv.teams.filter(function (t) { return t.code === code; }).slice(0, 1)
+      .map(function (t) { return { id: t.id, name: t.name, is_owner: t.owner_id === (srv.user || {}).id }; });
+  }
+  var rpcs = {
+    find_team_by_code: function (a) { return teamsByCode(a.p_code); },
+    join_team_by_code: function (a) {   // 소유자가 아니고 아직 팀원이 아니면 team_members 에 넣는다(실제 SQL 은 sql/08)
+      var rows = teamsByCode(a.p_code), uid = (srv.user || {}).id;
+      rows.forEach(function (r) {
+        if (!r.is_owner && !srv.team_members.some(function (m) { return m.team_id === r.id && m.user_id === uid; })) srv.team_members.push({ team_id: r.id, user_id: uid });
+      });
+      return rows;
+    }
+  };
+
   var client = {
-    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); } }; },
+    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, insert: function (rows) { return new Q(t, 'insert', rows); } }; },
+    rpc: function (fn, args) {
+      return Promise.resolve().then(function () {
+        srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });
+        if (!rpcs[fn]) throw new Error('stub: 지원하지 않는 rpc ' + fn);
+        return { data: rpcs[fn](args || {}), error: null, status: 200 };
+      });
+    },
     auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다
       getSession: function () { return Promise.resolve({ data: { session: srv.user ? { user: srv.user } : null } }); },
       onAuthStateChange: function (cb) { authCb = cb; return { data: { subscription: { unsubscribe: function () {} } } }; },
-      signOut: function () { return Promise.resolve({}); }
+      signOut: function () { srv.signOut(); return Promise.resolve({}); }
     },
     channel: function () { var c = { on: function () { return c; }, subscribe: function () { return c; } }; return c; },
     removeChannel: function () {}

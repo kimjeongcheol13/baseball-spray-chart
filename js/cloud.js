@@ -23,6 +23,7 @@
   var _pendSync  = false;
   var _startDone = false;
   var _team      = null;   // { id, code, name, owner_id, role: 'owner'|'member' }
+  var _teamKnown = false;  // 팀 조회(_loadMyTeam)가 오류 없이 끝났거나 탈퇴·해산으로 확정됨. 모르면 upsert 에 team_id 를 싣지 않는다
   var _rtChannel = null;   // Realtime 채널
 
   /* ── Supabase 클라이언트 ─────────────────────────── */
@@ -271,8 +272,16 @@
     });
   }
 
+  // user_games upsert 행에 team_id 를 항상 명시한다: 현재 팀 id, 팀이 없으면 null (탈퇴·강퇴·해산 뒤에 남은 옛 팀 id 를 지운다 — sql/08 WITH CHECK).
+  // 팀을 아직 모르면(조회 전·실패) 싣지 않는다: null 로 덮어 팀원의 팀 태그를 지우면 안 되므로 예전 동작 그대로 둔다.
+  function _withTeam(row) {
+    if (_team) row.team_id = _team.id;
+    else if (_teamKnown) row.team_id = null;
+    return row;
+  }
+
   /* ── 게임 단건 upsert ───────────────────────────── */
-  function _upsertGame(key, gameData, teamId) {
+  function _upsertGame(key, gameData) {
     return _ensureAuth().then(function (user) {
       if (!user) return false;   // 로그인 전: 전송하지 않음 (실패가 아니므로 성공 표시도 하지 않는다)
       var row = {
@@ -283,8 +292,7 @@
         data:       gameData,
         updated_at: new Date(_localMod(gameData, null, key).ms || Date.now()).toISOString()   // 업로드 시각이 아니라 수정한 시각
       };
-      if (teamId) row.team_id = teamId;
-      return _client().from('user_games').upsert(row, { onConflict: 'user_id,game_key' }).then(function (r) {
+      return _client().from('user_games').upsert(_withTeam(row), { onConflict: 'user_id,game_key' }).then(function (r) {
         if (r.error) { console.warn('[Cloud] upsert:', r.error.message); throw r.error; }   // 호출부 .catch 가 실패로 처리
         return true;
       });
@@ -309,7 +317,10 @@
 
       // 0. 서버의 현재 updated_at 만 먼저 읽는다. 못 읽으면(네트워크·권한·5xx) 업로드하지 않고 아래 catch 가 실패로 알린다.
       //    (예전에는 로컬 전부를 무조건 올려, 오래된 기기가 로그인하면 더 새로운 클라우드본을 덮어쓸 수 있었다)
-      return db.from('user_games').select('game_key,updated_at').eq('user_id', user.id).then(function (r0) {
+      //    그 앞에서 팀을 먼저 확인한다(실패해도 이어서 진행) — 올리는 행에 현재 team_id 를 싣기 위해서다. 예전에는 끝에서 했다.
+      return _loadMyTeam().then(function () {
+        return db.from('user_games').select('game_key,updated_at').eq('user_id', user.id);
+      }).then(function (r0) {
         if (r0.error) throw r0.error;
         var remoteMs = Object.create(null);
         (r0.data || []).forEach(function (x) { if (x && typeof x.game_key === 'string') remoteMs[x.game_key] = new Date(x.updated_at).getTime() || 0; });
@@ -335,9 +346,9 @@
             if (c.lm.ms <= remoteMs[k]) return;
           }
           sentKeys[k] = true;
-          rows.push({ user_id: user.id, game_key: k,
+          rows.push(_withTeam({ user_id: user.id, game_key: k,
             team_name: (c.gd.th||'') + ' vs ' + (c.gd.ta||''), date: c.gd.d||null,
-            data: c.gd, updated_at: new Date(c.lm.reliable ? c.lm.ms : Date.now()).toISOString() });
+            data: c.gd, updated_at: new Date(c.lm.reliable ? c.lm.ms : Date.now()).toISOString() }));
         });
         if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
         if (held) console.warn('[Cloud] startup upload: 로컬 수정 시각을 읽지 못해 서버에 있는 경기 ' + held + '개는 올리지도 덮지도 않음');
@@ -378,8 +389,6 @@
           if (typeof showToast === 'function') showToast('☁️ 클라우드에서 ' + added + '개 경기 복원됨', false);
         }
         if (upErr) _notifySyncFail(); else _syncSaved(3000);
-        // 팀 정보 로드
-        return _loadMyTeam();
       });
     }).catch(function (e) {
       console.warn('[Cloud] startup sync error:', e);
@@ -402,9 +411,12 @@
   function _loadMyTeam() {
     if (!_user || _user.is_anonymous) return Promise.resolve();
     var db = _client();
+    _teamKnown = false;   // 조회가 오류 없이 끝나야 true (아래) — 그 전·실패 때는 모르는 상태
     // 내가 팀장인 팀 확인
     return db.from('teams').select('*').eq('owner_id', _user.id).maybeSingle().then(function (r) {
+      if (r.error) throw r.error;
       if (r.data) {
+        _teamKnown = true;
         _team = Object.assign({}, r.data, { role: 'owner' });
         _updateTeamUI();
         _subscribeTeam(_team.id);
@@ -412,10 +424,16 @@
       }
       // 내가 멤버인 팀 확인
       return db.from('team_members').select('team_id, teams(*)').eq('user_id', _user.id).maybeSingle().then(function (r2) {
+        if (r2.error) throw r2.error;
+        _teamKnown = true;
         if (r2.data && r2.data.teams) {
           _team = Object.assign({}, r2.data.teams, { role: 'member' });
           _updateTeamUI();
           _subscribeTeam(_team.id);
+        } else if (_team) {   // 서버에는 팀이 없는데 옛 _team 이 남아 있다(해산·강퇴 뒤 같은 페이지에서 재조회) → 비운다
+          _team = null;
+          if (_rtChannel) { db.removeChannel(_rtChannel); _rtChannel = null; }
+          _updateTeamUI();
         }
       });
     }).catch(function (e) { console.warn('[Cloud] loadMyTeam:', e && e.message); });
@@ -490,7 +508,7 @@
         }, 500);
       }
       if (event === 'SIGNED_OUT') {
-        _team = null;
+        _team = null; _teamKnown = false;   // 다음 계정의 팀은 조회 전까지 모른다 → 그 사이 upsert 에 team_id 를 싣지 않는다
         if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
         _startDone = false;
         setTimeout(_startupSync, 300);
@@ -526,7 +544,7 @@
     clearTimeout(_debTimer);
     _setStatus('syncing');
     _debTimer = setTimeout(function () {
-      _upsertGame(key, data, _team ? _team.id : null)
+      _upsertGame(key, data)
         .then(function (ok) { if (ok) _syncSaved(3000); else _setStatus('clear'); })
         .catch(_notifySyncFail);
     }, 3000);
@@ -548,7 +566,7 @@
         home_lineup: AS.home_lineup, away_lineup: AS.away_lineup,
         zoneHistory: AS.zoneHistory || {}, pitchers: AS.pitchers || [],
         d: new Date().toLocaleDateString('ko-KR')
-      }, _team ? _team.id : null).then(function (ok) {
+      }).then(function (ok) {
         if (ok) _syncSaved(2000); else _setStatus('clear');
       }).catch(_notifySyncFail);
     }, 3000);
@@ -648,7 +666,7 @@
     if (!db) return;
     db.auth.signOut().then(function () {
       _user = null;
-      _team = null;
+      _team = null; _teamKnown = false;
       _updateAuthUI();
       _startDone = false;
       setTimeout(_startupSync, 300);
@@ -738,24 +756,18 @@
     if (!_user || _user.is_anonymous) { msgEl.textContent = '로그인이 필요합니다'; msgEl.className = 'magic-msg error'; return; }
     msgEl.textContent = '참가 중...'; msgEl.className = 'magic-msg';
     var db = _client();
-    // 가입 전(비팀원)에는 RLS 때문에 teams 를 직접 읽을 수 없다 → 코드가 정확히 일치할 때만
-    // id / name / is_owner 를 돌려주는 RPC 사용 (sql/04_find_team_by_code_rpc.sql)
-    db.rpc('find_team_by_code', { p_code: code }).then(function (r) {
+    // 가입 전(비팀원)에는 RLS 때문에 teams 를 직접 읽을 수 없고, team_members 에 직접 insert 하지도 않는다(sql/09 에서 정책 삭제).
+    // 코드가 정확히 일치할 때만 가입 처리하고 id / name / is_owner 를 돌려주는 RPC 사용 (sql/08_team_write_guards.sql).
+    // 이미 팀원이면 같은 행을 그대로 돌려준다(예전의 23505 처리가 필요 없다)
+    db.rpc('join_team_by_code', { p_code: code }).then(function (r) {
       if (r.error) { msgEl.textContent = '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
       var found = r.data && r.data[0];
       if (!found) { msgEl.textContent = '팀 코드를 찾을 수 없어요'; msgEl.className = 'magic-msg error'; return; }
-      var team = { id: found.id, name: found.name, code: code };
       if (found.is_owner) { msgEl.textContent = '내가 만든 팀이에요'; msgEl.className = 'magic-msg error'; return; }
-      return db.from('team_members').insert({ team_id: team.id, user_id: _user.id })
-        .then(function (r2) {
-          if (r2.error && r2.error.code !== '23505') { // 23505 = already member
-            msgEl.textContent = '오류: ' + r2.error.message; msgEl.className = 'magic-msg error'; return;
-          }
-          _team = Object.assign({}, team, { role: 'member' });
-          _updateTeamUI();
-          _subscribeTeam(_team.id);
-          if (typeof showToast === 'function') showToast('✅ "' + team.name + '" 팀에 참가했어요!', false);
-        });
+      _team = { id: found.id, name: found.name, code: code, role: 'member' };
+      _updateTeamUI();
+      _subscribeTeam(_team.id);
+      if (typeof showToast === 'function') showToast('✅ "' + found.name + '" 팀에 참가했어요!', false);
     }).catch(function (e) {
       msgEl.textContent = '오류: ' + (e && e.message || '알 수 없는 오류');
       msgEl.className = 'magic-msg error';
@@ -768,7 +780,7 @@
     var db = _client();
     db.from('team_members').delete().eq('team_id', _team.id).eq('user_id', _user.id).then(function () {
       var name = _team.name;
-      _team = null;
+      _team = null; _teamKnown = true;   // 팀이 없다는 걸 안다 → 이후 upsert 는 team_id: null
       if (_rtChannel) { db.removeChannel(_rtChannel); _rtChannel = null; }
       _updateTeamUI();
       if (typeof showToast === 'function') showToast('"' + name + '" 팀에서 탈퇴했습니다', false);
@@ -781,7 +793,7 @@
     var db = _client();
     db.from('teams').delete().eq('id', _team.id).then(function () {
       var name = _team.name;
-      _team = null;
+      _team = null; _teamKnown = true;
       if (_rtChannel) { db.removeChannel(_rtChannel); _rtChannel = null; }
       _updateTeamUI();
       if (typeof showToast === 'function') showToast('"' + name + '" 팀이 해산됐습니다', false);

@@ -19,6 +19,7 @@
 --      2) create_team(p_name text) RPC(security definer)가 teams insert 와 소유자 행 삽입을 한 번에 하고,
 --         클라이언트 createTeam 이 그 RPC 를 부르게 한다. 이 경우 teams 의 직접 insert 정책도 같이 닫을 수 있다.
 --    트리거가 없으면 대체안은 필요 없다.
+--    → 2026-10-05 조회: teams / team_members / user_games 에 사용자 트리거 없음 → 대체안 불필요.
 -- ============================================================
 begin;
 
@@ -29,5 +30,5 @@ commit;
 -- ============================================================
 -- ROLLBACK (되돌리기 — 구버전 클라이언트의 직접 가입이 다시 열린다)
 -- ============================================================
--- 08 "적용 전 확인 1)" 에서 저장한 team_members_insert 의 with_check 식으로 다시 만든다. 예:
--- create policy team_members_insert on public.team_members for insert to authenticated with check (user_id = auth.uid());
+-- 09 적용 전의 실제 정책(2026-10-05 pg_policies 조회)으로 다시 만든다. 대상 역할은 public(authenticated 아님):
+-- create policy team_members_insert on public.team_members for insert to public with check (user_id = auth.uid());

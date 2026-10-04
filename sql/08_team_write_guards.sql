@@ -14,18 +14,21 @@
 -- 적용 : SQL Editor 에서 아래 "적용 전 확인"을 먼저 실행하고, 이 파일을 통째로 1회 실행. (DROP 없음 · 한 트랜잭션)
 --
 -- ── 적용 전 확인 (읽기 전용, 이 파일과 따로 실행) ─────────────────────────────
---  1) 지금 정책의 식을 저장해 둔다 (ROLLBACK · 09 되돌리기에 필요) — 저장소에는 이 식들이 없다
+--  1) [생략 가능 — 2026-10-05 읽기 전용 조회로 원래 식을 확인해 아래 ROLLBACK 과 09 의 ROLLBACK 에 채웠다]
+--     지금 정책의 식을 저장해 둔다 (ROLLBACK · 09 되돌리기에 필요) — 저장소에는 이 식들이 없었다
 --       select tablename, policyname, cmd, roles, qual, with_check from pg_policies
 --        where schemaname = 'public' and tablename in ('user_games', 'team_members') order by 1, 2;
 --  2) team_members 에 (team_id, user_id) unique 가 있는지 — 저장소에는 team_members 정의가 없다(클라이언트가 23505 를 가정했을 뿐)
 --       select conname, contype, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.team_members'::regclass;
 --       select indexname, indexdef from pg_indexes where schemaname = 'public' and tablename = 'team_members';
 --     (없어도 이 파일의 RPC 는 중복 행을 만들지 않는다 — not exists 로 한 번 더 막는다. 다만 동시 호출 경쟁은 unique 가 있어야 막힌다)
+--     → 2026-10-05 조회: (team_id, user_id) unique 인덱스 있음. user_games_update / user_games_insert 정책도 존재함.
 --  3) 새 WITH CHECK 에 걸릴 행 — 더는 속하지 않은 팀의 team_id 가 남은 경기(탈퇴/해산 뒤). 0 이 아니면 아래 주의 참고
 --       select count(*) from public.user_games g
 --        where g.team_id is not null
 --          and not exists (select 1 from public.team_members m where m.team_id = g.team_id and m.user_id = g.user_id)
 --          and not exists (select 1 from public.teams t where t.id = g.team_id and t.owner_id = g.user_id);
+--     → 2026-10-05 조회: user_games 에 team_id 가 있는 행 0개.
 --
 -- 주의 : UPDATE 의 WITH CHECK 는 "수정 후 행"에 적용된다. 위 3) 에 걸리는 경기는 team_id 가 그대로 남아 있어
 --        (클라이언트는 팀이 없으면 team_id 를 보내지 않는다) 이후 수정/upsert 가 42501 로 거부된다.
@@ -108,6 +111,11 @@ commit;
 -- ROLLBACK (되돌리기 — 클라이언트가 이 RPC 를 쓰고 있으면 가입이 다시 막힌다)
 -- ============================================================
 -- drop function public.join_team_by_code(text);
--- 정책은 "적용 전 확인 1)" 에서 저장한 qual / with_check 로 되돌린다:
--- alter policy user_games_update on public.user_games using (<저장한 qual>) with check (<저장한 with_check>);
--- alter policy user_games_insert on public.user_games with check (<저장한 with_check>);
+-- 정책은 08 적용 전의 실제 식(2026-10-05 pg_policies 조회)으로 되돌린다.
+-- 원래 user_games_update 의 WITH CHECK 는 null(= USING 이 그대로 검사에 쓰였다). ALTER POLICY 로는 null 로 되돌릴 수 없으므로
+-- WITH CHECK 에 USING 과 같은 식을 넣는다 (동작 동일):
+-- alter policy user_games_update on public.user_games
+--   using ((user_id = auth.uid()) or (team_id is not null and exists (select 1 from team_members where team_members.team_id = user_games.team_id and team_members.user_id = auth.uid())))
+--   with check ((user_id = auth.uid()) or (team_id is not null and exists (select 1 from team_members where team_members.team_id = user_games.team_id and team_members.user_id = auth.uid())));
+-- alter policy user_games_insert on public.user_games
+--   with check (user_id = auth.uid());

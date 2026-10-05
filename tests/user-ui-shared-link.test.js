@@ -57,8 +57,8 @@
     var a = window.AS; a.abs = []; a.hs = 0; a.as = 0; a.home_lineup = []; a.away_lineup = []; a.pitchers = []; a.zoneHistory = {}; a.curGame = null; a.info = null;
     window._curSaveKey = null; window._autoKey = null; window._gameSaved = true; window._sharedView = null;
   }
-  function openShared() {            // 배너의 "불러오기" — showApp 은 이 테스트의 관심사가 아니라 막아 둔다
-    window._sharedPayload = sharedPayload(); window.showApp = function () {}; loadSharedGame();
+  function openShared(extra) {       // 배너의 "불러오기" — showApp 은 이 테스트의 관심사가 아니라 막아 둔다. extra = 공유 데이터에 덧붙일 필드
+    window._sharedPayload = Object.assign(sharedPayload(), extra || {}); window.showApp = function () {}; loadSharedGame();
   }
   var memo = {};
   function once(name, fn) { if (!memo[name]) memo[name] = fn(); return memo[name]; }
@@ -257,6 +257,46 @@
       openFromList(KEY2); await sleep(300);
       var s = snap(), key = savedWith(s, MINE)[0];
       ok(key, '새 경기가 저장 목록에 없음'); eq(JSON.parse(s.ls[key]).info, INFO, '새 항목의 경기 정보');
+    } finally { restore(); }
+  });
+
+  // ── 공유 경기를 열 때의 경기 정보(AS.info) ──
+  function quick() { var r = keepApp(); blankApp(); localStorage.clear(); return r; }   // 시간 안 쓰는 검사용: 앱 상태 · 저장소만 비우고 시작
+  test('공유 데이터에 경기 정보가 없으면 AS.info 를 비운다(이전 경기의 날짜·구장이 남지 않는다)', async function () {
+    var restore = quick();
+    try {
+      AS.info = INFO;
+      openShared();
+      eq(AS.info, null, '공유 경기를 연 뒤의 AS.info');
+      eq(gameInfo().venue, '', '경기설정 탭에 보이는 구장');
+    } finally { restore(); }
+  });
+  test('공유 데이터에 경기 정보가 있으면 그 값으로 채운다', async function () {
+    var restore = quick();
+    try {
+      AS.info = INFO;
+      openShared({ info: { date: '2026-06-01', venue: '공유구장', side: 'home', innings: 5 } });
+      eq(AS.info, { date: '2026-06-01', venue: '공유구장', side: 'home', innings: 5 }, 'AS.info');
+      eq(gameInfo().innings, 5, '경기설정 탭에 보이는 이닝 수');
+    } finally { restore(); }
+  });
+  test('공유 데이터의 경기 정보는 경기설정 탭의 입력 제약대로 걸러서 넣는다(링크는 누가 만들었는지 모른다)', async function () {
+    var restore = quick(), long = new Array(51).join('가');
+    try {
+      openShared({ info: { date: '<img src=x onerror=1>', venue: long, side: 'zzz', innings: 99 } });
+      eq(AS.info, { venue: long.slice(0, 20) }, '쓸 수 없는 값은 버리고 구장은 20자까지');
+      openShared({ info: '문자열' }); eq(AS.info, null, '객체가 아닌 info');
+      openShared({ info: { date: 'x', venue: '  ', side: 1, innings: '7' } }); eq(AS.info, { innings: 7 }, '숫자 문자열 이닝만 통과');
+    } finally { restore(); }
+  });
+  test('공유 경기를 열기 전에 저장하는 내 경기에는 내 경기 정보(AS.info)가 남는다', async function () {
+    var restore = quick();
+    try {
+      AS.info = INFO; AS.abs = taps(MINE, 1);
+      openShared({ info: { venue: '공유구장' } });
+      var s = snap(), key = savedWith(s, MINE)[0];
+      ok(key, '내 경기가 저장 목록에 없음'); eq(JSON.parse(s.ls[key]).info, INFO, '저장된 내 경기의 경기 정보');
+      eq(AS.info, { venue: '공유구장' }, '열린 공유 경기의 경기 정보');
     } finally { restore(); }
   });
 })();

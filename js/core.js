@@ -5039,6 +5039,17 @@ function _restoreAbsFromPayload(payloadAbs){
     pitches:(a.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone};})
   };});
 }
+// 공유 데이터의 경기 정보(info)를 AS.info 형식({date,venue,side,innings})으로. 없거나 쓸 수 없으면 null — 이전 경기의 날짜·구장이 남지 않게 비운다.
+// 링크는 누가 만들었는지 알 수 없으므로 경기설정 탭의 입력 제약(setup.js stSetInfo)과 같게 거른다
+function _restoreInfoFromPayload(i){
+  if(!i||typeof i!=='object')return null;
+  var o={},n=+i.innings;
+  if(typeof i.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(i.date))o.date=i.date;
+  if(typeof i.venue==='string'&&i.venue.trim())o.venue=i.venue.trim().slice(0,20);
+  if(i.side==='home'||i.side==='away')o.side=i.side;
+  if([5,7,9].indexOf(n)>=0)o.innings=n;
+  return Object.keys(o).length?o:null;
+}
 function _restorePitchersFromPayload(payloadPitchers){
   return (payloadPitchers||[]).map(function(p){return{
     id:p.id||Date.now()+Math.random(), name:p.nm||'투수', num:p.no||'', hand:p.hand||'R', role:p.role||'',
@@ -5082,6 +5093,7 @@ function loadSharedGame(){
   /* 타석 기록 */
   AS.abs=_restoreAbsFromPayload(payload.abs);
   _sharedView={abs:AS.abs,n:AS.abs.length,last:AS.abs[AS.abs.length-1]};   // 보기 상태 표시(위 설명)
+  AS.info=_restoreInfoFromPayload(payload.info);   // 경기 정보(날짜·구장…): 공유 데이터 값, 없으면 비움 — 이전 경기 값이 따라오지 않게
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
   /* 상태 초기화 */

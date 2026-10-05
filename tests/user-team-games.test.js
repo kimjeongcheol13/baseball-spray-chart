@@ -4,6 +4,7 @@
 //  · 보기: 읽기 전용 — localStorage 쓰기 0회, 서버 요청 0건, 앱의 현재 경기(AS)를 건드리지 않는다
 //  · XSS: 팀원 · 팀 · 상대 · 타자 이름에 태그가 있어도 실행되지 않는다
 // 로그인 상태(팀장/팀원)가 남으므로 매 테스트가 로그아웃부터 시작한다. user-teams.test.js 보다 먼저 돈다(파일 이름순).
+// @window 800,600 — 1024px 이상이면 "팀 경기"가 대시보드로 열린다(teamgames.js). 목록 테스트라 좁은 창으로 고정
 (function () {
   var T = window.__T, srv = window.__srv, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep;
   var T0 = Date.now() - 3 * 86400000;            // 3일 전(경기 시각은 미래일 수 없다)

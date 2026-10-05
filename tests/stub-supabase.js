@@ -58,7 +58,7 @@
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
       srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, query: q.op === 'select' ? clone({ eq: q.f, neq: q.n, order: q.ord || null, limit: q.lim == null ? null : q.lim }) : null });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
-      if (typeof f === 'function') f = f(rows, q.t);
+      if (typeof f === 'function') f = f(rows, q.t, q);   // q = 이 요청(f 에 eq 조건 q.f 등), 같은 테이블의 요청을 구분해 실패시킬 때 쓴다
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];

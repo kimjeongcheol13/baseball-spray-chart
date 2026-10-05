@@ -3,10 +3,13 @@
 // localStorage · 서버에 아무것도 쓰지 않고, 경기 보기도 AS · 저장 경로(loadSharedGame 등 updateAll 을 부르는 길)를 거치지 않는다.
 import { MAX_HITS, esc } from '../constants.js';
 import { calcStats, f3 } from './batdata.js?v=5';
+import { buildBoard, boardHtml } from './coachdash.js?v=1';
 
 let _team = null, _rows = [], _fresh = [];   // _fresh = 실시간으로 들어온 새 경기(최신이 앞). 창을 닫으면 비운다
 let _state = 'idle';                         // idle | loading | ok | err
 let _view = null, _shown = [], _on = false;  // 보고 있는 행(null 이면 목록) · 마지막으로 그린 목록 · 창이 열려 있는지
+// 대시보드: 보기 방식(list | board) · 팀장 본인의 팀 경기(대시보드 집계에만 쓰고 목록에는 섞지 않는다) · 스프레이로 볼 선수 · 마지막으로 만든 집계
+let _mode = 'list', _own = [], _ownState = 'idle', _pick = '', _board = null;   // _ownState: idle | loading | ok | err
 
 const t = v => esc(v == null ? '' : v);   // 화면에 들어가는 값은 전부 이 함수를 거친다(팀원 · 팀 · 상대 · 타자 이름 …)
 const _key = r => r.user_id + '|' + r.game_key;
@@ -52,13 +55,45 @@ function _detailHtml(r) {
     '</tbody></table>';
 }
 
+function _tabsHtml() {
+  const tab = (m, label) => '<button type="button" role="tab" class="tg-tab" data-act="mode" data-m="' + m + '" aria-selected="' + (_mode === m) + '">' + label + '</button>';
+  return '<div class="tg-mode" role="tablist" aria-label="보기 방식">' + tab('list', '목록') + tab('board', '대시보드') + '</div>';
+}
+
+// 팀장 본인의 팀 경기는 대시보드를 처음 볼 때 한 번 가져온다(목록만 보면 부르지 않는다). 실패해도 팀원 경기만으로 집계한다
+function _ensureOwn() {
+  if (_ownState !== 'idle') return;
+  if (typeof window._slLoadTeamOwnGames !== 'function') { _ownState = 'ok'; return; }
+  _ownState = 'loading';
+  window._slLoadTeamOwnGames().then(res => { _own = res.rows; _ownState = 'ok'; },
+    e => { console.warn('[TeamGames] own:', e && e.message); _ownState = 'err'; })
+    .then(() => { if (_on && !_view && _mode === 'board') _paint(); });
+}
+
+// 집계 대상 = 팀원 경기(목록과 같은 행 · 실시간으로 들어온 것 포함) + 팀장 본인의 팀 경기 중 수정 시각 최신 50개
+function _boardRows() {
+  return _list().map(x => x.r).concat(_own).sort((a, b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0)).slice(0, 50);
+}
+function _boardView() {
+  if (_state === 'err') return '<p class="tg-msg">대시보드를 만들지 못했어요. 잠시 후 다시 열어 주세요</p>';
+  _ensureOwn();   // 처음 한 번만 가져온다(이미 가져왔거나 가져오는 중이면 아무것도 안 함)
+  if (_state !== 'ok' || _ownState === 'loading') return '<p class="tg-msg">불러오는 중…</p>';
+  _board = buildBoard(_boardRows(), Date.now());
+  return boardHtml(_board, _pick, _ownState === 'err' ? '팀장 본인의 기록을 불러오지 못해 팀원 경기만으로 집계했어요' : '');
+}
+
 function _paint() {
   const box = _modal().firstChild;
+  box.classList.toggle('cd-wide', !_view && _mode === 'board');
   box.innerHTML = '<div class="tg-top"><div class="tg-h">팀 경기' + (_team ? ' · ' + t(_team.name) : '') + '</div>' +
-    '<button type="button" class="tg-x" data-act="close" aria-label="닫기">✕</button></div>' + (_view ? _detailHtml(_view) : _listHtml());
+    '<button type="button" class="tg-x" data-act="close" aria-label="닫기">✕</button></div>' +
+    (_view ? _detailHtml(_view) : _tabsHtml() + (_mode === 'board' ? _boardView() : _listHtml()));
   if (_view) {
     // 스프레이 = 기록 직후 미니 스프레이(abs 배열만 받아 캔버스에 그린다). 못 그려도 표는 보인다
     try { window._drawMiniSpray(box.querySelector('.tg-spray'), _mine(_view.data)); } catch (e) { console.warn('[TeamGames] spray:', e && e.message); }
+  } else if (_mode === 'board' && _board && box.querySelector('.cd-spray')) {
+    const sel = box.querySelector('[data-act="who"]');
+    try { window._drawMiniSpray(box.querySelector('.cd-spray'), _board.tapsFor(sel ? sel.value : '')); } catch (e) { console.warn('[TeamGames] board spray:', e && e.message); }
   }
 }
 
@@ -86,6 +121,12 @@ function _modal() {
     if (a === 'close') _close();
     else if (a === 'back') { _view = null; _paint(); }
     else if (a === 'open') { const x = _shown[+b.dataset.i]; if (x) { _view = x.r; _paint(); } }
+    else if (a === 'mode') { _mode = b.dataset.m === 'board' ? 'board' : 'list'; _paint(); const t2 = m.querySelector('.tg-tab[aria-selected="true"]'); if (t2) t2.focus(); }
+  });
+  m.addEventListener('change', e => {   // 대시보드의 스프레이로 볼 선수
+    if (!e.target.matches || !e.target.matches('[data-act="who"]')) return;
+    _pick = e.target.value; _paint();
+    const s = m.querySelector('[data-act="who"]'); if (s) s.focus();
   });
   m.addEventListener('keydown', e => { if (e.key === 'Escape') _close(); });
   document.body.appendChild(m);
@@ -95,6 +136,9 @@ function _modal() {
 window.openTeamGames = function () {
   if (typeof window._slLoadTeamGames !== 'function') return;
   const m = _modal();
+  // 1024px 이상(데스크톱)에서는 대시보드가 기본, 그보다 좁으면(모바일) 목록이 기본
+  _mode = window.matchMedia && window.matchMedia('(min-width: 1024px)').matches ? 'board' : 'list';
+  _own = []; _ownState = 'idle'; _pick = ''; _board = null;
   _on = true; _view = null; _state = 'loading';
   _paint();
   m.classList.add('show');
@@ -124,5 +168,5 @@ window._slTeamGameUpdate = function (row) {
 
 // 로그아웃: 남은 팀원 경기를 지우고 창을 닫는다
 window._slTeamGamesReset = function () {
-  _close(); _team = null; _rows = []; _state = 'idle';
+  _close(); _team = null; _rows = []; _state = 'idle'; _own = []; _ownState = 'idle'; _board = null;
 };

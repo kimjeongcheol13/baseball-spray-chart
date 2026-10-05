@@ -511,6 +511,22 @@
     });
   };
 
+  /* 코치 대시보드(js/features/coachdash.js)용: 팀장 본인이 기록한 팀 경기(team_id = 우리 팀)만, 수정 시각 최신순 최대 50개. 읽기만 한다.
+     "팀 경기" 목록(위)은 팀원 경기만 보여주므로 따로 가져온다 — 목록 모드에서는 부르지 않는다. 행에는 mine: true 를 붙인다(대시보드가 "나(팀장)"으로 표시) */
+  window._slLoadTeamOwnGames = function () {
+    if (!_user || !_team || _team.role !== 'owner') return Promise.resolve({ team: null, rows: [] });
+    var team = { id: _team.id, name: _team.name };
+    return _client().from('user_games').select('id,user_id,game_key,team_name,date,data,updated_at')
+      .eq('team_id', team.id).eq('user_id', _user.id)
+      .order('updated_at', { ascending: false }).limit(50)
+      .then(function (r) {
+        if (r.error) throw r.error;
+        var rows = (r.data || []).filter(function (x) { return x && x.game_key && _cleanRow(x.game_key, x.data); });
+        rows.forEach(function (x) { x.mine = true; x.display_name = null; });
+        return { team: team, rows: rows };
+      });
+  };
+
   /* 팀원이 가입할 때 정한 이름(team_members.display_name, sql/12). 팀장만 팀원 행을 읽는다(02 의 team_members_select).
      조회가 실패하거나 컬럼이 아직 없어도(12 적용 전) 목록은 막지 않는다 → 이름이 없는 것으로 보고 임시 표시를 쓴다 */
   var _names = {};   // { user_id: display_name | null }

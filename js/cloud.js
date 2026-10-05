@@ -452,7 +452,8 @@
         table: 'user_games',
         filter: 'team_id=eq.' + teamId
       }, function (payload) {
-        _onTeamGameUpdate(payload.new);
+        _onTeamGameUpdate(payload.new);       // 기존 동작과 가드(열린 경기 합치기 · 내 행만 localStorage)는 그대로
+        _onTeamGameUpdateList(payload.new);   // 팀장 화면의 열린 목록 갱신(아래) — 별개
       });
     // 새 경기(INSERT)는 팀장 화면("팀 경기")에서만 쓴다 — 팀원의 클라이언트는 구독하지 않는다
     if (_team && _team.role === 'owner') {
@@ -479,6 +480,15 @@
     };
     // 목록을 연 뒤에 가입한 팀원의 첫 경기라면 이름을 한 번 더 가져온다(실패해도 경기는 이름 없이 넘긴다)
     if (!(row.user_id in _names) && teamId) _fetchMemberNames(teamId).then(deliver, deliver); else deliver();
+  }
+
+  // 팀장 화면: 열린 목록에 같은 경기(user_id + game_key)가 이미 있으면 타석(=타석 수 · AVG)만 갱신한다 — 없는 경기는 무시(새 행은 INSERT 만).
+  // 팀장이 아니면 · 내 경기 · 검증을 통과하지 못한 행은 버린다. localStorage 에는 쓰지 않는다
+  function _onTeamGameUpdateList(row) {
+    if (!_team || _team.role !== 'owner') return;
+    if (!row || !row.game_key || !_user || row.user_id === _user.id) return;
+    if (!_cleanRow(row.game_key, row.data)) return;
+    if (typeof window._slTeamGameUpdate === 'function') window._slTeamGameUpdate(row);
   }
 
   /* 팀장용 "팀 경기" 목록: 팀원의 경기만(내 경기 제외), 수정 시각 최신순 최대 50개. 읽기만 한다.

@@ -113,6 +113,15 @@ window._slTeamGameInsert = function (row) {
   if (_on && !_view) _paint();
 };
 
+// cloud.js 의 실시간 UPDATE(팀장)가 부른다. 목록(NEW 포함)에 같은 경기가 있을 때만 타석 기록을 바꾼다 — 타석 수 · AVG 가 이것에서 나온다.
+// 이름 · 날짜 · 상대 · 순서는 그대로 두고, 목록에 없는 경기는 무시한다(새 행은 INSERT 만)
+window._slTeamGameUpdate = function (row) {
+  const k = _key(row), abs = Array.isArray(row.data && row.data.abs) ? row.data.abs : [];
+  let hit = false;
+  _fresh.concat(_rows).forEach(r => { if (_key(r) === k) { r.data = Object.assign({}, r.data, { abs }); hit = true; } });
+  if (hit && _on && !_view) _paint();
+};
+
 // 로그아웃: 남은 팀원 경기를 지우고 창을 닫는다
 window._slTeamGamesReset = function () {
   _close(); _team = null; _rows = []; _state = 'idle';

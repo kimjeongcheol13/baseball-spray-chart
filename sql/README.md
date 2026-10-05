@@ -41,6 +41,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | 2026-10-02 | `enable_rls_visits` | `07` — `public.visits` RLS 켜기(정책 없음 = anon/authenticated 전면 차단). MCP 도구로 적용(마이그레이션 기록 있음). 적용 후 `07b` 7/7 OK, 시험 행 잔존 0, 어드바이저 ERROR `rls_disabled_in_public` 해소(남은 INFO `rls_enabled_no_policy` 는 의도한 상태) |
 | 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `08` — `user_games_update` USING/WITH CHECK · `user_games_insert` WITH CHECK 교체(내 행 + 내가 속한/소유한 팀의 `team_id` 만), `join_team_by_code` 생성(authenticated 만 실행, anon 차단). 적용 후 `pg_policies` · `pg_proc` 조회로 반영 확인 |
 | 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `10` — `teams(owner_id)` · `team_members(user_id)` unique index, `is_in_any_team()` 생성, `teams_insert` WITH CHECK 에 "팀원 아님" 추가, `join_team_by_code` 교체(다른 팀 소속이면 P0001). 적용 후 인덱스 · `pg_policies` · `pg_proc` 조회로 반영 확인. `11` 은 미적용(팀장 목록 화면 PR 과 함께 적용) |
+| 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `09` — `team_members_insert` 정책 삭제(DROP). 가입은 `join_team_by_code` RPC 로만. 적용 후 `pg_policies` 조회로 `team_members` 에 SELECT · DELETE 정책만 남은 것 확인. 하루 대기 없이 적용한 이유: 구버전 클라이언트는 입력칸 id 중복(#73 이전)으로 가입이 원래 불가능했고, 적용 시점 팀 0개 |
 
 적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 1~4 확인 후 사용자 승인을 받아 적용했고, `06b` 23개 시험이 전부 통과했다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 

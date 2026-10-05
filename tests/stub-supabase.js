@@ -44,16 +44,19 @@
   };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
-  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
+  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; this.n = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; return this; };
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
+  Q.prototype.neq = function (k, v) { this.n[k] = v; return this; };
+  Q.prototype.order = function (c, o) { this.ord = { col: c, asc: !(o && o.ascending === false) }; return this; };
+  Q.prototype.limit = function (n) { this.lim = n; return this; };
   Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
   function run(q) {
     return Promise.resolve().then(function () {
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
-      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null });
+      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, query: q.op === 'select' ? clone({ eq: q.f, neq: q.n, order: q.ord || null, limit: q.lim == null ? null : q.lim }) : null });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
       if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
@@ -62,8 +65,18 @@
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
-        var out = tbl.filter(function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }); });
-        var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
+        var out = tbl.filter(function (r) {
+          return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(q.n).every(function (k) { return r[k] !== q.n[k]; });
+        });
+        if (q.ord) out = out.slice().sort(function (a, b) { var x = a[q.ord.col], y = b[q.ord.col]; return (x < y ? -1 : x > y ? 1 : 0) * (q.ord.asc ? 1 : -1); });
+        if (q.lim != null) out = out.slice(0, q.lim);
+        // 'teams(*)' = 부모 행 끼워 넣기(team_members → teams, team_id 로 연결). 이것만 흉내 낸다
+        var data = clone(out).map(function (r) {
+          if (!cols) return r;
+          var o = {};
+          cols.forEach(function (c) { if (c === 'teams(*)') o.teams = clone(srv.teams.filter(function (t) { return t.id === r.team_id; })[0] || null); else o[c] = r[c]; });   // supabase-js 는 끼워 넣은 부모 행을 테이블 이름 키(teams)로 돌려준다
+          return o;
+        });
         return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
       }
       if (q.op === 'insert') { rows.forEach(function (r) { tbl.push(clone(r)); }); return { data: null, error: null, status: 201 }; }

@@ -179,7 +179,7 @@
     srv.reset(); localStorage.clear();
     srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }];
     srv.signIn(); await sleep(1500);
-    var ch = srv.channels.filter(function (c) { return c.filter && c.filter.table === 'user_games'; }).pop();
+    var ch = srv.channels.filter(function (c) { return c.filter && c.filter.table === 'user_games' && c.filter.event === 'UPDATE'; }).pop();   // 팀장은 INSERT 구독도 건다(user-team-games.test.js) — UPDATE 콜백만 고른다
     ok(ch, 'user_games 구독이 걸리지 않음');
     return ch.cb;
   }

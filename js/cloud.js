@@ -227,7 +227,8 @@
           '<div class="team-code-big" id="teamCodeDisplay">' + _esc(_team.code) + '</div>' +
           '<button class="btn-team-copy" onclick="window._copyTeamCode()">코드 복사</button>' +
           (_team.role === 'owner'
-            ? '<button class="btn-team-leave btn-team-danger" onclick="window.dissolveTeam()">팀 해산</button>'
+            ? '<button class="btn-team-copy btn-team-games" onclick="window.openTeamGames&&window.openTeamGames()">팀 경기</button>' +
+              '<button class="btn-team-leave btn-team-danger" onclick="window.dissolveTeam()">팀 해산</button>'
             : '<button class="btn-team-leave" onclick="window.leaveTeam()">팀 탈퇴</button>') +
         '</div>';
     } else {
@@ -444,7 +445,7 @@
     if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
     var db = _client();
     if (!db) return;
-    _rtChannel = db.channel('team_games_' + teamId)
+    var ch = db.channel('team_games_' + teamId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -452,9 +453,42 @@
         filter: 'team_id=eq.' + teamId
       }, function (payload) {
         _onTeamGameUpdate(payload.new);
-      })
-      .subscribe();
+      });
+    // 새 경기(INSERT)는 팀장 화면("팀 경기")에서만 쓴다 — 팀원의 클라이언트는 구독하지 않는다
+    if (_team && _team.role === 'owner') {
+      ch = ch.on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_games',
+        filter: 'team_id=eq.' + teamId
+      }, function (payload) {
+        _onTeamGameInsert(payload.new);
+      });
+    }
+    _rtChannel = ch.subscribe();
   }
+
+  // 팀장 화면(js/features/teamgames.js)으로 넘길 뿐 localStorage 에는 쓰지 않는다. 내 경기와 검증을 통과하지 못한 행(설정 키 등)은 버린다
+  function _onTeamGameInsert(row) {
+    if (!row || !row.game_key || !_user || row.user_id === _user.id) return;
+    if (!_cleanRow(row.game_key, row.data)) return;
+    if (typeof window._slTeamGameInsert === 'function') window._slTeamGameInsert(row);
+  }
+
+  /* 팀장용 "팀 경기" 목록: 팀원의 경기만(내 경기 제외), 수정 시각 최신순 최대 50개. 읽기만 한다.
+     sql/11(팀장 읽기 권한)이 없으면 RLS 때문에 팀장은 팀원 행을 읽지 못해 빈 목록이 된다.
+     ponytail: data 전체(타석 포함)를 내려받아 화면에서 요약한다 — 팀이 커지면 서버 요약(RPC)으로 바꾼다 */
+  window._slLoadTeamGames = function () {
+    if (!_user || !_team || _team.role !== 'owner') return Promise.resolve({ team: null, rows: [] });
+    var team = { id: _team.id, name: _team.name };
+    return _client().from('user_games').select('id,user_id,game_key,team_name,date,data,updated_at')
+      .eq('team_id', team.id).neq('user_id', _user.id)
+      .order('updated_at', { ascending: false }).limit(50)
+      .then(function (r) {
+        if (r.error) throw r.error;
+        return { team: team, rows: (r.data || []).filter(function (x) { return x && x.game_key && _cleanRow(x.game_key, x.data); }) };
+      });
+  };
 
   function _onTeamGameUpdate(row) {
     if (!row || !row.game_key || !row.data) return;
@@ -513,6 +547,7 @@
       }
       if (event === 'SIGNED_OUT') {
         _team = null; _teamKnown = false;   // 다음 계정의 팀은 조회 전까지 모른다 → 그 사이 upsert 에 team_id 를 싣지 않는다
+        if (window._slTeamGamesReset) window._slTeamGamesReset();   // 팀장 화면에 남은 팀원 경기를 지운다
         if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
         _startDone = false;
         setTimeout(_startupSync, 300);

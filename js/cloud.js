@@ -542,12 +542,16 @@
      외부 인터페이스
   ═══════════════════════════════════════════════ */
 
-  /* saveGame() → cloudSave(key, data) */
-  window.cloudSave = function (key, data) {
+  /* 경기 저장 → user_games. core.js 의 cloudSave(팀 코드/games 용 · 저장·가져오기·타석 수정이 모두 지나는 길)가 로그인 상태면 이것도 부른다.
+     예전 이름은 cloudSave 였는데 core.js 의 전역 cloudSave 가 defer 로 나중에 실행되며 덮어써서 한 번도 불리지 않았다 → 이름을 바꿨다. */
+  var _saveTimers = {};   // 경기 키별 3초 디바운스: 가져오기처럼 여러 경기를 연달아 저장해도 서로 덮어쓰지 않고, 타구 기록 자동 동기화(_debTimer)와도 따로 돈다
+  window.cloudSaveUserGame = function (key, data) {
+    if (!_user || _user.is_anonymous) return;   // 로그인 전에는 서버로 아무것도 보내지 않는다(타이머 · 상태 표시도 없음)
     if (!_online) { _pendSync = true; return; }
-    clearTimeout(_debTimer);
+    clearTimeout(_saveTimers[key]);
     _setStatus('syncing');
-    _debTimer = setTimeout(function () {
+    _saveTimers[key] = setTimeout(function () {
+      delete _saveTimers[key];
       _upsertGame(key, data)
         .then(function (ok) { if (ok) _syncSaved(3000); else _setStatus('clear'); })
         .catch(_notifySyncFail);

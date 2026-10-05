@@ -118,6 +118,9 @@
   // ── 3. 모든 로컬 수정 경로가 sl_cloud_mod 를 갱신하는가 (앱의 실제 함수를 호출) ──
   function setGame() { window.AS.abs = [{ id: 1, res: '안타', ts: '1' }]; }
   test('경로: cloudSave(저장·가져오기·타석 수정이 지나는 길) → 수정 시각 기록', async function () {
+    // 앞선 테스트의 로그인 상태를 정리한다: 로그인 상태에서 저장하면 3초 뒤 user_games 로 올라가므로(cloudSaveUserGame),
+    // 이 구간의 저장이 뒤 테스트(두 기기)의 서버 상태를 덮어쓰지 않게 한다. 이 구간은 로컬 수정 시각만 본다
+    srv.signOut(); await sleep(500);
     seed([], {});
     var t0 = Date.now(); cloudSave(K1, { ts: T0 }, 'x', T0);
     ok(mod(K1) >= t0 && mod(K1) <= Date.now(), '기록 안 됨: ' + mod(K1));

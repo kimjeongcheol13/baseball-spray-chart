@@ -528,6 +528,8 @@ function toggleAnalysisPanel(){
   },280);
 }
 function goLanding(){
+  // 경기설정·분석 화면(.savant-view)은 #app-page 밖에 떠 있어서, 기록 탭으로 되돌려 닫지 않으면 랜딩 위에 겹쳐 남는다
+  if(window.shellNav)window.shellNav('record');
   document.getElementById('app-page').style.display='none';
   document.getElementById('landing-page').style.display='block';
   document.body.style.overflowY='';

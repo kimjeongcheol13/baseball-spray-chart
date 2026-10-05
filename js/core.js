@@ -2406,6 +2406,7 @@ function saveGame(){
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
     _curSaveKey=key;_lastSaveUpdated=!!prev;
+    _sharedView=null;   // 공유받아 보던 경기도 저장하면 내 경기 — 이후 기록은 평소처럼 자동저장
     if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
@@ -3261,7 +3262,7 @@ function scheduleAutoSave(){
   _autoTimer=setTimeout(_doAutoSave,10000);
 }
 function _doAutoSave(){
-  if(!AS.abs.length)return;
+  if(!AS.abs.length||_sharedViewActive())return;   // 공유받아 보기만 하는 경기는 자동저장하지 않는다(_loadSharedGame 근처 설명)
   var key='sl_auto_'+(AS.curGame||Date.now());
   _autoKey=key;
   var data=JSON.stringify({
@@ -4945,6 +4946,14 @@ function _fallbackCopy(text){
   document.body.removeChild(ta);
 }
 var _sharedPayload=null;
+// 공유받은 경기를 "불러오기"로 열어 둔 보기 상태. 이 상태에서는 자동저장(sl_auto_*) · 복구 슬롯(sl_autosave) · 클라우드 자동 동기화(user_games)에
+// 올리지 않는다 — 올리면 내 경기로 저장되고, 같은 키를 쓰던 내 작업 중 경기의 자동저장본을 덮어쓴다. 사용자가 저장을 누르거나(saveGame) 기록을 고치면
+// (타구 수·마지막 타구·배열이 달라짐) 그때부터는 내 경기로 보고 평소처럼 자동저장한다.
+var _sharedView=null;
+function _sharedViewActive(){
+  var v=_sharedView;
+  return !!v&&v.abs===AS.abs&&AS.abs.length===v.n&&AS.abs[AS.abs.length-1]===v.last;
+}
 function _loadSharedGame(){
   var sp=new URLSearchParams(location.search);
 
@@ -5031,10 +5040,25 @@ function _restorePitchersFromPayload(payloadPitchers){
     pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone,inn:e.inn};})
   };});
 }
+// 공유 경기로 덮어쓰기 전에, 작업 중인 경기(타구 1개 이상)를 내 저장 목록에 먼저 저장한다(기존 항목이면 그 항목에 덮어쓰고, 새 경기면 새 항목).
+// 돌려주는 값: 저장했으면 true · 저장할 게 없으면 false · 저장에 실패했으면 null(이때는 공유 경기를 열지 않는다)
+function _saveWorkBeforeShared(){
+  if(!AS.abs||!AS.abs.length||_sharedViewActive())return false;   // 이미 열려 있는 공유 경기(보기만 한 상태)는 내 경기가 아니라 저장하지 않는다
+  if(!_archQuietSave(_curSaveKey))return null;
+  try{   // 평소 "경기 저장"과 같이 클라우드에도(로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함)
+    var d=JSON.parse(localStorage.getItem(_curSaveKey)||'null');
+    var e=JSON.parse(localStorage.getItem('sl_saves')||'[]').find(function(s){return s.key===_curSaveKey;});
+    if(d&&window.cloudSave)cloudSave(_curSaveKey,d,e&&e.label||_curSaveKey,d.ts);
+  }catch(err){console.warn('[Shared] 저장한 경기를 클라우드에 올리지 못함',err);}
+  return true;
+}
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
+  var savedMine=_saveWorkBeforeShared();
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 공유받은 경기를 열지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
   _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
+  AS.curGame=null; _autoKey=null;   // 자동저장 키도 내 경기에 묶여 있던 걸 풀어, 내 경기의 자동저장본(sl_auto_*)을 건드리지 않는다
   /* 팀명 · 점수 */
   AS.hs=payload.hs||0; AS.as=payload.as||0;
   var tH=document.getElementById('tHome'); if(tH)tH.value=payload.ht||'홈팀';
@@ -5051,6 +5075,7 @@ function loadSharedGame(){
   AS.pitchers.forEach(function(p){p.pitches.slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
   /* 타석 기록 */
   AS.abs=_restoreAbsFromPayload(payload.abs);
+  _sharedView={abs:AS.abs,n:AS.abs.length,last:AS.abs[AS.abs.length-1]};   // 보기 상태 표시(위 설명)
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
   /* 상태 초기화 */
@@ -5064,7 +5089,8 @@ function loadSharedGame(){
     updateAll();
     if(typeof renderPitcherRoster==='function')renderPitcherRoster();
     if(typeof renderPitchLog==='function')renderPitchLog();
-    showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
+    if(savedMine)showToast('공유받은 경기를 열었어요 · 내 경기는 저장됨',false,8000);
+    else showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
   },500);
 }
 
@@ -7687,6 +7713,7 @@ var storageManager=(function(){
       catch(e){console.warn('[SM] load error',key,e);return null;}
     },
     scheduleAutosave:function(data,delay){
+      if(typeof _sharedViewActive==='function'&&_sharedViewActive())return;   // 공유받아 보기만 하는 경기로 복구 슬롯을 덮지 않는다(이미 걸린 타이머는 그대로 둔다)
       clearTimeout(_timer);
       _timer=setTimeout(function(){
         try{localStorage.setItem(AUTOSAVE_KEY,_ser({_v:VERSION,_ts:Date.now(),data:data}));}
@@ -7940,7 +7967,7 @@ function _archQuietSave(saveKey){
         localStorage.setItem('sl_saves',JSON.stringify(saves));
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
-        return;
+        return true;
       }
     }
     // 저장 없으면 새로 생성
@@ -7955,7 +7982,9 @@ function _archQuietSave(saveKey){
     localStorage.setItem(key,JSON.stringify(data));
     if(window._slMarkMod)window._slMarkMod(key);
     _curSaveKey=key;_gameSaved=true;
+    return true;
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
+  return false;   // 저장 못 함(용량 초과 등) — 호출부가 알 수 있게(공유 경기 열기 전 저장에서 씀)
 }
 
 function archDismissRecovery(){

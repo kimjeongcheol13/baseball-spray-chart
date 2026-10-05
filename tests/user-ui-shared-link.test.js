@@ -299,4 +299,35 @@
       eq(AS.info, { venue: '공유구장' }, '열린 공유 경기의 경기 정보');
     } finally { restore(); }
   });
+
+  // ── 공유 경기를 보기만 할 때는 "저장되지 않은 기록" 경고가 뜨지 않고, 고친 순간부터 뜬다 ──
+  function leaveWarns() { var ev = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(ev); return ev.defaultPrevented; }   // 페이지를 떠날 때 경고(core.js 의 beforeunload 핸들러)
+  async function viewShared(extra) {   // 6타구짜리 공유 경기를 열고, 0.5초 뒤 updateAll 까지 지난 뒤에 본다(타구 5개 이상이면 "지금 저장하세요" 알림 대상)
+    var raw = []; for (var i = 0; i < 6; i++) raw.push({ r: '안타', d: 20, p: '직구', z: 5, i: '1회초', b: 0, x: 0.5, y: 0.4, bn: SHARED, bno: 3, t: 'home', ba: 'R' });
+    window._saveReminderShown = false;
+    openShared(Object.assign({ abs: raw }, extra || {})); await sleep(700);
+  }
+  test('공유 경기를 보기만 하면 "저장되지 않은 기록" 경고(페이지 이탈 · 새 경기 확인 · 저장 알림)가 뜨지 않는다', async function () {
+    var restore = quick();
+    try {
+      await viewShared();
+      eq(window._gameSaved, false, '전제: updateAll 이 "저장 안 됨"으로 바꿔 둔 상태여야 이 테스트가 의미 있다');
+      eq(_unsavedCounts().any, false, '저장 안 한 기록이 있다는 판단(페이지 이탈 경고 · 새 경기 확인이 이걸 본다)');
+      ok(!leaveWarns(), '페이지를 떠날 때 경고가 뜸');
+      eq(window._saveReminderShown, false, '"지금 저장하세요" 알림이 떴음');
+    } finally { restore(); }
+  });
+  test('공유 경기를 보다가 기록(타구 · 점수 · 투구)을 고친 순간부터는 지금처럼 경고가 뜬다', async function () {
+    var restore = quick();
+    try {
+      await viewShared(); AS.abs = AS.abs.concat(taps(EDIT, 1)); updateAll();
+      ok(_unsavedCounts().any && leaveWarns(), '타구를 추가했는데 경고가 안 뜸');
+      await viewShared(); AS.hs = AS.hs + 1; updateAll();
+      ok(_unsavedCounts().any && leaveWarns(), '점수를 고쳤는데 경고가 안 뜸');
+      await viewShared({ pitchers: [{ nm: '투수1', no: '1', hand: 'R', role: '', pitches: [] }] });
+      ok(!_unsavedCounts().any, '전제: 투구를 고치기 전에는 경고가 없어야 함');
+      AS.pitchers[0].pitches.push({ pt: '직구', result: '스트라이크', zone: 5 }); updateAll();
+      ok(_unsavedCounts().any && leaveWarns(), '투구를 추가했는데 경고가 안 뜸');
+    } finally { restore(); }
+  });
 })();

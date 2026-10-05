@@ -426,7 +426,7 @@ var _lastSaveUpdated=false;   // 마지막 저장이 기존 항목 덮어쓰기�
 var _saveReminderShown=false;
 var _saveReminderTimer=null;
 function checkSaveReminder(){
-  if(_saveReminderShown||_gameSaved)return;
+  if(_saveReminderShown||_gameSaved||_sharedViewActive())return;
   if(AS.abs&&AS.abs.length>=5){
     _saveReminderShown=true;
     showToast('💾 지금 저장하세요! (저장 버튼 또는 Ctrl+S)',false,true);
@@ -4953,11 +4953,16 @@ function _fallbackCopy(text){
 var _sharedPayload=null;
 // 공유받은 경기를 "불러오기"로 열어 둔 보기 상태. 이 상태에서는 자동저장(sl_auto_*) · 복구 슬롯(sl_autosave) · 클라우드 자동 동기화(user_games)에
 // 올리지 않는다 — 올리면 내 경기로 저장되고, 같은 키를 쓰던 내 작업 중 경기의 자동저장본을 덮어쓴다. 사용자가 저장을 누르거나(saveGame) 기록을 고치면
-// (타구 수·마지막 타구·배열이 달라짐) 그때부터는 내 경기로 보고 평소처럼 자동저장한다.
+// (타구 · 점수 · 투구가 달라짐) 그때부터는 내 경기로 보고 평소처럼 자동저장한다. "저장되지 않은 기록" 경고도 같은 기준이다
+// (_unsavedCounts · checkSaveReminder): 보기만 하는 동안은 뜨지 않고, 고친 순간부터 뜬다.
 var _sharedView=null;
+function _sharedSig(){   // 보기 중에 사용자가 고치면 달라지는 값: 타구 수 · 점수 · 투구 수(마지막 타구와 타구 배열은 _sharedViewActive 가 따로 본다)
+  var pc=(AS.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
+  return AS.abs.length+'|'+AS.hs+'|'+AS.as+'|'+pc;
+}
 function _sharedViewActive(){
   var v=_sharedView;
-  return !!v&&v.abs===AS.abs&&AS.abs.length===v.n&&AS.abs[AS.abs.length-1]===v.last;
+  return !!v&&v.abs===AS.abs&&AS.abs[AS.abs.length-1]===v.last&&_sharedSig()===v.sig;
 }
 function _loadSharedGame(){
   var sp=new URLSearchParams(location.search);
@@ -5092,7 +5097,7 @@ function loadSharedGame(){
   AS.pitchers.forEach(function(p){p.pitches.slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
   /* 타석 기록 */
   AS.abs=_restoreAbsFromPayload(payload.abs);
-  _sharedView={abs:AS.abs,n:AS.abs.length,last:AS.abs[AS.abs.length-1]};   // 보기 상태 표시(위 설명)
+  _sharedView={abs:AS.abs,last:AS.abs[AS.abs.length-1],sig:_sharedSig()};   // 보기 상태 표시(위 설명)
   AS.info=_restoreInfoFromPayload(payload.info);   // 경기 정보(날짜·구장…): 공유 데이터 값, 없으면 비움 — 이전 경기 값이 따라오지 않게
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
@@ -6367,7 +6372,7 @@ var _afterSaveCb=null;   // saveGame이 끝난 뒤 요약 대신 실행할 일
 function _unsavedCounts(){
   var pa=(AS&&AS.abs||[]).length;
   var pc=(AS&&AS.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
-  return {pa:pa,pc:pc,any:!_gameSaved&&(pa>0||pc>0)};
+  return {pa:pa,pc:pc,any:!_gameSaved&&!_sharedViewActive()&&(pa>0||pc>0)};   // 공유받아 보기만 하는 경기는 잃을 내 기록이 아니다
 }
 function openNewGameGuard(){
   var el=document.getElementById('newGameGuard');

@@ -347,14 +347,33 @@ const MORE_ICON = {
   home: '<path d="M3 11l9-7 9 7M5 9.5V20h14V9.5M10 20v-5h4v5"/>',
 };
 
+const _ico = k => `<i class="st-more-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">${MORE_ICON[k]}</svg></i>`;
+
+// "이미지로 저장" 시트의 선택지 — 한 줄 추가하면 시트에 늘어난다 (fn 은 기존 전역 함수 이름 그대로, icon 은 MORE_ICON 키)
+//   예) 학부모용 선수 리포트: { icon: 'report', t: '학부모용 선수 리포트', s: '가정 공유용 이미지', fn: 'openPlayerReport' }
+const IMAGE_CHOICES = [
+  { icon: 'spray', t: '스프레이차트', s: '필드 이미지', fn: 'exportSprayPNG' },
+  { icon: 'card', t: '성적 카드', s: 'SNS 공유용', fn: 'exportShareCard' },
+];
+
+function openImageSaveSheet() {
+  const ov = $('imgSaveSheet'), list = $('imgSheetList');
+  if (!ov || !list) return;
+  // 먼저 닫고 기존 내보내기 함수를 부른다 (성적 카드는 미리보기 창을 열기 때문에 시트가 겹쳐 있으면 안 됨)
+  list.innerHTML = IMAGE_CHOICES.map(c => `<button type="button" class="st-more-b" onclick="closeImageSaveSheet();${c.fn}()">${_ico(c.icon)}<span class="st-more-t"><b>${c.t}</b><small>${c.s}</small></span></button>`).join('');
+  ov.classList.add('show');
+  const first = list.querySelector('button');
+  if (first) first.focus();
+}
+function closeImageSaveSheet() { const ov = $('imgSaveSheet'); if (ov) ov.classList.remove('show'); }
+
 function _moreHtml() {
-  const ico = k => `<i class="st-more-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">${MORE_ICON[k]}</svg></i>`;
-  const b = (fn, t, s, k) => `<button type="button" class="st-more-b" onclick="${fn}">${ico(k)}<span class="st-more-t"><b>${t}</b><small>${s}</small></span></button>`;
+  const b = (fn, t, s, k) => `<button type="button" class="st-more-b" onclick="${fn}">${_ico(k)}<span class="st-more-t"><b>${t}</b><small>${s}</small></span></button>`;
   return `<header class="sb-card-hd"><h2>그 밖의 기능</h2></header>
     <div class="st-more">
       <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로', 'newGame')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드', 'save')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약', 'report')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제', 'recent')}</div>
-      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유', 'team')}</div>
-      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지', 'spray')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용', 'card')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel')}</div>
+      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamShare()', '팀 만들기', '팀원과 기록 공유 · 로그인 필요', 'team')}</div>
+      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share')}${b('openImageSaveSheet()', '이미지로 저장', '스프레이차트 · 성적 카드', 'card')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel')}</div>
       <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기', 'data')}${b('showHelpMenu()', '사용 방법', '기능 안내', 'help')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안', 'feedback')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지', 'home')}</div>
     </div>`;
 }
@@ -477,6 +496,8 @@ if (typeof window !== 'undefined') {
   window.stSetDist = stSetDist;
   window.stSaveAndStart = stSaveAndStart;
   window.stGf = stGf;
+  window.openImageSaveSheet = openImageSaveSheet;
+  window.closeImageSaveSheet = closeImageSaveSheet;
   window.renderSetup = render;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(_init, 0));
   else setTimeout(_init, 0);

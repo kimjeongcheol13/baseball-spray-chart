@@ -508,7 +508,7 @@ function _exportCard(team) {
         ${btn('exportShareCard()', I.card, '성적 카드 이미지', 'SNS·카톡 공유용')}
         ${btn('exportSprayPNG()', I.spray, '스프레이차트 PNG', '현재 필드 그대로')}
         ${team ? btn('shareTeamURL()', I.share, '팀 기록 공유', 'URL · QR 코드') : ''}
-        ${btn('openTeamCreate()', I.team, team ? '팀 추가' : '팀 만들기', team ? `지금: ${_esc(team.name)}` : '저장 경기가 팀에 자동 연결')}
+        ${btn('openTeamCreate()', I.team, team ? '이 기기 팀 추가' : '이 기기 팀 기록 만들기', team ? `지금: ${_esc(team.name)}` : '저장 경기가 팀에 자동 연결')}
       </div>
     </section>`;
 }

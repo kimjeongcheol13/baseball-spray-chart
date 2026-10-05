@@ -26,12 +26,23 @@
     T.eq(window.__netAttempts, [], '외부 요청 시도');
   });
 
+  // 진행 표시(#t-progress): 가상 시간 예산을 넘기면 브라우저가 결과(#t-result)를 게시하기 전에 DOM 을 덤프한다.
+  // 러너(run.mjs)가 이 표시를 읽어 "예산 초과(어느 테스트에서 멈췄는지)"로 실패시킨다 — 조용히 "결과를 읽지 못했다"로 끝나지 않게
+  function mark(done, total, cur) {
+    var el = document.getElementById('t-progress');
+    if (!el) { el = document.createElement('pre'); el.id = 't-progress'; document.body.appendChild(el); }
+    el.setAttribute('data-done', done); el.setAttribute('data-total', total);
+    el.setAttribute('data-vms', Math.round(performance.now()));   // 가상 시간(ms)
+    el.setAttribute('data-cur', encodeURIComponent(cur || ''));
+  }
   async function main() {
     var results = [], all = tests.concat(lasts);
     for (var i = 0; i < all.length; i++) {
+      mark(i, all.length, all[i].name);
       try { await all[i].fn(); results.push({ name: all[i].name, ok: true }); }
       catch (e) { results.push({ name: all[i].name, ok: false, err: String(e && e.message || e) }); }
     }
+    mark(all.length, all.length, '');
     return results;
   }
   function publish(payload) {
@@ -40,6 +51,6 @@
     var el = document.createElement('pre'); el.id = 't-result'; el.setAttribute('data-b64', btoa(bin)); document.body.appendChild(el);
   }
   window.addEventListener('load', function () {
-    main().then(function (r) { publish({ results: r }); }, function (e) { publish({ fatal: String(e && e.message || e) }); });
+    main().then(function (r) { publish({ results: r, vms: Math.round(performance.now()) }); }, function (e) { publish({ fatal: String(e && e.message || e) }); });
   });
 })();

@@ -10,8 +10,9 @@ let _view = null, _shown = [], _on = false;  // 보고 있는 행(null 이면 �
 
 const t = v => esc(v == null ? '' : v);   // 화면에 들어가는 값은 전부 이 함수를 거친다(팀원 · 팀 · 상대 · 타자 이름 …)
 const _key = r => r.user_id + '|' + r.game_key;
-// 팀원 이름: 서버에 이름이 없다(user_games · team_members 모두) → 계정 id 끝 4자리로 구분한다. 이름 출처가 정해지면 이 한 줄만 바꾼다.
-const _who = r => '팀원 ' + String(r.user_id).slice(-4);
+// 팀원 이름 = 가입할 때 정한 "팀에서 쓸 이름"(team_members.display_name, sql/12 — cloud.js 가 행에 붙여 준다). 구글 계정 이름은 쓰지 않는다.
+// 이름이 없으면(12 이전에 가입 · 이름 조회 실패) 임시로 계정 id 끝 4자리. 화면에 넣을 때는 t() 로 이스케이프된다
+const _who = r => (r.display_name ? String(r.display_name) : '팀원 ' + String(r.user_id).slice(-4));
 // 타석은 내 팀(home) 타자만 — 앱 전체가 th/home 을 내 팀으로 쓴다. 팀 구분이 없는 옛 타석은 home
 const _mine = d => (Array.isArray(d && d.abs) ? d.abs : []).filter(a => a && (a.team || 'home') === 'home').slice(0, MAX_HITS);
 const _avg = s => (s.ab ? f3(s.avg) : '-');

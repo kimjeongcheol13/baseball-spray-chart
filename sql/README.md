@@ -19,6 +19,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `09_drop_team_members_insert.sql` | `team_members_insert` 정책 삭제(가입은 RPC 로만). **클라이언트 배포 후** SQL Editor 에서 수동 실행 | 정책 1개 삭제 (DROP) |
 | `10_one_team_per_user.sql` | 한 사람당 팀 하나를 DB 가 강제: `teams(owner_id)` · `team_members(user_id)` unique index, `join_team_by_code` 재정의(다른 팀 소속이면 예외), `teams_insert` 에 "팀원 아님" 조건 + `is_in_any_team()`. 08 선행(가정 확인이 검사). **클라이언트 배포 전에** 적용 | 인덱스 2개·함수 1개 생성, 함수 1개 교체, 정책 1개 교체 (DROP 없음) |
 | `11_owner_reads_team_games.sql` | `user_games_select` 에 "내가 소유한 팀의 `team_id`" 조건 추가 — 팀장이 팀원 경기를 읽는다(Realtime 도 같은 정책). 10 선행(가정 확인이 검사). **미적용 — 팀장용 목록 화면 PR 과 함께 적용**(PR #72 에서는 적용하지 않는다) | 정책 1개 교체 (DROP 없음) |
+| `12_team_display_name.sql` | 팀원이 가입할 때 정하는 "팀에서 쓸 이름": `team_members.display_name`(null 허용, 1~20자 check), `join_team_by_code(text, text)` 오버로드(이름 검사 후 1인자 함수 호출 · 이름 저장 — 1인자 함수는 그대로), `set_my_team_name(text)`(본인 행만). 구글 계정 이름은 쓰지 않는다(유소년 팀). 08 · 10 선행(가정 확인이 검사). **미적용 — 순서: ① 11 → ② 12 → ③ 클라이언트 머지·배포**(새 가입 폼이 2인자 함수를 부른다) | 컬럼 1개 + check 1개 추가, 함수 2개 생성 (DROP 없음) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

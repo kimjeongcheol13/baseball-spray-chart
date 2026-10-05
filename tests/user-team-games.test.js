@@ -19,12 +19,16 @@
       updated_at: new Date(T0 + (o.min || 0) * 60000).toISOString() };
   }
   // 로그아웃으로 앞선 테스트의 상태를 지우고, 팀장(owner) 또는 팀원(member)으로 로그인한다
-  async function login(role, userGames, teamName) {
+  // members(팀장일 때): 서버 team_members 행 — {user_id, display_name}. 가입할 때 정한 "팀에서 쓸 이름"(sql/12)
+  async function login(role, userGames, teamName, members) {
     await sleep(2000);
     srv.signOut(); await sleep(1000);
     srv.reset(); localStorage.clear();
     var name = teamName || '테스트팀';
-    if (role === 'owner') srv.teams = [{ id: 'T1', name: name, code: 'ABC234', owner_id: OWNER }];
+    if (role === 'owner') {
+      srv.teams = [{ id: 'T1', name: name, code: 'ABC234', owner_id: OWNER }];
+      srv.team_members = (members || []).map(function (m) { return Object.assign({ team_id: 'T1' }, m); });
+    }
     else { srv.teams = [{ id: 'T1', name: name, code: 'ABC234', owner_id: 'COACH' }]; srv.team_members = [{ team_id: 'T1', user_id: OWNER }]; }
     srv.user_games = userGames || [];
     srv.signIn(); await sleep(1500);
@@ -77,6 +81,30 @@
     eq(r.length, 50, '목록 행 수');
     ok(r[0].indexOf('팀원 1059') >= 0, '맨 위는 가장 최근: ' + r[0]);
     ok(r[49].indexOf('팀원 1010') >= 0, '50번째: ' + r[49]);
+  });
+  test('저장된 이름(team_members.display_name)이 목록 · 상세에 표시되고, 이름이 없는 팀원은 임시 표시가 남는다', async function () {
+    await login('owner', [
+      row('user-aaaa-1111', 2, { min: 10 }),
+      row('user-bbbb-2222', 3, { min: 30 })
+    ], null, [{ user_id: 'user-aaaa-1111', display_name: '#7 김OO' }, { user_id: 'user-bbbb-2222', display_name: null }]);
+    await openList();
+    var r = rows();
+    eq(r.length, 2, '행 수');
+    ok(r[0].indexOf('팀원 2222') >= 0, '이름 없는 팀원은 임시 표시: ' + r[0]);
+    ok(r[1].indexOf('#7 김OO') >= 0 && r[1].indexOf('팀원 1111') < 0, '저장된 이름: ' + r[1]);
+    var q = srv.log.filter(function (x) { return x.table === 'team_members' && x.op === 'select' && x.query && x.query.eq.team_id; });
+    eq(q.length, 1, '팀원 이름 조회 요청 수');
+    eq(q[0].cols, 'user_id,display_name', '이름 조회 컬럼(그 밖의 팀원 정보는 읽지 않는다)');
+    document.querySelectorAll('#teamGamesModal .tg-row')[1].click(); await sleep(300);
+    ok(modal().querySelector('.tg-sub').textContent.indexOf('#7 김OO') === 0, '상세의 이름: ' + modal().querySelector('.tg-sub').textContent);
+  });
+  test('이름 조회가 실패해도(sql/12 적용 전 등) 목록은 임시 표시로 보인다', async function () {
+    await login('owner', [row('user-aaaa-1111', 2)], null, [{ user_id: 'user-aaaa-1111', display_name: '#7 김OO' }]);
+    srv.failRead = function (r, table) { return table === 'team_members' ? { status: 400, code: '42703', message: 'column team_members.display_name does not exist' } : null; };
+    await openList();
+    eq(rows().length, 1, '행 수');
+    ok(rows()[0].indexOf('팀원 1111') >= 0 && rows()[0].indexOf('#7 김OO') < 0, '임시 표시: ' + rows()[0]);
+    srv.failRead = null;
   });
   test('팀장: 팀원 경기가 없거나 불러오지 못하면 안내 문구가 보인다', async function () {
     await login('owner', [row(OWNER, 1)]);                                      // 내 경기뿐 → 빈 목록(sql/11 이 없을 때도 이렇게 보인다)
@@ -134,6 +162,22 @@
     ok(r[0].indexOf('NEW') >= 0 && r[0].indexOf('팀원 8888') >= 0, '닫혀 있는 동안 온 경기: ' + r[0]);
   });
 
+  test('INSERT 이벤트의 이름: 알려진 팀원은 저장된 이름, 목록을 연 뒤 가입한 팀원은 이름을 다시 조회해서 보인다(조회 실패면 임시 표시)', async function () {
+    await login('owner', [row('user-aaaa-1111', 2, { min: 10 })], null, [{ user_id: 'user-aaaa-1111', display_name: '#7 김OO' }]);
+    await openList();
+    var cb = insertCb().cb;
+    cb({ new: row('user-aaaa-1111', 5, { min: 20 }) }); await sleep(100);
+    ok(rows()[0].indexOf('NEW') >= 0 && rows()[0].indexOf('#7 김OO') >= 0, '알려진 팀원: ' + rows()[0]);
+    srv.team_members.push({ team_id: 'T1', user_id: 'user-nnnn-3333', display_name: '#10 박OO' });   // 목록을 연 뒤에 가입
+    cb({ new: row('user-nnnn-3333', 6, { min: 30 }) }); await sleep(100);
+    ok(rows()[0].indexOf('NEW') >= 0 && rows()[0].indexOf('#10 박OO') >= 0, '새 팀원(이름 재조회): ' + rows()[0]);
+    srv.failRead = function (r, table) { return table === 'team_members' ? 'reject' : null; };
+    cb({ new: row('user-mmmm-4444', 7, { min: 40 }) }); await sleep(100);
+    ok(rows()[0].indexOf('NEW') >= 0 && rows()[0].indexOf('팀원 4444') >= 0, '조회 실패: ' + rows()[0]);
+    srv.failRead = null;
+    eq(rows().length, 4, '행 수');
+  });
+
   // ── 읽기 전용 보기 ──
   test('경기 열기 → 스프레이 차트와 기록이 보이고, localStorage 쓰기 0회 · 서버 요청 0건 · 앱의 현재 경기(AS)는 그대로', async function () {
     await login('owner', [row('user-aaaa-1111', 2, { ta: '상대A', abs: A_ABS })]);
@@ -174,16 +218,20 @@
       th: SCR, ta: IMG, date: SCR,
       abs: [ab(SVG, IMG, 'home', { inn: SCR, bnum: IMG })]
     });
-    await login('owner', [evil], IMG);                                       // 팀 이름도 같은 값
+    await login('owner', [evil], IMG, [{ user_id: 'user-' + IMG, display_name: IMG + SCR }]);   // 팀 이름 · 팀원 이름도 같은 값
     await openList();
     await sleep(100);
     var m = modal();
     ok(m.textContent.indexOf('<img src=x') >= 0, '목록에 글자 그대로 보여야 함: ' + m.textContent);
     document.querySelector('#teamGamesModal .tg-row').click(); await sleep(300);
     ok(m.textContent.indexOf('<svg onload') >= 0 && m.textContent.indexOf('<script>') >= 0, '기록에 글자 그대로 보여야 함');
-    // 실시간으로 들어온 행도 같은 길로 그린다
+    ok(m.querySelector('.tg-sub').textContent.indexOf('<img src=x') === 0, '상세의 팀원 이름이 글자 그대로 보여야 함: ' + m.querySelector('.tg-sub').textContent);
+    // 실시간으로 들어온 행도 같은 길로 그린다 — 이름을 새로 조회하는 경로(목록을 연 뒤 가입한 팀원)도 포함
     m.querySelector('.tg-back').click();
-    insertCb().cb({ new: row('user-' + IMG, 3, { th: SCR, ta: IMG }) }); await sleep(100);
+    srv.team_members.push({ team_id: 'T1', user_id: 'user-late', display_name: SVG + SCR });
+    insertCb().cb({ new: row('user-' + IMG, 3, { th: SCR, ta: IMG }) });
+    insertCb().cb({ new: row('user-late', 4, { th: SCR, ta: IMG }) }); await sleep(100);
+    ok(m.textContent.indexOf('<svg onload') >= 0, '재조회한 이름이 글자 그대로 보여야 함');
     eq(m.querySelectorAll('img, script, svg, iframe, [onerror], [onload]').length, 0, '창 안에 태그가 만들어짐');
     eq(window.__xss, undefined, '스크립트가 실행됨');
     delete window.__xss;

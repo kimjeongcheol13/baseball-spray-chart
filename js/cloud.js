@@ -669,8 +669,24 @@
         if (inp) inp.value = '';
         var msg = document.getElementById('magicMsg');
         if (msg) { msg.textContent = ''; msg.className = 'magic-msg'; }
+        var th = document.getElementById('loginTeamHint');
+        if (th) th.hidden = true;   // 팀 공유 진입(openTeamShare)이 아닌 일반 로그인에서는 숨김
         lm.classList.add('show');
       }
+    }
+  };
+
+  /* "팀 만들기 · 팀원과 기록 공유" 진입점(그 밖의 기능 · 경기설정 탭). 이 기기 전용 로컬 팀(openTeamCreate)이 아니라 클라우드 팀으로 보낸다.
+     로그인 상태면 내 계정 창을 열어 팀 영역(#teamSection)을 보여주고, 아니면 "팀 공유는 로그인이 필요해요" 안내가 붙은 로그인 창을 연다.
+     열기만 한다 — 서버 요청은 로그인한 뒤 팀 만들기·참가 버튼을 눌러야 나간다 */
+  window.openTeamShare = function () {
+    window.openLoginModal();
+    if (_user && !_user.is_anonymous) {
+      var sec = document.getElementById('teamSection');
+      if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'nearest' });
+    } else {
+      var th = document.getElementById('loginTeamHint');
+      if (th) th.hidden = false;
     }
   };
 

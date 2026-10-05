@@ -353,7 +353,7 @@ function _moreHtml() {
   return `<header class="sb-card-hd"><h2>그 밖의 기능</h2></header>
     <div class="st-more">
       <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로', 'newGame')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드', 'save')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약', 'report')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제', 'recent')}</div>
-      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유', 'team')}</div>
+      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamShare()', '팀 만들기', '팀원과 기록 공유 · 로그인 필요', 'team')}</div>
       <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지', 'spray')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용', 'card')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel')}</div>
       <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기', 'data')}${b('showHelpMenu()', '사용 방법', '기능 안내', 'help')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안', 'feedback')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지', 'home')}</div>
     </div>`;

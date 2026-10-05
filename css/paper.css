@@ -455,6 +455,9 @@ body.sb .toast-undo { background: var(--highlight); color: var(--ink); border-ra
 body.sb .overlay { background: rgba(31, 42, 35, .45); }
 body.sb .overlay .modal { background: var(--paper-2); border: var(--card-bw) solid var(--ink); border-radius: 0; box-shadow: none; color: var(--ink); font-family: var(--f-body); }
 
+/* 팀 공유 진입(openTeamShare)으로 로그인 창을 열었을 때 붙는 안내 */
+.login-team-hint { margin: -8px 0 14px; padding: 10px 12px; border: var(--card-bw) solid var(--ink); background: var(--highlight-soft); color: var(--ink); font: 700 13px/1.4 var(--f-body); text-align: center; }
+
 /* ═══ 태블릿 (721–1199px): 필드 | 입력 열 2열, 타순표는 왼쪽 시트 ═══ */
 @media (min-width: 721px) and (max-width: 1199px) {
   body.sb .app-layout { grid-template-columns: minmax(0, 1fr) 300px !important; padding: 12px 16px; gap: 12px; }

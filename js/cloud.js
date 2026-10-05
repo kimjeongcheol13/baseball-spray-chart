@@ -227,7 +227,8 @@
           '<div class="team-code-big" id="teamCodeDisplay">' + _esc(_team.code) + '</div>' +
           '<button class="btn-team-copy" onclick="window._copyTeamCode()">코드 복사</button>' +
           (_team.role === 'owner'
-            ? '<button class="btn-team-leave btn-team-danger" onclick="window.dissolveTeam()">팀 해산</button>'
+            ? '<button class="btn-team-copy btn-team-games" onclick="window.openTeamGames&&window.openTeamGames()">팀 경기</button>' +
+              '<button class="btn-team-leave btn-team-danger" onclick="window.dissolveTeam()">팀 해산</button>'
             : '<button class="btn-team-leave" onclick="window.leaveTeam()">팀 탈퇴</button>') +
         '</div>';
     } else {
@@ -444,16 +445,80 @@
     if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
     var db = _client();
     if (!db) return;
-    _rtChannel = db.channel('team_games_' + teamId)
+    var ch = db.channel('team_games_' + teamId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'user_games',
         filter: 'team_id=eq.' + teamId
       }, function (payload) {
-        _onTeamGameUpdate(payload.new);
-      })
-      .subscribe();
+        _onTeamGameUpdate(payload.new);       // 기존 동작과 가드(열린 경기 합치기 · 내 행만 localStorage)는 그대로
+        _onTeamGameUpdateList(payload.new);   // 팀장 화면의 열린 목록 갱신(아래) — 별개
+      });
+    // 새 경기(INSERT)는 팀장 화면("팀 경기")에서만 쓴다 — 팀원의 클라이언트는 구독하지 않는다
+    if (_team && _team.role === 'owner') {
+      ch = ch.on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_games',
+        filter: 'team_id=eq.' + teamId
+      }, function (payload) {
+        _onTeamGameInsert(payload.new);
+      });
+    }
+    _rtChannel = ch.subscribe();
+  }
+
+  // 팀장 화면(js/features/teamgames.js)으로 넘길 뿐 localStorage 에는 쓰지 않는다. 내 경기와 검증을 통과하지 못한 행(설정 키 등)은 버린다
+  function _onTeamGameInsert(row) {
+    if (!row || !row.game_key || !_user || row.user_id === _user.id) return;
+    if (!_cleanRow(row.game_key, row.data)) return;
+    var teamId = _team && _team.id;
+    var deliver = function () {
+      row.display_name = _names[row.user_id] || null;
+      if (typeof window._slTeamGameInsert === 'function') window._slTeamGameInsert(row);
+    };
+    // 목록을 연 뒤에 가입한 팀원의 첫 경기라면 이름을 한 번 더 가져온다(실패해도 경기는 이름 없이 넘긴다)
+    if (!(row.user_id in _names) && teamId) _fetchMemberNames(teamId).then(deliver, deliver); else deliver();
+  }
+
+  // 팀장 화면: 열린 목록에 같은 경기(user_id + game_key)가 이미 있으면 타석(=타석 수 · AVG)만 갱신한다 — 없는 경기는 무시(새 행은 INSERT 만).
+  // 팀장이 아니면 · 내 경기 · 검증을 통과하지 못한 행은 버린다. localStorage 에는 쓰지 않는다
+  function _onTeamGameUpdateList(row) {
+    if (!_team || _team.role !== 'owner') return;
+    if (!row || !row.game_key || !_user || row.user_id === _user.id) return;
+    if (!_cleanRow(row.game_key, row.data)) return;
+    if (typeof window._slTeamGameUpdate === 'function') window._slTeamGameUpdate(row);
+  }
+
+  /* 팀장용 "팀 경기" 목록: 팀원의 경기만(내 경기 제외), 수정 시각 최신순 최대 50개. 읽기만 한다.
+     sql/11(팀장 읽기 권한)이 없으면 RLS 때문에 팀장은 팀원 행을 읽지 못해 빈 목록이 된다.
+     ponytail: data 전체(타석 포함)를 내려받아 화면에서 요약한다 — 팀이 커지면 서버 요약(RPC)으로 바꾼다 */
+  window._slLoadTeamGames = function () {
+    if (!_user || !_team || _team.role !== 'owner') return Promise.resolve({ team: null, rows: [] });
+    var team = { id: _team.id, name: _team.name }, db = _client();
+    return Promise.all([
+      db.from('user_games').select('id,user_id,game_key,team_name,date,data,updated_at')
+        .eq('team_id', team.id).neq('user_id', _user.id)
+        .order('updated_at', { ascending: false }).limit(50),
+      _fetchMemberNames(team.id)
+    ]).then(function (res) {
+      var r = res[0];
+      if (r.error) throw r.error;
+      var rows = (r.data || []).filter(function (x) { return x && x.game_key && _cleanRow(x.game_key, x.data); });
+      rows.forEach(function (x) { x.display_name = _names[x.user_id] || null; });
+      return { team: team, rows: rows };
+    });
+  };
+
+  /* 팀원이 가입할 때 정한 이름(team_members.display_name, sql/12). 팀장만 팀원 행을 읽는다(02 의 team_members_select).
+     조회가 실패하거나 컬럼이 아직 없어도(12 적용 전) 목록은 막지 않는다 → 이름이 없는 것으로 보고 임시 표시를 쓴다 */
+  var _names = {};   // { user_id: display_name | null }
+  function _fetchMemberNames(teamId) {
+    return _client().from('team_members').select('user_id,display_name').eq('team_id', teamId).then(function (m) {
+      _names = {};
+      if (!m.error) (m.data || []).forEach(function (x) { _names[x.user_id] = x.display_name || null; });
+    }, function () { _names = {}; });
   }
 
   function _onTeamGameUpdate(row) {
@@ -513,6 +578,8 @@
       }
       if (event === 'SIGNED_OUT') {
         _team = null; _teamKnown = false;   // 다음 계정의 팀은 조회 전까지 모른다 → 그 사이 upsert 에 team_id 를 싣지 않는다
+        if (window._slTeamGamesReset) window._slTeamGamesReset();   // 팀장 화면에 남은 팀원 경기를 지운다
+        _names = {};
         if (_rtChannel) { _client().removeChannel(_rtChannel); _rtChannel = null; }
         _startDone = false;
         setTimeout(_startupSync, 300);
@@ -723,6 +790,9 @@
         // id 는 cloudTeamCodeInput: index.html 의 "팀 코드로 경기 공유" 입력칸(teamCodeInput, games 용)과 겹치면 getElementById 가 그쪽을 먼저 돌려준다
         '<input id="cloudTeamCodeInput" type="text" placeholder="6자리 팀 코드 입력" class="magic-input" maxlength="6" ' +
           'style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">' +
+        // 팀에서 쓸 이름(sql/12 team_members.display_name): 팀장의 "팀 경기"에 보인다. 구글 계정 이름은 보내지 않는다(유소년 팀은 선수가 미성년자)
+        '<input id="cloudTeamNameInput" type="text" placeholder="예: #7 김OO" aria-label="팀에서 쓸 이름" class="magic-input" maxlength="20">' +
+        '<div class="magic-msg">팀장에게 보이는 이름이에요. 계정 이름은 팀에 공개되지 않아요</div>' +
         '<button class="btn-magic" onclick="window.joinTeam()">참가하기</button>' +
         '<div id="teamFormMsg" class="magic-msg"></div>' +
       '</div>';
@@ -770,6 +840,10 @@
     if (!codeEl || !msgEl) return;
     var code = codeEl.value.trim().toUpperCase();
     if (code.length !== 6) { msgEl.textContent = '6자리 코드를 입력해 주세요'; msgEl.className = 'magic-msg error'; return; }
+    var nameEl = document.getElementById('cloudTeamNameInput');
+    var myName = nameEl ? nameEl.value.trim() : '';
+    if (!myName) { msgEl.textContent = '팀에서 쓸 이름을 입력해 주세요'; msgEl.className = 'magic-msg error'; return; }   // 서버 요청 없음
+    if (myName.length > 20) { msgEl.textContent = '이름은 20자 이하로 입력해 주세요'; msgEl.className = 'magic-msg error'; return; }
     if (!_user || _user.is_anonymous) { msgEl.textContent = '로그인이 필요합니다'; msgEl.className = 'magic-msg error'; return; }
     msgEl.textContent = '참가 중...'; msgEl.className = 'magic-msg';
     var db = _client();
@@ -777,7 +851,8 @@
     // 코드가 정확히 일치할 때만 가입 처리하고 id / name / is_owner 를 돌려주는 RPC 사용 (sql/08_team_write_guards.sql).
     // 이미 팀원이면 같은 행을 그대로 돌려준다(예전의 23505 처리가 필요 없다)
     // 다른 팀에 속해 있으면 RPC 가 한국어 메시지로 예외(P0001)를 던진다(sql/10) — 그 메시지를 그대로 보여준다
-    db.rpc('join_team_by_code', { p_code: code }).then(function (r) {
+    // 이름과 함께 부르는 2인자 오버로드(sql/12). 이름이 비었거나 20자를 넘으면 서버도 P0001 로 거부한다
+    db.rpc('join_team_by_code', { p_code: code, p_name: myName }).then(function (r) {
       if (r.error) { msgEl.textContent = r.error.code === 'P0001' ? r.error.message : '오류: ' + r.error.message; msgEl.className = 'magic-msg error'; return; }
       var found = r.data && r.data[0];
       if (!found) { msgEl.textContent = '팀 코드를 찾을 수 없어요'; msgEl.className = 'magic-msg error'; return; }

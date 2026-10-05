@@ -330,4 +330,154 @@
       ok(_unsavedCounts().any && leaveWarns(), '투구를 추가했는데 경고가 안 뜸');
     } finally { restore(); }
   });
+
+  // ── 복구 경로(숨은 자동저장 "복구" · 복구 배너 "복구하기")도 작업 중인 경기를 먼저 저장한다 ──
+  function hiddenData(name) { return { abs: taps(name, 1), hs: 0, as: 0, th: '복구홈', ta: '복구원정', home_lineup: [], away_lineup: [], pitchers: [], zoneHistory: {}, ts: 1, d: '2026. 5. 1.' }; }
+  async function seedRecoverySlot(info) {   // 앱의 복구 슬롯(sl_autosave)에 다른 경기를 둔다 — 앱이 쓰는 그대로 storageManager 로
+    var keep = AS.info; AS.info = info || null;
+    storageManager.scheduleAutosave(hiddenData(OTHER), 0); await sleep(100);
+    AS.info = keep;
+  }
+  function failSavedList() {         // 저장 목록을 쓸 수 없는 상태(저장 공간 부족)를 만든다. 돌려주는 함수가 되돌린다
+    var orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k) { if (k === 'sl_saves') throw new DOMException('quota', 'QuotaExceededError'); return orig.apply(this, arguments); };
+    return function () { Storage.prototype.setItem = orig; };
+  }
+  test('숨은 자동저장을 복구하기 전에 작업 중인 경기가 저장되고, 안내가 뜬다', async function () {
+    var restore = quick();
+    try {
+      localStorage.setItem('sl_auto_5551', JSON.stringify(hiddenData(OTHER)));
+      AS.abs = taps(MINE, 2);
+      recoverHiddenAutosave('sl_auto_5551');
+      ok(savedWith(snap(), MINE).length > 0, '작업 중이던 타구(' + MINE + ')가 저장 목록에 없음');
+      ok(names().indexOf(OTHER) >= 0, '복구가 되지 않음: ' + JSON.stringify(names()));
+      ok(/이전 경기는 저장됨/.test(T.$('toastTxt').textContent), '안내 문구: ' + T.$('toastTxt').textContent);
+    } finally { restore(); }
+  });
+  test('내 경기를 저장하지 못하면 숨은 자동저장을 복구하지 않고 내 경기는 그대로다', async function () {
+    var restore = quick(), undo;
+    try {
+      localStorage.setItem('sl_auto_5551', JSON.stringify(hiddenData(OTHER)));
+      AS.abs = taps(MINE, 2);
+      undo = failSavedList(); recoverHiddenAutosave('sl_auto_5551'); undo(); undo = null;
+      eq(names(), [MINE, MINE], '내 경기의 타구');
+      ok(/복구하지 않았어요/.test(T.$('toastTxt').textContent), '안내 문구: ' + T.$('toastTxt').textContent);
+    } finally { if (undo) undo(); restore(); }
+  });
+  test('복구 배너의 "복구하기": 그 사이 기록한 게 있으면 먼저 저장하고 복구한다', async function () {
+    var restore = quick();
+    try {
+      await seedRecoverySlot();
+      AS.abs = taps(MINE, 2);                           // 배너가 떠 있는 동안 새로 기록했다
+      archRecoverFromBanner();
+      ok(savedWith(snap(), MINE).length > 0, '작업 중이던 타구가 저장 목록에 없음');
+      ok(names().indexOf(OTHER) >= 0, '복구가 되지 않음: ' + JSON.stringify(names()));
+      ok(/방금 기록은 저장됨/.test(T.$('toastTxt').textContent), '안내 문구: ' + T.$('toastTxt').textContent);
+    } finally { restore(); }
+  });
+  test('복구 배너의 "복구하기": 작업 중인 경기가 없으면 저장 없이 복구만 한다', async function () {
+    var restore = quick();
+    try {
+      await seedRecoverySlot();
+      archRecoverFromBanner();
+      ok(names().indexOf(OTHER) >= 0, '복구가 되지 않음');
+      ok(!/저장됨/.test(T.$('toastTxt').textContent), '저장한 게 없는데 안내가 뜸: ' + T.$('toastTxt').textContent);
+    } finally { restore(); }
+  });
+  test('복구 배너의 "복구하기": 저장하지 못하면 복구하지 않고, 경기 정보 · GF 상태도 건드리지 않는다', async function () {
+    var restore = quick(), undo;
+    try {
+      await seedRecoverySlot({ venue: '복구구장' });     // 복구하면 래퍼(setup.js)가 AS.info 를 이 값으로 덮는다
+      AS.info = INFO; AS.abs = taps(MINE, 2);
+      undo = failSavedList(); archRecoverFromBanner(); undo(); undo = null;
+      eq(names(), [MINE, MINE], '내 경기의 타구');
+      eq(AS.info, INFO, '내 경기의 경기 정보가 복구 데이터로 바뀜');
+      ok(/복구하지 않았어요/.test(T.$('toastTxt').textContent), '안내 문구: ' + T.$('toastTxt').textContent);
+    } finally { if (undo) undo(); restore(); }
+  });
+
+  // ── 정적 검사: 작업 중 경기(AS)를 통째로 바꾸는 코드는 _saveWorkBeforeReplace 나 확인 창을 거쳐야 한다 ──
+  // 페이지가 실제로 불러온 /js/*.js(core · cloud · app · features/ 전체)와 index.html 의 소스를 읽어, AS.abs 를 통째로 대입하거나 비우는 곳(별칭 포함)을 찾는다.
+  // 아래 REPLACERS 에 없는 새 교체 코드가 생기면 실패한다 — 목록에 넣을 때는 왜 안전한지(먼저 저장 · 확인 창 · 한 건 삭제 · 추가만)를 why 에 적는다.
+  // 휴리스틱이다(파서가 아니다): 교체 지점마다 (파일 · 앞선 이름 있는 함수 · 그 줄 모양)이 목록과 1:1 로 맞아야 하므로, 어디에 새로 생겨도 개수가 안 맞아 걸린다.
+  // 한 건만 지우거나 보태는 코드(push · shift · pop · splice)와 팀원 타구 덧붙이기(.concat)는 통째 교체가 아니므로 대상이 아니다.
+  var REPLACERS = [
+    { file: 'js/core.js', fn: 'restoreGame', line: /AS\.abs=\(d\.abs\|\|\[\]\)\.map/, guard: true, why: '저장 목록에서 경기 열기 — 열기 전에 작업 중 경기를 저장' },
+    { file: 'js/core.js', fn: 'loadSharedGame', line: /AS\.abs=_restoreAbsFromPayload/, guard: true, why: '공유 경기 열기 — 열기 전에 작업 중 경기를 저장' },
+    { file: 'js/core.js', fn: 'recoverHiddenAutosave', line: /AS\.abs=d\.abs\|\|\[\];/, guard: true, why: '숨은 자동저장 복구 — 복구 전에 작업 중 경기를 저장' },
+    { file: 'js/core.js', fn: 'archRecoverAutosave', line: /AS\.abs=d\.abs\|\|\[\];/, why: '복구 — 시작 때(_openLastGame, AS 가 빈 경우)나 archRecoverFromBanner(먼저 저장)에서만 부른다(아래 호출처 검사)' },
+    { file: 'js/core.js', fn: 'startFromWizard', line: /AS\.abs=\[\]; AS\.batter=null/, why: '새 경기 — 저장 안 한 기록이 있으면 openGameWizard 가 확인 창(저장하고 / 저장하지 않고 새 경기 시작)을 먼저 띄운다. 마법사 버튼에서만 불린다(아래 호출처 검사)' },
+    { file: 'js/core.js', fn: 'clearAll', line: /confirm\(/, why: '전체 삭제 — 사용자가 확인 창("모든 타석 기록을 삭제할까요?")에서 누른 뒤 의도적으로 지운다(되돌리기 스냅샷도 남는다)' },
+    { file: 'js/core.js', fn: 'delRec', line: /AS\.abs=AS\.abs\.filter/, why: '기록 한 건 삭제 — 사용자가 그 기록을 직접 지운다(filter 로 한 건만 빠진다, 되돌리기 스냅샷도 남는다)' },
+    { file: 'js/core.js', fn: '_apply', line: /AS\.abs=s\.abs/, why: 'undoManager 되돌리기 스냅샷 적용 — 같은 경기의 이전 상태. 부르는 곳이 없다(아래 호출처 검사: undoManager.undo( 호출 금지)' },
+    { file: 'js/cloud.js', fn: '_onTeamGameUpdate', line: /AS\.abs = \(AS\.abs \|\| \[\]\)\.concat\(/, why: '팀원의 새 타구를 덧붙이기만 한다(.concat) — 내 기록은 그대로' },
+  ];
+  function blank(s) { return s.replace(/[^\n]/g, ' '); }
+  function clean(src) {            // 주석을 같은 길이의 공백으로(줄 · 위치는 그대로)
+    return src.replace(/\/\*[\s\S]*?\*\//g, blank).replace(/(^|[\s;{}()])\/\/[^\n]*/g, function (m, p) { return p + blank(m.slice(p.length)); });
+  }
+  function fnsOf(src) {            // 이름 있는 함수 선언 위치
+    var out = [], re = /function\s+([A-Za-z_$][\w$]*)\s*\(/g, m;
+    while ((m = re.exec(src))) out.push({ name: m[1], idx: m.index });
+    return out;
+  }
+  function enclosing(fns, idx) { var f = null; fns.forEach(function (x) { if (x.idx < idx) f = x; }); return f; }
+  function replacersIn(file, raw) {
+    var src = clean(raw), names = ['AS'], m, re = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:window\.AS|_AS\(\)|AS)\b/g;
+    while ((m = re.exec(src))) if (names.indexOf(m[1]) < 0) names.push(m[1]);      // features/ 의 const AS = window.AS · const A = _AS() 같은 별칭
+    var al = names.join('|'), fns = fnsOf(src), found = [];
+    var pats = [new RegExp('(?<![\\w$.])(?:window\\.)?(?:' + al + ')\\.abs(?:\\.length)?\\s*=(?!=)', 'g'), /(?<![\w$.])_AS\(\)\.abs(?:\.length)?\s*=(?!=)/g,
+      new RegExp('Object\\.assign\\(\\s*(?:window\\.)?(?:' + al + ')\\b', 'g')];
+    pats.forEach(function (p) {
+      while ((m = p.exec(src))) {
+        var f = enclosing(fns, m.index), ls = src.lastIndexOf('\n', m.index) + 1, le = src.indexOf('\n', m.index);
+        found.push({ file: file, fn: f ? f.name : '(최상위)', fnIdx: f ? f.idx : 0, idx: m.index, line: src.slice(ls, le < 0 ? src.length : le), src: src });
+      }
+    });
+    return found;
+  }
+  async function jsSources() {
+    var text = function (u) { return fetch(u).then(function (r) { return r.text(); }); }, paths = [];
+    performance.getEntriesByType('resource').forEach(function (e) {
+      var u = new URL(e.name);
+      if (u.origin === location.origin && /^\/js\/.+\.js$/.test(u.pathname) && paths.indexOf(u.pathname) < 0) paths.push(u.pathname);
+    });
+    var srcs = await Promise.all(paths.map(function (p) { return text(p).then(function (s) { return { file: p.slice(1), src: s }; }); }));
+    return { srcs: srcs, html: await text('index.html'), paths: paths };
+  }
+  test('정적 검사: AS 를 통째로 바꾸는 코드는 전부 등록돼 있고, 먼저 저장하거나 확인 · 한 건 삭제 · 추가만이라는 이유가 있다', async function () {
+    var all = await jsSources(), paths = all.paths;
+    ['/js/core.js', '/js/cloud.js', '/js/app.js'].forEach(function (p) { ok(paths.indexOf(p) >= 0, p + ' 를 불러온 기록이 없다(검사 범위가 비어 있다)'); });
+    ok(paths.filter(function (p) { return /^\/js\/features\//.test(p); }).length >= 10, 'features/ 파일을 충분히 못 읽음(검사 범위가 비어 있다): ' + paths.length);
+    var found = []; all.srcs.forEach(function (s) { found = found.concat(replacersIn(s.file, s.src)); });
+    var used = [], unknown = [];
+    found.forEach(function (f) {
+      var i = REPLACERS.findIndex(function (r, k) { return used.indexOf(k) < 0 && r.file === f.file && r.fn === f.fn && r.line.test(f.line); });
+      if (i < 0) { unknown.push(f.file + ' ' + f.fn + '(): ' + f.line.trim().slice(0, 90)); return; }
+      used.push(i);
+      if (REPLACERS[i].guard) ok(f.src.slice(f.fnIdx, f.idx).indexOf('_saveWorkBeforeReplace(') >= 0, f.fn + ' 이(가) AS 를 교체하는데 그 앞에서 _saveWorkBeforeReplace 를 부르지 않는다');
+    });
+    eq(unknown, [], '목록에 없는 AS 통째 교체 코드 — _saveWorkBeforeReplace 로 먼저 저장하거나, 확인 창 · 한 건 삭제 등 안전한 이유가 있으면 이 테스트의 REPLACERS 에 이유와 함께 등록하세요');
+    eq(REPLACERS.filter(function (r, k) { return used.indexOf(k) < 0; }).map(function (r) { return r.file + ' ' + r.fn; }), [], '목록에는 있는데 코드에서 못 찾은 항목(지워졌거나 바뀜 — 목록을 고치세요)');
+    eq(found.filter(function (f) { return /^index/.test(f.file); }).length, 0, 'index.html 안에서 AS 교체');
+    eq(/(?<![\w$.])(?:window\.)?AS\.abs\s*=(?!=)/.test(clean(all.html)), false, 'index.html(인라인 스크립트 · onclick)에서 AS.abs 를 대입');
+  });
+  test('정적 검사: 먼저 저장하지 않는 교체 함수(새 경기 · 복구 · 되돌리기)는 허용된 곳에서만 불린다', async function () {
+    var all = await jsSources(), core = clean(all.srcs.filter(function (s) { return s.file === 'js/core.js'; })[0].src), fns = fnsOf(core);
+    function callers(name, srcs) {   // JS 안에서 name( 을 직접 부르는 곳(선언 · 래퍼 대입 제외)의 [파일 함수] 목록
+      var out = [], re = new RegExp('(?<![\\w$.])' + name + '\\s*\\(', 'g'), m;
+      srcs.forEach(function (s) {
+        var src = clean(s.src), f = fnsOf(src);
+        while ((m = re.exec(src))) { if (/function\s+$/.test(src.slice(Math.max(0, m.index - 12), m.index))) continue; var e = enclosing(f, m.index); out.push(s.file + ' ' + (e ? e.name : '(최상위)')); }
+      });
+      return out;
+    }
+    eq(callers('startFromWizard', all.srcs), [], 'JS 에서 startFromWizard() 를 직접 부르는 곳(마법사 버튼 onclick 말고는 없어야 한다 — 확인 창을 거치지 않는다)');
+    var ogw = core.slice(core.indexOf('function openGameWizard('), core.indexOf('function openGameWizard(') + 600);
+    ok(/_unsavedCounts\(\)\.any\)\{openNewGameGuard\(\)/.test(ogw), 'openGameWizard 가 저장 안 한 기록이 있을 때 openNewGameGuard 확인 창을 띄우지 않는다');
+    eq(callers('archRecoverAutosave', all.srcs).sort(), ['js/core.js _openLastGame', 'js/core.js archRecoverFromBanner'], 'archRecoverAutosave() 를 부르는 곳(AS 가 빈 시작 때와 먼저 저장하는 배너 함수뿐이어야 한다)');
+    ok(/function _openLastGame\(\)\{\s*if\(AS\.abs\.length\|\|AS\.home_lineup\.length\|\|AS\.away_lineup\.length\)return;/.test(core), '_openLastGame 이 AS 가 비어 있을 때만 열도록 막지 않음');
+    ok(all.html.indexOf('archRecoverAutosave(') < 0 && all.html.indexOf('archRecoverFromBanner()') >= 0, '복구 배너 버튼이 archRecoverFromBanner 를 부르지 않음');
+    eq(callers('undoManager\\.undo', all.srcs), [], 'undoManager.undo() 를 부르는 곳(생기면 경기를 바꿀 때 undoManager.clear 로 스택을 비우는지 먼저 확인)');
+  });
 })();

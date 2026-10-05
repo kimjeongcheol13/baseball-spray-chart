@@ -7944,10 +7944,20 @@ var uiStates={
   },900);
 })();
 
+// 복구 배너의 "복구하기" 버튼. 배너는 시작할 때 AS 가 비어 있으면 뜨지만 사라지지 않아서, 그 사이 새로 기록한 게 있으면 복구가 그 위를 덮는다
+// → 먼저 저장하고(저장 못 하면 복구하지 않는다) 복구한다. archRecoverAutosave 는 AS 가 빈 시작 때(_openLastGame)나 여기서만 부른다
+// (래퍼 setup.js · _enhanceRecovery 가 복구 뒤 경기 정보 · GF 상태를 덧씌우므로 가드는 래퍼 바깥인 이 함수가 맡는다)
+function archRecoverFromBanner(){
+  var savedMine=_saveWorkBeforeReplace();
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 복구하지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
+  archRecoverAutosave();
+  if(savedMine)showToast('✓ 마지막 기록을 복구했습니다 · 방금 기록은 저장됨',false,8000);
+}
 function archRecoverAutosave(){
   var rec=storageManager.getRecovery();
   if(!rec||!rec.data)return;
   var d=rec.data;
+  AS.curGame=null;_autoKey=null;   // 자동저장 키가 이전 경기에 묶여 있었다면 풀어, 복구한 경기가 그 경기의 자동저장본을 덮지 않게(시작 때는 이미 비어 있다)
   AS.abs=d.abs||[];
   AS.home_lineup=d.home_lineup||[];
   AS.away_lineup=d.away_lineup||[];
@@ -7998,7 +8008,9 @@ function _archQuietSave(saveKey){
       }
     }
     // 저장 없으면 새로 생성
-    var key='sl_rec_'+Date.now();
+    // 키는 밀리초 시각 — 열기 전 저장과 복구 저장처럼 같은 밀리초에 두 번 불리면 같은 키라 뒤의 것이 앞의 것을 덮으므로, 이미 있으면 1씩 올린다
+    var kt=Date.now();while(localStorage.getItem('sl_rec_'+kt)!==null)kt++;
+    var key='sl_rec_'+kt;
     var data={key,hs:AS.hs,as:AS.as,th:th,ta:ta,
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
@@ -8073,6 +8085,10 @@ function recoverHiddenAutosave(key){
     if(!raw){showToast('데이터를 찾을 수 없습니다',false);return;}
     var parsed=JSON.parse(raw);
     var d=key==='sl_autosave'?(parsed.data||parsed):parsed;
+    // 복구가 작업 중인 경기를 덮기 전에 먼저 저장 — 저장 못 하면 복구하지 않는다(공유 경기 열기 · 저장 목록 열기와 같은 방식)
+    var savedMine=_saveWorkBeforeReplace();
+    if(savedMine===null){showToast('내 경기를 저장하지 못해서 복구하지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
+    AS.curGame=null;_autoKey=null;   // 자동저장 키를 이전 경기에서 풀어, 복구한 경기가 그 경기의 자동저장본을 덮지 않게
     AS.abs=d.abs||[];
     AS.home_lineup=d.home_lineup||[];
     AS.away_lineup=d.away_lineup||[];
@@ -8088,7 +8104,7 @@ function recoverHiddenAutosave(key){
     updateAll();
     storageManager.cancelPendingAutosave();
     _archQuietSave(d.saveKey);
-    showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)',false);
+    showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)'+(savedMine?' · 이전 경기는 저장됨':''),false,savedMine?8000:true);
   }catch(e){showToast('복구 실패: '+e.message,false);}
 }
 

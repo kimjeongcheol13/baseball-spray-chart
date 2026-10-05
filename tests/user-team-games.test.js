@@ -178,6 +178,55 @@
     eq(rows().length, 4, '행 수');
   });
 
+  // ── 실시간 UPDATE: 열린 목록의 같은 경기만, 수치(타석 수 · AVG)만 ──
+  function updateCb() {
+    var c = srv.channels.filter(function (x) { return x.filter && x.filter.table === 'user_games' && x.filter.event === 'UPDATE'; }).pop();
+    ok(c, 'user_games UPDATE 구독이 걸리지 않음');
+    return c.cb;
+  }
+  test('UPDATE 이벤트 → 목록의 같은 경기 행만 타석 수 · AVG 가 갱신된다(다른 행 · 이름 · 날짜 · 상대 · 순서는 그대로, 목록에 없는 경기 · 내 경기 · 잘못된 행은 무시)', async function () {
+    await login('owner', [
+      row('user-aaaa-1111', 2, { min: 10, ta: '상대A', abs: [ab('김타자', '안타', 'home')] }),
+      row('user-bbbb-2222', 3, { min: 30, ta: '상대B', abs: [ab('이타자', '삼진', 'home'), ab('이타자', '안타', 'home')] })
+    ], null, [{ user_id: 'user-aaaa-1111', display_name: '#7 김OO' }]);
+    await openList();
+    var before = rows();
+    ok(before[0].indexOf('팀원 2222') >= 0 && before[0].indexOf('2타석') >= 0 && before[0].indexOf('AVG .500') >= 0, '갱신 전 B: ' + before[0]);
+    ok(before[1].indexOf('#7 김OO') >= 0 && before[1].indexOf('1타석') >= 0 && before[1].indexOf('AVG 1.000') >= 0, '갱신 전 A: ' + before[1]);
+    var cb = updateCb(), upd = row('user-aaaa-1111', 2, { min: 99, ta: '바뀐상대', date: '2026. 10. 9.',
+      abs: [ab('김타자', '안타', 'home'), ab('김타자', '삼진', 'home'), ab('김타자', '안타', 'home'), ab('김타자', '땅볼 아웃', 'home')] });
+    cb({ new: upd }); await sleep(50);
+    var r = rows();
+    eq(r.length, 2, '행 수');
+    eq(r[0], before[0], 'B 행은 그대로');
+    ok(r[1].indexOf('4타석') >= 0 && r[1].indexOf('AVG .500') >= 0, 'A 행의 수치가 갱신됨: ' + r[1]);
+    ok(r[1].indexOf('#7 김OO') >= 0 && r[1].indexOf('상대A') >= 0 && r[1].indexOf('2026. 10. 3.') >= 0 && r[1].indexOf('바뀐상대') < 0 && r[1].indexOf('10. 9.') < 0, '이름 · 날짜 · 상대는 그대로: ' + r[1]);
+    // 무시되는 이벤트: 목록에 없는 경기 · 내 경기 · 검증에 실패한 행(경기 데이터가 아님)
+    cb({ new: row('user-zzzz-9999', 9, { min: 120, abs: [ab('새타자', '안타', 'home')] }) });
+    cb({ new: row(OWNER, 8, { min: 121 }) });
+    cb({ new: Object.assign(row('user-bbbb-2222', 3, { min: 122 }), { data: [] }) });
+    await sleep(50);
+    eq(rows(), r, '무시되어야 하는 UPDATE 로 목록이 바뀜');
+    eq(localStorage.getItem(upd.game_key), null, '팀원 경기가 localStorage 에 저장됨(기존 가드)');
+  });
+  test('UPDATE 이벤트 → INSERT 로 들어온 NEW 행도 수치가 갱신되고 NEW 표시는 유지된다', async function () {
+    await login('owner', [row('user-aaaa-1111', 2, { min: 10 })]);
+    await openList();
+    var first = row('user-zzzz-9999', 5, { min: 20, abs: [ab('새타자', '삼진', 'home')] });
+    insertCb().cb({ new: first }); await sleep(100);
+    ok(rows()[0].indexOf('NEW') >= 0 && rows()[0].indexOf('1타석') >= 0 && rows()[0].indexOf('AVG .000') >= 0, 'INSERT 직후: ' + rows()[0]);
+    updateCb()({ new: row('user-zzzz-9999', 5, { min: 21, abs: [ab('새타자', '삼진', 'home'), ab('새타자', '안타', 'home'), ab('새타자', '안타', 'home')] }) }); await sleep(50);
+    ok(rows()[0].indexOf('NEW') >= 0 && rows()[0].indexOf('3타석') >= 0 && rows()[0].indexOf('AVG .667') >= 0, 'UPDATE 뒤: ' + rows()[0]);
+    eq(rows().length, 2, '행 수');
+  });
+  test('UPDATE 이벤트: 팀원(비팀장)의 클라이언트는 팀장 화면 목록을 건드리지 않는다', async function () {
+    await login('member', [row('user-aaaa-1111', 2)]);
+    var calls = 0, orig = window._slTeamGameUpdate;
+    window._slTeamGameUpdate = function () { calls++; };
+    try { updateCb()({ new: row('user-aaaa-1111', 2, { min: 50 }) }); await sleep(50); } finally { window._slTeamGameUpdate = orig; }
+    eq(calls, 0, '팀원 쪽에서 목록 갱신이 불림');
+  });
+
   // ── 읽기 전용 보기 ──
   test('경기 열기 → 스프레이 차트와 기록이 보이고, localStorage 쓰기 0회 · 서버 요청 0건 · 앱의 현재 경기(AS)는 그대로', async function () {
     await login('owner', [row('user-aaaa-1111', 2, { ta: '상대A', abs: A_ABS })]);

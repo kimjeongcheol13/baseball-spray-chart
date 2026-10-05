@@ -50,7 +50,7 @@ const port = server.address().port;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
 // 가상 시간 예산(ms): 테스트의 sleep 이 이 안에 다 돌아야 한다. 넘으면 브라우저가 결과 게시 전에 멈추므로 아래에서 "예산 초과"로 실패시킨다(실제 시간은 ~15초)
 const BUDGET_MS = 600000;
-const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
+const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--window-size=800,600', `--user-data-dir=${profile}`,   // 창 크기 고정: 1024px 이상이면 "팀 경기"가 대시보드로 열려 목록 테스트가 환경에 따라 달라지는 걸 막는다
   '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', `--virtual-time-budget=${BUDGET_MS}`, '--enable-logging=stderr', '--v=0',
   ...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), '--dump-dom', `http://127.0.0.1:${port}/`];
 const child = spawn(findChrome(), args);

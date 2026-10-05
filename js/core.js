@@ -2713,9 +2713,14 @@ function importGames(input) {
 
 
 function restoreGame(key){
-  const d=JSON.parse(localStorage.getItem(key));if(!d)return;
+  if(!localStorage.getItem(key))return;
+  // 열기 전에 작업 중인 경기를 먼저 저장 — 저장 안 한 타구가 이 경기로 덮여 사라지지 않게(공유 경기 열기와 같은 방식). 저장 못 하면 열지 않는다
+  var savedMine=_saveWorkBeforeReplace();
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 경기를 열지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return false;}
+  const d=JSON.parse(localStorage.getItem(key));if(!d)return;   // 저장한 뒤에 읽는다 — 같은 경기를 다시 열 때 방금 저장한 내용이 열리도록
   _curSaveKey=key;   // 이 경기를 다시 저장하면 이 항목을 덮어씀
   AS.curGame=d.ts||key.replace('sl_',''); // Fix: 자동저장 key를 이 게임에 고정
+  _autoKey=null;   // 클라우드 자동 동기화가 쓰는 키(_autoKey)도 이 게임으로 — 안 풀면 이전 경기의 서버 자동저장본(sl_auto_<이전 경기>)을 이 경기가 덮어쓴다
   document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
   AS.hs=d.hs||0;AS.as=d.as||0;document.getElementById('scH').textContent=AS.hs;document.getElementById('scA').textContent=AS.as;
   AS.home_lineup=d.home_lineup || d.lineup || [];
@@ -2743,7 +2748,7 @@ function restoreGame(key){
   _updateSaveUI(false);
   updateAll();
   _gameSaved=true;_updateSaveUI(false);   // updateAll이 '저장 안 됨'으로 바꾸므로 되돌림 (불러온 직후엔 새 기록 없음)
-  showToast('경기 불러오기 완료',false);
+  showToast(savedMine?'경기 불러오기 완료 · 이전 경기는 저장됨':'경기 불러오기 완료',false,savedMine?8000:true);
 }
 
 
@@ -5040,9 +5045,10 @@ function _restorePitchersFromPayload(payloadPitchers){
     pitches:(p.pitches||[]).map(function(e){return{pt:e.pt,result:e.res,zone:e.zone,inn:e.inn};})
   };});
 }
-// 공유 경기로 덮어쓰기 전에, 작업 중인 경기(타구 1개 이상)를 내 저장 목록에 먼저 저장한다(기존 항목이면 그 항목에 덮어쓰고, 새 경기면 새 항목).
-// 돌려주는 값: 저장했으면 true · 저장할 게 없으면 false · 저장에 실패했으면 null(이때는 공유 경기를 열지 않는다)
-function _saveWorkBeforeShared(){
+// 다른 경기로 AS 를 덮어쓰기 전에(공유 경기 열기 · 저장 목록에서 경기 열기), 작업 중인 경기(타구 1개 이상)를 내 저장 목록에 먼저 저장한다
+// (기존 항목이면 그 항목에 덮어쓰고, 새 경기면 새 항목).
+// 돌려주는 값: 저장했으면 true · 저장할 게 없으면 false · 저장에 실패했으면 null(이때는 새 경기를 열지 않는다)
+function _saveWorkBeforeReplace(){
   if(!AS.abs||!AS.abs.length||_sharedViewActive())return false;   // 이미 열려 있는 공유 경기(보기만 한 상태)는 내 경기가 아니라 저장하지 않는다
   if(!_archQuietSave(_curSaveKey))return null;
   try{   // 평소 "경기 저장"과 같이 클라우드에도(로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함)
@@ -5055,7 +5061,7 @@ function _saveWorkBeforeShared(){
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
-  var savedMine=_saveWorkBeforeShared();
+  var savedMine=_saveWorkBeforeReplace();
   if(savedMine===null){showToast('내 경기를 저장하지 못해서 공유받은 경기를 열지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
   _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
   AS.curGame=null; _autoKey=null;   // 자동저장 키도 내 경기에 묶여 있던 걸 풀어, 내 경기의 자동저장본(sl_auto_*)을 건드리지 않는다
@@ -7581,7 +7587,8 @@ function renderGameHistory(){
   }).join('');
 }
 function loadTeamGame(key){
-  restoreGame(key);enterFocusMode();
+  if(restoreGame(key)===false)return;   // 내 경기를 저장하지 못해 열지 않았으면 이어서 화면을 바꾸지 않는다
+  enterFocusMode();
   swTab('rec',document.getElementById('tab-rec'));
   showToast('경기를 불러왔습니다 ✓',false);
 }
@@ -7961,6 +7968,9 @@ function _archQuietSave(saveKey){
         existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
+        var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
+        if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명
+        if(AS.info)existing.info=AS.info;   // 경기 정보(날짜·구장…) — 다른 경기를 열면 AS.info 가 바뀌므로 그 전에 담아 둔다
         existing.ts=Date.now();
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
@@ -7976,7 +7986,7 @@ function _archQuietSave(saveKey){
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
       d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
-      pitchers:AS.pitchers||[]};
+      pitchers:AS.pitchers||[],info:AS.info||null};
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));

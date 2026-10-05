@@ -162,4 +162,101 @@
     ok(r.saved.rows.some(function (x) { return x.game_key === keys[0] && JSON.stringify(x.data).indexOf(SHARED) >= 0; }), 'user_games 에 저장한 경기가 없음');
     ok(where(r.after, EDIT).some(function (x) { return /^ls:sl_auto_/.test(x); }), '저장한 뒤의 기록(' + EDIT + ')이 자동저장되지 않음 — ' + JSON.stringify(where(r.after, EDIT)));
   });
+
+  // ── 저장 목록에서 경기 열기(목록 카드 onclick="_lpClick(키)" → restoreGame) — 공유 링크와 같은 보호 ──
+  var KEY2 = 'sl_1779002911111', OTHER = '다른경기타자', INFO = { date: '2026-05-17', venue: '목동', side: 'away', innings: 7 };
+  function seedTwoGames() {          // 저장 목록에 경기 G(KEY) · H(KEY2)
+    localStorage.setItem(KEY, JSON.stringify({ th: '우리팀', ta: '상대팀', hs: 1, as: 0, abs: taps('저장된타자', 1), d: '2026. 5. 17.', ts: T0 }));
+    localStorage.setItem(KEY2, JSON.stringify({ th: '다른팀', ta: '상대2', hs: 2, as: 2, abs: taps(OTHER, 1), d: '2026. 5. 18.', ts: T0 + 1000 }));
+    localStorage.setItem('sl_saves', JSON.stringify([{ key: KEY, label: KEY, ts: T0 }, { key: KEY2, label: KEY2, ts: T0 + 1000 }]));
+    localStorage.setItem('sl_cloud_mod', '{}');
+  }
+  function openFromList(key) { window._lpFired = false; _lpClick(key); }   // 목록 카드를 누르는 것과 같다
+  function names() { return AS.abs.map(function (a) { return a.bname; }); }
+  // 시나리오: G 를 불러와 타구 2개를 더 기록했다(경기 저장 안 함) → 목록에서 다른 경기(H) 또는 같은 경기(G)를 연다
+  async function scenarioOpen(same) {
+    var restore = keepApp();
+    try {
+      await fresh(true); blankApp(); seedTwoGames();
+      restoreGame(KEY);
+      AS.abs = AS.abs.concat(taps(MINE, 2)); updateAll();
+      await sleep(10500);
+      var before = snap();
+      srv.log.length = 0;
+      openFromList(same ? KEY : KEY2); await sleep(700);
+      var toast = T.$('toastTxt').textContent, opened = names();
+      await sleep(10500);
+      return { before: before, after: snap(), toast: toast, opened: opened };
+    } finally { restore(); }
+  }
+  test('전제(목록에서 열기): 저장 안 한 타구가 복구 슬롯 · 자동저장 · 서버 자동 동기화본에 있다', async function () {
+    var r = await once('openOther', function () { return scenarioOpen(false); }), w = where(r.before, MINE);
+    ['ls:sl_autosave', 'ls:sl_auto_' + T0, 'server:sl_auto_' + T0].forEach(function (x) { ok(w.indexOf(x) >= 0, '시나리오 전제가 안 맞음: ' + x + ' 에 없음 — ' + JSON.stringify(w)); });
+    eq(savedWith(r.before, MINE), [], '아직 저장 목록에는 없어야 함');
+  });
+  test('목록에서 다른 경기를 열면 작업 중이던 타구가 내 저장 목록에 먼저 저장되고, 안내가 뜬다', async function () {
+    var r = await once('openOther', function () { return scenarioOpen(false); });
+    ok(savedWith(r.after, MINE).length > 0, '작업 중이던 타구(' + MINE + ')가 저장 목록에 없음 — 남은 곳: ' + JSON.stringify(where(r.after, MINE)) + ' (복구 슬롯 sl_autosave 는 열린 경기로 바뀜)');
+    ok(r.opened.indexOf(OTHER) >= 0, '다른 경기가 열리지 않음: ' + JSON.stringify(r.opened));
+    ok(/이전 경기는 저장됨/.test(r.toast), '안내 문구: ' + r.toast);
+  });
+  test('목록에서 다른 경기를 열어도 이전 경기의 서버 자동저장본(sl_auto_<이전 경기>)을 새 경기가 덮어쓰지 않는다', async function () {
+    var r = await once('openOther', function () { return scenarioOpen(false); });
+    var row = r.after.rows.filter(function (x) { return x.game_key === 'sl_auto_' + T0; })[0];
+    ok(row && JSON.stringify(row.data).indexOf(MINE) >= 0, '이전 경기의 서버 자동저장본이 새 경기 데이터로 바뀜: ' + (row ? JSON.stringify(row.data.abs.map(function (a) { return a.bname; })) : '행이 없음'));
+  });
+  test('목록에서 같은 경기를 다시 열어도 저장 안 한 타구는 사라지지 않는다', async function () {
+    var r = await once('openSame', function () { return scenarioOpen(true); });
+    ok(savedWith(r.after, MINE).length > 0, '저장 안 한 타구(' + MINE + ')가 어디에도 남지 않음 — 남은 곳: ' + JSON.stringify(where(r.after, MINE)));
+    ok(r.opened.indexOf(MINE) >= 0, '다시 연 경기에 방금 기록한 타구가 없음: ' + JSON.stringify(r.opened.filter(function (n, i, a) { return a.indexOf(n) === i; })));
+  });
+  test('작업 중인 경기가 없으면 목록에서 열어도 저장하지 않고 안내도 없다', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); blankApp(); seedTwoGames();
+      openFromList(KEY2); await sleep(300);
+      var list = JSON.parse(localStorage.getItem('sl_saves'));
+      eq(list.map(function (e) { return e.key; }), [KEY, KEY2], '저장 목록');
+      ok(!/이전 경기는 저장됨/.test(T.$('toastTxt').textContent), '저장한 게 없는데 안내가 뜸: ' + T.$('toastTxt').textContent);
+      ok(names().indexOf(OTHER) >= 0, '경기가 열리지 않음');
+    } finally { restore(); }
+  });
+  test('내 경기를 저장하지 못하면(저장 공간 부족) 목록에서 열지 않고 내 경기는 그대로다', async function () {
+    var restore = keepApp(), orig = Storage.prototype.setItem;
+    try {
+      await fresh(false); blankApp(); seedTwoGames();
+      AS.abs = taps(MINE, 2);
+      Storage.prototype.setItem = function (k) { if (k === 'sl_saves') throw new DOMException('quota', 'QuotaExceededError'); return orig.apply(this, arguments); };
+      openFromList(KEY2); await sleep(300);
+      Storage.prototype.setItem = orig;
+      eq(names(), [MINE, MINE], '내 경기의 타구');
+      ok(/열지 않았어요/.test(T.$('toastTxt').textContent), '안내 문구: ' + T.$('toastTxt').textContent);
+    } finally { Storage.prototype.setItem = orig; restore(); }
+  });
+  test('공유 경기를 보기만 하다가 목록에서 경기를 열어도 공유 경기가 내 저장 목록에 들어가지 않는다', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); blankApp(); seedTwoGames();
+      openShared(); await sleep(700);
+      openFromList(KEY2); await sleep(300);
+      eq(savedWith(snap(), SHARED), [], '공유 경기가 든 저장 항목');
+      ok(names().indexOf(OTHER) >= 0, '경기가 열리지 않음');
+    } finally { restore(); }
+  });
+  test('열기 전에 저장한 경기에 경기 정보(AS.info) · 바꾼 팀명이 들어 있다(기존 항목 · 새 항목 모두)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); blankApp(); seedTwoGames();
+      restoreGame(KEY);                                     // 기존 항목(KEY)에 이어서 기록
+      AS.info = INFO; T.$('tHome').value = '바뀐팀'; AS.abs = AS.abs.concat(taps(MINE, 1));
+      openFromList(KEY2); await sleep(300);
+      var g = JSON.parse(localStorage.getItem(KEY));
+      eq(g.info, INFO, '기존 항목의 경기 정보'); eq(g.th, '바뀐팀', '기존 항목의 홈팀 이름');
+      blankApp(); seedTwoGames();                           // 저장한 적 없는 새 경기
+      AS.info = INFO; AS.abs = taps(MINE, 1); T.$('tHome').value = '새경기팀';
+      openFromList(KEY2); await sleep(300);
+      var s = snap(), key = savedWith(s, MINE)[0];
+      ok(key, '새 경기가 저장 목록에 없음'); eq(JSON.parse(s.ls[key]).info, INFO, '새 항목의 경기 정보');
+    } finally { restore(); }
+  });
 })();

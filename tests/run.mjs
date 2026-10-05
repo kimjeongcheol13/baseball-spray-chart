@@ -48,14 +48,17 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
+// 가상 시간 예산(ms): 테스트의 sleep 이 이 안에 다 돌아야 한다. 넘으면 브라우저가 결과 게시 전에 멈추므로 아래에서 "예산 초과"로 실패시킨다(실제 시간은 ~15초)
+const BUDGET_MS = 600000;
 const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
-  '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', '--virtual-time-budget=300000', '--enable-logging=stderr', '--v=0',
+  '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', `--virtual-time-budget=${BUDGET_MS}`, '--enable-logging=stderr', '--v=0',
   ...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), '--dump-dom', `http://127.0.0.1:${port}/`];
 const child = spawn(findChrome(), args);
 let out = '', err = '';
 child.stdout.on('data', (d) => (out += d));
 child.stderr.on('data', (d) => (err += d));
-const killer = setTimeout(() => child.kill(), 120000);
+let killed = false;
+const killer = setTimeout(() => { killed = true; child.kill(); }, 120000);
 const code = await new Promise((r) => child.on('close', r));
 clearTimeout(killer);
 server.close();
@@ -63,7 +66,16 @@ try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
 
 const m = out.match(/data-b64="([^"]+)"/);
 if (!m) {
-  console.error('✘ 결과를 읽지 못했다(브라우저 종료 코드 ' + code + '). 콘솔 로그:');
+  // 결과가 없는데 브라우저가 스스로 정상 종료(코드 0)했고 진행 표시가 있으면 → 가상 시간 예산이 먼저 바닥난 것(fail-closed)
+  const tag = (out.match(/<pre id="t-progress"[^>]*>/) || [''])[0];
+  const attr = (k) => { const a = tag.match(new RegExp(' data-' + k + '="([^"]*)"')); return a ? a[1] : null; };
+  if (tag && code === 0 && !killed) {
+    const used = Math.round(Number(attr('vms')) / 1000), cur = decodeURIComponent(attr('cur') || '');
+    console.error(`✘ 가상 시간 예산 초과 (사용 ${used}s / 예산 ${BUDGET_MS / 1000}s) — 테스트 ${attr('done')}/${attr('total')}개 실행 후 중단${cur ? ', 중단 시점 테스트: ' + cur : ''}`);
+    console.error('  → run.mjs 의 BUDGET_MS 를 늘리거나 테스트의 sleep 을 줄이세요(한 테스트가 끝나지 않고 멈춘 경우엔 그 테스트를 확인)');
+    process.exit(1);
+  }
+  console.error('✘ 결과를 읽지 못했다(브라우저 종료 코드 ' + code + (killed ? ', 실제 시간 120초 초과로 강제 종료' : '') + '). 콘솔 로그:');
   console.error(err.split('\n').filter((l) => /CONSOLE/.test(l)).slice(-20).join('\n') || '(없음)');
   process.exit(1);
 }
@@ -74,5 +86,5 @@ for (const r of payload.results) {
   if (!r.ok) failed++;
   console.log((r.ok ? '✔ ' : '✘ ') + r.name + (r.ok ? '' : '\n    → ' + r.err));
 }
-console.log(`\n${payload.results.length - failed} 통과 / ${failed} 실패`);
+console.log(`\n${payload.results.length - failed} 통과 / ${failed} 실패  (가상 시간 ${Math.round(payload.vms / 1000)}s / 예산 ${BUDGET_MS / 1000}s)`);
 process.exit(failed ? 1 : 0);

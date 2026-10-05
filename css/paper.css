@@ -1029,6 +1029,19 @@ select.st-in { cursor: pointer; font-size: 14px; }
 .st-more-b:hover b { text-decoration: underline; }
 .st-more-b:hover .st-more-i { background: var(--mc, var(--ink)); color: var(--paper-2); }
 
+/* 이미지로 저장 시트: 선택지는 .st-more-b 그대로(높이 52px · 내보내기 열과 같은 파랑) */
+.img-sheet { width: min(360px, 94vw); padding: 18px 18px 14px; }
+.img-sheet-title { font: 400 18px/1 var(--f-display); }
+.img-sheet-sub { margin: 6px 0 8px; font: 700 12px var(--f-body); color: var(--ink-soft); }
+.img-sheet-list { --mc: var(--pen-blue); --mc-soft: rgba(44, 79, 138, .10); display: flex; flex-direction: column; }
+.img-sheet-list .st-more-b { width: 100%; }
+.img-sheet-close { display: block; width: 100%; min-height: 44px; margin-top: 10px; border: var(--card-bw) solid var(--rule); background: var(--paper-2); color: var(--ink); font: 700 14px var(--f-body); cursor: pointer; }
+.img-sheet-close:hover { background: var(--highlight-soft); }
+@media (max-width: 720px) {
+  #imgSaveSheet { align-items: flex-end; z-index: 410; }   /* 하단 탭(400)을 덮어 "닫기"까지 보이게 */
+  #imgSaveSheet .modal { width: 100%; border-width: 3px 0 0; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+}
+
 @media (min-width: 721px) and (max-width: 1199px) {
   .stx-grid { grid-template-columns: 320px minmax(0, 1fr); }
   .stx-r { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 240px; }

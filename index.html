@@ -1962,8 +1962,7 @@ var _kakaoSdkLoaded = false;
       <div class="set-title st-hd">내보내기 · 공유</div>
       <div class="set-row st-list">
         <button class="set-btn" onclick="shareGameLink()"><i>🔗</i><span>경기 공유 <small>QR · 링크</small></span></button>
-        <button class="set-btn" onclick="exportSprayPNG()"><i>🖼</i><span>스프레이차트 PNG <small>필드 이미지 저장</small></span></button>
-        <button class="set-btn" onclick="exportShareCard()"><i>🪪</i><span>성적 카드 이미지 <small>SNS 공유용</small></span></button>
+        <button class="set-btn" onclick="openImageSaveSheet()"><i>🖼</i><span>이미지로 저장 <small>스프레이차트 · 성적 카드</small></span></button>
         <button class="set-btn" onclick="exportCurrentGameToExcel()"><i>📥</i><span>엑셀 내보내기 <small>타석 기록 전체</small></span></button>
       </div>
     </div>
@@ -2079,6 +2078,16 @@ var _kakaoSdkLoaded = false;
   </div>
   <div class="slm-sec">
     <button type="button" class="slm-item" onclick="goLanding()">처음 화면으로 <small>기록은 그대로 유지</small></button>
+  </div>
+</div>
+
+<!-- ═══ 이미지로 저장 시트 (선택지는 js/features/setup.js 의 IMAGE_CHOICES) ═══ -->
+<div class="overlay" id="imgSaveSheet" onclick="if(event.target===this)closeImageSaveSheet()">
+  <div class="modal img-sheet" role="dialog" aria-modal="true" aria-labelledby="imgSheetTitle">
+    <div class="img-sheet-title" id="imgSheetTitle">이미지로 저장</div>
+    <div class="img-sheet-sub">저장할 이미지를 골라 주세요</div>
+    <div class="img-sheet-list" id="imgSheetList"></div>
+    <button type="button" class="img-sheet-close" onclick="closeImageSaveSheet()">닫기</button>
   </div>
 </div>
 

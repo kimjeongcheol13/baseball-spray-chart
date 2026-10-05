@@ -1,5 +1,6 @@
 // 메뉴 정리 검증 — 실제 index.html · js 를 가짜 서버에 붙여 돌린다(외부 요청 0건).
 //  · "팀 만들기"(그 밖의 기능 타일 · 경기설정 탭 버튼)는 이 기기 전용 로컬 팀(openTeamCreate)이 아니라 클라우드 팀(내 계정 → 팀)으로 간다
+//  · "스프레이차트 PNG" · "성적 카드 이미지"는 "이미지로 저장" 시트 하나로 — 선택지가 기존 exportSprayPNG / exportShareCard 를 1회씩 부른다(여기서는 가짜 함수로 바꿔 호출만 센다)
 // 파일 이름순으로 user-teams 뒤에 돈다. 각 테스트는 로그아웃부터 시작해 앞선 로그인·팀 상태와 열린 창을 지운다.
 (function () {
   var T = window.__T, srv = window.__srv, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep;
@@ -80,7 +81,56 @@
     ok(/이 기기/.test(b.textContent) && !/공유/.test(b.textContent), '버튼 이름이 "이 기기"가 아님/공유를 약속함: ' + b.textContent);
     ok(/이 기기/.test(document.querySelector('#teamCreateModal .tcm-title').textContent), '로컬 팀 만들기 창 제목');
   });
+  // ── [2] 이미지로 저장: 스프레이차트 PNG · 성적 카드 이미지 → 시트 하나 ──
+  test('이미지로 저장: 두 진입점 모두 시트가 열리고 선택지 2개, 고르면 기존 함수가 1회만 불린다', async function () {
+    var n, orig = { spray: window.exportSprayPNG, card: window.exportShareCard };
+    window.exportSprayPNG = function () { n.spray++; };
+    window.exportShareCard = function () { n.card++; };
+    try {
+      var sheet = T.$('imgSaveSheet');
+      ok(sheet && sheet.parentElement === document.body, '시트가 body 바로 아래에 없음(다른 탭에서 숨은 부모에 갇힌다)');
+      for (var w of ['tile', 'old']) {
+        for (var i = 0; i < 2; i++) {
+          n = { spray: 0, card: 0 };
+          entry(w, 'openImageSaveSheet').click(); await sleep(100);
+          ok(sheet.classList.contains('show'), w + ': 시트가 안 열림');
+          eq(n, { spray: 0, card: 0 }, w + ': 시트를 여는 것만으로 내보내기가 불림');
+          var btns = sheet.querySelectorAll('#imgSheetList button');
+          eq(btns.length, 2, w + ': 선택지 수');
+          eq(Array.prototype.map.call(btns, function (b) { return b.querySelector('b').textContent; }), ['스프레이차트', '성적 카드'], w + ': 선택지 이름');
+          Array.prototype.forEach.call(sheet.querySelectorAll('#imgSheetList button, .img-sheet-close'), function (b) {
+            var r = b.getBoundingClientRect();
+            ok(r.width >= 44 && r.height >= 44, w + ': 터치 영역 44px 미만 — ' + b.textContent + ' ' + Math.round(r.width) + '×' + Math.round(r.height));
+          });
+          btns[i].click(); await sleep(50);
+          eq(n, i === 0 ? { spray: 1, card: 0 } : { spray: 0, card: 1 }, w + ': 선택지 ' + i + ' 호출 횟수');
+          ok(!sheet.classList.contains('show'), w + ': 고른 뒤 시트가 안 닫힘');
+        }
+      }
+    } finally { window.exportSprayPNG = orig.spray; window.exportShareCard = orig.card; }
+  });
+  test('이미지로 저장: 바깥 눌러서 · 닫기 버튼으로 닫히고, 내보내기는 불리지 않는다', async function () {
+    var calls = 0, orig = { spray: window.exportSprayPNG, card: window.exportShareCard };
+    window.exportSprayPNG = window.exportShareCard = function () { calls++; };
+    try {
+      var sheet = T.$('imgSaveSheet');
+      entry('tile', 'openImageSaveSheet').click(); await sleep(50);
+      ok(sheet.classList.contains('show'), '시트가 안 열림');
+      sheet.click(); await sleep(50);                                 // 시트 바깥(overlay 자체)을 누른다
+      ok(!sheet.classList.contains('show'), '바깥을 눌러도 안 닫힘');
+      entry('tile', 'openImageSaveSheet').click(); await sleep(50);
+      sheet.querySelector('.img-sheet-close').click(); await sleep(50);
+      ok(!sheet.classList.contains('show'), '닫기 버튼으로 안 닫힘');
+      eq(calls, 0, '내보내기 호출');
+    } finally { window.exportSprayPNG = orig.spray; window.exportShareCard = orig.card; }
+  });
+  test('이미지 메뉴 문구: 두 진입점에는 "이미지로 저장" 하나만 있고 PNG · 성적 카드 버튼은 따로 없다', async function () {
+    var tile = entry('tile', 'openImageSaveSheet');
+    eq(tile.querySelector('b').textContent, '이미지로 저장', '타일 이름');
+    eq(tile.querySelector('small').textContent, '스프레이차트 · 성적 카드', '타일 설명');
+    eq(document.querySelectorAll('#stMore [onclick*="exportSprayPNG"], #stMore [onclick*="exportShareCard"], #settingsView [onclick*="exportSprayPNG"], #settingsView [onclick*="exportShareCard"]').length, 0, '내보내기 함수를 바로 부르는 버튼');
+  });
   test('id 중복 0: 이번에 추가한 요소의 id 는 문서 전체에서 유일하다', async function () {
-    ['loginTeamHint'].forEach(function (id) { eq(document.querySelectorAll('[id="' + id + '"]').length, 1, 'id 중복: ' + id); });
+    ['loginTeamHint', 'imgSaveSheet', 'imgSheetTitle', 'imgSheetList'].forEach(function (id) { eq(document.querySelectorAll('[id="' + id + '"]').length, 1, 'id 중복: ' + id); });
   });
 })();

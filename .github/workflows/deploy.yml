@@ -29,6 +29,15 @@ jobs:
       - name: Pre-deploy checks (JS syntax, HTML, asset refs, ?v= warning)
         run: python3 .github/scripts/predeploy_check.py "${{ github.event.before }}"
 
+      # 브라우저 테스트(tests/run.mjs): 하나라도 실패하면 이 잡이 실패하고, deploy 잡은 실행되지 않는다
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Browser tests (tests/run.mjs)
+        run: node tests/run.mjs
+
   deploy:
     needs: check
     runs-on: ubuntu-latest

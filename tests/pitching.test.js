@@ -38,7 +38,7 @@
     rec('볼', '파울', '볼', '볼', '볼');
     eq(p.pitches.length, 5, '투구 수');
     eq(ends(p), [null, null, null, null, '볼넷'], '타석 결과는 5구째에만');
-    eq(last(p).result, '볼', '볼넷을 만든 공의 결과는 볼');
+    eq([last(p).pr, last(p).result], ['볼', '볼넷'], '볼넷을 만든 공: 투구 결과 pr 은 볼, 옛 호환 result 는 볼넷');
     eq(new Set(p.pitches.map(function (x) { return x.pa; })).size, 1, '다섯 공이 한 타석(pa)');
     eq(PC().stateOf(p.pitches, AS.batter, false).mode, 'ended', '타석 상태');
     eq(PC().groupPA(p.pitches).length, 1, '묶인 타석 수');
@@ -47,7 +47,7 @@
     reset(); var p = pitcher(1, '투수'); batter('a', '가');
     rec('스트라이크', '파울', '볼', '볼', '스트라이크');
     eq(ends(p), [null, null, null, null, '삼진'], '타석 결과는 5구째에만');
-    eq(last(p).result, '스트라이크', '삼진을 만든 공의 결과는 스트라이크');
+    eq([last(p).pr, last(p).result], ['스트라이크', '삼진'], '삼진을 만든 공: 투구 결과 pr 은 스트라이크, 옛 호환 result 는 삼진');
   });
   test('스트라이크 → 스트라이크 → 파울 → 파울 → 볼 ⇒ 카운트 1-2, 타석 진행 중', function () {
     reset(); var p = pitcher(1, '투수'); batter('a', '가');
@@ -200,6 +200,92 @@
     eq(f3(c.avg), '.250', '피안타율 = 1/4');
     eq(c.outs, 3, '아웃: 희타 1 + 희비 1 + 라인드라이브 아웃 1 (사구 · 실책 · 야수선택은 0)');
   });
+
+
+  // ═══ 옛 클라이언트 호환: 종료 공의 result 는 옛 코드가 알아보는 값, 공의 정체는 pr, 읽을 때는 end 우선 ═══
+  // 옛 투수 탭(origin/main 04133f1 의 js/features/pitcher.js) 계산부를 그대로 옮겨 둔 것 — 배포된 옛 코드가 v2 경기를 열면 어떻게 읽는지 확인하는 용도. 고치지 않는다.
+  function legacyPitcherCalc(apps) {
+    var HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'], TB = { '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
+    var OUTS = { '삼진': 1, '아웃': 1, '병살': 2, '삼중살': 3 }, BALL = ['볼', '볼넷'];
+    var END = HIT.concat(['삼진', '아웃', '병살', '삼중살', '볼넷']);
+    function plateAppearances(pitches) {
+      var out = [], cur = null;
+      var open = function (batter) { cur = { batter: batter, pitches: [], b: 0, s: 0, reached3B: false, reached2S: false, result: null }; };
+      pitches.forEach(function (p) {
+        if (cur && p.batter && cur.batter && p.batter !== cur.batter) { out.push(cur); cur = null; }
+        if (!cur) open(p.batter || null);
+        cur.pitches.push(p);
+        if (END.indexOf(p.result) >= 0) { cur.result = p.result; if (cur.s >= 2) cur.reached2S = true; out.push(cur); cur = null; return; }
+        if (p.result === '볼') cur.b = Math.min(3, cur.b + 1);
+        else if (p.result === '스트라이크' || (p.result === '파울' && cur.s < 2)) cur.s = Math.min(2, cur.s + 1);
+        if (cur.b >= 3) cur.reached3B = true;
+        if (cur.s >= 2) cur.reached2S = true;
+      });
+      if (cur) out.push(cur);
+      return out;
+    }
+    var pitches = apps.reduce(function (a, x) { return a.concat(x.pitches); }, []);
+    var pas = apps.reduce(function (a, x) { return a.concat(plateAppearances(x.pitches)); }, []);
+    var done = pas.filter(function (x) { return x.result; });
+    var r = function (res) { return done.filter(function (x) { return x.result === res; }).length; };
+    var h = done.filter(function (x) { return HIT.indexOf(x.result) >= 0; }).length, k = r('삼진'), bb = r('볼넷');
+    var outs = done.reduce(function (s, x) { return s + (OUTS[x.result] || 0); }, 0), ab = done.length - bb;
+    return { n: pitches.length, pa: done.length, h: h, k: k, bb: bb, outs: outs, ab: ab, avg: ab ? h / ab : 0, kRate: done.length ? k / done.length : 0, bbRate: done.length ? bb / done.length : 0,
+      ppa: done.length ? done.reduce(function (s, x) { return s + x.pitches.length; }, 0) / done.length : 0,
+      sPct: pitches.length ? pitches.filter(function (p) { return BALL.indexOf(p.result) < 0; }).length / pitches.length : 0 };
+  }
+  var stored = function (p) { return JSON.parse(JSON.stringify(p.pitches)); };   // 저장 → 다시 읽기(JSON)를 거친 모양
+
+  test('옛 호환: 타석 결과마다 pr(공의 정체) · result(옛 호환) · end 가 정해진 대로 저장된다', function () {
+    var want = { '안타': ['타격됨', '안타'], '2루타': ['타격됨', '2루타'], '3루타': ['타격됨', '3루타'], '홈런': ['타격됨', '홈런'],
+      '땅볼 아웃': ['타격됨', '아웃'], '플라이 아웃': ['타격됨', '아웃'], '라인드라이브 아웃': ['타격됨', '아웃'], '병살': ['타격됨', '병살'], '삼중살': ['타격됨', '삼중살'],
+      '실책': ['타격됨', '아웃'], '야수선택': ['타격됨', '아웃'], '희타': ['타격됨', '아웃'], '희비': ['타격됨', '아웃'],
+      '볼넷': ['볼', '볼넷'], '사구': ['사구', '볼넷'], '삼진': ['스트라이크', '삼진'] };
+    PC().END_CHOICES.forEach(function (c) { ok(want[c[0]], '표에 없는 결과: ' + c[0]); });
+    Object.keys(want).forEach(function (end) {
+      reset(); var p = pitcher(1, '투수'); batter('a', '가'); recordPitch(end);
+      var x = p.pitches[0];
+      eq([x.v, x.pr, x.result, x.end], [2, want[end][0], want[end][1], end], end + ' → v · pr · result · end');
+    });
+    reset(); var q = pitcher(1, '투수'); batter('a', '가'); rec('볼', '스트라이크', '파울');
+    q.pitches.forEach(function (x) { eq([x.pr, x.v], [x.result, 2], '끝나지 않은 공은 result 와 pr 이 같다'); });
+  });
+  test('읽을 때는 end 가 우선이다 — result 는 옛 클라이언트용 보조값일 뿐', function () {
+    var x = { v: 2, pr: '타격됨', result: '안타', end: '플라이 아웃' };   // 일부러 어긋나게
+    eq([PC().endOf(x), PC().pitchInfo(x).hit, PC().pitchInfo(x).strike], ['플라이 아웃', false, true], 'end 가 result 보다 우선');
+    var y = { v: 2, pr: '스트라이크', result: '삼진', end: '볼넷' };
+    eq([PC().endOf(y), PC().pitchInfo(y).k, PC().pitchInfo(y).bb], ['볼넷', false, true], 'end=볼넷 이면 result=삼진이어도 삼진이 아니다');
+    eq(PC().kindOf({ v: 2, pr: '스트라이크', result: '안타', end: '안타' }), 'strike', '공의 정체는 pr (result 가 안타여도 스트라이크)');
+    eq(PC().endOf({ v: 2, pr: '볼', result: '볼넷' }), null, 'v2 에서 end 없이 result 만 종료값이면 타석을 끝낸 것으로 읽지 않는다');
+    eq(PC().endOf({ result: '삼진' }), '삼진', 'v1 은 옛 result 로 읽는다');
+  });
+  test('결과 시트로 타석을 끝내도 옛 호환 result 가 같이 써지고 pr 은 그대로다 · "모름"은 result 를 건드리지 않는다', function () {
+    reset(); lineup(); var p = pitcher(1, '투수'); selBatter('a'); rec('볼', '스트라이크', '파울');
+    selBatter('b'); $('pitchEndSheet').querySelector('[data-end="2루타"]').click();
+    var x = last(p); eq([x.pr, x.result, x.end], ['파울', '2루타', '2루타'], '파울이던 마지막 공: pr 유지 · result=2루타 · end=2루타');
+    eq(PC().pitchInfo(x).strike, true, '공의 정체(파울)는 그대로라서 스트라이크로 센다');
+    rec('볼', '볼'); selBatter('a'); $('pitchEndSheet').querySelector('[data-end="미상"]').click();
+    x = last(p); eq([x.pr, x.result, x.end], ['볼', '볼', '미상'], '모름: result 는 그대로');
+    reset(); lineup(); p = pitcher(1, '투수'); selBatter('a'); rec('볼', '볼');
+    selBatter('b'); $('pitchEndSheet').querySelector('[data-end="사구"]').click();
+    x = last(p); eq([x.pr, x.result, x.end], ['볼', '볼넷', '사구'], '사구: result 는 옛 코드가 아는 볼넷');
+  });
+  test('옛 투수 탭이 v2 경기를 열어도 피안타율 · 삼진% · 볼넷% · 타자당 투구가 실제와 맞는다 (단타 / 땅볼 아웃 / 볼넷 / 삼진 · 16구)', function () {
+    var p = fixture5(); var o = legacyPitcherCalc([{ pitches: stored(p) }]), c = calc(p);
+    eq([o.pa, o.ab, o.h, o.k, o.bb], [4, 3, 1, 1, 1], '옛 코드가 센 타석 · 타수 · 피안타 · 삼진 · 볼넷');
+    eq([f3(o.avg), pctTxt(o.kRate), pctTxt(o.bbRate), o.ppa.toFixed(1), pctTxt(o.sPct), o.outs], ['.333', '25%', '25%', '4.0', '50%', 2], '옛 화면 값 = 실제');
+    eq([f3(o.avg), pctTxt(o.kRate), pctTxt(o.bbRate), o.ppa.toFixed(1), pctTxt(o.sPct), o.outs], [f3(c.avg), pctTxt(c.kRate), pctTxt(c.bbRate), c.ppa.toFixed(1), pctTxt(c.sPct), c.outs], '새 계산과 같다');
+  });
+  test('옛 투수 탭: 옛 코드가 모르는 결과는 알려진 만큼만 틀린다 (사구=볼넷 · 실책 · 야수선택 · 희생 = 아웃) — 안타는 안타로 읽힌다', function () {
+    reset(); var p = pitcher(1, '투수');
+    ['사구', '희타', '희비', '실책', '야수선택', '라인드라이브 아웃', '2루타'].forEach(function (r, i) { batter('x' + i, '타자' + i); rec('스트라이크'); recordPitch(r); });
+    var o = legacyPitcherCalc([{ pitches: stored(p) }]), c = calc(p);
+    eq([o.pa, o.h, o.k], [7, 1, 0], '옛 화면: 타석 7 · 피안타 1(2루타) · 삼진 0 — 안타 판정은 맞다');
+    eq([o.bb, c.bb, c.hbp], [1, 0, 1], '사구는 옛 화면에서 볼넷으로 센다(실제는 사구 1) — 타수에서 빠지는 쪽이라 덜 틀린다');
+    eq([o.ab, c.ab, f3(o.avg), f3(c.avg)], [6, 4, '.167', '.250'], '타수: 옛 6(희타 · 희비 · 실책 · 야수선택은 아웃으로 읽혀 타수에 든다) · 실제 4 — 이 범위만 다르다');
+    eq([o.outs, c.outs], [5, 3], '아웃: 옛 5(희타 · 희비 · 실책 · 야수선택 · 라인드라이브) · 실제 3');
+  });
+
 
   // ═══ 케이스 6: 옛 데이터 ═══
   function legacy() {
@@ -366,7 +452,7 @@
     try { shareGameLink(); } finally { window.pushSharedLink = oldPush; }
     ok(payload && payload.pitchers, 'shareGameLink 가 payload 를 안 만듦');
     var back = _restorePitchersFromPayload(JSON.parse(JSON.stringify(payload.pitchers)));   // 링크는 JSON 으로 오간다
-    var keys = ['id', 'pt', 'result', 'zone', 'inning', 'batter', 'ts', 'zoneX', 'zoneY', 'v', 'pa', 'bid', 'end', 'nk'];
+    var keys = ['id', 'pt', 'result', 'pr', 'zone', 'inning', 'batter', 'ts', 'zoneX', 'zoneY', 'v', 'pa', 'bid', 'end', 'nk'];
     orig.forEach(function (op, i) {
       op.pitches.forEach(function (o, j) {
         var b = back[i].pitches[j];

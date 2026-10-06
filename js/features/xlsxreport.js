@@ -845,7 +845,7 @@ export function exportPitcherXlsx(P, S, calc) {
   plist.forEach((o, i) => {
     const { p } = o;
     const end = pitchInfo(p).end;   // 그 공으로 타석이 끝났을 때만 (낫아웃이면 표시)
-    rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', p.batter || '', p.pt || '', p.zone || '', p.result || '',
+    rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', p.batter || '', p.pt || '', p.zone || '', p.pr || p.result || '',
       end ? (END_LABEL[end] || end) + (p.nk ? '(낫아웃)' : '') : '',
       o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : ''],
     ['td', 'tdL', 'td', 'td', 'td', 'td', 'tdB', 'td', 'td', 'tdC', 'tdC']);

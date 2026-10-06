@@ -4,10 +4,12 @@
 // 투구 한 개 (AS.pitchers[].pitches[]) — 저장된 모양
 //   v1 (옛 기록, 필드 없음): { id, inning, zone, zoneX, zoneY, pt, result, batter, ts }
 //        result 에 타석 결과(안타·삼진·볼넷…)가 섞여 있다 → 읽을 때 LEGACY_END 로 해석한다. 저장값은 절대 고쳐 쓰지 않는다.
-//   v2 (새 입력):           위 필드 + { v: 2, pa, bid, end?, nk? }
-//        result = 투구 자체의 결과 (볼 · 스트라이크 · 파울 · 타격됨 · 사구)
+//   v2 (새 입력):           위 필드 + { v: 2, pa, bid, pr, end?, nk? }
+//        pr     = 투구 자체의 결과 — 이 공이 뭐였는지의 기준값 (볼 · 스트라이크 · 파울 · 타격됨 · 사구, P1 에서 헛스윙 · 루킹 추가)
+//        end    = 이 투구로 타석이 끝났을 때만. 값은 END_CHOICES 의 값 + '미상'(모름 — 지표에서는 미기록과 같다). 읽을 때는 end 가 있으면 항상 end 가 우선
+//        result = 옛 클라이언트용 보조값 (읽을 때는 pr · end 를 먼저 본다). 끝나지 않은 공은 pr 과 같고, 타석을 끝낸 공은 옛 코드가 알아보는 결과(legacyResult)로 쓴다
+//                 → 이미 배포된 옛 코드가 v2 경기를 열어도 삼진 · 볼넷 · 안타가 맞게 읽힌다 (옛 코드가 모르는 사구 · 실책 · 야수선택 · 희생은 각각 볼넷 · 아웃으로 읽힌다)
 //        pa     = 타석 ID (그 타석 첫 투구의 id) · bid = 타자 id
-//        end    = 이 투구로 타석이 끝났을 때만. 값은 END_CHOICES 의 값 + '미상'(모름 — 지표에서는 미기록과 같다)
 //        nk     = 1 이면 낫아웃 출루 (삼진은 삼진, 아웃은 아니다)
 // 타석(PA)은 저장하지 않고 읽을 때 묶는다: v2 는 pa 가 같은 것끼리, v1 은 같은 타자 이름으로 이어지고 결과가 나오면 끊긴다.
 
@@ -36,8 +38,19 @@ const LEGACY_END = {
   '삼진': '삼진', '아웃': '아웃', '병살': '병살', '삼중살': '삼중살', '볼넷': '볼넷', '사구': '사구',
   '땅볼 아웃': '땅볼 아웃', '플라이 아웃': '플라이 아웃', '희타': '희타', '희비': '희비',
 };
-// 끝내는 입력 → 그 투구 자체의 결과 (그 밖의 타석 결과는 인플레이 = '타격됨')
+// 끝내는 입력 → 그 투구 자체의 결과 pr (그 밖의 타석 결과는 인플레이 = '타격됨')
 const PITCH_OF_END = { '삼진': '스트라이크', '볼넷': '볼', '사구': '사구' };
+// 타석 결과 → 옛 클라이언트가 알아보는 result. 옛 투수 탭이 아는 값은 안타 · 2루타 · 3루타 · 홈런 · 삼진 · 볼넷 · 아웃 · 병살 · 삼중살 뿐이다.
+//   사구 → 볼넷 (옛 코드는 '사구'를 몰라서 타석이 안 끝난 스트라이크처럼 읽는다 — 볼넷으로 읽히는 쪽이 덜 틀린다: 타수에서 빠진다)
+//   실책 · 야수선택 · 희생번트 · 희생플라이 → 아웃 (옛 코드에 같은 뜻이 없다: 타수는 맞고 이닝이 조금 틀린다)
+const LEGACY_RESULT = {
+  '안타': '안타', '내야안타': '안타', '2루타': '2루타', '3루타': '3루타', '홈런': '홈런',
+  '볼넷': '볼넷', '사구': '볼넷', '삼진': '삼진',
+  '땅볼 아웃': '아웃', '플라이 아웃': '아웃', '라인드라이브 아웃': '아웃', '아웃': '아웃', '병살': '병살', '삼중살': '삼중살',
+  '실책': '아웃', '야수선택': '아웃', '희타': '아웃', '희비': '아웃',
+};
+// 타석 결과(end) → 옛 호환 result. 모르는 값 · '미상'(모름)이면 null — 그 공의 result 는 그대로 둔다 (옛 코드가 타석이 안 끝난 것으로 읽는 게 맞다)
+export const legacyResult = end => LEGACY_RESULT[end] || null;
 
 const sameId = (a, b) => a != null && b != null && String(a) === String(b);
 const sameBatter = (p, batter) => (sameId(p.bid, batter.id) || (p.bid == null && p.batter != null && p.batter === batter.name));
@@ -45,7 +58,7 @@ const sameBatter = (p, batter) => (sameId(p.bid, batter.id) || (p.bid == null &&
 // ── 투구 하나 읽기 ───────────────────────────────────────────
 // 'ball' | 'hbp' | 'strike' | 'foul' | 'inplay' | null(모르는 값)
 export function kindOf(p) {
-  const r = p && p.result;
+  const r = p && (p.pr || p.result);   // v2 는 pr(투구 자체의 결과), v1 은 result
   if (r === '볼' || r === '볼넷') return 'ball';
   if (r === '사구') return 'hbp';
   if (r === '스트라이크' || r === '헛스윙' || r === '루킹' || r === '삼진') return 'strike';
@@ -118,7 +131,7 @@ export function stateOf(pitches, batter, newPA) {
 // 투구 하나를 받아 저장할 필드를 정한다 (저장은 호출한 쪽).
 //   input = '볼' | '스트라이크' | '파울' | 타석 결과 값(END_CHOICES)
 //   ctx   = { batter: { id, name } | null, newPA: 같은 타자의 다음 타석임을 사용자가 확인했는지, id: 새 투구 id }
-// 돌려주는 값: { fields: { v, pa, bid, result, end? } } 또는 { blocked: 'ended' | 'unknown' }
+// 돌려주는 값: { fields: { v, pa, bid, pr, result, end? } } 또는 { blocked: 'ended' | 'unknown' }   (result = 옛 호환 값, 위 머리말 참고)
 //   · 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진으로 자동 종료. 끝난 타석에 같은 타자로 공을 더 넣는 것은 막는다 → 5볼 · 4스트라이크가 입력 단계에서 불가능하다.
 //   · 타자가 바뀌었는데 앞 타석이 안 끝나 있으면 새 타석으로 시작한다 (앞 타석은 미기록으로 남아 경고에 잡힌다 — 화면은 그 전에 결과를 요구한다)
 export function nextPitch(pitches, input, ctx) {
@@ -132,15 +145,15 @@ export function nextPitch(pitches, input, ctx) {
     const run = tailRun(pitches), last = run[run.length - 1];
     if (last && last.end != null && !ctx.newPA && batter && sameBatter(last, batter)) return { blocked: 'ended' };
   }
-  let result, end = null;
+  let pr, end = null;
   if (input === '볼' || input === '스트라이크' || input === '파울') {
-    result = input;
-    end = autoEnd(step(c, kindOf({ result })));
+    pr = input;
+    end = autoEnd(step(c, kindOf({ pr })));
   } else if (VALID_END.has(input) && input !== UNKNOWN) {
     end = input;
-    result = PITCH_OF_END[end] || '타격됨';
+    pr = PITCH_OF_END[end] || '타격됨';
   } else return { blocked: 'unknown' };
-  const fields = { v: 2, pa, bid, result };
+  const fields = { v: 2, pa, bid, pr, result: end ? legacyResult(end) : pr };
   if (end) fields.end = end;
   return { fields };
 }
@@ -234,5 +247,5 @@ export function warnLines(S) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, calcPitching, warnLines };
+  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, legacyResult, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, calcPitching, warnLines };
 }

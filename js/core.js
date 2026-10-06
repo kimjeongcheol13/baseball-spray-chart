@@ -5032,6 +5032,7 @@ function _pitchersToPayload(arr){
     pitches:(p.pitches||[]).map(function(e){
       var o={id:e.id,pt:e.pt,res:e.result,zone:e.zone,inn:e.inning!=null?e.inning:e.inn,b:e.batter,ts:e.ts,x:e.zoneX,y:e.zoneY};
       if(e.v)o.v=e.v;
+      if(e.pr!=null)o.pr=e.pr;
       if(e.pa!=null)o.pa=e.pa;
       if(e.bid!=null)o.bid=e.bid;
       if(e.end!=null)o.end=e.end;
@@ -5046,6 +5047,7 @@ function _restorePitchersFromPayload(payloadPitchers){
     pitches:(p.pitches||[]).map(function(e){
       var o={id:e.id,pt:e.pt,result:e.res,zone:e.zone,inning:e.inn,inn:e.inn,batter:e.b,ts:e.ts,zoneX:e.x,zoneY:e.y};
       if(e.v)o.v=e.v;
+      if(e.pr!=null)o.pr=e.pr;
       if(e.pa!=null)o.pa=e.pa;
       if(e.bid!=null)o.bid=e.bid;
       if(e.end!=null)o.end=e.end;
@@ -5409,7 +5411,7 @@ function selPitcherPt(el,pt){
 // 입력 규칙 · 볼카운트 · 타석 묶기 · 지표는 js/features/pitchcalc.js (window.PitchCalc) 하나가 맡는다. 여기서는 화면과 저장만 한다.
 var _lastPitchId=0;
 function _nextPitchId(){var t=Date.now();if(t<=_lastPitchId)t=_lastPitchId+1;_lastPitchId=t;return t;}   // 같은 ms 에 두 번 눌려도 id 가 겹치지 않게 (분석이 id 로 중복 기록을 걸러낸다)
-function _pitchResTxt(p){return p.end||p.result;}   // 표시용: 그 공으로 타석이 끝났으면 타석 결과(삼진·볼넷·안타…), 아니면 공의 결과
+function _pitchResTxt(p){return p.end||p.pr||p.result;}   // 표시용: 그 공으로 타석이 끝났으면 타석 결과(삼진·볼넷·안타…), 아니면 공의 결과
 function _pitchBatterCtx(){return AS.batter?{id:AS.batter.id,name:AS.batter.name}:null;}
 function _pitchChanged(){   // 투구가 늘거나 줄거나 바뀐 뒤 공통 갱신
   renderPitchLog();   // 안에서 카운트 줄도 다시 그린다
@@ -5469,7 +5471,7 @@ function undoPitch(){
   var j=AS.pitchLog.indexOf(e);if(j>=0)AS.pitchLog.splice(j,1);
   AS.pitchNewPA=false;
   _pitchChanged();
-  showToast('↩ 직전 투구를 취소했어요 ('+e.result+(e.end?' → '+e.end:'')+')',false,true);
+  showToast('↩ 직전 투구를 취소했어요 ('+(e.pr||e.result)+(e.end?' → '+e.end:'')+')',false,true);
 }
 // 삼진 ↔ 낫아웃 출루 (삼진은 그대로 세고, 아웃은 세지 않는다)
 function togglePitchNK(){
@@ -5548,7 +5550,9 @@ function _endOpenPitchPA(end){
   var P=AS.currentPitcher,PC=window.PitchCalc;
   if(!P||!PC)return;
   var open=PC.openPA(P.pitches);if(!open)return;
-  open.pitches[open.pitches.length-1].end=end;
+  var last=open.pitches[open.pitches.length-1];
+  last.end=end;
+  var lr=PC.legacyResult(end);if(lr)last.result=lr;   // 옛 클라이언트용 보조값 (pr 은 그대로). '미상'(모름)이면 result 도 그대로 — 옛 코드가 타석이 안 끝난 것으로 읽는 게 맞다
   _pitchChanged();
 }
 // 타석 결과 버튼 — 목록은 pitchcalc.js END_CHOICES 하나 (패널 · 시트 공통)
@@ -5595,14 +5599,14 @@ function renderPitchLog(){
   if(!log.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>';return;}
   var resColor={'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565'};
   el.innerHTML=log.map(function(p){
-    var col=resColor[p.result]||'#94a3b8';
+    var col=resColor[p.pr||p.result]||'#94a3b8';
     var ptE=_escHtml(JSON.stringify(p.pt||''));
     var zoneE=_escHtml(JSON.stringify(p.zone||''));
     var zx=p.zoneX!=null?_numArg(p.zoneX):'null';
     var zy=p.zoneY!=null?_numArg(p.zoneY):'null';
     return '<div class="pitch-entry" style="cursor:pointer" onclick="loadPitchEntry('+ptE+','+zoneE+','+zx+','+zy+')" title="클릭하면 입력값 복원">'
       +'<div class="pe-result" style="background:'+col+'"></div>'
-      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+_escHtml(p.inning)+'</span> ':'')+_escHtml(p.pt||'—')+(p.zone?' · '+_escHtml(p.zone):'')+' → <strong style="color:'+col+'">'+_escHtml(p.result)+'</strong>'+(p.end?' <strong>· '+_escHtml((window.PitchCalc&&PitchCalc.END_LABEL[p.end])||p.end)+(p.nk?'(낫아웃)':'')+'</strong>':'')+'</span>'
+      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+_escHtml(p.inning)+'</span> ':'')+_escHtml(p.pt||'—')+(p.zone?' · '+_escHtml(p.zone):'')+' → <strong style="color:'+col+'">'+_escHtml(p.pr||p.result)+'</strong>'+(p.end?' <strong>· '+_escHtml((window.PitchCalc&&PitchCalc.END_LABEL[p.end])||p.end)+(p.nk?'(낫아웃)':'')+'</strong>':'')+'</span>'
       +'<span style="font-size:9px;color:var(--text3)">'+_escHtml(p.ts)+'</span>'
       +'</div>';
   }).join('');

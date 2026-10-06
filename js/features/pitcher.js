@@ -237,8 +237,8 @@ function _cls(p) {
 }
 // 투구 결과 글자: 공 자체의 결과 + (그 공으로 타석이 끝났으면) 타석 결과
 function _resTxt(p) {
-  const e = pitchInfo(p).end;
-  return e && e !== p.result ? `${p.result} → ${END_LABEL[e] || e}` : p.result;
+  const e = pitchInfo(p).end, r = p.pr || p.result;
+  return e && e !== r ? `${r} → ${END_LABEL[e] || e}` : r;
 }
 
 function _zoneCard(S) {

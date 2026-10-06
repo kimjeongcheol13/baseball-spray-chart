@@ -1915,6 +1915,7 @@ nav i {
   .mobile-pitch-qbtn small{font-size:10px;font-weight:500;opacity:.75}
   .mobile-pitch-qbtn-strike{background:rgba(245,101,101,.2);color:#f56565;border:1px solid rgba(245,101,101,.4)}
   .mobile-pitch-qbtn-ball{background:rgba(75,140,245,.2);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)}
+  .mobile-pitch-qbtn-foul{background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
   .mobile-pitch-qbtn-result{background:rgba(45,212,160,.15);color:#2dd4a0;border:1px solid rgba(45,212,160,.4)}
 
   /* 타격결과 확장 패널 */

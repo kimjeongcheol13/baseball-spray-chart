@@ -5,6 +5,7 @@
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
 import { buildData, calcStats } from './batdata.js?v=5';
+import { pitchInfo, isStrikePitch, warnLines, END_LABEL } from './pitchcalc.js?v=1';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -32,8 +33,6 @@ const _dark = hex => hex.match(/../g).map(h => Math.round(parseInt(h, 16) * 0.72
 const ZX1 = 0.22, ZX2 = 0.78, ZY1 = 0.15, ZY2 = 0.85;
 const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];
 const ZONES_13 = [...ZONES_9, ...ZONE_BALL];
-const PT_HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];   // 투구 결과 중 피안타 (투수 탭과 같은 기준)
-const PT_BALL = ['볼', '볼넷'];
 
 function _zoneBox(z) {
   const cw = (ZX2 - ZX1) / 3, ch = (ZY2 - ZY1) / 3;
@@ -92,6 +91,7 @@ const STYLE_DEFS = {
   sec: { font: { b: 1, sz: 12, color: C.navy } },
   note: { font: { sz: 9, color: C.ink2 } },
   bullet: { font: { sz: 10, color: '1F2937' } },
+  warn: { font: { b: 1, sz: 10, color: 'B42318' } },
   th: { font: { b: 1, sz: 10, color: 'FFFFFF' }, fill: C.navy, border: 1, align: 'center', wrap: 1 },
   thAux: { font: { b: 1, sz: 9, color: C.ink2 }, fill: C.aux, border: 1, align: 'center', wrap: 1 },
   td: { border: 1, align: 'center' },
@@ -839,14 +839,16 @@ export function exportPitcherXlsx(P, S, calc) {
   // ── 투구 기록 ──
   const rec = new Sheet('투구 기록');
   rec.print = 'data'; rec.freeze = 1;
-  const H = ['순번', '경기', '이닝', '타자', '구종', '코스', '결과', '위치 기록', '위치 X', '위치 Y'];
-  [6, 26, 6, 10, 9, 10, 9, 10, 8, 8].forEach((w, i) => rec.width(i, w));
+  const H = ['순번', '경기', '이닝', '타자', '구종', '코스', '결과', '타석 결과', '위치 기록', '위치 X', '위치 Y'];
+  [6, 26, 6, 10, 9, 10, 9, 12, 10, 8, 8].forEach((w, i) => rec.width(i, w));
   rec.line(0, 0, H, 'th');
   plist.forEach((o, i) => {
     const { p } = o;
+    const end = pitchInfo(p).end;   // 그 공으로 타석이 끝났을 때만 (낫아웃이면 표시)
     rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', p.batter || '', p.pt || '', p.zone || '', p.result || '',
+      end ? (END_LABEL[end] || end) + (p.nk ? '(낫아웃)' : '') : '',
       o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : ''],
-    ['td', 'tdL', 'td', 'td', 'td', 'td', 'tdB', 'td', 'tdC', 'tdC']);
+    ['td', 'tdL', 'td', 'td', 'td', 'td', 'tdB', 'td', 'td', 'tdC', 'tdC']);
   });
   let hc = H.length;
   const ser = pts.map((pt, k) => {
@@ -864,9 +866,9 @@ export function exportPitcherXlsx(P, S, calc) {
     const ps = plist.filter(o => ptOf(o) === pt).map(o => o.p);
     const zN = ps.filter(p => ZONES_13.includes(p.zone)).length;
     return {
-      pt, n: ps.length, share: ps.length / S.n, sPct: ps.filter(p => !PT_BALL.includes(p.result)).length / ps.length,
-      zPct: zN ? ps.filter(p => ZONES_9.includes(p.zone)).length / zN : '', h: ps.filter(p => PT_HIT.includes(p.result)).length,
-      k: ps.filter(p => p.result === '삼진').length,
+      pt, n: ps.length, share: ps.length / S.n, sPct: ps.filter(isStrikePitch).length / ps.length,
+      zPct: zN ? ps.filter(p => ZONES_9.includes(p.zone)).length / zN : '', h: ps.filter(p => pitchInfo(p).hit).length,
+      k: ps.filter(p => pitchInfo(p).k).length,
     };
   });
 
@@ -874,9 +876,13 @@ export function exportPitcherXlsx(P, S, calc) {
   const rep = new Sheet('리포트');
   for (let i = 0; i < 16; i++) rep.width(i, 10.5);
   _header(rep, `${P.name} 투구 분석 리포트`,
-    [P.num ? '#' + P.num : '', P.role ? ROLE[P.role] || P.role : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타자`, `생성 ${_today()}`].filter(Boolean).join('  ·  '), 11);
+    [P.num ? '#' + P.num : '', P.role ? ROLE[P.role] || P.role : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타석`, `생성 ${_today()}`].filter(Boolean).join('  ·  '), 11);
   _kpis(rep, 4, 0, [['투구 수', S.n, 'kpiI'], ['스트라이크%', S.sPct, 'kpiP'], ['삼진%', S.kRate, 'kpiP'], ['볼넷%', S.bbRate, 'kpiP'], ['피안타율', S.ab ? S.avg : '—', 'kpi3'], ['타자당 투구', S.ppa || '—', 'kpi1']]);
   let r = 7;
+  // 결과 미기록 · 카운트 이상 — 앱 투수 탭과 같은 문구 (pitchcalc.js warnLines)
+  const warn = warnLines(S);
+  warn.forEach((t, i) => rep.set(6 + i, 0, '⚠ ' + t, 'warn'));
+  if (warn.length) r = 7 + warn.length;
   rep.set(r, 0, '■ 구종 사용 비율', 'sec');
   const mixTop = r + 1;
   r = _table(rep, r + 1, 0, ['구종', '투구 수', '사용%', '스트라이크%', '존 안%', '피안타', '삼진'],
@@ -888,13 +894,14 @@ export function exportPitcherXlsx(P, S, calc) {
   r = Math.max(r, mixTop + Math.ceil(Math.max(170, 60 + mix.length * 34) / 22) + 1);
   rep.set(r, 0, '■ 등판 기록', 'sec');
   const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb]; });
-  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타자', '피안타', '삼진', '볼넷'], apps,
+  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타석', '피안타', '삼진', '볼넷'], apps,
     ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td']);
   P.apps.forEach((a, i) => rep.merge(r - apps.length + i, 0, r - apps.length + i, 2, a.label, 'tdL'));
   rep.merge(r - apps.length - 1, 0, r - apps.length - 1, 2, '경기', 'th');
   r++;
   const notes = [
-    '스트라이크% = 볼·볼넷을 뺀 모든 공 (파울·인플레이 포함) — SprayLab 투수 탭과 같은 기준.',
+    '스트라이크% = 볼·사구를 뺀 모든 공 (파울·인플레이 포함) — SprayLab 투수 탭과 같은 기준.',
+    '상대 타석 = 결과가 기록된 타석 · 타수 = 타석 − 볼넷 − 사구 − 희생번트 − 희생플라이 · 피안타율 = 피안타 ÷ 타수 · 볼넷%·삼진% = ÷ 상대 타석 · 타자당 투구 = 결과가 기록된 타석 기준.',
     '존 안% = 코스가 기록된 공 중 스트라이크존 9칸에 들어간 비율.',
     '「투구 기록」 시트에서 필터(▼)를 걸면 「구종별 투구위치」 차트도 같이 바뀌어요. 예: 결과 = 안타, 이닝 = 5.',
   ];
@@ -933,7 +940,7 @@ export function exportPitcherXlsx(P, S, calc) {
   const zc = {};
   ZONES_13.forEach(z => {
     const ps = plist.filter(o => o.p.zone === z).map(o => o.p);
-    zc[z] = { n: ps.length, h: ps.filter(p => PT_HIT.includes(p.result)).length, s: ps.filter(p => !PT_BALL.includes(p.result)).length };
+    zc[z] = { n: ps.length, h: ps.filter(p => pitchInfo(p).hit).length, s: ps.filter(isStrikePitch).length };
   });
   const zN = ZONES_13.reduce((s, z) => s + zc[z].n, 0);
   const zMax = Math.max(1, ...ZONES_13.map(z => zc[z].n));

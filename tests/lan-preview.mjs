@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// 폰 테스트용 미리보기 서버 — 이 브랜치를 같은 와이파이의 폰에서 열어 본다 (배포 없이). 사용법: node tests/lan-preview.mjs [포트=8080]
+// 폰 테스트용 미리보기 서버 — 이 브랜치를 폰에서 열어 본다 (배포 없이). 사용법: node tests/lan-preview.mjs [포트=8080] [--tailscale | --host=<IP>]
+//  · 공용 와이파이처럼 믿을 수 없는 네트워크에서는 --tailscale: Tailscale 카드(100.64.0.0/10)에만 열어서 같은 와이파이의 다른 기기는 접속할 수 없다 (방화벽 규칙도 필요 없다).
 //  · 저장소를 읽기 전용으로 서빙한다. local/ · .git/ · .github/ · 점(.)으로 시작하는 경로는 서빙하지 않는다 (실명 데이터가 네트워크에 노출되지 않게).
 //  · 폰에서 나가는 외부 요청을 막는다: index.html 의 supabase CDN 태그 자리에 tests/stub-supabase.js(가짜 supabase + 외부 fetch/XHR/beacon/WebSocket 차단)를 끼우고,
 //    Sentry 태그를 빼고, js/analytics.js(GA4)를 빈 함수로 바꾼다 → 서버(Supabase)·GA·Sentry 에 아무것도 올라가지 않는다. 로그인 버튼은 가짜 서버에만 닿는다.
@@ -13,7 +14,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = +(process.argv[2] || process.env.PORT || 8080);
+const PORT = +(process.argv.slice(2).find((a) => /^\d+$/.test(a)) || process.env.PORT || 8080);
+
+// 열어 주는 주소: 기본은 모든 네트워크 카드(0.0.0.0). 공용 와이파이에서는 Tailscale 카드(100.64.0.0/10)에만 열 수 있다 — --tailscale, 또는 --host=<IP>
+const nets = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal);
+const isTailscale = (ip) => { const [a, b] = ip.split('.').map(Number); return a === 100 && b >= 64 && b <= 127; };
+let HOST = '0.0.0.0';
+const hostArg = process.argv.find((a) => a.startsWith('--host='));
+if (hostArg) HOST = hostArg.slice(7);
+else if (process.argv.includes('--tailscale')) {
+  const ts = nets.find((i) => isTailscale(i.address));
+  if (!ts) { console.error('Tailscale 주소(100.64.0.0/10)를 찾지 못했다 — Tailscale 이 켜져 있는지 확인'); process.exit(1); }
+  HOST = ts.address;
+}
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const CDN_SUPABASE = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js[^"]*"><\/script>/;
 const SENTRY = /<script\s+src="https:\/\/js\.sentry-cdn\.com\/[^"]*"[^>]*><\/script>/;
@@ -44,9 +57,10 @@ const server = http.createServer((req, res) => {
   } catch (e) { res.writeHead(500); res.end(String(e)); }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  const ips = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address);
-  console.log(`SprayLab 미리보기 서버 (${ROOT})\n  이 PC:  http://localhost:${PORT}/`);
+server.listen(PORT, HOST, () => {
+  const ips = HOST === '0.0.0.0' ? nets.map((i) => i.address) : [HOST];
+  console.log(`SprayLab 미리보기 서버 (${ROOT})${HOST === '0.0.0.0' ? '' : ` — ${HOST} 에서만 받는다`}`);
+  if (HOST === '0.0.0.0') console.log(`  이 PC:  http://localhost:${PORT}/`);
   ips.forEach((ip) => console.log(`  폰:     http://${ip}:${PORT}/`));
   if (!ips.length) console.log('  (LAN 주소를 찾지 못했다 — 와이파이에 연결돼 있는지 확인)');
   console.log('끝내려면 Ctrl+C. 서버(Supabase) · GA · Sentry 로는 아무것도 나가지 않는다 — 막힌 시도가 있으면 [차단] 으로 표시된다.');

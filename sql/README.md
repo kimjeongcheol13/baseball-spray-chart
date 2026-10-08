@@ -52,7 +52,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 2. `02` 실행 (트랜잭션 — 가정이 틀리면 아무것도 반영하지 않고 중단)
 3. `03`(팀이 있을 때) 또는 `03b`(팀이 없을 때) 실행 → `42P17`/`재귀` 표시가 없어야 함
 4. 브라우저 확인: 로그인 후 **타구를 1개 기록하고 3초 대기**(또는 새로고침) → DevTools Network 에서 `user_games` 요청이 200, 콘솔에 `recursion` 없음
-   - 참고: 로그인 상태의 **"경기 저장" 버튼 자체는 `user_games`로 올리지 않는다** (`core.js`의 `cloudSave`(팀 코드/`games`)가 `cloud.js`의 것을 덮어씀). 자동 동기화(타구 기록 후 3초)와 시작 동기화만 `user_games`를 쓴다.
+   - 참고: 로그인 상태의 **"경기 저장"(저장 · 가져오기 · 타석 수정 저장)도 3초 뒤 `user_games`로 올라간다** — `core.js`의 `cloudSave`(팀 코드/`games`)가 `cloud.js`의 `cloudSaveUserGame`을 부른다. 예전에는 `cloud.js`의 `window.cloudSave`가 `core.js`의 같은 이름에 덮여 한 번도 불리지 않아, 타구 기록 후 3초 자동 동기화와 시작 동기화만 `user_games`를 썼다. 비로그인이면 아무것도 보내지 않는다.
 
 ## 새 마이그레이션을 추가할 때
 - 파일명 `NN_설명.sql`, `begin; … commit;`, 파일 맨 아래에 롤백 블록을 주석으로 남긴다.

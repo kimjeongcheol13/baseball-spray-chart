@@ -4,7 +4,7 @@
 // SheetJS 무료판은 차트·셀 서식을 쓰지 못해서, xlsx(OOXML)를 직접 만들고 무압축 ZIP으로 묶는다 (외부 라이브러리 없음).
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
-import { buildData, calcStats } from './batdata.js?v=5';
+import { buildData, calcStats } from './batdata.js?v=6';
 import { pitchInfo, isStrikePitch, warnLines, END_LABEL } from './pitchcalc.js?v=1';
 
 // ── 색 · 분류 ────────────────────────────────────────────────

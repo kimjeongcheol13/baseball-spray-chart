@@ -264,7 +264,7 @@ function _dataHtml() {
   const logged = !!(window._cloudIsLoggedIn && window._cloudIsLoggedIn());
   const sync = (($('saveInd') || {}).textContent || '').trim();
   let saves = 0;
-  try { saves = JSON.parse(localStorage.getItem('sl_saves') || '[]').length; } catch (e) {}
+  try { saves = window.SLGames ? window.SLGames.loadGames({ withCurrent: false }).length : JSON.parse(localStorage.getItem('sl_saves') || '[]').length; } catch (e) {}   // 같은 경기의 사본은 하나로
   return `<header class="sb-card-hd"><h2>데이터</h2></header>
     <div class="st-data">
       <p class="st-note">기록은 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우거나 기기를 바꾸면 사라지니 백업 파일을 내보내 두세요.</p>

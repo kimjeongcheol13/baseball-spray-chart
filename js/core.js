@@ -2422,14 +2422,25 @@ function saveGame(){
   }, 300);
 }
 
-function openLoad(){
+// 저장 경기 데이터 — 같은 경기의 사본은 하나로(마지막 저장본). 저장 데이터는 고치지 않고 읽을 때만 정리한다 (js/features/games.js)
+function _readSavedGames(){
+  if(window.SLGames)return window.SLGames.loadGames({withCurrent:false}).map(function(g){return Object.assign({},g.data,{abs:g.abs,pitchers:g.pitchers});});
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
+  return saves.map(function(s){try{return JSON.parse(localStorage.getItem(s.key)||'null');}catch(e){return null;}}).filter(Boolean);
+}
+
+function openLoad(){
+  // 같은 경기를 여러 번 저장한 사본은 한 줄로 (마지막 저장본이 열린다). 새로 저장한 것이 위로
+  var G=window.SLGames?window.SLGames.loadGames({withCurrent:false}):null;
+  if(G)G=G.slice().sort(function(a,b){return(b.ms-a.ms)||(a.key<b.key?1:-1);});
+  else G=JSON.parse(localStorage.getItem('sl_saves')||'[]').reverse().map(function(s){return{key:s.key,entry:s,copyCount:1};});
   var el=document.getElementById('saveList');
-  if(!saves.length){
+  if(!G.length){
     el.innerHTML='<div style="text-align:center;padding:24px 16px;color:var(--text3);font-size:12px">저장된 경기가 없습니다</div>';
   }else{
-    el.innerHTML=[...saves].reverse().map(function(s){
-      var k=_jsArg(s.key);
+    el.innerHTML=G.map(function(g){
+      var s=g.entry||{};
+      var k=_jsArg(g.key);
       return '<div class="load-card"'
         +' onclick="_lpClick('+k+')"'
         +' onmousedown="_lpStart(event,'+k+')"'
@@ -2439,8 +2450,8 @@ function openLoad(){
         +' ontouchend="_lpEnd(event)"'
         +' ontouchcancel="_lpEnd()">'
         +'<div class="lc-info">'
-          +'<div class="lc-title">'+_escHtml(s.label)+'</div>'
-          +'<div class="lc-meta">'+_escHtml(_fmtTs(s.ts))+(s.winP?' · 승 '+_escHtml(s.winP)+(s.loseP?' / 패 '+_escHtml(s.loseP):''):'')+'</div>'
+          +'<div class="lc-title">'+_escHtml(s.label||g.key)+'</div>'
+          +'<div class="lc-meta">'+_escHtml(_fmtTs(s.ts))+(s.winP?' · 승 '+_escHtml(s.winP)+(s.loseP?' / 패 '+_escHtml(s.loseP):''):'')+(g.copyCount>1?' · 저장본 '+g.copyCount+'개':'')+'</div>'
         +'</div>'
         +'<div class="lc-hint">꾹 ···</div>'
         +'</div>';
@@ -2509,13 +2520,22 @@ function _ctxDelete(){
   if(key)setTimeout(function(){deleteGame(key);},200);
 }
 
+// 경기 단위로 지운다: 목록의 한 줄 = 한 경기이므로 그 경기의 저장본을 전부 지운다
+// (마지막 저장본만 지우면 고치기 전의 옛 사본이 목록에 되살아난다)
 function deleteGame(key){
-  if(!confirm('이 저장 기록을 삭제할까요?'))return;
+  var G=window.SLGames?window.SLGames.loadGames({withCurrent:false}).filter(function(g){return g.copies.indexOf(key)>=0;})[0]:null;
+  var keys=G?G.copies:[key];
+  var s=(G&&G.entry)||{};
+  var msg=(keys.length>1?'이 경기의 저장본 '+keys.length+'개를 모두 지워요':'이 경기의 저장본 1개를 지워요')
+    +'\n\n'+(s.label||key)+'\n'+_fmtTs(s.ts)+' · 타석 '+(G?G.abs.length:0)+'개';
+  if(!confirm(msg))return;
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  saves=saves.filter(function(s){return s.key!==key;});
+  saves=saves.filter(function(x){return keys.indexOf(x.key)<0;});
   localStorage.setItem('sl_saves',JSON.stringify(saves));
-  localStorage.removeItem(key);
-  if(window.cloudDelete)cloudDelete(key);
+  keys.forEach(function(k){
+    localStorage.removeItem(k);
+    if(window.cloudDelete)cloudDelete(k);
+  });
   openLoad();
   showToast('삭제되었습니다',false);
 }
@@ -3802,9 +3822,8 @@ function renameGame(key) {
 // ─────────────────────────────────────────────────────────
 function exportAllGamesToExcel() {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
-  var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  if (!saves.length) { showToast('저장된 경기가 없습니다', false); return; }
-  var allGames = saves.map(function(s){ return JSON.parse(localStorage.getItem(s.key)); }).filter(Boolean);
+  var allGames = _readSavedGames();   // 같은 경기의 사본은 하나로(마지막 저장본)
+  if (!allGames.length) { showToast('저장된 경기가 없습니다', false); return; }
 
   var NOAB=['볼넷','사구','희타','희비'], HITS=['안타','내야안타','2루타','3루타','홈런'];
   var BASE={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
@@ -5132,46 +5151,25 @@ function openPlayerProfile(){
   if(!el)return;
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
   var players={};
-  // current game
-  AS.abs.forEach(function(a){
-    var key=a.bname;
-    if(!players[key])players[key]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,hbp:0,sf:0,tb:0,pa:0,k:0,hr:0};
-    var p=players[key];p.pa++;
-    if(!noab.includes(a.res))p.ab++;
-    if(hits.includes(a.res))p.h++;
-    if(a.res==='볼넷')p.bb++;
-    if(a.res==='사구')p.hbp++;
-    if(a.res==='희비')p.sf++;
-    if(a.res==='삼진')p.k++;
-    if(a.res==='홈런')p.hr++;
-    if(a.rbi)p.rbi+=a.rbi;
-    var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
-    p.tb+=(bm[a.res]||0);
+  // 같은 경기의 사본은 하나로, 현재 경기가 저장본과 같은 경기면 한 번만 센다 (js/features/games.js)
+  if(!window.SLGames){el.innerHTML='<div style="text-align:center;color:var(--text3);padding:24px">불러오는 중…</div>';openOverlay('playerProfileOverlay');return;}
+  var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+  window.SLGames.loadGames({withCurrent:true}).forEach(function(g){
+    g.abs.forEach(function(a){
+      var pk=a.bname;
+      if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,hbp:0,sf:0,tb:0,pa:0,k:0,hr:0};
+      var p=players[pk];p.pa++;
+      if(!noab.includes(a.res))p.ab++;
+      if(hits.includes(a.res))p.h++;
+      if(a.res==='볼넷')p.bb++;
+      if(a.res==='사구')p.hbp++;
+      if(a.res==='희비')p.sf++;
+      if(a.res==='삼진')p.k++;
+      if(a.res==='홈런')p.hr++;
+      if(a.rbi)p.rbi+=a.rbi;
+      p.tb+=(bm[a.res]||0);
+    });
   });
-  // saved games
-  for(var i=0;i<localStorage.length;i++){
-    var key2=localStorage.key(i);
-    if(!key2||!key2.startsWith('sl_')||key2.startsWith('sl_auto_'))continue;
-    try{
-      var d=JSON.parse(localStorage.getItem(key2));
-      if(!d||!d.abs)continue;
-      d.abs.forEach(function(a){
-        var pk=a.bname;
-        if(!players[pk])players[pk]={name:a.bname,num:a.bnum,ab:0,h:0,rbi:0,bb:0,hbp:0,sf:0,tb:0,pa:0,k:0,hr:0};
-        var p=players[pk];p.pa++;
-        if(!noab.includes(a.res))p.ab++;
-        if(hits.includes(a.res))p.h++;
-        if(a.res==='볼넷')p.bb++;
-        if(a.res==='사구')p.hbp++;
-        if(a.res==='희비')p.sf++;
-        if(a.res==='삼진')p.k++;
-        if(a.res==='홈런')p.hr++;
-        if(a.rbi)p.rbi+=a.rbi;
-        var bm={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
-        p.tb+=(bm[a.res]||0);
-      });
-    }catch(e){}
-  }
   var list=Object.values(players).filter(function(p){return p.ab>=1;});
   list.sort(function(a,b){return(b.ab?b.h/b.ab:0)-(a.ab?a.h/a.ab:0);});
   if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--text3);padding:24px">기록이 없습니다</div>';openOverlay('playerProfileOverlay');return;}
@@ -6278,10 +6276,7 @@ function _drawSeasonCard(){
 
   // 저장된 경기 데이터 집계
   var myTeam=(document.getElementById('tHome')?document.getElementById('tHome').value:'')||'';
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  var games=saves.map(function(s){
-    try{return JSON.parse(localStorage.getItem(s.key)||'null');}catch(e){return null;}
-  }).filter(Boolean);
+  var games=_readSavedGames();   // 같은 경기의 사본은 하나로
   // 팀명이 있으면 해당 팀 경기만, 없으면 전체
   var myGames=myTeam
     ? games.filter(function(g){return (g.th||'').indexOf(myTeam)!==-1||(g.ta||'').indexOf(myTeam)!==-1;})

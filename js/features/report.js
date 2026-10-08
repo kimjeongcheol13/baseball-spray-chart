@@ -82,7 +82,12 @@ const SAMPLE_CMT = '타구를 좌중간으로 강하게 보내는 장면이 늘�
 // 유형: launchType(타구 각도를 직접 입력한 타구)이 MIN_TYPE 개 이상이면 그것으로, 아니면 아웃 타구(땅볼 아웃 · 플라이 아웃)만으로 센다.
 //       안타 · 장타는 유형을 입력하지 않았으면 모르는 것으로 두고 땅볼/뜬공으로 짐작해 넣지 않는다.
 const MIN_TYPE = 5;   // 유형 비율을 보여 주려면 필요한 최소 타구 수
-const MIN_SUM = 8;    // 한 줄 요약을 말하려면 필요한 최소 타구 수
+// 한 줄 요약 문턱 — 근거는 ruleSummary 위 주석. 한 곳에서만 조정한다
+const MIN_SUM = 15;    // 요약을 말하려면 필요한 최소 타구 수 (내야안타 제외)
+const SUM_CELL_N = 5;  // 규칙 1: 방향×유형 한 칸의 최소 개수
+const SUM_CELL = 0.45; // 규칙 1: 그 한 칸이 유형을 아는 타구에서 차지하는 최소 비율
+const SUM_SIDE = 0.65; // 규칙 2: 한 방향이 차지하는 최소 비율
+const SUM_TYPE = 0.70; // 규칙 3: 한 유형이 차지하는 최소 비율
 const SIDE_TXT = ['좌측', '중앙', '우측'];
 const TYPE_TXT = { 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
 const _sideOf = a => (a.deg < 72 ? 0 : a.deg > 108 ? 2 : 1);
@@ -112,20 +117,30 @@ export function typeMix(abs) {
 }
 
 // 규칙 기반 한 줄 요약 (AI 호출 없음). 위에서부터 먼저 맞는 규칙 하나만 쓴다
-//  1) 방향 × 유형 한 칸이 유형을 아는 타구의 30% 이상(3개 이상)  → "우측 땅볼 비중 높음"
-//  2) 한 방향이 방향 있는 타구의 절반 이상                     → "우측 타구 비중 높음"
-//  3) 한 유형이 유형을 아는 타구의 55% 이상                    → "땅볼 비중 높음"
-//  4) 그 밖                                                  → 쏠림이 뚜렷하지 않음
+//  0) 타구가 MIN_SUM 개 미만                                   → 판단 보류
+//  1) 방향 × 유형 한 칸이 유형을 아는 타구의 SUM_CELL 이상(SUM_CELL_N 개 이상) → "우측 땅볼 비중 높음"
+//  2) 한 방향이 방향 있는 타구의 SUM_SIDE 이상                  → "우측 타구 비중 높음"
+//  3) 한 유형이 유형을 아는 타구의 SUM_TYPE 이상                → "땅볼 비중 높음"
+//  4) 그 밖                                                   → 쏠림이 뚜렷하지 않음
+// 내야안타는 이 요약의 계산에서만 뺀다: 앱이 내야안타에 방향을 모르는 채 기본값(중앙)을 넣어 "중앙 비중"을 부풀리기 때문이다.
+//   (dirSplit · typeMix · 좌·중·우 막대 · 당김/센터/밀어의 모집단은 그대로 — 내야안타를 센다.)
+// 문턱의 근거: 쏠림이 전혀 없는 무작위 기록(방향 1/3씩 · 땅볼:뜬공 50:50 · 타구의 30%는 안타라 유형 없음)을 4,000번씩 시뮬레이션했다.
+//   예전 값(8개 · 한 칸 30% · 방향 50% · 유형 55%)은 타구 10~30개에서 "비중 높음"이 76~86% 나왔다 — 우연을 경향처럼 보여 주는 것이다.
+//   지금 값은 같은 기록에서 타구 15개 약 3% · 20개 약 6% · 25개 약 10% · 30개 약 8% 이고, 14개 이하는 판단 보류다.
+//   안타가 많을수록 줄고(안타 50%면 20개에서 약 1%) 모든 타구의 유형을 알면 늘어난다(안타 0%면 20개에서 약 14%).
+//   쏠림이 진짜일 때 말하는 정도(같은 모델, 타구 20개 / 30개): 우측 60% 약 46% / 38% · 우측 70% 약 80% / 77% · 땅볼 75% 약 30% / 71%.
+//   이 값들은 위 가정(방향 1/3 · 50:50 · 안타 30%) 위의 계산이라 실데이터로 다시 확인해야 한다.
+//   재현: tests/report.test.js 의 시드 고정 시뮬레이션 (오탐 상한 · 우측 70% 쏠림을 놓치지 않는지).
 export function ruleSummary(abs) {
-  const d = (abs || []).filter(a => a && a.deg != null);
-  if (d.length < MIN_SUM) return { text: `타구 기록이 적어 경향 판단 보류 (${d.length}개)`, detail: '', rule: 0 };
+  const d = (abs || []).filter(a => a && a.deg != null && a.res !== '내야안타');
+  if (d.length < MIN_SUM) return { text: `타구 기록이 적어 경향 판단 보류 (${d.length}개)`, detail: '내야안타 제외', rule: 0 };
   const typed = d.map(a => [_sideOf(a), _typeOf(a)]).filter(x => x[1]);
   const top = obj => Object.keys(obj).sort((x, y) => obj[y] - obj[x] || (x < y ? -1 : 1))[0];
   let cell = {}, byType = {};
   typed.forEach(([sd, t]) => { cell[sd + '|' + t] = (cell[sd + '|' + t] || 0) + 1; byType[t] = (byType[t] || 0) + 1; });
   if (typed.length >= MIN_SUM) {
     const k = top(cell), n = cell[k];
-    if (n >= 3 && n / typed.length >= 0.3) {
+    if (n >= SUM_CELL_N && n / typed.length >= SUM_CELL) {
       const [sd, t] = k.split('|');
       return { text: `${SIDE_TXT[sd]} ${TYPE_TXT[t]} 비중 높음`, detail: `유형을 아는 타구 ${typed.length}개 중 ${n}개`, rule: 1 };
     }
@@ -133,12 +148,12 @@ export function ruleSummary(abs) {
   const sc = [0, 0, 0];
   d.forEach(a => sc[_sideOf(a)]++);
   const si = sc.indexOf(Math.max(...sc));
-  if (sc[si] / d.length >= 0.5) return { text: `${SIDE_TXT[si]} 타구 비중 높음`, detail: `방향 있는 타구 ${d.length}개 중 ${sc[si]}개`, rule: 2 };
+  if (sc[si] / d.length >= SUM_SIDE) return { text: `${SIDE_TXT[si]} 타구 비중 높음`, detail: `내야안타 제외 ${d.length}개 중 ${sc[si]}개`, rule: 2 };
   if (typed.length >= MIN_SUM) {
     const t = top(byType);
-    if (byType[t] / typed.length >= 0.55) return { text: `${TYPE_TXT[t]} 비중 높음`, detail: `유형을 아는 타구 ${typed.length}개 중 ${byType[t]}개`, rule: 3 };
+    if (byType[t] / typed.length >= SUM_TYPE) return { text: `${TYPE_TXT[t]} 비중 높음`, detail: `유형을 아는 타구 ${typed.length}개 중 ${byType[t]}개`, rule: 3 };
   }
-  return { text: '방향·유형 쏠림이 뚜렷하지 않음', detail: `방향 있는 타구 ${d.length}개 기준`, rule: 4 };
+  return { text: '방향·유형 쏠림이 뚜렷하지 않음', detail: `내야안타 제외 ${d.length}개 기준`, rule: 4 };
 }
 
 // ── 선수 묶기 ─────────────────────────────────────────────────

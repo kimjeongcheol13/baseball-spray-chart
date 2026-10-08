@@ -2534,8 +2534,9 @@ function deleteGame(key){
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   keys.forEach(function(k){
     localStorage.removeItem(k);
-    if(window.cloudDelete)cloudDelete(k);
+    if(window.cloudDelete)cloudDelete(k);   // 예전 팀 코드 테이블(games)
   });
+  if(window.cloudDeleteGames)cloudDeleteGames(keys);   // 로그인 계정 클라우드(user_games): 본인 행의 이 키들만. 안 지우면 다음 동기화 때 되살아난다
   openLoad();
   showToast('삭제되었습니다',false);
 }

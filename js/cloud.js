@@ -145,6 +145,7 @@
       var m = _modMap() || {};
       m[key] = ms || Date.now();
       localStorage.setItem(MOD_KEY, JSON.stringify(m));
+      if (_delList().indexOf(key) >= 0) _delDrop([key]);   // 지웠던 키가 로컬에 다시 쓰였다(저장 · 가져오기 · 복구) → 더는 '지운 경기'가 아니다
     } catch (e) { /* 저장 공간 부족 등 — 기록하지 못해도 경기 저장은 막지 않는다 */ }
   }
   function _localMod(gd, entry, key) {   // → { ms, reliable }  (reliable=false: 수정 시각을 알 수 없음)
@@ -280,6 +281,67 @@
     return row;
   }
 
+  /* ── 삭제를 서버에 반영 ─────────────────────────────
+     예전에는 경기를 지우면 로컬만 지워지고 user_games 행은 남아서(cloudDelete 는 예전 팀 코드 테이블 games 만 지운다),
+     다음 시작 동기화가 그 행을 "로컬에 없는 경기"로 보고 다시 받아 왔다 — 지운 경기가 되살아났다.
+     → 지운 키를 sl_cloud_del 에 먼저 적어 두고(오프라인 · 로그아웃이어도), 로그인돼 있으면 서버에서 **본인 행(user_id)의 그 키만** 지운다.
+       서버에서 지운 것이 확인돼야 목록에서 뺀다. 시작 동기화는 목록의 키를 내려받지 않는다.
+     · 지운 행 수를 확인한다: RLS 는 권한이 없으면 에러 없이 0행 삭제로 끝날 수 있다 → 서버에 있는 키 중 지워지지 않은 것이 있으면 실패로 알린다(목록에 남겨 다음 동기화 때 다시 시도).
+     · 한계: 서버 쪽 삭제 기록은 없다 — 다른 기기가 아직 그 경기를 갖고 있으면 그 기기의 시작 동기화가 다시 올린다. */
+  var DEL_KEY = 'sl_cloud_del';
+  function _delList() {
+    try { var a = JSON.parse(localStorage.getItem(DEL_KEY) || '[]'); return Array.isArray(a) ? a.filter(function (k) { return typeof k === 'string' && k; }) : []; } catch (e) { return []; }
+  }
+  function _delSave(a) { try { if (a.length) localStorage.setItem(DEL_KEY, JSON.stringify(a)); else localStorage.removeItem(DEL_KEY); } catch (e) { /* 저장 공간 부족 등 */ } }
+  function _delAdd(keys) { var a = _delList(); keys.forEach(function (k) { if (a.indexOf(k) < 0) a.push(k); }); _delSave(a); }
+  function _delDrop(keys) { _delSave(_delList().filter(function (k) { return keys.indexOf(k) < 0; })); }
+
+  var _flushing = Promise.resolve();
+  // → { ok, n(서버에서 지운 행 수), failed?(지워지지 않은 키), skipped? }  로그인 전이면 서버에 보낼 게 없다(목록은 남는다)
+  function _flushDeletes() {
+    _flushing = _flushing.catch(function () {}).then(function () {
+      var pending = _delList();
+      if (!pending.length) return { ok: true, n: 0 };
+      return _ensureAuth().then(function (user) {
+        if (!user) return { ok: true, n: 0, skipped: true };
+        var db = _client();
+        return db.from('user_games').select('game_key').eq('user_id', user.id).in('game_key', pending).then(function (r) {
+          if (r.error) throw r.error;
+          var onServer = (r.data || []).map(function (x) { return x.game_key; });
+          if (!onServer.length) { _delDrop(pending); return { ok: true, n: 0 }; }   // 서버에 없는 키(올라간 적 없는 사본)는 지울 것이 없다
+          return db.from('user_games').delete().eq('user_id', user.id).in('game_key', onServer).select('game_key').then(function (d) {
+            if (d.error) throw d.error;
+            var gone = (d.data || []).map(function (x) { return x.game_key; });
+            var failed = onServer.filter(function (k) { return gone.indexOf(k) < 0; });
+            _delDrop(pending.filter(function (k) { return failed.indexOf(k) < 0; }));
+            return failed.length ? { ok: false, n: gone.length, failed: failed } : { ok: true, n: gone.length };
+          });
+        });
+      });
+    });
+    return _flushing;
+  }
+  function _notifyDeleteFail() {
+    _setStatus('error');
+    setTimeout(function () { _setStatus('clear'); }, 4000);
+    if (typeof showToast === 'function') showToast('⚠️ 클라우드에서 경기를 지우지 못했어요 · 이 기기에서는 지워짐 · 다음 동기화 때 다시 시도해요', false);
+  }
+  /* core.js deleteGame → cloudDeleteGames(키 목록) */
+  window.cloudDeleteGames = function (keys) {
+    keys = (keys || []).filter(function (k) { return typeof k === 'string' && k; });
+    if (!keys.length) return Promise.resolve({ ok: true, n: 0 });
+    _delAdd(keys);
+    if (!_online) { _pendSync = true; return Promise.resolve({ ok: true, n: 0, queued: true }); }   // 연결되면 시작 동기화가 지운다
+    return _flushDeletes().then(function (res) {
+      if (res && res.ok === false) _notifyDeleteFail();
+      return res;
+    }, function (e) {
+      console.warn('[Cloud] delete:', e && e.message);
+      _notifyDeleteFail();
+      return { ok: false, n: 0, failed: keys, error: e };
+    });
+  };
+
   /* ── 게임 단건 upsert ───────────────────────────── */
   function _upsertGame(key, gameData) {
     return _ensureAuth().then(function (user) {
@@ -312,13 +374,14 @@
       var db    = _client();
       var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
 
-      var upErr = null, sentKeys = {}, entryOf = {};
+      var upErr = null, delFail = false, sentKeys = {}, entryOf = {};
       saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
 
       // 0. 서버의 현재 updated_at 만 먼저 읽는다. 못 읽으면(네트워크·권한·5xx) 업로드하지 않고 아래 catch 가 실패로 알린다.
       //    (예전에는 로컬 전부를 무조건 올려, 오래된 기기가 로그인하면 더 새로운 클라우드본을 덮어쓸 수 있었다)
       //    그 앞에서 팀을 먼저 확인한다(실패해도 이어서 진행) — 올리는 행에 현재 team_id 를 싣기 위해서다. 예전에는 끝에서 했다.
-      return _loadMyTeam().then(function () {
+      return _flushDeletes().then(function (fr) { delFail = !!(fr && fr.ok === false); }, function () { delFail = true; })   // 지운 경기를 서버에서도 지운다(실패해도 아래는 계속)
+      .then(_loadMyTeam).then(function () {
         return db.from('user_games').select('game_key,updated_at').eq('user_id', user.id);
       }).then(function (r0) {
         if (r0.error) throw r0.error;
@@ -364,12 +427,14 @@
         if (r.error) throw r.error;
         var existMap = {};
         saves.forEach(function (s) { if (s && typeof s.key === 'string') existMap[s.key] = true; });
-        var added = 0;
+        var added = 0, deleted = {};
+        _delList().forEach(function (k) { deleted[k] = true; });
         (r.data || []).forEach(function (row) {
           var k = row.game_key;
           var clean = _cleanRow(k, row.data);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
           if (!clean) return;
           if (sentKeys[k]) return;   // 방금 올린 경기
+          if (deleted[k]) return;    // 이 기기에서 지운 경기 — 서버에서 아직 못 지웠더라도 되살리지 않는다
           var loc = JSON.parse(localStorage.getItem(k) || 'null');
           var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
           var lm = _localMod(loc, entryOf[k], k);   // 로컬 수정 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
@@ -388,7 +453,7 @@
           localStorage.setItem('sl_saves', JSON.stringify(saves));
           if (typeof showToast === 'function') showToast('☁️ 클라우드에서 ' + added + '개 경기 복원됨', false);
         }
-        if (upErr) _notifySyncFail(); else _syncSaved(3000);
+        if (upErr || delFail) _notifySyncFail(); else _syncSaved(3000);
       });
     }).catch(function (e) {
       console.warn('[Cloud] startup sync error:', e);
@@ -475,6 +540,7 @@
     // localStorage 업데이트 — 내 행(다른 기기에서 올린 것)만. 팀원의 경기는 내 저장 목록에 없는 채로 쌓이기만 하므로 쓰지 않는다
     // (user_id 를 모르면 쓰지 않는다). 저장이 실패해도(용량 초과·깨진 값) 콜백은 throw 하지 않고 내 저장은 그대로 둔다.
     if (!_user || row.user_id !== _user.id) return;
+    if (_delList().indexOf(row.game_key) >= 0) return;   // 이 기기에서 지운 경기는 되살리지 않는다
     try {
       var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
       var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;

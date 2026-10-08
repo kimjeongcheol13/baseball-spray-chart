@@ -144,7 +144,8 @@ body.sb .slm .slm-item[onclick^="openPlayerReport"] { --mi: url("data:image/svg+
 /* ── 인쇄 / PDF: 리포트 이미지 한 장만 ── */
 @media print {
   body.rp-printing > :not(#rpView) { display: none !important; }
-  body.rp-printing, html.rp-open body.rp-printing { overflow: visible !important; background: #fff !important; }
+  /* padding-top 0: 샘플 모드의 상단 배지 자리(body.sl-sample-on 의 48px)가 남아 있으면 이미지가 밀려 2쪽이 된다 */
+  body.rp-printing, html.rp-open body.rp-printing { overflow: visible !important; background: #fff !important; padding-top: 0 !important; }
   body.rp-printing #rpView { position: static; display: block; background: #fff; }
   body.rp-printing .rp-panel { display: block; max-width: none; height: auto; border: 0; background: #fff; }
   body.rp-printing .rp-hd, body.rp-printing .rp-act, body.rp-printing .rp-sample-note,

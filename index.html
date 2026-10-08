@@ -6,6 +6,7 @@
   crossorigin="anonymous"
 ></script>
 <script src="js/analytics.js"></script>
+<script src="js/sample.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
@@ -79,6 +80,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/settings.css?v=2">
 <link rel="stylesheet" href="css/paper.css?v=6">
 <link rel="stylesheet" href="css/report.css?v=1">
+<link rel="stylesheet" href="css/sample.css?v=1">
 <style>
 /* ── Network status badge ── */
 .net-badge{position:fixed;top:12px;right:12px;z-index:600;display:none;align-items:center;gap:5px;padding:5px 11px 5px 8px;border-radius:999px;font-size:11px;font-weight:700;font-family:inherit;letter-spacing:.2px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
@@ -266,6 +268,7 @@ var _kakaoSdkLoaded = false;
         <button type="button" class="lp2-cta" onclick="showApp()">차트 열기 →</button>
         <span style="font-family:'Nanum Pen Script',cursive;color:#2456D9;font-size:26px;line-height:1;transform:rotate(-1deg);display:inline-block">← 주소 하나면 됨. 앱스토어 안 감.</span>
         <button type="button" class="lp2-sample" onclick="window.openPlayerReport&&openPlayerReport({sample:true})">샘플 선수 리포트 보기</button>
+        <button type="button" class="lp2-sample" data-sl-sample-start hidden>샘플 데이터로 둘러보기</button>
       </div>
     </section>
 
@@ -1127,6 +1130,7 @@ var _kakaoSdkLoaded = false;
       <button class="sl-st-btn" data-st="local"    onclick="setStadium('local')"   ><span class="sl-st-emoji">🏘</span><span class="sl-st-name">지방</span></button>
     </div>
     <div class="field-wrap"><div class="canvas-wrap" id="cwrap" data-help-title="⚾ 스프레이 차트" data-help="공이 떨어진 위치를 탭해 <b>타구 방향을 기록</b>합니다.<br>탭한 자리 옆에 뜨는 팝업에서 <b>안타 · 장타 · 땅볼 · 플라이</b>를 고르세요.<br>팝업 바깥을 탭하면 취소됩니다."><canvas id="fldCanvas" role="application" aria-label="타구 입력 필드. 방향키로 위치 이동, Shift+방향키는 크게 이동, Enter 또는 Space로 입력, Esc로 취소"></canvas><canvas id="hitCanvas" aria-hidden="true"></canvas><canvas id="ovrCanvas" aria-hidden="true"></canvas><div id="tapPop" class="tap-pop" role="dialog" aria-label="타구 결과 선택" hidden><div class="tp-sub" id="tapPopSub"></div><div class="tp-row" id="tapPopMain"><button type="button" class="tp-btn tp-hit" data-res="안타">안타</button><button type="button" class="tp-btn tp-xbh" data-act="xbh">장타</button><button type="button" class="tp-btn tp-out" data-res="땅볼 아웃">땅볼</button><button type="button" class="tp-btn tp-out" data-res="플라이 아웃">플라이</button></div><div class="tp-row" id="tapPopXbh" hidden><button type="button" class="tp-btn tp-2b" data-res="2루타">2B</button><button type="button" class="tp-btn tp-3b" data-res="3루타">3B</button><button type="button" class="tp-btn tp-hr" data-res="홈런">HR</button></div></div><div id="fieldTapHint" class="field-tap-hint hidden"><div class="fth-ring"></div><div class="fth-txt" id="fieldTapHintTxt"></div></div></div></div>
+    <button type="button" class="sl-sample-start" data-sl-sample-start hidden>샘플 데이터로 둘러보기</button>
     <div class="live-stat-line" id="liveStatLine" aria-live="polite"></div>
     <div class="field-hint" id="fieldHint">필드 탭→위치 기록 · 아래 버튼→즉시 기록 · 스와이프→방향으로 결과 선택</div>
     <div class="spray-legend"><span><i style="background:#2dd4a0"></i>안타</span><span><i style="background:#f59e0b"></i>홈런</span><span><i style="background:#94a3b8"></i>아웃</span><span><i style="background:#ef4444"></i>삼진</span><span><i style="background:#4b8cf5"></i>볼넷</span></div>
@@ -2340,7 +2344,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=127"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=48"></script>
+<script type="module" src="js/app.js?v=49"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -1,0 +1,40 @@
+/* 샘플 데이터 모드 — 상단 배지 띠 · 시작 버튼 (js/sample.js). 색은 기존 브랜드 변수(--sl-*)를 쓴다 */
+
+/* 첫 진입 화면의 시작 버튼 (필드 아래) */
+.sl-sample-start {
+  display: block; box-sizing: border-box; min-height: 44px; margin: 8px auto 0; padding: 0 20px;
+  border: 0; border-radius: 2px; background: var(--sl-signal, #4b8cf5); color: #fff;
+  font: 700 15px var(--f-body, 'Noto Sans KR', sans-serif); cursor: pointer;
+}
+.sl-sample-start[hidden], [data-sl-sample-start][hidden] { display: none; }
+.sl-sample-start:focus-visible { outline: 3px solid var(--sl-amber, #f6c23e); outline-offset: 2px; }
+
+/* 샘플 모드 상단 띠: 모든 탭 위에 계속 보인다 */
+#slSampleBar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9000; box-sizing: border-box; height: 48px;
+  display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  background: var(--sl-amber, #f6c23e); color: #14192B; border-bottom: 2px solid #14192B;
+  font: 700 13px var(--f-body, 'Noto Sans KR', sans-serif);
+}
+.sl-sample-badge {
+  flex: none; padding: 3px 9px; background: #14192B; color: var(--sl-amber, #f6c23e);
+  font: 700 12px 'IBM Plex Mono', monospace; letter-spacing: .06em;
+}
+.sl-sample-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-sample-exit {
+  flex: none; min-height: 44px; margin: 2px 0; padding: 0 12px; box-sizing: border-box;
+  border: 2px solid #14192B; background: transparent; color: #14192B;
+  font: inherit; cursor: pointer;
+}
+.sl-sample-exit:hover { background: #14192B; color: var(--sl-amber, #f6c23e); }
+.sl-sample-exit:focus-visible { outline: 3px solid var(--sl-signal, #2456D9); outline-offset: 2px; }
+
+/* 띠 높이만큼 아래로 민다 (앱 화면은 100dvh 고정이라 같이 줄인다) */
+body.sl-sample-on { padding-top: 48px; box-sizing: border-box; }
+body.sl-sample-on #app-page { height: calc(100dvh - 48px); }
+
+@media (max-width: 720px) {
+  #slSampleBar { gap: 8px; padding: 0 8px; }
+  .sl-sample-msg { display: none; }
+  .sl-sample-exit { margin-left: auto; padding: 0 10px; font-size: 13px; }
+}

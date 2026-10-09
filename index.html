@@ -73,7 +73,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=7">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=3">
-<link rel="stylesheet" href="css/pitcher.css?v=5">
+<link rel="stylesheet" href="css/pitcher.css?v=7">
 <link rel="stylesheet" href="css/batter.css?v=3">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
@@ -1388,8 +1388,19 @@ var _kakaoSdkLoaded = false;
         <div class="stat-card">
           <div class="sc-title">투구 기록</div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:8px">현재 투수: <strong id="currentPitcherLabel" style="color:var(--accent)">미선택</strong></div>
+          <div class="pitch-dock" id="pitchDock">
+          <!-- [모바일] 현재 타자 고르기: 기록 탭으로 가지 않고 이 화면에서 (core.js renderPitchBatterPicker) -->
+          <div class="pbr" id="pitchBatterRow">
+            <select class="inp" id="pitchBatterSel" aria-label="현재 타자" onchange="pitchPickBatter(this.value)"></select>
+            <button type="button" class="btn" id="pitchNextBatterBtn" onclick="pitchNextBatter()">다음 타자 ▶</button>
+          </div>
           <!-- 볼카운트 · 타석 상태 · 되돌리기 (core.js renderPitchCount) -->
           <div class="pcnt" id="pitchCountBar" aria-live="polite"></div>
+
+          <!-- [모바일] 타격결과 확장 패널 (버튼 줄 바로 위에 열린다) -->
+          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
+            <div data-pend></div>
+          </div>
 
           <!-- [모바일] 퀵 입력 바 -->
           <div class="mobile-pitch-quick-bar">
@@ -1398,10 +1409,6 @@ var _kakaoSdkLoaded = false;
             <button class="mobile-pitch-qbtn mobile-pitch-qbtn-foul" onclick="recordPitch('파울')">파울<small>F</small></button>
             <button class="mobile-pitch-qbtn mobile-pitch-qbtn-result" id="mobile-pitch-result-toggle" onclick="var d=document.getElementById('mobile-pitch-result-panel');d.classList.toggle('open');document.getElementById('mobile-pitch-result-toggle').textContent=d.classList.contains('open')?'타격결과 ▲':'타격결과 ▼'">타격결과 ▼</button>
           </div>
-
-          <!-- [모바일] 타격결과 확장 패널 -->
-          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
-            <div data-pend></div>
           </div>
 
           <!-- [모바일] 구종·코스 토글 -->
@@ -2342,7 +2349,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=132"></script>
+<script defer src="js/core.js?v=133"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=52"></script>
 <script>

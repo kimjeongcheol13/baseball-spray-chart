@@ -237,3 +237,22 @@
 /* 결과 미기록 · 카운트 이상 경고 카드 (분석 모드) */
 .pc-warn p.an-warn { margin: 0; }
 .pc-warn p.an-warn + p.an-warn { margin-top: 6px; }
+
+/* ═══════════════════════════════════════════
+   [모바일] 투구 기록 — 타자 고르기 · 카운트 · 스트라이크/볼/파울을 한 덩어리로 하단 탭 바로 위에 붙인다
+   (스크롤해도 같이 보이고, 첫 공 뒤에 버튼이 밀려 내려가지 않는다. 데스크톱은 그대로: 타자 고르기 줄은 숨김)
+   ═══════════════════════════════════════════ */
+.pbr { display: none; }
+@media (max-width: 720px) {
+  /* 하단 탭 바로 위에 고정: 투수 등록 카드가 길어도 스크롤 없이 늘 보인다. 이 화면이 아닐 때는 조상이 숨겨져서 같이 안 보인다 */
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock {
+    position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h, 54px) + env(safe-area-inset-bottom, 0px)); z-index: 30;
+    background: inherit; padding: 8px 12px 4px; border-top: 1px solid var(--border2); box-shadow: 0 -6px 14px rgba(0,0,0,.18);
+  }
+  #anaSecPitcher.pc-input #pnl-pitcher { padding-bottom: 290px; }   /* 고정된 덩어리에 가려지지 않게 */
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr { display: flex; gap: 6px; margin-bottom: 8px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr select { flex: 1 1 auto; min-width: 0; min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr .btn { flex: 0 0 auto; min-width: 44px; min-height: 44px; white-space: nowrap; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .pcnt { min-height: 118px; box-sizing: border-box; margin-bottom: 8px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .mobile-pitch-result-panel { max-height: 34vh; overflow-y: auto; }
+}

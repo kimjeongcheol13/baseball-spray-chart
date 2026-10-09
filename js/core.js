@@ -818,6 +818,7 @@ function renamePlayer(id,e){
 
 function renderLP(){
   const targetLineup = getActiveLineup();
+  renderPitchBatterPicker();   // 투구 기록 화면의 타자 고르기도 같은 타순표를 본다
   const el=document.getElementById('lpList');
   document.getElementById('lpCount').textContent=targetLineup.length+'명';
   if(!targetLineup.length){
@@ -5567,9 +5568,34 @@ function togglePitchNK(){
 function pitchNextPA(){AS.pitchNewPA=true;renderPitchCount();}
 
 // 볼카운트 줄: 타자 · 볼/스트라이크 · 타석 상태 · 되돌리기 · 낫아웃 · 같은 타자 다음 타석
+// [모바일] 투구 기록 화면에서 타자를 고른다 (기록 탭의 타순표를 오가지 않게). 고르기 · 다음 타자는 타순표에서 누르는 것과 같은 selBatter 를 지난다
+// → 앞 타석에 결과가 없으면 결과 시트가 먼저 뜨고, '바꾸지 않음'이면 원래 타자로 되돌아온다
+function renderPitchBatterPicker(){
+  var sel=document.getElementById('pitchBatterSel');
+  if(!sel)return;
+  var lu=getActiveLineup()||[],cur=AS.batter?String(AS.batter.id):'';
+  sel.innerHTML='<option value="">'+(lu.length?'타자 선택':'타순표에 타자를 등록하세요')+'</option>'
+    +lu.map(function(p,i){return '<option value="'+_escHtml(String(p.id))+'">'+(i+1)+'. '+(p.num?'#'+_escHtml(String(p.num))+' ':'')+_escHtml(p.name)+'</option>';}).join('');
+  sel.value=cur;
+  var nb=document.getElementById('pitchNextBatterBtn');
+  if(nb)nb.disabled=!lu.length;
+}
+function pitchPickBatter(id){
+  if(id&&!(AS.batter&&String(AS.batter.id)===String(id)))selBatter(id);   // 같은 타자를 또 고르면 selBatter 가 선택을 풀어 버리므로 건드리지 않는다
+  renderPitchBatterPicker();
+}
+function pitchNextBatter(){
+  var lu=getActiveLineup()||[];
+  if(!lu.length)return;
+  var i=AS.batter?lu.findIndex(function(p){return String(p.id)===String(AS.batter.id);}):-1;
+  var nx=lu[(i+1)%lu.length];
+  if(nx&&!(AS.batter&&String(nx.id)===String(AS.batter.id)))selBatter(nx.id);
+  renderPitchBatterPicker();
+}
 function renderPitchCount(){
   var el=document.getElementById('pitchCountBar');
   if(!el)return;
+  renderPitchBatterPicker();
   var PC=window.PitchCalc,P=AS.currentPitcher;
   if(!PC||!P){el.style.display='none';el.innerHTML='';return;}
   var st=PC.stateOf(P.pitches,_pitchBatterCtx(),!!AS.pitchNewPA);

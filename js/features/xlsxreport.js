@@ -629,20 +629,27 @@ export function exportBatterXlsx(P) {
   pit.line(0, 0, PH, 'th');
   PW.forEach((w, i) => pit.width(i, w));
   const plist = [];
+  const abFlat = _abFlatMap();
   rows.forEach(({ a, game }, i) => {
     const ps = a.pitches && a.pitches.length ? a.pitches : (a.zone || a.pt ? [{ zone: a.zone, pt: a.pt, last: true }] : []);
+    const abP = ps.length ? _abPitcher(a, abFlat.get(a.id) || []).name : '';
     ps.forEach((p, j) => {
       const pos = _pitchXY(p.x, p.y, p.zone, (a.id || i) % 100000 + j * 7919);
-      plist.push({ p, a, game, ab: i + 1, pos, seq: plist.length + 1 });
+      plist.push({ p, a, game, ab: i + 1, pos, seq: plist.length + 1, last: j === ps.length - 1, abP });
     });
   });
+  // 2026-06-07 이전 기록은 공마다 카운트·투수가 없다 → 타석 마지막 공은 타석 카운트(a.count), 투수는 타석 단위 연결로 채운다
+  const cntOf = o => (o.p.balls != null ? `${o.p.balls}-${o.p.strikes}`
+    : o.last && o.a.count && o.a.count.b != null ? `${o.a.count.b}-${o.a.count.s ?? ''}` : '');
+  const pNameOf = o => o.p.pitcher || o.abP || '';
   plist.forEach((o, i) => {
     const { p, a } = o;
     pit.line(i + 1, 0, [
-      o.seq, o.game, o.ab, a.inn || '', p.pt || '', p.zone || '', p.balls != null ? `${p.balls}-${p.strikes}` : '',
-      p.pitcher || '', o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : '', a.res || '',
+      o.seq, o.game, o.ab, a.inn || '', p.pt || '', p.zone || '', cntOf(o),
+      pNameOf(o), o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : '', a.res || '',
     ], ['td', 'tdL', 'td', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC', 'td']);
   });
+  const pNoCnt = plist.filter(o => !cntOf(o)).length, pNoName = plist.filter(o => !pNameOf(o)).length;
   const pPts = [...new Set(plist.map(o => o.p.pt || '미기록'))].sort((x, y) => plist.filter(o => (o.p.pt || '미기록') === y).length - plist.filter(o => (o.p.pt || '미기록') === x).length);
   let pc = PH.length;
   const pitchSer = pPts.map((pt, k) => {
@@ -693,6 +700,7 @@ export function exportBatterXlsx(P) {
     '「타석 기록」 시트에서 필터(▼)를 걸면 「타구 차트」도 걸러진 타석만 보여줘요. 예: 구종 = 직구, 이닝 = 7회 이후.',
   ];
   if (st.pa < 30) notes.unshift(`표본이 적어요 (${st.pa}타석) — 수치는 참고용으로 봐 주세요.`);
+  if (pNoCnt || pNoName) notes.push(`「투구 기록」 B-S 빈 칸 ${pNoCnt}구 · 투수 빈 칸 ${pNoName}구 — 2026년 6월 7일 업데이트 전에 기록한 공은 공마다 카운트·투수가 저장되지 않았고, 투수 탭에서 투수를 고르지 않고 기록한 공도 투수가 비어요. 타석 마지막 공은 타석 카운트로, 투수는 같은 경기 투수 탭 기록으로 채울 수 있는 만큼 채웠어요.`);
   _bullets(rep, r, 0, notes);
   if (first && last && first !== last) rep.set(1, 0, [P.num !== '' && P.num != null ? '#' + P.num : '', bats, `${games}경기 ${st.pa}타석`, `${first} ~ ${last}`, `생성 ${_today()}`].filter(Boolean).join('  ·  '), 'sub');
 
@@ -847,6 +855,19 @@ function _abPitcher(a, flat) {
     if (d < bestD) { bestD = d; best = x; }
   });
   return best ? { name: best.name, pitch: best.p } : { name: '', pitch: null };
+}
+// 타석 id → 그 경기 투수 기록의 공 목록 (_abPitcher 의 flat) — 타자 엑셀 「투구 기록」 투수 칸용
+function _abFlatMap() {
+  const m = new Map();
+  buildData().games.forEach(g => {
+    const flat = [];
+    (g.pitchers || []).forEach(p => {
+      if (!p || !p.name) return;
+      (p.pitches || []).forEach(x => { if (x && isFinite(+x.id)) flat.push({ id: +x.id, name: p.name, batter: x.batter || '', p: x }); });
+    });
+    (g.abs || []).forEach(a => { if (a && a.id != null) m.set(a.id, flat); });
+  });
+  return m;
 }
 // P(투수 탭의 { name, apps }) 가 상대한 타석 중 타구 위치가 있는 것: [{ a, game, pitch }]
 // 이번 경기만 보는 중(apps 가 전부 현재 경기)이면 현재 경기와, 그 경기를 이미 저장해 둔 사본(같은 투구 id)만 본다.

@@ -767,6 +767,13 @@ body.sb #anaSecPitcher.pc-input #pnl-pitcher .stat-card { background: var(--pape
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .sc-title { color: var(--ink) !important; }
 /* 비교 */
 body.sb .cmp-tally-bar .t { background: var(--rule); }
+/* 타석 결과 구성: 안타 = 앰버 단계 · 볼넷·사구 = 틸 · 삼진 = 잉크 · 범타 = 괘선색 (색약 구분 검증값) */
+body.sb .cmp {
+  --mx0: #DDA53C; --mx1: #B66F12; --mx2: #6E3B06; --mx3: #1C9A8C; --mx4: #26302A; --mx5: #C9BFA9;
+  --mx-dk: var(--ink); --mx-lt: var(--paper-2);
+}
+body.sb .cmp .mx4 { color: var(--mx-lt); }
+body.sb .cmp .mx5 { color: var(--mx-dk); }
 /* 프로필 */
 body.sb .pf-tag { background: var(--paper-2); border-color: var(--pen-blue); color: var(--pen-blue); }
 body.sb .pf-kpi small.up { color: var(--grass); }

@@ -151,71 +151,111 @@
 .cmp-tally-bar .b { background: var(--cb); }
 .cmp-tally-bar .t { background: #333c4f; }
 
-/* ── 지표 맞대결 (좌우 대칭 막대) ── */
+/* ── 지표 맞대결 (같은 출발선 막대: 위 = A, 아래 = B) ── */
+.cmp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: -2px 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--an-ink2);
+}
+.cmp-legend span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.cmp-key { display: inline-block; flex: none; width: 14px; height: 8px; }
+.cmp-key.a { background: var(--ca); }
+.cmp-key.b { background: var(--cb); }
+.cmp-key.avg { width: 2px; height: 14px; background: var(--an-ink); opacity: .6; }
 .cmp-group + .cmp-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--an-line); }
 .cmp-gtitle {
-  margin-bottom: 4px;
-  font-size: 10px;
+  margin-bottom: 2px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: var(--an-ink3);
+  color: var(--an-ink2);
 }
-.cmp-gdesc { margin-top: 4px; font-size: 10px; line-height: 1.4; color: var(--an-ink3); }
+.cmp-gdesc { margin-top: 6px; font-size: 10px; line-height: 1.4; color: var(--an-ink3); }
 .cmp-duel {
   display: grid;
-  grid-template-columns: 46px 1fr 70px 1fr 46px;
+  grid-template-columns: 76px 1fr 44px;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
+  gap: 10px;
+  padding: 7px 0;
 }
-.cmp-v {
-  font: 600 12px var(--mono);
-  color: var(--an-ink2);
-  white-space: nowrap;
-}
-.cmp-v.a { text-align: right; }
-.cmp-v.b { text-align: left; }
-.cmp-bar {
-  position: relative;
-  display: flex;
-  height: 10px;
-  background: var(--an-raised);
-  border-radius: 4px;
-}
-.cmp-bar.a { justify-content: flex-end; }
-.cmp-bar i { display: block; height: 100%; opacity: .45; transition: width .35s ease; }
-.cmp-bar.a i { background: var(--ca); border-radius: 4px 0 0 4px; }
-.cmp-bar.b i { background: var(--cb); border-radius: 0 4px 4px 0; }
-.cmp-bar em {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  margin: 0 -1px;
-  background: var(--an-ink2);
-  border-radius: 1px;
-  opacity: .7;
-}
+.cmp-duel + .cmp-duel { border-top: 1px dotted var(--an-line); }
 .cmp-lbl {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 700;
+  gap: 1px;
+  font-size: 12px;
+  font-weight: 800;
   color: var(--an-ink);
-  line-height: 1.15;
-  text-align: center;
+  line-height: 1.2;
 }
-.cmp-lbl small { font: 500 9px var(--mono); color: var(--an-ink3); }
-.cmp-duel.win-a .cmp-v.a,
-.cmp-duel.win-b .cmp-v.b { color: var(--an-ink); font-weight: 800; }
-.cmp-duel.win-a .cmp-bar.a i,
-.cmp-duel.win-b .cmp-bar.b i { opacity: 1; }
-.cmp-duel.win-a .cmp-v.a::after,
-.cmp-duel.win-b .cmp-v.b::before { content: '▲'; font-size: 7px; vertical-align: 2px; color: var(--an-ink2); }
-.cmp-duel.win-a .cmp-v.a::after { margin-left: 2px; }
-.cmp-duel.win-b .cmp-v.b::before { margin-right: 2px; }
-.cmp-duel:not(.win-a):not(.win-b):not(.tie) .cmp-bar i { opacity: .8; }
+.cmp-lbl small { font-size: 10px; font-weight: 500; color: var(--an-ink2); }
+.cmp-lbl small.lo { color: var(--an-ink3); }
+.cmp-track { position: relative; display: flex; flex-direction: column; gap: 3px; }
+.cmp-bar {
+  display: flex;
+  align-items: center;
+  height: 15px;
+  background: linear-gradient(var(--an-raised), var(--an-raised)) no-repeat center / 100% 10px;
+}
+.cmp-bar i { display: block; height: 10px; border-radius: 0 3px 3px 0; transition: width .35s ease; }
+.cmp-bar.a i { background: var(--ca); }
+.cmp-bar.b i { background: var(--cb); }
+.cmp-track em {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--an-ink);
+  opacity: .6;
+}
+.cmp-vals { display: flex; flex-direction: column; gap: 3px; }
+.cmp-vals b {
+  height: 15px;
+  line-height: 15px;
+  font: 500 12px/15px var(--mono);
+  color: var(--an-ink3);
+  text-align: right;
+  white-space: nowrap;
+}
+.cmp-duel.win-a .cmp-vals .a,
+.cmp-duel.win-b .cmp-vals .b { font-weight: 800; font-size: 13px; color: var(--an-ink); }
+.cmp-duel.tie .cmp-vals b { color: var(--an-ink2); }
+
+/* ── 타석 결과 구성 (100% 누적 막대) ──
+   안타 계열 = 앰버 단계(진할수록 장타) · 볼넷·사구 = 틸 · 삼진/범타 = 무채색. A·B 선수 색과 겹치지 않게 골랐다 */
+.cmp {
+  --mx0: #F0C060; --mx1: #C7802A; --mx2: #8A4C14; --mx3: #2BB3A3; --mx4: #D5DAE3; --mx5: #3a4252;
+  --mx-dk: #0e1018; --mx-lt: #eef0f8;
+}
+.cmp-mixbars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.cmp-mixrow { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; }
+.cmp-mixwho { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cmp-mixwho b { min-width: 0; font-size: 12px; font-weight: 800; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-mixwho small { flex: none; font: 500 10px var(--mono); color: var(--an-ink3); }
+.cmp-mixbar { display: flex; gap: 2px; height: 26px; min-width: 0; background: var(--an-raised); }
+.cmp-mixbar i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  overflow: hidden;
+  font: 700 11px var(--mono);
+  font-style: normal;
+  white-space: nowrap;
+}
+.cmp .mx0 { background: var(--mx0); color: var(--mx-dk); }
+.cmp .mx1 { background: var(--mx1); color: var(--mx-dk); }
+.cmp .mx2 { background: var(--mx2); color: var(--mx-lt); }
+.cmp .mx3 { background: var(--mx3); color: var(--mx-dk); }
+.cmp .mx4 { background: var(--mx4); color: var(--mx-dk); }
+.cmp .mx5 { background: var(--mx5); color: var(--mx-lt); }
+.cmp-mixkey { display: block; width: 16px; height: 8px; margin: 0 auto 4px; }
+.cmp-mixtbl thead th { line-height: 1.2; white-space: normal; word-break: keep-all; vertical-align: bottom; }
 
 /* ── 누적 기록 표 ── */
 .cmp-count-wrap { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -230,11 +270,11 @@
 @media (min-width: 720px) {
   .cmp-hero { padding: 20px 22px 16px; }
   .cmp-name { font-size: 17px; }
-  .cmp-duel { grid-template-columns: 56px 1fr 86px 1fr 56px; gap: 10px; }
+  .cmp-duel { grid-template-columns: 84px 1fr 52px; gap: 12px; }
+  .cmp-mixrow { grid-template-columns: 140px 1fr; }
   .cmp-count-wrap { grid-template-columns: 1fr 1fr; gap: 20px; }
   .cmp-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; }
   .cmp-groups .cmp-group + .cmp-group { margin-top: 0; padding-top: 0; border-top: 0; }
-  .cmp-mix { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cmp-bar i, .cmp-swap { transition: none; }
@@ -243,6 +283,8 @@
 /* ── 모바일 터치 타겟 44×44px 이상 ── */
 @media (max-width: 720px) {
   .cmp-swap { width: 44px; height: 44px; }
+  /* 타석 결과 구성: 이름을 막대 위로 올려 막대가 카드 폭을 다 쓰게 (좁은 칸 숫자 잘림 방지) */
+  .cmp-mixrow { grid-template-columns: 1fr; gap: 4px; }
 }
 
 /* ── 데스크톱 터치 타겟 44×44px 이상 (분석 탭 데스크톱은 이번만 예외로 모바일과 같게) ── */

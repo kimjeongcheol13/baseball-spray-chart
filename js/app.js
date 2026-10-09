@@ -19,7 +19,7 @@ import './features/settings.js?v=3';
 import './features/scorebook.js?v=9';
 import './features/dashboard.js?v=5';
 import './features/setup.js?v=3';
-import './features/report.js?v=2';
+import './features/report.js?v=3';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

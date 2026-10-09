@@ -76,6 +76,86 @@ function _sampleGames() {
 }
 const SAMPLE_CMT = '타구를 좌중간으로 강하게 보내는 장면이 늘었어요. 바깥쪽 낮은 공은 아직 약해서 다음 주에 집중해서 연습합니다.';
 
+// ── 타구 분석 (순수 함수 · 저장값은 읽기만 한다) ───────────────
+// 방향: 앱의 당김·센터·밀어와 같은 경계(72° · 108°)를 쓰되 좌·우타와 상관없이 필드 기준이다. 좌 = 3루 쪽(deg < 72) · 우 = 1루 쪽(deg > 108).
+//       방향이 있는 타구(deg 가 있는 것)만 센다 — 위쪽 "타구 N개" · 당김/센터/밀어와 같은 모집단이다.
+// 유형: launchType(타구 각도를 직접 입력한 타구)이 MIN_TYPE 개 이상이면 그것으로, 아니면 아웃 타구(땅볼 아웃 · 플라이 아웃)만으로 센다.
+//       안타 · 장타는 유형을 입력하지 않았으면 모르는 것으로 두고 땅볼/뜬공으로 짐작해 넣지 않는다.
+const MIN_TYPE = 5;   // 유형 비율을 보여 주려면 필요한 최소 타구 수
+// 한 줄 요약 문턱 — 근거는 ruleSummary 위 주석. 한 곳에서만 조정한다
+const MIN_SUM = 15;    // 요약을 말하려면 필요한 최소 타구 수 (내야안타 제외)
+const SUM_CELL_N = 5;  // 규칙 1: 방향×유형 한 칸의 최소 개수
+const SUM_CELL = 0.45; // 규칙 1: 그 한 칸이 유형을 아는 타구에서 차지하는 최소 비율
+const SUM_SIDE = 0.65; // 규칙 2: 한 방향이 차지하는 최소 비율
+const SUM_TYPE = 0.70; // 규칙 3: 한 유형이 차지하는 최소 비율
+const SIDE_TXT = ['좌측', '중앙', '우측'];
+const TYPE_TXT = { 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
+const _sideOf = a => (a.deg < 72 ? 0 : a.deg > 108 ? 2 : 1);
+
+export function dirSplit(abs) {
+  const c = [0, 0, 0];
+  let n = 0;
+  (abs || []).forEach(a => { if (a && a.deg != null) { c[_sideOf(a)]++; n++; } });
+  return { n, left: c[0], center: c[1], right: c[2] };
+}
+
+function _typeOf(a) {
+  if (TYPE_TXT[a.launchType]) return a.launchType;
+  if (a.res === '땅볼 아웃') return '땅볼';
+  if (a.res === '플라이 아웃') return '플라이볼';
+  return null;
+}
+
+// basis 'launch' = 입력한 타구 유형 · 'out' = 아웃 타구만 (라인드라이브는 알 수 없어 null)
+export function typeMix(abs) {
+  const list = (abs || []).filter(a => a);
+  const L = list.filter(a => TYPE_TXT[a.launchType]);
+  const cnt = (arr, t) => arr.filter(a => _typeOf(a) === t).length;
+  if (L.length >= MIN_TYPE) return { basis: 'launch', n: L.length, ground: cnt(L, '땅볼'), line: cnt(L, '라인드라이브'), fly: cnt(L, '플라이볼') };
+  const O = list.filter(a => a.res === '땅볼 아웃' || a.res === '플라이 아웃');
+  return { basis: 'out', n: O.length, ground: cnt(O, '땅볼'), line: null, fly: cnt(O, '플라이볼') };
+}
+
+// 규칙 기반 한 줄 요약 (AI 호출 없음). 위에서부터 먼저 맞는 규칙 하나만 쓴다
+//  0) 타구가 MIN_SUM 개 미만                                   → 판단 보류
+//  1) 방향 × 유형 한 칸이 유형을 아는 타구의 SUM_CELL 이상(SUM_CELL_N 개 이상) → "우측 땅볼 비중 높음"
+//  2) 한 방향이 방향 있는 타구의 SUM_SIDE 이상                  → "우측 타구 비중 높음"
+//  3) 한 유형이 유형을 아는 타구의 SUM_TYPE 이상                → "땅볼 비중 높음"
+//  4) 그 밖                                                   → 쏠림이 뚜렷하지 않음
+// 내야안타는 이 요약의 계산에서만 뺀다: 앱이 내야안타에 방향을 모르는 채 기본값(중앙)을 넣어 "중앙 비중"을 부풀리기 때문이다.
+//   (dirSplit · typeMix · 좌·중·우 막대 · 당김/센터/밀어의 모집단은 그대로 — 내야안타를 센다.)
+// 문턱의 근거: 쏠림이 전혀 없는 무작위 기록(방향 1/3씩 · 땅볼:뜬공 50:50 · 타구의 30%는 안타라 유형 없음)을 4,000번씩 시뮬레이션했다.
+//   예전 값(8개 · 한 칸 30% · 방향 50% · 유형 55%)은 타구 10~30개에서 "비중 높음"이 76~86% 나왔다 — 우연을 경향처럼 보여 주는 것이다.
+//   지금 값은 같은 기록에서 타구 15개 약 3% · 20개 약 6% · 25개 약 10% · 30개 약 8% 이고, 14개 이하는 판단 보류다.
+//   안타가 많을수록 줄고(안타 50%면 20개에서 약 1%) 모든 타구의 유형을 알면 늘어난다(안타 0%면 20개에서 약 14%).
+//   쏠림이 진짜일 때 말하는 정도(같은 모델, 타구 20개 / 30개): 우측 60% 약 46% / 38% · 우측 70% 약 80% / 77% · 땅볼 75% 약 30% / 71%.
+//   이 값들은 위 가정(방향 1/3 · 50:50 · 안타 30%) 위의 계산이라 실데이터로 다시 확인해야 한다.
+//   재현: tests/report.test.js 의 시드 고정 시뮬레이션 (오탐 상한 · 우측 70% 쏠림을 놓치지 않는지).
+export function ruleSummary(abs) {
+  const d = (abs || []).filter(a => a && a.deg != null && a.res !== '내야안타');
+  if (d.length < MIN_SUM) return { text: `타구 기록이 적어 경향 판단 보류 (${d.length}개)`, detail: '내야안타 제외', rule: 0 };
+  const typed = d.map(a => [_sideOf(a), _typeOf(a)]).filter(x => x[1]);
+  const top = obj => Object.keys(obj).sort((x, y) => obj[y] - obj[x] || (x < y ? -1 : 1))[0];
+  let cell = {}, byType = {};
+  typed.forEach(([sd, t]) => { cell[sd + '|' + t] = (cell[sd + '|' + t] || 0) + 1; byType[t] = (byType[t] || 0) + 1; });
+  if (typed.length >= MIN_SUM) {
+    const k = top(cell), n = cell[k];
+    if (n >= SUM_CELL_N && n / typed.length >= SUM_CELL) {
+      const [sd, t] = k.split('|');
+      return { text: `${SIDE_TXT[sd]} ${TYPE_TXT[t]} 비중 높음`, detail: `유형을 아는 타구 ${typed.length}개 중 ${n}개`, rule: 1 };
+    }
+  }
+  const sc = [0, 0, 0];
+  d.forEach(a => sc[_sideOf(a)]++);
+  const si = sc.indexOf(Math.max(...sc));
+  if (sc[si] / d.length >= SUM_SIDE) return { text: `${SIDE_TXT[si]} 타구 비중 높음`, detail: `내야안타 제외 ${d.length}개 중 ${sc[si]}개`, rule: 2 };
+  if (typed.length >= MIN_SUM) {
+    const t = top(byType);
+    if (byType[t] / typed.length >= SUM_TYPE) return { text: `${TYPE_TXT[t]} 비중 높음`, detail: `유형을 아는 타구 ${typed.length}개 중 ${byType[t]}개`, rule: 3 };
+  }
+  return { text: '방향·유형 쏠림이 뚜렷하지 않음', detail: `내야안타 제외 ${d.length}개 기준`, rule: 4 };
+}
+
 // ── 선수 묶기 ─────────────────────────────────────────────────
 // 기본 = 팀명 + 이름 (팀명은 띄어쓰기·대소문자 무시).
 // 같은 팀 라인업에 같은 이름이 등번호가 다르게 동시에 있었던 경기가 있으면 두 사람이라는 증거 → 그 팀·이름만 등번호로 나눈다.
@@ -90,12 +170,15 @@ function _sides(g) {
 
 function _groupPlayers(games) {
   const split = new Set();
+  const posOf = {};   // 팀|이름 → 가장 최근 경기 라인업에 적힌 포지션 (적은 적 없으면 없음)
   games.forEach(g => {
     const sd = _sides(g);
     [['home', g.th], ['away', g.ta]].forEach(([side, team]) => {
       const nums = {};
       (sd[side] || []).forEach(p => {
-        if (!p || !p.name || p.num == null || p.num === '') return;
+        if (!p || !p.name) return;
+        if (p.pos) posOf[_norm(team) + '|' + p.name] = String(p.pos);
+        if (p.num == null || p.num === '') return;
         (nums[p.name] = nums[p.name] || new Set()).add(String(p.num));
       });
       Object.keys(nums).forEach(n => { if (nums[n].size > 1) split.add(_norm(team) + '|' + n); });
@@ -109,7 +192,7 @@ function _groupPlayers(games) {
     const base = _norm(team) + '|' + a.bname;
     const num = a.bnum != null && a.bnum !== '' ? String(a.bnum) : '';
     const key = split.has(base) ? base + '#' + (num || '?') : base;
-    const p = map[key] || (map[key] = { key, name: a.bname, team: '', num: '', split: split.has(base), items: [], gset: new Set(), last: -1 });
+    const p = map[key] || (map[key] = { key, name: a.bname, team: '', num: '', pos: posOf[base] || '', split: split.has(base), items: [], gset: new Set(), last: -1 });
     p.items.push({ a, gi });
     p.gset.add(gi);
     if (gi >= p.last) { p.last = gi; if (team) p.team = team; if (num) p.num = num; }
@@ -133,10 +216,11 @@ function _reportData(p, games, range, sample) {
   const ts = use.map(gi => games[gi].ts || (games[gi].current ? Date.now() : 0)).filter(Boolean);
   const from = ts.length ? _ymd(Math.min(...ts)) : '', to = ts.length ? _ymd(Math.max(...ts)) : '';
   return {
-    name: p.name, num: p.num, team: p.team, sample,
+    name: p.name, num: p.num, team: p.team, pos: p.pos || '', sample,
     rangeLabel: range ? `최근 ${range}경기` : '전체 기간',
     dates: from && from !== to ? `${from} – ${to}` : from,
     games: use.length, abs, st: calcStats(abs),
+    dirs: dirSplit(abs), types: typeMix(abs), sum: ruleSummary(abs),
   };
 }
 
@@ -205,6 +289,27 @@ function _spacedWidth(ctx, t, gap) {
   return w - gap;
 }
 
+// 가로 비율 막대: parts = [[개수, 바탕색, 글자색]] — 개수 0은 건너뛰고, 합이 0이면 점선 빈 상자
+function _bar(ctx, x, y, w, h, parts) {
+  const tot = parts.reduce((t, p) => t + p[0], 0);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+  if (!tot) { ctx.setLineDash([8, 6]); ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.setLineDash([]); return; }
+  let sx = x;
+  parts.forEach(([n, bg, fg]) => {
+    if (!n) return;
+    const pw = w * n / tot;
+    ctx.fillStyle = bg; ctx.fillRect(sx, y, pw - 2, h);
+    if (pw > 70) _text(ctx, Math.round(n / tot * 100) + '%', sx + (pw - 2) / 2, y + h - 5, _font(600, 18, F.num), fg, 'center');
+    sx += pw;
+  });
+}
+// 막대 아래 글자: 왼쪽 · 가운데 · 오른쪽 정렬 (items = [[글자, 색] × 3], 빈 칸은 null)
+function _barLabels(ctx, x, y, w, items) {
+  [['left', x], ['center', x + w / 2], ['right', x + w]].forEach(([al, px], i) => {
+    if (items[i]) _text(ctx, items[i][0], px, y, _font(700, 22, F.body), items[i][1], al);
+  });
+}
+
 function _stamp(ctx, t, cx, cy, color, px, rot) {
   ctx.save();
   ctx.translate(cx, cy); ctx.rotate(rot);
@@ -221,62 +326,68 @@ function _stamp(ctx, t, cx, cy, color, px, rot) {
 
 function _draw(ctx, R, img) {
   const s = R.st;
+  const fy = H - 150;   // 푸터 선
+  const cmt = String(R.cmt || '').trim();
+  let cmtLines = [];
+  if (cmt) { ctx.font = _font(700, 34, F.body); cmtLines = _wrap(ctx, cmt, CW - 40); }
+  const cmtH = cmt ? 64 + Math.min(3, cmtLines.length) * 50 + 30 : 0;   // 코멘트 상자(아래 줄 수 판정식과 같은 64) + 위 간격
   ctx.fillStyle = C.paper2; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.strokeRect(24, 24, W - 48, H - 48);
 
   // 1. 헤더
-  _text(ctx, '선수 리포트', M, 110, _font(700, 30, F.body), C.soft);
-  if (R.sample) _stamp(ctx, 'SAMPLE · 가상 선수', W - M - 190, 98, C.red, 22, -0.035);
+  _text(ctx, '선수 리포트', M, 100, _font(700, 30, F.body), C.soft);
+  if (R.sample) _stamp(ctx, 'SAMPLE · 가상 선수', W - M - 190, 90, C.red, 22, -0.035);
   ctx.font = _font(400, 100, F.disp);
   let name = R.name;
   while (ctx.measureText(name).width > CW - 200 && name.length > 1) name = name.slice(0, -1);
   if (name !== R.name) name += '…';
-  _text(ctx, name, M, 226, _font(400, 100, F.disp), C.ink);
+  _text(ctx, name, M, 202, _font(400, 100, F.disp), C.ink);
   const nw = ctx.measureText(name).width;
-  if (R.num) _text(ctx, '#' + R.num, M + nw + 22, 222, _font(600, 60, F.num), C.red);
-  let y = 226;
-  if (R.team) { y += 58; _text(ctx, R.team, M, y, _font(700, 38, F.body), C.ink); }
-  y += 50;
+  if (R.num) _text(ctx, '#' + R.num, M + nw + 22, 198, _font(600, 60, F.num), C.red);
+  let y = 202;
+  const who = [R.team, R.pos].filter(Boolean).join('  ·  ');   // 포지션은 라인업에 적었을 때만
+  if (who) { y += 54; _text(ctx, who, M, y, _font(700, 38, F.body), C.ink); }
+  y += 46;
   const meta = [R.rangeLabel, R.dates, `${R.games}경기 ${s.pa}타석`].filter(Boolean).join('  ·  ');
   _text(ctx, meta, M, y, _font(700, 29, F.body), C.soft);
-  y += 34;
+  y += 28;
   ctx.fillStyle = C.ink; ctx.fillRect(M, y, CW, 5);
-  y += 5 + 26;
+  y += 5 + 22;
 
   // 2. 표본 안내
   const smp = sampleBadge(s.pa);
   if (smp) {
-    ctx.fillStyle = C.hlSoft; ctx.fillRect(M, y, CW, 58);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, 56);
+    ctx.fillStyle = C.hlSoft; ctx.fillRect(M, y, CW, 52);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, 50);
     const msg = (smp.cls === 'low' ? '표본이 매우 적어 참고용이에요' : '표본이 적어 참고용이에요') + ` · ${s.pa}타석 기준`;
-    _text(ctx, msg, W / 2, y + 40, _font(700, 28, F.body), C.ink, 'center');
-    y += 58 + 18;
+    _text(ctx, msg, W / 2, y + 37, _font(700, 28, F.body), C.ink, 'center');
+    y += 52 + 14;
   }
 
   // 3. 핵심 스탯 — 큰 숫자 4개
   // 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—'
   const tiles = [['타율', s.avg, s.ab], ['출루율', s.obp, s.pa], ['장타율', s.slg, s.ab], ['OPS', s.ops, s.pa]];
-  const tw = (CW - 16 * 3) / 4, th = 156;
+  const tw = (CW - 16 * 3) / 4, th = 144;
   tiles.forEach(([l, v, n], i) => {
     const x = M + i * (tw + 16);
     ctx.fillStyle = C.paper; ctx.fillRect(x, y, tw, th);
     ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, tw - 2, th - 2);
-    _text(ctx, l, x + tw / 2, y + 44, _font(700, 28, F.body), C.soft, 'center');
-    _text(ctx, n ? f3(v) : '—', x + tw / 2, y + 130, _font(600, 76, F.num), C.ink, 'center');
+    _text(ctx, l, x + tw / 2, y + 40, _font(700, 28, F.body), C.soft, 'center');
+    _text(ctx, n ? f3(v) : '—', x + tw / 2, y + 118, _font(600, 76, F.num), C.ink, 'center');
   });
-  y += th + 20;
+  y += th + 16;
 
   // 기록 줄
   const cnt = [['타석', s.pa], ['안타', s.h], ['2루타', s.s2], ['3루타', s.s3], ['홈런', s.hr], ['타점', s.rbi], ['볼넷', s.bb], ['삼진', s.k]];
-  const cw = CW / cnt.length, ch = 104;
+  const cw = CW / cnt.length, ch = 96;
   ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, ch - 2);
   cnt.forEach(([l, v], i) => {
     const x = M + i * cw;
     if (i) { ctx.fillStyle = C.rule; ctx.fillRect(x, y + 14, 1.5, ch - 28); }
-    _text(ctx, l, x + cw / 2, y + 38, _font(700, 24, F.body), C.soft, 'center');
-    _text(ctx, String(v), x + cw / 2, y + 88, _font(600, 46, F.num), C.ink, 'center');
+    _text(ctx, l, x + cw / 2, y + 35, _font(700, 24, F.body), C.soft, 'center');
+    _text(ctx, String(v), x + cw / 2, y + 81, _font(600, 46, F.num), C.ink, 'center');
   });
-  y += ch + 46;
+  y += ch + 40;
 
   // 작은 줄: wOBA · 삼진% · 볼넷%
   const small = [['wOBA', s.pa ? f3(s.woba) : '—'], ['삼진%', s.pa ? pct(s.kRate) : '—'], ['볼넷%', s.pa ? pct(s.bbRate) : '—']];
@@ -289,26 +400,56 @@ function _draw(ctx, R, img) {
   const pw = parts.reduce((w, [t, f]) => { ctx.font = f; return w + ctx.measureText(t).width; }, 0);
   let px = (W - pw) / 2;
   parts.forEach(([t, f, c]) => { _text(ctx, t, px, y, f, c); ctx.font = f; px += ctx.measureText(t).width; });
-  y += 36;
+  y += 32;
   _text(ctx, 'wOBA = 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표', W / 2, y, _font(700, 21, F.body), C.soft, 'center');
-  y += 34;
+  y += 24;
 
-  // 4·5. 스프레이차트 + 핫존 (좌우)
+  // 한 줄 요약 (규칙 기반 · AI 아님) — 근거 개수는 오른쪽에 작게, 자리가 모자라면 뺀다
+  const bandH = 56;
+  ctx.fillStyle = C.paper; ctx.fillRect(M, y, CW, bandH);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, bandH - 2);
+  ctx.fillStyle = C.red; ctx.fillRect(M, y, 8, bandH);
+  _text(ctx, '요약', M + 28, y + 37, _font(700, 24, F.body), C.red);
+  let sumT = R.sum.text;
+  ctx.font = _font(700, 34, F.body);
+  const sumMax = CW - 28 - 70 - 24;
+  while (ctx.measureText(sumT).width > sumMax && sumT.length > 1) sumT = sumT.slice(0, -1);
+  if (sumT !== R.sum.text) sumT += '…';
+  _text(ctx, sumT, M + 98, y + 39, _font(700, 34, F.body), C.ink);
+  const sw0 = ctx.measureText(sumT).width;
+  ctx.font = _font(700, 20, F.body);
+  if (R.sum.detail && M + 98 + sw0 + 24 + ctx.measureText(R.sum.detail).width <= W - M - 20) _text(ctx, R.sum.detail, W - M - 20, y + 37, _font(700, 20, F.body), C.soft, 'right');
+  y += bandH + 22;
+
+  // 4·5. 스프레이차트 + 핫존 (좌우) — 아래에 좌·중·우 비율 · 타구 유형 비율을 붙인다.
+  // 아래에 올 고정 블록(코멘트 포함)이 들어가도록 두 그림을 같은 비율로 줄인다 (1배 → 최소 .7배). 코멘트가 없으면 줄이지 않는다
   const colW = (CW - 16) / 2, x1 = M, x2 = M + colW + 16;
   const dn = s.dn || 0;
   const nPts = R.abs.filter(a => a.x != null && a.y != null).length;
   _text(ctx, '타구 방향', x1, y + 30, _font(700, 32, F.body), C.ink);
   _text(ctx, `타구 ${nPts}개`, x1 + colW, y + 30, _font(700, 22, F.body), C.soft, 'right');
   _text(ctx, '코스별 타율', x2, y + 30, _font(700, 32, F.body), C.ink);
-  y += 44;
+  y += 40;
   ctx.fillStyle = C.ink; ctx.fillRect(x1, y, colW, 2); ctx.fillRect(x2, y, colW, 2);
-  y += 12;
+  y += 8;
   const cy = y;
+  const DIR_GAP = 14, LEG_GAP = 38, TYPE_GAP = 18;
+  const DIR_H = DIR_GAP + 22 + 30, TYPE_H = TYPE_GAP + 28 + 12 + 22 + 30;   // 좌·중·우 블록 · 타구 유형 블록 높이
+  const leftFix = 14 + 68 + DIR_H + LEG_GAP + 10;       // 스프레이 아래: 간격 · 당김 막대+글자 · 좌중우 · 범례
+  const rightFix = (img[1] ? 10 + 16 + 34 + 28 + 10 : 0) + TYPE_H;   // 핫존 아래: 간격 · 색 막대 · 안내 두 줄 · 유형
+  const roomH = fy - 28 - cmtH - cy;
+  let sc = 1;
+  if (img[0]) sc = Math.min(sc, (roomH - leftFix) / img[0].h);
+  sc = Math.min(sc, (roomH - rightFix) / (img[1] ? img[1].h : 420));
+  sc = Math.max(0.7, sc);
 
   // 스프레이
   let sy = cy;
-  if (img[0]) { ctx.drawImage(img[0].img, x1, sy, img[0].w, img[0].h); sy += img[0].h + 14; }
-  else { sy += 14; }
+  if (img[0]) {
+    const iw = img[0].w * sc, ih = img[0].h * sc;
+    ctx.drawImage(img[0].img, x1 + (colW - iw) / 2, sy, iw, ih);
+    sy += ih + 14;
+  } else { sy += 14; }
   if (dn) {
     const seg = [[s.pull, C.red, '당김'], [s.center, C.grass, '센터'], [s.oppo, C.blue, '밀어']];
     let sx = x1;
@@ -327,7 +468,14 @@ function _draw(ctx, R, img) {
     sy += 26;
     _text(ctx, '방향 기록 없음', x1 + colW / 2, sy, _font(700, 22, F.body), C.soft, 'center');
   }
-  sy += 42;
+  // 좌·중·우: 당김·센터·밀어는 좌·우타에 따라 방향이 뒤집히므로, 필드 기준 방향을 따로 보여 준다
+  sy += DIR_GAP;
+  const dsp = R.dirs;
+  _bar(ctx, x1, sy, colW, 22, dsp.n ? [[dsp.left, C.ink, C.paper2], [dsp.center, C.soft, C.paper2], [dsp.right, C.rule, C.ink]] : []);
+  if (dsp.n) _barLabels(ctx, x1, sy + 22 + 30, colW, [[`좌 ${dsp.left}`, C.ink], [`중 ${dsp.center}`, C.soft], [`우 ${dsp.right}`, C.ink]]);
+  else _text(ctx, '방향 기록 없음', x1 + colW / 2, sy + 17, _font(700, 18, F.body), C.soft, 'center');
+  sy += 22 + 30;
+  sy += LEG_GAP;
   // 기호 범례
   const keys = [['1b', '단타'], ['xbh', '2·3루타'], ['hr', '홈런'], ['out', '아웃']];
   ctx.font = _font(700, 21, F.body);
@@ -350,8 +498,9 @@ function _draw(ctx, R, img) {
   // 핫존
   let zy = cy;
   if (img[1]) {
-    ctx.drawImage(img[1].img, x2, zy, img[1].w, img[1].h);
-    zy += img[1].h + 10;
+    const iw = img[1].w * sc, ih = img[1].h * sc;
+    ctx.drawImage(img[1].img, x2 + (colW - iw) / 2, zy, iw, ih);
+    zy += ih + 10;
     const gw = 200, gx = x2 + (colW - gw) / 2;
     const grd = ctx.createLinearGradient(gx, 0, gx + gw, 0);
     grd.addColorStop(0, '#899BB7'); grd.addColorStop(0.5, C.paper2); grd.addColorStop(1, '#DF8B83');
@@ -365,21 +514,36 @@ function _draw(ctx, R, img) {
     _text(ctx, `색 = 이 선수 타율(${s.ab ? f3(s.avg) : '—'}) 대비 · 3타수 미만은 색 없음`, x2 + colW / 2, zy, _font(700, 18, F.body), C.soft, 'center');
     zy += 10;
   } else {
-    const bh = 420;
+    const bh = 420 * sc;
     ctx.setLineDash([8, 6]); ctx.strokeStyle = C.rule; ctx.lineWidth = 2; ctx.strokeRect(x2 + 1, zy + 1, colW - 2, bh);
     ctx.setLineDash([]);
     _text(ctx, '코스(존) 기록이 없어요', x2 + colW / 2, zy + bh / 2, _font(700, 26, F.body), C.soft, 'center');
     zy += bh;
   }
+  // 타구 유형: 입력한 타구 유형이 있으면 그것으로, 없으면 아웃 타구(땅볼·플라이)만으로. 안타는 짐작해서 넣지 않는다
+  const tm = R.types;
+  zy += TYPE_GAP + 28;
+  _text(ctx, '타구 유형', x2, zy, _font(700, 26, F.body), C.ink);
+  _text(ctx, tm.n ? (tm.basis === 'launch' ? `입력 ${tm.n}개 기준` : `아웃 타구 ${tm.n}개 기준`) : '', x2 + colW, zy, _font(700, 20, F.body), C.soft, 'right');
+  zy += 12;
+  if (tm.n >= MIN_TYPE) {
+    const parts = [[tm.ground, C.hl, C.ink]];
+    if (tm.line != null) parts.push([tm.line, C.blue, C.paper2]);
+    parts.push([tm.fly, C.grass, C.paper2]);
+    _bar(ctx, x2, zy, colW, 22, parts);
+    _barLabels(ctx, x2, zy + 22 + 30, colW, [[`땅볼 ${tm.ground}`, C.ink], tm.line != null ? [`라인드라이브 ${tm.line}`, C.blue] : ['라인드라이브 미입력', C.soft], [`뜬공 ${tm.fly}`, C.grass]]);
+  } else {
+    _bar(ctx, x2, zy, colW, 22, []);
+    _text(ctx, tm.basis === 'launch' || !tm.n ? '타구 유형 기록이 적어요' : `아웃 타구 ${tm.n}개 — 유형 기록이 적어요`, x2 + colW / 2, zy + 17, _font(700, 18, F.body), C.soft, 'center');
+  }
+  zy += 22 + 30;
   y = Math.max(sy, zy) + 30;
 
-  // 6. 코치 코멘트 (푸터와 겹치지 않게 남은 높이만큼만)
-  const fy = H - 150;
-  const cmt = String(R.cmt || '').trim();
+  // 6. 코치 코멘트 (푸터와 겹치지 않게 남은 높이만큼만 — 위에서 그림을 줄여 보통은 3줄이 다 들어간다)
   if (cmt) {
     ctx.font = _font(700, 34, F.body);
     const room = Math.max(1, Math.min(3, Math.floor((fy - 28 - y - 64) / 50)));
-    let lines = _wrap(ctx, cmt, CW - 40);
+    let lines = cmtLines;
     if (lines.length > room) { lines = lines.slice(0, room); lines[room - 1] = lines[room - 1].replace(/.$/, '…'); }
     const bh = 60 + lines.length * 50;
     ctx.fillStyle = C.red; ctx.fillRect(M, y, 6, bh);
@@ -604,7 +768,7 @@ async function _render() {
     if (seq !== _seq) return;
     _chartCache = { id: cid, img };
   }
-  await _fonts([R.name, R.num, R.team, R.rangeLabel, R.dates, R.cmt, '선수 리포트 SAMPLE 가상 선수 타율 출루율 장타율 OPS 타석 안타 2루타 3루타 홈런 타점 볼넷 삼진 wOBA 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표 타구 방향 개 코스별 당김 센터 밀어 기록 없음 단타 아웃 약함 강함 칸 숫자 그 코스 색 이 선수 대비 미만은 코스(존) 기록이 없어요 코치 코멘트 생성 샘플 · 실제 기록 아님 표본이 매우 적어 참고용이에요 기준 경기 전체 기간 최근 YOUR SWING, VISUALIZED SPRAYLAB'].join(' '));
+  await _fonts([R.name, R.num, R.team, R.pos, R.rangeLabel, R.dates, R.cmt, R.sum.text, R.sum.detail, '선수 리포트 SAMPLE 가상 선수 타율 출루율 장타율 OPS 타석 안타 2루타 3루타 홈런 타점 볼넷 삼진 wOBA 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표 타구 방향 개 코스별 당김 센터 밀어 기록 없음 단타 아웃 약함 강함 칸 숫자 그 코스 색 이 선수 대비 미만은 코스(존) 기록이 없어요 코치 코멘트 생성 샘플 · 실제 기록 아님 표본이 매우 적어 참고용이에요 기준 경기 전체 기간 최근 YOUR SWING, VISUALIZED SPRAYLAB 요약 좌 중 우 타구 유형 입력 아웃 땅볼 라인드라이브 뜬공 미입력 기록이 적어요 방향 쏠림이 뚜렷하지 않음 비중 높음 좌측 중앙 우측 경향 판단 보류 있는 유형을 아는 중'].join(' '));
   if (seq !== _seq) return;
 
   const cv = _canvas || (_canvas = document.createElement('canvas'));

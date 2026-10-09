@@ -403,8 +403,14 @@
       localStorage.setItem('sl_saves', JSON.stringify([{ key: K, label: K, ts: t0 }]));
       try {
         exportAllGamesToExcel();
-        var rows2 = cap['투수분석']; var h2 = rows2[0], r2 = rows2[rows2.length - 1];
+        var rows2 = cap['투수분석']; var h2 = rows2[0], src2 = h2.indexOf('기록출처');
+        var r2 = rows2.slice(1).filter(function (r) { return r[src2] === '투수탭 투구기록'; })[0];   // main 의 #87: 마지막 줄은 안내 문구일 수 있다
+        ok(r2, '투수 탭 기록 행이 있어야 한다');
         eq([r2[h2.indexOf('총투구수')], r2[h2.indexOf('피안타')], r2[h2.indexOf('탈삼진')], r2[h2.indexOf('상대타석')], r2[h2.indexOf('결과미기록타석')]], [16, 1, 1, 2, 3], '전체 엑셀(옛 기록): 투구 · 피안타 · 탈삼진 · 상대타석 · 미기록');
+        // 같은 시트의 '타석 기록 기준' 행(#87)도 같은 열 배치: 상대타석은 그 투수가 상대한 타석 수, 결과미기록은 해당 없음
+        var ab2 = rows2.slice(1).filter(function (r) { return String(r[src2]).indexOf('타석기록') === 0; })[0];
+        ok(ab2 && ab2.length === h2.length, '타석 기록 행의 열 수가 머리글과 같다: ' + (ab2 && ab2.length) + ' / ' + h2.length);
+        eq([ab2[h2.indexOf('상대타석')], ab2[h2.indexOf('결과미기록타석')], ab2[h2.indexOf('피안타')]], [1, '-', 1], '타석 기록 행: 상대타석 · 결과미기록 · 피안타');
       } finally { localStorage.removeItem(K); localStorage.removeItem('sl_saves'); }
     } finally { if (hadX) window.XLSX = oldX; else delete window.XLSX; AS.abs = []; }
   });

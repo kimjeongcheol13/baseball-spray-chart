@@ -3878,7 +3878,7 @@ function exportAllGamesToExcel() {
       var total=pitches.length||1;
       var ptCount={};
       pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
-      var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+      var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
       var ball=pitches.filter(function(px){return px.result==='볼';}).length;
       var strike=pitches.filter(function(px){return['스트라이크','파울','헛스윙'].includes(px.result);}).length;
       var hit=pitches.filter(function(px){return['안타','2루타','3루타','홈런','내야안타'].includes(px.result);}).length;
@@ -4635,7 +4635,7 @@ function _doExportToExcel(data) {
     var total=pitches.length||1;
     var ptCount={};
     pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
-    var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+    var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
     var ball=pitches.filter(function(px){return px.result==='볼';}).length;
     var strike=pitches.filter(function(px){return['스트라이크','파울','헛스윙'].includes(px.result);}).length;
     var hit=pitches.filter(function(px){return['안타','2루타','3루타','홈런','내야안타'].includes(px.result);}).length;

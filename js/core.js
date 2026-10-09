@@ -3892,14 +3892,19 @@ function exportAllGamesToExcel() {
   });
 
   // === Sheet 4: 투수 분석 (전체 경기) ===
-  var allPitcherRows=[['경기','투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','상대타석','결과미기록타석']];
+  // 투수 탭 투구 기록이 있는 투수는 그 기록으로, 없으면 타석 기록(구종·결과)으로 집계 (_pitcherRowsFromAbs)
+  var allPitcherRows=[['경기','투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','상대타석','결과미기록타석','기록출처']];
+  var _anyAbsRows=false;
   allGames.forEach(function(d){
+    var _tabNames={};
     (d.pitchers||[]).forEach(function(p){
       var pitches=p.pitches||[];
+      if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
+      _tabNames[p.name]=1;
       var total=pitches.length||1;
       var ptCount={};
       pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
-      var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+      var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
       var PS=window.PitchCalc.calcPitching([{pitches:pitches}]);   // 앱 투수 탭 · 분석 엑셀과 같은 계산
       allPitcherRows.push([
         d.d||'',p.name,p.role||'',pitches.length,
@@ -3911,16 +3916,21 @@ function exportAllGamesToExcel() {
         +((total-ptTotal)/total*100).toFixed(1),
         pitches.length?+((1-PS.sPct)*100).toFixed(1):0,
         +(PS.sPct*100).toFixed(1),
-        PS.h,PS.k,PS.pa,PS.unrec.length
+        PS.h,PS.k,PS.pa,PS.unrec.length,'투수탭 투구기록'
       ]);
     });
+    _pitcherRowsFromAbs(d,_tabNames).forEach(function(r){_anyAbsRows=true;allPitcherRows.push([d.d||''].concat(r));});
   });
+  if(_anyAbsRows){
+    allPitcherRows.push([]);
+    allPitcherRows.push([_PITCHER_SHEET_NOTE]);
+  }
 
   var wb=XLSX.utils.book_new();
   var ws1=XLSX.utils.aoa_to_sheet(gameRows); ws1['!cols']=[{wch:4},{wch:12},{wch:10},{wch:6},{wch:10},{wch:6},{wch:6},{wch:8},{wch:8}];
   var ws2=XLSX.utils.aoa_to_sheet(aggRows); ws2['!cols']=[{wch:10},{wch:5},{wch:7},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:9}];
   var ws3=XLSX.utils.aoa_to_sheet(allAbRows); ws3['!cols']=[{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:5},{wch:10},{wch:8},{wch:5},{wch:7},{wch:8},{wch:4},{wch:7}];
-  var ws4=XLSX.utils.aoa_to_sheet(allPitcherRows); ws4['!cols']=[{wch:10},{wch:10},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:12}];
+  var ws4=XLSX.utils.aoa_to_sheet(allPitcherRows); ws4['!cols']=[{wch:10},{wch:16},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:12},{wch:16}];
   XLSX.utils.book_append_sheet(wb, ws1, '경기목록');
   XLSX.utils.book_append_sheet(wb, ws2, '통합선수별통계');
   XLSX.utils.book_append_sheet(wb, ws3, '전체타석기록');
@@ -4506,6 +4516,45 @@ function exportCurrentGameToExcel() {
   });
 }
 
+// 투수 탭 투구 기록이 없는 투수(또는 투수를 등록하지 않은 경기)의 「투수분석」 행을 타석 기록(구종·결과)으로 집계
+// - 타석에 기록된 공(a.pitches, 없으면 결정구 a.pt 1구)의 투수 이름(px.pitcher)으로 묶고, 이름이 없으면 "상대팀 투수 (미등록)"으로 묶는다
+// - skipNames: 투수 탭 투구 기록으로 이미 행을 만든 투수 → 중복 방지
+// - 볼%·스트라이크%는 타석 기록만으로는 알 수 없어 '-'
+// 반환 행: [투수명, 포지션, 총투구수, 직구%, 슬라이더%, 커브%, 체인지업%, 포크볼%, 기타%, 볼%, 스트라이크%, 피안타, 탈삼진, 상대타석, 결과미기록타석, 기록출처]
+function _pitcherRowsFromAbs(data, skipNames){
+  var th=data.th||'홈팀', ta=data.ta||'원정팀';
+  var HIT_RES=['안타','내야안타','2루타','3루타','홈런'], KNOWN_PT=['직구','슬라이더','커브','체인지업','포크볼'];
+  var roleOf={};
+  (data.pitchers||[]).forEach(function(p){ if(p&&p.name) roleOf[p.name]=p.role||''; });
+  var groups={}, order=[];
+  (data.abs||[]).forEach(function(a){
+    if(!a) return;
+    var ps=(a.pitches&&a.pitches.length)?a.pitches:(a.pt?[{pt:a.pt}]:[]);
+    var name='';
+    ps.forEach(function(px){ if(px&&px.pitcher) name=px.pitcher; });   // 마지막으로 기록된 투수 이름
+    if(name&&skipNames&&skipNames[name]) return;
+    var team=a.team||'home';
+    var key=name?('n:'+name):('t:'+team);
+    if(!groups[key]){
+      groups[key]={name:name||((team==='home'?ta:th)+' 투수 (미등록)'), role:name?(roleOf[name]||''):'', pa:0, n:0, pt:{}, hit:0, k:0};
+      order.push(key);
+    }
+    var g=groups[key];
+    g.pa++; g.n+=ps.length;
+    ps.forEach(function(px){ var t=(px&&px.pt)||''; g.pt[t]=(g.pt[t]||0)+1; });
+    if(HIT_RES.includes(a.res)) g.hit++;
+    if(a.res==='삼진') g.k++;
+  });
+  return order.map(function(key){
+    var g=groups[key], total=g.n||1;
+    var pct=function(t){ return +((g.pt[t]||0)/total*100).toFixed(1); };
+    var known=KNOWN_PT.reduce(function(sum,t){ return sum+(g.pt[t]||0); },0);
+    return [g.name, g.role, g.n, pct('직구'), pct('슬라이더'), pct('커브'), pct('체인지업'), pct('포크볼'),
+      +((g.n-known)/total*100).toFixed(1), '-', '-', g.hit, g.k, g.pa, '-', '타석기록 ('+g.pa+'타석)'];
+  });
+}
+var _PITCHER_SHEET_NOTE='※ 기록출처가 "타석기록"인 행은 투수 탭 투구 기록이 없어 타석의 구종·결과로 집계한 값입니다. 볼%·스트라이크%는 투수 탭에서 공별 결과를 기록하면 계산됩니다.';
+
 function _doExportToExcel(data) {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중... 잠시 후 다시 시도하세요', false); return; }
   var th = data.th || '홈팀', ta = data.ta || '원정팀';
@@ -4602,13 +4651,17 @@ function _doExportToExcel(data) {
   XLSX.utils.book_append_sheet(wb, ws3, '타석기록');
 
   // === Sheet 4: 투수 분석 ===
-  var pitcherRows=[['투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','상대타석','결과미기록타석']];
+  // 투수 탭 투구 기록이 있는 투수는 그 기록으로, 없으면 타석 기록(구종·결과)으로 집계 (_pitcherRowsFromAbs)
+  var pitcherRows=[['투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','상대타석','결과미기록타석','기록출처']];
+  var _tabNames={};
   (data.pitchers||[]).forEach(function(p){
     var pitches=p.pitches||[];
+    if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
+    _tabNames[p.name]=1;
     var total=pitches.length||1;
     var ptCount={};
     pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
-    var ptTotal=Object.values(ptCount).reduce(function(a,b){return a+b;},0);
+    var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
     var PS=window.PitchCalc.calcPitching([{pitches:pitches}]);   // 앱 투수 탭 · 분석 엑셀과 같은 계산
     pitcherRows.push([
       p.name, p.role||'', pitches.length,
@@ -4620,11 +4673,20 @@ function _doExportToExcel(data) {
       +((total-ptTotal)/total*100).toFixed(1),
       pitches.length?+((1-PS.sPct)*100).toFixed(1):0,
       +(PS.sPct*100).toFixed(1),
-      PS.h, PS.k, PS.pa, PS.unrec.length
+      PS.h, PS.k, PS.pa, PS.unrec.length, '투수탭 투구기록'
     ]);
   });
+  var _absRows=_pitcherRowsFromAbs(data,_tabNames);
+  _absRows.forEach(function(r){pitcherRows.push(r);});
+  if(_absRows.length){
+    pitcherRows.push([]);
+    pitcherRows.push([_PITCHER_SHEET_NOTE]);
+  }else if(pitcherRows.length===1){
+    pitcherRows.push([]);
+    pitcherRows.push(['※ 투구·타석 기록이 없습니다. 기록 탭에서 구종을 선택해 타석을 기록하거나, 투수 탭에서 투구를 기록하면 채워집니다.']);
+  }
   var ws4=XLSX.utils.aoa_to_sheet(pitcherRows);
-  ws4['!cols']=[{wch:10},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:12}];
+  ws4['!cols']=[{wch:16},{wch:8},{wch:8},{wch:7},{wch:8},{wch:6},{wch:8},{wch:7},{wch:6},{wch:6},{wch:8},{wch:6},{wch:6},{wch:8},{wch:12},{wch:16}];
   XLSX.utils.book_append_sheet(wb, ws4, '투수분석');
 
   var safe=function(s){return(s||'').replace(/[\/\:*?"<>|\s]/g,'_');};

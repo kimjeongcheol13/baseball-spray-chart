@@ -3901,6 +3901,7 @@ function exportAllGamesToExcel() {
   if(_anyAbsRows){
     allPitcherRows.push([]);
     allPitcherRows.push([_PITCHER_SHEET_NOTE]);
+    allPitcherRows.push([_PITCHER_SHEET_NOTE2]);
   }
 
   var wb=XLSX.utils.book_new();
@@ -4490,10 +4491,15 @@ function exportCurrentGameToExcel() {
   });
 }
 
-// 투수 탭 투구 기록이 없는 투수(또는 투수를 등록하지 않은 경기)의 「투수분석」 행을 타석 기록(구종·결과)으로 집계
+// 투수 탭 투구 기록이 없는 투수(또는 투수를 등록하지 않은 경기)의 「투수분석」 행을 타석 기록으로 추정 집계
 // - 타석에 기록된 공(a.pitches, 없으면 결정구 a.pt 1구)의 투수 이름(px.pitcher)으로 묶고, 이름이 없으면 "상대팀 투수 (미등록)"으로 묶는다
 // - skipNames: 투수 탭 투구 기록으로 이미 행을 만든 투수 → 중복 방지
-// - 볼%·스트라이크%는 타석 기록만으로는 알 수 없어 '-'
+// - 총투구수·볼·스트라이크 추정: 결과 직전 카운트(a.count.b/s, 카운트 버튼은 3-2까지만 돈다) + 결과 1구
+//     볼넷 → 볼 +1, 삼진 → 스트라이크 +1, 인플레이(안타·아웃·희생)·사구 → 볼도 스트라이크도 아닌 1구
+//     코스로 기록된 공(a.pitches)이 이 추정보다 많으면 총투구수는 그 수로 올리고,
+//     2스트라이크 상태였다면 초과분은 파울(스트라이크)로, 아니면 카운트 미기록으로 보고 어느 쪽에도 넣지 않는다
+// - 카운트를 기록한 타석이 하나도 없는 묶음은 추정 근거가 없어 볼%·스트라이크%를 '-'
+// - 구종%는 구종이 기록된 공(코스 기록 또는 결정구)만을 분모로 한다
 // 반환 행: [투수명, 포지션, 총투구수, 직구%, 슬라이더%, 커브%, 체인지업%, 포크볼%, 기타%, 볼%, 스트라이크%, 피안타, 탈삼진, 기록출처]
 function _pitcherRowsFromAbs(data, skipNames){
   var th=data.th||'홈팀', ta=data.ta||'원정팀';
@@ -4503,14 +4509,16 @@ function _pitcherRowsFromAbs(data, skipNames){
   var groups={}, order=[];
   (data.abs||[]).forEach(function(a){
     if(!a) return;
-    var ps=(a.pitches&&a.pitches.length)?a.pitches:(a.pt?[{pt:a.pt}]:[]);
+    var logged=(a.pitches&&a.pitches.length)||0;
+    var ps=logged?a.pitches:(a.pt?[{pt:a.pt}]:[]);
     var name='';
     ps.forEach(function(px){ if(px&&px.pitcher) name=px.pitcher; });   // 마지막으로 기록된 투수 이름
     if(name&&skipNames&&skipNames[name]) return;
     var team=a.team||'home';
     var key=name?('n:'+name):('t:'+team);
     if(!groups[key]){
-      groups[key]={name:name||((team==='home'?ta:th)+' 투수 (미등록)'), role:name?(roleOf[name]||''):'', pa:0, n:0, pt:{}, hit:0, k:0};
+      groups[key]={name:name||((team==='home'?ta:th)+' 투수 (미등록)'), role:name?(roleOf[name]||''):'', pa:0, n:0, pt:{}, hit:0, k:0,
+        est:0, balls:0, strikes:0, countUsed:false};
       order.push(key);
     }
     var g=groups[key];
@@ -4518,16 +4526,29 @@ function _pitcherRowsFromAbs(data, skipNames){
     ps.forEach(function(px){ var t=(px&&px.pt)||''; g.pt[t]=(g.pt[t]||0)+1; });
     if(HIT_RES.includes(a.res)) g.hit++;
     if(a.res==='삼진') g.k++;
+    // 투구수·볼·스트라이크 추정
+    var cb=(a.count&&a.count.b)||0, cs=(a.count&&a.count.s)||0;
+    var balls=cb, strikes=cs;
+    if(a.res==='볼넷') balls++;
+    else if(a.res==='삼진') strikes++;
+    var est=cb+cs+1;   // 결과구 포함
+    if(logged>est){ if(cs>=2) strikes+=logged-est; est=logged; }
+    if(cb>0||cs>0) g.countUsed=true;   // 카운트 버튼을 실제로 쓴 타석이 있어야 볼%·스트라이크%를 낸다 (코스만 찍은 경우는 볼·스트라이크 구분 불가)
+    g.est+=est; g.balls+=balls; g.strikes+=strikes;
   });
   return order.map(function(key){
-    var g=groups[key], total=g.n||1;
+    var g=groups[key], total=g.n||1, estT=g.est||1;
     var pct=function(t){ return +((g.pt[t]||0)/total*100).toFixed(1); };
     var known=KNOWN_PT.reduce(function(sum,t){ return sum+(g.pt[t]||0); },0);
-    return [g.name, g.role, g.n, pct('직구'), pct('슬라이더'), pct('커브'), pct('체인지업'), pct('포크볼'),
-      +((g.n-known)/total*100).toFixed(1), '-', '-', g.hit, g.k, '타석기록 ('+g.pa+'타석)'];
+    return [g.name, g.role, g.est, pct('직구'), pct('슬라이더'), pct('커브'), pct('체인지업'), pct('포크볼'),
+      +((g.n-known)/total*100).toFixed(1),
+      g.countUsed?+(g.balls/estT*100).toFixed(1):'-',
+      g.countUsed?+(g.strikes/estT*100).toFixed(1):'-',
+      g.hit, g.k, '타석기록 추정 ('+g.pa+'타석)'];
   });
 }
-var _PITCHER_SHEET_NOTE='※ 기록출처가 "타석기록"인 행은 투수 탭 투구 기록이 없어 타석의 구종·결과로 집계한 값입니다. 볼%·스트라이크%는 투수 탭에서 공별 결과를 기록하면 계산됩니다.';
+var _PITCHER_SHEET_NOTE='※ 기록출처가 "타석기록 추정"인 행은 투수 탭 투구 기록이 없어 타석 기록으로 추정한 값입니다. 총투구수·볼%·스트라이크%는 결과 직전 카운트(B-S)와 결과(볼넷=볼, 삼진=스트라이크, 인플레이·사구는 어느 쪽도 아님)로 계산하고, 2스트라이크 이후 추가로 기록된 공은 파울로 봅니다.';
+var _PITCHER_SHEET_NOTE2='   구종%는 구종이 기록된 공 기준입니다. 카운트를 기록한 타석이 없으면 볼%·스트라이크%는 "-"로 둡니다. 정확한 값은 투수 탭에서 공별 결과를 기록하면 계산됩니다.';
 
 function _doExportToExcel(data) {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중... 잠시 후 다시 시도하세요', false); return; }
@@ -4658,6 +4679,7 @@ function _doExportToExcel(data) {
   if(_absRows.length){
     pitcherRows.push([]);
     pitcherRows.push([_PITCHER_SHEET_NOTE]);
+    pitcherRows.push([_PITCHER_SHEET_NOTE2]);
   }else if(pitcherRows.length===1){
     pitcherRows.push([]);
     pitcherRows.push(['※ 투구·타석 기록이 없습니다. 기록 탭에서 구종을 선택해 타석을 기록하거나, 투수 탭에서 투구를 기록하면 채워집니다.']);

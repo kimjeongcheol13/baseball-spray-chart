@@ -158,6 +158,47 @@
     ok(!$('pitchEndSheet'), '시트 닫힘'); eq(AS.batter.id, 'a', '타자 그대로'); eq(last(p).end, undefined, '결과 안 달림');
     ok(PC().openPA(p.pitches), '타석 진행 중');
   });
+
+  // ═══ 폰: 투구 기록 화면 안에서 타자 고르기 (기록 탭을 오가지 않는다) ═══
+  function lineup3() { AS.curTeam = 'home'; AS.home_lineup = [{ id: 'a', name: '가', num: '1' }, { id: 'b', name: '나', num: '2' }, { id: 'c', name: '다', num: '3' }]; }
+  function pickerOpts() { return Array.prototype.map.call($('pitchBatterSel').options, function (o) { return o.value + ':' + o.text; }); }
+  test('타자 고르기 줄: 카운트 · 스트라이크/볼/파울 버튼과 한 덩어리(.pitch-dock), 목록은 지금 타순표', function () {
+    reset(); lineup3(); renderLP();
+    var dock = $('pitchDock'); ok(dock, '.pitch-dock 이 없음');
+    ['pitchBatterSel', 'pitchNextBatterBtn', 'pitchCountBar'].forEach(function (id) { ok(dock.contains($(id)), id + ' 가 덩어리 안에 없음'); });
+    ok(dock.querySelector('.mobile-pitch-quick-bar'), '퀵 버튼 줄이 덩어리 안에 없음'); ok(dock.querySelector('#mobile-pitch-result-panel'), '타석 결과 패널이 덩어리 안에 없음');
+    eq(pickerOpts(), [':타자 선택', 'a:1. #1 가', 'b:2. #2 나', 'c:3. #3 다'], '선택지 = 타순표 순서');
+    AS.home_lineup.push({ id: 'd', name: '라', num: '4' }); renderLP();
+    eq(pickerOpts().length, 5, '타순표가 바뀌면 같이 바뀐다'); AS.curTeam = 'away'; AS.away_lineup = []; renderLP();
+    eq(pickerOpts(), [':타순표에 타자를 등록하세요'], '타순표가 비면 안내'); ok($('pitchNextBatterBtn').disabled, '다음 타자 버튼 비활성');
+    AS.curTeam = 'home'; renderLP(); ok(!$('pitchNextBatterBtn').disabled, '타순표가 다시 있으면 활성');
+  });
+  test('화면에서 타자 고르기: 고르면 타자가 바뀌고 · 같은 타자를 또 골라도 선택이 풀리지 않고 · 타순표에서 바꾸면 따라온다', function () {
+    reset(); lineup3(); var p = pitcher(1, '투수'); renderLP();
+    var sel = $('pitchBatterSel'); sel.value = 'b'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    eq([AS.batter && AS.batter.id, sel.value], ['b', 'b'], '고른 타자');
+    rec('볼'); eq(last(p).bid, 'b', '공이 고른 타자에게 붙음'); ok($('pitchCountBar').textContent.indexOf('나') >= 0, '카운트 줄에 타자 이름');
+    pitchPickBatter('b'); eq(AS.batter && AS.batter.id, 'b', '같은 타자를 또 골라도 그대로');
+    $('pitchEndSheet') && $('pitchEndSheet').querySelector('[data-end="미상"]').click();
+    selBatter('c'); if ($('pitchEndSheet')) $('pitchEndSheet').querySelector('[data-end="미상"]').click();
+    eq($('pitchBatterSel').value, 'c', '타순표(selBatter)에서 바꿔도 고르기 줄이 따라옴');
+  });
+  test('다음 타자 ▶: 타순 순서로 넘어가고 마지막 다음은 첫 타자 · 한 명뿐이면 선택이 풀리지 않는다', function () {
+    reset(); lineup3(); pitcher(1, '투수'); renderLP();
+    var seen = []; for (var i = 0; i < 4; i++) { pitchNextBatter(); seen.push(AS.batter.id); }
+    eq(seen, ['a', 'b', 'c', 'a'], '첫 타자부터 순서대로, 한 바퀴 돌면 처음으로');
+    AS.home_lineup = [{ id: 'z', name: '혼자', num: '9' }]; AS.batter = null; renderLP();
+    pitchNextBatter(); pitchNextBatter(); eq(AS.batter && AS.batter.id, 'z', '한 명뿐이면 계속 그 타자');
+  });
+  test('화면에서 타자를 바꾸려는데 앞 타석에 결과가 없으면: 결과 시트가 먼저 뜨고, 바꾸지 않으면 고르기 줄도 원래 타자로 돌아온다', function () {
+    reset(); lineup3(); var p = pitcher(1, '투수'); renderLP(); pitchPickBatter('a'); rec('볼', '스트라이크');
+    var sel = $('pitchBatterSel'); sel.value = 'b'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    ok($('pitchEndSheet'), '결과 시트가 안 뜸'); eq(AS.batter.id, 'a', '아직 타자 그대로'); eq($('pitchBatterSel').value, 'a', '고르기 줄도 원래 타자');
+    $('pitchEndSheet').querySelector('[data-cancel]').click();
+    eq([AS.batter.id, $('pitchBatterSel').value], ['a', 'a'], '바꾸지 않음 → 그대로'); ok(PC().openPA(p.pitches), '타석 진행 중');
+    pitchNextBatter(); ok($('pitchEndSheet'), '다음 타자 ▶ 도 같은 시트를 지난다'); $('pitchEndSheet').querySelector('[data-end="삼진"]').click();
+    eq([AS.batter.id, $('pitchBatterSel').value, p.pitches[p.pitches.length - 1].end], ['b', 'b', '삼진'], '결과를 고르면 다음 타자로 넘어가고 앞 타석에 결과가 달림');
+  });
   test('같은 타자를 다시 누르면(선택 해제) 시트가 뜨지 않는다 · 타자 없이 시작한 타석은 고른 타자에게 이어 붙는다', function () {
     reset(); lineup(); var p = pitcher(1, '투수'); selBatter('a'); rec('볼');
     selBatter('a'); ok(!$('pitchEndSheet'), '같은 타자 해제에 시트가 뜸'); eq(AS.batter, null, '해제됨');

@@ -3875,7 +3875,7 @@ function exportAllGamesToExcel() {
       var pitches=p.pitches||[];
       if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
       _tabNames[p.name]=1;
-      var total=pitches.length||1;
+      var total=pitches.length;
       var ptCount={};
       pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
       var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
@@ -4632,7 +4632,7 @@ function _doExportToExcel(data) {
     var pitches=p.pitches||[];
     if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
     _tabNames[p.name]=1;
-    var total=pitches.length||1;
+    var total=pitches.length;
     var ptCount={};
     pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
     var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%

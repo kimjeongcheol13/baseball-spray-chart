@@ -2,6 +2,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=5';
 import { hotColdFigure } from './zonefig.js?v=3';
+import { mixFigure } from './mixfig.js?v=1';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -273,21 +274,14 @@ function _dirTable(P) {
 }
 
 // ── 타석 결과 구성 ───────────────────────────────────────────
+// 이 선수 = 굵은 누적 막대 · 내 기록 전체 = 얇은 기준 막대, 아래 표에 비율과 횟수
 function _mixCard(P, pool) {
   const s = P.st;
-  const top = Math.max(0.1, ...MIX.map(m => Math.max(s[m.k], pool[m.k])));
   const cnt = { mix1b: s.s1, mixXbh: s.s2 + s.s3, mixHr: s.hr, mixBb: s.bb + s.hbp, mixK: s.k, mixOut: s.pa - s.s1 - s.s2 - s.s3 - s.hr - s.bb - s.hbp - s.k };
   return `
     <section class="an-card">
-      <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">세로선 = 전체 평균</span></header>
-      <div class="pf-mix">
-        ${MIX.map(m => `
-          <div class="pf-mix-row" title="${m.label} ${cnt[m.k]}번 · ${pct(s[m.k])} (전체 ${pct(pool[m.k])})">
-            <span class="pf-mix-lbl">${m.label}</span>
-            <span class="pf-mix-bar"><i class="c-${m.c}" style="width:${s[m.k] / top * 100}%"></i><em style="left:${pool[m.k] / top * 100}%"></em></span>
-            <span class="pf-mix-v">${pct(s[m.k])}<small>${cnt[m.k]}</small></span>
-          </div>`).join('')}
-      </div>
+      <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">타석 = 100%</span></header>
+      ${mixFigure(MIX, [{ name: P.name, st: s, cnt }, { name: '내 기록 전체', tname: '전체', st: pool, ref: true }])}
     </section>`;
 }
 

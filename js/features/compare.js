@@ -1,6 +1,7 @@
 // 선수 비교 — 두 타자를 같은 기준(내 기록 전체)으로 나란히 놓고 분석
 import { esc as _esc } from '../constants.js';
 import { buildData, playerData, f3, pct, fmt, sampleBadge as _sample, josa as _j, emptyState as _empty, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
+import { mixFigure } from './mixfig.js?v=1';
 
 let _a = null;          // 선택된 선수 이름 (A / B)
 let _b = null;
@@ -139,7 +140,7 @@ function _render(A, B, pool) {
     </section>
     <section class="an-card">
       <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">각 선수 타석 = 100%</span></header>
-      ${_mix(A, B)}
+      ${mixFigure(MIX, [{ name: A.name, st: A.st, mark: '<i class="cmp-dot a"></i>' }, { name: B.name, st: B.st, mark: '<i class="cmp-dot b"></i>' }])}
     </section>
     <section class="an-card">
       <header class="an-hd"><h3>누적 기록</h3></header>
@@ -222,33 +223,6 @@ function _duel(r, A, B, avg) {
       </span>
       <span class="cmp-vals" aria-hidden="true"><b class="a">${fmt(v1, r.fmt)}</b><b class="b">${fmt(v2, r.fmt)}</b></span>
     </div>`;
-}
-
-// 타석 결과 구성: 선수마다 100% 누적 막대 1개 + 정확한 비율 표(표 머리 = 색 범례)
-function _mix(A, B) {
-  const bar = (P, key) => {
-    const s = P.st;
-    const segs = MIX.map((m, i) => {
-      const v = s[m.k];
-      if (!(v > 0)) return '';
-      // 칸이 좁으면 숫자를 넣지 않는다 (아래 표에 모두 있음)
-      return `<i class="mx${i}" style="flex:${v * 100} 1 0" title="${m.label} ${pct(v)}">${v >= 0.12 ? pct(v) : ''}</i>`;
-    }).join('');
-    const aria = _esc(`${P.name} ${s.pa}타석: ${MIX.map(m => `${m.label} ${pct(s[m.k])}`).join(', ')}`);
-    return `
-      <div class="cmp-mixrow">
-        <span class="cmp-mixwho"><i class="cmp-dot ${key}"></i><b>${_esc(P.name)}</b><small>${s.pa}타석</small></span>
-        <span class="cmp-mixbar" role="img" aria-label="${aria}">${segs}</span>
-      </div>`;
-  };
-  const row = (P, key) => `<tr><th scope="row"><i class="cmp-dot ${key}"></i><span class="sr">${_esc(P.name)}</span></th>${MIX.map(m => `<td>${pct(P.st[m.k])}</td>`).join('')}</tr>`;
-  return `
-    <div class="cmp-mixbars">${bar(A, 'a')}${bar(B, 'b')}</div>
-    <table class="cmp-count cmp-mixtbl">
-      <thead><tr><th scope="col"><span class="sr">선수</span></th>${MIX.map((m, i) => `<th scope="col"><i class="cmp-mixkey mx${i}"></i>${m.label}</th>`).join('')}</tr></thead>
-      <tbody>${row(A, 'a')}${row(B, 'b')}</tbody>
-    </table>
-    <div class="cmp-gdesc">안타는 진할수록 장타 · 좁은 칸의 숫자는 표에서 확인</div>`;
 }
 
 function _counts(A, B) {

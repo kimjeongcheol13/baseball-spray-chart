@@ -1450,6 +1450,7 @@ AS.currentPitches=[];
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
   AS.abs.push(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
   _showMiniSprayAfterRecord();
+  _countAfterRecord();_recordToPitch(r);
   gfAfterRecord(res,r.rbi);
 }
 function recOther(res){
@@ -1464,6 +1465,7 @@ function recOther(res){
 AS.currentPitches=[];
   AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
+  _countAfterRecord();_recordToPitch(r);
   gfAfterRecord(res,0);
 }
 function recSB(ok){showToast(ok?'도루 성공':'도루 실패',false);}
@@ -1687,7 +1689,8 @@ function shiftRecPlayer(dir){
 function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){
   if(!AS.abs.length)return;
-  AS.abs.pop();
+  var _last=AS.abs.pop();
+  if(_last&&_last.count){AS.balls=_last.count.b||0;AS.strikes=_last.count.s||0;renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
   if(AS.zoneHistory&&Object.keys(AS.zoneHistory).length){
     var _zk=Object.keys(AS.zoneHistory).pop();
     if(_zk)delete AS.zoneHistory[_zk];
@@ -2748,13 +2751,34 @@ function restoreGame(key){
 
 
 // ─── COUNT BOARD ───
+// B·S·O 를 누르면 +1. 카운트가 차면 그 자리에서 타석을 끝낸다 — 4볼 → 볼넷, 3스트라이크 → 삼진 (K/BB 도장과 같은 recQuick 경로), 3아웃 → 다음 이닝
+// (예전에는 0 으로 되돌아가기만 해서 "볼 4개·스트라이크 3개를 눌러도 기록이 안 된다"는 문제가 있었다)
 function chCount(type){
-  if(type==='b')AS.balls=(AS.balls+1)%4;
-  else if(type==='s')AS.strikes=(AS.strikes+1)%3;
-  else if(type==='o')AS.outs=(AS.outs+1)%3;
+  if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
+  else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
+  else if(type==='o'){if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;}
   renderCount();
 }
 function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();}
+// 카운트가 찼을 때: 도장과 같은 recQuick 으로 기록. 타자가 없으면(안내 토스트만 뜸) 카운트는 그대로 둔다
+function _countFull(res){
+  var n=AS.abs.length;
+  recQuick(res);
+  if(AS.abs.length===n)renderCount();
+}
+// 3아웃: 카운트를 비우고 다음 이닝으로. 경기 운영 모드는 GF.outs 가 따로 세고 이닝도 GF 가 넘기므로 카운트만 비운다
+function _countThreeOuts(){
+  AS.outs=0;AS.balls=0;AS.strikes=0;
+  renderCount();
+  var gf=typeof GF!=='undefined'&&GF&&GF.active;
+  var s=document.getElementById('innSel');
+  if(!gf&&s&&s.selectedIndex<s.options.length-1&&typeof window.recStepInning==='function'){
+    window.recStepInning(1);
+    showToast('3아웃 — '+s.value,false,true);
+  }else showToast('3아웃 — 카운트를 비웠습니다',false,true);
+}
+// 타석이 끝나면(필드·도장·자동) 볼·스트라이크는 0-0 으로. 아웃은 기존대로 O 버튼(또는 경기 운영 모드)이 센다
+function _countAfterRecord(){AS.balls=0;AS.strikes=0;renderCount();}
 function renderCount(){
   [{id:'cntBalls',n:AS.balls,cls:'lit-b'},{id:'cntStrikes',n:AS.strikes,cls:'lit-s'},{id:'cntOuts',n:AS.outs,cls:'lit-o'}].forEach(function(s){
     var el=document.getElementById(s.id);if(!el)return;
@@ -5467,6 +5491,7 @@ function selPitcherPt(el,pt){
 
 function recordPitch(result){
   if(!AS.currentPitcher){showToast('투수를 먼저 선택하세요',false,false);return;}
+  result=_pitchLiveResult(result);   // 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진 (기록 탭 볼카운트 기준)
   var hitResults=['안타','2루타','3루타','홈런'];
   var entry={
     id:Date.now(),
@@ -5490,6 +5515,64 @@ function recordPitch(result){
   // 피드백
   var icons={'볼':'🟢','스트라이크':'🟡','파울':'🟣','안타':'🟢','2루타':'🔵','3루타':'🟡','홈런':'🔴'};
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result,false,true);
+  _pitchToRecord(entry);   // 기록 탭 연동: 볼카운트 · 이번 타석 투구 · 타석 기록
+}
+
+// ─── 투수 탭 ↔ 기록 탭 연동 ───
+// 투수 탭(분석 → 투수 → 투구 기록)의 공 하나하나가 기록 탭의 볼카운트(AS.balls/strikes)·이번 타석 투구(AS.currentPitches)·타석 기록(AS.abs)으로 이어진다.
+// 반대로 기록 탭에서 타석이 끝나면, 투수 탭에 이 타석의 공이 쌓여 있는데 아직 끝나지 않았을 때만 마지막 공을 보태 투수 쪽 타석도 닫는다
+// (투수 탭을 안 쓰는 경기에는 투구를 지어내지 않는다 — 투구수·스트라이크% 가 망가지므로).
+var _PITCH_END={'볼넷':'볼넷','삼진':'삼진','병살':'병살','안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','아웃':null,'삼중살':null};   // 투수 탭 결과 → 타석 결과 (null = 필드에서 고르거나 타석 결과 없음)
+var _RES_TO_PITCH={'삼진':'삼진','볼넷':'볼넷','안타':'안타','내야안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','땅볼 아웃':'아웃','플라이 아웃':'아웃','희타':'아웃','희비':'아웃','병살':'병살'};   // 타석 결과 → 투수 탭 결과 (사구는 투수 탭에 없음)
+var _pitchLinking=false;   // 투수 탭에서 시작된 타석 기록 중 (되돌아오는 연동 방지)
+function _pitchLiveResult(result){
+  if(result==='볼'&&(AS.balls||0)>=3)return'볼넷';
+  if(result==='스트라이크'&&(AS.strikes||0)>=2)return'삼진';
+  return result;
+}
+function _pitchToRecord(e){
+  var r=e.result;
+  AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
+    balls:AS.balls||0,strikes:AS.strikes||0,outs:AS.outs||0,
+    pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts,result:r});
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  if(r==='볼'){AS.balls=Math.min(3,(AS.balls||0)+1);renderCount();return;}
+  if(r==='스트라이크'||r==='파울'){if((AS.strikes||0)<2)AS.strikes=(AS.strikes||0)+1;renderCount();return;}
+  if(!(r in _PITCH_END))return;
+  var res=_PITCH_END[r];
+  var clear=function(){AS.balls=0;AS.strikes=0;AS.currentPitches=[];renderCount();};
+  if(res===null){   // 인플레이 아웃: 타석 결과(땅볼/플라이)는 필드에서 고른다 · 삼중살: 타석 결과 없음
+    if(r==='아웃'&&AS.batter){_countOpenField(null,'기록 탭 필드에서 타구 위치를 탭하고 땅볼·플라이를 고르면 타석이 기록됩니다');return;}
+    clear();return;
+  }
+  if(_QUICK_HITS.includes(res)){   // 안타·장타: 타구 위치가 필요 → 기록 탭 필드를 한 번 탭하면 그 결과로 기록
+    if(AS.batter){_countOpenField(res,'기록 탭 필드에서 공이 떨어진 위치를 탭하세요 — '+res+'로 기록됩니다');return;}
+    clear();return;
+  }
+  if(!AS.batter){clear();showToast(r+' — 기록 탭에서 타자를 고르면 타석 기록에도 들어갑니다',false,true);return;}
+  var n=AS.abs.length;
+  _pitchLinking=true;
+  try{recOther(res);}finally{_pitchLinking=false;}
+  if(AS.abs.length===n)clear();   // 연타 방지 가드(0.7초)에 걸려 타석이 안 적혔어도 투수 쪽 타석은 끝났으므로 카운트는 비운다
+}
+// 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 땅볼/플라이 팝업)
+function _countOpenField(res,msg){
+  if(typeof shellNav==='function')shellNav('record');
+  if(res){AS.pendingQuickRes=res;_showFieldTapPrompt(res);}
+  showToast(msg,false,true);
+}
+function _recordToPitch(ab){
+  if(_pitchLinking||!AS.currentPitcher||!ab||!ab.pitches||!ab.pitches.length)return;
+  var last=ab.pitches[ab.pitches.length-1];
+  if(!last||!last.result||(last.result in _PITCH_END))return;   // 투수 탭에서 온 공이 아니거나 이미 끝난 타석
+  var pr=_RES_TO_PITCH[ab.res];
+  if(!pr)return;
+  var entry={id:Date.now(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||''};
+  if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];
+  AS.currentPitcher._batterLog.push(entry);
+  AS.currentPitcher.pitches.push(entry);
+  AS.pitchLog.unshift(entry);
+  renderPitchLog();renderPitcherStats();
 }
 
 function loadPitchEntry(pt, zone, zoneX, zoneY){

@@ -15,6 +15,8 @@
   function gdata(extra) { return Object.assign({ th: '홈', ta: '원정', hs: 1, as: 0, d: '2026. 5. 31.', ts: BASE }, extra || {}); }
   function row(key, user, extra) { return { user_id: user || ME, game_key: key, team_name: '홈 vs 원정', date: '2026. 5. 31.', data: gdata(extra), updated_at: iso(BASE - 5000) }; }   // 서버본이 더 옛것 → 시작 동기화가 로컬을 서버본으로 덮지 않는다
   var A = absOf(BASE), B = absOf(BASE + 5e6);   // A = 한 경기(K1 · K2 두 사본), B = 다른 경기(K3)
+  // K2 = 같은 경기의 갈라진 사본: 타석 3개는 같고 하나씩 다르다 (P0.5 기준 같은 경기 · main #96 의 중복 정리는 부분집합만 지우므로 둘 다 남는다)
+  var A2 = A.slice(0, 3).concat([ab(BASE + 3 * 20000 + 7, '라')]);
   function seed(locals, serverRows, del) {
     srv.reset(); localStorage.clear();
     var saves = [], mods = {};
@@ -53,7 +55,7 @@
 
   test('로그인한 사용자가 경기를 지우면(불러오기 목록 삭제) 서버에서 본인 행의 그 경기 사본들만 지워진다 — 다른 경기 · 다른 사용자의 같은 키는 그대로', async function () {
     await start();
-    seed([{ key: K1, abs: A, ts: BASE }, { key: K2, abs: A, ts: BASE + 10 }, { key: K3, abs: B, ts: BASE + 20 }],
+    seed([{ key: K1, abs: A, ts: BASE }, { key: K2, abs: A2, ts: BASE + 10 }, { key: K3, abs: B, ts: BASE + 20 }],
       [row(K1), row(K2), row(K3), row(K1, 'OTHER-USER'), row(K2, 'OTHER-USER')]);
     await loginAndSettle(); srv.log.length = 0;
     withConfirm(function () { deleteGame(K2); });   // 같은 경기의 사본 K1 · K2 를 한꺼번에

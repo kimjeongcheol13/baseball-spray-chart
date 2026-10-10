@@ -5533,6 +5533,7 @@ function _pitchLiveResult(result){
 }
 function _pitchToRecord(e){
   var r=e.result;
+  renderPitcherRoster();   // 투수 버튼의 'N구' 갱신
   AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
     balls:AS.balls||0,strikes:AS.strikes||0,outs:AS.outs||0,
     pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts,result:r});
@@ -5559,6 +5560,8 @@ function _pitchToRecord(e){
 // 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 땅볼/플라이 팝업)
 function _countOpenField(res,msg){
   if(typeof shellNav==='function')shellNav('record');
+  var w=document.getElementById('cwrap');
+  if(w&&w.scrollIntoView&&window.innerWidth<=720)requestAnimationFrame(function(){w.scrollIntoView({block:'nearest'});});   // 모바일: 필드가 화면 밖이면 보이게
   if(res){AS.pendingQuickRes=res;_showFieldTapPrompt(res);}
   showToast(msg,false,true);
 }
@@ -5573,7 +5576,7 @@ function _recordToPitch(ab){
   AS.currentPitcher._batterLog.push(entry);
   AS.currentPitcher.pitches.push(entry);
   AS.pitchLog.unshift(entry);
-  renderPitchLog();renderPitcherStats();
+  renderPitchLog();renderPitcherStats();renderPitcherRoster();
 }
 
 function loadPitchEntry(pt, zone, zoneX, zoneY){

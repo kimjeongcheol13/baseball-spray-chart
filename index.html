@@ -2172,12 +2172,13 @@ function _renderMobPitchLog() {
   var pitcher = window.AS && window.AS.currentPitcher ? window.AS.currentPitcher.name : '';
   var hdrEl = logWrap.querySelector('.mob-pitch-log-hdr');
   if (hdrEl) hdrEl.textContent = pitcher ? ('이번 타석 (' + pitcher + ' 상대)') : '이번 타석 투구 기록';
+  var E = typeof _escHtml === 'function' ? _escHtml : String;
   logList.innerHTML = pitches.map(function(p, i) {
     var countStr = p.balls !== undefined ? (p.balls + 'B ' + p.strikes + 'S ' + p.outs + 'O') : '';
-    var zoneStr = p.zone || '';
+    var zoneStr = E([p.zone, p.result].filter(Boolean).join(' · '));   // 투수 탭에서 온 공은 결과(볼·스트라이크…)도 함께
     return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #1e1e2a">'
       + '<span style="font-size:10px;font-weight:800;color:#434c5e;min-width:18px">' + (i+1) + '구</span>'
-      + '<span style="font-size:12px;font-weight:800;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px;flex-shrink:0">' + p.pt + '</span>'
+      + '<span style="font-size:12px;font-weight:800;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px;flex-shrink:0">' + E(p.pt || '구종 —') + '</span>'
       + '<span style="font-size:10px;color:#8892a4;flex:1">' + zoneStr + '</span>'
       + (countStr ? '<span style="font-size:9px;color:#434c5e;font-family:monospace">' + countStr + '</span>' : '')
       + (p.ts ? '<span style="font-size:9px;color:#434c5e">' + p.ts + '</span>' : '')
@@ -2379,7 +2380,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=134"></script>
+<script defer src="js/core.js?v=135"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=53"></script>
 <script>

@@ -1,8 +1,8 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=6';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=8';
-import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C } from './pitchcalc.js?v=2';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=9';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C } from './pitchcalc.js?v=3';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];

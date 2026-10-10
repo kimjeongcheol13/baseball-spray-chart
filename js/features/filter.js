@@ -15,11 +15,13 @@ var _pitcherHand = null;
 
 // ── 필터 판정 ─────────────────────────────────────────────────
 function _pass(a) {
-  if (_SF.pt.length    && _SF.pt.indexOf(a.pt) < 0)  return false;
+  var L = a && a.pa != null && window.PitchLink ? window.PitchLink.of(a) : null;   // P2: 투구 기록과 연결된 타구 → 그 기록의 카운트 · 구종 · 투수 손
+  var pt = (L && L.pt) || a.pt, hand = (L && L.hand) || a.hand;
+  if (_SF.pt.length    && _SF.pt.indexOf(pt) < 0)     return false;
   if (_SF.res.length   && _SF.res.indexOf(a.res) < 0) return false;
-  if (_SF.hand != null && a.hand !== _SF.hand)        return false;
+  if (_SF.hand != null && hand !== _SF.hand)          return false;
   if (_SF.count != null) {
-    var c = a.count || {}, b = c.b || 0, s = c.s || 0;
+    var c = L ? L.count : (a.count || {}), b = c.b || 0, s = c.s || 0;
     if (_SF.count === 'first'   && !(b === 0 && s === 0))          return false;
     if (_SF.count === 'pitcher' && s < 2)                          return false;
     if (_SF.count === 'batter'  && !(b >= 2 && b > s))            return false;
@@ -234,7 +236,7 @@ function _build() {
     + '<div class="sfp-sec"><div class="sfp-lbl">타구 결과</div><div class="sfp-row">'
     + [
         ['안타','안타'],['2루타','2루타'],['3루타','3루타'],['홈런','홈런'],
-        ['삼진','삼진'],['볼넷','볼넷'],['플라이 아웃','플라이'],['땅볼 아웃','땅볼'],['병살','병살']
+        ['삼진','삼진'],['볼넷','볼넷'],['플라이 아웃','플라이'],['땅볼 아웃','땅볼'],['라인드라이브 아웃','라인'],['병살','병살'],['실책','실책'],['야수선택','야선']
       ].map(function(pair) {
         return '<button class="sfc" data-key="res" data-val="' + pair[0] + '" onclick="_sfChip(this)">' + pair[1] + '</button>';
       }).join('')

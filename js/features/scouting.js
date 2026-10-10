@@ -1,6 +1,6 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
-import { pitchInfo } from './pitchcalc.js?v=2';
+import { pitchInfo } from './pitchcalc.js?v=3';
 import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=6';
 import { buildColumn, columnText, renderColumnFigure } from './column.js?v=3';
 

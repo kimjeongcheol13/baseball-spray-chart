@@ -88,7 +88,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=3">
-<link rel="stylesheet" href="css/pitcher.css?v=10">
+<link rel="stylesheet" href="css/pitcher.css?v=11">
 <link rel="stylesheet" href="css/batter.css?v=3">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
@@ -1596,7 +1596,7 @@ var _kakaoSdkLoaded = false;
     <input type="hidden" id="editRecId">
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
       <div><div class="sec-lbl" style="margin-bottom:4px">이닝</div><select class="inp" id="editInn"><option>1회초</option><option>1회말</option><option>2회초</option><option>2회말</option><option>3회초</option><option>3회말</option><option>4회초</option><option>4회말</option><option>5회초</option><option>5회말</option><option>6회초</option><option>6회말</option><option>7회초</option><option>7회말</option><option>8회초</option><option>8회말</option><option>9회초</option><option>9회말</option><option>연장</option></select></div>
-      <div><div class="sec-lbl" style="margin-bottom:4px">결과</div><select class="inp" id="editRes"><option>안타</option><option>내야안타</option><option>2루타</option><option>3루타</option><option>홈런</option><option>볼넷</option><option>사구</option><option>삼진</option><option>플라이 아웃</option><option>땅볼 아웃</option><option>희타</option><option>희비</option><option>병살</option></select></div>
+      <div><div class="sec-lbl" style="margin-bottom:4px">결과</div><select class="inp" id="editRes"><option>안타</option><option>내야안타</option><option>2루타</option><option>3루타</option><option>홈런</option><option>볼넷</option><option>사구</option><option>삼진</option><option>플라이 아웃</option><option>땅볼 아웃</option><option>희타</option><option>희비</option><option>병살</option><option>라인드라이브 아웃</option><option>실책</option><option>야수선택</option><option>삼중살</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">구종</div><select class="inp" id="editPt"><option value="">없음</option><option>직구</option><option>커브</option><option>슬라이더</option><option>체인지업</option><option>포크볼</option><option>커터</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">코스</div><select class="inp" id="editZone"><option value="">없음</option><option>내각 높음</option><option>중앙 높음</option><option>외각 높음</option><option>내각 중간</option><option>중앙 중간</option><option>외각 중간</option><option>내각 낮음</option><option>중앙 낮음</option><option>외각 낮음</option><option>볼 위</option><option>볼 아래</option><option>볼 내</option><option>볼 외</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">타구 방향</div><select class="inp" id="editDir"><option value="">없음</option><option value="LF">당겨치기(LF)</option><option value="LC">좌중간(LC)</option><option value="CF">센터(CF)</option><option value="RC">우중간(RC)</option><option value="RF">밀어치기(RF)</option></select></div>
@@ -2369,9 +2369,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=139"></script>
+<script defer src="js/core.js?v=140"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=55"></script>
+<script type="module" src="js/app.js?v=56"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

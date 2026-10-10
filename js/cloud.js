@@ -19,7 +19,9 @@
   var _sb        = null;
   var _user      = null;
   var _online    = typeof navigator !== 'undefined' ? navigator.onLine : true;
-  var _debTimer  = null;
+  var _debTimer  = null;   // 타구 기록 실시간 동기화(cloudAutoSyncRecord) 디바운스
+  var _saveTimers = {};    // 경기 저장(cloudSave) 업로드 대기 — 경기(key)마다 따로. 예전에는 _debTimer 를 같이 써서
+                           // 저장 직후 3초 안에 타구가 기록되면 그 경기 업로드가 취소됐다(다음 시작 동기화 때까지 서버에 안 올라감)
   var _pendSync  = false;
   var _startDone = false;
   var _team      = null;   // { id, code, name, owner_id, role: 'owner'|'member' }
@@ -656,6 +658,11 @@
   window.addEventListener('offline', function () {
     _online = false;
     clearTimeout(_debTimer);
+    // 올리기 전이던 저장은 연결되면 시작 동기화가 올린다 (로컬이 더 새로우면 올리는 규칙 그대로)
+    var waiting = Object.keys(_saveTimers);
+    waiting.forEach(function (k) { clearTimeout(_saveTimers[k]); });
+    _saveTimers = {};
+    if (waiting.length) _pendSync = true;
     _setStatus('offline');
   });
 
@@ -669,12 +676,17 @@
      외부 인터페이스
   ═══════════════════════════════════════════════ */
 
-  /* saveGame() → cloudSave(key, data) */
-  window.cloudSave = function (key, data) {
+  /* saveGame() → core.js cloudSave → _cloudSaveUser(key, data): 로그인 계정 클라우드(user_games)에 올린다
+     (core.js 가 window.cloudSave 를 같은 이름으로 다시 정의하므로, core.js 는 이 함수를 _cloudSaveUser 로 부른다) */
+  window.cloudSave = window._cloudSaveUser = function (key, data) {
+    if (!_user || _user.is_anonymous) return;   // 로그인 전: 올리지 않는다 — 수정 시각은 core.js 가 기록했으니 로그인하면 시작 동기화가 올린다
     if (!_online) { _pendSync = true; return; }
-    clearTimeout(_debTimer);
+    var uid = _user.id;
+    clearTimeout(_saveTimers[key]);   // 같은 경기를 3초 안에 다시 저장하면 마지막 것만 올린다 — 다른 경기 · 실시간 기록 동기화는 건드리지 않는다
     _setStatus('syncing');
-    _debTimer = setTimeout(function () {
+    _saveTimers[key] = setTimeout(function () {
+      delete _saveTimers[key];
+      if (!_user || _user.id !== uid) { _setStatus('clear'); return; }   // 그사이 로그아웃 · 다른 계정 — 그 계정의 시작 동기화가 처리한다
       _upsertGame(key, data)
         .then(function (ok) { if (ok) _syncSaved(3000); else _setStatus('clear'); })
         .catch(_notifySyncFail);

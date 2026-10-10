@@ -194,6 +194,7 @@
        · 데이터가 없는 스냅샷 목록 항목(예전 내려받기 뒤 로컬 정리로 지워진 것)은 열 수도 없으니 목록에서 뺀다
      계획(_plan)은 내려받기 전에 세워 정리 대상은 내려받지 않고, 적용(_apply)은 로컬 먼저, 서버(_push)가 실패하면 표시를 남기지 않아 다음 시작 때 다시 센다. */
   var FIXED_KEY = 'sl_cloud_auto_fixed';
+  var REAL_ID = 1e11;   // 실제 기록 시각(Date.now()) id 의 최솟값 — js/features/games.js 와 같은 기준
   var FIXED_VER = ':3';
   var AUTO = 'sl_auto_';
   function _isAuto(k) { return k.indexOf(AUTO) === 0; }
@@ -209,7 +210,9 @@
         if (seen[key]) return; seen[key] = true;
         if (!d || typeof d !== 'object') return;
         var ids = {}, n = 0, idN = 0, pitches = 0;
-        (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null) { ids[String(a.id)] = true; idN++; } });
+        // 실제 기록 시각 id(Date.now(), 1e11 이상)만 쓴다 — 공유 링크로 저장한 경기는 타석 id 가 0,1,2… 순번이라 서로 다른 경기끼리도 겹친다.
+        // 값 = 그 타석의 타자: 지울 때 같은 id 의 타자까지 같아야 같은 기록으로 본다
+        (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null && Number(a.id) >= REAL_ID) { ids[String(a.id)] = String(a.bid != null ? a.bid : (a.bname || '')); idN++; } });
         (Array.isArray(d.pitchers) ? d.pitchers : []).forEach(function (p) { pitches += (p && Array.isArray(p.pitches)) ? p.pitches.length : 0; });
         var ts = _parseTs(d.ts) || 0, ep = _keyEpoch(key);
         cand.push({ key: key, data: d, ids: ids, idN: idN, n: n, pitches: pitches, ts: ts, auto: _isAuto(key), named: _isNamed(key),
@@ -241,7 +244,8 @@
       var isSub = function (b, a) {   // b 가 a 의 부분집합인가
         if (b.n > a.n || b.pitches > a.pitches) return false;
         if (!b.idN && !b.auto) return false;   // 타석 id 없는 정식 저장은 비교할 수 없으니 지우지 않는다
-        return Object.keys(b.ids).every(function (i) { return a.ids[i]; });
+        if (b.n && !b.idN) return false;       // 타석은 있는데 실제 기록 시각 id 가 없다(공유 링크 저장 등) — 내용을 비교할 수 없으니 지우지 않는다
+        return Object.keys(b.ids).every(function (i) { return Object.prototype.hasOwnProperty.call(a.ids, i) && a.ids[i] === b.ids[i]; });
       };
       // 남길 것 고르기(순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합이면 지운다) — 묶음 대표 하나와만 비교하면
       // 갈래(같은 타석 5개 + 다른 1개)가 대표가 될 때 나머지 똑같은 행들이 "갈라진 기록"으로 남는다(2차에서 실제로 그랬다)

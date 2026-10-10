@@ -96,6 +96,16 @@
     eq(P().length, 4, '투수 쪽 4구'); eq(AS.abs.length, 0, '타석은 아직');
   });
 
+  run('투수 탭: 투수 버튼의 투구 수가 갱신되고, 모바일 투구 시트에 구종 없는 공이 null 로 보이지 않는다', true, function () {
+    AS.pitcherPt = null;
+    recordPitch('볼'); recordPitch('스트라이크');
+    ok(/\(2구\)/.test($('pitcherRoster').textContent), '투수 버튼 2구 — 실제 ' + $('pitcherRoster').textContent.trim());
+    _renderMobPitchLog();
+    var t = $('mobPitchLogList').textContent;
+    ok(t.indexOf('null') < 0, '모바일 투구 시트에 null — ' + t);
+    ok(t.indexOf('구종 —') >= 0 && t.indexOf('볼') >= 0 && t.indexOf('스트라이크') >= 0, '구종 자리표시 · 결과 표시 — ' + t);
+  });
+
   run('투수 탭: 4번째 볼은 볼넷으로 저장되고 타석 기록에도 볼넷이 들어간다 (중복 없음)', true, function () {
     recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     eq(P().length, 4, '투수 쪽 4구 (되돌아온 연동으로 늘지 않음)'); eq(P()[3].result, '볼넷', '4번째 공 = 볼넷'); eq(P()[3].batter, '첫타자', '상대 타자');

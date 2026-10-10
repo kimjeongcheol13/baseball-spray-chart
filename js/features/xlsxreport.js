@@ -5,7 +5,7 @@
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
 import { buildData, calcStats } from './batdata.js?v=6';
-import { pitchInfo, isStrikePitch, warnLines, END_LABEL } from './pitchcalc.js?v=1';
+import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=2';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -918,7 +918,7 @@ export function exportPitcherXlsx(P, S, calc) {
   plist.forEach((o, i) => {
     const { p } = o;
     const end = pitchInfo(p).end;   // 그 공으로 타석이 끝났을 때만 (낫아웃이면 표시)
-    rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', p.batter || '', p.pt || '', p.zone || '', p.pr || p.result || '',
+    rec.line(i + 1, 0, [o.seq, o.app.label, innLabel(p.inning), p.batter || '', p.pt || '', p.zone || '', prLabel(p),   // 헛스윙 · 루킹 · 스트라이크(구분 없음) · 이닝 미기록
       end ? (END_LABEL[end] || end) + (p.nk ? '(낫아웃)' : '') : '',
       o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : ''],
     ['td', 'tdL', 'td', 'td', 'td', 'td', 'tdB', 'td', 'td', 'tdC', 'tdC']);

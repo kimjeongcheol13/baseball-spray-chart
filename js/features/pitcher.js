@@ -1,8 +1,8 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=6';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=7';
-import { calcPitching, pitchInfo, isStrikePitch, warnLines, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C } from './pitchcalc.js?v=1';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=8';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C } from './pitchcalc.js?v=2';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -128,7 +128,7 @@ function _liveCard() {
       <div class="pc-live-kpis">
         ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${k('볼넷', S.bb)}${k('피안타', S.h)}
       </div>
-      ${warnLines(S).map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}
+      ${warnLines(S).map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}${_fixBtn(S)}
     </section>`;
 }
 
@@ -158,9 +158,11 @@ function _warnCard(S) {
   if (!w.length) return '';
   return `
     <section class="an-card an-insight pc-warn" role="alert">
-      ${w.map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}
+      ${w.map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}${_fixBtn(S)}
     </section>`;
 }
+// 결과 미기록 타석 채우기 (core.js openPitchFix — 이번 경기 + 저장된 경기)
+const _fixBtn = S => (S.unrec.length ? `<button type="button" class="pc-fix-btn" onclick="openPitchFix()">결과 미기록 타석 채우기 ›</button>` : '');
 
 function _hero(P, S) {
   const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
@@ -237,8 +239,8 @@ function _cls(p) {
 }
 // 투구 결과 글자: 공 자체의 결과 + (그 공으로 타석이 끝났으면) 타석 결과
 function _resTxt(p) {
-  const e = pitchInfo(p).end, r = p.pr || p.result;
-  return e && e !== r ? `${r} → ${END_LABEL[e] || e}` : r;
+  const e = pitchInfo(p).end, r = p.pr || p.result, l = prLabel(p);
+  return e && e !== r ? `${l} → ${END_LABEL[e] || e}` : l;
 }
 
 function _zoneCard(S) {

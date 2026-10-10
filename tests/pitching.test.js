@@ -11,6 +11,7 @@
   // ── 공통 ──
   function reset() {
     AS.pitchers = []; AS.currentPitcher = null; AS.pitchLog = []; AS.batter = null; AS.pitchNewPA = false;
+    window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
     AS.pitcherZone = null; AS.pitcherZoneX = null; AS.pitcherZoneY = null; AS.pitcherPt = null;
     var sh = $('pitchEndSheet'); if (sh) sh.remove();
   }

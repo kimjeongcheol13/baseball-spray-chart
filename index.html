@@ -88,7 +88,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=7">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=3">
-<link rel="stylesheet" href="css/pitcher.css?v=9">
+<link rel="stylesheet" href="css/pitcher.css?v=10">
 <link rel="stylesheet" href="css/batter.css?v=3">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
@@ -1406,6 +1406,7 @@ var _kakaoSdkLoaded = false;
           <div class="pitch-dock" id="pitchDock">
           <!-- [모바일] 현재 타자 고르기: 기록 탭으로 가지 않고 이 화면에서 (core.js renderPitchBatterPicker) -->
           <div class="pbr" id="pitchBatterRow">
+            <select class="inp" id="pitchInnSel" aria-label="이닝" onchange="_pitchSetInning(this.value)"></select>
             <select class="inp" id="pitchBatterSel" aria-label="현재 타자" onchange="pitchPickBatter(this.value)"></select>
             <button type="button" class="btn" id="pitchNextBatterBtn" onclick="pitchNextBatter()">다음 타자 ▶</button>
           </div>
@@ -1421,7 +1422,8 @@ var _kakaoSdkLoaded = false;
 
           <!-- [모바일] 퀵 입력 바 -->
           <div class="mobile-pitch-quick-bar">
-            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-strike" onclick="recordPitch('스트라이크')">스트라이크<small>K</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-strike" onclick="recordPitch('헛스윙')">헛스윙<small>S</small></button>
+            <button class="mobile-pitch-qbtn mobile-pitch-qbtn-strike" onclick="recordPitch('루킹')">루킹<small>L</small></button>
             <button class="mobile-pitch-qbtn mobile-pitch-qbtn-ball" onclick="recordPitch('볼')">볼<small>B</small></button>
             <button class="mobile-pitch-qbtn mobile-pitch-qbtn-foul" onclick="recordPitch('파울')">파울<small>F</small></button>
             <button class="mobile-pitch-qbtn mobile-pitch-qbtn-result" id="mobile-pitch-result-toggle" onclick="var d=document.getElementById('mobile-pitch-result-panel');d.classList.toggle('open');document.getElementById('mobile-pitch-result-toggle').textContent=d.classList.contains('open')?'타격결과 ▲':'타격결과 ▼'">타격결과 ▼</button>
@@ -1478,7 +1480,8 @@ var _kakaoSdkLoaded = false;
                 <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px">투구</div>
                 <div class="pt-result-chips" style="margin-bottom:5px">
                   <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
-                  <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
+                  <button class="ptr-btn ptr-strike" onclick="recordPitch('헛스윙')">헛스윙</button>
+                  <button class="ptr-btn ptr-strike" onclick="recordPitch('루킹')">루킹</button>
                   <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
                 </div>
                 <!-- 타석 결과 (core.js renderPitchButtons 가 채움) -->
@@ -2366,9 +2369,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=136"></script>
+<script defer src="js/core.js?v=137"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=53"></script>
+<script type="module" src="js/app.js?v=54"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

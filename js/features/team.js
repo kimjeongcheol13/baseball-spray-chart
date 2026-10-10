@@ -1,6 +1,6 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
+import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=6';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -90,7 +90,7 @@ function _scopeGames(data, team) {
   }
   const saved = data.games.filter(g => !g.current);
   const keys = team && Array.isArray(team.games) ? new Set(team.games.map(g => g.key).filter(Boolean)) : null;
-  const linked = keys && keys.size ? saved.filter(g => keys.has(g.key)) : null;
+  const linked = keys && keys.size ? saved.filter(g => [g.key, ...(g.copies || [])].some(k => keys.has(k))) : null;   // 연결은 사본 중 어느 것의 키로 돼 있어도 같은 경기
   const games = linked && linked.length ? linked : saved;
   const cur = data.games.find(g => g.current && g.abs.length);
   const note = linked && linked.length

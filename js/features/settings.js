@@ -8,6 +8,10 @@ const DEF = { home: '내 팀', away: '원정팀' };
 function _saves() {
   try { return JSON.parse(localStorage.getItem('sl_saves') || '[]'); } catch (e) { return []; }
 }
+// 저장된 경기 수 = 같은 경기의 사본을 하나로 센 실제 경기 수
+function _gameCount() {
+  try { return window.SLGames ? window.SLGames.loadGames({ withCurrent: false }).length : _saves().length; } catch (e) { return _saves().length; }
+}
 
 // sl_ 키가 차지하는 대략적인 크기 (문자 수 × 2바이트)
 function _storageKB() {
@@ -105,8 +109,8 @@ function render() {
   const saves = _saves();
   const saved = typeof window._gameSaved === 'boolean' ? window._gameSaved : true;
   $('stSaveMeta').innerHTML = abs
-    ? '<span class="st-pill ' + (saved ? 'ok' : 'warn') + '">' + (saved ? '저장됨' : '저장 안 됨') + '</span> 이번 경기 ' + abs + '타석 · 저장된 경기 ' + saves.length + '개'
-    : '아직 기록이 없어요 · 저장된 경기 ' + saves.length + '개';
+    ? '<span class="st-pill ' + (saved ? 'ok' : 'warn') + '">' + (saved ? '저장됨' : '저장 안 됨') + '</span> 이번 경기 ' + abs + '타석 · 저장된 경기 ' + _gameCount() + '개'
+    : '아직 기록이 없어요 · 저장된 경기 ' + _gameCount() + '개';
   const last = saves[saves.length - 1];
   $('stLoadSub').textContent = last && last.label ? '최근: ' + last.label : '저장한 경기 열기';
 

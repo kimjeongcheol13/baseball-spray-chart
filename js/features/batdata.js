@@ -1,45 +1,21 @@
 // 분석 탭 공용 — 기록 모으기 · 타격 지표 계산 · 스프레이/흐름/구종 표 렌더 (비교 · 프로필 · 스카우트 · 팀)
 import { HITS, NOAB, BASE, WOBA_W, esc as _esc } from '../constants.js';
+import { loadGames } from './games.js?v=1';
 
 // ── 데이터 ────────────────────────────────────────────────────
-function _read(key) {
-  try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
-}
-
-// 저장 경기(오래된 순) + 현재 경기. 같은 타석(id)이 두 번 세어지지 않게 한다
-// (현재 경기를 저장했거나 저장 경기를 불러온 경우 같은 id가 양쪽에 있음)
+// 저장 경기 + 현재 경기. 같은 경기를 여러 번 저장한 사본은 경기 하나로 묶고 마지막 저장본만 쓴다 (games.js — 저장 데이터는 고치지 않는다).
+// 현재 경기가 저장본과 같은 경기면 그 경기의 가장 새 사본으로 쓴다 → 두 번 세어지지 않고, 현재 화면에서 지운 타석이 저장본에서 되살아나지도 않는다.
 function _loadGames() {
-  const AS = window.AS || {};
-  const saves = (_read('sl_saves') || []).slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
-  const raw = [];
-  saves.forEach(s => {
-    const d = _read(s.key);
-    if (d) raw.push({
-      label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
-      key: s.key, d: d.d || '', ts: d.ts || s.ts || 0, th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0,
-      pitchers: d.pitchers || [],
-    });
+  return loadGames().map(r => {
+    const d = r.data || {}, s = (r.saved && r.saved.entry) || {}, sd = (r.saved && r.saved.data) || {};
+    const g = {
+      label: r.current ? '현재 경기' : _gameLabel(sd, s), abs: r.abs, lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
+      th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0, pitchers: r.pitchers,
+      copies: r.copies, copyCount: r.copyCount,
+    };
+    if (r.current) return { ...g, current: true, abs: _fixBats(g.abs, g.lineups) };
+    return { ...g, key: r.key, d: sd.d || '', ts: sd.ts || s.ts || 0, abs: _fixBats(g.abs, g.lineups) };
   });
-  const val = id => ((document.getElementById(id) || {}).value || '').trim();
-  raw.push({
-    label: '현재 경기', abs: AS.abs || [], lineups: [...(AS.home_lineup || []), ...(AS.away_lineup || [])], current: true,
-    th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0,
-    pitchers: AS.pitchers || [],
-  });
-
-  const seen = new Set();
-  const seenP = new Set();   // 투구 기록도 같은 방식으로 중복 제거
-  const uniq = (set, x) => {
-    if (!x || x.id == null) return !!x;
-    if (set.has(x.id)) return false;
-    set.add(x.id);
-    return true;
-  };
-  return raw.map(g => ({
-    ...g,
-    abs: _fixBats(g.abs.filter(a => uniq(seen, a)), g.lineups),
-    pitchers: (g.pitchers || []).map(p => ({ ...p, pitches: (p.pitches || []).filter(x => uniq(seenP, x)) })),
-  }));
 }
 
 // 과거 타석 좌/우 보정 (읽을 때만): 예전 recHit/recOther는 선수의 bh를 무시하고 항상 'R'로 저장했다.

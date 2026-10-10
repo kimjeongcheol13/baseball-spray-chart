@@ -154,31 +154,6 @@
 .pf-dir tbody tr + tr > * { border-top: 1px solid var(--an-line); }
 .pf-2col { display: grid; grid-template-columns: 1fr; gap: 12px; }
 
-/* ── 타석 결과 구성 ── */
-.pf-mix { display: flex; flex-direction: column; gap: 2px; }
-.pf-mix-row { display: grid; grid-template-columns: 62px 1fr 58px; align-items: center; gap: 10px; min-height: 30px; }
-.pf-mix-lbl { font-size: 12px; font-weight: 700; color: var(--an-ink); }
-.pf-mix-bar { position: relative; height: 10px; border-radius: 4px; background: var(--an-raised); }
-.pf-mix-bar i { display: block; height: 100%; border-radius: 4px; transition: width .35s ease; }
-.pf-mix-bar em {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--an-ink2);
-  opacity: .7;
-}
-.pf-mix-v { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; font: 700 12px var(--mono); color: var(--an-ink); }
-.pf-mix-v small { font-size: 9.5px; font-weight: 500; color: var(--an-ink3); }
-.c-1b { background: var(--c-1b); }
-.c-xbh { background: var(--c-xbh); }
-.c-hr { background: var(--c-hr); }
-.c-bb { background: var(--c-bb); }
-.c-k { background: var(--c-k); }
-.c-out { background: var(--c-out); }
-
 /* ── 상황별 ── */
 .pf-split { width: 100%; border-collapse: collapse; font-size: 12px; }
 .pf-split th, .pf-split td { padding: 7px 4px; text-align: center; }
@@ -251,10 +226,6 @@
   .pf-spray { grid-template-columns: 1.1fr 1fr; align-items: center; }
   .pf-2col { grid-template-columns: 1fr 1fr; align-items: start; }
   .pf-counts { grid-template-columns: repeat(8, 1fr); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pf-mix-bar i { transition: none; }
 }
 
 /* ── 모바일 터치 타겟 44×44px 이상 ── */

@@ -184,7 +184,8 @@
      그 키마다 user_games 행을 올렸다. 그 행의 d 는 올린 날짜라 같은 경기가 날짜만 다른 행으로 쌓였고, 시작 동기화는 그 행을 전부
      목록(sl_saves)에 넣어 같은 경기가 수십 개로 보였다. 1차 정리(v1)는 홈|원정|날짜로 묶어 날짜마다 하나씩 남겨 부족했다
      → v2 는 타석 id 로 같은 경기를 가린다. v3: 묶음 대표 하나가 아니라 "남긴 것들 가운데 어느 하나"의 부분집합이면 지운다.
-     계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id + FIXED_VER):
+     계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 "계정 id + FIXED_VER" 목록, 공백으로 구분).
+     예전에는 마지막 계정 하나만 기억해, 한 기기에서 계정을 바꾸면 돌아온 계정에서 정리가 다시 돌았다(숨은 스냅샷이 목록 항목으로 되살아남):
        · 같은 경기 = 타석 id 가 하나라도 겹치는 항목들(타석이 없으면 홈|원정|날짜). 스냅샷(sl_auto_*)·정식 저장 모두 후보
        · 순위: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
        · 순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)이면 지우고 아니면 남긴다
@@ -192,17 +193,27 @@
          타석 id 가 없는 정식 저장은 지우지 않는다(라인업만 있는 경기는 내용을 비교할 수 없다)
        · 남긴 것이 스냅샷이면 정식 키(sl_<시각>)로 바꿔 목록에 둔다 — 이후 스냅샷은 목록에 넣지 않으므로(시작 동기화) 그냥 두면 보이지 않는다
        · 데이터가 없는 스냅샷 목록 항목(예전 내려받기 뒤 로컬 정리로 지워진 것)은 열 수도 없으니 목록에서 뺀다
+       · 목록에 없는 빈 스냅샷(타석 0 · 투구 0)은 후보에서 뺀다 — 바꾸면 빈 목록 항목만 생긴다(지우지도 않는다)
      계획(_plan)은 내려받기 전에 세워 정리 대상은 내려받지 않고, 적용(_apply)은 로컬 먼저, 서버(_push)가 실패하면 표시를 남기지 않아 다음 시작 때 다시 센다. */
   var FIXED_KEY = 'sl_cloud_auto_fixed';
   var REAL_ID = 1e11;   // 실제 기록 시각(Date.now()) id 의 최솟값 — js/features/games.js 와 같은 기준
   var FIXED_VER = ':3';
   var AUTO = 'sl_auto_';
   function _isAuto(k) { return k.indexOf(AUTO) === 0; }
+  function _fixedList() { try { return String(localStorage.getItem(FIXED_KEY) || '').split(' ').filter(Boolean); } catch (e) { return []; } }
+  function _fixedDone(uid) { return _fixedList().indexOf(uid + FIXED_VER) >= 0; }   // 예전 값(계정 하나)도 원소 하나짜리 목록으로 그대로 읽힌다
+  function _markFixed(uid) {   // 이 계정의 예전 판 표시는 빼고 지금 판을 더한다. 다른 계정 표시는 그대로 둔다
+    try {
+      var list = _fixedList().filter(function (x) { return x !== uid && x.indexOf(uid + ':') !== 0; });
+      list.push(uid + FIXED_VER);
+      localStorage.setItem(FIXED_KEY, list.join(' '));
+    } catch (e) { /* 다음 시작 때 다시 센다 */ }
+  }
   function _isNamed(k) { return /^sl_[^_]+vs[^_]+_\d+_/.test(k); }   // 저장 버튼이 만드는 sl_<홈>vs<원정>_<날짜>_<난수>
   function _planAutoCleanup(user, rows, saves) {   // rows = 서버 행(game_key, data), saves = 로컬 목록 → { skip, del, conv, relink }
     var plan = { skip: {}, del: [], conv: [], relink: {} };
     try {
-      if (localStorage.getItem(FIXED_KEY) === user.id + FIXED_VER) return plan;
+      if (_fixedDone(user.id)) return plan;
       var entryOf = {}; saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
       // 후보 모으기: 서버 행 우선, 서버에 없는 로컬 항목은 로컬 데이터로
       var cand = [], seen = {};
@@ -214,6 +225,7 @@
         // 값 = 그 타석의 타자: 지울 때 같은 id 의 타자까지 같아야 같은 기록으로 본다
         (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null && Number(a.id) >= REAL_ID) { ids[String(a.id)] = String(a.bid != null ? a.bid : (a.bname || '')); idN++; } });
         (Array.isArray(d.pitchers) ? d.pitchers : []).forEach(function (p) { pitches += (p && Array.isArray(p.pitches)) ? p.pitches.length : 0; });
+        if (_isAuto(key) && !n && !pitches && !entryOf[key]) return;   // 목록에 없는 빈 스냅샷: 정식 항목으로 바꾸면 빈 항목만 생긴다 — 그대로 둔다
         var ts = _parseTs(d.ts) || 0, ep = _keyEpoch(key);
         cand.push({ key: key, data: d, ids: ids, idN: idN, n: n, pitches: pitches, ts: ts, auto: _isAuto(key), named: _isNamed(key),
           born: Math.min(ep || Infinity, ts || Infinity), fb: (d.th || '') + '|' + (d.ta || '') + '|' + (d.d || '') });
@@ -317,9 +329,7 @@
     var p = rows.length
       ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) { if (ur && ur.error) throw ur.error; })
       : Promise.resolve();
-    return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () {
-      try { localStorage.setItem(FIXED_KEY, user.id + FIXED_VER); } catch (e) { /* 다음 시작 때 다시 센다 */ }
-    });
+    return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () { _markFixed(user.id); });
   }
 
   /* ── 인증 UI 업데이트 ────────────────────────────── */

@@ -157,6 +157,41 @@
     eq(localStorage.getItem(FIXED), DONE, '2차 마침 표시');
   });
 
+  test('정리 표시는 계정별: 다른 계정이 이 기기에서 정리를 마친 뒤 돌아와도 이 계정은 다시 돌지 않는다', async function () {
+    await boot();
+    reset([{ key: K1, data: game(4, { ts: T0 }) }, { key: K2, data: game(4, { ts: T0 + 1, d: D2 }) }]);   // 정리가 돌면 K2 가 지워지는 상태
+    localStorage.setItem(FIXED, 'OTHER-USER:3 ' + DONE);
+    srv.user_games = [row(K1, game(4, { ts: T0 })), row(K2, game(4, { ts: T0 + 1, d: D2 }))];
+    var s = await runLogin();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
+    eq(keys(), [K1, K2].sort(), '정리가 다시 돌지 않음');
+    eq(deletedKeys(s), [], '삭제 요청 없음');
+    eq(localStorage.getItem(FIXED), 'OTHER-USER:3 ' + DONE, '표시 그대로');
+  });
+
+  test('정리 표시는 계정별: 다른 계정만 마친 기기에서는 이 계정도 한 번 돌고, 두 계정 표시가 함께 남는다', async function () {
+    await boot();
+    reset([{ key: K1, data: game(4, { ts: T0 }) }, { key: K2, data: game(4, { ts: T0 + 1, d: D2 }) }]);
+    localStorage.setItem(FIXED, 'OTHER-USER:3');   // 예전 형식(계정 하나)
+    srv.user_games = [row(K1, game(4, { ts: T0 })), row(K2, game(4, { ts: T0 + 1, d: D2 }))];
+    var s = await runLogin();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
+    eq(keys(), [K1], '이 계정은 처음이라 정리');
+    eq(localStorage.getItem(FIXED), 'OTHER-USER:3 ' + DONE, '두 계정 표시');
+  });
+
+  test('정리: 목록에 없는 빈 스냅샷(타석 0 · 투구 0)은 정식 항목으로 바꾸지 않고 지우지도 않는다', async function () {
+    await boot();
+    var empty = game(0, { th: '홈팀', ta: '원정팀', d: D2 }), EA = 'sl_auto_1791654344522';
+    reset([{ key: K1, data: game(3, { ts: T0 }) }]);
+    srv.user_games = [row(K1, game(3, { ts: T0 })), row(EA, empty)];
+    var s = await runLogin();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
+    eq(keys(), [K1], '빈 항목이 목록에 생기지 않음');
+    eq(deletedKeys(s), [], '삭제 요청 없음');
+    eq(srvKeys(), [K1, EA].sort(), '서버의 빈 스냅샷은 그대로');
+  });
+
   test('정리 뒤: 스냅샷 행은 목록에 넣지 않고 로컬에만 둔다(⏱ 임시저장 복구용) · 지우지도 않는다', async function () {
     await boot();
     reset([]); localStorage.setItem(FIXED, DONE);

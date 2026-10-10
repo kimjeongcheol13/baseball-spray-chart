@@ -1,6 +1,7 @@
 // 선수 비교 — 두 타자를 같은 기준(내 기록 전체)으로 나란히 놓고 분석
 import { esc as _esc } from '../constants.js';
 import { buildData, playerData, f3, pct, fmt, sampleBadge as _sample, josa as _j, emptyState as _empty, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
+import { mixFigure } from './mixfig.js?v=1';
 
 let _a = null;          // 선택된 선수 이름 (A / B)
 let _b = null;
@@ -124,17 +125,22 @@ function _render(A, B, pool) {
     ${_hero(A, B, tally)}
     ${_insights(A, B, pool)}
     <section class="an-card">
-      <header class="an-hd"><h3>지표 맞대결</h3><span class="an-hd-note">작은 숫자·세로선 = 내 기록 전체 평균</span></header>
+      <header class="an-hd"><h3>지표 맞대결</h3><span class="an-hd-note">굵은 숫자 = 우위</span></header>
+      <div class="cmp-legend">
+        <span><i class="cmp-key a"></i>${_esc(A.name)}</span>
+        <span><i class="cmp-key b"></i>${_esc(B.name)}</span>
+        <span><i class="cmp-key avg"></i>내 기록 전체 평균</span>
+      </div>
       <div class="cmp-groups">${GROUPS.map(g => `
         <div class="cmp-group">
           <div class="cmp-gtitle">${g.title}</div>
-          ${g.rows.map(r => _duel(r, A.st[r.k], B.st[r.k], pool[r.k], true)).join('')}
+          ${g.rows.map(r => _duel(r, A, B, pool[r.k])).join('')}
           <div class="cmp-gdesc">${g.desc}</div>
         </div>`).join('')}</div>
     </section>
     <section class="an-card">
-      <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">타석 대비 비율</span></header>
-      <div class="cmp-mix">${MIX.map(m => _duel({ ...m, fmt: 'pct', max: _mixMax(A.st, B.st, m.k) }, A.st[m.k], B.st[m.k], null, false)).join('')}</div>
+      <header class="an-hd"><h3>타석 결과 구성</h3><span class="an-hd-note">각 선수 타석 = 100%</span></header>
+      ${mixFigure(MIX, [{ name: A.name, st: A.st, mark: '<i class="cmp-dot a"></i>' }, { name: B.name, st: B.st, mark: '<i class="cmp-dot b"></i>' }])}
     </section>
     <section class="an-card">
       <header class="an-hd"><h3>누적 기록</h3></header>
@@ -198,26 +204,25 @@ function _hero(A, B, t) {
     </section>`;
 }
 
-function _duel(r, v1, v2, avg, emphasize) {
-  const w = emphasize ? _winner(v1, v2, r) : 'n';
+// 지표 한 줄: A·B 막대를 같은 출발선(왼쪽)에 위아래로 놓고, 평균선은 두 막대를 한 번에 가로지른다
+function _duel(r, A, B, avg) {
+  const v1 = A.st[r.k], v2 = B.st[r.k];
+  const w = _winner(v1, v2, r);
   // 기본 척도를 넘는 값이 있으면 척도를 늘려서 막대가 모두 꽉 차지 않게
   const top = Math.max(r.max, v1, v2, avg || 0) * (Math.max(v1, v2, avg || 0) > r.max ? 1.08 : 1);
   const bw = v => Math.max(0, Math.min(1, v / top)) * 100;
-  const cls = w === 'a' ? 'win-a' : w === 'b' ? 'win-b' : w === 't' ? 'tie' : '';
-  const tip = `${r.label}: A ${fmt(v1, r.fmt)} · B ${fmt(v2, r.fmt)}${avg != null ? ` · 전체 ${fmt(avg, r.fmt)}` : ''}`;
+  const cls = w === 'a' ? 'win-a' : w === 'b' ? 'win-b' : 'tie';
+  const tip = _esc(`${r.label}: ${A.name} ${fmt(v1, r.fmt)} · ${B.name} ${fmt(v2, r.fmt)}${avg != null ? ` · 전체 평균 ${fmt(avg, r.fmt)}` : ''}`);
   return `
-    <div class="cmp-duel ${cls}" title="${tip}">
-      <span class="cmp-v a">${fmt(v1, r.fmt)}</span>
-      <span class="cmp-bar a"><i style="width:${bw(v1)}%"></i>${avg != null ? `<em style="right:${bw(avg)}%"></em>` : ''}</span>
-      <span class="cmp-lbl">${r.label}${r.lower ? '<small>낮을수록 좋음</small>' : avg != null ? `<small>${fmt(avg, r.fmt)}</small>` : ''}</span>
-      <span class="cmp-bar b"><i style="width:${bw(v2)}%"></i>${avg != null ? `<em style="left:${bw(avg)}%"></em>` : ''}</span>
-      <span class="cmp-v b">${fmt(v2, r.fmt)}</span>
+    <div class="cmp-duel ${cls}" role="group" aria-label="${tip}" title="${tip}">
+      <span class="cmp-lbl">${r.label}${avg != null ? `<small>평균 ${fmt(avg, r.fmt)}</small>` : ''}${r.lower ? '<small class="lo">낮을수록 좋음</small>' : ''}</span>
+      <span class="cmp-track" aria-hidden="true">
+        <span class="cmp-bar a"><i style="width:${bw(v1)}%"></i></span>
+        <span class="cmp-bar b"><i style="width:${bw(v2)}%"></i></span>
+        ${avg != null ? `<em style="left:${bw(avg)}%"></em>` : ''}
+      </span>
+      <span class="cmp-vals" aria-hidden="true"><b class="a">${fmt(v1, r.fmt)}</b><b class="b">${fmt(v2, r.fmt)}</b></span>
     </div>`;
-}
-
-function _mixMax(s1, s2, k) {
-  const m = Math.max(s1[k], s2[k]);
-  return m > 0 ? Math.max(m, 0.1) : 1;
 }
 
 function _counts(A, B) {

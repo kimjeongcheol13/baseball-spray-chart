@@ -8776,6 +8776,9 @@ function fieldFeedbackSubmit(){
     // 로컬 수정 시각 기록(cloud.js sl_cloud_mod) — 저장 · 타석 수정 · 가져오기 모두 여기를 지난다. 팀 코드 없음·오프라인이어도 기록해야 하므로 맨 앞.
     // labelOnly = 이름만 바뀐 경우: 서버(user_games)에 올라가는 내용이 안 바뀌었으므로 수정으로 치지 않는다
     if(!labelOnly&&window._slMarkMod)window._slMarkMod(key);
+    // 로그인 계정 클라우드(user_games): cloud.js 의 업로드. 이 함수가 window.cloudSave 를 같은 이름으로 다시 정의하면서 예전에는 그것을 버려,
+    // 로그인 사용자가 저장해도 그 경기가 바로 올라가지 않았다(다음 시작 동기화 때야 올라감). 로그인 전 · 오프라인 처리는 cloud.js 가 한다
+    if(!labelOnly&&typeof window._cloudSaveUser==='function')window._cloudSaveUser(key,data);
     if(!_init()||!getTeamCode())return;
     if(typeof navigator!=='undefined'&&!navigator.onLine)return; // 오프라인 시 조기 리턴
     // ts 를 숫자로 — 예전 경기는 로케일 문자열이라 그대로 보내면 400. 읽을 수 없으면 지금 시각(방금 저장·수정한 경기)

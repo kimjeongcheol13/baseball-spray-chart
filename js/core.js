@@ -2316,7 +2316,7 @@ function closeOverlay(id){document.getElementById(id).classList.remove('show');i
 function closeHit(){closeOverlay('hitOverlay');}
 
 let _tt;
-function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,typeof autoHide==='number'?autoHide:6000);}
+function showToast(msg,showUndo=true,autoHide=true){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;document.getElementById('toastUndo').style.display=showUndo?'':'none';t.classList.add('show');t.classList.toggle('toast-passive',!showUndo);clearTimeout(_tt);if(autoHide)_tt=setTimeout(hideToast,typeof autoHide==='number'?autoHide:6000);}
 function hideToast(){document.getElementById('toast').classList.remove('show');}
 
 
@@ -5514,15 +5514,15 @@ function _resetPitcherZoneInput(){
 }
 
 function recordPitch(result){
-  if(!AS.currentPitcher){showToast('투수를 먼저 선택하세요',false,false);return;}
+  if(!AS.currentPitcher){showToast('투수를 먼저 등록하세요 (위의 투수 등록)',false,2500);return;}
   var PC=window.PitchCalc;
-  if(!PC){showToast('투구 기록을 준비하는 중이에요. 잠시 후 다시 눌러 주세요',false,false);return;}
+  if(!PC){showToast('투구 기록을 준비하는 중이에요. 잠시 후 다시 눌러 주세요',false,2500);return;}
   var id=_nextPitchId();
   // 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진으로 타석이 자동으로 끝난다. 끝난 타석에 같은 타자로 공을 더 넣으면 막는다
   var plan=PC.nextPitch(AS.currentPitcher.pitches,result,{batter:_pitchBatterCtx(),newPA:!!AS.pitchNewPA,id:id});
   if(plan.blocked){
     renderPitchCount();
-    showToast(plan.blocked==='ended'?'앞 타석이 끝났어요. 다음 타자를 선택하세요':'알 수 없는 입력이에요',false,false);
+    showToast(plan.blocked==='ended'?'앞 타석이 끝났어요. 다음 타자를 선택하세요':'알 수 없는 입력이에요',false,2500);
     return;
   }
   var entry=Object.assign({
@@ -5544,19 +5544,19 @@ function recordPitch(result){
   _pitchChanged();
   // 피드백
   var icons={'볼':'🟢','스트라이크':'🟡','파울':'🟣'};
-  showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result+(entry.end?' → '+(PC.END_LABEL[entry.end]||entry.end)+' · 타석 종료':''),false,true);
+  showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result+(entry.end?' → '+(PC.END_LABEL[entry.end]||entry.end)+' · 타석 종료':''),false,1500);
 }
 
 // 직전 투구 한 개를 지운다 (타석이 그 공으로 끝났다면 다시 진행 중이 된다)
 function undoPitch(){
   var P=AS.currentPitcher;
-  if(!P||!P.pitches.length){showToast('취소할 투구가 없어요',false,false);return;}
+  if(!P||!P.pitches.length){showToast('취소할 투구가 없어요',false,2500);return;}
   var e=P.pitches.pop();
   if(P._batterLog){var i=P._batterLog.lastIndexOf(e);if(i>=0)P._batterLog.splice(i,1);}
   var j=AS.pitchLog.indexOf(e);if(j>=0)AS.pitchLog.splice(j,1);
   AS.pitchNewPA=false;
   _pitchChanged();
-  showToast('↩ 직전 투구를 취소했어요 ('+(e.pr||e.result)+(e.end?' → '+e.end:'')+')',false,true);
+  showToast('↩ 직전 투구를 취소했어요 ('+(e.pr||e.result)+(e.end?' → '+e.end:'')+')',false,1500);
 }
 // 삼진 ↔ 낫아웃 출루 (삼진은 그대로 세고, 아웃은 세지 않는다)
 function togglePitchNK(){
@@ -5574,7 +5574,7 @@ function renderPitchBatterPicker(){
   var sel=document.getElementById('pitchBatterSel');
   if(!sel)return;
   var lu=getActiveLineup()||[],cur=AS.batter?String(AS.batter.id):'';
-  sel.innerHTML='<option value="">'+(lu.length?'타자 선택':'타순표에 타자를 등록하세요')+'</option>'
+  sel.innerHTML='<option value="">'+(lu.length?'타자 선택':'기록 탭 › 타순표에서 타자를 등록하세요')+'</option>'
     +lu.map(function(p,i){return '<option value="'+_escHtml(String(p.id))+'">'+(i+1)+'. '+(p.num?'#'+_escHtml(String(p.num))+' ':'')+_escHtml(p.name)+'</option>';}).join('');
   sel.value=cur;
   var nb=document.getElementById('pitchNextBatterBtn');
@@ -5597,6 +5597,7 @@ function renderPitchCount(){
   if(!el)return;
   renderPitchBatterPicker();
   var PC=window.PitchCalc,P=AS.currentPitcher;
+  var nop=document.getElementById('pitchNoPitcher');if(nop)nop.hidden=!!P;
   if(!PC||!P){el.style.display='none';el.innerHTML='';return;}
   var st=PC.stateOf(P.pitches,_pitchBatterCtx(),!!AS.pitchNewPA);
   var who=AS.batter?AS.batter.name:(st.batter||'');

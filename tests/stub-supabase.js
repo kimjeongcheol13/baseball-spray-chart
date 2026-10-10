@@ -27,7 +27,7 @@
   var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null, channels: [] };   // channels: cloud.js 가 건 realtime 구독 {name, type, filter, cb}
   srv.reset = function () {
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
-    srv.log = []; srv.failRead = null; srv.failWrite = null; srv.channels = [];
+    srv.log = []; srv.failRead = null; srv.failWrite = null; srv.channels = []; srv.rlsDelete = false;
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
   // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다)
@@ -45,7 +45,7 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
-  Q.prototype.select = function (c) { this.cols = c || '*'; return this; };
+  Q.prototype.select = function (c) { this.cols = c || '*'; if (this.op !== 'select') this.ret = true; return this; };   // delete().select() = 지운 행을 돌려받는다
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
   Q.prototype.in = function (k, vs) { (this.fi = this.fi || {})[k] = vs.slice(); return this; };   // .in('col', [...]) — select/delete 필터
   Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
@@ -65,9 +65,13 @@
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
       if (q.op === 'delete') {   // fail-closed: 필터 없는 delete 는 예외(표 전체 삭제 방지)
         if (!Object.keys(q.f).length && !Object.keys(fi).length) throw new Error('stub: delete 에 필터(eq/in) 필요');
-        var keep = tbl.filter(function (r) { return !match(r); }), removed = tbl.length - keep.length;
-        srv[q.t] = keep;
-        return { data: null, error: null, status: 204, count: removed };
+        // RLS 흉내: user_games 는 자기 행(user_id = auth.uid())만 지울 수 있다. 정책이 막으면(srv.rlsDelete) 에러 없이 0행 삭제로 끝난다
+        var mine = function (r) { return q.t !== 'user_games' || r.user_id === (srv.user || {}).id; };
+        var gone = srv.rlsDelete ? [] : tbl.filter(function (r) { return match(r) && mine(r); });
+        srv[q.t] = tbl.filter(function (r) { return gone.indexOf(r) < 0; });
+        var dc = q.cols === '*' ? null : q.cols.split(',').map(function (x) { return x.trim(); });
+        return { data: q.ret ? clone(gone).map(function (r) { if (!dc) return r; var o = {}; dc.forEach(function (c) { o[c] = r[c]; }); return o; }) : null,
+          error: null, status: q.ret ? 200 : 204, count: gone.length };
       }
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });

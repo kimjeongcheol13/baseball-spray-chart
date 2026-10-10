@@ -189,3 +189,81 @@
   #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-collapse-toggle { min-height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .pitch-entry { min-height: 44px; }
 }
+
+/* ═══════════════════════════════════════════
+   투구 입력 — 볼카운트 줄 · 타석 결과 버튼 · 결과 선택 시트
+   (새 요소 전용 규칙: 기존 규칙은 건드리지 않는다)
+   ═══════════════════════════════════════════ */
+.pcnt { display: none; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg-raised); }
+.pcnt-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pcnt-who { flex: 1 1 100px; min-width: 0; font-size: 14px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcnt-dots { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 700; color: var(--text2); }
+.pcnt-dots .grp { display: inline-flex; align-items: center; gap: 4px; }
+.pcnt-dots i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--text2); box-sizing: border-box; }
+.pcnt-dots i.b.on { background: #2dd4a0; border-color: #2dd4a0; }
+.pcnt-dots i.s.on { background: #f6c23e; border-color: #f6c23e; }
+.pcnt-state { margin-top: 6px; font-size: 12px; color: var(--text2); }
+.pcnt-state.end { color: var(--text); font-weight: 700; }
+.pcnt-state.block { color: #d97706; }
+.pcnt-prev { margin-top: 2px; font-size: 11px; color: var(--text3); }
+.pcnt-warn { margin-top: 4px; font-size: 12px; font-weight: 700; color: #d97706; }
+.pcnt-act { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pcnt-act button { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border2); background: transparent; color: var(--text); font: 700 12px var(--font); cursor: pointer; }
+.pcnt-act button:active { transform: scale(.96); }
+
+.pend-lbl { margin: 6px 0 3px; font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
+.pend-row { margin-bottom: 4px; }
+.ptr-end { min-height: 44px; word-break: keep-all; }
+.ptr-end-hit { background: rgba(45, 212, 160, .15); color: #2dd4a0; border: 1px solid rgba(45, 212, 160, .4); }
+.ptr-end-out { background: rgba(148, 163, 184, .15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, .4); }
+.ptr-end-on, .ptr-end-sac { background: rgba(246, 194, 62, .15); color: #d9a441; border: 1px solid rgba(246, 194, 62, .4); }
+.ptr-end-bb { background: rgba(167, 139, 250, .18); color: #a78bfa; border: 1px solid rgba(167, 139, 250, .4); }
+.ptr-end-k { background: rgba(245, 101, 101, .15); color: #f56565; border: 1px solid rgba(245, 101, 101, .4); }
+
+/* 타석 결과 선택 시트 — 타자(투수)를 바꾸기 전에 앞 타석에 결과가 없으면 뜨고, 고르기 전에는 닫히지 않는다 */
+.pes-ov { z-index: 1000; }
+.modal.pes { width: min(440px, 94vw); max-height: 92vh; overflow-y: auto; padding: 18px; }
+.pes h3 { margin: 0 0 4px; font-size: 17px; font-weight: 800; color: var(--text); }
+.pes-sub { margin: 0 0 12px; font-size: 12px; line-height: 1.5; color: var(--text2); }
+.pes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.pes-btn { word-break: keep-all; min-height: 48px; padding: 6px 4px; border-radius: 10px; border: 1px solid var(--border2); background: var(--bg-raised); color: var(--text); font: 700 13px var(--font); cursor: pointer; }
+.pes-btn:active { transform: scale(.96); }
+.pes-hit { border-color: rgba(45, 212, 160, .6); }
+.pes-out { border-color: rgba(148, 163, 184, .6); }
+.pes-on, .pes-sac { border-color: rgba(246, 194, 62, .6); }
+.pes-bb { border-color: rgba(167, 139, 250, .6); }
+.pes-k { border-color: rgba(245, 101, 101, .6); }
+.pes-unk { width: 100%; margin-bottom: 6px; border-style: dashed; }
+.pes-cancel { width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--text2); font: 600 12px var(--font); text-decoration: underline; cursor: pointer; }
+
+/* 결과 미기록 · 카운트 이상 경고 카드 (분석 모드) */
+.pc-warn p.an-warn { margin: 0; }
+.pc-warn p.an-warn + p.an-warn { margin-top: 6px; }
+
+/* ═══════════════════════════════════════════
+   [모바일] 투구 기록 — 타자 고르기 · 카운트 · 스트라이크/볼/파울을 한 덩어리로 하단 탭 바로 위에 붙인다
+   (스크롤해도 같이 보이고, 첫 공 뒤에 버튼이 밀려 내려가지 않는다. 데스크톱은 그대로: 타자 고르기 줄은 숨김)
+   ═══════════════════════════════════════════ */
+.pbr { display: none; }
+@media (max-width: 720px) {
+  /* 하단 탭 바로 위에 고정: 투수 등록 카드가 길어도 스크롤 없이 늘 보인다. 이 화면이 아닐 때는 조상이 숨겨져서 같이 안 보인다 */
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock {
+    position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h, 54px) + env(safe-area-inset-bottom, 0px)); z-index: 30;
+    background: inherit; padding: 8px 12px 4px; border-top: 1px solid var(--border2); box-shadow: 0 -6px 14px rgba(0,0,0,.18);
+  }
+  #anaSecPitcher.pc-input #pnl-pitcher { padding-bottom: 290px; }   /* 고정된 덩어리에 가려지지 않게 */
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr { display: flex; gap: 6px; margin-bottom: 8px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr select { flex: 1 1 auto; min-width: 0; min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr .btn { flex: 0 0 auto; min-width: 44px; min-height: 44px; white-space: nowrap; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .pcnt { min-height: 118px; box-sizing: border-box; margin-bottom: 8px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .mobile-pitch-result-panel { max-height: 34vh; overflow-y: auto; }
+}
+.pcnt-nop { display: none; }
+@media (max-width: 720px) {
+  /* 되돌리기 버튼이 없는 알림은 눌러도 반응하지 않는다: 알림이 스트라이크/볼/파울 버튼 위에 떠 있어도 탭이 버튼까지 간다 */
+  .toast.show.toast-passive { pointer-events: none; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .pcnt-nop:not([hidden]) {
+    display: block; margin: 0 0 8px; padding: 10px 12px; border: 1px solid #d97706; border-radius: 12px;
+    font-size: 13px; line-height: 1.4; color: var(--text); background: var(--bg-raised);
+  }
+}

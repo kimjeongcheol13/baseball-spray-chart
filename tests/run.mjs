@@ -50,7 +50,7 @@ const port = server.address().port;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
 const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
   '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', '--virtual-time-budget=300000', '--enable-logging=stderr', '--v=0',
-  ...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), '--dump-dom', `http://127.0.0.1:${port}/`];
+  ...((process.getuid && process.getuid() === 0) || process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), '--dump-dom', `http://127.0.0.1:${port}/`];
 const child = spawn(findChrome(), args);
 let out = '', err = '';
 child.stdout.on('data', (d) => (out += d));

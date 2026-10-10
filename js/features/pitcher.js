@@ -1,16 +1,12 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=5';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=5';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=6';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C } from './pitchcalc.js?v=1';
 
-const HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];
-const TB = { '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
-const OUTS = { '삼진': 1, '아웃': 1, '병살': 2, '삼중살': 3 };
-const BALL = ['볼', '볼넷'];
-const END = [...HIT, '삼진', '아웃', '병살', '삼중살', '볼넷'];   // 타석이 끝나는 결과
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
-const FIP_C = 3.10;   // FIP 상수 — 리그 평균에 맞춰야 하지만 아마추어 리그 값이 없어 MLB 수준 값으로 가정
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
+const _isDone = x => !!x.end && x.end !== UNKNOWN;
 
 let _mode = 'stats';     // stats | input
 let _scope = 'season';   // season | game
@@ -73,61 +69,8 @@ function _pitchers() {
     .sort((a, b) => b.live - a.live || b.n - a.n);
 }
 
-// 등판 한 번의 투구 순서를 타석 단위로 묶는다 (볼·스트라이크 카운트를 따라가며)
-function _plateAppearances(pitches) {
-  const out = [];
-  let cur = null;
-  const open = batter => { cur = { batter, pitches: [], b: 0, s: 0, reached3B: false, reached2S: false, result: null }; };
-  pitches.forEach(p => {
-    if (cur && p.batter && cur.batter && p.batter !== cur.batter) { out.push(cur); cur = null; }  // 결과 없이 타자가 바뀜
-    if (!cur) open(p.batter || null);
-    cur.pitches.push(p);
-    if (END.includes(p.result)) {
-      cur.result = p.result;
-      if (cur.s >= 2) cur.reached2S = true;
-      out.push(cur);
-      cur = null;
-      return;
-    }
-    if (p.result === '볼') cur.b = Math.min(3, cur.b + 1);
-    else if (p.result === '스트라이크' || (p.result === '파울' && cur.s < 2)) cur.s = Math.min(2, cur.s + 1);
-    if (cur.b >= 3) cur.reached3B = true;
-    if (cur.s >= 2) cur.reached2S = true;
-  });
-  if (cur) out.push(cur);
-  return out;
-}
-
-function _calc(apps) {
-  const pitches = apps.flatMap(a => a.pitches);
-  const pas = apps.flatMap(a => _plateAppearances(a.pitches));
-  const done = pas.filter(x => x.result);
-  const n = pitches.length;
-  const strikes = pitches.filter(p => !BALL.includes(p.result)).length;
-  const r = res => done.filter(x => x.result === res).length;
-  const h = done.filter(x => HIT.includes(x.result)).length;
-  const hr = r('홈런'), k = r('삼진'), bb = r('볼넷');
-  const outs = done.reduce((s, x) => s + (OUTS[x.result] || 0), 0);
-  const ab = done.length - bb;
-  const tb = done.reduce((s, x) => s + (TB[x.result] || 0), 0);
-  const ip = outs / 3;
-  const first = pas.filter(x => x.pitches.length);
-  return {
-    n, strikes, pa: done.length, h, hr, k, bb, outs, ab, tb,
-    sPct: n ? strikes / n : 0,
-    fsPct: first.length ? first.filter(x => !BALL.includes(x.pitches[0].result)).length / first.length : 0,
-    kRate: done.length ? k / done.length : 0,
-    bbRate: done.length ? bb / done.length : 0,
-    avg: ab ? h / ab : 0,
-    slg: ab ? tb / ab : 0,
-    whip: ip ? (bb + h) / ip : null,
-    fip: ip >= 1 ? (13 * hr + 3 * bb - 2 * k) / ip + FIP_C : null,
-    ppa: done.length ? done.reduce((s, x) => s + x.pitches.length, 0) / done.length : 0,
-    r3b: pas.length ? pas.filter(x => x.reached3B).length / pas.length : 0,
-    twoS: pas.filter(x => x.reached2S),
-    pas, done, pitches,
-  };
-}
+// 타석 묶기 · 지표 계산은 pitchcalc.js 하나만 쓴다 (앱 투수 탭 · 분석 엑셀 · 옛 엑셀 내보내기 공통)
+const _calc = calcPitching;
 
 // 등판 기록용 짧은 경기 이름: '9. 10. vs 호서대'
 const _short = a => (a.current ? '현재 경기' : [String(a.d || '').replace(/^\d{4}\.\s*/, ''), a.opp ? 'vs ' + a.opp : ''].filter(Boolean).join(' ') || a.label);
@@ -177,7 +120,7 @@ function _liveCard() {
   const AS = window.AS || {};
   const P = AS.currentPitcher;
   if (!P) return '<div class="pc-live pc-live-empty">아래에서 투수를 등록하거나 선택하면 투구 기록을 시작할 수 있어요.</div>';
-  const S = _calc([{ pitches: P.pitches || [] }]);
+  const S = _calc([{ pitches: P.pitches || [], current: true }]);   // 지금 기록 중인 타석은 '결과 미기록'으로 세지 않는다
   const k = (l, val) => `<div><span>${l}</span><b>${val}</b></div>`;
   return `
     <section class="pc-live">
@@ -185,6 +128,7 @@ function _liveCard() {
       <div class="pc-live-kpis">
         ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${k('볼넷', S.bb)}${k('피안타', S.h)}
       </div>
+      ${warnLines(S).map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}
     </section>`;
 }
 
@@ -192,6 +136,7 @@ function _stats(P) {
   const S = _calc(P.apps);
   return `
     ${_hero(P, S)}
+    ${_warnCard(S)}
     ${_insights(P, S)}
     <div class="pc-2col">
       ${_mixCard(S)}
@@ -207,9 +152,19 @@ function _stats(P) {
   `;
 }
 
+// 결과 미기록 · 카운트 이상 경고 — 분석 엑셀 리포트에도 같은 문구(warnLines)가 들어간다
+function _warnCard(S) {
+  const w = warnLines(S);
+  if (!w.length) return '';
+  return `
+    <section class="an-card an-insight pc-warn" role="alert">
+      ${w.map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}
+    </section>`;
+}
+
 function _hero(P, S) {
   const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
-  const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? _esc(ROLE[P.role] || P.role) : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타자`].filter(Boolean).join(' · ');
+  const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? _esc(ROLE[P.role] || P.role) : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타석`].filter(Boolean).join(' · ');
   const kpi = (l, val, sub, tip) => `<div class="pc-kpi"${tip ? ` title="${tip}"` : ''}><span>${l}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   return `
     <section class="pc-hero">
@@ -226,7 +181,7 @@ function _hero(P, S) {
         ${kpi('볼넷%', pct(S.bbRate), `${S.bb}개`)}
         ${kpi('피안타율', S.ab ? f3(S.avg) : '—', `${S.h}/${S.ab}`)}
         ${kpi('WHIP', num2(S.whip), '', '이닝당 볼넷+피안타')}
-        ${kpi('FIP', num2(S.fip), 'C=3.10 가정', 'FIP = (13×피홈런 + 3×볼넷 − 2×삼진) ÷ 이닝 + 상수. 상수는 리그 평균에 맞춰야 하는데 아마추어 리그 값이 없어 3.10으로 가정했어요 (참고용)')}
+        ${kpi('FIP', num2(S.fip), 'C=3.10 가정', 'FIP = (13×피홈런 + 3×(볼넷+사구) − 2×삼진) ÷ 이닝 + 상수. 상수는 리그 평균에 맞춰야 하는데 아마추어 리그 값이 없어 3.10으로 가정했어요 (참고용)')}
         ${kpi('타자당 투구', S.ppa ? S.ppa.toFixed(1) : '—', '')}
       </div>
     </section>`;
@@ -239,11 +194,12 @@ function _byPitch(S) {
     const k = p.pt || '미기록';
     const o = by[k] || (by[k] = { pt: k, n: 0, s: 0, h: 0, k: 0, bip: 0, bb: 0 });
     o.n++;
-    if (!BALL.includes(p.result)) o.s++;
-    if (HIT.includes(p.result)) o.h++;
-    if (p.result === '삼진') o.k++;
-    if (p.result === '볼넷') o.bb++;
-    if (HIT.includes(p.result) || OUTS[p.result] && p.result !== '삼진') o.bip++;
+    const i = pitchInfo(p);
+    if (i.strike) o.s++;
+    if (i.hit) o.h++;
+    if (i.k) o.k++;
+    if (i.bb) o.bb++;
+    if (i.inPlay) o.bip++;
   });
   return Object.values(by).sort((a, b) => b.n - a.n);
 }
@@ -271,12 +227,18 @@ function _mixCard(S) {
 }
 
 // ── 코스 ─────────────────────────────────────────────────────
-function _cls(res) {
-  if (BALL.includes(res)) return 'ball';
-  if (HIT.includes(res)) return 'hit';
-  if (res === '삼진') return 'k';
-  if (OUTS[res]) return 'out';
+function _cls(p) {
+  const i = pitchInfo(p);
+  if (i.ball) return 'ball';
+  if (i.hit) return 'hit';
+  if (i.k) return 'k';
+  if (i.inPlay) return 'out';
   return 'strike';
+}
+// 투구 결과 글자: 공 자체의 결과 + (그 공으로 타석이 끝났으면) 타석 결과
+function _resTxt(p) {
+  const e = pitchInfo(p).end, r = p.pr || p.result;
+  return e && e !== r ? `${r} → ${END_LABEL[e] || e}` : r;
 }
 
 function _zoneCard(S) {
@@ -288,10 +250,10 @@ function _zoneCard(S) {
   if (!xy.length && !zoned.length) body = '<div class="an-note">코스가 기록된 공이 없어요. 투구 기록에서 코스를 눌러 주세요.</div>';
   else if (view === 'plot') {
     const order = { ball: 0, strike: 1, out: 2, k: 3, hit: 4 };
-    const dots = xy.slice().sort((a, b) => order[_cls(a.result)] - order[_cls(b.result)]).map(p => {
-      const c = _cls(p.result);
+    const dots = xy.slice().sort((a, b) => order[_cls(a)] - order[_cls(b)]).map(p => {
+      const c = _cls(p);
       const x = (p.zoneX * 100).toFixed(1), y = (p.zoneY * 120).toFixed(1);
-      const tip = `<title>${_esc(p.pt || '구종 미기록')} · ${_esc(p.result)}${p.batter ? ' · ' + _esc(p.batter) : ''}</title>`;
+      const tip = `<title>${_esc(p.pt || '구종 미기록')} · ${_esc(_resTxt(p))}${p.batter ? ' · ' + _esc(p.batter) : ''}</title>`;
       return c === 'hit'
         ? `<path class="pz-${c}" d="M${x} ${+y - 3.6}l3.6 3.6-3.6 3.6-3.6-3.6z">${tip}</path>`
         : `<circle class="pz-${c}" cx="${x}" cy="${y}" r="${c === 'ball' ? 2.4 : 2.8}">${tip}</circle>`;
@@ -311,7 +273,7 @@ function _zoneCard(S) {
   } else {
     const cells = ZONES.map(z => {
       const list = zoned.filter(p => p.zone === z);
-      const h = list.filter(p => HIT.includes(p.result)).length;
+      const h = list.filter(p => pitchInfo(p).hit).length;
       return { z, n: list.length, h };
     });
     const maxN = Math.max(1, ...cells.map(c => c.n));
@@ -338,16 +300,16 @@ function _zoneCard(S) {
 
 // ── 카운트 운영 · 투구수 구간 ────────────────────────────────
 function _countCard(S) {
-  const k2 = S.twoS.filter(x => x.result);
-  const kConv = k2.length ? k2.filter(x => x.result === '삼진').length / k2.length : 0;
+  const k2 = S.twoS.filter(_isDone);
+  const kConv = k2.length ? k2.filter(x => x.end === '삼진').length / k2.length : 0;
   const row = (l, d, v, sub) => `<div class="pc-cnt"><div><b>${l}</b><small>${d}</small></div><strong>${v}</strong><em>${sub}</em></div>`;
   return `
     <section class="an-card">
       <header class="an-hd"><h3>카운트 운영</h3><span class="an-hd-note">공 순서로 볼·스트라이크를 다시 셈</span></header>
       <div class="pc-cnts">
-        ${row('초구 스트라이크', '첫 공이 스트라이크', pct(S.fsPct), `${S.pas.filter(x => x.pitches.length && !BALL.includes(x.pitches[0].result)).length}/${S.pas.length}타자`)}
-        ${row('3볼까지 간 타자', '볼 카운트가 몰림', pct(S.r3b), `${S.pas.filter(x => x.reached3B).length}/${S.pas.length}타자`)}
-        ${row('2스트라이크 → 삼진', '2S를 잡은 뒤 삼진으로 끝낸 비율', k2.length ? pct(kConv) : '—', `${k2.filter(x => x.result === '삼진').length}/${k2.length}타석`)}
+        ${row('초구 스트라이크', '첫 공이 스트라이크', pct(S.fsPct), `${S.pas.filter(x => x.pitches.length && isStrikePitch(x.pitches[0])).length}/${S.pas.length}타석`)}
+        ${row('3볼까지 간 타자', '볼 카운트가 몰림', pct(S.r3b), `${S.pas.filter(x => x.reached3B).length}/${S.pas.length}타석`)}
+        ${row('2스트라이크 → 삼진', '2S를 잡은 뒤 삼진으로 끝낸 비율', k2.length ? pct(kConv) : '—', `${k2.filter(x => x.end === '삼진').length}/${k2.length}타석`)}
         ${row('타자당 투구 수', '결과가 난 타석 기준', S.ppa ? S.ppa.toFixed(1) : '—', `${S.pa}타석`)}
       </div>
     </section>`;
@@ -356,13 +318,13 @@ function _countCard(S) {
 function _bucketCard(P) {
   const rows = BUCKETS.map(([a, b]) => {
     const pitches = P.apps.flatMap(ap => ap.pitches.filter((_, i) => i + 1 >= a && i + 1 <= b));
-    const s = pitches.filter(p => !BALL.includes(p.result)).length;
+    const s = pitches.filter(isStrikePitch).length;
     return {
       l: b > 900 ? `${a}구~` : `${a}~${b}구`, n: pitches.length,
       s: pitches.length ? s / pitches.length : 0,
-      h: pitches.filter(p => HIT.includes(p.result)).length,
-      k: pitches.filter(p => p.result === '삼진').length,
-      bb: pitches.filter(p => p.result === '볼넷').length,
+      h: pitches.filter(p => pitchInfo(p).hit).length,
+      k: pitches.filter(p => pitchInfo(p).k).length,
+      bb: pitches.filter(p => pitchInfo(p).bb).length,
     };
   }).filter(r => r.n);
   return `
@@ -383,12 +345,12 @@ function _battersCard(S) {
     const k = x.batter || '타자 미기록';
     (by[k] = by[k] || []).push(x);
   });
-  const SH = { '안타': ['안타', '1b'], '타격됨': ['안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'], '볼넷': ['볼넷', 'bb'], '삼진': ['삼진', 'k'], '아웃': ['아웃', 'out'], '병살': ['병살', 'out'], '삼중살': ['삼중살', 'out'] };
+  const cls = e => (e === '안타' || e === '내야안타' ? '1b' : e === '2루타' || e === '3루타' ? 'xbh' : e === '홈런' ? 'hr' : e === '볼넷' || e === '사구' ? 'bb' : e === '삼진' ? 'k' : 'out');
   const rows = Object.entries(by).map(([name, list]) => ({
     name, list,
-    h: list.filter(x => HIT.includes(x.result)).length,
-    k: list.filter(x => x.result === '삼진').length,
-    bb: list.filter(x => x.result === '볼넷').length,
+    h: list.filter(x => HIT_ENDS.includes(x.end)).length,
+    k: list.filter(x => x.end === '삼진').length,
+    bb: list.filter(x => x.end === '볼넷').length,
   })).sort((a, b) => b.list.length - a.list.length || b.h - a.h).slice(0, 10);
   if (!rows.length) return '';
   return `
@@ -397,7 +359,7 @@ function _battersCard(S) {
       <ol class="pc-bat">${rows.map(r => `
         <li>
           <div class="pc-bat-who"><b>${_esc(r.name)}</b><small>${r.list.length}타석 · 피안타 ${r.h} · 삼진 ${r.k}${r.bb ? ` · 볼넷 ${r.bb}` : ''}</small></div>
-          <div class="pc-bat-res">${r.list.slice(-8).map(x => { const [t, c] = SH[x.result] || [x.result, 'out']; return `<i class="r-${c}">${_esc(t)}</i>`; }).join('')}</div>
+          <div class="pc-bat-res">${r.list.slice(-8).map(x => `<i class="r-${cls(x.end)}">${_esc(END_LABEL[x.end] || x.end)}${x.nk ? '(낫아웃)' : ''}</i>`).join('')}</div>
         </li>`).join('')}
       </ol>
     </section>`;
@@ -428,9 +390,9 @@ function _insights(P, S) {
     out.push(`스트라이크 ${pct(S.sPct)}, 초구 스트라이크 ${pct(S.fsPct)} — ${tone}.`);
   }
   if (S.pas.length >= 8 && S.r3b >= 0.25) out.push(`타자 <b>${Math.round(S.r3b * 100)}%</b>에게 3볼까지 몰렸어요 — 초반 카운트 싸움이 과제예요.`);
-  const k2 = S.twoS.filter(x => x.result);
+  const k2 = S.twoS.filter(_isDone);
   if (k2.length >= 5) {
-    const conv = k2.filter(x => x.result === '삼진').length / k2.length;
+    const conv = k2.filter(x => x.end === '삼진').length / k2.length;
     out.push(`2스트라이크를 잡은 타석의 <b>${Math.round(conv * 100)}%</b>를 삼진으로 끝냈어요 (${k2.length}타석).`);
   }
   const mix = _byPitch(S).filter(r => r.pt !== '미기록');
@@ -441,12 +403,12 @@ function _insights(P, S) {
   // 투구 수에 따른 제구 변화
   const early = P.apps.flatMap(a => a.pitches.slice(0, 25)), late = P.apps.flatMap(a => a.pitches.slice(50));
   if (early.length >= 15 && late.length >= 15) {
-    const sp = l => l.filter(p => !BALL.includes(p.result)).length / l.length;
+    const sp = l => l.filter(isStrikePitch).length / l.length;
     const d = sp(late) - sp(early);
     if (d <= -0.1) out.push(`50구 이후 스트라이크%가 <b>${Math.round(-d * 100)}%p 떨어져요</b> (${pct(sp(early))} → ${pct(sp(late))}) — 교체 타이밍 참고.`);
     else if (Math.abs(d) < 0.05) out.push(`50구가 넘어도 제구가 유지돼요 (${pct(sp(early))} → ${pct(sp(late))}).`);
   }
-  const warn = S.pa < 15 ? `<p class="an-warn">⚠ 상대 ${S.pa}타자 · ${S.n}구 기록 — 표본이 적어서 참고용이에요.</p>` : '';
+  const warn = S.pa < 15 ? `<p class="an-warn">⚠ 상대 ${S.pa}타석 · ${S.n}구 기록 — 표본이 적어서 참고용이에요.</p>` : '';
   if (!out.length && !warn) return '';
   return `
     <section class="an-card an-insight">

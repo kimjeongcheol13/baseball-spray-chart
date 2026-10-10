@@ -5604,8 +5604,12 @@ function renderPitchCount(){
   var dots=function(n,max,cls){var h='';for(var i=0;i<max;i++)h+='<i class="'+cls+(i<n?' on':'')+'"></i>';return h;};
   var msg;
   if(st.mode==='open')msg='<div class="pcnt-state">이번 타석 '+st.n+'구</div>';
+  else if(st.mode==='ended'&&!st.blocked&&(AS.batter||AS.pitchNewPA))msg='<div class="pcnt-state">새 타석 · 첫 공을 기록하세요</div>'
+    +'<div class="pcnt-prev">앞 타석'+(st.batter?' ('+_escHtml(st.batter)+')':'')+': '+_escHtml(PC.END_LABEL[st.end]||st.end)+(st.nk?' (낫아웃 출루)':'')+' · '+st.n+'구</div>';
   else if(st.mode==='ended')msg='<div class="pcnt-state end'+(st.blocked?' block':'')+'">타석 종료 · '+_escHtml(PC.END_LABEL[st.end]||st.end)+(st.nk?' (낫아웃 출루)':'')+' · '+st.n+'구'+(st.blocked?' — 다음 타자를 선택하세요':'')+'</div>';
   else msg='<div class="pcnt-state">새 타석 · 첫 공을 기록하세요</div>';
+  var S=PC.calcPitching([{pitches:P.pitches,current:true}]);   // 지금 진행 중인 타석은 미기록으로 세지 않는다
+  if(S.unrec.length)msg+='<div class="pcnt-warn">⚠ 결과 미기록 '+S.unrec.length+'타석 · 분석 지표에서 빠져요</div>';
   var acts='';
   if(P.pitches.length)acts+='<button type="button" onclick="undoPitch()">↩ 되돌리기</button>';
   if(st.mode==='ended'&&st.end==='삼진')acts+='<button type="button" onclick="togglePitchNK()">'+(st.nk?'삼진(아웃)으로 되돌리기':'낫아웃 출루로 변경')+'</button>';

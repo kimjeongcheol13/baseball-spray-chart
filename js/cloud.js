@@ -202,7 +202,7 @@
      목록(sl_saves)에 넣어 같은 경기가 수십 개로 보였다. 1차 정리(v1)는 홈|원정|날짜로 묶어 날짜마다 하나씩 남겨 부족했다
      → v2 는 타석 id 로 같은 경기를 가린다. v3: 묶음 대표 하나가 아니라 "남긴 것들 가운데 어느 하나"의 부분집합이면 지운다.
      계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id + FIXED_VER):
-       · 같은 경기 = 타석 id 가 하나라도 겹치는 항목들(타석이 없으면 홈|원정|날짜). 스냅샷(sl_auto_*)·정식 저장 모두 후보
+       · 같은 경기 = 저장 경기 읽기와 같은 규칙(js/features/games.js groupGames): 실제 기록 시각 타석 id 가 충분히 겹치고 타자가 같은 항목들. 스냅샷(sl_auto_*)·정식 저장 모두 후보
        · 순위: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
        · 순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)이면 지우고 아니면 남긴다
          — 갈라진 기록(서로 부분집합 아님)은 둘 다 두고, 그 아래 똑같은 행들은 각자 가까운 쪽으로 합친다.
@@ -211,6 +211,7 @@
        · 데이터가 없는 스냅샷 목록 항목(예전 내려받기 뒤 로컬 정리로 지워진 것)은 열 수도 없으니 목록에서 뺀다
      계획(_plan)은 내려받기 전에 세워 정리 대상은 내려받지 않고, 적용(_apply)은 로컬 먼저, 서버(_push)가 실패하면 표시를 남기지 않아 다음 시작 때 다시 센다. */
   var FIXED_KEY = 'sl_cloud_auto_fixed';
+  var REAL_ID = 1e11;   // 실제 기록 시각(Date.now()) id 의 최솟값 — js/features/games.js 와 같은 기준
   var FIXED_VER = ':3';
   var AUTO = 'sl_auto_';
   function _isAuto(k) { return k.indexOf(AUTO) === 0; }
@@ -226,7 +227,9 @@
         if (seen[key]) return; seen[key] = true;
         if (!d || typeof d !== 'object') return;
         var ids = {}, n = 0, idN = 0, pitches = 0;
-        (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null) { ids[String(a.id)] = true; idN++; } });
+        // 실제 기록 시각 id(Date.now(), 1e11 이상)만 쓴다 — 공유 링크로 저장한 경기는 타석 id 가 0,1,2… 순번이라 서로 다른 경기끼리도 겹친다.
+        // 값 = 그 타석의 타자: 지울 때 같은 id 의 타자까지 같아야 같은 기록으로 본다
+        (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null && Number(a.id) >= REAL_ID) { ids[String(a.id)] = String(a.bid != null ? a.bid : (a.bname || '')); idN++; } });
         (Array.isArray(d.pitchers) ? d.pitchers : []).forEach(function (p) { pitches += (p && Array.isArray(p.pitches)) ? p.pitches.length : 0; });
         var ts = _parseTs(d.ts) || 0, ep = _keyEpoch(key);
         cand.push({ key: key, data: d, ids: ids, idN: idN, n: n, pitches: pitches, ts: ts, auto: _isAuto(key), named: _isNamed(key),
@@ -239,18 +242,16 @@
         if (d) add(k, d);
         else if (_isAuto(k) && !seen[k]) { seen[k] = true; plan.del.push(k); plan.skip[k] = true; }
       });
-      // 같은 경기 묶기: 타석 id 가 하나라도 겹치면 같은 묶음(union-find). 타석 id 가 없으면 홈|원정|날짜
-      var parent = {};
-      var find = function (x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
-      var union = function (a, b) { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
-      cand.forEach(function (c) {
-        var tags = c.idN ? Object.keys(c.ids).map(function (i) { return 'i:' + i; }) : ['g:' + c.fb];
-        tags.forEach(function (t) { if (!(t in parent)) parent[t] = t; });
-        for (var i = 1; i < tags.length; i++) union(tags[0], tags[i]);
-        c.root = tags[0];
-      });
+      // 같은 경기 묶기 = 저장 경기를 읽을 때와 같은 규칙 하나 (js/features/games.js groupGames — 불러오기 목록 · 분석 탭 · 팀 승패가 쓰는 함수):
+      //   실제 기록 시각 타석 id(1e11 이상)가 min(3, 작은 쪽 타석 수)개 이상 겹치고 겹친 타석의 타자가 80% 이상 같으면 같은 경기.
+      //   진짜 id 가 없는 항목(공유 링크 저장 등)은 타석 내용이 정확히 같을 때만, 타석이 없는 항목끼리는 투구 id 로. 팀 이름 · 날짜는 쓰지 않는다.
+      //   그 함수가 아직 없으면(모듈을 못 읽음) 이번에는 정리하지 않고 마침 표시도 남기지 않는다 → 다음 시작 때 다시 센다
+      var G = window.SLGames;
+      if (!G || typeof G.groupGames !== 'function') { plan.deferred = true; return plan; }
       var groups = {};
-      cand.forEach(function (c) { var r = find(c.root); (groups[r] = groups[r] || []).push(c); });
+      G.groupGames(cand.map(function (c) { return { key: c.key, g: c.data, ms: 0, cand: c }; })).forEach(function (gr, gi) {
+        groups[gi] = gr.members.map(function (m) { return m.cand; });
+      });
       // 남길 것 고르기 · 부분집합만 지우기
       var rank = function (a, b) {
         return (b.n - a.n) || (b.pitches - a.pitches) || ((a.auto ? 1 : 0) - (b.auto ? 1 : 0)) || ((b.named ? 1 : 0) - (a.named ? 1 : 0)) || (a.born - b.born) || (b.ts - a.ts);
@@ -258,7 +259,8 @@
       var isSub = function (b, a) {   // b 가 a 의 부분집합인가
         if (b.n > a.n || b.pitches > a.pitches) return false;
         if (!b.idN && !b.auto) return false;   // 타석 id 없는 정식 저장은 비교할 수 없으니 지우지 않는다
-        return Object.keys(b.ids).every(function (i) { return a.ids[i]; });
+        if (b.n && !b.idN) return false;       // 타석은 있는데 실제 기록 시각 id 가 없다(공유 링크 저장 등) — 내용을 비교할 수 없으니 지우지 않는다
+        return Object.keys(b.ids).every(function (i) { return Object.prototype.hasOwnProperty.call(a.ids, i) && a.ids[i] === b.ids[i]; });
       };
       // 남길 것 고르기(순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합이면 지운다) — 묶음 대표 하나와만 비교하면
       // 갈래(같은 타석 5개 + 다른 1개)가 대표가 될 때 나머지 똑같은 행들이 "갈라진 기록"으로 남는다(2차에서 실제로 그랬다)
@@ -331,7 +333,7 @@
       ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) { if (ur && ur.error) throw ur.error; })
       : Promise.resolve();
     return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () {
-      try { localStorage.setItem(FIXED_KEY, user.id + FIXED_VER); } catch (e) { /* 다음 시작 때 다시 센다 */ }
+      try { if (!plan.deferred) localStorage.setItem(FIXED_KEY, user.id + FIXED_VER); } catch (e) { /* 다음 시작 때 다시 센다 */ }
     });
   }
 

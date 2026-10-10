@@ -5,7 +5,7 @@
   var T = window.__T, srv = window.__srv, ok = T.ok, eq = T.eq, ls = T.ls, test = T.test, sleep = T.sleep;
   var T0 = new Date(2026, 9, 10, 14, 0, 0).getTime();
   var D = '2026. 10. 10.', D2 = '2026. 10. 11.';
-  var FIXED = 'sl_cloud_auto_fixed', DONE = 'TEST-USER:2', DEL = 'sl_cloud_del';
+  var FIXED = 'sl_cloud_auto_fixed', DONE = 'TEST-USER:3', DEL = 'sl_cloud_del';
   var K1 = 'sl_1779002911000', K2 = 'sl_1779002911001';          // 정식 저장 키
   function A(i) { return 'sl_auto_' + (T0 + i * 1000); }          // 예전 클라이언트가 타석마다 만들던 스냅샷 키
 
@@ -127,6 +127,21 @@
     ok(!s.timedOut, '동기화가 끝나지 않음');
     eq(keys(), [K1, K2].sort(), '둘 다 남음');
     eq(deletedKeys(s), [], '삭제 없음');
+  });
+
+  test('정리: 갈래(같은 타석 5개 + 다른 1개)가 묶음에 있어도 똑같은 행들은 하나로 합치고 갈래는 남긴다 (실제 사례)', async function () {
+    await boot();
+    var five = abs(5);
+    var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: 'x1', res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
+    var haha = function (d, ts) { return game(6, { d: d, ts: ts, abs: five.concat([{ id: 'y1', res: '안타', team: 'home' }]) }); };          // 같은 경기(갈래와 5개 공유)
+    var FK = 'sl_1779445138008', H1 = 'sl_1779530694260', H2 = 'sl_1790934977265', HR = 'sl_rec_1791140441318';
+    reset([{ key: FK, data: fork }, { key: H1, data: haha('2026. 5. 23.', T0) }, { key: H2, data: haha('2026. 10. 2.', T0 + 2) }, { key: HR, data: haha('2026. 10. 5.', T0 + 3) }]);
+    srv.user_games = [row(FK, fork), row(H1, haha('2026. 5. 23.', T0)), row(H2, haha('2026. 10. 2.', T0 + 2)), row(HR, haha('2026. 10. 5.', T0 + 3)), row(A(7), haha(D2, T0 + 7000)), row(A(8), haha(D2, T0 + 8000))];
+    var s = await runLogin();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
+    eq(keys(), [FK, H1].sort(), '갈래 1개 + 같은 경기 1개(먼저 만든 정식 저장)');
+    eq(srvProper(), [FK, H1].sort(), '서버도 둘');
+    eq(deletedKeys(s), [H2, HR, A(7), A(8)].sort(), '똑같은 행들만 삭제');
   });
 
   test('정리: 1차(v1) 마침 표시가 있는 기기에서도 2차는 한 번 돈다', async function () {

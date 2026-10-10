@@ -9142,6 +9142,8 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       if(_refreshing)return;
       _refreshing=true;
+      // index.html 의 공용 새로고침(첫 설치는 건너뜀 · 한 번만)으로 넘긴다
+      if(window._slSwReload){window._slSwReload();return;}
       window.location.reload();
     });
   });

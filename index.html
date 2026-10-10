@@ -9,6 +9,21 @@
 <script src="js/sample.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* 첫 화면 가림막: 모바일·공유 링크는 바로 기록 화면이 열리는데, 종이 테마(scorebook.js 모듈)가 입혀지기 전의
+   옛 화면(어두운 필드·하단 탭)이 열 때·새로고침될 때마다 잠깐 보였다 → 테마가 입혀질 때까지 종이색으로 덮고 scorebook.js 가 걷는다
+   · 조건은 core.js autoSkipLanding 과 같다 (데스크톱은 랜딩이 먼저 떠서 해당 없음)
+   · 모듈을 못 불러와도 4초 뒤에는 무조건 걷는다 (가려진 채 멈추지 않게) */
+(function(){
+  var sp=new URLSearchParams(location.search);
+  var share=sp.has('game')||sp.has('team')||(location.hash&&location.hash.indexOf('#share=')>=0);
+  var mob=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
+  if(!share&&!mob)return;
+  var el=document.documentElement;
+  el.classList.add('sb-boot');
+  setTimeout(function(){el.classList.remove('sb-boot');},4000);
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#F3EDDF">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -78,7 +93,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=6">
+<link rel="stylesheet" href="css/paper.css?v=7">
 <link rel="stylesheet" href="css/report.css?v=2">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -2351,24 +2366,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=134"></script>
+<script defer src="js/core.js?v=135"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=52"></script>
+<script type="module" src="js/app.js?v=53"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
 
+  // SW 새로고침은 여기 한 곳에서 한 번만, 이 페이지를 열 때 이미 SW가 있었을 때(= 업데이트)만 한다
+  //  · 첫 방문은 SW 설치(claim)만으로 controllerchange · SW_ACTIVATED 가 와서 열자마자 두 번 더 새로고침됐다
+  //    (이미 네트워크에서 받은 최신본이라 다시 받을 필요 없음)
+  //  · 같은 업데이트에 아래 두 알림 + core.js controllerchange 가 각각 새로고침하던 것도 한 번으로
+  var _slSwHadCtl = !!navigator.serviceWorker.controller;
+  window._slSwReload = function() {
+    if (!_slSwHadCtl || window._slSwReloading) return;
+    window._slSwReloading = true;
+    window.location.reload();
+  };
+
   // 새 SW가 활성화되면 페이지를 깨끗하게 새로고침
   // (skipWaiting으로 인한 리소스 불일치 방지)
   navigator.serviceWorker.addEventListener('controllerchange', function() {
-    window.location.reload();
+    window._slSwReload();
   });
 
   // SW로부터 활성화 알림을 받으면 새로고침
   navigator.serviceWorker.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'SW_ACTIVATED') {
-      window.location.reload();
+      window._slSwReload();
     }
   });
 }
@@ -2377,8 +2403,11 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible') {
     // SW 컨트롤러가 없으면(SW 교체 중 잠깐 발생 가능) 새로고침
+    //  · 탭(세션)당 한 번만: SW를 못 쓰는 환경(사생활 보호 모드 등)은 컨트롤러가 계속 없어서 앱으로 돌아올 때마다 새로고침됐다
     if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
-      window.location.reload();
+      var first = false;
+      try { first = !sessionStorage.getItem('sl_sw_vis_reload'); if (first) sessionStorage.setItem('sl_sw_vis_reload', '1'); } catch (e) {}
+      if (first) window.location.reload();
     }
   }
 });

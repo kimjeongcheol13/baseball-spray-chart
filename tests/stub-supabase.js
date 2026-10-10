@@ -44,37 +44,40 @@
   };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
-  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; this.inF = {}; this.ret = false; }
+  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; if (this.op !== 'select') this.ret = true; return this; };   // delete().select() = 지운 행을 돌려받는다
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
-  Q.prototype.in = function (k, arr) { this.inF[k] = arr; return this; };
+  Q.prototype.in = function (k, vs) { (this.fi = this.fi || {})[k] = vs.slice(); return this; };   // .in('col', [...]) — select/delete 필터
   Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
   function run(q) {
     return Promise.resolve().then(function () {
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
-      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), inF: clone(q.inF) });
+      var fi = q.fi || {};
+      function match(r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(fi).every(function (k) { return fi[k].indexOf(r[k]) >= 0; }); }
+      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), fi: clone(fi) });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
       if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
-      if (q.op === 'select') {
-        var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
-        var out = tbl.filter(function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(q.inF).every(function (k) { return q.inF[k].indexOf(r[k]) >= 0; }); });
-        var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
-        return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
-      }
-      if (q.op === 'delete') {
+      if (q.op === 'delete') {   // fail-closed: 필터 없는 delete 는 예외(표 전체 삭제 방지)
+        if (!Object.keys(q.f).length && !Object.keys(fi).length) throw new Error('stub: delete 에 필터(eq/in) 필요');
         // RLS 흉내: user_games 는 자기 행(user_id = auth.uid())만 지울 수 있다. 정책이 막으면(srv.rlsDelete) 에러 없이 0행 삭제로 끝난다
-        var match = function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(q.inF).every(function (k) { return q.inF[k].indexOf(r[k]) >= 0; }); };
         var mine = function (r) { return q.t !== 'user_games' || r.user_id === (srv.user || {}).id; };
         var gone = srv.rlsDelete ? [] : tbl.filter(function (r) { return match(r) && mine(r); });
         srv[q.t] = tbl.filter(function (r) { return gone.indexOf(r) < 0; });
-        var cols2 = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
-        return { data: q.ret ? clone(gone).map(function (r) { if (!cols2) return r; var o = {}; cols2.forEach(function (c) { o[c] = r[c]; }); return o; }) : null, error: null, status: q.ret ? 200 : 204 };
+        var dc = q.cols === '*' ? null : q.cols.split(',').map(function (x) { return x.trim(); });
+        return { data: q.ret ? clone(gone).map(function (r) { if (!dc) return r; var o = {}; dc.forEach(function (c) { o[c] = r[c]; }); return o; }) : null,
+          error: null, status: q.ret ? 200 : 204, count: gone.length };
+      }
+      if (q.op === 'select') {
+        var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
+        var out = tbl.filter(match);
+        var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
+        return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
       }
       if (q.op === 'insert') { rows.forEach(function (r) { tbl.push(clone(r)); }); return { data: null, error: null, status: 201 }; }
       if (!q.o || !q.o.onConflict) throw new Error('stub: upsert 에 onConflict 필요');

@@ -73,7 +73,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=7">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=3">
-<link rel="stylesheet" href="css/pitcher.css?v=7">
+<link rel="stylesheet" href="css/pitcher.css?v=8">
 <link rel="stylesheet" href="css/batter.css?v=3">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
@@ -1394,6 +1394,8 @@ var _kakaoSdkLoaded = false;
             <select class="inp" id="pitchBatterSel" aria-label="현재 타자" onchange="pitchPickBatter(this.value)"></select>
             <button type="button" class="btn" id="pitchNextBatterBtn" onclick="pitchNextBatter()">다음 타자 ▶</button>
           </div>
+          <!-- 투수를 등록하기 전: 공을 눌러도 기록되지 않는 이유 (core.js renderPitchCount 가 숨김/표시) -->
+          <div class="pcnt-nop" id="pitchNoPitcher" hidden>먼저 위의 <b>투수 등록</b>에서 투수를 등록하세요. 그 뒤에 공을 누르면 기록돼요.</div>
           <!-- 볼카운트 · 타석 상태 · 되돌리기 (core.js renderPitchCount) -->
           <div class="pcnt" id="pitchCountBar" aria-live="polite"></div>
 
@@ -2349,7 +2351,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=132"></script>
+<script defer src="js/core.js?v=133"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=52"></script>
 <script>

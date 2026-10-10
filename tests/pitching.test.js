@@ -170,7 +170,7 @@
     eq(pickerOpts(), [':타자 선택', 'a:1. #1 가', 'b:2. #2 나', 'c:3. #3 다'], '선택지 = 타순표 순서');
     AS.home_lineup.push({ id: 'd', name: '라', num: '4' }); renderLP();
     eq(pickerOpts().length, 5, '타순표가 바뀌면 같이 바뀐다'); AS.curTeam = 'away'; AS.away_lineup = []; renderLP();
-    eq(pickerOpts(), [':타순표에 타자를 등록하세요'], '타순표가 비면 안내'); ok($('pitchNextBatterBtn').disabled, '다음 타자 버튼 비활성');
+    eq(pickerOpts(), [':기록 탭 › 타순표에서 타자를 등록하세요'], '타순표가 비면 안내'); ok($('pitchNextBatterBtn').disabled, '다음 타자 버튼 비활성');
     AS.curTeam = 'home'; renderLP(); ok(!$('pitchNextBatterBtn').disabled, '타순표가 다시 있으면 활성');
   });
   test('화면에서 타자 고르기: 고르면 타자가 바뀌고 · 같은 타자를 또 골라도 선택이 풀리지 않고 · 타순표에서 바꾸면 따라온다', function () {
@@ -189,6 +189,23 @@
     eq(seen, ['a', 'b', 'c', 'a'], '첫 타자부터 순서대로, 한 바퀴 돌면 처음으로');
     AS.home_lineup = [{ id: 'z', name: '혼자', num: '9' }]; AS.batter = null; renderLP();
     pitchNextBatter(); pitchNextBatter(); eq(AS.batter && AS.batter.id, 'z', '한 명뿐이면 계속 그 타자');
+  });
+  test('알림(toast)이 연속 탭을 막지 않는다: 되돌리기 버튼 없는 알림은 탭이 통과하고(.toast-passive) · 투구 알림은 짧게 · 오류 알림도 저절로 사라진다', async function () {
+    reset(); lineup3(); var p = pitcher(1, '투수'); renderLP(); pitchPickBatter('a');
+    recordPitch('볼'); var t = $('toast');
+    ok(t.classList.contains('show'), '투구 알림이 안 뜸'); ok(t.classList.contains('toast-passive'), '투구 알림은 탭을 막으면 안 됨 (.toast-passive)');
+    await T.sleep(1800); ok(!t.classList.contains('show'), '투구 알림은 1.5초 안에 사라져야 함 (예전엔 6초 · 오류는 안 사라졌다)');
+    showToast('되돌리기 있는 알림', true, false); ok(!t.classList.contains('toast-passive'), '되돌리기 버튼이 있는 알림은 눌려야 함');
+    showToast('되돌리기 없는 알림', false, false); ok(t.classList.contains('toast-passive'), '버튼 없는 알림은 통과'); hideToast();
+    reset(); recordPitch('볼');   // 투수를 안 고른 채
+    ok(t.classList.contains('show') && /투수를 먼저 등록/.test($('toastTxt').textContent), '투수 없이 누르면 이유가 뜸: ' + $('toastTxt').textContent);
+    await T.sleep(2800); ok(!t.classList.contains('show'), '오류 알림도 저절로 사라져야 함 (버튼을 계속 가리면 안 됨)');
+  });
+  test('투수를 등록하기 전에는 "먼저 투수를 등록하세요" 안내가 보이고, 등록하면 사라진다', function () {
+    reset(); lineup3(); renderPitchCount(); var h = $('pitchNoPitcher'); ok(h, '안내 요소가 없음');
+    eq(h.hidden, false, '투수 없음 → 안내 보임'); eq($('pitchCountBar').style.display, 'none', '카운트 줄은 아직 숨김');
+    pitcher(1, '투수'); renderPitchCount(); eq(h.hidden, true, '투수 등록 → 안내 숨김'); ok($('pitchCountBar').style.display !== 'none', '카운트 줄 보임');
+    reset(); renderPitchCount(); eq(h.hidden, false, '투수가 없어지면 다시 안내');
   });
   test('화면에서 타자를 바꾸려는데 앞 타석에 결과가 없으면: 결과 시트가 먼저 뜨고, 바꾸지 않으면 고르기 줄도 원래 타자로 돌아온다', function () {
     reset(); lineup3(); var p = pitcher(1, '투수'); renderLP(); pitchPickBatter('a'); rec('볼', '스트라이크');

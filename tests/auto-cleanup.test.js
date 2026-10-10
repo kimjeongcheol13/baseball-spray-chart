@@ -9,7 +9,9 @@
   var K1 = 'sl_1779002911000', K2 = 'sl_1779002911001';          // 정식 저장 키
   function A(i) { return 'sl_auto_' + (T0 + i * 1000); }          // 예전 클라이언트가 타석마다 만들던 스냅샷 키
 
-  function abs(n, p) { var a = []; for (var i = 0; i < n; i++) a.push({ id: (p || 'a') + i, res: '안타', team: 'home' }); return a; }   // 같은 접두사 = 같은 경기의 타석
+  // 타석 id = 실제 앱처럼 기록 시각(Date.now()) 숫자. 같은 접두사 = 같은 경기 (정리는 1e11 이상인 실제 기록 id 만 같은 경기 판단에 쓴다)
+  function idOf(p, i) { return 1780900000000 + (String(p).charCodeAt(0) - 97) * 100000 + i; }
+  function abs(n, p) { var a = []; for (var i = 0; i < n; i++) a.push({ id: idOf(p || 'a', i), res: '안타', team: 'home' }); return a; }   // 같은 접두사 = 같은 경기의 타석
   function game(n, extra) { return Object.assign({ th: '하하', ta: '스톤', hs: 0, as: 0, abs: abs(n), d: D, ts: T0 + n * 1000 }, extra || {}); }
   function row(key, data) { return { user_id: 'TEST-USER', game_key: key, team_name: data.th + ' vs ' + data.ta, date: data.d, data: data, updated_at: new Date(data.ts || T0).toISOString() }; }
   function saves() { return ls('sl_saves') || []; }
@@ -120,7 +122,7 @@
 
   test('정리: 갈라진 기록(서로 부분집합이 아님)은 둘 다 남긴다', async function () {
     await boot();
-    var forked = game(5, { ts: T0 + 1, abs: abs(4).concat([{ id: 'c9', res: '안타', team: 'home' }]) });   // a0..a3 + c9
+    var forked = game(5, { ts: T0 + 1, abs: abs(4).concat([{ id: idOf('c', 9), res: '안타', team: 'home' }]) });   // a0..a3 + c9
     reset([{ key: K1, data: game(5, { ts: T0 }) }, { key: K2, data: forked }]);
     srv.user_games = [row(K1, game(5, { ts: T0 })), row(K2, forked)];
     var s = await runLogin();
@@ -132,8 +134,8 @@
   test('정리: 갈래(같은 타석 5개 + 다른 1개)가 묶음에 있어도 똑같은 행들은 하나로 합치고 갈래는 남긴다 (실제 사례)', async function () {
     await boot();
     var five = abs(5);
-    var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: 'x1', res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
-    var haha = function (d, ts) { return game(6, { d: d, ts: ts, abs: five.concat([{ id: 'y1', res: '안타', team: 'home' }]) }); };          // 같은 경기(갈래와 5개 공유)
+    var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: idOf('x', 1), res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
+    var haha = function (d, ts) { return game(6, { d: d, ts: ts, abs: five.concat([{ id: idOf('y', 1), res: '안타', team: 'home' }]) }); };          // 같은 경기(갈래와 5개 공유)
     var FK = 'sl_1779445138008', H1 = 'sl_1779530694260', H2 = 'sl_1790934977265', HR = 'sl_rec_1791140441318';
     reset([{ key: FK, data: fork }, { key: H1, data: haha('2026. 5. 23.', T0) }, { key: H2, data: haha('2026. 10. 2.', T0 + 2) }, { key: HR, data: haha('2026. 10. 5.', T0 + 3) }]);
     srv.user_games = [row(FK, fork), row(H1, haha('2026. 5. 23.', T0)), row(H2, haha('2026. 10. 2.', T0 + 2)), row(HR, haha('2026. 10. 5.', T0 + 3)), row(A(7), haha(D2, T0 + 7000)), row(A(8), haha(D2, T0 + 8000))];

@@ -183,16 +183,18 @@
      예전 클라이언트는 새 경기의 AS.curGame 이 비어 있어 타석마다 sl_auto_<시각> 키를 새로 만들었고, 실시간 동기화(cloudAutoSyncRecord)가
      그 키마다 user_games 행을 올렸다. 그 행의 d 는 올린 날짜라 같은 경기가 날짜만 다른 행으로 쌓였고, 시작 동기화는 그 행을 전부
      목록(sl_saves)에 넣어 같은 경기가 수십 개로 보였다. 1차 정리(v1)는 홈|원정|날짜로 묶어 날짜마다 하나씩 남겨 부족했다
-     → v2 는 타석 id 로 같은 경기를 가린다. 계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id + FIXED_VER):
+     → v2 는 타석 id 로 같은 경기를 가린다. v3: 묶음 대표 하나가 아니라 "남긴 것들 가운데 어느 하나"의 부분집합이면 지운다.
+     계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id + FIXED_VER):
        · 같은 경기 = 타석 id 가 하나라도 겹치는 항목들(타석이 없으면 홈|원정|날짜). 스냅샷(sl_auto_*)·정식 저장 모두 후보
-       · 하나만 남긴다: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
-       · 남긴 것의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)인 항목만 지운다 — 갈라진 기록(서로 부분집합 아님)은 둘 다 둔다.
+       · 순위: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
+       · 순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)이면 지우고 아니면 남긴다
+         — 갈라진 기록(서로 부분집합 아님)은 둘 다 두고, 그 아래 똑같은 행들은 각자 가까운 쪽으로 합친다.
          타석 id 가 없는 정식 저장은 지우지 않는다(라인업만 있는 경기는 내용을 비교할 수 없다)
        · 남긴 것이 스냅샷이면 정식 키(sl_<시각>)로 바꿔 목록에 둔다 — 이후 스냅샷은 목록에 넣지 않으므로(시작 동기화) 그냥 두면 보이지 않는다
        · 데이터가 없는 스냅샷 목록 항목(예전 내려받기 뒤 로컬 정리로 지워진 것)은 열 수도 없으니 목록에서 뺀다
      계획(_plan)은 내려받기 전에 세워 정리 대상은 내려받지 않고, 적용(_apply)은 로컬 먼저, 서버(_push)가 실패하면 표시를 남기지 않아 다음 시작 때 다시 센다. */
   var FIXED_KEY = 'sl_cloud_auto_fixed';
-  var FIXED_VER = ':2';
+  var FIXED_VER = ':3';
   var AUTO = 'sl_auto_';
   function _isAuto(k) { return k.indexOf(AUTO) === 0; }
   function _isNamed(k) { return /^sl_[^_]+vs[^_]+_\d+_/.test(k); }   // 저장 버튼이 만드는 sl_<홈>vs<원정>_<날짜>_<난수>
@@ -241,23 +243,30 @@
         if (!b.idN && !b.auto) return false;   // 타석 id 없는 정식 저장은 비교할 수 없으니 지우지 않는다
         return Object.keys(b.ids).every(function (i) { return a.ids[i]; });
       };
+      // 남길 것 고르기(순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합이면 지운다) — 묶음 대표 하나와만 비교하면
+      // 갈래(같은 타석 5개 + 다른 1개)가 대표가 될 때 나머지 똑같은 행들이 "갈라진 기록"으로 남는다(2차에서 실제로 그랬다)
       var used = {};
       Object.keys(groups).forEach(function (g) {
-        var list = groups[g].slice().sort(rank), keep = list[0];
-        var drop = list.slice(1).filter(function (c) { return isSub(c, keep); });
-        if (!drop.length && !keep.auto) return;
-        var to = keep.key;
-        if (keep.auto) {   // 스냅샷을 정식 키로 (혼자 남은 스냅샷도 — 저장한 적 없는 경기가 목록에 보이도록)
-          var t = keep.ts || Date.now(), key = 'sl_' + t;
+        var list = groups[g].slice().sort(rank), kept = [], drops = [];
+        list.forEach(function (c) {
+          var under = null;
+          for (var i = 0; i < kept.length && !under; i++) { if (isSub(c, kept[i])) under = kept[i]; }
+          if (under) drops.push({ c: c, under: under }); else kept.push(c);
+        });
+        var toOf = {};
+        kept.forEach(function (k) {
+          if (!k.auto) { toOf[k.key] = k.key; return; }
+          // 남는 스냅샷은 정식 키로 (혼자 남은 스냅샷도 — 저장한 적 없는 경기가 목록에 보이도록). 그 아래 묶인 정식 저장의 이름을 이어받는다
+          var t = k.ts || Date.now(), key = 'sl_' + t;
           while (used[key] || localStorage.getItem(key) !== null) key = 'sl_' + (++t);
           used[key] = true;
-          var own = entryOf[keep.key], lab = own && typeof own.label === 'string' && own.label;
-          drop.forEach(function (c) { var e = entryOf[c.key]; if (!lab && !c.auto && e && typeof e.label === 'string' && e.label) lab = e.label; });   // 지우는 정식 저장의 이름을 이어받는다
-          plan.conv.push({ oldKey: keep.key, key: key, data: keep.data, label: lab || _gameLabel(keep.data), ts: keep.ts || t });
-          plan.del.push(keep.key); plan.skip[keep.key] = true; plan.relink[keep.key] = { to: key, self: true };
-          to = key;
-        }
-        drop.forEach(function (c) { plan.del.push(c.key); plan.skip[c.key] = true; plan.relink[c.key] = { to: to, self: false }; });
+          var own = entryOf[k.key], lab = own && typeof own.label === 'string' && own.label;
+          drops.forEach(function (x) { var e = entryOf[x.c.key]; if (!lab && x.under === k && !x.c.auto && e && typeof e.label === 'string' && e.label) lab = e.label; });
+          plan.conv.push({ oldKey: k.key, key: key, data: k.data, label: lab || _gameLabel(k.data), ts: k.ts || t });
+          plan.del.push(k.key); plan.skip[k.key] = true; plan.relink[k.key] = { to: key, self: true };
+          toOf[k.key] = key;
+        });
+        drops.forEach(function (x) { plan.del.push(x.c.key); plan.skip[x.c.key] = true; plan.relink[x.c.key] = { to: toOf[x.under.key], self: false }; });
       });
     } catch (e) { console.warn('[Cloud] 중복 정리 계획 실패:', e && e.message); return { skip: {}, del: [], conv: [], relink: {} }; }
     return plan;

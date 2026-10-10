@@ -47,22 +47,31 @@
   function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; return this; };
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
+  Q.prototype.in = function (k, vs) { (this.fi = this.fi || {})[k] = vs.slice(); return this; };   // .in('col', [...]) — select/delete 필터
   Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
   function run(q) {
     return Promise.resolve().then(function () {
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
-      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null });
+      var fi = q.fi || {};
+      function match(r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(fi).every(function (k) { return fi[k].indexOf(r[k]) >= 0; }); }
+      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), fi: clone(fi) });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
       if (typeof f === 'function') f = f(rows, q.t);
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
+      if (q.op === 'delete') {   // fail-closed: 필터 없는 delete 는 예외(표 전체 삭제 방지)
+        if (!Object.keys(q.f).length && !Object.keys(fi).length) throw new Error('stub: delete 에 필터(eq/in) 필요');
+        var keep = tbl.filter(function (r) { return !match(r); }), removed = tbl.length - keep.length;
+        srv[q.t] = keep;
+        return { data: null, error: null, status: 204, count: removed };
+      }
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
-        var out = tbl.filter(function (r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }); });
+        var out = tbl.filter(match);
         var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
         return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
       }
@@ -97,7 +106,7 @@
   };
 
   var client = {
-    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, insert: function (rows) { return new Q(t, 'insert', rows); } }; },
+    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, insert: function (rows) { return new Q(t, 'insert', rows); }, delete: function () { return new Q(t, 'delete'); } }; },
     rpc: function (fn, args) {
       return Promise.resolve().then(function () {
         srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });

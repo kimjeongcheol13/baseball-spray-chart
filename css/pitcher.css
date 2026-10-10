@@ -282,3 +282,4 @@
 @media (max-width: 720px) {
   #anaSecPitcher.pc-input #pnl-pitcher .pbr #pitchInnSel { flex: 0 0 88px; min-width: 0; min-height: 44px; }
 }
+.pl-btn { display: block; width: 100%; min-height: 44px; margin: 0 0 8px; }

@@ -5,7 +5,7 @@
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
 import { buildData, calcStats } from './batdata.js?v=6';
-import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=2';
+import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL, linkOf, countOf } from './pitchcalc.js?v=3';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -631,8 +631,13 @@ export function exportBatterXlsx(P) {
   const plist = [];
   const abFlat = _abFlatMap();
   rows.forEach(({ a, game }, i) => {
-    const ps = a.pitches && a.pitches.length ? a.pitches : (a.zone || a.pt ? [{ zone: a.zone, pt: a.pt, last: true }] : []);
-    const abP = ps.length ? _abPitcher(a, abFlat.get(a.id) || []).name : '';
+    // P2: 타석에 공 기록이 없고 투구 기록과 연결돼 있으면 그 타석의 공을 읽는다 (복사하지 않음 · 공마다 카운트와 투수가 있다)
+    const L = !(a.pitches && a.pitches.length) && window.PitchLink ? window.PitchLink.of(a) : null;
+    const ps = a.pitches && a.pitches.length ? a.pitches
+      : L ? L.pitches.map((x, j) => { const c = countOf(L.pitches.slice(0, j)); return { zone: x.zone, pt: x.pt, x: x.zoneX, y: x.zoneY, balls: c.b, strikes: c.s, pitcher: L.pitcher }; })
+      : (a.zone || a.pt ? [{ zone: a.zone, pt: a.pt, last: true }] : []);
+    const m = ps.length ? _abPitcher(a, abFlat.get(a.id) || []) : null;
+    const abP = m && m.name ? m.name + (m.how === 'time' ? ' (추정)' : '') : '';   // 시간순 연결은 추정이라고 표시
     ps.forEach((p, j) => {
       const pos = _pitchXY(p.x, p.y, p.zone, (a.id || i) % 100000 + j * 7919);
       plist.push({ p, a, game, ab: i + 1, pos, seq: plist.length + 1, last: j === ps.length - 1, abP });
@@ -836,17 +841,22 @@ export function exportBatterXlsx(P) {
 // 타석 저장 시각(a.id)과 가장 가까운 공의 투수로 연결한다 (기록 탭 타자 상세 「투수별 요약」과 같은 기준).
 // 타구를 먼저 찍고 투구를 나중에 기록한 경우도 AB_PITCH_SLACK 안이면 연결한다.
 const AB_PITCH_SLACK = 5 * 60 * 1000;
-// → { name, pitch } (pitch = 시간순으로 연결된 투수 기록의 공, 직접 적힌 경우는 null)
+// → { name, pitch, how } (pitch = 시간순으로 연결된 투수 기록의 공, 직접 적힌 경우는 null)
+//   how: 'link' = 투구 기록과 명시 연결(P2: a.pa) · 'direct' = 직접 적힌 투수 · 'time' = 시간순 추정
 function _abPitcher(a, flat) {
+  if (a.pa != null) {
+    const m = flat.find(x => x.p && x.p.pa != null && String(x.p.pa) === String(a.pa));
+    if (m) return { name: m.name, pitch: null, how: 'link' };
+  }
   const direct = String(a.pitcher || '').trim();
-  if (direct) return { name: direct, pitch: null };
+  if (direct) return { name: direct, pitch: null, how: 'direct' };
   const ps = Array.isArray(a.pitches) ? a.pitches : [];
   for (let i = ps.length - 1; i >= 0; i--) {
     const n = String((ps[i] && ps[i].pitcher) || '').trim();
-    if (n) return { name: n, pitch: null };
+    if (n) return { name: n, pitch: null, how: 'direct' };
   }
   const t = +a.id;
-  if (!isFinite(t) || !a.bname) return { name: '', pitch: null };
+  if (!isFinite(t) || !a.bname) return { name: '', pitch: null, how: '' };
   let best = null, bestD = Infinity;
   flat.forEach(x => {
     if (x.batter !== a.bname) return;
@@ -854,7 +864,7 @@ function _abPitcher(a, flat) {
     if (x.id > t && d > AB_PITCH_SLACK) return;
     if (d < bestD) { bestD = d; best = x; }
   });
-  return best ? { name: best.name, pitch: best.p } : { name: '', pitch: null };
+  return best ? { name: best.name, pitch: best.p, how: 'time' } : { name: '', pitch: null, how: '' };
 }
 // 타석 id → 그 경기 투수 기록의 공 목록 (_abPitcher 의 flat) — 타자 엑셀 「투구 기록」 투수 칸용
 function _abFlatMap() {
@@ -886,8 +896,10 @@ export function pitcherAbs(P, games) {
     });
     (g.abs || []).forEach(a => {
       if (!a || a.x == null || a.y == null) return;
+      const L = linkOf(a, g.pitchers);
+      if (L) { if (L.pitcher === P.name) out.push({ a, game: g.label, pitch: L.pitches[L.pitches.length - 1], how: 'link', link: L }); return; }
       const m = _abPitcher(a, flat);
-      if (m.name === P.name) out.push({ a, game: g.label, pitch: m.pitch });
+      if (m.name === P.name) out.push({ a, game: g.label, pitch: m.pitch, how: m.how });
     });
   });
   return out;
@@ -1061,14 +1073,16 @@ export function exportPitcherXlsx(P, S, calc) {
   hit.print = 'landscape';
   for (let i = 0; i < 16; i++) hit.width(i, 10);
   const allowed = pitcherAbs(P, buildData().games);
-  _header(hit, `${P.name} 타구 허용 분포`, `타구 ${allowed.length}개 · 타자 기록 중 이 투수가 상대한 타석 (투구 기록과 시간순으로 연결)`, 13);
+  const HOW = { link: '명시 연결', direct: '직접 입력', time: '추정(시간순)' };
+  const nHow = k => allowed.filter(x => x.how === k).length;
+  _header(hit, `${P.name} 타구 허용 분포`, `타구 ${allowed.length}개 · 명시 연결 ${nHow('link')} · 직접 입력 ${nHow('direct')} · 추정(시간순) ${nHow('time')} — 추정은 같은 타자에게 시간상 가장 가까운 공의 투수로 붙인 것`, 13);
   if (allowed.length && lines.field) {
     const axy = allowed.map(({ a }) => { const p = window._fieldPos(a); return [p[0], 1 - p[1]]; });
     const c0 = 8;
-    hit.line(4, c0, ['경기', '타자', '결과', '구종', 'X', 'Y'], 'th');
-    [22, 9, 9, 8, 7, 7].forEach((w, i) => hit.width(c0 + i, w));
-    allowed.forEach(({ a, game, pitch }, i) => hit.line(5 + i, c0, [game, a.bname || '', a.res || '', a.pt || (pitch && pitch.pt) || '', r4(axy[i][0]), r4(axy[i][1])], ['tdL', 'td', 'tdB', 'td', 'tdC', 'tdC']));
-    let hcc = c0 + 6;
+    hit.line(4, c0, ['경기', '타자', '결과', '구종', '연결', 'X', 'Y'], 'th');
+    [22, 9, 9, 8, 11, 7, 7].forEach((w, i) => hit.width(c0 + i, w));
+    allowed.forEach(({ a, game, pitch, how, link }, i) => hit.line(5 + i, c0, [game, a.bname || '', a.res || '', (link && link.pt) || a.pt || (pitch && pitch.pt) || '', HOW[how] || '', r4(axy[i][0]), r4(axy[i][1])], ['tdL', 'td', 'tdB', 'td', 'td', 'tdC', 'tdC']));
+    let hcc = c0 + 7;
     const hs = RES_GROUPS.map(g => {
       const pick = i => (_resGroup(allowed[i].a.res) === g.k ? axy[i] : null);
       const x = hit.column(4, hcc, `${g.label} X`, allowed.map((_, i) => (pick(i) ? pick(i)[0] : null)), 'thAux', 'tdC');
@@ -1079,6 +1093,7 @@ export function exportPitcherXlsx(P, S, calc) {
     });
     hit.chart({ type: 'scatter', title: '결과별 타구 허용', w: 510, h: 470, x: [0, 1], y: _fieldRange(lines),
       series: [lines.field, lines.infield, ...hs.filter(s => s.n)] }, 4, 0);
+    _linkTables(hit, 30, allowed);
   } else {
     hit.set(4, 0, '이 투수에게 연결된 타구 위치 기록이 없어요. 기록 탭에서 투수를 선택해 투구를 기록하고, 같은 타자의 타구를 그라운드에 찍으면 채워져요.', 'note');
   }
@@ -1088,6 +1103,25 @@ export function exportPitcherXlsx(P, S, calc) {
   _toast(`📊 ${P.name} 투구 분석 엑셀 저장 (차트 포함)`);
   if (typeof window.gtag === 'function') window.gtag('event', 'export_analysis_xlsx', { kind: 'pitcher', n: S.n });
   return sheets;
+}
+
+// 「타구 허용」 아래: 투구 기록과 명시 연결된 타구만으로 만든 표 (추정 · 직접 입력은 넣지 않는다)
+//   구종 = 타구가 된 공(그 타석 마지막 공)의 구종 · 카운트 = 그 공을 던지기 전 볼-스트라이크
+function _linkTables(sh, r0, allowed) {
+  const L = allowed.filter(x => x.how === 'link');
+  sh.set(r0, 0, `■ 투구 기록과 연결된 타구 ${L.length}개로 본 인플레이 결과 (추정 ${allowed.length - L.length}개는 넣지 않았어요)`, 'sec');
+  if (!L.length) { sh.set(r0 + 1, 0, '아직 연결된 타구가 없어요. 투구 화면에서 타격 결과를 고른 뒤 "필드에서 위치 찍기"로 찍거나, 기록 탭에서 타구를 찍고 "연결"을 누르면 채워져요.', 'note'); return; }
+  const XBH = ['2루타', '3루타', '홈런'];
+  const agg = keyOf => {
+    const m = new Map();
+    L.forEach(x => { const k = keyOf(x); const v = m.get(k) || { n: 0, h: 0, xbh: 0 }; v.n++; if (HITS.includes(x.a.res)) v.h++; if (XBH.includes(x.a.res)) v.xbh++; m.set(k, v); });
+    return m;
+  };
+  const rows = m => [...m.entries()].map(([k, v]) => [k, v.n, v.h, v.xbh, v.n ? v.h / v.n : '']);
+  const byPt = agg(x => x.link.pt || '미기록');
+  const r1 = _table(sh, r0 + 1, 0, ['구종', '타구', '안타', '장타', '안타 비율'], rows(byPt).sort((p, q) => q[1] - p[1]), ['tdB', 'td', 'td', 'td', 'tdP']);
+  const byCnt = agg(x => `${x.link.count.b}-${x.link.count.s}`);
+  _table(sh, (typeof r1 === 'number' ? r1 : r0 + 2 + byPt.size) + 1, 0, ['카운트(B-S)', '타구', '안타', '장타', '안타 비율'], rows(byCnt).sort((p, q) => p[0].localeCompare(q[0])), ['tdB', 'td', 'td', 'td', 'tdP']);
 }
 
 // 분석 탭 카드 아래에 붙이는 버튼 (profile.js · pitcher.js)

@@ -944,6 +944,7 @@ function confirmZonePitch(pt){
   if(!_pendingZoneEl)return;
   AS.zone=_pendingZoneEl.dataset.z;
   AS.pt=pt;
+  AS.zoneX=null;AS.zoneY=null;   // 9칸 존 버튼은 정확한 점이 없다 — 직전 캔버스 탭 좌표가 이 공에 붙지 않게
   document.querySelectorAll('#ptGroup .chip').forEach(function(c){c.classList.toggle('on',c.textContent.trim()===pt);});
   logPitchAction();
   hidePtPicker();
@@ -1269,8 +1270,8 @@ function onFClick(e){
   AS.pending={x:sp.x,y:sp.y,deg,dir,ft:estFt};
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
-    var res=AS.pendingQuickRes;
-    _clearFieldTapPrompt();
+    var res=AS.pendingQuickRes,_lk=AS._pendLink;
+    _clearFieldTapPrompt();AS._pendLink=_lk;
     AS.rbi=0;document.getElementById('rbiVal').textContent='0';
     recHit(res);
     return;
@@ -1455,7 +1456,7 @@ function recHit(res){
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
-  AS.abs.push(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
+  AS.abs.push(r);_pitchLinkAfterAb(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
   _showMiniSprayAfterRecord();
   gfAfterRecord(res,r.rbi);
 }
@@ -1469,7 +1470,7 @@ function recOther(res){
   var _infieldY=res==='내야안타'?0.55:null;
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
-  AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
+  AS.abs.push(r);_pitchLinkAfterAb(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
   gfAfterRecord(res,0);
 }
@@ -1566,7 +1567,7 @@ function toggleInputBar(){var ib=document.querySelector('.input-bar');var btn=do
 function chRbi(d){AS.rbi=Math.max(0,AS.rbi+d);document.getElementById('rbiVal').textContent=AS.rbi;}
 
 // 결과 색상: 안타 Teal / 홈런 Amber / 아웃 회색 / 삼진 Hit Red / 볼넷 Signal Blue
-const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#14b8a6','3루타':'#0d9488','홈런':'#f59e0b','플라이 아웃':'#94a3b8','땅볼 아웃':'#94a3b8','삼진':'#ef4444','볼넷':'#4b8cf5','사구':'#93c5fd','희타':'#94a3b8','희비':'#94a3b8','병살':'#64748b'};
+const RC={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#14b8a6','3루타':'#0d9488','홈런':'#f59e0b','플라이 아웃':'#94a3b8','땅볼 아웃':'#94a3b8','삼진':'#ef4444','볼넷':'#4b8cf5','사구':'#93c5fd','희타':'#94a3b8','희비':'#94a3b8','병살':'#64748b','라인드라이브 아웃':'#94a3b8','삼중살':'#64748b','실책':'#d97706','야수선택':'#d97706'};
 // launchType 테두리 색: 땅볼=주황, 라인드라이브=하늘색, 플라이볼=흰색
 const LTC={'땅볼':'#f97316','라인드라이브':'#38bdf8','플라이볼':'#e2e8f0'};
 function drawDot(r){
@@ -1621,6 +1622,8 @@ function updateFieldTapHint(){
   var hint=document.getElementById('fieldTapHint'),txt=document.getElementById('fieldTapHintTxt');
   if(!hint||!txt)return;
   // 필드 위 안내는 첫 사용 말풍선 하나만 (타자 미선택 상태는 타자 칩이 알려줌)
+  // 결과를 먼저 고른 상태(퀵 버튼 · 투구 화면의 '필드에서 위치 찍기')면 무엇을 찍는지 보여 준다
+  if(AS.pendingQuickRes){txt.textContent='👆 '+AS.pendingQuickRes+' 위치를 탭하세요'+(AS._pendLink?' · 투구 기록과 연결돼요':'');hint.classList.remove('hidden');return;}
   var first=_isFirstUse();
   txt.textContent=first?'필드를 탭하면 타구가 기록돼요':'';
   hint.classList.toggle('hidden',!first);
@@ -1660,7 +1663,7 @@ function renderRecs(){
   const list=AS.recFilterBid?AS.abs.filter(a=>a.bid===AS.recFilterBid):AS.abs;
   document.getElementById('recCnt').textContent=list.length+'개 기록';
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:28px 0;color:var(--text3);font-size:11px">'+(AS.recFilterBid?'이 선수의 기록이 없습니다':'필드를 탭해 타석을 기록하세요 →')+'</div>';return;}
-  const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
+  const BC={'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out','라인드라이브 아웃':'b-out','삼중살':'b-out','실책':'b-other','야수선택':'b-other'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
   el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div></div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
@@ -2002,7 +2005,7 @@ function renderResultDist(abs){
     {label:'장타 (2·3·HR)',res:['2루타','3루타','홈런'],color:'#f56565'},
     {label:'볼넷/사구',res:['볼넷','사구'],color:'#a78bfa'},
     {label:'삼진',res:['삼진'],color:'#fb923c'},
-    {label:'아웃',res:['플라이 아웃','땅볼 아웃','병살'],color:'#374151'}
+    {label:'아웃',res:['플라이 아웃','땅볼 아웃','병살','라인드라이브 아웃','삼중살'],color:'#374151'}
   ];
   el.innerHTML=cats.map(function(c){
     var n=abs.filter(function(a){return c.res.includes(a.res);}).length;
@@ -2039,7 +2042,7 @@ function drawHotZoneOverlay(){
   var hits=['안타','내야안타','2루타','3루타','홈런'],xbh=['2루타','3루타','홈런'];
   var filter={
     hit:function(a){return hits.includes(a.res);},
-    out:function(a){return ['플라이 아웃','땅볼 아웃','삼진','병살'].includes(a.res);},
+    out:function(a){return ['플라이 아웃','땅볼 아웃','삼진','병살','라인드라이브 아웃','삼중살'].includes(a.res);},
     hr:function(a){return xbh.includes(a.res);}
   };
   var pts=AS.abs.filter(function(a){return a.x&&a.y&&filter[_hzMode](a);});
@@ -2280,7 +2283,7 @@ function drawAvgTrend(abs){
   _initTrendInteraction(c);
 }
 function _initTrendInteraction(c){
-  const RES_COL={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b'};
+  const RES_COL={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b','라인드라이브 아웃':'#4b5563','삼중살':'#991b1b','실책':'#d97706','야수선택':'#d97706'};
   function getNear(mx){let best=null,bestD=Infinity;_trendData.forEach(d=>{const dd=Math.abs(mx-d.px);if(dd<bestD){bestD=dd;best=d;}});return bestD<45?best:null;}
   function showTip(mx,my){
     const tip=document.getElementById('trendTip');if(!tip)return;
@@ -3103,7 +3106,7 @@ function updBatterStat(){
   var seqEl=document.getElementById('bsPitchSeq');
   var ptColors={'직구':'#4b8cf5','커터':'#7c8898','커브':'#a78bfa','슬라이더':'#f6c23e','체인지업':'#2dd4a0','포크볼':'#fb923c'};
   var ptSym={'직구':'F','싱커':'SK','커터':'CT','커브':'C','슬라이더':'S','체인지업':'CH','포크볼':'FK','스플리터':'SP','스크류볼':'SC','너클커브':'KC','슬로우커브':'LC','스위퍼':'SW','슬러브':'SL','너클볼':'KN','이퓨스볼':'EP','팜볼':'PB'};
-  var resColors={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','삼진':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','플라이 아웃':'#374151','땅볼 아웃':'#374151','병살':'#374151'};
+  var resColors={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','삼진':'#f56565','볼넷':'#a78bfa','사구':'#fb923c','플라이 아웃':'#374151','땅볼 아웃':'#374151','병살':'#374151','라인드라이브 아웃':'#374151','삼중살':'#374151','실책':'#d97706','야수선택':'#d97706'};
   if(seqEl){
     if(!bAbs.length){seqEl.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:6px">기록 없음</div>';}
     else{
@@ -3232,7 +3235,8 @@ function updBatterStat(){
     // at-bat을 타임스탬프로 투수에 매핑
     bAbs.forEach(function(ab) {
       // ab.pitcher가 이미 있으면 그대로 사용
-      var pName = (ab.pitcher || '').trim();
+      var _lk = window.PitchLink ? PitchLink.of(ab) : null;   // P2: 투구 기록과 연결된 타구면 그 투수
+      var pName = (_lk && _lk.pitcher) || (ab.pitcher || '').trim();
       if (!pName) {
         // 타임스탬프 기준: ab.id 이전 최근 투구가 있는 투수 찾기
         var best = null, bestDiff = Infinity;
@@ -3736,7 +3740,7 @@ function _saveEditImmediate(){
 // ─────────────────────────────────────────────────────────
 // 타구 상세 카드
 // ─────────────────────────────────────────────────────────
-const RC_COLOR={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#f97316','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b'};
+const RC_COLOR={'안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','볼넷':'#a78bfa','사구':'#f97316','삼진':'#6b7280','플라이 아웃':'#4b5563','땅볼 아웃':'#374151','희타':'#94a3b8','희비':'#94a3b8','병살':'#991b1b','라인드라이브 아웃':'#4b5563','삼중살':'#991b1b','실책':'#d97706','야수선택':'#d97706'};
 const DIR_KO={'LF':'당겨치기','LC':'좌중간','CF':'센터','RC':'우중간','RF':'밀어치기'};
 
 function showHitDetail(ab, clientX, clientY) {
@@ -3959,7 +3963,7 @@ function exportFullReport() {
 
   var NOAB=['볼넷','사구','희타','희비'],HITS=['안타','내야안타','2루타','3루타','홈런'];
   var BASE={'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
-  var OUTS=['플라이 아웃','땅볼 아웃','삼진','병살'];
+  var OUTS=['플라이 아웃','땅볼 아웃','삼진','병살','라인드라이브 아웃','삼중살'];
   var ZONE_LABELS=['높은 안쪽','높은 중앙','높은 바깥','중간 안쪽','중간 중앙','중간 바깥','낮은 안쪽','낮은 중앙','낮은 바깥'];
   var PT_LABELS=['직구','슬라이더','커브','체인지업','싱커','커터','스플리터','기타'];
   function f3(v){if(v==null||isNaN(v))return '-';return v.toFixed(3).replace(/^0\./,'.');}
@@ -4259,7 +4263,7 @@ function importExcelAsGame(input) {
 
       var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
       var noLocSet={'볼넷':1,'사구':1,'삼진':1};
-      var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1,'라인드라이브 아웃':1,'실책':1,'야수선택':1,'삼중살':1};
       var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
       var homeLP=[],awayLP=[],absArr=[];
@@ -4364,7 +4368,7 @@ function importSingleTableGames(rows, hIdx, input) {
   var RES_ALIAS={'희생플라이':'희비','병살타':'병살','희생번트':'희타'};
   var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
   var noLocSet={'볼넷':1,'사구':1,'삼진':1};
-  var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+  var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1,'라인드라이브 아웃':1,'실책':1,'야수선택':1,'삼중살':1};
   var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
   function fmtDate(raw){
@@ -4788,7 +4792,7 @@ function importExcel(input) {
 
       var dirDeg = {'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
       var noLocSet = {'볼넷':1,'사구':1,'삼진':1};
-      var validRes = {'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validRes = {'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1,'라인드라이브 아웃':1,'실책':1,'야수선택':1,'삼중살':1};
       var validInn = {'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
       var added=0, skipped=0;
@@ -5354,13 +5358,15 @@ function _showFieldTapPrompt(res){
   if(hint){hint._origText=hint.textContent;hint.textContent='👆 공이 떨어진 위치를 필드에서 탭하세요 (취소: ESC)';}
   var fw=document.querySelector('.field-wrap');
   if(fw){fw.classList.add('field-tap-pending');}
+  updateFieldTapHint();
 }
 function _clearFieldTapPrompt(){
-  AS.pendingQuickRes=null;
+  AS.pendingQuickRes=null;AS._pendLink=null;   // 위치 찍기를 취소하면 연결 대기도 취소
   var hint=document.getElementById('fieldHint');
   if(hint&&hint._origText){hint.textContent=hint._origText;delete hint._origText;}
   var fw=document.querySelector('.field-wrap');
   if(fw){fw.classList.remove('field-tap-pending');}
+  updateFieldTapHint();
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -5548,7 +5554,96 @@ function recordPitch(result){
   var icons={'볼':'🟢','스트라이크':'🟡','헛스윙':'🟡','루킹':'🟡','파울':'🟣'};
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result+(entry.end?' → '+(PC.END_LABEL[entry.end]||entry.end)+' · 타석 종료':''),false,1500);
   _pitchAutoInning(entry,outsBefore);
+  if(entry.end&&PC.isInPlayEnd(entry.end))_showPitchLinkSheet(entry);   // P2: 인플레이 → 타구 위치를 찍어 연결
 }
+
+// ── 타구 ↔ 투구 기록 연결 (P2) ──
+// 사용자가 직접 고른 것만 연결한다 (시간이 가깝다는 이유로 붙이지 않는다). 연결은 타구 기록에 a.pa · a.pid 두 칸만.
+//  ① 투구 화면에서 인플레이 결과 → [필드에서 위치 찍기]: 기록 탭 필드를 탭하면 그 결과로 타구가 저장되며 연결된다
+//                                  [이미 찍은 타구와 연결]: 이 타석이 시작된 뒤 같은 타자로 찍어 둔, 아직 연결 안 된 타구가 있을 때
+//  ② 기록 탭에서 타구를 먼저 찍으면: 같은 타자의 가장 최근 투구 타석이 인플레이로 끝났고 아직 연결이 없을 때 [연결] 확인
+function _pitchLinkSheet(id,title,sub,btns){
+  var old=document.getElementById(id);if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.id=id;ov.className='overlay show pes-ov';
+  ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-labelledby',id+'T');
+  ov.innerHTML='<div class="modal pes"><h3 id="'+id+'T">'+title+'</h3><p class="pes-sub">'+sub+'</p>'
+    +btns.map(function(b){return '<button type="button" class="'+(b.cls||'pes-btn pl-btn')+'" data-act="'+b.act+'">'+b.label+'</button>';}).join('')+'</div>';
+  document.body.appendChild(ov);
+  return ov;
+}
+var _NO_INPLAY_AB=['볼넷','사구','삼진'];
+function _pitchLinkCandidateAb(e){   // ①: 이 타석이 시작된 뒤 같은 타자로 찍은, 연결 안 된 인플레이 타구
+  var start=Number(e.pa)||0,abs=AS.abs||[];
+  for(var i=abs.length-1;i>=0;i--){
+    var a=abs[i];
+    if(Number(a.id)<start)break;
+    if(a.pa==null&&String(a.bid)===String(e.bid)&&_NO_INPLAY_AB.indexOf(a.res)<0)return a;
+  }
+  return null;
+}
+function _pitchLinkSet(a,pa,pid){a.pa=pa;a.pid=pid;scheduleAutoSave();_gameSaved=false;}
+function _showPitchLinkSheet(e){
+  var PC=window.PitchCalc,P=AS.currentPitcher;if(!PC||!P||!e)return;
+  var cand=_pitchLinkCandidateAb(e),lbl=PC.END_LABEL[e.end]||e.end;
+  var ov=_pitchLinkSheet('pitchLinkSheet','타구 위치를 찍을까요?',
+    _escHtml((e.batter||'타자')+' · '+lbl)+' — 필드에서 찍으면 이 투구 기록과 연결돼요. 연결된 타구만 「타구 허용」 새 지표에 들어가요.',
+    [{act:'field',label:'필드에서 위치 찍기'}]
+      .concat(cand?[{act:'ab',label:'방금 찍은 타구와 연결 ('+_escHtml(cand.res)+')'}]:[])
+      .concat([{act:'skip',label:'건너뛰기',cls:'pes-cancel'}]));
+  ov.addEventListener('click',function(ev){
+    var b=ev.target.closest('button');if(!b)return;
+    ov.remove();
+    if(b.dataset.act==='ab'){_pitchLinkSet(cand,e.pa,P.id);showToast('타구와 투구 기록을 연결했어요',false,2000);return;}
+    if(b.dataset.act!=='field')return;
+    AS._pendLink={pa:e.pa,pid:P.id,bid:e.bid};
+    AS.pendingQuickRes=e.end;   // 필드를 탭하면 이 결과로 바로 저장 (퀵버튼과 같은 경로)
+    var nav=document.querySelector('.savant-nav-btn[data-tab=record]');if(nav)nav.click();
+    _showFieldTapPrompt(e.end);   // 필드 위 안내: '👆 땅볼 아웃 위치를 탭하세요 · 투구 기록과 연결돼요'
+  });
+}
+function _pitchLinkCandidatePA(r){   // ②: 같은 타자의 가장 최근 투구 타석이 인플레이로 끝났고 아직 연결이 없으면
+  var PC=window.PitchCalc;if(!PC)return null;
+  var best=null,bestId=-Infinity;
+  (AS.pitchers||[]).forEach(function(p){
+    PC.groupPA(p.pitches||[]).forEach(function(x){
+      if(!x.v2)return;
+      var same=x.bid!=null?String(x.bid)===String(r.bid):(x.batter!=null&&x.batter===r.bname);
+      if(!same)return;
+      var last=x.pitches[x.pitches.length-1];
+      if(Number(last.id)>bestId){bestId=Number(last.id);best={p:p,x:x};}
+    });
+  });
+  if(!best||!best.x.end||!PC.isInPlayEnd(best.x.end))return null;
+  if((AS.abs||[]).some(function(a){return a!==r&&a.pa!=null&&String(a.pa)===String(best.x.pa);}))return null;
+  return best;
+}
+// recHit · recOther 가 타구를 저장한 직후
+function _pitchLinkAfterAb(r){
+  var L=AS._pendLink;AS._pendLink=null;
+  if(L&&String(L.bid)===String(r.bid)){r.pa=L.pa;r.pid=L.pid;return;}   // ①에서 '필드에서 위치 찍기'로 온 타구
+  if(_NO_INPLAY_AB.indexOf(r.res)>=0)return;
+  var c=_pitchLinkCandidatePA(r);if(!c)return;
+  var PC=window.PitchCalc,x=c.x,end=PC.END_LABEL[x.end]||x.end;
+  var sub='투수 '+_escHtml(c.p.name||'')+' · '+_escHtml(PC.innLabel(x.pitches[x.pitches.length-1].inning))+' · '+_escHtml(end)+' · '+x.pitches.length+'구'
+    +(x.end!==r.res?'<br>⚠ 결과가 달라요 — 이 타구: '+_escHtml(r.res)+' / 투구 기록: '+_escHtml(end)+'. 연결해도 두 기록은 각각 그대로예요.':'');
+  var ov=_pitchLinkSheet('abLinkSheet','방금 찍은 '+_escHtml(r.bname||'')+' 타구를 투구 기록과 연결할까요?',sub,
+    [{act:'link',label:'연결'},{act:'no',label:'연결하지 않음',cls:'pes-cancel'}]);
+  ov.addEventListener('click',function(ev){
+    var b=ev.target.closest('button');if(!b)return;
+    ov.remove();
+    if(b.dataset.act==='link'){_pitchLinkSet(r,x.pa,c.p.id);showToast('타구와 투구 기록을 연결했어요',false,2000);}
+  });
+}
+// 연결 읽기: 지금 경기의 투수 → 없으면 저장된 경기들 (3초 동안 목록을 재사용)
+var _plGames=null,_plAt=0;
+window.PitchLink={of:function(a){
+  var PC=window.PitchCalc;if(!PC||!a||a.pa==null)return null;
+  var L=PC.linkOf(a,AS.pitchers||[]);if(L)return L;
+  if(!_plGames||Date.now()-_plAt>3000){_plGames=window.SLGames?SLGames.loadGames({withCurrent:false}).map(function(g){return g.pitchers||[];}):[];_plAt=Date.now();}
+  for(var i=0;i<_plGames.length;i++){L=PC.linkOf(a,_plGames[i]);if(L)return L;}
+  return null;
+}};
 
 // ── 이닝 (투구 기록) ──
 // 투수 탭은 상대 투수가 우리 타자에게 던진 공을 적는다 → 3아웃이면 그 투수가 다시 던지는 '다음 회의 같은 초/말'로 넘긴다 (1회초 → 2회초).
@@ -7226,7 +7321,7 @@ function gfAfterRecord(res,rbi){
 }
 
 function _GF_IS_OUT(res){
-  return['삼진','플라이 아웃','땅볼 아웃','희타','희비','병살'].includes(res);
+  return['삼진','플라이 아웃','땅볼 아웃','희타','희비','병살','라인드라이브 아웃','삼중살'].includes(res);
 }
 
 // ─── 주자 토글 (베이스 클릭) ───

@@ -204,6 +204,24 @@ function _finish(x) {
   return { ...x, b: c.b, s: c.s, reached3B: r3, reached2S: r2, abnormal: abn };
 }
 
+// ── 타구 ↔ 투구 기록 연결 (P2) ───────────────────────────────
+// 연결은 타구 기록(타석 a)에 한 번만 적는다: a.pa = 투구 기록 타석 id (그 타석 첫 공의 id), a.pid = 투수 id.
+// 투수 · 손 · 카운트 · 구종 · 이닝 · 결과는 여기서 투구 기록을 읽어 돌려준다 — 타구 기록에 복사하지 않는다.
+// pitchers = 그 경기의 투수 목록. 못 찾으면 null (연결이 없거나 투구 기록이 지워짐)
+export function linkOf(a, pitchers) {
+  if (!a || a.pa == null) return null;
+  const key = String(a.pa);
+  for (const p of pitchers || []) {
+    const ps = (p && p.pitches || []).filter(x => x && x.v >= 2 && x.pa != null && String(x.pa) === key);
+    if (!ps.length) continue;
+    const last = ps[ps.length - 1];
+    return { pitcher: p.name || '', pid: p.id, hand: p.hand || null, pa: a.pa, pitches: ps, end: endOf(last), nk: !!last.nk,
+      count: countOf(ps.slice(0, -1)), pt: last.pt || null, inning: last.inning || null };
+  }
+  return null;
+}
+export const isInPlayEnd = end => IN_PLAY.includes(end);
+
 // ── 아웃 ─────────────────────────────────────────────────────
 export const outsOfPA = x => (x.end === '삼진' && x.nk ? 0 : OUTS[x.end] || 0);   // 낫아웃 출루는 0
 // 반 이닝(마지막 공의 inning 값이 같은 타석)의 아웃 수 — 투수가 바뀌어도 이어서 센다. lists = 투수별 투구 목록들
@@ -273,5 +291,5 @@ export function warnLines(S) {
 }
 
 if (typeof window !== 'undefined') {
-  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, SCHEMA_V, legacyResult, prLabel, innLabel, isNewerData, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, outsOfPA, outsInInning, calcPitching, warnLines };
+  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, SCHEMA_V, legacyResult, prLabel, innLabel, isNewerData, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, outsOfPA, outsInInning, linkOf, isInPlayEnd, calcPitching, warnLines };
 }

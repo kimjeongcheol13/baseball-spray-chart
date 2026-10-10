@@ -2510,6 +2510,7 @@ function deleteGame(key){
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   localStorage.removeItem(key);
   if(window.cloudDelete)cloudDelete(key);
+  if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다
   openLoad();
   showToast('삭제되었습니다',false);
 }
@@ -3262,7 +3263,8 @@ function scheduleAutoSave(){
 }
 function _doAutoSave(){
   if(!AS.abs.length)return;
-  var key='sl_auto_'+(AS.curGame||Date.now());
+  if(!AS.curGame)AS.curGame=Date.now();   // 마법사를 거치지 않은 경기(복구 등)도 키 하나로 고정 (cloud.js cloudAutoSyncRecord 와 같은 규칙)
+  var key='sl_auto_'+AS.curGame;
   _autoKey=key;
   var data=JSON.stringify({
     abs:AS.abs,hs:AS.hs,as:AS.as,ts:Date.now(),
@@ -6444,6 +6446,7 @@ function startFromWizard(){
 
   // ── 새 경기: AS 상태 완전 초기화 ──
   _curSaveKey=null;   // 새 경기는 처음 저장할 때 새 항목
+  AS.curGame=Date.now();_autoKey=null;   // 자동저장·실시간 동기화 키(sl_auto_<id>)를 이 경기 하나로 고정 — 비어 있으면 타석마다 새 키가 생겨 클라우드에 스냅샷이 쌓였다
   AS.hs=0; AS.as=0;
   AS.home_lineup=[]; AS.away_lineup=[];
   AS.abs=[]; AS.batter=null; AS.batterFilter=false;
@@ -8101,6 +8104,7 @@ function recoverHiddenAutosave(key){
     if(!raw){showToast('데이터를 찾을 수 없습니다',false);return;}
     var parsed=JSON.parse(raw);
     var d=key==='sl_autosave'?(parsed.data||parsed):parsed;
+    if(key.indexOf('sl_auto_')===0)AS.curGame=key.slice(8);   // 복구한 경기는 같은 자동저장 키를 이어 쓴다(새 키로 또 쌓이지 않게)
     AS.abs=d.abs||[];
     AS.home_lineup=d.home_lineup||[];
     AS.away_lineup=d.away_lineup||[];

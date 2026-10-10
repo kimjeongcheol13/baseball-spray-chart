@@ -308,3 +308,62 @@
 .zf .zf-c.on .zf-s, .zf .zf-c.on .zf-l { fill: rgba(255, 255, 255, .82); }
 .zf .zf-sep { fill: none; stroke: var(--an-line); stroke-width: 1.5; }
 .zf .zf-box { fill: none; stroke: var(--an-ink); stroke-width: 3; }
+
+/* ── 타석 결과 구성 (비교 · 프로필 공용 · mixfig.js): 줄마다 100% 누적 막대 + 비율 표 ──
+   안타 계열 = 앰버 단계(진할수록 장타) · 볼넷·사구 = 틸 · 삼진/범타 = 무채색 — 선수 색(A·B)과 겹치지 않게 골랐다
+   다크 배경 기준 색약 구분 검증값 (종이 테마 값은 paper.css) */
+.cmp, .pf {
+  --mx0: #F0C060; --mx1: #C7802A; --mx2: #8A4C14; --mx3: #2BB3A3; --mx4: #D5DAE3; --mx5: #3a4252;
+  --mx-dk: #0e1018; --mx-lt: #eef0f8;
+}
+.an-mixbars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.an-mixrow { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; }
+.an-mixwho { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.an-mixwho b { min-width: 0; font-size: 12px; font-weight: 800; color: var(--an-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-mixwho small { flex: none; font: 500 10px var(--mono); color: var(--an-ink3); }
+.an-mixbar { display: flex; gap: 2px; height: 26px; min-width: 0; background: var(--an-raised); }
+.an-mixrow.ref .an-mixbar { height: 12px; }
+.an-mixrow.ref .an-mixwho b { font-weight: 700; color: var(--an-ink2); }
+.an-mixbar i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  overflow: hidden;
+  font: 700 11px var(--mono);
+  font-style: normal;
+  white-space: nowrap;
+}
+.an-mixbars .mx0, .an-mixkey.mx0 { background: var(--mx0); color: var(--mx-dk); }
+.an-mixbars .mx1, .an-mixkey.mx1 { background: var(--mx1); color: var(--mx-dk); }
+.an-mixbars .mx2, .an-mixkey.mx2 { background: var(--mx2); color: var(--mx-lt); }
+.an-mixbars .mx3, .an-mixkey.mx3 { background: var(--mx3); color: var(--mx-dk); }
+.an-mixbars .mx4, .an-mixkey.mx4 { background: var(--mx4); color: var(--mx-dk); }
+.an-mixbars .mx5, .an-mixkey.mx5 { background: var(--mx5); color: var(--mx-lt); }
+.an-mixkey { display: block; width: 16px; height: 8px; margin: 0 auto 4px; }
+.an-mixtbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
+.an-mixtbl th, .an-mixtbl td { padding: 8px 4px; text-align: center; }
+.an-mixtbl thead th {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--an-ink3);
+  vertical-align: bottom;
+  word-break: keep-all;
+  border-bottom: 1px solid var(--an-line);
+}
+.an-mixtbl td { font: 600 13px var(--mono); color: var(--an-ink); white-space: nowrap; }
+.an-mixtbl td small { display: block; margin-top: 2px; font: 500 10px var(--mono); color: var(--an-ink3); }
+.an-mixtbl tbody tr + tr > * { border-top: 1px solid var(--an-line); }
+.an-mixtbl tr > :first-child { width: 18px; padding-left: 0; padding-right: 0; }
+.an-mixtbl.named tr > :first-child { width: 52px; text-align: left; }
+.an-mixtbl-who { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--an-ink2); }
+.an-mixnote { margin-top: 6px; font-size: 10px; line-height: 1.4; color: var(--an-ink3); }
+@media (min-width: 720px) {
+  .an-mixrow { grid-template-columns: 140px 1fr; }
+  .an-mixtbl.named tr > :first-child { width: 120px; }
+}
+@media (max-width: 720px) {
+  /* 이름을 막대 위로 올려 막대가 카드 폭을 다 쓰게 (좁은 칸 숫자 잘림 방지) */
+  .an-mixrow { grid-template-columns: 1fr; gap: 4px; }
+}

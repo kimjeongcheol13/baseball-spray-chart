@@ -2,8 +2,8 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=14';
-import './features/compare.js?v=8';
+import './features/profile.js?v=15';
+import './features/compare.js?v=10';
 import './features/scouting.js?v=12';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';

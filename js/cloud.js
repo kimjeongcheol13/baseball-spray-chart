@@ -181,54 +181,99 @@
     });
   }
 
-  /* ── 자동저장 스냅샷(sl_auto_*) 한 번 정리 ──────────────────────────
+  /* ── 같은 경기 중복 한 번 정리 ──────────────────────────
      예전 클라이언트는 새 경기의 AS.curGame 이 비어 있어 타석마다 sl_auto_<시각> 키를 새로 만들었고, 실시간 동기화(cloudAutoSyncRecord)가
-     그 키마다 user_games 행을 올렸다. 시작 동기화는 그 행을 전부 목록(sl_saves)에 넣어 같은 경기가 수십 개로 보였다.
-     계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id):
-       · 같은 경기(홈팀|원정팀|날짜)의 스냅샷 가운데 타석이 가장 많은 것(같으면 최신) 하나만 남긴다
-       · 그 경기의 정식 저장(sl_auto_ 가 아닌 키)이 그만큼 이상의 타석을 가지면 스냅샷은 전부 지운다
-       · 남기는 스냅샷은 정식 키(sl_<시각>)로 바꿔 목록에 둔다 — 이후 스냅샷은 목록에 넣지 않으므로(시작 동기화) 그냥 두면 보이지 않는다
+     그 키마다 user_games 행을 올렸다. 그 행의 d 는 올린 날짜라 같은 경기가 날짜만 다른 행으로 쌓였고, 시작 동기화는 그 행을 전부
+     목록(sl_saves)에 넣어 같은 경기가 수십 개로 보였다. 1차 정리(v1)는 홈|원정|날짜로 묶어 날짜마다 하나씩 남겨 부족했다
+     → v2 는 타석 id 로 같은 경기를 가린다. v3: 묶음 대표 하나가 아니라 "남긴 것들 가운데 어느 하나"의 부분집합이면 지운다.
+     계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 계정 id + FIXED_VER):
+       · 같은 경기 = 타석 id 가 하나라도 겹치는 항목들(타석이 없으면 홈|원정|날짜). 스냅샷(sl_auto_*)·정식 저장 모두 후보
+       · 순위: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
+       · 순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)이면 지우고 아니면 남긴다
+         — 갈라진 기록(서로 부분집합 아님)은 둘 다 두고, 그 아래 똑같은 행들은 각자 가까운 쪽으로 합친다.
+         타석 id 가 없는 정식 저장은 지우지 않는다(라인업만 있는 경기는 내용을 비교할 수 없다)
+       · 남긴 것이 스냅샷이면 정식 키(sl_<시각>)로 바꿔 목록에 둔다 — 이후 스냅샷은 목록에 넣지 않으므로(시작 동기화) 그냥 두면 보이지 않는다
        · 데이터가 없는 스냅샷 목록 항목(예전 내려받기 뒤 로컬 정리로 지워진 것)은 열 수도 없으니 목록에서 뺀다
      계획(_plan)은 내려받기 전에 세워 정리 대상은 내려받지 않고, 적용(_apply)은 로컬 먼저, 서버(_push)가 실패하면 표시를 남기지 않아 다음 시작 때 다시 센다. */
   var FIXED_KEY = 'sl_cloud_auto_fixed';
+  var FIXED_VER = ':3';
   var AUTO = 'sl_auto_';
+  function _isAuto(k) { return k.indexOf(AUTO) === 0; }
+  function _isNamed(k) { return /^sl_[^_]+vs[^_]+_\d+_/.test(k); }   // 저장 버튼이 만드는 sl_<홈>vs<원정>_<날짜>_<난수>
   function _planAutoCleanup(user, rows, saves) {   // rows = 서버 행(game_key, data), saves = 로컬 목록 → { skip, del, conv, relink }
     var plan = { skip: {}, del: [], conv: [], relink: {} };
     try {
-      if (localStorage.getItem(FIXED_KEY) === user.id) return plan;
-      var gid = function (d) { return (d.th || '') + '|' + (d.ta || '') + '|' + (d.d || ''); };
-      var cnt = function (d) { return (d.abs && d.abs.length) || 0; };
+      if (localStorage.getItem(FIXED_KEY) === user.id + FIXED_VER) return plan;
       var entryOf = {}; saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
-      var best = {}, autos = {}, seen = {};   // best: 경기 → 정식 저장 가운데 최대 타석 { n, key } · autos: 경기 → 스냅샷 목록
-      var seeProper = function (key, d) { if (!d || typeof d !== 'object') return; var g = gid(d), c = cnt(d); if (!best[g] || c > best[g].n) best[g] = { n: c, key: key }; };
-      var seeAuto = function (key, d) { if (seen[key]) return; seen[key] = true; if (!d || typeof d !== 'object') return; var g = gid(d); (autos[g] = autos[g] || []).push({ key: key, data: d, n: cnt(d), ts: _parseTs(d.ts) || 0 }); };
-      rows.forEach(function (row) { var k = row.game_key; if (k.indexOf(AUTO) === 0) seeAuto(k, row.data); else seeProper(k, row.data); });
+      // 후보 모으기: 서버 행 우선, 서버에 없는 로컬 항목은 로컬 데이터로
+      var cand = [], seen = {};
+      var add = function (key, d) {
+        if (seen[key]) return; seen[key] = true;
+        if (!d || typeof d !== 'object') return;
+        var ids = {}, n = 0, idN = 0, pitches = 0;
+        (Array.isArray(d.abs) ? d.abs : []).forEach(function (a) { n++; if (a && a.id != null) { ids[String(a.id)] = true; idN++; } });
+        (Array.isArray(d.pitchers) ? d.pitchers : []).forEach(function (p) { pitches += (p && Array.isArray(p.pitches)) ? p.pitches.length : 0; });
+        var ts = _parseTs(d.ts) || 0, ep = _keyEpoch(key);
+        cand.push({ key: key, data: d, ids: ids, idN: idN, n: n, pitches: pitches, ts: ts, auto: _isAuto(key), named: _isNamed(key),
+          born: Math.min(ep || Infinity, ts || Infinity), fb: (d.th || '') + '|' + (d.ta || '') + '|' + (d.d || '') });
+      };
+      rows.forEach(function (row) { add(row.game_key, row.data); });
       saves.forEach(function (s) {
         var k = s && s.key; if (typeof k !== 'string') return;
         var d = null; try { d = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { /* 깨진 값 */ }
-        if (k.indexOf(AUTO) !== 0) seeProper(k, d);
-        else if (d) seeAuto(k, d);
-        else if (!seen[k]) { seen[k] = true; plan.del.push(k); plan.skip[k] = true; }
+        if (d) add(k, d);
+        else if (_isAuto(k) && !seen[k]) { seen[k] = true; plan.del.push(k); plan.skip[k] = true; }
       });
+      // 같은 경기 묶기: 타석 id 가 하나라도 겹치면 같은 묶음(union-find). 타석 id 가 없으면 홈|원정|날짜
+      var parent = {};
+      var find = function (x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+      var union = function (a, b) { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+      cand.forEach(function (c) {
+        var tags = c.idN ? Object.keys(c.ids).map(function (i) { return 'i:' + i; }) : ['g:' + c.fb];
+        tags.forEach(function (t) { if (!(t in parent)) parent[t] = t; });
+        for (var i = 1; i < tags.length; i++) union(tags[0], tags[i]);
+        c.root = tags[0];
+      });
+      var groups = {};
+      cand.forEach(function (c) { var r = find(c.root); (groups[r] = groups[r] || []).push(c); });
+      // 남길 것 고르기 · 부분집합만 지우기
+      var rank = function (a, b) {
+        return (b.n - a.n) || (b.pitches - a.pitches) || ((a.auto ? 1 : 0) - (b.auto ? 1 : 0)) || ((b.named ? 1 : 0) - (a.named ? 1 : 0)) || (a.born - b.born) || (b.ts - a.ts);
+      };
+      var isSub = function (b, a) {   // b 가 a 의 부분집합인가
+        if (b.n > a.n || b.pitches > a.pitches) return false;
+        if (!b.idN && !b.auto) return false;   // 타석 id 없는 정식 저장은 비교할 수 없으니 지우지 않는다
+        return Object.keys(b.ids).every(function (i) { return a.ids[i]; });
+      };
+      // 남길 것 고르기(순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합이면 지운다) — 묶음 대표 하나와만 비교하면
+      // 갈래(같은 타석 5개 + 다른 1개)가 대표가 될 때 나머지 똑같은 행들이 "갈라진 기록"으로 남는다(2차에서 실제로 그랬다)
       var used = {};
-      Object.keys(autos).forEach(function (g) {
-        var list = autos[g].sort(function (a, b) { return (b.n - a.n) || (b.ts - a.ts); }), keep = list[0];
-        var redundant = !!(best[g] && keep.n <= best[g].n), to;
-        if (redundant) to = best[g].key;
-        else {
-          var t = keep.ts || Date.now(), key = 'sl_' + t;
+      Object.keys(groups).forEach(function (g) {
+        var list = groups[g].slice().sort(rank), kept = [], drops = [];
+        list.forEach(function (c) {
+          var under = null;
+          for (var i = 0; i < kept.length && !under; i++) { if (isSub(c, kept[i])) under = kept[i]; }
+          if (under) drops.push({ c: c, under: under }); else kept.push(c);
+        });
+        var toOf = {};
+        kept.forEach(function (k) {
+          if (!k.auto) { toOf[k.key] = k.key; return; }
+          // 남는 스냅샷은 정식 키로 (혼자 남은 스냅샷도 — 저장한 적 없는 경기가 목록에 보이도록). 그 아래 묶인 정식 저장의 이름을 이어받는다
+          var t = k.ts || Date.now(), key = 'sl_' + t;
           while (used[key] || localStorage.getItem(key) !== null) key = 'sl_' + (++t);
           used[key] = true;
-          var e = entryOf[keep.key];
-          plan.conv.push({ oldKey: keep.key, key: key, data: keep.data, label: (e && typeof e.label === 'string' && e.label) || _gameLabel(keep.data), ts: keep.ts || t });
-          to = key;
-        }
-        list.forEach(function (a) { plan.del.push(a.key); plan.skip[a.key] = true; plan.relink[a.key] = { to: to, self: !redundant && a.key === keep.key }; });
+          var own = entryOf[k.key], lab = own && typeof own.label === 'string' && own.label;
+          drops.forEach(function (x) { var e = entryOf[x.c.key]; if (!lab && x.under === k && !x.c.auto && e && typeof e.label === 'string' && e.label) lab = e.label; });
+          plan.conv.push({ oldKey: k.key, key: key, data: k.data, label: lab || _gameLabel(k.data), ts: k.ts || t });
+          plan.del.push(k.key); plan.skip[k.key] = true; plan.relink[k.key] = { to: key, self: true };
+          toOf[k.key] = key;
+        });
+        drops.forEach(function (x) { plan.del.push(x.c.key); plan.skip[x.c.key] = true; plan.relink[x.c.key] = { to: toOf[x.under.key], self: false }; });
       });
-    } catch (e) { console.warn('[Cloud] 자동저장 정리 계획 실패:', e && e.message); return { skip: {}, del: [], conv: [], relink: {} }; }
+    } catch (e) { console.warn('[Cloud] 중복 정리 계획 실패:', e && e.message); return { skip: {}, del: [], conv: [], relink: {} }; }
     return plan;
   }
-  // 로컬 적용: 변환본 저장 → 목록·저장소에서 정리 대상 제거 → 열린 경기 연결. 변환본을 못 쓰면(용량 등) 그 경기의 스냅샷은 지우지 않는다. 돌려주는 값 = 정리한 개수
+  // 로컬 적용: 변환본 저장 → 목록·저장소에서 정리 대상 제거 → 열린 경기 연결. 변환본을 못 쓰면(용량 등) 그 경기는 지우지 않는다. 돌려주는 값 = 정리한 개수
   function _applyAutoCleanup(plan, saves) {
     if (!plan.del.length && !plan.conv.length) return 0;
     var now = Date.now(), failed = {};
@@ -245,7 +290,7 @@
     _relinkOpenGame(plan.relink);
     return plan.del.length;
   }
-  // 열려 있는 경기가 정리한 스냅샷이었으면 저장 대상(_curSaveKey)을 남긴 항목으로 이어 준다 — 아니면 다음 「저장」이 지운 키를 되살리거나 항목을 또 만든다
+  // 열려 있는 경기가 정리한 항목이었으면 저장 대상(_curSaveKey)을 남긴 항목으로 이어 준다 — 아니면 다음 「저장」이 지운 키를 되살리거나 항목을 또 만든다
   function _relinkOpenGame(relink) {
     try {
       var A = window.AS, cur = window._curSaveKey || null;
@@ -253,14 +298,14 @@
       if (cur && relink[cur]) {
         var r = relink[cur];
         if (r.self) window._curSaveKey = r.to;   // 남긴 항목이 바로 이 스냅샷의 변환본
-        else if (window._gameSaved && typeof restoreGame === 'function') restoreGame(r.to);   // 열어 둔 뒤 바꾼 게 없으면 남긴 항목(타석이 더 많은 쪽)으로 다시 연다
+        else if (window._gameSaved && typeof restoreGame === 'function') restoreGame(r.to);   // 열어 둔 뒤 바꾼 게 없으면 남긴 항목(내용이 더 많은 쪽)으로 다시 연다
         else window._curSaveKey = null;   // 바꾼 게 있으면 다음 저장은 새 항목 — 남긴 항목을 덮지 않는다
       } else if (!cur && autoCur && relink[autoCur] && relink[autoCur].self) {
         window._curSaveKey = relink[autoCur].to;   // 기록 중인 경기의 스냅샷을 정식 항목으로 바꿨다 → 다음 저장이 그 항목을 덮어쓴다
       }
     } catch (e) { console.warn('[Cloud] 열린 경기 연결 실패:', e && e.message); }
   }
-  // 서버 적용: 변환본 upsert → 스냅샷 삭제 → 마침 표시. 실패하면 표시를 남기지 않는다(호출부 catch 가 실패로 알린다)
+  // 서버 적용: 변환본 upsert → 정리 대상 삭제 → 마침 표시. 실패하면 표시를 남기지 않는다(호출부 catch 가 실패로 알린다)
   function _pushAutoCleanup(db, user, plan) {
     var rows = plan.conv.map(function (c) {
       var ms = _localMod(c.data, null, c.key).ms || Date.now();
@@ -271,7 +316,7 @@
       ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) { if (ur && ur.error) throw ur.error; })
       : Promise.resolve();
     return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () {
-      try { localStorage.setItem(FIXED_KEY, user.id); } catch (e) { /* 다음 시작 때 다시 센다 */ }
+      try { localStorage.setItem(FIXED_KEY, user.id + FIXED_VER); } catch (e) { /* 다음 시작 때 다시 센다 */ }
     });
   }
 
@@ -485,7 +530,7 @@
         var existMap = {};
         saves.forEach(function (s) { if (s && typeof s.key === 'string') existMap[s.key] = true; });
         var rows = (r.data || []).filter(function (row) { return !!row && typeof row.game_key === 'string' && !pend[row.game_key]; });
-        var plan = _planAutoCleanup(user, rows, saves);   // 자동저장 스냅샷(sl_auto_*) 정리 — 계정·기기마다 한 번
+        var plan = _planAutoCleanup(user, rows, saves);   // 같은 경기 중복(스냅샷·정식 저장) 정리 — 계정·기기마다 한 번
         var added = 0;
         rows.forEach(function (row) {
           var k = row.game_key;
@@ -511,7 +556,7 @@
         if (added || cleaned) localStorage.setItem('sl_saves', JSON.stringify(saves));
         if (added && typeof showToast === 'function') showToast('☁️ 클라우드에서 ' + added + '개 경기 복원됨', false);
         if (cleaned) {
-          if (typeof showToast === 'function') showToast('🧹 자동저장 중복 ' + cleaned + '개 정리됨', false);
+          if (typeof showToast === 'function') showToast('🧹 같은 경기 중복 ' + cleaned + '개 정리됨', false);
           var lo = document.getElementById('loadOverlay');
           if (lo && lo.classList.contains('show') && typeof openLoad === 'function') openLoad();   // 열려 있는 목록을 다시 그린다
         }

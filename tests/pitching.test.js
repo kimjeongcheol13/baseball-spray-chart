@@ -190,6 +190,21 @@
     AS.home_lineup = [{ id: 'z', name: '혼자', num: '9' }]; AS.batter = null; renderLP();
     pitchNextBatter(); pitchNextBatter(); eq(AS.batter && AS.batter.id, 'z', '한 명뿐이면 계속 그 타자');
   });
+  test('타자를 바꾸면 카운트 줄은 새 타석: 앞 타석은 "앞 타석 (이름): 결과 · N구" 한 줄로 따로 · 결과 미기록 경고가 기록하는 자리에서 보인다', function () {
+    reset(); lineup3(); var p = pitcher(1, '투수'); renderLP(); pitchPickBatter('a'); rec('볼', '스트라이크');
+    pitchPickBatter('b'); $('pitchEndSheet').querySelector('[data-end="미상"]').click();
+    var t = $('pitchCountBar').textContent;
+    ok(t.indexOf('나') === 0 && t.indexOf('새 타석') >= 0, '새 타자의 새 타석으로 보여야 함: ' + t);
+    ok(t.indexOf('타석 종료') < 0, '새 타자 옆에 앞 타석의 "타석 종료"가 붙으면 안 됨: ' + t);
+    ok(t.indexOf('앞 타석 (가): 모름 · 2구') >= 0, '앞 타석은 따로 한 줄: ' + t);
+    ok(t.indexOf('결과 미기록 1타석') >= 0, '미기록 경고가 카운트 줄에: ' + t);
+    rec('볼', '볼', '볼', '볼'); t = $('pitchCountBar').textContent;
+    ok(t.indexOf('타석 종료 · 볼넷 · 4구') >= 0 && t.indexOf('새 타석') < 0, '같은 타자로는 끝난 타석 그대로(다음 타자를 고르라고): ' + t);
+    pitchNextBatter(); t = $('pitchCountBar').textContent;
+    ok(t.indexOf('다') === 0 && t.indexOf('새 타석') >= 0 && t.indexOf('앞 타석 (나): 볼넷 · 4구') >= 0, '다음 타자 ▶ 뒤: ' + t);
+    ok(t.indexOf('결과 미기록 1타석') >= 0, '끝난 타석(볼넷)은 미기록이 아님 — 여전히 1: ' + t);
+    rec('볼'); t = $('pitchCountBar').textContent; ok(t.indexOf('이번 타석 1구') >= 0 && t.indexOf('앞 타석') < 0, '공을 던지면 앞 타석 줄은 사라짐: ' + t);
+  });
   test('알림(toast)이 연속 탭을 막지 않는다: 되돌리기 버튼 없는 알림은 탭이 통과하고(.toast-passive) · 투구 알림은 짧게 · 오류 알림도 저절로 사라진다', async function () {
     reset(); lineup3(); var p = pitcher(1, '투수'); renderLP(); pitchPickBatter('a');
     recordPitch('볼'); var t = $('toast');

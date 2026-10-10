@@ -205,6 +205,8 @@
 .pcnt-state { margin-top: 6px; font-size: 12px; color: var(--text2); }
 .pcnt-state.end { color: var(--text); font-weight: 700; }
 .pcnt-state.block { color: #d97706; }
+.pcnt-prev { margin-top: 2px; font-size: 11px; color: var(--text3); }
+.pcnt-warn { margin-top: 4px; font-size: 12px; font-weight: 700; color: #d97706; }
 .pcnt-act { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .pcnt-act button { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border2); background: transparent; color: var(--text); font: 700 12px var(--font); cursor: pointer; }
 .pcnt-act button:active { transform: scale(.96); }

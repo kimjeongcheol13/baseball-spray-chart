@@ -2722,7 +2722,7 @@ function importGames(input) {
 function restoreGame(key){
   const d=JSON.parse(localStorage.getItem(key));if(!d)return;
   _curSaveKey=key;   // 이 경기를 다시 저장하면 이 항목을 덮어씀
-  AS.curGame=d.ts||key.replace('sl_',''); // Fix: 자동저장 key를 이 게임에 고정
+  AS.curGame=key.replace(/^sl_(?:auto_)?/,''); // 자동저장·실시간 키를 저장 키 기준으로 고정 — d.ts 는 복구(_archQuietSave)가 바꿔 열 때마다 새 키가 생겼다
   document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
   AS.hs=d.hs||0;AS.as=d.as||0;document.getElementById('scH').textContent=AS.hs;document.getElementById('scA').textContent=AS.as;
   AS.home_lineup=d.home_lineup || d.lineup || [];
@@ -8222,6 +8222,7 @@ function _archQuietSave(saveKey){
         localStorage.setItem('sl_saves',JSON.stringify(saves));
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
+        AS.curGame=latest.key.replace(/^sl_(?:auto_)?/,'');   // 복구한 경기도 그 저장 항목의 자동저장 키를 쓴다
         return;
       }
     }
@@ -8237,6 +8238,7 @@ function _archQuietSave(saveKey){
     localStorage.setItem(key,JSON.stringify(data));
     if(window._slMarkMod)window._slMarkMod(key);
     _curSaveKey=key;_gameSaved=true;
+    AS.curGame=key.replace(/^sl_/,'');
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
 }
 

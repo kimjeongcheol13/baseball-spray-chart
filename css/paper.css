@@ -1168,3 +1168,15 @@ body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3p
 body.sb #helpModeTooltip .hmt-title { color: var(--ink) !important; font-family: var(--f-display); font-weight: 400; font-size: 16px; }
 body.sb #helpModeTooltip .hmt-close { min-width: 44px; min-height: 44px; color: var(--ink) !important; }
 body.sb .scout-intro-sheet { border-radius: 0 !important; box-shadow: none !important; }
+
+/* ── 첫 화면 가림막 (index.html 이 모바일·공유 링크에서 html.sb-boot 를 붙이고, scorebook.js 가 테마를 다 입힌 뒤 걷는다) ──
+   종이 테마가 입혀지기 전의 옛 화면(어두운 필드·하단 탭)이 비치지 않게 맨 위를 종이색으로 덮는다 — 그동안 탭도 막힌다 */
+html.sb-boot body::after {
+  content: 'SPRAYLAB';
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 2147483647;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font: 700 18px/1 var(--f-num);
+  letter-spacing: .3em;
+}

@@ -709,7 +709,12 @@ function _init() {
   _hook();
   render();
   // 새 배치 기준으로 필드 크기 다시 계산 + 웹폰트(Oswald) 로드 뒤 거리 라벨 다시 그림
-  requestAnimationFrame(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} _redraw(); });
+  // 그다음 프레임(core resize 의 필드 크기 재계산 뒤)에 첫 화면 가림막(index.html 의 html.sb-boot)을 걷는다
+  requestAnimationFrame(() => {
+    try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    _redraw();
+    requestAnimationFrame(() => document.documentElement.classList.remove('sb-boot'));
+  });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tok(true); _redraw(); schedule(); });
 }
 

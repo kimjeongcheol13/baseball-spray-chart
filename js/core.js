@@ -2512,8 +2512,9 @@ function deleteGame(key){
   saves=saves.filter(function(s){return s.key!==key;});
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   localStorage.removeItem(key);
+  localStorage.removeItem('sl_auto_'+key.replace(/^sl_(?:auto_)?/,''));   // 이 경기를 열어 둔 동안 쌓인 로컬 자동저장 스냅샷(restoreGame 의 AS.curGame 규칙)도 바로 지운다
   if(window.cloudDelete)cloudDelete(key);
-  if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다
+  if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다. 스냅샷 행(sl_auto_<뒷부분>)도 함께
   openLoad();
   showToast('삭제되었습니다',false);
 }

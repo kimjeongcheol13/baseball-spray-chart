@@ -729,11 +729,14 @@
   /* deleteGame() → cloudDeleteGame(key): 로그인 계정 클라우드(user_games)에서도 지운다. 못 지우면 대기 목록에 남겨 시작 동기화가 처리한다 */
   window.cloudDeleteGame = function (key) {
     if (typeof key !== 'string' || !key) return;
-    _markDel([key]);
+    var base = key.replace(/^sl_(?:auto_)?/, ''), keys = [key];
+    if (AUTO + base !== key) keys.push(AUTO + base);   // 그 경기를 열었을 때 실시간 동기화가 올린 스냅샷 행도 함께 — 안 지우면 목록에 안 보이는 행이 서버에 남는다
+    if (window.AS && AS.curGame != null && String(AS.curGame) === base) clearTimeout(_debTimer);   // 지운 경기가 열려 있으면 예약된 실시간 동기화가 스냅샷을 다시 만들지 않게
+    _markDel(keys);
     if (!_online) { _pendSync = true; return; }
     _ensureAuth().then(function (user) {
       if (!user) return;   // 로그인 전: 서버에 없다(로그인하면 시작 동기화가 대기 목록을 처리한다)
-      return _deleteRows(_client(), user, [key]);
+      return _deleteRows(_client(), user, keys);
     }).catch(function (e) { console.warn('[Cloud] delete:', e && e.message); });
   };
 

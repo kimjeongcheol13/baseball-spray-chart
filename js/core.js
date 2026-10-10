@@ -2509,6 +2509,9 @@ function deleteGame(key){
   saves=saves.filter(function(s){return s.key!==key;});
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   localStorage.removeItem(key);
+  var autoKey='sl_auto_'+key.replace(/^sl_(?:auto_)?/,'');   // 그 경기를 열었을 때 남은 자동저장(sl_auto_<저장 키 뒷부분>)도 지운다
+  if(autoKey!==key)localStorage.removeItem(autoKey);
+  if(AS.curGame!=null&&'sl_auto_'+AS.curGame===autoKey)clearTimeout(_autoTimer);   // 지운 경기가 열려 있으면 예약된 자동저장이 다시 만들지 않게
   if(window.cloudDelete)cloudDelete(key);
   if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다
   openLoad();

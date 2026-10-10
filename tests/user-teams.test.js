@@ -183,8 +183,8 @@
     ok(ch, 'user_games 구독이 걸리지 않음');
     return ch.cb;
   }
-  function teamRow(userId, abs) {
-    return { user_id: userId, game_key: K, team_id: 'T1', team_name: '홈 vs 원정', date: '2026. 5. 17.',
+  function teamRow(userId, abs, key) {
+    return { user_id: userId, game_key: key || K, team_id: 'T1', team_name: '홈 vs 원정', date: '2026. 5. 17.',
       data: { th: '홈', ta: '원정', hs: 3, as: 1, abs: abs || [], d: '2026. 5. 17.', ts: T0 }, updated_at: new Date(T0 + 60000).toISOString() };
   }
   function modOf(k) { return (T.ls('sl_cloud_mod') || {})[k]; }
@@ -205,17 +205,18 @@
     eq(T.ls(K).hs, 3, '저장된 경기');
     eq(modOf(K), T0 + 60000, '로컬 수정 시각 = 서버 시각');
   });
-  test('실시간: 열린 경기와 key 가 같으면 팀원의 타구는 그대로 합쳐진다(localStorage 에는 쓰지 않는다)', async function () {
+  test('실시간: 열린 경기와 key(sl_auto_<AS.curGame>)가 같으면 팀원의 타구는 그대로 합쳐진다(localStorage 에는 쓰지 않는다)', async function () {
     var cb = await teamChannelCb();
-    var abs0 = AS.abs, key0 = window._autoKey, upd0 = window.updateAll, updated = 0;
+    var KA = 'sl_auto_1779002911000';   // 열린 경기의 실시간 키 = sl_auto_ + AS.curGame (내가 올리는 키와 같은 규칙 · _autoKey 보다 우선)
+    var abs0 = AS.abs, key0 = window._autoKey, cur0 = AS.curGame, upd0 = window.updateAll, updated = 0;
     try {
-      window._autoKey = K; AS.abs = [{ id: 'a1' }]; window.updateAll = function () { updated++; };
-      var threw = call(cb, teamRow('MEMBER-USER', [{ id: 'a1' }, { id: 'b2' }]));
+      AS.curGame = '1779002911000'; window._autoKey = K; AS.abs = [{ id: 'a1' }]; window.updateAll = function () { updated++; };
+      var threw = call(cb, teamRow('MEMBER-USER', [{ id: 'a1' }, { id: 'b2' }], KA));
       ok(!threw, '콜백이 throw 함: ' + threw);
       eq(AS.abs.map(function (a) { return a.id; }), ['a1', 'b2'], '합쳐진 타구');
       eq(updated, 1, 'updateAll 호출');
-      eq(localStorage.getItem(K), null, '팀원 경기가 localStorage 에 저장됨');
-    } finally { AS.abs = abs0; window._autoKey = key0; window.updateAll = upd0; }
+      eq(localStorage.getItem(KA), null, '팀원 경기가 localStorage 에 저장됨');
+    } finally { AS.abs = abs0; window._autoKey = key0; AS.curGame = cur0; window.updateAll = upd0; }
   });
   test('실시간: setItem 이 예외를 던져도 콜백은 throw 하지 않고 내 저장은 그대로다', async function () {
     var cb = await teamChannelCb();

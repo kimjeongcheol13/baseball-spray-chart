@@ -5,9 +5,10 @@
 //   v1 (옛 기록, 필드 없음): { id, inning, zone, zoneX, zoneY, pt, result, batter, ts }
 //        result 에 타석 결과(안타·삼진·볼넷…)가 섞여 있다 → 읽을 때 LEGACY_END 로 해석한다. 저장값은 절대 고쳐 쓰지 않는다.
 //   v2 (새 입력):           위 필드 + { v: 2, pa, bid, pr, end?, nk? }
-//        pr     = 투구 자체의 결과 — 이 공이 뭐였는지의 기준값 (볼 · 스트라이크 · 파울 · 타격됨 · 사구, P1 에서 헛스윙 · 루킹 추가)
+//        pr     = 투구 자체의 결과 — 이 공이 뭐였는지의 기준값 (볼 · 헛스윙 · 루킹 · 파울 · 타격됨 · 사구)
+//                 P1 전에 입력한 '스트라이크'는 헛스윙/루킹을 나누지 않은 값 → 화면 · 엑셀에는 '스트라이크(구분 없음)'. 스트라이크%에서는 셋 다 스트라이크
 //        end    = 이 투구로 타석이 끝났을 때만. 값은 END_CHOICES 의 값 + '미상'(모름 — 지표에서는 미기록과 같다). 읽을 때는 end 가 있으면 항상 end 가 우선
-//        result = 옛 클라이언트용 보조값 (읽을 때는 pr · end 를 먼저 본다). 끝나지 않은 공은 pr 과 같고, 타석을 끝낸 공은 옛 코드가 알아보는 결과(legacyResult)로 쓴다
+//        result = 옛 클라이언트용 보조값 (읽을 때는 pr · end 를 먼저 본다). 끝나지 않은 공은 pr 과 같고(헛스윙 · 루킹은 옛 코드가 아는 '스트라이크'), 타석을 끝낸 공은 옛 코드가 알아보는 결과(legacyResult)로 쓴다
 //                 → 이미 배포된 옛 코드가 v2 경기를 열어도 삼진 · 볼넷 · 안타가 맞게 읽힌다 (옛 코드가 모르는 사구 · 실책 · 야수선택 · 희생은 각각 볼넷 · 아웃으로 읽힌다)
 //        pa     = 타석 ID (그 타석 첫 투구의 id) · bid = 타자 id
 //        nk     = 1 이면 낫아웃 출루 (삼진은 삼진, 아웃은 아니다)
@@ -51,6 +52,17 @@ const LEGACY_RESULT = {
 };
 // 타석 결과(end) → 옛 호환 result. 모르는 값 · '미상'(모름)이면 null — 그 공의 result 는 그대로 둔다 (옛 코드가 타석이 안 끝난 것으로 읽는 게 맞다)
 export const legacyResult = end => LEGACY_RESULT[end] || null;
+
+// 투구 자체의 결과(pr, 없으면 옛 result) → 화면 · 엑셀 이름
+const PR_LABEL = { '스트라이크': '스트라이크(구분 없음)' };   // P1 전 입력은 헛스윙/루킹을 나누지 않았다
+export const prLabel = p => { const r = p && (p.pr || p.result); return PR_LABEL[r] || r || ''; };
+// 이닝이 비어 있는 옛 기록은 '미기록'
+export const innLabel = v => (v ? String(v) : '미기록');
+// 이 앱이 아는 기록 형식. 더 새 버전 앱이 만든 투구(v 가 더 크거나 모르는 결과값)를 만나면 화면 · 엑셀이 새로고침을 권한다 — 조용히 잘못 읽지 않게
+export const SCHEMA_V = 2;
+const KNOWN_PR = new Set(['볼', '스트라이크', '헛스윙', '루킹', '파울', '타격됨', '사구']);
+export const isNewerData = pitches => (pitches || []).some(p => p && ((Number(p.v) || 0) > SCHEMA_V
+  || (p.end != null && !VALID_END.has(p.end)) || (p.v >= 2 && p.pr != null && !KNOWN_PR.has(p.pr))));
 
 const sameId = (a, b) => a != null && b != null && String(a) === String(b);
 const sameBatter = (p, batter) => (sameId(p.bid, batter.id) || (p.bid == null && p.batter != null && p.batter === batter.name));
@@ -129,7 +141,7 @@ export function stateOf(pitches, batter, newPA) {
 }
 
 // 투구 하나를 받아 저장할 필드를 정한다 (저장은 호출한 쪽).
-//   input = '볼' | '스트라이크' | '파울' | 타석 결과 값(END_CHOICES)
+//   input = '볼' | '헛스윙' | '루킹' | '스트라이크'(구분 없음) | '파울' | 타석 결과 값(END_CHOICES)
 //   ctx   = { batter: { id, name } | null, newPA: 같은 타자의 다음 타석임을 사용자가 확인했는지, id: 새 투구 id }
 // 돌려주는 값: { fields: { v, pa, bid, pr, result, end? } } 또는 { blocked: 'ended' | 'unknown' }   (result = 옛 호환 값, 위 머리말 참고)
 //   · 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진으로 자동 종료. 끝난 타석에 같은 타자로 공을 더 넣는 것은 막는다 → 5볼 · 4스트라이크가 입력 단계에서 불가능하다.
@@ -146,14 +158,14 @@ export function nextPitch(pitches, input, ctx) {
     if (last && last.end != null && !ctx.newPA && batter && sameBatter(last, batter)) return { blocked: 'ended' };
   }
   let pr, end = null;
-  if (input === '볼' || input === '스트라이크' || input === '파울') {
+  if (input === '볼' || input === '헛스윙' || input === '루킹' || input === '스트라이크' || input === '파울') {
     pr = input;
     end = autoEnd(step(c, kindOf({ pr })));
   } else if (VALID_END.has(input) && input !== UNKNOWN) {
     end = input;
     pr = PITCH_OF_END[end] || '타격됨';
   } else return { blocked: 'unknown' };
-  const fields = { v: 2, pa, bid, pr, result: end ? legacyResult(end) : pr };
+  const fields = { v: 2, pa, bid, pr, result: end ? legacyResult(end) : (pr === '헛스윙' || pr === '루킹' ? '스트라이크' : pr) };   // 옛 코드는 헛스윙 · 루킹을 모른다
   if (end) fields.end = end;
   return { fields };
 }
@@ -192,6 +204,18 @@ function _finish(x) {
   return { ...x, b: c.b, s: c.s, reached3B: r3, reached2S: r2, abnormal: abn };
 }
 
+// ── 아웃 ─────────────────────────────────────────────────────
+export const outsOfPA = x => (x.end === '삼진' && x.nk ? 0 : OUTS[x.end] || 0);   // 낫아웃 출루는 0
+// 반 이닝(마지막 공의 inning 값이 같은 타석)의 아웃 수 — 투수가 바뀌어도 이어서 센다. lists = 투수별 투구 목록들
+export function outsInInning(lists, inning) {
+  let n = 0;
+  (lists || []).forEach(ps => groupPA(ps).forEach(x => {
+    const last = x.pitches[x.pitches.length - 1];
+    if (x.end && last && last.inning === inning) n += outsOfPA(x);
+  }));
+  return n;
+}
+
 // ── 투수 지표 ────────────────────────────────────────────────
 // apps = [{ pitches, current? }] (등판 한 번 = 한 줄). 앱 투수 탭 · 분석 엑셀 · 옛 엑셀 모두 이 값을 쓴다.
 //   상대 타석(pa) = 결과가 기록된 타석 · 타수(ab) = 타석 − 볼넷 − 사구 − 희생번트 − 희생플라이
@@ -215,7 +239,7 @@ export function calcPitching(apps) {
   const cnt = res => done.filter(x => x.end === res).length;
   const h = done.filter(x => HIT.includes(x.end)).length;
   const hr = cnt('홈런'), k = cnt('삼진'), bb = cnt('볼넷'), hbp = cnt('사구'), sh = cnt('희타'), sf = cnt('희비');
-  const outs = done.reduce((s, x) => s + (x.end === '삼진' && x.nk ? 0 : OUTS[x.end] || 0), 0);
+  const outs = done.reduce((s, x) => s + outsOfPA(x), 0);
   const ab = done.length - bb - hbp - sh - sf;
   const tb = done.reduce((s, x) => s + (TB[x.end] || 0), 0);
   const ip = outs / 3;
@@ -234,6 +258,7 @@ export function calcPitching(apps) {
     r3b: pas.length ? pas.filter(x => x.reached3B).length / pas.length : 0,
     twoS: pas.filter(x => x.reached2S),
     pas, done, unrec, abnormal, pitches,
+    newer: isNewerData(pitches),   // 이 앱보다 새 버전이 만든 기록 → 경고 문구
   };
 }
 export const FIP_C = 3.10;   // FIP 상수 — 리그 평균에 맞춰야 하지만 아마추어 리그 값이 없어 MLB 수준 값으로 가정
@@ -241,11 +266,12 @@ export const FIP_C = 3.10;   // FIP 상수 — 리그 평균에 맞춰야 하지
 // 앱 · 엑셀 공통 경고 문구
 export function warnLines(S) {
   const w = [];
+  if (S.newer) w.push('이 앱보다 새 버전에서 만든 기록이 있어요 · 앱을 새로고침(업데이트)한 뒤 다시 보세요 — 지금 숫자는 틀릴 수 있어요');
   if (S.unrec.length) w.push(`결과 미기록 ${S.unrec.length}타석 · 지표 왜곡 가능 (상대 타석·피안타율·볼넷%·삼진%·타자당 투구에서 뺐어요)`);
   if (S.abnormal.length) w.push(`카운트 이상 ${S.abnormal.length}타석 · 볼 4개 이상 또는 스트라이크 3개인데 볼넷·삼진이 아닌 타석 (여러 타석이 합쳐졌거나 결과 입력이 빠졌을 수 있어요)`);
   return w;
 }
 
 if (typeof window !== 'undefined') {
-  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, legacyResult, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, calcPitching, warnLines };
+  window.PitchCalc = { END_CHOICES, END_LABEL, UNKNOWN, SCHEMA_V, legacyResult, prLabel, innLabel, isNewerData, kindOf, endOf, pitchInfo, isStrikePitch, countOf, openPA, stateOf, nextPitch, groupPA, outsOfPA, outsInInning, calcPitching, warnLines };
 }

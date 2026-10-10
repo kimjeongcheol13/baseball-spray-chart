@@ -202,6 +202,7 @@
 .pcnt-dots i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--text2); box-sizing: border-box; }
 .pcnt-dots i.b.on { background: #2dd4a0; border-color: #2dd4a0; }
 .pcnt-dots i.s.on { background: #f6c23e; border-color: #f6c23e; }
+.pcnt-dots i.o.on { background: #f56565; border-color: #f56565; }
 .pcnt-state { margin-top: 6px; font-size: 12px; color: var(--text2); }
 .pcnt-state.end { color: var(--text); font-weight: 700; }
 .pcnt-state.block { color: #d97706; }
@@ -266,4 +267,18 @@
     display: block; margin: 0 0 8px; padding: 10px 12px; border: 1px solid #d97706; border-radius: 12px;
     font-size: 13px; line-height: 1.4; color: var(--text); background: var(--bg-raised);
   }
+}
+
+/* ── P1: 이닝 고르기 · 첫 공 이닝 시트 · 결과 미기록 채우기 ── */
+.pis-sel { display: block; width: 100%; min-height: 44px; margin: 4px 0 12px; }
+.pis-ok { width: 100%; min-height: 44px; }
+.pc-fix-btn { min-height: 44px; margin-top: 8px; padding: 0 14px; border-radius: 10px; border: 1px solid #d97706; background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
+.pf-list { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; margin-bottom: 10px; }
+.pf-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left;
+  border: 1px solid var(--border2); border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
+.pf-item b { font-size: 12px; }
+.pf-item span { font-size: 13px; }
+.pf-item small { font-size: 11px; color: var(--text3); }
+@media (max-width: 720px) {
+  #anaSecPitcher.pc-input #pnl-pitcher .pbr #pitchInnSel { flex: 0 0 88px; min-width: 0; min-height: 44px; }
 }

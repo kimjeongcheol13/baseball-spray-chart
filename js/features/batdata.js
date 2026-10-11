@@ -37,7 +37,7 @@ export function buildData() {
   const map = Object.create(null);
   const add = (name, num, bats) => {
     if (!name) return null;
-    if (!map[name]) map[name] = { name, num: num ?? '', bats: {}, pa: 0 };
+    if (!map[name]) map[name] = { name, num: num ?? '', bats: Object.create(null), pa: 0 };
     if ((map[name].num === '' || map[name].num == null) && num != null) map[name].num = num;
     if (bats) map[name].bats[bats] = (map[name].bats[bats] || 0) + 1;
     return map[name];

@@ -1,8 +1,8 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
-import { pitchInfo } from './pitchcalc.js?v=1';
-import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=7';
-import { buildColumn, columnText, renderColumnFigure } from './column.js?v=4';
+import { pitchInfo } from './pitchcalc.js?v=4';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
+import { buildColumn, columnText, renderColumnFigure } from './column.js?v=5';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -20,7 +20,7 @@ let _data = null;
 let _reportText = '';
 let _col = null;         // 만들어 둔 칼럼 { name, col } — 다른 타자를 고르면 비운다
 
-const SHORT = {
+const SHORT = { __proto__: null,
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
   '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '희타': ['희타', 'out'], '희비': ['희비', 'out'],
   '땅볼 아웃': ['땅볼', 'out'], '플라이 아웃': ['뜬공', 'out'], '병살': ['병살', 'out'],

@@ -2,9 +2,9 @@ export const MAX_HITS = 300;
 
 export const HITS = ['안타','내야안타','2루타','3루타','홈런'];
 export const NOAB = ['볼넷','사구','희타','희비'];
-export const BASE = {'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
+export const BASE = { __proto__: null,'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
 
-export const RC = {
+export const RC = { __proto__: null,
   '안타':'#2dd4a0','내야안타':'#5eead4','2루타':'#4b8cf5',
   '3루타':'#f6c23e','홈런':'#f56565','플라이 아웃':'#374151','땅볼 아웃':'#2a3040'
 };

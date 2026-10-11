@@ -2,8 +2,8 @@
 // 선수 → 기간 → 코치 코멘트 → PNG 저장·공유 / 인쇄(PDF)
 // 계산·그림은 기존 것을 그대로 쓴다: calcStats · sprayFigure(batdata.js) · hotColdFigure(zonefig.js)
 // 저장 경기는 읽기만 한다. 새로 쓰는 키는 sl_report_cmt(선수별 마지막 코치 코멘트, 이 기기에만 · 동기화 안 함) 하나뿐
-import { buildData, calcStats, f3, pct, sampleBadge, sprayFigure } from './batdata.js?v=5';
-import { hotColdFigure } from './zonefig.js?v=3';
+import { buildData, calcStats, f3, pct, sampleBadge, sprayFigure } from './batdata.js?v=6';
+import { hotColdFigure } from './zonefig.js?v=4';
 
 const CMT_KEY = 'sl_report_cmt';
 const CMT_MAX = 80;           // 코멘트 최대 글자 (3줄 안쪽)

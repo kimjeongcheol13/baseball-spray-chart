@@ -6671,8 +6671,12 @@ function toggleHelpMode(){
 function _helpModeClick(e){
   var el=e.target.closest('[data-help]');
   if(!el)return;
-  e.preventDefault();
-  e.stopPropagation();
+  // 하단 탭(기록·분석·경기설정)은 안내 모드에서도 이동은 그대로 + 설명 표시
+  //   (막으면 ☰ 메뉴가 없는 경기설정·분석 탭에서 빠져나갈 길이 없다)
+  if(!el.closest('#savantNav')){
+    e.preventDefault();
+    e.stopPropagation();
+  }
   showHelpModeTooltip(
     el.getAttribute('data-help-title')||el.getAttribute('title')||'설명',
     el.getAttribute('data-help')

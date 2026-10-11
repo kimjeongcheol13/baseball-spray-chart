@@ -11,23 +11,33 @@ permissions:
 
 jobs:
   claude-fix:
+    # 저장소 OWNER/MEMBER/COLLABORATOR 가 올린 이슈만 실행 (외부인 이슈 → Bash 권한 가진 에이전트 실행 차단)
     if: |
-      github.event.action == 'opened' ||
-      (github.event.action == 'labeled' && github.event.label.name == 'claude')
+      (github.event.action == 'opened' ||
+       (github.event.action == 'labeled' && github.event.label.name == 'claude')) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
 
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # 같은 이슈에 opened + labeled 가 동시에 오면 한 번만 돌도록
+    concurrency:
+      group: claude-auto-fix-${{ github.event.issue.number }}
+      cancel-in-progress: true
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 🤖 Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.287
 
       - name: ⚙️ Run Claude Code
         env:
@@ -49,6 +59,7 @@ jobs:
             4. 새 파일을 만들지 말고 기존 파일을 수정해
             5. 절대 package.json, README.md는 건드리지 마" \
             --allowedTools "Edit,Write,Read,Bash" \
+            --max-turns 30 \
             --output-format text > claude_output.txt 2>&1
 
           cat claude_output.txt
@@ -64,15 +75,20 @@ jobs:
 
       - name: 📝 Commit changes
         if: steps.check_changes.outputs.changed == 'true'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          # checkout 은 persist-credentials: false → 토큰은 이 push 스텝에만 명시적으로 넘긴다
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "claude-bot"
           git config user.email "claude-bot@users.noreply.github.com"
-          BRANCH_NAME="claude/fix-issue-${{ github.event.issue.number }}"
-          git checkout -b $BRANCH_NAME
+          BRANCH_NAME="claude/fix-issue-${ISSUE_NUMBER}"
+          git checkout -b "$BRANCH_NAME"
           git add -A
-          git commit -m "🤖 fix: #${{ github.event.issue.number }} ${{ github.event.issue.title }}"
-          git push origin $BRANCH_NAME
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          git commit -m "🤖 fix: #${ISSUE_NUMBER} ${ISSUE_TITLE}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH_NAME"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
 
       - name: 🚀 Create Pull Request
         if: steps.check_changes.outputs.changed == 'true'

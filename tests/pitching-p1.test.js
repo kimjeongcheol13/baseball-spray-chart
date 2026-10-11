@@ -60,7 +60,7 @@
     var restore = stubDownload(), sheets;
     try { sheets = X.exportPitcherXlsx(P, PC().calcPitching(P.apps), PC().calcPitching); } finally { restore(); }
     var sh = sheets.find(function (s) { return s.name === '투구 기록'; }); ok(sh, '투구 기록 시트');
-    var row = function (r) { var x = sh.rows.get(r); return [x.get(2).v, x.get(6).v]; };   // 이닝 · 결과
+    var row = function (r) { var x = sh.rows.get(r); return [x.get(2).v, x.get(8).v]; };   // 이닝 · 결과 (이닝 뒤 아웃 · 주자 열 — main #108)
     eq([row(1), row(2), row(3)], [['미기록', '스트라이크(구분 없음)'], ['2회초', '헛스윙'], ['2회초', '루킹']], '이닝 · 결과');
   });
 

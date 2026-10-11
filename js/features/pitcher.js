@@ -1,7 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=6';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=8';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=12';
 import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf } from './pitchcalc.js?v=2';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
@@ -318,6 +318,15 @@ const _inZone = p => p.zoneX >= 0.22 && p.zoneX <= 0.78 && p.zoneY >= 0.15 && p.
 const _inBox = (p, b) => { const x = p.zoneX * 100, y = p.zoneY * 120; return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; };
 const _innTxt = v => (v == null || v === '' ? '' : /^\d+$/.test(String(v)) ? `${v}회` : String(v));
 const _innKey = t => (/^\d+/.test(t) ? parseInt(t, 10) * 2 + (t.includes('말') ? 1 : 0) : 99);
+// 던지기 직전 아웃·주자 (core.js recordPitch 의 outs · runners — 경기 운영 모드에서만 저장, 아니면 null · 예전 기록엔 없음)
+const RUN_ORDER = ['주자 없음', '1루', '2루', '3루', '1·2루', '1·3루', '2·3루', '만루'];
+const _outsTxt = p => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? `${p.outs}아웃` : '');
+const _runTxt = p => {
+  const r = p.runners;
+  if (!Array.isArray(r) || r.length !== 3) return '';
+  const on = [1, 2, 3].filter((_, i) => r[i]);
+  return !on.length ? '주자 없음' : on.length === 3 ? '만루' : on.join('·') + '루';
+};
 
 // 공 하나하나의 상황: 몇 번째 등판 · 그 경기 몇 번째 공 · 어느 타석의 몇 구째 · 던지기 직전 카운트
 // (타석 묶기 · 카운트는 투구 기록 계산 하나 — pitchcalc.js groupPA · countOf. 옛 기록(v1)도 같은 규칙으로 읽는다)
@@ -440,6 +449,14 @@ function _pickHtml(sel) {
   const bucket = BUCKETS.map(([a, b]) => [b > 900 ? `${a}구~` : `${a}~${b}구`, cs.filter(c => c.no >= a && c.no <= b).length]).filter(r => r[1]);
   const bat = tally(sel, p => p.batter || '').sort((x, y) => y[1] - x[1]);
   const games = _scope === 'season' ? tally(cs, c => (c.a.label ? _short(c.a) : '')).sort((x, y) => y[1] - x[1]) : [];
+  const outs = tally(sel, _outsTxt).sort((x, y) => x[0].localeCompare(y[0]));
+  const runs = tally(sel, _runTxt).sort((x, y) => RUN_ORDER.indexOf(x[0]) - RUN_ORDER.indexOf(y[0]));
+  const risp = count(p => _runTxt(p) && (p.runners[1] || p.runners[2]));
+  const none = (k, f) => { const v = count(p => !f(p)); return v ? `<i class="soft">${k}<b>${v}</b></i>` : ''; };
+  const sitRows = outs.length || runs.length
+    ? row('아웃', chips(outs) + none('기록 없음', _outsTxt)) +
+      row('주자', chips(runs) + (risp ? `<i class="soft">득점권<b>${risp}</b></i>` : '') + none('기록 없음', _runTxt))
+    : row('아웃 · 주자', '<i class="soft">기록 없음 — 경기 운영 모드에서 기록한 공만 나와요</i>');
 
   // 공 하나씩: 최근 경기 · 최근 공부터
   const list = sel.slice().sort((x, y) => C(y).ai - C(x).ai || C(y).no - C(x).no);
@@ -450,7 +467,8 @@ function _pickHtml(sel) {
       const qc = _cls(q), r = _pqTxt(q);
       return `<i class="pq pq-${qc}${q === p ? ' cur' : ''}" title="${_esc(q.pt || '구종 미기록')} · ${_esc(_resTxt(q))}">${_esc(PT_S[q.pt] || (q.pt ? q.pt.slice(0, 2) : '—'))}<b>${_esc(r)}</b></i>`;
     }).join('');
-    const where = [_scope === 'season' && c.a.label ? _short(c.a) : '', _innTxt(p.inning), `${p.batter ? p.batter + ' 상대 ' : ''}${c.k + 1}구째`, c.no ? `경기 ${c.no}구째` : ''].filter(Boolean);
+    const sit = [_outsTxt(p), _runTxt(p)].filter(Boolean).join(' ');
+    const where = [_scope === 'season' && c.a.label ? _short(c.a) : '', _innTxt(p.inning), sit, `${p.batter ? p.batter + ' 상대 ' : ''}${c.k + 1}구째`, c.no ? `경기 ${c.no}구째` : ''].filter(Boolean);
     return `
       <li>
         <i class="pq-dot pq-${cls}"></i>
@@ -481,6 +499,7 @@ function _pickHtml(sel) {
     <h4>어떤 상황이었나</h4>
     ${row('카운트<small>볼-스트</small>', chips(cnt))}
     ${row('', lead.map(([l, v]) => `<i class="soft">${l}<b>${v}</b></i>`).join(''))}
+    ${sitRows}
     ${row('이닝', chips(inn))}
     ${row('경기 투구 수', chips(bucket))}
     ${row('상대 타자', chips(bat.slice(0, 5)) + (bat.length > 5 ? `<i class="soft">외 ${bat.length - 5}명</i>` : ''))}

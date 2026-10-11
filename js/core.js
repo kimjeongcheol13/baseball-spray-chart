@@ -5525,6 +5525,11 @@ var _lastPitchId=0;
 function _nextPitchId(){var t=Date.now();if(t<=_lastPitchId)t=_lastPitchId+1;_lastPitchId=t;return t;}   // 같은 ms 에 두 번 눌려도 id 가 겹치지 않게 (분석이 id 로 중복 기록을 걸러낸다)
 function _pitchResTxt(p){return p.end||p.pr||p.result;}   // 표시용: 그 공으로 타석이 끝났으면 타석 결과(삼진·볼넷·안타…), 아니면 공의 결과
 function _pitchBatterCtx(){return AS.batter?{id:AS.batter.id,name:AS.batter.name}:null;}
+// 던지기 직전 상황 (main #107): outs 0~2 · runners [1루,2루,3루] — 경기 운영 모드일 때만, 아니면 null (이 필드가 없는 예전 기록도 '기록 없음')
+function _pitchSit(){
+  var gf=typeof GF!=='undefined'&&GF&&GF.active;
+  return{outs:gf?(GF.outs||0):null,runners:gf&&GF.bases?GF.bases.map(Boolean):null};
+}
 function _pitchChanged(){   // 투구가 늘거나 줄거나 바뀐 뒤 공통 갱신
   renderPitchLog();   // 안에서 카운트 줄도 다시 그린다
   renderPitcherStats();
@@ -5553,6 +5558,7 @@ function recordPitch(result){
     showToast(plan.blocked==='ended'?'앞 타석이 끝났어요. 다음 타자를 선택하세요':'알 수 없는 입력이에요',false,2500);
     return;
   }
+  var sit=_pitchSit();   // 던지기 직전 (이 공이 타석을 끝내 경기 운영 모드가 진루 · 아웃을 넘기기 전)
   var entry=Object.assign({
     id:id,
     inning:document.getElementById('innSel')?document.getElementById('innSel').value:null,
@@ -5561,7 +5567,9 @@ function recordPitch(result){
     zoneY:AS.pitcherZoneY!=null?AS.pitcherZoneY:null,
     pt:AS.pitcherPt,
     batter:AS.batter?AS.batter.name:null,
-    ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+    ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    outs:sit.outs,
+    runners:sit.runners
   },plan.fields);   // plan.fields = v · pa · bid · result · end(타석이 끝났을 때만)
   AS.pitchNewPA=false;
   if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];

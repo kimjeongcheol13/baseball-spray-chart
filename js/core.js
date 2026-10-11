@@ -2641,7 +2641,7 @@ var _PROTO_NAMES=Object.getOwnPropertyNames(Object.prototype);
 function _protoName(v){return typeof v==='string'&&_PROTO_NAMES.indexOf(v)>=0;}
 function _plainObj(o){return !!o&&typeof o==='object'&&!Array.isArray(o);}
 function _listOk(v){return v==null||Array.isArray(v);}
-function _pitchOk(e){return _plainObj(e)&&!_protoName(e.pt)&&!_protoName(e.zone)&&!_protoName(e.result)&&!_protoName(e.res)&&!_protoName(e.pitcher);}
+function _pitchOk(e){return _plainObj(e)&&!_protoName(e.pt)&&!_protoName(e.zone)&&!_protoName(e.result)&&!_protoName(e.res)&&!_protoName(e.pitcher)&&!_protoName(e.batter);}
 function _gameDataOk(d){
   if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers))return false;
   return (d.abs||[]).every(function(a){return _plainObj(a)&&!_protoName(a.bname)&&!_protoName(a.bid)&&!_protoName(a.pt)&&!_protoName(a.zone)&&!_protoName(a.res)&&!_protoName(a.dir)&&_listOk(a.pitches)&&(a.pitches||[]).every(_pitchOk);})&&

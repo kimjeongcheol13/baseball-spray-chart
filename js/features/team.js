@@ -1,6 +1,6 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=5';
+import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=6';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -102,7 +102,7 @@ function _scopeGames(data, team) {
 
 function _collect(games) {
   const abs = [];
-  const map = {};
+  const map = Object.create(null);
   const perGame = games.map(g => {
     const mine = g.abs.filter(a => _side === 'all' || _sideOf(a) === _side);
     abs.push(...mine);
@@ -190,7 +190,7 @@ function _hero(team, S, T) {
   const side = _side === 'away' ? '원정 팀' : _side === 'all' ? '양 팀 합산' : '';
   const lastTh = [...S.games].reverse().map(g => (_side === 'away' ? g.ta : g.th)).find(Boolean);
   const name = _side === 'home' ? (team && team.name) || lastTh || '우리 팀' : _side === 'away' ? lastTh || '원정 팀' : '양 팀 전체';
-  const color = _side === 'home' && team && team.color ? team.color : 'var(--an-accent)';
+  const color = _side === 'home' && team && typeof team.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(team.color) ? team.color : 'var(--an-accent)';
   const res = S.games.map(_result).filter(Boolean);
   const W = res.filter(r => r.r === 'W').length, L = res.filter(r => r.r === 'L').length, D = res.filter(r => r.r === 'D').length;
   const rs = res.reduce((s, r) => s + r.us, 0), ra = res.reduce((s, r) => s + r.them, 0);
@@ -299,7 +299,7 @@ function _gamesCard(T, S) {
 
 // 경기 최고 활약: 2타석 이상 중 wOBA 최고 (동률이면 타점) — 안타가 없으면 뽑지 않음
 function _mvp(abs) {
-  const by = {};
+  const by = Object.create(null);
   abs.forEach(a => { if (a.bname) (by[a.bname] = by[a.bname] || []).push(a); });
   const c = Object.keys(by).map(n => ({ name: n, ...calcStats(by[n]) })).filter(p => p.pa >= 2 && p.h > 0);
   c.sort((a, b) => b.woba - a.woba || b.rbi - a.rbi);
@@ -434,9 +434,9 @@ function _countCard(T) {
 }
 
 function _pitchMap(abs) {
-  const by = {};
+  const by = Object.create(null);
   abs.forEach(a => { if (a.pt) (by[a.pt] = by[a.pt] || []).push(a); });
-  const out = {};
+  const out = Object.create(null);
   Object.keys(by).forEach(k => { out[k] = calcStats(by[k]); });
   return out;
 }

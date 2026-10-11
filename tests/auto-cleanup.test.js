@@ -80,22 +80,24 @@
     eq(ls(K1).abs.length, 5, '정식 저장은 그대로');
   });
 
-  test('정리: 스냅샷이 정식 저장을 포함하고 타석이 더 많으면 변환본만 남긴다(정식 저장은 부분집합이라 삭제 · 이름은 이어받음)', async function () {
+  test('정리: 스냅샷이 정식 저장을 포함하고 타석이 더 많아도 정식 저장은 지우지 않는다 — 스냅샷은 변환본으로 함께 남긴다', async function () {
     await boot();
     reset([{ key: K1, data: game(2, { ts: T0 }), label: '원래 이름' }]);
     srv.user_games = [row(K1, game(2, { ts: T0 })), row(A(4), game(4))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
-    var k = keys();
-    eq(k.length, 1, '목록 항목 수: ' + JSON.stringify(k));
-    ok(k[0] !== K1 && isProper(k[0]), '변환본은 새 정식 키: ' + k[0]);
-    eq(ls(k[0]).abs.length, 4, '변환본 = 스냅샷 내용');
-    eq(saves()[0].label, '원래 이름', '지운 정식 저장의 이름을 이어받음');
-    eq(srvKeys(), [k[0]], '서버: 변환본만');
-    eq(deletedKeys(s), [K1, A(4)].sort(), '정식 저장(부분집합)과 스냅샷 삭제');
+    var k = keys(), conv = k.filter(function (x) { return x !== K1; });
+    eq(k.length, 2, '목록 항목 수: ' + JSON.stringify(k));
+    ok(k.indexOf(K1) >= 0, '정식 저장은 그대로 남음');
+    eq(ls(K1).abs.length, 2, '정식 저장 내용 그대로');
+    eq(saves().filter(function (e) { return e.key === K1; })[0].label, '원래 이름', '정식 저장 이름 그대로');
+    ok(conv.length === 1 && isProper(conv[0]), '변환본은 새 정식 키: ' + conv[0]);
+    eq(ls(conv[0]).abs.length, 4, '변환본 = 스냅샷 내용');
+    eq(srvKeys(), [K1, conv[0]].sort(), '서버: 정식 저장 + 변환본');
+    eq(deletedKeys(s), [A(4)], '스냅샷만 삭제');
   });
 
-  test('정리: 날짜만 다른 같은 경기(정식 저장·복구·스냅샷 섞임)는 먼저 만든 정식 저장 하나로 합친다', async function () {
+  test('정리: 날짜만 다른 같은 경기(정식 저장·복구·스냅샷 섞임)는 정식 저장·복구 항목을 그대로 두고 스냅샷만 지운다', async function () {
     await boot();
     var orig = 'sl_1779530694260', rec = 'sl_rec_1791140441318', c1 = 'sl_1791277863849', c2 = 'sl_1791472322221';   // 실제 사례와 같은 모양
     var same = function (d, ts) { return game(6, { d: d, ts: ts }); };
@@ -104,10 +106,10 @@
       row(A(7), same(D2, T0 + 7000)), row(A(8), same(D2, T0 + 8000))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
-    eq(keys(), [orig], '목록 = 먼저 만든 정식 저장 하나(ts 가 바뀌어도 키 에폭이 가장 이름)');
-    eq(saves()[0].label, '진짜 경기', '이름 그대로');
-    eq(srvProper(), [orig], '서버도 하나');
-    eq(deletedKeys(s), [rec, c1, c2, A(7), A(8)].sort(), '나머지 전부 삭제');
+    eq(keys(), [orig, rec, c1, c2].sort(), '목록 = 정식 저장 · 복구 항목 전부 (내용이 같아도 자동 삭제하지 않음)');
+    eq(saves().filter(function (e) { return e.key === orig; })[0].label, '진짜 경기', '이름 그대로');
+    eq(srvProper(), [orig, rec, c1, c2].sort(), '서버도 정식 저장 · 복구 항목 그대로');
+    eq(deletedKeys(s), [A(7), A(8)].sort(), '스냅샷만 삭제');
   });
 
   test('정리: 타석 id 가 겹치지 않으면 팀·날짜가 같아도 합치지 않는다', async function () {
@@ -131,7 +133,7 @@
     eq(deletedKeys(s), [], '삭제 없음');
   });
 
-  test('정리: 갈래(같은 타석 5개 + 다른 1개)가 묶음에 있어도 똑같은 행들은 하나로 합치고 갈래는 남긴다 (실제 사례)', async function () {
+  test('정리: 갈래(같은 타석 5개 + 다른 1개)가 묶음 대표여도 똑같은 스냅샷은 남긴 항목 전부와 비교해 지우고, 정식 저장은 모두 남긴다 (실제 사례)', async function () {
     await boot();
     var five = abs(5);
     var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: idOf('x', 1), res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
@@ -141,42 +143,44 @@
     srv.user_games = [row(FK, fork), row(H1, haha('2026. 5. 23.', T0)), row(H2, haha('2026. 10. 2.', T0 + 2)), row(HR, haha('2026. 10. 5.', T0 + 3)), row(A(7), haha(D2, T0 + 7000)), row(A(8), haha(D2, T0 + 8000))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
-    eq(keys(), [FK, H1].sort(), '갈래 1개 + 같은 경기 1개(먼저 만든 정식 저장)');
-    eq(srvProper(), [FK, H1].sort(), '서버도 둘');
-    eq(deletedKeys(s), [H2, HR, A(7), A(8)].sort(), '똑같은 행들만 삭제');
+    eq(keys(), [FK, H1, H2, HR].sort(), '정식 저장 · 복구 항목은 전부 남음');
+    eq(srvProper(), [FK, H1, H2, HR].sort(), '서버도 그대로');
+    eq(deletedKeys(s), [A(7), A(8)].sort(), '똑같은 스냅샷만 삭제(갈래 대표 FK 의 부분집합은 아니지만 H1 의 부분집합)');
   });
 
+  // 아래 3개는 "정리가 돌았는지"를 보는 테스트 — 정식 저장은 정리 대상이 아니므로 같은 경기의 스냅샷(A(4))이 지워졌는지로 확인한다
   test('정리: 1차(v1) 마침 표시가 있는 기기에서도 2차는 한 번 돈다', async function () {
     await boot();
-    reset([{ key: K1, data: game(4, { ts: T0 }) }, { key: K2, data: game(4, { ts: T0 + 1, d: D2 }) }]); localStorage.setItem(FIXED, 'TEST-USER');
-    srv.user_games = [row(K1, game(4, { ts: T0 })), row(K2, game(4, { ts: T0 + 1, d: D2 }))];
+    reset([{ key: K1, data: game(4, { ts: T0 }) }]); localStorage.setItem(FIXED, 'TEST-USER');
+    srv.user_games = [row(K1, game(4, { ts: T0 })), row(A(4), game(4, { d: D2 }))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
-    eq(keys(), [K1], '같은 경기(타석 id 같음)는 하나로');
-    eq(deletedKeys(s), [K2], '나중 것 삭제');
+    eq(keys(), [K1], '같은 경기(타석 id 같음)는 정식 저장 하나로');
+    eq(deletedKeys(s), [A(4)], '같은 경기 스냅샷 삭제');
     eq(localStorage.getItem(FIXED), DONE, '2차 마침 표시');
   });
 
   test('정리 표시는 계정별: 다른 계정이 이 기기에서 정리를 마친 뒤 돌아와도 이 계정은 다시 돌지 않는다', async function () {
     await boot();
-    reset([{ key: K1, data: game(4, { ts: T0 }) }, { key: K2, data: game(4, { ts: T0 + 1, d: D2 }) }]);   // 정리가 돌면 K2 가 지워지는 상태
+    reset([{ key: K1, data: game(4, { ts: T0 }) }]);   // 정리가 돌면 A(4) 가 지워지는 상태
     localStorage.setItem(FIXED, 'OTHER-USER:3 ' + DONE);
-    srv.user_games = [row(K1, game(4, { ts: T0 })), row(K2, game(4, { ts: T0 + 1, d: D2 }))];
+    srv.user_games = [row(K1, game(4, { ts: T0 })), row(A(4), game(4, { d: D2 }))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
-    eq(keys(), [K1, K2].sort(), '정리가 다시 돌지 않음');
-    eq(deletedKeys(s), [], '삭제 요청 없음');
+    eq(deletedKeys(s), [], '삭제 요청 없음(정리가 다시 돌지 않음)');
+    eq(srvKeys(), [K1, A(4)].sort(), '서버의 스냅샷 그대로');
     eq(localStorage.getItem(FIXED), 'OTHER-USER:3 ' + DONE, '표시 그대로');
   });
 
   test('정리 표시는 계정별: 다른 계정만 마친 기기에서는 이 계정도 한 번 돌고, 두 계정 표시가 함께 남는다', async function () {
     await boot();
-    reset([{ key: K1, data: game(4, { ts: T0 }) }, { key: K2, data: game(4, { ts: T0 + 1, d: D2 }) }]);
+    reset([{ key: K1, data: game(4, { ts: T0 }) }]);
     localStorage.setItem(FIXED, 'OTHER-USER:3');   // 예전 형식(계정 하나)
-    srv.user_games = [row(K1, game(4, { ts: T0 })), row(K2, game(4, { ts: T0 + 1, d: D2 }))];
+    srv.user_games = [row(K1, game(4, { ts: T0 })), row(A(4), game(4, { d: D2 }))];
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
     eq(keys(), [K1], '이 계정은 처음이라 정리');
+    eq(deletedKeys(s), [A(4)], '같은 경기 스냅샷 삭제');
     eq(localStorage.getItem(FIXED), 'OTHER-USER:3 ' + DONE, '두 계정 표시');
   });
 

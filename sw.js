@@ -1,7 +1,7 @@
 // SprayLab Service Worker v24
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v48';
+const CACHE_NAME = 'spraylab-v49';
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -37,11 +37,11 @@ self.addEventListener('install', function(e) {
 });
 
 self.addEventListener('activate', function(e) {
-  // 구버전 캐시 삭제, 현재 캐시 유지
+  // 구버전 캐시 삭제, 현재 캐시 유지 — 이 앱이 만든 캐시(spraylab-*)만 지운다 (같은 출처의 다른 캐시는 건드리지 않음)
   e.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(
-        keys.filter(function(k) { return k !== CACHE_NAME; })
+        keys.filter(function(k) { return k.startsWith('spraylab-') && k !== CACHE_NAME; })
             .map(function(k) { return caches.delete(k); })
       );
     }).then(function() { return self.clients.claim(); })

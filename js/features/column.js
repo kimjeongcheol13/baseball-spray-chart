@@ -3,7 +3,7 @@
 // 규칙: 표본 기준(MIN_ZONE_AB · MIN_SPLIT)에 못 미치는 코스·구종·카운트는 문장에 넣지 않는다.
 //       기록으로 확인되지 않는 해석은 쓰지 않고, 추정은 마지막 주석에 추정이라고 밝힌다.
 import { HITS, NOAB, ZONES_9 } from '../constants.js';
-import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=5';
+import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=6';
 
 const MIN_ZONE_AB = 3;   // 코스·구종 판단 최소 타수 (scouting.js 와 동일)
 const MIN_SPLIT = 5;     // 카운트 판단 최소 타석 (scouting.js 와 동일)
@@ -50,7 +50,7 @@ function _facts(P, data) {
   const cnt = abs.filter(a => a.count && a.count.s != null && a.count.b != null);
   const twoAbs = cnt.filter(a => a.count.s >= 2);
   const kBy = list => {
-    const m = {};
+    const m = Object.create(null);
     list.filter(a => a.res === '삼진' && a.pt).forEach(a => { m[a.pt] = (m[a.pt] || 0) + 1; });
     return Object.entries(m).sort((x, y) => y[1] - x[1]);
   };
@@ -59,7 +59,7 @@ function _facts(P, data) {
   const recentAbs = gl.slice(-RECENT_GAMES).flatMap(g => g.abs);
   const earlyAbs = gl.slice(0, Math.max(0, gl.length - RECENT_GAMES)).flatMap(g => g.abs);
   // 공격 지수 순위 (10타석 이상 타자끼리)
-  const byName = {};
+  const byName = Object.create(null);
   data.games.forEach(g => g.abs.forEach(a => { if (a.bname) (byName[a.bname] = byName[a.bname] || []).push(a); }));
   const ranked = Object.entries(byName).map(([n, l]) => ({ n, s: calcStats(l) })).filter(x => x.s.pa >= 10).sort((x, y) => y.s.woba - x.s.woba);
 

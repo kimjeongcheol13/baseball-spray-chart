@@ -527,8 +527,10 @@ function _mountShell() {
   // 경기 리포트 오버레이: #app-page 안에 있어서 분석·경기설정 탭에서 열면 숨은 부모 때문에 보이지 않았다 → body로 옮김
   // 같은 이유로 #app-page 안에 있던 창들(새 경기 · 경기 종료 · 저장 방식 · 로그인 · 팀 만들기 · 사진/CSV · 도움말 등)도 body로
   //   → 경기설정·분석 탭에서 버튼을 눌러도 0×0으로 안 보이던 문제 (ID·핸들러는 그대로)
+  // 안내 모드 표시 · 설명 창도 같은 이유로 body로: 경기설정·분석 탭에서 [data-help](하단 탭 등)를 누르면
+  //   클릭은 막히는데 설명 창이 숨은 #app-page 안이라 안 보여서 '눌러도 아무 반응 없음'이 됐다
   ['pgFade', 'pgReport', 'teamCreateModal', 'ocrModal', 'gameWizard', 'newGameGuard', 'helpModal', 'gfEndOv', 'gameSummaryOv',
-    'saveMethodBackdrop', 'saveMethodSheet', 'loginModal', 'profileModal'].forEach(id => {
+    'saveMethodBackdrop', 'saveMethodSheet', 'loginModal', 'profileModal', 'helpModeIndicator', 'helpModeTooltip'].forEach(id => {
     const el = $(id);
     if (el && el.parentElement !== document.body) document.body.appendChild(el);
   });

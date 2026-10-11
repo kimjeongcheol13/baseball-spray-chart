@@ -1169,7 +1169,7 @@ body.sb #cardCtxSheet { background: var(--paper-2) !important; border: var(--car
 body.sb #cardCtxSheet .ctx-btn { min-height: 44px; border-radius: 0; font-family: var(--f-body); font-weight: 700; }
 body.sb #cardCtxSheet .ctx-btn:hover { background: var(--highlight-soft); }
 body.sb #helpModeIndicator { background: var(--ink) !important; color: var(--paper) !important; border-radius: 0 !important; box-shadow: none !important; font-family: var(--f-body); font-size: 12px; }
-body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3px solid var(--ink) !important; color: var(--ink); }
+body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3px solid var(--ink) !important; color: var(--ink); font-family: var(--f-body); }   /* body로 옮긴 뒤에도 #app-page 때와 같은 글꼴 */
 body.sb #helpModeTooltip .hmt-title { color: var(--ink) !important; font-family: var(--f-display); font-weight: 400; font-size: 16px; }
 body.sb #helpModeTooltip .hmt-close { min-width: 44px; min-height: 44px; color: var(--ink) !important; }
 body.sb .scout-intro-sheet { border-radius: 0 !important; box-shadow: none !important; }

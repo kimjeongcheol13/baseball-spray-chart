@@ -1,8 +1,8 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
-import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=7';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=17';
-import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=3';
+import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=8';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=21';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=6';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -175,7 +175,7 @@ function _warnCard(S) {
 const _fixBtn = S => (S.unrec.length ? `<button type="button" class="pc-fix-btn" onclick="openPitchFix()">결과 미기록 타석 채우기 ›</button>` : '');
 
 function _hero(P, S) {
-  const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
+  const ROLE = { __proto__: null, SP: '선발', RP: '계투', CP: '마무리' };
   const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? _esc(ROLE[P.role] || P.role) : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타석`].filter(Boolean).join(' · ');
   const kpi = (l, val, sub, tip) => `<div class="pc-kpi"${tip ? ` title="${tip}"` : ''}><span>${l}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   return `

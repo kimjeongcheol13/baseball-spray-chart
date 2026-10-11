@@ -1,8 +1,8 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=7';
-import { hotColdFigure } from './zonefig.js?v=5';
-import { mixFigure } from './mixfig.js?v=3';
+import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=8';
+import { hotColdFigure } from './zonefig.js?v=6';
+import { mixFigure } from './mixfig.js?v=4';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -32,7 +32,7 @@ const MIX = [
 ];
 
 // 경기 로그 결과 약어
-const SHORT = {
+const SHORT = { __proto__: null,
   '안타': ['안', '1b'], '내야안타': ['내안', '1b'], '2루타': ['2루', 'xbh'], '3루타': ['3루', 'xbh'], '홈런': ['홈런', 'hr'],
   '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '희타': ['희타', 'out'], '희비': ['희비', 'out'],
   '땅볼 아웃': ['땅', 'out'], '플라이 아웃': ['뜬', 'out'], '병살': ['병살', 'out'], '라인드라이브 아웃': ['라인', 'out'], '삼중살': ['삼중', 'out'], '실책': ['실책', 'out'], '야수선택': ['야선', 'out'],

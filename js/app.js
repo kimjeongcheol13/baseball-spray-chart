@@ -2,24 +2,25 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=18';
-import './features/compare.js?v=11';
-import './features/scouting.js?v=17';
+import './features/profile.js?v=20';
+import './features/compare.js?v=12';
+import './features/scouting.js?v=21';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
-import './features/team.js?v=6';
-import './features/pitcher.js?v=31';
-import './features/batter.js?v=19';
-import './features/spray.js?v=4';
+import './features/team.js?v=7';
+import './features/pitcher.js?v=35';
+import './features/batter.js?v=23';
+import './features/spray.js?v=5';
 import './features/shell.js?v=13';
-import './features/record.js?v=9';
+import './features/record.js?v=11';
 import './features/settings.js?v=3';
-import './features/scorebook.js?v=12';
-import './features/dashboard.js?v=6';
+import './features/scorebook.js?v=13';
+import './features/dashboard.js?v=7';
 import './features/setup.js?v=4';
-import './features/report.js?v=4';
+import './features/report.js?v=6';
+import './features/anahelp.js?v=1';
 
 import './features/anahelp.js?v=1';
 import './features/anahelp.js?v=1';

@@ -5638,7 +5638,7 @@ function _pitchToRecord(e,outsBefore){
   // 필드에서 찍을 타구는 이 타석의 이닝 · 아웃으로 (P1 _abInn · _abOuts — 찍기 전에 3아웃으로 이닝이 넘어가도)
   AS._pitchEndInn=e.inning||null;
   AS._pitchEndOuts=outsBefore!=null?Math.min(2,outsBefore):null;
-  _showPitchLinkSheet(e);   // P2: 인플레이 → 연결 시트 (필드에서 위치 찍기 · 이미 찍은 타구와 연결 · 건너뛰기)
+  _showPitchLinkSheet(e,function(){AS._pitchEndInn=null;AS._pitchEndOuts=null;clear();});   // P2: 인플레이 → 연결 시트 (필드에서 위치 찍기 · 방금 찍은 타구와 연결 · 건너뛰기)
 }
 // 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 결과 팝업)
 function _countOpenField(res,msg){
@@ -5649,21 +5649,50 @@ function _countOpenField(res,msg){
   showToast(msg,false,2500);
 }
 // 기록 탭에서 타석이 끝났다(recHit · recOther 직후) → 투수 탭에 같은 타자의 열린 타석이 있으면 그 마지막 공에 결과를 단다
+function _pitchOpenPAOf(ab){   // 지금 투수의 진행 중인 타석이 이 타구의 타자 것이면 그 타석 (타자를 모르는 타석은 건드리지 않는다)
+  var PC=window.PitchCalc,P=AS.currentPitcher;if(!PC||!P||!ab)return null;
+  var o=PC.openPA(P.pitches||[]);if(!o)return null;
+  return (o.bid!=null?String(o.bid)===String(ab.bid):(o.batter!=null&&o.batter===ab.bname))?o:null;
+}
 function _recordToPitch(ab){
   if(_pitchLinking||!ab)return;
   var PC=window.PitchCalc,P=AS.currentPitcher;if(!PC||!P)return;
-  var o=PC.openPA(P.pitches||[]);if(!o)return;
-  var same=o.bid!=null?String(o.bid)===String(ab.bid):(o.batter!=null&&o.batter===ab.bname);
-  if(!same)return;   // 다른 타자(또는 타자를 모르는 타석)는 건드리지 않는다
+  var o=_pitchOpenPAOf(ab);if(!o)return;   // 다른 타자(또는 타자를 모르는 타석)는 건드리지 않는다
   if(ab.res==='미상'||!PC.END_LABEL[ab.res])return;
-  if(ab.pa==null)_pitchLinkSet(ab,o.pa,P.id);   // P2: 기록 탭에서 먼저 끝낸 타석도 그 투구 타석과 연결 (사용자가 같은 타자 타석을 직접 끝냈다)
-  _endOpenPitchPA(ab.res);
+  // 위치가 필요 없는 결과(볼넷 · 삼진 · 병살 · 희생 · 내야안타 …)는 바로 닫고 연결한다 — 같은 타자의 진행 중인 바로 그 타석이다.
+  // 경기 운영 모드는 기록하자마자 다음 타자로 넘어가 물을 틈이 없어 인플레이도 바로 닫고 연결한다
+  if(_NO_LOC_END[ab.res]||(typeof GF!=='undefined'&&GF&&GF.active)){
+    if(ab.pa==null)_pitchLinkSet(ab,o.pa,P.id);
+    _endOpenPitchPA(ab.res);
+    return;
+  }
+  // 인플레이 타구를 기록 탭에서 먼저 찍었다 → 투구 타석을 이 결과로 닫고 연결할지 한 번만 묻는다 (사용자 결정 2026-10-11).
+  // 묻는 동안 다음 타자로 넘기기는 미뤘다가(_pitchGuardChange) 답한 뒤 이어 간다 — '타석 결과는?' 창과 겹치지 않게
+  var lbl=PC.END_LABEL[ab.res]||ab.res;
+  var ov=_pitchLinkSheet('abLinkSheet','투구 기록 타석도 이 결과로 닫고 연결할까요?',
+    _escHtml((ab.bname||'타자')+' · '+lbl)+' — 투수 '+_escHtml(P.name||'')+'의 이 타자 타석이 아직 진행 중이에요 ('+o.pitches.length+'구 · '+o.b+'-'+o.s+'). 닫으면 마지막 공에 이 결과가 붙고 이 타구와 연결돼요.',
+    [{act:'link',label:'닫고 연결'},{act:'no',label:'그대로 두기',cls:'pes-cancel'}]);
+  var ask=AS._pitchLinkAsk={ov:ov,cont:null};
+  ov.addEventListener('click',function(ev){
+    var b=ev.target.closest('button');if(!b)return;
+    ov.remove();
+    if(AS._pitchLinkAsk===ask)AS._pitchLinkAsk=null;
+    if(b.dataset.act==='link'){
+      var o2=_pitchOpenPAOf(ab);
+      if(o2&&String(o2.pa)===String(o.pa)){if(ab.pa==null)_pitchLinkSet(ab,o.pa,P.id);_endOpenPitchPA(ab.res);showToast('투구 기록 타석을 닫고 연결했어요',false,2000);}   // 그 사이 투구 화면에서 끝냈으면 손대지 않는다
+    }
+    if(ask.cont){   // 미뤄 둔 다음 타자로 (자동 이동이라 필드는 그 타자로 거르지 않는다 — shell.js _selectBatter 와 같이)
+      ask.cont();AS.batterFilter=false;
+      var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+    }
+  });
 }
 
 // ── 타구 ↔ 투구 기록 연결 (P2) ──
 // 사용자가 직접 고른 것만 연결한다 (시간이 가깝다는 이유로 붙이지 않는다). 연결은 타구 기록에 a.pa · a.pid 두 칸만.
 //  ① 투구 화면에서 인플레이 결과 → [필드에서 위치 찍기]: 기록 탭 필드를 탭하면 그 결과로 타구가 저장되며 연결된다
-//     (타석 중에 기록 탭에서 같은 타자 타구를 먼저 찍으면 그 자리에서 투수 탭 타석이 그 공으로 닫히고 연결된다 — _recordToPitch)
+//     (타석 중에 기록 탭에서 같은 타자 타구를 먼저 찍으면 '투구 기록 타석도 닫고 연결할까요?'를 한 번 묻는다 — _recordToPitch.
+//      '그대로 두기'면 투구 화면에서 끝낼 때 [방금 찍은 타구와 연결]이 나온다. 위치가 필요 없는 결과는 묻지 않고 닫고 연결)
 //  ② 기록 탭에서 타구를 먼저 찍으면: 같은 타자의 가장 최근 투구 타석이 인플레이로 끝났고 아직 연결이 없을 때 [연결] 확인
 function _pitchLinkSheet(id,title,sub,btns){
   var old=document.getElementById(id);if(old)old.remove();
@@ -5677,16 +5706,28 @@ function _pitchLinkSheet(id,title,sub,btns){
 }
 var _NO_INPLAY_AB=['볼넷','사구','삼진'];
 function _pitchLinkSet(a,pa,pid){a.pa=pa;a.pid=pid;scheduleAutoSave();_gameSaved=false;}
-function _showPitchLinkSheet(e){
+function _pitchLinkCandidateAb(e){   // 이 타석이 시작된 뒤 같은 타자로 찍은, 연결 안 된 인플레이 타구 (기록 탭에서 먼저 찍고 '그대로 두기'를 고른 것)
+  var start=Number(e.pa)||0,abs=AS.abs||[];
+  for(var i=abs.length-1;i>=0;i--){
+    var a=abs[i];
+    if(Number(a.id)<start)break;
+    if(a.pa==null&&String(a.bid)===String(e.bid)&&_NO_INPLAY_AB.indexOf(a.res)<0)return a;
+  }
+  return null;
+}
+function _showPitchLinkSheet(e,done){   // done: 필드에서 찍지 않고 끝낼 때(연결 · 건너뛰기) 기록 탭 대기를 비운다 (_pitchToRecord 가 넘긴다)
   var PC=window.PitchCalc,P=AS.currentPitcher;if(!PC||!P||!e)return;
-  var lbl=PC.END_LABEL[e.end]||e.end;
+  var cand=_pitchLinkCandidateAb(e),lbl=PC.END_LABEL[e.end]||e.end;
   var ov=_pitchLinkSheet('pitchLinkSheet','타구 위치를 찍을까요?',
     _escHtml((e.batter||'타자')+' · '+lbl)+' — 필드에서 찍으면 이 투구 기록과 연결돼요. 연결된 타구만 「타구 허용」 새 지표에 들어가요.',
-    [{act:'field',label:'필드에서 위치 찍기'},{act:'skip',label:'건너뛰기',cls:'pes-cancel'}]);
+    [{act:'field',label:'필드에서 위치 찍기'}]
+      .concat(cand?[{act:'ab',label:'방금 찍은 타구와 연결 ('+_escHtml(cand.res)+')'}]:[])
+      .concat([{act:'skip',label:'건너뛰기',cls:'pes-cancel'}]));
   ov.addEventListener('click',function(ev){
     var b=ev.target.closest('button');if(!b)return;
     ov.remove();
-    if(b.dataset.act!=='field'){_syncBoardFromPitch();return;}   // 건너뛰기: 이 타석은 여기서 끝 — 기록 탭 볼카운트 0-0 (나중에 기록 탭에서 찍으면 ②로 묻는다)
+    if(b.dataset.act==='ab'){_pitchLinkSet(cand,e.pa,P.id);showToast('타구와 투구 기록을 연결했어요',false,2000);if(done)done();else _syncBoardFromPitch();return;}
+    if(b.dataset.act!=='field'){if(done)done();else _syncBoardFromPitch();return;}   // 건너뛰기: 이 타석은 여기서 끝 — 기록 탭 볼카운트 0-0 (나중에 기록 탭에서 찍으면 ②로 묻는다)
     AS._pendLink={pa:e.pa,pid:P.id,bid:e.bid};
     AS._pitchEndInn=e.inning||null;   // P1: 그사이 3아웃으로 이닝이 넘어가도 이 타구는 이 공의 이닝으로 (recHit 이 _abInn 으로 읽는다)
     _countOpenField(e.end,'기록 탭 필드에서 공이 떨어진 위치를 탭하세요 — '+lbl+'(으)로 저장되고 투구 기록과 연결돼요');   // 기록 탭으로 · 필드 탭 대기(그 결과로 바로 저장) · 모바일 스크롤 (main #102 · #104)
@@ -5712,6 +5753,7 @@ function _pitchLinkCandidatePA(r){   // ②: 같은 타자의 가장 최근 투�
 function _pitchLinkAfterAb(r){
   var L=AS._pendLink;AS._pendLink=null;
   if(L&&String(L.bid)===String(r.bid)){r.pa=L.pa;r.pid=L.pid;return;}   // ①에서 '필드에서 위치 찍기'로 온 타구
+  if(_pitchOpenPAOf(r))return;   // 같은 타자의 투구 타석이 진행 중 → _recordToPitch 가 닫고 연결할지 묻는다 (그보다 앞의 끝난 타석을 고르지 않게)
   if(_NO_INPLAY_AB.indexOf(r.res)>=0)return;
   var c=_pitchLinkCandidatePA(r);if(!c)return;
   var PC=window.PitchCalc,x=c.x,end=PC.END_LABEL[x.end]||x.end;
@@ -5910,6 +5952,8 @@ function renderPitchCount(){
 // 타자(또는 투수)를 바꾸기 전에 앞 타석에 결과가 없으면 입력을 요구한다.
 // 시트를 띄웠으면 true — 호출한 쪽은 멈추고, 결과를 고르면 cont 가 이어서 바꾼다. 선택 없이는 닫히지 않는다 ('바꾸지 않음'도 하나의 선택).
 function _pitchGuardChange(kind,targetId,cont){
+  var ask=AS._pitchLinkAsk;   // 기록 탭에서 먼저 찍은 타구를 닫고 연결할지 묻는 중 → 다음 타자로 넘기기는 답한 뒤에 (_recordToPitch)
+  if(ask&&kind==='batter'&&ask.ov&&ask.ov.isConnected){ask.cont=cont;return true;}
   var PC=window.PitchCalc,P=AS.currentPitcher;
   if(!PC||!P)return false;
   var open=PC.openPA(P.pitches);

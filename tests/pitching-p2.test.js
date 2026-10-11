@@ -37,7 +37,7 @@
   test('① 인플레이로 끝나면 "타구 위치를 찍을까요?" → 필드를 탭하면 그 결과로 타구가 저장되고 연결된다 (a.pa · a.pid 만)', async function () {
     fresh(); var p = pitcher(11, '투수A'); pick('a');
     rec('볼', '헛스윙', '땅볼 아웃');
-    var sh = $('pitchLinkSheet'); ok(sh, '연결 시트가 안 뜸');
+    var sh = $('pitchLinkSheet'); ok(sh, '연결 시트가 안 뜸'); ok(!sh.querySelector('[data-act="ab"]'), '찍어 둔 타구가 없으면 "방금 찍은 타구" 버튼 없음');
     sh.querySelector('[data-act="field"]').click();
     ok(!$('pitchLinkSheet'), '시트 닫힘'); eq(AS.pendingQuickRes, '땅볼 아웃', '필드 탭 = 이 결과로 저장');
     await tapField();
@@ -61,15 +61,33 @@
     var opts = Array.prototype.map.call($('editRes').options, function (o) { return o.value; });
     ok(res.every(function (r) { return opts.indexOf(r) >= 0; }), '타석 수정 결과 목록에도 있음');
   });
-  test('① 타석 중에 기록 탭에서 같은 타자 타구를 먼저 찍으면: 투수 탭 타석이 그 공으로 닫히고 바로 연결 (묻지 않음 · 공을 보태지 않음) — 타석 전에 찍은 타구는 그대로', async function () {
+  test('① 타석 중에 기록 탭에서 같은 타자 인플레이 타구를 먼저 찍으면 "투구 기록 타석도 닫고 연결할까요?" — 닫고 연결: 그 공에 결과 · 공을 보태지 않음 · 답한 뒤 다음 타자로 (사용자 결정 2026-10-11)', async function () {
     fresh(); var p = pitcher(13, '투수C'); pick('a');
     await hit('2루타', { x: 0.5, y: 0.3, deg: 90, dir: 'CF', ft: 300 });   // 타석 전에 찍은 타구 (연결 대상 아님)
     clean(); var old = lastAb();
     pick('a'); rec('볼'); await hit('안타', { x: 0.4, y: 0.3, deg: 80, dir: 'LC', ft: 280 }); var mine = lastAb();   // 타석 중에 찍은 타구
-    ok(!$('abLinkSheet') && !$('pitchLinkSheet'), '묻지 않음'); clean();
+    var sh = $('abLinkSheet'); ok(sh && /닫고 연결/.test(sh.textContent), '닫고 연결 확인: ' + (sh ? sh.textContent.replace(/\s+/g, ' ') : '없음'));
+    ok(!$('pitchEndSheet'), '다음 타자로 넘어가며 뜨는 "타석 결과는?" 창과 겹치지 않음 (넘기기는 답한 뒤)');
+    ok(PC().openPA(p.pitches), '묻는 동안 투구 타석은 진행 중'); eq(mine.pa, undefined, '묻는 동안 연결 없음');
+    sh.querySelector('[data-act="link"]').click();
     eq([mine.pa, mine.pid, old.pa], [p.pitches[0].pa, 13, undefined], '이 타석 중 타구만 연결');
     eq([p.pitches.length, p.pitches[0].end], [1, '안타'], '투수 탭: 공 1개 그대로, 그 공에 결과');
     var L = PitchLink.of(mine); eq([L.pitcher, L.count.b, L.count.s, L.end], ['투수C', 0, 0, '안타'], '연결 읽기');
+    eq(AS.batter && AS.batter.id, 'b', '답한 뒤 다음 타자로'); ok(!$('pitchEndSheet'), '타석이 닫혀 결과를 다시 묻지 않음');
+    clean();
+  });
+  test('① 기록 탭에서 먼저 찍은 타구에 "그대로 두기" → 투구 타석은 진행 중 · 투구 화면에서 끝내면 [방금 찍은 타구와 연결]', async function () {
+    fresh(); var p = pitcher(16, '투수J'); AS.home_lineup = [{ id: 'b', name: '나', num: '2' }]; renderLP(); pick('b');   // 타순이 한 명이면 다음 타자로 넘어가지 않는다
+    rec('볼'); await hit('안타');
+    $('abLinkSheet').querySelector('[data-act="no"]').click();
+    var mine = lastAb();
+    ok(PC().openPA(p.pitches), '그대로 두면 투구 타석은 진행 중'); eq(mine.pa, undefined, '연결 없음');
+    rec('안타');
+    var sh = $('pitchLinkSheet'), btn = sh && sh.querySelector('[data-act="ab"]'); ok(btn, '"방금 찍은 타구와 연결" 버튼'); ok(/안타/.test(btn.textContent), btn.textContent);
+    btn.click();
+    eq([mine.pa, mine.pid], [p.pitches[1].pa, 16], '그 타구와 연결');
+    eq([AS.currentPitches.length, AS._pitchEndInn, AS._pitchEndOuts], [0, null, null], '필드에서 찍지 않으니 기록 탭 대기 없음');
+    clean();
   });
   test('① 투수 탭 볼넷 · 삼진으로 끝난 타석: 기록 탭 타석이 바로 생기고 그 투구 타석과 연결 (묻지 않음)', async function () {
     fresh(); var p = pitcher(15, '투수G'); pick('a'); await gap();
@@ -169,6 +187,16 @@
     _pendingZoneEl = cell; confirmZonePitch('체인지업');
     var ps = AS.currentPitches; eq([ps.length, ps[1].x, ps[1].y, ps[1].pt], [2, null, null, '체인지업'], '두 번째 공은 좌표 없음');
     AS.currentPitches = [];
+  });
+
+  test('① 건너뛰기: 이 타석의 공은 기록 탭 "이번 타석 투구"에서도 비운다 (다음 타자 타석에 붙지 않게)', async function () {
+    fresh(); pitcher(17, '투수K'); pick('a');
+    rec('볼', '헛스윙', '플라이 아웃');
+    $('pitchLinkSheet').querySelector('[data-act="skip"]').click();
+    eq([AS.currentPitches.length, AS.balls, AS.strikes, AS._pitchEndInn, AS._pitchEndOuts], [0, 0, 0, null, null], '대기 없음');
+    pick('b'); await hit('안타');
+    eq([lastAb().bid, lastAb().pitches.length], ['b', 0], '다음 타자 타구에 앞 타석의 공이 붙지 않음');
+    clean();
   });
 
   test('(정리) 이 파일이 만든 상태를 비운다', function () { fresh(); AS.home_lineup = []; renderLP(); _sfReset && _sfReset(); ok(true); });

@@ -190,7 +190,7 @@ function _hero(team, S, T) {
   const side = _side === 'away' ? '원정 팀' : _side === 'all' ? '양 팀 합산' : '';
   const lastTh = [...S.games].reverse().map(g => (_side === 'away' ? g.ta : g.th)).find(Boolean);
   const name = _side === 'home' ? (team && team.name) || lastTh || '우리 팀' : _side === 'away' ? lastTh || '원정 팀' : '양 팀 전체';
-  const color = _side === 'home' && team && team.color ? team.color : 'var(--an-accent)';
+  const color = _side === 'home' && team && typeof team.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(team.color) ? team.color : 'var(--an-accent)';
   const res = S.games.map(_result).filter(Boolean);
   const W = res.filter(r => r.r === 'W').length, L = res.filter(r => r.r === 'L').length, D = res.filter(r => r.r === 'D').length;
   const rs = res.reduce((s, r) => s + r.us, 0), ra = res.reduce((s, r) => s + r.them, 0);

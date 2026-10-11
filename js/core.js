@@ -7643,6 +7643,9 @@ function linkGameToTeam(key,data){
 }
 
 // ── 팀 대시보드 렌더 ──
+// 팀 색상은 style 속성에 들어가므로 #RGB~#RRGGBBAA 형식만 쓴다 (공유 링크로 가져온 값이 CSS 를 주입하지 못하게)
+var _TM_COLOR_RE=/^#[0-9a-fA-F]{3,8}$/;
+function _tmColor(c){return (typeof c==='string'&&_TM_COLOR_RE.test(c))?c:'#4b8cf5';}
 function renderTeamDashboard(){
   tdLoad();
   var hdr=document.getElementById('teamPanelHdr');if(!hdr)return;
@@ -7659,7 +7662,7 @@ function renderTeamDashboard(){
     return;
   }
   hdr.innerHTML='<div class="team-hdr">'
-    +'<div class="team-color-circle" style="background:'+_escHtml(team.color)+';color:#fff">'+_escHtml(team.name[0])+'</div>'
+    +'<div class="team-color-circle" style="background:'+_escHtml(_tmColor(team.color))+';color:#fff">'+_escHtml(team.name[0])+'</div>'
     +'<div class="team-hdr-info">'
     +'<div class="team-hdr-name">'+_escHtml(team.name)+'</div>'
     +'<div class="team-hdr-meta">'+(team.stadium?'📍'+_escHtml(team.stadium)+' · ':'')+_escHtml(team.createdAt)+'</div>'
@@ -7803,8 +7806,8 @@ function shareTeamURL(){
 function importSharedTeam(){
   var p=window._sharedTeamPayload;if(!p)return;
   tdLoad();
-  var team={id:'t'+Date.now(),name:p.name,color:p.color||'#4b8cf5',stadium:p.stadium||'',
-    createdAt:new Date().toLocaleDateString('ko-KR'),games:p.games||[]};
+  var team={id:'t'+Date.now(),name:String(p.name==null?'':p.name).slice(0,40),color:_tmColor(p.color),stadium:String(p.stadium||'').slice(0,40),
+    createdAt:new Date().toLocaleDateString('ko-KR'),games:Array.isArray(p.games)?p.games:[]};
   _TD.teams.push(team);_TD.activeTeamId=team.id;tdSave();
   var b=document.getElementById('teamSharedBanner');if(b)b.style.display='none';
   showToast('🏟️ '+p.name+' 팀 데이터를 가져왔습니다',false);

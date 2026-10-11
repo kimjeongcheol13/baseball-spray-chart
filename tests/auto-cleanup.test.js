@@ -9,7 +9,9 @@
   var K1 = 'sl_1779002911000', K2 = 'sl_1779002911001';          // 정식 저장 키
   function A(i) { return 'sl_auto_' + (T0 + i * 1000); }          // 예전 클라이언트가 타석마다 만들던 스냅샷 키
 
-  function abs(n, p) { var a = []; for (var i = 0; i < n; i++) a.push({ id: (p || 'a') + i, res: '안타', team: 'home' }); return a; }   // 같은 접두사 = 같은 경기의 타석
+  // 타석 id = 실제 앱처럼 기록 시각(Date.now()) 숫자. 같은 접두사 = 같은 경기 (정리는 1e11 이상인 실제 기록 id 만 같은 경기 판단에 쓴다)
+  function idOf(p, i) { return 1780900000000 + (String(p).charCodeAt(0) - 97) * 100000 + i; }
+  function abs(n, p) { var a = []; for (var i = 0; i < n; i++) a.push({ id: idOf(p || 'a', i), res: '안타', team: 'home' }); return a; }   // 같은 접두사 = 같은 경기의 타석
   function game(n, extra) { return Object.assign({ th: '하하', ta: '스톤', hs: 0, as: 0, abs: abs(n), d: D, ts: T0 + n * 1000 }, extra || {}); }
   function row(key, data) { return { user_id: 'TEST-USER', game_key: key, team_name: data.th + ' vs ' + data.ta, date: data.d, data: data, updated_at: new Date(data.ts || T0).toISOString() }; }
   function saves() { return ls('sl_saves') || []; }
@@ -120,7 +122,7 @@
 
   test('정리: 갈라진 기록(서로 부분집합이 아님)은 둘 다 남긴다', async function () {
     await boot();
-    var forked = game(5, { ts: T0 + 1, abs: abs(4).concat([{ id: 'c9', res: '안타', team: 'home' }]) });   // a0..a3 + c9
+    var forked = game(5, { ts: T0 + 1, abs: abs(4).concat([{ id: idOf('c', 9), res: '안타', team: 'home' }]) });   // a0..a3 + c9
     reset([{ key: K1, data: game(5, { ts: T0 }) }, { key: K2, data: forked }]);
     srv.user_games = [row(K1, game(5, { ts: T0 })), row(K2, forked)];
     var s = await runLogin();
@@ -132,8 +134,8 @@
   test('정리: 갈래(같은 타석 5개 + 다른 1개)가 묶음에 있어도 똑같은 행들은 하나로 합치고 갈래는 남긴다 (실제 사례)', async function () {
     await boot();
     var five = abs(5);
-    var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: 'x1', res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
-    var haha = function (d, ts) { return game(6, { d: d, ts: ts, abs: five.concat([{ id: 'y1', res: '안타', team: 'home' }]) }); };          // 같은 경기(갈래와 5개 공유)
+    var fork = { th: '홈팀', ta: '원정팀', hs: 0, as: 0, d: '2026. 5. 22.', ts: T0 - 100, abs: five.concat([{ id: idOf('x', 1), res: '안타', team: 'home' }]) };   // 먼저 만든 갈래
+    var haha = function (d, ts) { return game(6, { d: d, ts: ts, abs: five.concat([{ id: idOf('y', 1), res: '안타', team: 'home' }]) }); };          // 같은 경기(갈래와 5개 공유)
     var FK = 'sl_1779445138008', H1 = 'sl_1779530694260', H2 = 'sl_1790934977265', HR = 'sl_rec_1791140441318';
     reset([{ key: FK, data: fork }, { key: H1, data: haha('2026. 5. 23.', T0) }, { key: H2, data: haha('2026. 10. 2.', T0 + 2) }, { key: HR, data: haha('2026. 10. 5.', T0 + 3) }]);
     srv.user_games = [row(FK, fork), row(H1, haha('2026. 5. 23.', T0)), row(H2, haha('2026. 10. 2.', T0 + 2)), row(HR, haha('2026. 10. 5.', T0 + 3)), row(A(7), haha(D2, T0 + 7000)), row(A(8), haha(D2, T0 + 8000))];
@@ -198,14 +200,18 @@
   });
 
   // ── 3. 삭제가 클라우드에도 반영 ──
-  test('삭제: 목록에서 지우면 user_games 에서도 지운다 → 다음 동기화에 되살아나지 않는다', async function () {
+  var K1A = 'sl_auto_' + K1.slice(3);   // K1 을 열어 둔 동안 cloudAutoSyncRecord 가 올린 실시간 스냅샷 행(restoreGame: AS.curGame = 키 뒷부분)
+  test('삭제: 목록에서 지우면 user_games 에서도 지운다(열어 둔 동안 쌓인 스냅샷 행 sl_auto_<뒷부분>까지) → 다음 동기화에 되살아나지 않는다', async function () {
     await boot();
     reset([{ key: K1, data: game(1, { ts: T0 }) }]); localStorage.setItem(FIXED, DONE);
-    srv.user_games = [row(K1, game(1, { ts: T0 }))];
+    localStorage.setItem(K1A, JSON.stringify(game(1, { ts: T0 })));
+    srv.user_games = [row(K1, game(1, { ts: T0 })), row(K1A, game(1, { ts: T0 }))];
     await runLogin();
     var c0 = window.confirm; window.confirm = function () { return true; };
     try { deleteGame(K1); await quiet(); } finally { window.confirm = c0; }
     eq(srvProper(), [], '서버에서 삭제');
+    ok(srvKeys().indexOf(K1A) < 0, '서버의 스냅샷 행(sl_auto_<뒷부분>)도 삭제: ' + JSON.stringify(srvKeys()));
+    eq(ls(K1A), null, '로컬 스냅샷도 삭제');
     eq(ls(DEL), null, '삭제 대기 목록 비움');
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
@@ -215,19 +221,21 @@
   test('삭제: 오프라인이면 대기 목록에 남겼다가 온라인이 되면 지운다 · 그 사이 내려받지 않는다', async function () {
     await boot();
     reset([{ key: K1, data: game(1, { ts: T0 }) }]); localStorage.setItem(FIXED, DONE);
-    srv.user_games = [row(K1, game(1, { ts: T0 }))];
+    srv.user_games = [row(K1, game(1, { ts: T0 })), row(K1A, game(1, { ts: T0 }))];
     await runLogin();
     var c0 = window.confirm; window.confirm = function () { return true; };
     try {
       window.dispatchEvent(new Event('offline'));
       deleteGame(K1); await sleep(300);
       ok((ls(DEL) || {})[K1], '오프라인 삭제 → 대기 목록에 기록');
+      ok((ls(DEL) || {})[K1A], '스냅샷 키도 대기 목록에 기록');
       eq(srvProper(), [K1], '오프라인이라 서버는 아직 그대로');
-      window.dispatchEvent(new Event('online'));
-      var s = await quiet();
-      ok(!s.timedOut, '동기화가 끝나지 않음');
-    } finally { window.confirm = c0; }
+      ok(srvKeys().indexOf(K1A) >= 0, '스냅샷 행도 아직 그대로');
+    } finally { window.confirm = c0; window.dispatchEvent(new Event('online')); }   // 단언이 실패해도 온라인으로 되돌린다 — 안 그러면 뒤의 테스트가 전부 오프라인으로 깨진다
+    var s = await quiet();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
     eq(srvProper(), [], '온라인 복귀 뒤 서버에서 삭제');
+    ok(srvKeys().indexOf(K1A) < 0, '온라인 복귀 뒤 스냅샷 행도 삭제: ' + JSON.stringify(srvKeys()));
     eq(ls(DEL), null, '대기 목록 비움');
     eq(keys(), [], '지운 경기가 되살아나지 않음');
   });

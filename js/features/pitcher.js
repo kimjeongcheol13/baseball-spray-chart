@@ -4,8 +4,8 @@ import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=7';
 import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=8';
 
 const HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];
-const TB = { '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
-const OUTS = { '삼진': 1, '아웃': 1, '병살': 2, '삼중살': 3 };
+const TB = { __proto__: null, '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
+const OUTS = { __proto__: null, '삼진': 1, '아웃': 1, '병살': 2, '삼중살': 3 };
 const BALL = ['볼', '볼넷'];
 const END = [...HIT, '삼진', '아웃', '병살', '삼중살', '볼넷'];   // 타석이 끝나는 결과
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
@@ -214,7 +214,7 @@ function _stats(P) {
 }
 
 function _hero(P, S) {
-  const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
+  const ROLE = { __proto__: null, SP: '선발', RP: '계투', CP: '마무리' };
   const meta = [P.num ? '#' + _esc(P.num) : '', P.role ? _esc(ROLE[P.role] || P.role) : '', `${P.apps.length}경기`, `${S.n}구`, `상대 ${S.pa}타자`].filter(Boolean).join(' · ');
   const kpi = (l, val, sub, tip) => `<div class="pc-kpi"${tip ? ` title="${tip}"` : ''}><span>${l}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   return `
@@ -595,7 +595,7 @@ function _battersCard(S) {
     const k = x.batter || '타자 미기록';
     (by[k] = by[k] || []).push(x);
   });
-  const SH = { '안타': ['안타', '1b'], '타격됨': ['안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'], '볼넷': ['볼넷', 'bb'], '삼진': ['삼진', 'k'], '아웃': ['아웃', 'out'], '병살': ['병살', 'out'], '삼중살': ['삼중살', 'out'] };
+  const SH = { __proto__: null, '안타': ['안타', '1b'], '타격됨': ['안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'], '볼넷': ['볼넷', 'bb'], '삼진': ['삼진', 'k'], '아웃': ['아웃', 'out'], '병살': ['병살', 'out'], '삼중살': ['삼중살', 'out'] };
   const rows = Object.entries(by).map(([name, list]) => ({
     name, list,
     h: list.filter(x => HIT.includes(x.result)).length,

@@ -730,7 +730,7 @@ export function exportBatterXlsx(P) {
     spr.set(rr, 0, '■ 타구 방향', 'sec');
     rr = _table(spr, rr + 1, 0, ['당겨치기', '센터', '밀어치기', '방향 기록'],
       [[dn ? st.pull / dn : '', dn ? st.center / dn : '', dn ? st.oppo / dn : '', dn]], ['tdP', 'tdP', 'tdP', 'td']) + 1;
-    const lt = {};
+    const lt = Object.create(null);
     rows.forEach(({ a }) => { if (a.launchType) lt[a.launchType] = (lt[a.launchType] || 0) + 1; });
     const ltN = Object.values(lt).reduce((s, v) => s + v, 0);
     spr.set(rr, 0, '■ 결과별 타구 수', 'sec');
@@ -905,7 +905,7 @@ export function pitcherAbs(P, games) {
 // P = { name, num, role, apps:[{ label, pitches }] }, S = pitcher.js _calc(P.apps), calc = _calc
 export function exportPitcherXlsx(P, S, calc) {
   if (!P || !S || !S.n) { _toast('이 투수의 투구 기록이 없어요'); return; }
-  const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
+  const ROLE = { __proto__: null, SP: '선발', RP: '계투', CP: '마무리' };
   const { sheet: bg, lines } = _outlineSheet(['field', 'zone']);
   const plist = [];
   P.apps.forEach(app => app.pitches.forEach((p, j) => {

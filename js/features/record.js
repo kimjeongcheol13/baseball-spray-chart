@@ -5,13 +5,13 @@ import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3 } from './batdata.js?v=7';
 
 const $ = id => document.getElementById(id);
-const SHORT = {
+const SHORT = { __proto__: null,
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
   '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '희타': ['희생번트', 'out'], '희비': ['희생플라이', 'out'],
   '땅볼 아웃': ['땅볼', 'out'], '플라이 아웃': ['뜬공', 'out'], '병살': ['병살', 'out'],
 };
-const DIR = { LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
-const POS = { P: '투수', C: '포수', '1B': '1루수', '2B': '2루수', '3B': '3루수', SS: '유격수', LF: '좌익수', CF: '중견수', RF: '우익수', DH: '지명' };
+const DIR = { __proto__: null, LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
+const POS = { __proto__: null, P: '투수', C: '포수', '1B': '1루수', '2B': '2루수', '3B': '3루수', SS: '유격수', LF: '좌익수', CF: '중견수', RF: '우익수', DH: '지명' };
 
 let _season = null;      // { name → st } 저장 경기 기준 시즌 성적 캐시 (기록할 때마다 새로)
 let _seasonAt = 0;

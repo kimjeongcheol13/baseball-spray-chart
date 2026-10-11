@@ -89,7 +89,7 @@ const SUM_CELL = 0.45; // 규칙 1: 그 한 칸이 유형을 아는 타구에서
 const SUM_SIDE = 0.65; // 규칙 2: 한 방향이 차지하는 최소 비율
 const SUM_TYPE = 0.70; // 규칙 3: 한 유형이 차지하는 최소 비율
 const SIDE_TXT = ['좌측', '중앙', '우측'];
-const TYPE_TXT = { 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
+const TYPE_TXT = { __proto__: null, 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
 const _sideOf = a => (a.deg < 72 ? 0 : a.deg > 108 ? 2 : 1);
 
 export function dirSplit(abs) {

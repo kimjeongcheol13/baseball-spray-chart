@@ -4273,10 +4273,10 @@ function importExcelAsGame(input) {
       };
       if(C.bname===-1||C.res===-1){showToast('"선수"·"결과" 컬럼이 필요합니다',false);input.value='';return;}
 
-      var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
-      var noLocSet={'볼넷':1,'사구':1,'삼진':1};
-      var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
-      var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+      var dirDeg={__proto__:null,'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+      var noLocSet={__proto__:null,'볼넷':1,'사구':1,'삼진':1};
+      var validRes={__proto__:null,'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validInn={__proto__:null,'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
       var homeLP=[],awayLP=[],absArr=[];
       var homeSet={},awaySet={},added=0,skipped=0;
@@ -4309,6 +4309,7 @@ function importExcelAsGame(input) {
         var pt=C.pt>=0?String(row[C.pt]||'').trim():'';
         var zone=C.zone>=0?(parseInt(row[C.zone])||null):null;
         var ts=C.ts>=0?String(row[C.ts]||'').trim():'';
+        if(_protoName(bname)||_protoName(pt)){skipped++;return;}   // 집계 키로 쓰이는 값이 Object.prototype 속성 이름이면 건너뜀
 
         // 선수 찾거나 생성
         var lineup=team==='home'?homeLP:awayLP;
@@ -4342,6 +4343,7 @@ function importExcelAsGame(input) {
       var key='sl_'+Date.now();
       var nowTs=Date.now();
       var gameData={key,hs,as:gameAs,th,ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:nowTs};
+      if(!_gameDataOk(gameData)){showToast('파일의 경기 데이터 형식이 올바르지 않아 가져오지 않았습니다',false);return;}   // 다른 가져오기 경로와 같은 검증
       var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
       var lbl=th+' '+hs+':'+gameAs+' '+ta+' ('+gameDate+')';
       saves.push({key,label:lbl,ts:nowTs});
@@ -4377,11 +4379,11 @@ function importSingleTableGames(rows, hIdx, input) {
   };
   if(C.date===-1||C.bname===-1||C.res===-1){showToast('"날짜"·"타자"·"결과" 컬럼이 필요합니다',false);if(input)input.value='';return;}
 
-  var RES_ALIAS={'희생플라이':'희비','병살타':'병살','희생번트':'희타'};
-  var dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
-  var noLocSet={'볼넷':1,'사구':1,'삼진':1};
-  var validRes={'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
-  var validInn={'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+  var RES_ALIAS={__proto__:null,'희생플라이':'희비','병살타':'병살','희생번트':'희타'};
+  var dirDeg={__proto__:null,'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+  var noLocSet={__proto__:null,'볼넷':1,'사구':1,'삼진':1};
+  var validRes={__proto__:null,'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+  var validInn={__proto__:null,'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
   function fmtDate(raw){
     if(raw instanceof Date)return raw.toLocaleDateString('ko-KR');
@@ -4392,7 +4394,7 @@ function importSingleTableGames(rows, hIdx, input) {
   }
 
   // 날짜별 그룹핑
-  var groups=[],groupIdx={};
+  var groups=[],groupIdx=Object.create(null);
   rows.slice(hIdx+1).forEach(function(row){
     if(!row||row.every(function(c){return c===''||c===null||c===undefined;}))return;
     var bname=C.bname>=0?String(row[C.bname]||'').trim():'';
@@ -4442,13 +4444,14 @@ function importSingleTableGames(rows, hIdx, input) {
     var gameDate=fmtDate(g.dateRaw);
 
     var homeLP=[],awayLP=[],absArr=[];
-    var homeSet={},awaySet={},added=0,skipped=0,_plrId=Date.now()+gi;
+    var homeSet=Object.create(null),awaySet=Object.create(null),added=0,skipped=0,_plrId=Date.now()+gi;
 
     g.rows.forEach(function(row){
       var bname=C.bname>=0?String(row[C.bname]||'').trim():'';
       var res=C.res>=0?String(row[C.res]||'').trim():'';
       if(RES_ALIAS[res])res=RES_ALIAS[res];
       if(!validRes[res]){skipped++;return;}
+      if(_protoName(bname)){skipped++;return;}   // 집계 키로 쓰이는 값이 Object.prototype 속성 이름이면 건너뜀
 
       var teamRaw=C.team>=0?String(row[C.team]||'').trim():'';
       var team=side[teamRaw]||'home';
@@ -4491,6 +4494,7 @@ function importSingleTableGames(rows, hIdx, input) {
     var key='sl_'+(Date.now()+gi);
     var nowTs=Date.now()+gi;
     var gameData={key:key,hs:hs,as:gameAs,th:th,ta:ta,home_lineup:homeLP,away_lineup:awayLP,abs:absArr,zoneHistory:{},d:gameDate,ts:nowTs};
+    if(!_gameDataOk(gameData)){totalSkipped+=added+skipped;return;}   // 다른 가져오기 경로와 같은 검증
     var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
     var lbl=th+' '+hs+':'+gameAs+' '+ta+' ('+gameDate+')';
     var saveEntry={key:key,label:lbl,ts:nowTs};
@@ -4805,10 +4809,10 @@ function importExcel(input) {
       };
       if (C.bname === -1 || C.res === -1) { showToast('"선수이름"·"결과" 컬럼이 필요합니다', false); input.value=''; return; }
 
-      var dirDeg = {'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
-      var noLocSet = {'볼넷':1,'사구':1,'삼진':1};
-      var validRes = {'안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
-      var validInn = {'1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
+      var dirDeg = {__proto__: null, 'LF':36,'LC':66,'CF':90,'RC':114,'RF':150,'당겨치기':36,'좌중간':66,'센터':90,'우중간':114,'밀어치기':150};
+      var noLocSet = {__proto__: null, '볼넷':1,'사구':1,'삼진':1};
+      var validRes = {__proto__: null, '안타':1,'내야안타':1,'2루타':1,'3루타':1,'홈런':1,'볼넷':1,'사구':1,'삼진':1,'플라이 아웃':1,'땅볼 아웃':1,'희타':1,'희비':1,'병살':1};
+      var validInn = {__proto__: null, '1회초':1,'1회말':1,'2회초':1,'2회말':1,'3회초':1,'3회말':1,'4회초':1,'4회말':1,'5회초':1,'5회말':1,'6회초':1,'6회말':1,'7회초':1,'7회말':1,'8회초':1,'8회말':1,'9회초':1,'9회말':1,'연장':1};
 
       var added=0, skipped=0;
       var curInn = document.getElementById('innSel').value;
@@ -4819,6 +4823,7 @@ function importExcel(input) {
         var res   = C.res>=0   ? String(row[C.res]||'').trim()   : '';
         if (!bname || !res) return;
         if (!validRes[res]) { skipped++; return; }
+        if (_protoName(bname)) { skipped++; return; }   // 집계 키로 쓰이는 값이 Object.prototype 속성 이름이면 건너뜀
 
         var teamRaw = C.team>=0 ? String(row[C.team]||'').trim() : '홈';
         var team = (teamRaw==='홈'||teamRaw==='home'||teamRaw.toUpperCase()==='H') ? 'home' : 'away';

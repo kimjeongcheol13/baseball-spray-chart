@@ -174,6 +174,59 @@
     eq(PC().calcPitching([{ pitches: [{ id: 6, result: '볼', batter: 'A' }] }]).newer, false, '옛 기록(v1)은 새 버전이 아님');
   });
 
+  // ═══ 이닝 × 기록 탭 연동 (main #102 흡수) ═══
+  // 투수 탭 공으로 끝난 타석은 기록 탭 타석도 된다 → 3아웃으로 이닝을 넘겨도 그 타석은 그 공의 이닝에 적혀야 하고,
+  // 기록 탭 O 버튼(3아웃 → 다음 이닝)이 같은 반 이닝을 한 번 더 넘기면 안 된다
+  async function withRecordTab(fn) {   // 기록 탭 타석 · 실시간 동기화를 이 테스트 안에서만
+    var abs0 = AS.abs, sync0 = window.cloudAutoSyncRecord, outs0 = AS.outs;
+    AS.abs = []; AS.currentPitches = []; AS.outs = 0; window.cloudAutoSyncRecord = function () {};
+    await sleep(750);   // 앞 테스트의 기록이 건 연타 방지 잠금(0.7초)이 풀리길 기다린다
+    try { await fn(); } finally {
+      AS.abs = abs0; window.cloudAutoSyncRecord = sync0; AS.outs = outs0; AS.balls = 0; AS.strikes = 0; AS.currentPitches = []; AS._pitchEndInn = null;
+      try { _clearFieldTapPrompt(); renderCount(); shellNav('analysis', 'pitcher'); } catch (e) {}
+    }
+  }
+  async function twoKs() {   // 1회초 2아웃 (두 타자 삼진) — 기록 탭 타석 2개, 연타 방지 가드(0.7초)를 비켜 간다
+    batter('a', '가'); rec('헛스윙', '헛스윙', '헛스윙'); await sleep(750);
+    batter('b', '나'); rec('헛스윙', '헛스윙', '헛스윙'); await sleep(750);
+  }
+  test('기록 탭 연동: 투수 탭 삼진으로 3아웃 → 기록 탭 타석은 1회초에 적히고 이닝은 2회초 · O 점은 0 · O 버튼을 눌러도 한 번 더 넘어가지 않는다', async function () {
+    await withRecordTab(async function () {
+      fresh(); pitcher(1, '투수'); await twoKs();
+      eq(AS.abs.map(function (a) { return a.res + '@' + a.inn; }), ['삼진@1회초', '삼진@1회초'], '기록 탭 타석 2개');
+      AS.outs = 2; renderCount();   // 기록 탭에서 O 를 두 번 눌러 두었다
+      batter('c', '다'); rec('헛스윙', '헛스윙', '헛스윙');
+      eq(AS.abs.length, 3, '세 번째 삼진도 기록 탭 타석'); eq(AS.abs[2].inn, '1회초', '그 타석은 1회초'); eq(inn(), '2회초', '이닝은 다음 회');
+      eq(AS.outs, 0, '반 이닝이 끝나 O 점 0');
+      chCount('o');
+      eq([inn(), AS.outs], ['2회초', 1], 'O 를 눌러도 2회초 1아웃 (다시 넘어가지 않음)');
+      undoPitch();
+      eq([inn(), AS.outs], ['1회초', 2], '되돌리면 1회초 · O 점도 그 전(2)으로'); eq(AS.abs.length, 2, '자동으로 만든 타석도 지움');
+    });
+  });
+  test('기록 탭 연동: 투수 탭 땅볼 아웃으로 3아웃 → 이닝은 바로 2회초, 기록 탭 필드를 찍은 타석은 1회초 · 그다음 타석은 2회초', async function () {
+    await withRecordTab(async function () {
+      fresh(); pitcher(1, '투수'); await twoKs();
+      batter('c', '다'); rec('볼', '땅볼 아웃');
+      eq(AS.pendingQuickRes, '땅볼 아웃', '필드 탭 대기'); eq(inn(), '2회초', '이닝은 다음 회'); eq(AS.abs.length, 2, '위치를 찍기 전엔 타석 없음');
+      AS.pending = { x: 0.45, y: 0.6, deg: 80, dir: 'SS', ft: 120 }; var res = AS.pendingQuickRes; _clearFieldTapPrompt(); AS.rbi = 0; recHit(res);
+      eq(AS.abs.length, 3, '필드 탭으로 타석 기록'); eq([AS.abs[2].res, AS.abs[2].inn], ['땅볼 아웃', '1회초'], '그 타석은 1회초');
+      await sleep(750);
+      batter('d', '라'); recOther('볼넷');
+      eq(AS.abs[3].inn, '2회초', '그다음 기록 탭 타석은 지금 이닝');
+    });
+  });
+  test('기록 탭 연동: 투수 탭 인플레이로 끝난 뒤 필드를 안 찍고 다음 공을 던지면, 그 뒤 기록 탭 타석은 지금 이닝', async function () {
+    await withRecordTab(async function () {
+      fresh(); pitcher(1, '투수'); await twoKs();
+      batter('c', '다'); rec('플라이 아웃');
+      _clearFieldTapPrompt(); eq(inn(), '2회초', '이닝은 다음 회');
+      batter('d', '라'); rec('볼');   // 필드는 건너뛰고 다음 타자 공
+      await sleep(750); recOther('사구');
+      eq(AS.abs[AS.abs.length - 1].inn, '2회초', '지난 공의 이닝이 남아 있지 않다');
+    });
+  });
+
   test('(정리) 이 파일이 만든 상태를 비운다', function () {
     fresh(); AS.abs = []; AS.home_lineup = []; AS.away_lineup = []; renderPitchCount(); ok(true);
   });

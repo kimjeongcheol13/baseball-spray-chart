@@ -53,6 +53,7 @@
   function withConfirm(fn) { var old = window.confirm; window.confirm = function () { return true; }; try { return fn(); } finally { window.confirm = old; } }
   var toast = function () { return ($('toastTxt') || {}).textContent || ''; };
 
+  var SNAP1 = 'sl_auto_' + K1.replace(/^sl_/, '');   // deleteGame 은 그 경기를 열어 둔 동안 쌓인 스냅샷 키(sl_auto_<뒷부분>)도 같이 지운다 (main 5caabdd)
   test('로그인한 사용자가 경기를 지우면(불러오기 목록 삭제) 서버에서 본인 행의 그 경기 사본들만 지워진다 — 다른 경기 · 다른 사용자의 같은 키는 그대로', async function () {
     await start();
     seed([{ key: K1, abs: A, ts: BASE }, { key: K2, abs: A2, ts: BASE + 10 }, { key: K3, abs: B, ts: BASE + 20 }],
@@ -103,7 +104,7 @@
     await start();
     seed([{ key: K1, abs: A, ts: BASE }, { key: K3, abs: B, ts: BASE + 20 }], [row(K1), row(K3)]);
     withConfirm(function () { deleteGame(K1); }); await sleep(300);
-    eq(srv.log.length, 0, '로그인 전: 서버 요청 없음'); eq(dels(), [K1], '목록에 남음'); eq(localKeys(), [K3], '로컬에서는 지워짐');
+    eq(srv.log.length, 0, '로그인 전: 서버 요청 없음'); eq(dels(), [K1, SNAP1], '목록에 남음 (그 경기의 실시간 스냅샷 키도 — main)'); eq(localKeys(), [K3], '로컬에서는 지워짐');
     await loginAndSettle();
     eq(serverKeys(ME), [K3], '로그인 뒤 서버에서 지워짐'); eq(localKeys(), [K3], '되살아나지 않음'); eq(localStorage.getItem(DEL), null, '목록 비움');
   });
@@ -113,7 +114,7 @@
     await loginAndSettle(); srv.log.length = 0;
     window.dispatchEvent(new Event('offline'));
     withConfirm(function () { deleteGame(K1); }); await sleep(300);
-    eq(srv.log.length, 0, '오프라인: 서버 요청 없음'); eq(dels(), [K1], '목록');
+    eq(srv.log.length, 0, '오프라인: 서버 요청 없음'); eq(dels(), [K1, SNAP1], '목록 (스냅샷 키 포함)');
     window.dispatchEvent(new Event('online')); await sleep(2500);
     eq(serverKeys(ME), [K3], '연결된 뒤 서버에서 지워짐'); eq(localKeys(), [K3], '로컬'); eq(localStorage.getItem(DEL), null, '목록 비움');
   });

@@ -2662,6 +2662,8 @@ function _cleanSaveEntry(s,d){
   });
   return clean;
 }
+// 밖에서 온 자동저장(sl_auto_*)의 saveKey 는 믿지 않는다 — 복구할 때 그 키의 저장된 경기를 덮어쓰는 데 쓰이므로 저장 전에 뺀다
+function _dropForeignSaveKey(key,d){ if(typeof key==='string'&&key.indexOf('sl_auto_')===0&&d&&typeof d==='object')delete d.saveKey; return d; }
 // ▲ save-validator
 
 // ▼ settings-key purge
@@ -2697,6 +2699,7 @@ function _doImportText(text) {
       var clean = _cleanSaveEntry(s, d);   // 공용 검증: key 형식 · label 문자열 · data 객체가 맞지 않으면 건너뛴다
       if (!clean) { skipped++; return; }
       if (existingKeys.has(clean.key)) return;
+      _dropForeignSaveKey(clean.key, d);
       try { localStorage.setItem(clean.key, JSON.stringify(d)); } catch(e) { skipped++; return; }   // 저장 공간 부족 등
       saves.push(clean);
       existingKeys.add(clean.key);
@@ -3732,7 +3735,7 @@ function _saveEditImmediate(){
         if (!existingKeys.has(targetKey)) {
           saves.push(clean);
           localStorage.setItem('sl_saves', JSON.stringify(saves));
-          localStorage.setItem(targetKey, JSON.stringify(obj.data[targetKey]));
+          localStorage.setItem(targetKey, JSON.stringify(_dropForeignSaveKey(targetKey, obj.data[targetKey])));
           if (window._slMarkMod) window._slMarkMod(targetKey);   // 로컬 수정 시각 기록(cloud.js)
         }
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -8227,6 +8230,9 @@ function recoverHiddenAutosave(key){
     if(!raw){showToast('데이터를 찾을 수 없습니다',false);return;}
     var parsed=JSON.parse(raw);
     var d=key==='sl_autosave'?(parsed.data||parsed):parsed;
+    // 복구하면 saveKey 가 가리키는 저장된 경기를 덮어쓴다 — 바꾸기 전에 확인
+    var _tgt=d.saveKey&&JSON.parse(localStorage.getItem('sl_saves')||'[]').find(function(s){return s.key===d.saveKey;});
+    if(_tgt&&!confirm('저장된 경기 "'+_tgt.label+'"을(를) 이 임시저장으로 덮어쓸까요?'))return;
     if(key.indexOf('sl_auto_')===0)AS.curGame=key.slice(8);   // 복구한 경기는 같은 자동저장 키를 이어 쓴다(새 키로 또 쌓이지 않게)
     AS.abs=d.abs||[];
     AS.home_lineup=d.home_lineup||[];
@@ -8866,6 +8872,7 @@ function fieldFeedbackSubmit(){
         var k=row.game_key,gd=row.game_data;
         var clean=_cleanSaveEntry({key:k,label:row.label||k,ts:row.ts||0},gd);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
         if(!clean){skipped++;return;}
+        _dropForeignSaveKey(k,gd);
         if(!existMap[k]){
           saves.push(clean);
           localStorage.setItem(k,JSON.stringify(gd));added++;
@@ -8966,6 +8973,7 @@ function fieldFeedbackSubmit(){
         var k=row.game_key,gd=row.game_data;
         var clean=_cleanSaveEntry({key:k,label:row.label||k,ts:row.ts||0},gd);   // 공용 검증: 형식이 맞지 않는 행(설정 키 포함)은 건너뛴다
         if(!clean){skipped++;return;}
+        _dropForeignSaveKey(k,gd);
         if(!existMap[k]){saves2.push(clean);localStorage.setItem(k,JSON.stringify(gd));added++;}
         else{
           if(sentKeys[k])return;   // 방금 올린 경기

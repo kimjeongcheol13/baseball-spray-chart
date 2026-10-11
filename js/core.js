@@ -1452,7 +1452,7 @@ function recHit(res){
   var _evRaw=parseFloat((document.getElementById('evInput')||{}).value);var _ev=isNaN(_evRaw)?null:_evRaw;
   var _laRaw=parseFloat((document.getElementById('laInput')||{}).value);var _la=isNaN(_laRaw)?null:_laRaw;
   var _laType=_la===null?null:(_la<10?'땅볼':_la<25?'라인드라이브':'플라이볼');
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:_abOuts()},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
@@ -1463,6 +1463,7 @@ AS.currentPitches=[];
 }
 // 타석의 이닝: 투수 탭에서 끝난 타석을 기록 탭 필드에서 이어 적는 중이면 그 공의 이닝, 아니면 지금 이닝 (한 번 읽으면 비운다)
 function _abInn(){var v=AS._pitchEndInn;AS._pitchEndInn=null;return v||document.getElementById('innSel').value;}
+function _abOuts(){var v=AS._pitchEndOuts;AS._pitchEndOuts=null;return v!=null?v:AS.outs;}   // _abInn 과 같이: 투수 탭에서 끝난 타석이면 그 타석 전 아웃
 function recOther(res){
   if(!AS.batter){showToast('타자를 먼저 선택하세요',false,false);return;}
   if(AS.abs.length >= MAX_HITS){ AS.abs.shift(); showToast('⚠️ 최대 '+MAX_HITS+'개 초과 — 가장 오래된 기록이 삭제되었습니다',false,true); }
@@ -1471,7 +1472,7 @@ function recOther(res){
   var _infieldDir=res==='내야안타'?'CF':null;
   var _infieldX=res==='내야안타'?0.5:null;
   var _infieldY=res==='내야안타'?0.55:null;
-  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
+  const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:_abOuts()},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
   AS.abs.push(r);_pitchLinkAfterAb(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
@@ -2789,7 +2790,10 @@ function restoreGame(key){
 function chCount(type){
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
-  else if(type==='o'){if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;}
+  else if(type==='o'){
+    if(_pitchOutsActive()){_syncOutsFromPitch();showToast('이 이닝은 투구 기록이 아웃을 세요 — 투수 탭에서 타석 결과를 기록하세요',false,2500);return;}   // 아웃 카운트는 하나 (두 곳에서 세면 이닝이 두 번 넘어간다)
+    if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;
+  }
   renderCount();
 }
 function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();}
@@ -2805,13 +2809,14 @@ function _countThreeOuts(){
   renderCount();
   var gf=typeof GF!=='undefined'&&GF&&GF.active;
   var s=document.getElementById('innSel');
-  if(!gf&&s&&s.selectedIndex<s.options.length-1&&typeof window.recStepInning==='function'){
-    window.recStepInning(1);
-    showToast('3아웃 — '+s.value,false,true);
+  var nx=!gf&&s?_pitchNextInning(s.value):null;   // 다음 회의 같은 초/말 (1회초 → 2회초) — 투구 기록(_pitchAutoInning)과 같은 규칙. 한 팀만 기록하면 그 팀이 다시 치는 이닝
+  if(nx&&nx!==s.value){
+    _pitchSetInning(nx);
+    showToast('3아웃 — '+nx,false,true);
   }else showToast('3아웃 — 카운트를 비웠습니다',false,true);
 }
 // 타석이 끝나면(필드·도장·자동) 볼·스트라이크는 0-0 으로. 아웃은 기존대로 O 버튼(또는 경기 운영 모드)이 센다
-function _countAfterRecord(){AS.balls=0;AS.strikes=0;renderCount();}
+function _countAfterRecord(){AS.balls=0;AS.strikes=0;_syncOutsFromPitch();renderCount();}
 function renderCount(){
   [{id:'cntBalls',n:AS.balls,cls:'lit-b'},{id:'cntStrikes',n:AS.strikes,cls:'lit-s'},{id:'cntOuts',n:AS.outs,cls:'lit-o'}].forEach(function(s){
     var el=document.getElementById(s.id);if(!el)return;
@@ -5535,6 +5540,7 @@ function _pitchChanged(){   // 투구가 늘거나 줄거나 바뀐 뒤 공통 �
   renderPitchLog();   // 안에서 카운트 줄도 다시 그린다
   renderPitcherStats();
   if(typeof renderPitcherRoster==='function')renderPitcherRoster();   // 투수 버튼의 'N구' (main #104)
+  _syncOutsFromPitch();   // 기록 탭 O 점 = 이 이닝 투구 기록의 아웃 (B·S 처럼 하나)
   scheduleAutoSave();
   _gameSaved=false;   // 투구만 기록해도 '저장 안 된 기록'으로 (새 경기 저장 확인·창 닫기 경고)
 }
@@ -5582,7 +5588,7 @@ function recordPitch(result){
   // 피드백
   var icons={'볼':'🟢','스트라이크':'🟡','헛스윙':'🟡','루킹':'🟡','파울':'🟣'};
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result+(entry.end?' → '+(PC.END_LABEL[entry.end]||entry.end)+' · 타석 종료':''),false,1500);
-  _pitchToRecord(entry);   // 기록 탭 연동 (main #102 흡수) — 이닝을 넘기기 전에: 이 공으로 끝난 타석은 이 공의 이닝에 적힌다
+  _pitchToRecord(entry,outsBefore);   // 기록 탭 연동 (main #102 흡수) — 이닝을 넘기기 전에: 이 공으로 끝난 타석은 이 공의 이닝에 적힌다
   _pitchAutoInning(entry,outsBefore);
 }
 
@@ -5606,8 +5612,8 @@ function _syncBoardFromPitch(){
   var o=PC.openPA(P.pitches||[]);
   AS.balls=o?Math.min(3,o.b):0;AS.strikes=o?Math.min(2,o.s):0;renderCount();
 }
-function _pitchToRecord(e){
-  AS._pitchEndInn=null;
+function _pitchToRecord(e,outsBefore){
+  AS._pitchEndInn=null;AS._pitchEndOuts=null;
   var c=_pitchCountBefore(e);
   AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
     balls:Math.min(3,c.b),strikes:Math.min(2,c.s),outs:AS.outs||0,
@@ -5615,8 +5621,10 @@ function _pitchToRecord(e){
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
   if(!e.end){_syncBoardFromPitch();return;}
   // 타석 끝: 타석 기록의 카운트는 마지막 공 직전 카운트 (기록 탭에서 결과를 누를 때와 같다)
-  AS.balls=Math.min(3,c.b);AS.strikes=Math.min(2,c.s);renderCount();
-  var clear=function(){AS.balls=0;AS.strikes=0;AS.currentPitches=[];renderCount();};
+  AS.balls=Math.min(3,c.b);AS.strikes=Math.min(2,c.s);
+  if(outsBefore!=null&&_pitchOutsActive())AS.outs=Math.min(2,outsBefore);   // 아웃도 이 타석 전 값 (타석 기록의 count.o)
+  renderCount();
+  var clear=function(){AS.balls=0;AS.strikes=0;AS.currentPitches=[];_syncOutsFromPitch();renderCount();};
   if(!AS.batter){clear();showToast((PitchCalc.END_LABEL[e.end]||e.end)+' — 기록 탭에서 타자를 고르면 타석 기록에도 들어갑니다',false,2500);return;}
   if(_NO_LOC_END[e.end]){
     var n=AS.abs.length;
@@ -5627,6 +5635,9 @@ function _pitchToRecord(e){
     else clear();   // 연타 방지 가드(0.7초)에 걸려 타석이 안 적혔어도 투수 쪽 타석은 끝났으므로 카운트는 비운다
     return;
   }
+  // 필드에서 찍을 타구는 이 타석의 이닝 · 아웃으로 (P1 _abInn · _abOuts — 찍기 전에 3아웃으로 이닝이 넘어가도)
+  AS._pitchEndInn=e.inning||null;
+  AS._pitchEndOuts=outsBefore!=null?Math.min(2,outsBefore):null;
   _showPitchLinkSheet(e);   // P2: 인플레이 → 연결 시트 (필드에서 위치 찍기 · 이미 찍은 타구와 연결 · 건너뛰기)
 }
 // 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 결과 팝업)
@@ -5728,6 +5739,17 @@ window.PitchLink={of:function(a){
 // 투수 탭은 상대 투수가 우리 타자에게 던진 공을 적는다 → 3아웃이면 그 투수가 다시 던지는 '다음 회의 같은 초/말'로 넘긴다 (1회초 → 2회초).
 // 이닝 값은 기록 탭과 같은 #innSel 하나 (바꾸면 기록 탭 · 머리 띠도 같이 바뀐다). 경기 흐름 모드(GF)가 켜져 있으면 이닝은 그쪽이 관리한다.
 var _pitchInnAskedFor=null;   // 이닝을 물어본 경기의 투수 목록(AS.pitchers) — 새 경기는 새 배열이라 다시 묻는다
+// 지금 이닝(#innSel)에 투구 기록이 있으면 아웃은 투구 기록이 센다 → 기록 탭 O 점(AS.outs)도 그 값 하나. 경기 운영 모드는 GF 가 센다
+function _pitchOutsActive(){
+  if(typeof GF!=='undefined'&&GF&&GF.active)return false;
+  var s=document.getElementById('innSel'),inn=s&&s.value;
+  return !!inn&&(AS.pitchers||[]).some(function(p){return (p.pitches||[]).some(function(x){return x.inning===inn;});});
+}
+function _syncOutsFromPitch(){
+  if(!_pitchOutsActive())return;
+  var o=Math.min(2,_pitchInningOuts(document.getElementById('innSel').value));
+  if(AS.outs!==o){AS.outs=o;renderCount();}
+}
 function _pitchInningOuts(inn){
   var PC=window.PitchCalc;
   return PC&&inn?PC.outsInInning((AS.pitchers||[]).map(function(p){return p.pitches||[];}),inn):0;
@@ -5804,7 +5826,7 @@ function undoPitch(){
   }
   AS.currentPitches=AS.currentPitches.filter(function(p){return p.pitchId!==e.id;});
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
-  AS._pitchEndInn=null;
+  AS._pitchEndInn=null;AS._pitchEndOuts=null;
   if(P._batterLog){var i=P._batterLog.lastIndexOf(e);if(i>=0)P._batterLog.splice(i,1);}
   var j=AS.pitchLog.indexOf(e);if(j>=0)AS.pitchLog.splice(j,1);
   AS.pitchNewPA=false;

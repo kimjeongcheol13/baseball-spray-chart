@@ -4116,7 +4116,7 @@ function exportFullReport() {
       var key=pt.name+'||'+String(pt.num??'');
       if(!pitcherMap[key])pitcherMap[key]={name:pt.name,num:pt.num,role:pt.role||'',
         total:0,ball:0,strike:0,hits:0,k:0,
-        ptCount:{},zCount:Array(9).fill(0),res:{}};
+        ptCount:Object.create(null),zCount:Array(9).fill(0),res:Object.create(null)};
       var pm=pitcherMap[key];
       (pt.pitches||[]).forEach(function(pitch){
         pm.total++;
@@ -4560,7 +4560,7 @@ function _pitcherRowsFromAbs(data, skipNames){
     var team=a.team||'home';
     var key=name?('n:'+name):('t:'+team);
     if(!groups[key]){
-      groups[key]={name:name||((team==='home'?ta:th)+' 투수 (미등록)'), role:name?(roleOf[name]||''):'', pa:0, n:0, pt:{}, hit:0, k:0,
+      groups[key]={name:name||((team==='home'?ta:th)+' 투수 (미등록)'), role:name?(roleOf[name]||''):'', pa:0, n:0, pt:Object.create(null), hit:0, k:0,
         est:0, balls:0, strikes:0, countUsed:false};
       order.push(key);
     }

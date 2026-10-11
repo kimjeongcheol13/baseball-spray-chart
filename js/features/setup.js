@@ -6,6 +6,8 @@ import { esc } from '../constants.js';
 
 const $ = id => document.getElementById(id);
 const _AS = () => window.AS || {};
+// 안내 모드(core.js _helpModeClick): [data-help]를 누르면 동작 대신 설명 — 기록 탭처럼 경기설정 탭에도 붙임 (문구는 고정 문자열만)
+const H = (t, d) => ` data-help-title="${t}" data-help="${d}"`;
 const _gfOn = () => typeof GF !== 'undefined' && GF && GF.active;
 
 // ── 구장 ─────────────────────────────────────────────────────
@@ -222,8 +224,8 @@ const ICON = {
 function _hdrHtml() {
   return `<div class="ad-hd"><h1 class="ad-title">경기 설정</h1></div>
     <div class="st-hbtn">
-      <button type="button" class="sb-mini" onclick="openLoad()">${ICON.load}지난 경기 불러오기</button>
-      <button type="button" class="sb-mini st-go" onclick="stSaveAndStart()">${ICON.play}저장하고 기록 시작</button>
+      <button type="button" class="sb-mini" onclick="openLoad()"${H('지난 경기 불러오기', '이 기기에 저장한 경기 목록을 열어 <b>이어서 기록</b>하거나 다시 봅니다.')}>${ICON.load}지난 경기 불러오기</button>
+      <button type="button" class="sb-mini st-go" onclick="stSaveAndStart()"${H('저장하고 기록 시작', '지금 경기를 <b>저장</b>하고 <b>기록 탭</b>으로 넘어갑니다.')}>${ICON.play}저장하고 기록 시작</button>
     </div>`;
 }
 
@@ -233,23 +235,23 @@ function _infoHtml() {
   const gf = _gfOn();
   return `<header class="sb-card-hd"><h2>경기 정보</h2></header>
     <div class="st-form">
-      <label class="st-f"><span>DATE · 날짜</span><input type="date" class="st-u" value="${esc(i.date || _today())}" onchange="stSetInfo('date',this.value)"></label>
-      <label class="st-f"><span>BALLPARK · 구장</span><input type="text" class="st-u" value="${esc(i.venue)}" maxlength="20" placeholder="예: 목동 보조구장" onchange="stSetInfo('venue',this.value)"></label>
+      <label class="st-f"${H('날짜', '경기 날짜입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>DATE · 날짜</span><input type="date" class="st-u" value="${esc(i.date || _today())}" onchange="stSetInfo('date',this.value)"></label>
+      <label class="st-f"${H('구장', '경기한 구장 이름(최대 20자)입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>BALLPARK · 구장</span><input type="text" class="st-u" value="${esc(i.venue)}" maxlength="20" placeholder="예: 목동 보조구장" onchange="stSetInfo('venue',this.value)"></label>
       <div class="st-2">
-        <label class="st-f"><span>MY TEAM · 내 팀</span><input type="text" class="st-u" value="${esc(th)}" maxlength="6" placeholder="내 팀" oninput="stTeamName('home',this.value)"></label>
-        <label class="st-f"><span>OPPONENT · 상대팀</span><input type="text" class="st-u" value="${esc(ta)}" maxlength="6" placeholder="원정팀" oninput="stTeamName('away',this.value)"></label>
+        <label class="st-f"${H('내 팀', '우리 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>MY TEAM · 내 팀</span><input type="text" class="st-u" value="${esc(th)}" maxlength="6" placeholder="내 팀" oninput="stTeamName('home',this.value)"></label>
+        <label class="st-f"${H('상대팀', '상대 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>OPPONENT · 상대팀</span><input type="text" class="st-u" value="${esc(ta)}" maxlength="6" placeholder="원정팀" oninput="stTeamName('away',this.value)"></label>
       </div>
-      <fieldset class="st-f st-side"><legend>HOME / AWAY · 내 팀은</legend>
+      <fieldset class="st-f st-side"${H('홈 / 원정', '내 팀이 <b>홈(말 공격)</b>인지 <b>원정(초 공격)</b>인지 고릅니다.')}><legend>HOME / AWAY · 내 팀은</legend>
         <label><input type="radio" name="stSide" value="home"${i.side !== 'away' ? ' checked' : ''} onchange="stSetInfo('side','home')">홈 <small>(말 공격)</small></label>
         <label><input type="radio" name="stSide" value="away"${i.side === 'away' ? ' checked' : ''} onchange="stSetInfo('side','away')">원정 <small>(초 공격)</small></label>
       </fieldset>
-      <div class="st-f"><span id="stInnLbl">INNINGS · 이닝</span>
+      <div class="st-f"${H('이닝', '정규 이닝 수(5 · 7 · 9회)입니다. 기록 탭 점수판의 이닝 칸 수가 바뀝니다.')}><span id="stInnLbl">INNINGS · 이닝</span>
         <div class="sb-seg st-inn" role="group" aria-labelledby="stInnLbl">${[5, 7, 9].map(n => `<button type="button" aria-pressed="${i.innings === n}" onclick="stSetInfo('innings',${n})">${n}회</button>`).join('')}</div>
       </div>
     </div>
     <div class="st-gf">
-      <button type="button" class="sb-btn${gf ? ' on' : ''}" onclick="stGf()">${gf ? '경기 운영 끄기' : '경기 운영 시작'}</button>
-      ${gf ? '<button type="button" class="sb-btn st-danger" onclick="gfEndConfirm()">경기 종료</button>' : ''}
+      <button type="button" class="sb-btn${gf ? ' on' : ''}" onclick="stGf()"${H('경기 운영', '켜면 <b>타순 · 아웃 · 이닝 · 주자</b>가 자동으로 넘어갑니다. (자동 진행은 내 팀이 초 공격이라고 가정)')}>${gf ? '경기 운영 끄기' : '경기 운영 시작'}</button>
+      ${gf ? `<button type="button" class="sb-btn st-danger" onclick="gfEndConfirm()"${H('경기 종료', '경기를 끝내고 <b>최종 요약(경기 리포트)</b>을 엽니다. 누르면 한 번 더 확인합니다.')}>경기 종료</button>` : ''}
       <p>경기 운영을 켜면 타순·아웃·이닝·주자가 자동으로 넘어갑니다. (자동 진행은 내 팀이 초 공격이라고 가정)</p>
     </div>`;
 }
@@ -269,12 +271,12 @@ function _dataHtml() {
     <div class="st-data">
       <p class="st-note">기록은 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우거나 기기를 바꾸면 사라지니 백업 파일을 내보내 두세요.</p>
       <p class="st-meta">저장된 경기 ${saves}개 · 사용량 약 ${_kb()}</p>
-      <p class="st-sync"><b>동기화</b>${logged ? `로그인됨 · ${esc(sync || '대기 중')}` : '로그인 안 함 · 이 기기에만 저장'}<button type="button" class="sb-mini" onclick="openCloudOverlay()">클라우드</button></p>
+      <p class="st-sync"><b>동기화</b>${logged ? `로그인됨 · ${esc(sync || '대기 중')}` : '로그인 안 함 · 이 기기에만 저장'}<button type="button" class="sb-mini" onclick="openCloudOverlay()"${H('클라우드', '로그인하면 경기를 <b>클라우드</b>에 저장해 다른 기기에서도 불러올 수 있습니다.')}>클라우드</button></p>
       <div class="st-2b">
-        <button type="button" class="sb-btn" onclick="exportAllGames()">${ICON.down}백업 내보내기</button>
-        <label class="sb-btn st-file">${ICON.up}백업 불러오기<input type="file" accept=".json,.spray,text/plain" onchange="importGames(this)" aria-label="백업 파일 선택"></label>
+        <button type="button" class="sb-btn" onclick="exportAllGames()"${H('백업 내보내기', '이 기기에 저장된 <b>경기 전체</b>를 백업 파일(.json)로 내려받습니다.')}>${ICON.down}백업 내보내기</button>
+        <label class="sb-btn st-file"${H('백업 불러오기', '내보내 둔 <b>백업 파일</b>을 골라 경기를 되살립니다.')}>${ICON.up}백업 불러오기<input type="file" accept=".json,.spray,text/plain" onchange="importGames(this)" aria-label="백업 파일 선택"></label>
       </div>
-      <button type="button" class="sb-btn st-danger" onclick="clearAll()">${ICON.trash}이 경기 기록 지우기</button>
+      <button type="button" class="sb-btn st-danger" onclick="clearAll()"${H('이 경기 기록 지우기', '지금 경기의 <b>타석 기록을 모두</b> 지웁니다. 누르면 한 번 더 확인합니다.')}>${ICON.trash}이 경기 기록 지우기</button>
     </div>`;
 }
 
@@ -300,7 +302,7 @@ function _luHtml() {
           <span class="st-drag ph" aria-hidden="true"></span></li>`);
   }
   return `<header class="sb-card-hd"><h2>타순표</h2>
-      <div class="sb-seg" role="group" aria-label="편집할 팀">
+      <div class="sb-seg" role="group" aria-label="편집할 팀"${H('편집할 팀', '고칠 타순표를 <b>내 팀 / 상대팀</b> 중에서 고릅니다.')}>
         <button type="button" aria-pressed="${team === 'home'}" onclick="stTeam('home')">${esc(th)}</button>
         <button type="button" aria-pressed="${team === 'away'}" onclick="stTeam('away')">${esc(ta)}</button>
       </div></header>
@@ -308,8 +310,8 @@ function _luHtml() {
     <ol class="st-lu-list">${rows.join('')}</ol>
     <datalist id="stPosList">${['투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익', 'DH'].map(x => `<option value="${x}">`).join('')}</datalist>
     <footer class="st-lu-ft">
-      <button type="button" class="sb-btn" onclick="stAddExtra()">＋ 지명타자 · 대타 추가</button>
-      <button type="button" class="sb-mini" onclick="shellDrawer(true)">삭제 · 후보 · 등번호</button>
+      <button type="button" class="sb-btn" onclick="stAddExtra()"${H('지명타자 · 대타 추가', '9번 아래에 <b>빈 줄</b>을 하나 더 만듭니다. 이름을 쓰면 선수가 추가됩니다.')}>＋ 지명타자 · 대타 추가</button>
+      <button type="button" class="sb-mini" onclick="shellDrawer(true)"${H('삭제 · 후보 · 등번호', '라인업 창을 열어 <b>선수 삭제 · 후보 · 등번호</b>를 고칩니다.')}>삭제 · 후보 · 등번호</button>
     </footer>`;
 }
 
@@ -322,9 +324,9 @@ function _stadHtml() {
   };
   const inp = (k, l, v) => `<label class="st-d"><span>${l}</span><input type="number" inputmode="numeric" min="30" max="200" step="1" value="${v}" onchange="stSetDist('${k}',this.value)" aria-label="${l} 펜스 거리 (미터)"><em>m</em></label>`;
   return `<header class="sb-card-hd"><h2>구장 규격</h2></header>
-    <div class="st-pres" role="radiogroup" aria-label="구장 규격">${PRESETS.map(item).join('')}</div>
+    <div class="st-pres" role="radiogroup" aria-label="구장 규격"${H('구장 고르기', '자주 쓰는 구장 규격입니다. 숫자는 <b>좌 · 중 · 우</b> 펜스 거리(m)입니다.')}>${PRESETS.map(item).join('')}</div>
     <div class="st-prev">${_preview()}</div>
-    <div class="st-dists">${inp('lf', 'LF', st.lfDist)}${inp('cf', 'CF', st.cfDist)}${inp('rf', 'RF', st.rfDist)}</div>
+    <div class="st-dists"${H('펜스 거리', '거리를 바꾸면 <b>직접 입력</b>으로 저장되고 기록 탭 필드에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.')}>${inp('lf', 'LF', st.lfDist)}${inp('cf', 'CF', st.cfDist)}${inp('rf', 'RF', st.rfDist)}</div>
     <p class="st-note">거리를 바꾸면 '직접 입력'으로 저장되고, 기록 탭 필드 펜스와 타구 추정 비거리에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.</p>`;
 }
 
@@ -349,13 +351,13 @@ const MORE_ICON = {
 
 function _moreHtml() {
   const ico = k => `<i class="st-more-i" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">${MORE_ICON[k]}</svg></i>`;
-  const b = (fn, t, s, k) => `<button type="button" class="st-more-b" onclick="${fn}">${ico(k)}<span class="st-more-t"><b>${t}</b><small>${s}</small></span></button>`;
+  const b = (fn, t, s, k, d) => `<button type="button" class="st-more-b" onclick="${fn}"${H(t, d)}>${ico(k)}<span class="st-more-t"><b>${t}</b><small>${s}</small></span></button>`;
   return `<header class="sb-card-hd"><h2>그 밖의 기능</h2></header>
     <div class="st-more">
-      <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로', 'newGame')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드', 'save')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약', 'report')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제', 'recent')}</div>
-      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유', 'team')}</div>
-      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지', 'spray')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용', 'card')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel')}</div>
-      <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기', 'data')}${b('showHelpMenu()', '사용 방법', '기능 안내', 'help')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안', 'feedback')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지', 'home')}</div>
+      <div><h3>경기</h3>${b('openGameWizard()', '새 경기 시작', '팀 이름 · 라인업 새로', 'newGame', '팀 이름 · 라인업을 새로 정하고 <b>새 경기</b>를 시작합니다.')}${b('showSaveSheet()', '경기 저장', '불러오기 목록 · 클라우드', 'save', '이 경기를 저장합니다. 저장한 경기는 <b>지난 경기 불러오기</b> 목록에 남고, 로그인하면 클라우드에도 저장됩니다.')}${b('showPostGameReport()', '경기 리포트', '이번 경기 요약', 'report', '이번 경기 기록을 <b>한 장 요약</b>으로 봅니다.')}${b("shellNav('record');shellRecSheet(true)", '최근 기록', '수정 · 삭제', 'recent', '기록 탭으로 가서 <b>최근 타석 기록</b>을 엽니다. 잘못 찍은 타석을 고치거나 지웁니다.')}</div>
+      <div><h3>라인업 · 팀</h3>${b('applyLastLineup()', '지난 경기 라인업', '그대로 가져오기', 'lastLu', '가장 최근에 저장한 경기의 <b>라인업</b>을 그대로 가져옵니다.')}${b('ocrModalOpen()', '사진 / CSV로 입력', '라인업 한 번에', 'photo', '라인업 <b>사진</b>이나 <b>CSV 파일</b>로 선수를 한 번에 입력합니다.')}${b('openTeamCreate()', '팀 만들기', '팀원과 기록 공유', 'team', '팀을 만들어 <b>팀원과 기록을 공유</b>합니다.')}</div>
+      <div><h3>내보내기 · 공유</h3>${b('shareGameLink()', '경기 공유', 'QR · 링크', 'share', '이 경기를 <b>링크 · QR 코드</b>로 공유합니다.')}${b('exportSprayPNG()', '스프레이차트 PNG', '필드 이미지', 'spray', '기록 탭 <b>필드(스프레이차트)</b>를 PNG 이미지로 저장합니다.')}${b('exportShareCard()', '성적 카드 이미지', 'SNS 공유용', 'card', '이번 경기 기록을 <b>SNS 공유용 카드 이미지</b>로 만듭니다.')}${b('exportCurrentGameToExcel()', '엑셀 내보내기', '이번 경기 타석 전체', 'excel', '이번 경기 <b>타석 기록 전체</b>를 엑셀 파일로 내보냅니다.')}</div>
+      <div><h3>데이터 · 도움말</h3>${b("openOverlay('dataSettingsOverlay')", '데이터 관리', '가져오기 · 전체 내보내기', 'data', '경기 데이터 <b>가져오기 · 전체 내보내기</b> 창을 엽니다.')}${b('showHelpMenu()', '사용 방법', '기능 안내', 'help', '기능별 <b>사용 안내</b>를 엽니다.')}${b('fieldFeedbackOpen()', '피드백 보내기', '버그 · 제안', 'feedback', '버그나 제안을 <b>개발자에게</b> 보냅니다.')}${b('goLanding()', '처음 화면으로', '기록은 그대로 유지', 'home', '첫 화면으로 돌아갑니다. <b>기록은 그대로</b> 남습니다.')}</div>
     </div>`;
 }
 
@@ -368,11 +370,11 @@ function _mount() {
     box.id = 'stNew';
     box.className = 'stx';
     box.innerHTML = `<div class="stx-grid">
-        <div class="stx-l"><section class="sb-card" id="stInfo" aria-label="경기 정보"></section><section class="sb-card" id="stData" aria-label="데이터"></section></div>
-        <section class="sb-card stx-c" id="stLu" aria-label="타순표"></section>
-        <section class="sb-card stx-r" id="stStad" aria-label="구장 규격"></section>
+        <div class="stx-l"><section class="sb-card" id="stInfo" aria-label="경기 정보"${H('경기 정보', '<b>날짜 · 구장 · 팀 이름 · 홈/원정 · 이닝</b>을 정합니다. 경기와 함께 저장됩니다.')}></section><section class="sb-card" id="stData" aria-label="데이터"${H('데이터', '기록은 <b>이 브라우저에만</b> 저장됩니다. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 백업 파일을 내보내 두세요.')}></section></div>
+        <section class="sb-card stx-c" id="stLu" aria-label="타순표"${H('타순표', '<b>이름 · 포지션 · 타석(우/좌/양)</b>을 바로 고칩니다. 빈 줄에 이름을 쓰면 선수가 추가되고, 오른쪽 손잡이를 끌면 타순이 바뀝니다.')}></section>
+        <section class="sb-card stx-r" id="stStad" aria-label="구장 규격"${H('구장 규격', '펜스 거리(좌 · 중 · 우, m)를 고릅니다. 기록 탭 <b>필드 펜스</b>와 <b>타구 추정 비거리</b>에 바로 반영됩니다.')}></section>
       </div>
-      <section class="sb-card stx-more" id="stMore" aria-label="그 밖의 기능"></section>`;
+      <section class="sb-card stx-more" id="stMore" aria-label="그 밖의 기능"${H('그 밖의 기능', '저장 · 리포트 · 라인업 · 공유 · 내보내기 · 도움말 기능을 모아 둔 곳입니다.')}></section>`;
     const old = v.querySelector('.shell-inner.st');
     if (old) old.before(box); else v.appendChild(box);
   }

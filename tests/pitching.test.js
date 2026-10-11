@@ -443,8 +443,8 @@
     eq(checked, 2, '구종 2개를 앱과 비교');
     // 투구 기록 시트에 타석 결과 열
     var rs = sheets.filter(function (s) { return s.name === '투구 기록'; })[0];
-    eq(cell(rs, 0, 7), '타석 결과', '투구 기록 시트 머리글'); eq([cell(rs, 4, 6), cell(rs, 4, 7)], ['타격됨', '단타'], '안타 공의 결과 · 타석 결과');
-    eq(cell(rs, 12, 7), '볼넷', '볼넷 공의 타석 결과');
+    eq(cell(rs, 0, 9), '타석 결과', '투구 기록 시트 머리글 (이닝 뒤 아웃 · 주자 열 — main #108)'); eq([cell(rs, 4, 8), cell(rs, 4, 9)], ['타격됨', '단타'], '안타 공의 결과 · 타석 결과');
+    eq(cell(rs, 12, 9), '볼넷', '볼넷 공의 타석 결과');
   });
   function reset_view() { setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '투수'); }
   function stubDownload() {

@@ -765,8 +765,9 @@ body.sb .pc-plot .pz-box { fill: var(--paper); }
 body.sb .pc-plot .pz-sel { fill: rgba(44, 79, 138, .08); stroke-width: .7; }
 body.sb .pc-pick.on { border: 1.5px solid var(--ink); background: var(--paper); }
 body.sb .pc-pick-hint { border-color: var(--ink-soft); }
-body.sb .pc-pick-kpis div, body.sb .pc-pick-chips i:not(.soft), body.sb .pc-pick-more { background: var(--paper-2); }
-body.sb .pc-pick-more { border: 1.5px solid var(--ink); }
+body.sb .pc { --sb-b: var(--grass); --sb-s: var(--highlight); --sb-o: var(--pen-red); }
+body.sb .pc-pc, body.sb .pc-pick-more { background: var(--paper-2); border: 1.5px solid var(--ink); }
+body.sb .pc-sb { background: var(--paper); border: 1px solid var(--rule); }
 body.sb .pc-live-who small { color: var(--pen-red); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .stat-card { background: var(--paper-2) !important; border: var(--card-bw) solid var(--ink) !important; }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .sc-title { color: var(--ink) !important; }

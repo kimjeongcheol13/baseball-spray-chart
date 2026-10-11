@@ -4,8 +4,8 @@
 // SheetJS 무료판은 차트·셀 서식을 쓰지 못해서, xlsx(OOXML)를 직접 만들고 무압축 ZIP으로 묶는다 (외부 라이브러리 없음).
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
-import { buildData, calcStats } from './batdata.js?v=7';
-import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=2';
+import { buildData, calcStats } from './batdata.js?v=8';
+import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=5';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -730,7 +730,7 @@ export function exportBatterXlsx(P) {
     spr.set(rr, 0, '■ 타구 방향', 'sec');
     rr = _table(spr, rr + 1, 0, ['당겨치기', '센터', '밀어치기', '방향 기록'],
       [[dn ? st.pull / dn : '', dn ? st.center / dn : '', dn ? st.oppo / dn : '', dn]], ['tdP', 'tdP', 'tdP', 'td']) + 1;
-    const lt = {};
+    const lt = Object.create(null);
     rows.forEach(({ a }) => { if (a.launchType) lt[a.launchType] = (lt[a.launchType] || 0) + 1; });
     const ltN = Object.values(lt).reduce((s, v) => s + v, 0);
     spr.set(rr, 0, '■ 결과별 타구 수', 'sec');
@@ -905,7 +905,7 @@ export function pitcherAbs(P, games) {
 // P = { name, num, role, apps:[{ label, pitches }] }, S = pitcher.js _calc(P.apps), calc = _calc
 export function exportPitcherXlsx(P, S, calc) {
   if (!P || !S || !S.n) { _toast('이 투수의 투구 기록이 없어요'); return; }
-  const ROLE = { SP: '선발', RP: '계투', CP: '마무리' };
+  const ROLE = { __proto__: null, SP: '선발', RP: '계투', CP: '마무리' };
   const { sheet: bg, lines } = _outlineSheet(['field', 'zone']);
   const plist = [];
   P.apps.forEach(app => app.pitches.forEach((p, j) => {

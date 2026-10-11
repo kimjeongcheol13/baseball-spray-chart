@@ -311,15 +311,14 @@ function _zoneCard(S, P) {
 
 // ── 코스 구역 선택 ──────────────────────────────────────────
 // 위치 차트를 드래그(또는 점을 탭)하면 그 구역 공들을 어떻게 · 어떤 상황에서 던졌는지 카드로 보여준다
-const PT_S = { '직구': '직', '싱커': '싱', '커터': '컷', '체인지업': '체', '스플리터': '스플', '포크볼': '포크', '스크류볼': '스크', '커브': '커', '너클커브': '너커', '슬로우커브': '슬커', '슬라이더': '슬', '스위퍼': '스위', '슬러브': '슬러브', '너클볼': '너클', '이퓨스볼': '이퓨' };
-const RES_S = { '볼': 'B', '스트라이크': 'S', '파울': 'F' };
-const PICK_N = 6;   // '공 하나씩' 기본 표시 개수
+//  · 공 카드: "직구 → 안타" · 던지기 직전 전광판(B · S · O 점 + 주자 그림) · 이 타석 흐름
+//  · 4구 이상이면 위에 결과 막대 + 한 줄 요약(구종 · 카운트 · 피안타 · 삼진 · 아웃·주자)
+const PICK_N = 5;     // 요약이 있을 때 공 카드 기본 표시 개수
+const PICK_SUM = 4;   // 이 개수부터 요약을 보여준다
 const _inZone = p => p.zoneX >= 0.22 && p.zoneX <= 0.78 && p.zoneY >= 0.15 && p.zoneY <= 0.85;   // 기록 캔버스의 존 (위 _zoneCard와 같은 비율)
 const _inBox = (p, b) => { const x = p.zoneX * 100, y = p.zoneY * 120; return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; };
 const _innTxt = v => (v == null || v === '' ? '' : /^\d+$/.test(String(v)) ? `${v}회` : String(v));
-const _innKey = t => (/^\d+/.test(t) ? parseInt(t, 10) * 2 + (t.includes('말') ? 1 : 0) : 99);
 // 던지기 직전 아웃·주자 (core.js recordPitch 의 outs · runners — 경기 운영 모드에서만 저장, 아니면 null · 예전 기록엔 없음)
-const RUN_ORDER = ['주자 없음', '1루', '2루', '3루', '1·2루', '1·3루', '2·3루', '만루'];
 const _outsTxt = p => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? `${p.outs}아웃` : '');
 const _runTxt = p => {
   const r = p.runners;
@@ -343,8 +342,8 @@ function _pitchCtx(apps) {
   });
   return m;
 }
-// 타석 공 순서 칩의 글자: 그 공으로 타석이 끝났으면 타석 결과, 아니면 B · S · F
-const _pqTxt = q => { const e = pitchInfo(q).end; return e ? (END_LABEL[e] || e) : (RES_S[q.pr || q.result] || q.pr || q.result); };
+// 공 카드 · 이 타석 흐름의 결과 글자: 그 공으로 타석이 끝났으면 타석 결과(땅볼 아웃 · 사구 · 볼넷 …), 아니면 공의 정체(볼 · 스트라이크 · 파울)
+const _pqTxt = q => { const e = pitchInfo(q).end; return e ? (END_LABEL[e] || e) : (q.pr || q.result); };
 
 // 차트를 다시 그릴 때마다(투구 기록 · 투수 변경) 이벤트를 붙이고, 고른 구역이 있으면 다시 보여준다
 function _bindPlot() {
@@ -378,7 +377,7 @@ function _bindPlot() {
     if (b.x1 - b.x0 < 2.5 && b.y1 - b.y0 < 2.5) {   // 탭: 가까운 점 하나 (겹친 점은 같이)
       const near = _plot.xy.map(q => [q, Math.hypot(q.zoneX * 100 - p[0], q.zoneY * 120 - p[1])]).sort((x, y) => x[1] - y[1])[0];
       const cx = near && near[0].zoneX * 100, cy = near && near[0].zoneY * 120;
-      _box = near && near[1] <= 6 ? { x0: cx - 3, y0: cy - 3, x1: cx + 3, y1: cy + 3 } : null;
+      _box = near && near[1] <= 6 ? { x0: cx - 4, y0: cy - 4, x1: cx + 4, y1: cy + 4, tap: true } : null;   // 탭은 점을 둘러싼 원으로
     } else _box = b;
     _boxAll = false;
     _applyPick(true);
@@ -393,7 +392,7 @@ function _showBox(b) {
   const r = svg.querySelector('.pz-sel');
   if (r) {
     r.style.display = b ? '' : 'none';
-    if (b) [['x', b.x0], ['y', b.y0], ['width', b.x1 - b.x0], ['height', b.y1 - b.y0]].forEach(([k, v]) => r.setAttribute(k, v.toFixed(1)));
+    if (b) [['x', b.x0], ['y', b.y0], ['width', b.x1 - b.x0], ['height', b.y1 - b.y0], ['rx', b.tap ? (b.x1 - b.x0) / 2 : 0]].forEach(([k, v]) => r.setAttribute(k, v.toFixed(1)));
   }
   svg.classList.toggle('picking', !!b);
   svg.querySelectorAll('[data-i]').forEach(el => el.classList.toggle('on', !!b && _inBox(_plot.xy[+el.dataset.i], b)));
@@ -412,101 +411,99 @@ function _applyPick(scroll) {
 }
 
 function _pickHtml(sel) {
-  const n = sel.length, total = _plot.xy.length;
-  const close = '<button type="button" class="pc-pick-x" onclick="setPitchPick(\'clear\')" aria-label="구역 선택 해제">✕</button>';
-  if (!n) return `<div class="pc-pick-hd"><div><b>고른 구역 · 0구</b><small>이 구역에는 기록된 공이 없어요</small></div>${close}</div>`;
+  const n = sel.length;
+  const close = '<button type="button" class="pc-pick-x" onclick="setPitchPick(\'clear\')" aria-label="선택 해제">✕</button>';
+  const head = (title, sub) => `<div class="pc-pick-hd"><div><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div>${close}</div>`;
+  if (!n) return head('고른 공 0개', '이 구역에는 기록된 공이 없어요');
   const ctx = _pitchCtx(_plot.apps);
   const C = p => ctx.get(p) || { a: {}, ai: 0, no: 0, pa: { pitches: [p], end: null }, k: 0, b: 0, s: 0 };
-  const count = f => sel.filter(f).length;
-  const tally = (list, key) => {
+  const zin = sel.filter(_inZone).length, strikes = sel.filter(isStrikePitch).length;
+  const sub = n === 1 ? (zin ? '스트라이크존 안' : '스트라이크존 밖')
+    : [`존 안 ${zin} · 존 밖 ${n - zin}`, n >= PICK_SUM ? `스트라이크 ${pct(strikes / n)}` : ''].filter(Boolean).join(' · ');
+  const list = sel.slice().sort((x, y) => C(y).ai - C(x).ai || C(y).no - C(x).no);   // 최근 경기 · 최근 공부터
+  const shown = _boxAll || n < PICK_SUM ? list : list.slice(0, PICK_N);
+  return `
+    ${head(`고른 공 ${n}개`, sub)}
+    ${n >= PICK_SUM ? _pickSummary(sel, C) + '<h4>공 하나씩<small>최근 공부터</small></h4>' : ''}
+    <ol class="pc-pcs">${shown.map(p => _pitchCard(p, C(p))).join('')}</ol>
+    ${list.length > shown.length ? `<button type="button" class="pc-pick-more" onclick="setPitchPick('all')">나머지 ${list.length - shown.length}구 더 보기</button>` : ''}
+    ${sel.some(p => !_outsTxt(p)) ? '<p class="pc-pick-foot">아웃 · 주자는 경기 운영 모드로 기록한 공만 보여요.</p>' : ''}`;
+}
+
+// 결과 막대 + 한 줄 요약 (4구 이상)
+function _pickSummary(sel, C) {
+  const n = sel.length;
+  const by = (list, key) => {
     const m = new Map();
     list.forEach(x => { const k = key(x); if (k) m.set(k, (m.get(k) || 0) + 1); });
-    return [...m.entries()];
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
-  const chips = rows => rows.map(([l, v]) => `<i>${_esc(l)}<b>${v}</b></i>`).join('');
-  const row = (l, body) => (body ? `<div class="pc-pick-row"><span>${l}</span><div class="pc-pick-chips">${body}</div></div>` : '');
-
-  // 요약
-  const strikes = count(isStrikePitch), zin = count(_inZone);
-  const h = count(p => pitchInfo(p).hit), k = count(p => pitchInfo(p).k);
-  const bip = count(p => pitchInfo(p).inPlay);   // 인플레이 = 안타 + 땅볼 · 뜬공 · 직선타 아웃 · 병살 · 실책 · 야수선택 · 희생
-  const kpi = (l, v, sub) => `<div><span>${l}</span><b>${v}</b><small>${sub}</small></div>`;
-
-  // 어떻게: 구종 · 결과
-  const mix = tally(sel, p => p.pt || '미기록').sort((a, b) => b[1] - a[1]);
-  const top = mix[0][1];
-  const mixHtml = mix.map(([pt, c]) => {
-    const list = sel.filter(p => (p.pt || '미기록') === pt);
-    return `<li><span>${_esc(pt)}</span><i class="pc-bar"><i style="width:${(c / top * 100).toFixed(0)}%"></i></i><b>${c}</b><small>S ${pct(list.filter(isStrikePitch).length / c)}</small></li>`;
-  }).join('');
-  const RES = [['ball', '볼'], ['strike', '스트라이크·파울'], ['out', '인플레이 아웃'], ['k', '삼진'], ['hit', '피안타']].map(([c, l]) => [c, l, count(p => _cls(p) === c)]).filter(r => r[2]);
-
-  // 어떤 상황: 던지기 직전 카운트 · 이닝 · 경기 투구 수 · 상대 타자 · 경기
+  const join = rows => rows.map(([l, v]) => `${_esc(l)} ${v}`).join(' · ');
+  const ptOf = p => p.pt || '구종 미기록';
+  const RES = [['strike', '스트라이크·파울'], ['ball', '볼'], ['out', '인플레이 아웃'], ['k', '삼진'], ['hit', '피안타']]
+    .map(([c, l]) => [c, l, sel.filter(p => _cls(p) === c).length]).filter(r => r[2]);
+  const facts = [];
+  const mix = by(sel, ptOf);
+  facts.push(['구종', mix[0][1] * 2 >= n
+    ? `주로 <b>${_esc(mix[0][0])}</b> — ${n}구 중 ${mix[0][1]}구${mix.length > 1 ? ` <small>(${join(mix.slice(1))})</small>` : ''}`
+    : `여러 구종 — ${join(mix)}`]);
   const cs = sel.map(C);
-  const cnt = tally(cs, c => `${c.b}-${c.s}`).sort((x, y) => x[0].localeCompare(y[0]));
-  const lead = [['초구', cs.filter(c => !c.b && !c.s).length], ['투수 유리', cs.filter(c => c.s > c.b).length], ['타자 유리', cs.filter(c => c.b > c.s && !(c.b === 3 && c.s === 2)).length], ['2스트라이크', cs.filter(c => c.s === 2).length]].filter(r => r[1]);
-  const inn = tally(sel, p => _innTxt(p.inning)).sort((x, y) => _innKey(x[0]) - _innKey(y[0]));
-  const bucket = BUCKETS.map(([a, b]) => [b > 900 ? `${a}구~` : `${a}~${b}구`, cs.filter(c => c.no >= a && c.no <= b).length]).filter(r => r[1]);
-  const bat = tally(sel, p => p.batter || '').sort((x, y) => y[1] - x[1]);
-  const games = _scope === 'season' ? tally(cs, c => (c.a.label ? _short(c.a) : '')).sort((x, y) => y[1] - x[1]) : [];
-  const outs = tally(sel, _outsTxt).sort((x, y) => x[0].localeCompare(y[0]));
-  const runs = tally(sel, _runTxt).sort((x, y) => RUN_ORDER.indexOf(x[0]) - RUN_ORDER.indexOf(y[0]));
-  const risp = count(p => _runTxt(p) && (p.runners[1] || p.runners[2]));
-  const none = (k, f) => { const v = count(p => !f(p)); return v ? `<i class="soft">${k}<b>${v}</b></i>` : ''; };
-  const sitRows = outs.length || runs.length
-    ? row('아웃', chips(outs) + none('기록 없음', _outsTxt)) +
-      row('주자', chips(runs) + (risp ? `<i class="soft">득점권<b>${risp}</b></i>` : '') + none('기록 없음', _runTxt))
-    : row('아웃 · 주자', '<i class="soft">기록 없음 — 경기 운영 모드에서 기록한 공만 나와요</i>');
-
-  // 공 하나씩: 최근 경기 · 최근 공부터
-  const list = sel.slice().sort((x, y) => C(y).ai - C(x).ai || C(y).no - C(x).no);
-  const shown = _boxAll ? list : list.slice(0, PICK_N);
-  const items = shown.map(p => {
-    const c = C(p), cls = _cls(p);
-    const seq = c.pa.pitches.map(q => {
-      const qc = _cls(q), r = _pqTxt(q);
-      return `<i class="pq pq-${qc}${q === p ? ' cur' : ''}" title="${_esc(q.pt || '구종 미기록')} · ${_esc(_resTxt(q))}">${_esc(PT_S[q.pt] || (q.pt ? q.pt.slice(0, 2) : '—'))}<b>${_esc(r)}</b></i>`;
-    }).join('');
-    const sit = [_outsTxt(p), _runTxt(p)].filter(Boolean).join(' ');
-    const where = [_scope === 'season' && c.a.label ? _short(c.a) : '', _innTxt(p.inning), sit, `${p.batter ? p.batter + ' 상대 ' : ''}${c.k + 1}구째`, c.no ? `경기 ${c.no}구째` : ''].filter(Boolean);
-    return `
-      <li>
-        <i class="pq-dot pq-${cls}"></i>
-        <div>
-          <div class="pc-pick-line"><b>${_esc(p.pt || '구종 미기록')}</b><span>${c.b}-${c.s} 카운트</span><em class="pq-${cls}">${_esc(_resTxt(p))}</em></div>
-          <small>${where.map(_esc).join(' · ')}</small>
-          <div class="pc-seq" aria-label="이 타석의 공 순서">${seq}${c.pa.end ? '' : '<em>타석 결과 없음</em>'}</div>
-        </div>
-      </li>`;
-  }).join('');
-
+  const cnt = [['초구', cs.filter(c => !c.b && !c.s).length], ['2스트라이크', cs.filter(c => c.s === 2).length], ['볼이 많을 때', cs.filter(c => c.b > c.s && c.s < 2).length]]
+    .filter(r => r[1]).sort((a, b) => b[1] - a[1]);
+  if (cnt.length) facts.push(['카운트', cnt.map(([l, v], i) => (i ? `${l} ${v}구` : `<b>${l}</b> ${v}구`)).join(' · ')]);
+  const hits = sel.filter(p => pitchInfo(p).hit), ks = sel.filter(p => pitchInfo(p).k);
+  if (hits.length) facts.push(['피안타', `<b>${hits.length}개</b> — ${join(by(hits, ptOf))}`]);
+  if (ks.length) facts.push(['삼진', `<b>${ks.length}개</b> — ${join(by(ks, ptOf))}`]);
+  const known = sel.filter(p => _outsTxt(p) && _runTxt(p));
+  if (known.length) {
+    const on = known.filter(p => p.runners.some(Boolean)).length, risp = known.filter(p => p.runners[1] || p.runners[2]).length;
+    const o2 = known.filter(p => p.outs === 2).length;
+    facts.push(['아웃·주자', `주자 있을 때 <b>${on}구</b>${risp ? ` · 득점권 ${risp}구` : ''}${o2 ? ` · 2아웃 ${o2}구` : ''}${known.length < n ? ` <small>(기록된 ${known.length}구 중)</small>` : ''}`]);
+  }
   return `
-    <div class="pc-pick-hd">
-      <div><b>고른 구역 · ${n}구</b><small>전체 ${total}구 중 ${pct(n / total)} · 존 안 ${zin} · 존 밖 ${n - zin}</small></div>
-      ${close}
-    </div>
-    <div class="pc-pick-kpis">
-      ${kpi('스트라이크%', pct(strikes / n), `${strikes}/${n}`)}
-      ${kpi('존 안', pct(zin / n), `${zin}/${n}`)}
-      ${kpi('피안타', h, `인플레이 ${bip}`)}
-      ${kpi('삼진', k, '')}
-    </div>
-    ${n < 10 ? `<p class="an-hd-note pc-pick-thin">표본 ${n}구 — 비율보다 공 하나하나를 보는 용도로 써 주세요.</p>` : ''}
-    <h4>어떻게 던졌나</h4>
-    <ul class="pc-pick-mix">${mixHtml}</ul>
     <div class="pc-pick-bar" aria-hidden="true">${RES.map(([c, , v]) => `<i class="pq-${c}" style="flex:${v}"></i>`).join('')}</div>
     <div class="pc-pick-lg">${RES.map(([c, l, v]) => `<span><i class="pq-dot pq-${c}"></i>${l}<b>${v}</b></span>`).join('')}</div>
-    <h4>어떤 상황이었나</h4>
-    ${row('카운트<small>볼-스트</small>', chips(cnt))}
-    ${row('', lead.map(([l, v]) => `<i class="soft">${l}<b>${v}</b></i>`).join(''))}
-    ${sitRows}
-    ${row('이닝', chips(inn))}
-    ${row('경기 투구 수', chips(bucket))}
-    ${row('상대 타자', chips(bat.slice(0, 5)) + (bat.length > 5 ? `<i class="soft">외 ${bat.length - 5}명</i>` : ''))}
-    ${games.length > 1 ? row('경기', chips(games.slice(0, 4)) + (games.length > 4 ? `<i class="soft">외 ${games.length - 4}경기</i>` : '')) : ''}
-    <h4>공 하나씩<small>최근 공부터 · 칩 = 그 타석의 공 순서</small></h4>
-    <ol class="pc-pick-list">${items}</ol>
-    ${list.length > shown.length ? `<button type="button" class="pc-pick-more" onclick="setPitchPick('all')">나머지 ${list.length - shown.length}구 더 보기</button>` : ''}`;
+    ${n < 10 ? `<p class="pc-pick-thin">표본 ${n}구 — 경향보다는 공 하나하나를 보는 용도예요.</p>` : ''}
+    <dl class="pc-facts">${facts.map(([l, t]) => `<div><dt>${l}</dt><dd>${t}</dd></div>`).join('')}</dl>`;
+}
+
+// 공 카드: "직구 → 안타" · 언제(경기 · 이닝 · 타자 몇 구째) · 던지기 직전 전광판 · 이 타석 흐름
+function _pitchCard(p, c) {
+  const cls = _cls(p);
+  const game = _scope === 'season' && c.a.label ? _short(c.a) : '';
+  const meta = [_innTxt(p.inning), `${p.batter ? p.batter + ' 타석 ' : ''}${c.k + 1}구째`, c.no ? `경기 ${c.no}구째` : ''].filter(Boolean);
+  const flow = c.pa.pitches.length > 1 || !c.pa.end
+    ? `<div class="pc-flow"><span class="pc-flow-l">이 타석</span>${c.pa.pitches.map(q => `<span class="pc-flow-p${q === p ? ' cur pq-' + _cls(q) : ''}">${_esc(q.pt || '구종?')} ${_esc(_pqTxt(q))}</span>`).join('<i aria-hidden="true">→</i>')}${c.pa.end ? '' : '<i aria-hidden="true">→</i><span class="pc-flow-p todo">결과 없음</span>'}</div>`
+    : '';
+  return `
+    <li class="pc-pc">
+      <div class="pc-pc-hd">
+        <i class="pq-dot pq-${cls}" aria-hidden="true"></i><b>${_esc(p.pt || '구종 미기록')}</b><span aria-hidden="true">→</span><em class="pq-${cls}">${_esc(_pqTxt(p))}</em>
+        ${game ? `<small>${_esc(game)}</small>` : ''}
+      </div>
+      <div class="pc-pc-meta">${meta.map(_esc).join(' · ')}</div>
+      ${_scoreboard(p, c)}
+      ${flow}
+    </li>`;
+}
+
+// 던지기 직전 전광판 (중계 화면처럼 B · S · O 세로 + 주자 다이아몬드)
+// B · S 는 공 순서로 다시 센 값, O · 주자는 경기 운영 모드 기록만 (없으면 안 그린다)
+function _scoreboard(p, c) {
+  const dots = (n, max) => Array.from({ length: max }, (_, i) => `<i class="sbdot${i < n ? ' on' : ''}"></i>`).join('');
+  const outs = _outsTxt(p), run = _runTxt(p);
+  const label = `던지기 직전 ${[`${c.b}볼 ${c.s}스트라이크`, outs, run].filter(Boolean).join(' · ')}`;
+  const base = (x, y, on) => `<rect x="${x - 4.5}" y="${y - 4.5}" width="9" height="9" transform="rotate(45 ${x} ${y})"${on ? ' class="on"' : ''}/>`;
+  return `
+    <div class="pc-sb" role="img" aria-label="${_esc(label)}" title="${_esc(label)}">
+      <span class="sb-cap">던지기 직전</span>
+      <div class="sb-bso">
+        <span class="sb-b"><b>B</b>${dots(c.b, 3)}</span>
+        <span class="sb-s"><b>S</b>${dots(c.s, 2)}</span>
+        ${outs ? `<span class="sb-o"><b>O</b>${dots(p.outs, 2)}</span>` : ''}
+      </div>
+      ${run ? `<div class="sb-r"><svg class="pc-dia" viewBox="0 0 38 26" aria-hidden="true">${base(30, 15, p.runners[0])}${base(19, 7, p.runners[1])}${base(8, 15, p.runners[2])}</svg><small>${_esc(run)}</small></div>` : ''}
+    </div>`;
 }
 
 export function setPitchPick(cmd) {

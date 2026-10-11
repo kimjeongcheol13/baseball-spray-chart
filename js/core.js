@@ -2791,7 +2791,7 @@ function chCount(type){
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
   else if(type==='o'){
-    if(_pitchOutsActive()){_syncOutsFromPitch();showToast('이 이닝은 투구 기록이 아웃을 세요 — 투수 탭에서 타석 결과를 기록하세요',false,2500);return;}   // 아웃 카운트는 하나 (두 곳에서 세면 이닝이 두 번 넘어간다)
+    if(_pitchOutsActive()){_syncOutsFromPitch();showToast('아웃은 투수 탭 기록대로 세요',false,2500);return;}   // 짧게: 알림은 한 줄(nowrap)이라 길면 폰 화면 밖으로 잘린다   // 아웃 카운트는 하나 (두 곳에서 세면 이닝이 두 번 넘어간다)
     if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;
   }
   renderCount();
@@ -5675,7 +5675,8 @@ function _recordToPitch(ab){
     return;
   }
   // 인플레이 타구를 기록 탭에서 먼저 찍었다 → 투구 타석을 이 결과로 닫고 연결할지 한 번만 묻는다 (사용자 결정 2026-10-11).
-  // 묻는 동안 다음 타자로 넘기기는 미뤘다가(_pitchGuardChange) 답한 뒤 이어 간다 — '타석 결과는?' 창과 겹치지 않게
+  // 묻는 동안 다음 타자로 넘기기는 미룬다(_pitchGuardChange) — '타석 결과는?' 창과 겹치지 않게. '닫고 연결'이면 이어서 넘기고,
+  // '그대로 두기'면 진행 중인 그 타석의 타자에 머문다 (넘기면 곧바로 '타석 결과는?'을 다시 묻게 된다)
   var lbl=PC.END_LABEL[ab.res]||ab.res;
   var ov=_pitchLinkSheet('abLinkSheet','투구 기록 타석도 이 결과로 닫고 연결할까요?',
     _escHtml((ab.bname||'타자')+' · '+lbl)+' — 투수 '+_escHtml(P.name||'')+'의 이 타자 타석이 아직 진행 중이에요 ('+o.pitches.length+'구 · '+o.b+'-'+o.s+'). 닫으면 마지막 공에 이 결과가 붙고 이 타구와 연결돼요.',
@@ -5689,8 +5690,10 @@ function _recordToPitch(ab){
       var o2=_pitchOpenPAOf(ab);
       if(o2&&String(o2.pa)===String(o.pa)){if(ab.pa==null)_pitchLinkSet(ab,o.pa,P.id);_endOpenPitchPA(ab.res);showToast('투구 기록 타석을 닫고 연결했어요',false,2000);}   // 그 사이 투구 화면에서 끝냈으면 손대지 않는다
     }
-    if(ask.cont){   // 미뤄 둔 다음 타자로 (자동 이동이라 필드는 그 타자로 거르지 않는다 — shell.js _selectBatter 와 같이)
-      ask.cont();AS.batterFilter=false;
+    if(ask.cont){
+      if(b.dataset.act==='link')ask.cont();   // 미뤄 둔 다음 타자로
+      else if(!AS.batter)selBatter(ab.bid);   // 그대로 두기: 그 타자에 머문다 (자동 이동 shell.js _selectBatter 가 타자를 먼저 비워 두었다)
+      AS.batterFilter=false;   // 자동 이동이라 필드는 그 타자로 거르지 않는다 (shell.js _selectBatter 와 같이)
       var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
     }
   });

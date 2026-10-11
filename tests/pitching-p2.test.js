@@ -76,12 +76,13 @@
     eq(AS.batter && AS.batter.id, 'b', '답한 뒤 다음 타자로'); ok(!$('pitchEndSheet'), '타석이 닫혀 결과를 다시 묻지 않음');
     clean();
   });
-  test('① 기록 탭에서 먼저 찍은 타구에 "그대로 두기" → 투구 타석은 진행 중 · 투구 화면에서 끝내면 [방금 찍은 타구와 연결]', async function () {
-    fresh(); var p = pitcher(16, '투수J'); AS.home_lineup = [{ id: 'b', name: '나', num: '2' }]; renderLP(); pick('b');   // 타순이 한 명이면 다음 타자로 넘어가지 않는다
+  test('① 기록 탭에서 먼저 찍은 타구에 "그대로 두기" → 투구 타석은 진행 중 · 그 타자에 머문다(다음 타자로 넘기지 않음) · 투구 화면에서 끝내면 [방금 찍은 타구와 연결]', async function () {
+    fresh(); var p = pitcher(16, '투수J'); pick('b');   // 타순 3명: 기록하면 앱이 다음 타자로 넘기려 한다
     rec('볼'); await hit('안타');
     $('abLinkSheet').querySelector('[data-act="no"]').click();
     var mine = lastAb();
     ok(PC().openPA(p.pitches), '그대로 두면 투구 타석은 진행 중'); eq(mine.pa, undefined, '연결 없음');
+    eq(AS.batter && AS.batter.id, 'b', '그 타자에 머문다 (타자가 비지 않음)'); ok(!$('pitchEndSheet'), "'타석 결과는?'을 다시 묻지 않음");
     rec('안타');
     var sh = $('pitchLinkSheet'), btn = sh && sh.querySelector('[data-act="ab"]'); ok(btn, '"방금 찍은 타구와 연결" 버튼'); ok(/안타/.test(btn.textContent), btn.textContent);
     btn.click();

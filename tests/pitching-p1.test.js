@@ -194,7 +194,8 @@
     await withRecordTab(async function () {
       fresh(); pitcher(1, '투수'); await twoKs();
       eq(AS.abs.map(function (a) { return a.res + '@' + a.inn; }), ['삼진@1회초', '삼진@1회초'], '기록 탭 타석 2개');
-      AS.outs = 2; renderCount();   // 기록 탭에서 O 를 두 번 눌러 두었다
+      eq(AS.outs, 2, '기록 탭 O 점 = 투구 기록의 2아웃 (아웃 카운트는 하나 · 사용자 결정 2026-10-11)');
+      chCount('o'); eq([inn(), AS.outs], ['1회초', 2], '투구 기록이 세는 이닝에서는 O 버튼이 따로 세지 않음');
       batter('c', '다'); rec('헛스윙', '헛스윙', '헛스윙');
       eq(AS.abs.length, 3, '세 번째 삼진도 기록 탭 타석'); eq(AS.abs[2].inn, '1회초', '그 타석은 1회초'); eq(inn(), '2회초', '이닝은 다음 회');
       eq(AS.outs, 0, '반 이닝이 끝나 O 점 0');

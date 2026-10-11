@@ -102,7 +102,7 @@ function _scopeGames(data, team) {
 
 function _collect(games) {
   const abs = [];
-  const map = {};
+  const map = Object.create(null);
   const perGame = games.map(g => {
     const mine = g.abs.filter(a => _side === 'all' || _sideOf(a) === _side);
     abs.push(...mine);
@@ -299,7 +299,7 @@ function _gamesCard(T, S) {
 
 // 경기 최고 활약: 2타석 이상 중 wOBA 최고 (동률이면 타점) — 안타가 없으면 뽑지 않음
 function _mvp(abs) {
-  const by = {};
+  const by = Object.create(null);
   abs.forEach(a => { if (a.bname) (by[a.bname] = by[a.bname] || []).push(a); });
   const c = Object.keys(by).map(n => ({ name: n, ...calcStats(by[n]) })).filter(p => p.pa >= 2 && p.h > 0);
   c.sort((a, b) => b.woba - a.woba || b.rbi - a.rbi);
@@ -434,9 +434,9 @@ function _countCard(T) {
 }
 
 function _pitchMap(abs) {
-  const by = {};
+  const by = Object.create(null);
   abs.forEach(a => { if (a.pt) (by[a.pt] = by[a.pt] || []).push(a); });
-  const out = {};
+  const out = Object.create(null);
   Object.keys(by).forEach(k => { out[k] = calcStats(by[k]); });
   return out;
 }

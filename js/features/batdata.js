@@ -46,7 +46,7 @@ function _loadGames() {
 // 같은 경기 라인업에서 bid로 선수를 찾아 bh가 L/S면 그 값으로 읽는다.
 // 저장값·AS.abs는 바꾸지 않도록 보정할 타석만 복사본을 만든다.
 function _fixBats(abs, lineups) {
-  const bh = {};
+  const bh = Object.create(null);
   lineups.forEach(p => { if (p && (p.bh === 'L' || p.bh === 'S')) bh[String(p.id)] = p.bh; });
   return abs.map(a => (a && (!a.bats || a.bats === 'R') && bh[String(a.bid)] ? { ...a, bats: bh[String(a.bid)] } : a));
 }
@@ -58,7 +58,7 @@ function _gameLabel(d, s) {
 
 export function buildData() {
   const games = _loadGames();
-  const map = {};
+  const map = Object.create(null);
   const add = (name, num, bats) => {
     if (!name) return null;
     if (!map[name]) map[name] = { name, num: num ?? '', bats: {}, pa: 0 };
@@ -132,9 +132,9 @@ export function playerData(data, name) {
     return { label: g.label, avg: c.avg, ops: c.ops, pa: g.abs.length };
   });
   // 구종별 (마지막 공 구종 기준)
-  const byPt = {};
+  const byPt = Object.create(null);
   abs.forEach(a => { if (a.pt) (byPt[a.pt] = byPt[a.pt] || []).push(a); });
-  const pitch = {};
+  const pitch = Object.create(null);
   Object.keys(byPt).forEach(pt => { pitch[pt] = calcStats(byPt[pt]); });
 
   const bc = info.bats || {};

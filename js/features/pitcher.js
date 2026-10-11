@@ -57,7 +57,7 @@ export function setPitcherView(k, v) {
 // 투수별 등판 목록: [{ name, num, role, apps: [{ label, d, current, pitches }] }]
 function _pitchers() {
   const AS = window.AS || {};
-  const map = {};
+  const map = Object.create(null);
   const add = (p, g, pitches) => {
     if (!p || !p.name || !pitches.length) return;
     const P = map[p.name] || (map[p.name] = { name: p.name, num: p.num || '', role: p.role || null, apps: [] });
@@ -240,7 +240,7 @@ function _hero(P, S) {
 
 // ── 구종 구성 ────────────────────────────────────────────────
 function _byPitch(S) {
-  const by = {};
+  const by = Object.create(null);
   S.pitches.forEach(p => {
     const k = p.pt || '미기록';
     const o = by[k] || (by[k] = { pt: k, n: 0, s: 0, h: 0, k: 0, bip: 0, bb: 0 });
@@ -590,7 +590,7 @@ function _bucketCard(P) {
 
 // ── 상대 타자 ────────────────────────────────────────────────
 function _battersCard(S) {
-  const by = {};
+  const by = Object.create(null);
   S.done.forEach(x => {
     const k = x.batter || '타자 미기록';
     (by[k] = by[k] || []).push(x);

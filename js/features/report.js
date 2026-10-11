@@ -174,7 +174,7 @@ function _groupPlayers(games) {
   games.forEach(g => {
     const sd = _sides(g);
     [['home', g.th], ['away', g.ta]].forEach(([side, team]) => {
-      const nums = {};
+      const nums = Object.create(null);
       (sd[side] || []).forEach(p => {
         if (!p || !p.name) return;
         if (p.pos) posOf[_norm(team) + '|' + p.name] = String(p.pos);

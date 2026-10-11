@@ -61,7 +61,7 @@ function _source() {
 }
 
 function _players(all) {
-  const m = {};
+  const m = Object.create(null);
   all.forEach(a => { if (a.bname) m[a.bname] = (m[a.bname] || 0) + 1; });
   return Object.entries(m).sort((a, b) => b[1] - a[1]).map(([n, c]) => ({ n, c }));
 }

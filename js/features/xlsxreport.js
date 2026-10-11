@@ -582,7 +582,7 @@ export function exportBatterXlsx(P) {
   const zoneOf = a => a.zone || (a.pitches && a.pitches.length ? a.pitches[a.pitches.length - 1].zone : '') || '';
 
   // 구종 목록 (타석 마지막 공 기준, 많은 순)
-  const ptCount = {};
+  const ptCount = Object.create(null);
   rows.forEach(({ a }) => { if (a.pt) ptCount[a.pt] = (ptCount[a.pt] || 0) + 1; });
   const pts = Object.keys(ptCount).sort((x, y) => ptCount[y] - ptCount[x]);
 

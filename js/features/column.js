@@ -50,7 +50,7 @@ function _facts(P, data) {
   const cnt = abs.filter(a => a.count && a.count.s != null && a.count.b != null);
   const twoAbs = cnt.filter(a => a.count.s >= 2);
   const kBy = list => {
-    const m = {};
+    const m = Object.create(null);
     list.filter(a => a.res === '삼진' && a.pt).forEach(a => { m[a.pt] = (m[a.pt] || 0) + 1; });
     return Object.entries(m).sort((x, y) => y[1] - x[1]);
   };
@@ -59,7 +59,7 @@ function _facts(P, data) {
   const recentAbs = gl.slice(-RECENT_GAMES).flatMap(g => g.abs);
   const earlyAbs = gl.slice(0, Math.max(0, gl.length - RECENT_GAMES)).flatMap(g => g.abs);
   // 공격 지수 순위 (10타석 이상 타자끼리)
-  const byName = {};
+  const byName = Object.create(null);
   data.games.forEach(g => g.abs.forEach(a => { if (a.bname) (byName[a.bname] = byName[a.bname] || []).push(a); }));
   const ranked = Object.entries(byName).map(([n, l]) => ({ n, s: calcStats(l) })).filter(x => x.s.pa >= 10).sort((x, y) => y.s.woba - x.s.woba);
 

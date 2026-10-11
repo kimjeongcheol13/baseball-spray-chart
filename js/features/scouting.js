@@ -191,7 +191,7 @@ function _analyze(P, pool) {
   const zoned = zones.reduce((n, z) => n + z.pa, 0);
 
   // 구종 (결과가 나온 공의 구종)
-  const byPt = {};
+  const byPt = Object.create(null);
   abs.forEach(a => { if (a.pt) (byPt[a.pt] = byPt[a.pt] || []).push(a); });
   const pitches = Object.keys(byPt).map(pt => ({ pt, ...calcStats(byPt[pt]) })).sort((x, y) => y.pa - x.pa);
 
@@ -509,7 +509,7 @@ function _pitchLogCard(P) {
   const log = ((window.AS && window.AS.pitchLog) || []).filter(p => p.batter === P.name);
   if (!log.length) return '';
   const HIT_RES = ['안타', '2루타', '3루타', '홈런', '타격됨'];
-  const ptCnt = {};
+  const ptCnt = Object.create(null);
   log.forEach(p => { if (p.pt) ptCnt[p.pt] = (ptCnt[p.pt] || 0) + 1; });
   const mix = Object.entries(ptCnt).sort((a, b) => b[1] - a[1]);
   const top = mix.length ? mix[0][1] : 1;

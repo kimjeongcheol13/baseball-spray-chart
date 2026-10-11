@@ -2635,11 +2635,24 @@ var _SAVE_KEY_RE=/^sl_(?:rec_)?\d{6,20}$|^sl_[A-Za-z0-9가-힣]{1,6}vs[A-Za-z0-9
 var _IMPORT_STR_MAX=200;   // 가져온 saves 항목의 문자열 필드 상한 길이
 function _isSaveKey(k){return typeof k==='string'&&_SAVE_KEY_RE.test(k);}
 function _isGameData(d){return !!d&&typeof d==='object'&&!Array.isArray(d);}
+// 프로토타입 오염 방어: 집계 키로 쓰이는 문자열(bname·bid·name·pt·zone·res·result 등)이 Object.prototype 속성 이름이거나
+// abs·라인업·투수가 배열/객체 모양이 아니면 거부한다 (집계 객체 Object.create(null) 와 함께 이중 방어)
+var _PROTO_NAMES=Object.getOwnPropertyNames(Object.prototype);
+function _protoName(v){return typeof v==='string'&&_PROTO_NAMES.indexOf(v)>=0;}
+function _plainObj(o){return !!o&&typeof o==='object'&&!Array.isArray(o);}
+function _listOk(v){return v==null||Array.isArray(v);}
+function _pitchOk(e){return _plainObj(e)&&!_protoName(e.pt)&&!_protoName(e.zone)&&!_protoName(e.result)&&!_protoName(e.res)&&!_protoName(e.pitcher);}
+function _gameDataOk(d){
+  if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers))return false;
+  return (d.abs||[]).every(function(a){return _plainObj(a)&&!_protoName(a.bname)&&!_protoName(a.bid)&&!_protoName(a.pt)&&!_protoName(a.zone)&&!_protoName(a.res)&&!_protoName(a.dir)&&_listOk(a.pitches)&&(a.pitches||[]).every(_pitchOk);})&&
+    ['home_lineup','away_lineup'].every(function(k){return (d[k]||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id);});})&&
+    (d.pitchers||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id)&&_listOk(p.pitches)&&(p.pitches||[]).every(_pitchOk);});
+}
 // saves 항목(s)과 그 게임 데이터(d)를 검증한다. 통과하면 정리된 항목을, 아니면 null을 돌려준다.
-//  · key 는 위 형식의 문자열, label 은 문자열, d 는 객체여야 한다
+//  · key 는 위 형식의 문자열, label 은 문자열, d 는 객체여야 한다 (abs·라인업·투수 모양과 키 값은 _gameDataOk)
 //  · 문자열 필드는 상한 길이로 자르고, 객체·배열 같은 비정상 값은 버린다 (key·label·ts·winP·loseP 등 기존 필드는 그대로)
 function _cleanSaveEntry(s,d){
-  if(!s||typeof s!=='object'||!_isSaveKey(s.key)||typeof s.label!=='string'||!_isGameData(d))return null;
+  if(!s||typeof s!=='object'||!_isSaveKey(s.key)||typeof s.label!=='string'||!_isGameData(d)||!_gameDataOk(d))return null;
   var clean={};
   Object.keys(s).forEach(function(k){
     var v=s[k];
@@ -3045,7 +3058,7 @@ function updBatterStat(){
   }).join('')||'<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">기록 없음</div>';
   var zoneOrder=['내각 높음','중앙 높음','외각 높음','내각 중간','중앙 중간','외각 중간','내각 낮음','중앙 낮음','외각 낮음'];
   var ballZones=['볼 위','볼 내','볼 외','볼 아래'];
-  var zonePitches={};
+  var zonePitches=Object.create(null);
   zoneOrder.concat(ballZones).forEach(function(z){zonePitches[z]=[];});
   // AS.pitchers fallback용 순차 목록
   var _zpFlatP=[];
@@ -3055,9 +3068,9 @@ function updBatterStat(){
     });
   });
   _zpFlatP.sort(function(a,c){return a.id-c.id;});
-  var _zpFlatCts={};
+  var _zpFlatCts=Object.create(null);
   _zpFlatP.forEach(function(p){_zpFlatCts[p.name]=(_zpFlatCts[p.name]||0)+1;p.seq=_zpFlatCts[p.name];});
-  var _zpPitcherCounts={};
+  var _zpPitcherCounts=Object.create(null);
   var _zpFlatIdx=0;
   bAbs.slice().sort(function(a,c){return a.id-c.id;}).forEach(function(ab){
     var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{zone:ab.zone,pt:ab.pt}]:[]);
@@ -3080,7 +3093,7 @@ function updBatterStat(){
       var zd=zoneHR(z);var bg='transparent',col='var(--text3)';
       if(zd.n>0){if(zd.rate>=0.4){bg='rgba(45,212,160,'+(0.2+zd.n/maxZ*.4)+')';col='#2dd4a0';}else{bg='rgba(245,101,101,'+(0.15+zd.n/maxZ*.4)+')';col='#f56565';}}
       var tips=zd.n?(zonePitches[z].map(function(p){return(p.pt||'?')+(p.result?'('+p.result+')':'');}).join(' ')):'';
-      var ptCts={};(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
+      var ptCts=Object.create(null);(zonePitches[z]||[]).forEach(function(p){if(p.pt)ptCts[p.pt]=(ptCts[p.pt]||0)+1;});
       var ptTagsHtml=Object.keys(ptCts).map(function(pt){var c=_PT_COL[pt]||'#7c8898';return'<span class="zh-pt" style="background:'+c+'33;color:'+c+'">'+_escHtml(_PT_ABR[pt]||pt.slice(0,2))+(ptCts[pt]>1?ptCts[pt]:'')+'</span>';}).join('');
       var _zpBase=(zonePitches[z]||[]).map(function(p){return{pt:p.pt||'',result:p.result||'',pitcher:p.pitcher||'',pitchNum:p.pitchNum||null};});
       var _zpLog=(AS.pitchLog||[]).filter(function(p){return p.batter===b.name&&p.zone===z;}).map(function(p){return{pt:p.pt||'',result:p.result||'',inning:p.inning||''};});
@@ -3121,7 +3134,7 @@ function updBatterStat(){
   // 구종별 타율 카드
   var ptTypesEl=document.getElementById('bsPitchTypes');
   if(ptTypesEl){
-    var allPts={};
+    var allPts=Object.create(null);
     var _ptColMap=_PT_COL;
     bAbs.forEach(function(ab){
       var ps=ab.pitches&&ab.pitches.length?ab.pitches:(ab.zone&&ab.pt?[{pt:ab.pt}]:[]);
@@ -3159,12 +3172,12 @@ function updBatterStat(){
       });
     });
     _pFlat.sort(function(a,c){return a.id-c.id;});
-    var _pFlatCounts={};
+    var _pFlatCounts=Object.create(null);
     _pFlat.forEach(function(p){_pFlatCounts[p.name]=(_pFlatCounts[p.name]||0)+1;p.seq=_pFlatCounts[p.name];});
 
     var _sortedAbs=bAbs.slice().sort(function(a,c){return a.id-c.id;});
     var allDots=[];
-    var _pitcherCounts={};
+    var _pitcherCounts=Object.create(null);
     var _flatIdx=0;
     _sortedAbs.forEach(function(ab){
       if(!ab.pitches||!ab.pitches.length)return;
@@ -3220,7 +3233,7 @@ function updBatterStat(){
   var summaryEl = document.getElementById('bsPitcherSummary');
   if (summaryEl) {
     // AS.pitchers 직접 참조 — 각 투수의 pitches에서 현재 타자 이름으로 필터
-    var psMap = {};
+    var psMap = Object.create(null);
     (AS.pitchers || []).forEach(function(pitcher) {
       var myPitches = (pitcher.pitches || []).filter(function(p){ return p.batter === b.name; });
       if (!myPitches.length) return;
@@ -3897,13 +3910,13 @@ function exportAllGamesToExcel() {
   var allPitcherRows=[['경기','투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','기록출처']];
   var _anyAbsRows=false;
   allGames.forEach(function(d){
-    var _tabNames={};
+    var _tabNames=Object.create(null);
     (d.pitchers||[]).forEach(function(p){
       var pitches=p.pitches||[];
       if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
       _tabNames[p.name]=1;
       var total=pitches.length||1;
-      var ptCount={};
+      var ptCount=Object.create(null);
       pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
       var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
       var ball=pitches.filter(function(px){return px.result==='볼';}).length;
@@ -4531,7 +4544,7 @@ function exportCurrentGameToExcel() {
 function _pitcherRowsFromAbs(data, skipNames){
   var th=data.th||'홈팀', ta=data.ta||'원정팀';
   var HIT_RES=['안타','내야안타','2루타','3루타','홈런'], KNOWN_PT=['직구','슬라이더','커브','체인지업','포크볼'];
-  var roleOf={};
+  var roleOf=Object.create(null);
   (data.pitchers||[]).forEach(function(p){ if(p&&p.name) roleOf[p.name]=p.role||''; });
   var groups={}, order=[];
   (data.abs||[]).forEach(function(a){
@@ -4675,13 +4688,13 @@ function _doExportToExcel(data) {
   // === Sheet 4: 투수 분석 ===
   // 투수 탭 투구 기록이 있는 투수는 그 기록으로, 없으면 타석 기록(구종·결과)으로 집계 (_pitcherRowsFromAbs)
   var pitcherRows=[['투수명','포지션','총투구수','직구%','슬라이더%','커브%','체인지업%','포크볼%','기타%','볼%','스트라이크%','피안타','탈삼진','기록출처']];
-  var _tabNames={};
+  var _tabNames=Object.create(null);
   (data.pitchers||[]).forEach(function(p){
     var pitches=p.pitches||[];
     if(!pitches.length)return;   // 투구 기록 없는 등록 투수 → 아래 타석 기록 기준 행으로 대체
     _tabNames[p.name]=1;
     var total=pitches.length||1;
-    var ptCount={};
+    var ptCount=Object.create(null);
     pitches.forEach(function(px){ptCount[px.pt]=(ptCount[px.pt]||0)+1;});
     var ptTotal=['직구','슬라이더','커브','체인지업','포크볼'].reduce(function(a,t){return a+(ptCount[t]||0);},0);   // 5개 구종 합 → 나머지(커터·미기록)가 기타%
     var ball=pitches.filter(function(px){return px.result==='볼';}).length;
@@ -5145,6 +5158,12 @@ function _restorePitchersFromPayload(payloadPitchers){
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
+  /* 라인업 · 투수 · 타석을 먼저 복원해 검사 — 통과해야 AS 를 바꾼다 */
+  var homeLP=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
+  var awayLP=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
+  var pitchersLP=_restorePitchersFromPayload(payload.pitchers);
+  var abs=_restoreAbsFromPayload(payload.abs);
+  if(!_gameDataOk({abs:abs,home_lineup:homeLP,away_lineup:awayLP,pitchers:pitchersLP})){showToast('공유 데이터 형식이 올바르지 않습니다',false);return;}
   _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
   /* 팀명 · 점수 */
   AS.hs=payload.hs||0; AS.as=payload.as||0;
@@ -5153,15 +5172,15 @@ function loadSharedGame(){
   var scH=document.getElementById('scH'); if(scH)scH.textContent=AS.hs;
   var scA=document.getElementById('scA'); if(scA)scA.textContent=AS.as;
   /* 라인업 */
-  AS.home_lineup=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
-  AS.away_lineup=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
+  AS.home_lineup=homeLP;
+  AS.away_lineup=awayLP;
   /* 투수 */
-  AS.pitchers=_restorePitchersFromPayload(payload.pitchers);
+  AS.pitchers=pitchersLP;
   AS.currentPitcher=AS.pitchers.length?AS.pitchers[0]:null;
   AS.pitchLog=[];
   AS.pitchers.forEach(function(p){p.pitches.slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
   /* 타석 기록 */
-  AS.abs=_restoreAbsFromPayload(payload.abs);
+  AS.abs=abs;
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
   /* 상태 초기화 */
@@ -5186,6 +5205,7 @@ function saveSharedGameLocal(){
   var homeLP=(payload.hl||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   var awayLP=(payload.al||[]).map(function(p){return{id:p.id||p.n,name:p.n||'선수',num:p.no!=null?p.no:0,pos:'',bh:'R',isStarter:true};});
   var pitchersLP=_restorePitchersFromPayload(payload.pitchers);
+  if(!_gameDataOk({abs:abs,home_lineup:homeLP,away_lineup:awayLP,pitchers:pitchersLP})){showToast('공유 데이터 형식이 올바르지 않습니다',false);return;}
   var key='sl_'+Date.now();
   var d={
     key,hs:payload.hs||0,as:payload.as||0,
@@ -5217,7 +5237,7 @@ function openPlayerProfile(){
   var el=document.getElementById('playerProfileContent');
   if(!el)return;
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
-  var players={};
+  var players=Object.create(null);
   // current game
   AS.abs.forEach(function(a){
     var key=a.bname;
@@ -5830,7 +5850,7 @@ function _drawCard(){
 
 /* ── 개인 카드 대상 선수 목록 (이번 경기에 타석이 있는 선수만) ── */
 function _cardPlayers(){
-  var map={},order=[];
+  var map=Object.create(null),order=[];
   AS.abs.forEach(function(a){
     var k=String(a.bid);
     if(!map[k]){map[k]={id:a.bid,name:a.bname||'선수',num:a.bnum,team:a.team||'home',pa:0};order.push(k);}
@@ -6838,7 +6858,7 @@ function showGameSummary(){
   var slg=oab>0?tb/oab:0;
   var th=document.getElementById('tHome').value||'홈팀';
   var ta=document.getElementById('tAway').value||'원정팀';
-  var mvpAbs={};
+  var mvpAbs=Object.create(null);
   abs.forEach(function(a){if(!mvpAbs[a.bid])mvpAbs[a.bid]={name:a.bname,h:0,rbi:0};if(_HITS.includes(a.res))mvpAbs[a.bid].h++;mvpAbs[a.bid].rbi+=a.rbi;});
   var mvpEntry=Object.values(mvpAbs).sort(function(a,b){return(b.h*2+b.rbi)-(a.h*2+a.rbi);})[0];
   var mvpText=mvpEntry?mvpEntry.name+' ('+(mvpEntry.h)+'안타 '+mvpEntry.rbi+'타점)':'기록 없음';
@@ -7115,7 +7135,7 @@ function gfShowEndCard(){
   var mainDir=dabs.length?(pull>=ctr&&pull>=oppo?'당겨치기':ctr>=oppo?'센터':'밀어치기'):null;
 
   // MVP 계산
-  var mvpMap={};
+  var mvpMap=Object.create(null);
   abs.forEach(function(a){
     if(!mvpMap[a.bid])mvpMap[a.bid]={name:a.bname,h:0,rbi:0,hr:0};
     if(_HITS.includes(a.res))mvpMap[a.bid].h++;
@@ -7363,7 +7383,7 @@ function _pgBuild(){
   else if(kRate>=0.6&&k>=3)ins.push({cls:'weak',lbl:'⚠ WEAKNESS',val:'삼진률 '+Math.round(kRate*100)+'% — 컨택 비율을 높일 여지가 있습니다'});
 
   // MVP (안타×1 + 2루타×1 추가 + 3루타×2 추가 + 홈런×3 추가 + 타점×1)
-  var mvpMap={};
+  var mvpMap=Object.create(null);
   abs.forEach(function(a){
     if(!mvpMap[a.bid])mvpMap[a.bid]={name:a.bname,score:0,h:0,rbi:0,hr:0};
     var pts=(_BASE[a.res]||0)+(a.rbi||0);
@@ -7597,7 +7617,7 @@ function _computeMVP(abs){
   if(!abs||!abs.length)return null;
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
   var base={안타:1,내야안타:1,'2루타':2,'3루타':3,'홈런':4};
-  var pm={};
+  var pm=Object.create(null);
   abs.forEach(function(a){
     if(a.team!=='home')return;
     if(!pm[a.bid])pm[a.bid]={name:a.bname,num:a.bnum,h:0,ab:0,rbi:0,tb:0};
@@ -7681,7 +7701,7 @@ function renderTeamLeaderboard(sort){
   tdLoad();var team=tdGetActive();if(!team){el.innerHTML='';return;}
   var hits=['안타','내야안타','2루타','3루타','홈런'],noab=['볼넷','사구','희타','희비'];
   var base={안타:1,내야안타:1,'2루타':2,'3루타':3,'홈런':4};
-  var pm={};
+  var pm=Object.create(null);
   team.games.forEach(function(g){
     var raw=localStorage.getItem(g.key);if(!raw)return;
     var d;try{d=JSON.parse(raw);}catch(e){return;}

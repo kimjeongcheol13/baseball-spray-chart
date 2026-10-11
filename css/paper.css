@@ -1173,6 +1173,8 @@ body.sb #helpModeIndicator { background: var(--ink) !important; color: var(--pap
 body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3px solid var(--ink) !important; color: var(--ink); font-family: var(--f-body); }   /* body로 옮긴 뒤에도 #app-page 때와 같은 글꼴 */
 body.sb #helpModeTooltip .hmt-title { color: var(--ink) !important; font-family: var(--f-display); font-weight: 400; font-size: 16px; }
 body.sb #helpModeTooltip .hmt-close { min-width: 44px; min-height: 44px; color: var(--ink) !important; }
+/* 경기설정 탭 안내 모드: 입력칸을 눌러도 키보드 · 날짜창 대신 그 칸의 설명이 뜨도록 탭을 감싼 칸([data-help])으로 넘김 */
+body.help-mode #stNew :is(input, select) { pointer-events: none; }
 body.sb #helpModeTooltip .hmt-off { border: 1.5px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); }
 body.sb .scout-intro-sheet { border-radius: 0 !important; box-shadow: none !important; }
 

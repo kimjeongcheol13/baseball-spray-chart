@@ -17,7 +17,7 @@ import './features/record.js?v=5';
 import './features/settings.js?v=2';
 import './features/scorebook.js?v=12';
 import './features/dashboard.js?v=4';
-import './features/setup.js?v=2';
+import './features/setup.js?v=3';
 import './features/report.js?v=2';
 
 // ── Bottom Navigation ──

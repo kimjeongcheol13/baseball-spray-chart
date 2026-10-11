@@ -2788,7 +2788,7 @@ function chCount(type){
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
   else if(type==='o'){
-    if(_pitchOutsActive()){_syncOutsFromPitch();showToast('이 이닝은 투구 기록이 아웃을 세요 — 투수 탭에서 타석 결과를 기록하세요',false,2500);return;}   // 아웃 카운트는 하나 (두 곳에서 세면 이닝이 두 번 넘어간다)
+    if(_pitchOutsActive()){_syncOutsFromPitch();showToast('아웃은 투수 탭 기록대로 세요',false,2500);return;}   // 짧게: 알림은 한 줄(nowrap)이라 길면 폰 화면 밖으로 잘린다   // 아웃 카운트는 하나 (두 곳에서 세면 이닝이 두 번 넘어간다)
     if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;
   }
   renderCount();

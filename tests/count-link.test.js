@@ -185,6 +185,8 @@
     strikeout();
     eq(AS.abs.length, 1, '삼진 타석 자동 기록'); eq(AS.abs[0].count.o, 0, '그 타석은 0아웃에서'); eq(AS.outs, 1, 'O 점 = 투구 기록 1아웃');
     chCount('o'); eq(AS.outs, 1, 'O 버튼은 따로 세지 않음 (두 곳에서 세면 이닝이 두 번 넘어간다)');
+    var msg = (document.querySelector('.toast') || {}).textContent || ''; msg = msg.trim().split('\n')[0].trim();
+    ok(/투수 탭/.test(msg) && msg.length <= 20, '안내는 폰 한 줄에 들어갈 길이 (알림은 줄바꿈 없음): ' + msg + ' (' + msg.length + '자)');
     await T.sleep(750); pick('cl2'); strikeout();
     eq(AS.abs.length, 2, '두 번째 삼진'); eq(AS.abs[1].count.o, 1, '1아웃에서'); eq(AS.outs, 2, '2아웃');
     await T.sleep(750); pick('cl1'); strikeout();

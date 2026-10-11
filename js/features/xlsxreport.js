@@ -34,6 +34,14 @@ const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];
 const ZONES_13 = [...ZONES_9, ...ZONE_BALL];
 const PT_HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];   // 투구 결과 중 피안타 (투수 탭과 같은 기준)
 const PT_BALL = ['볼', '볼넷'];
+// 던지기 직전 아웃·주자 (core.js recordPitch 의 outs · runners — 경기 운영 모드에서만 저장, 아니면 null · 예전 기록엔 없음 → 빈 칸)
+const _ptOuts = p => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? p.outs : '');
+const _ptRunners = p => {
+  const r = p.runners;
+  if (!Array.isArray(r) || r.length !== 3) return '';
+  const on = [1, 2, 3].filter((_, i) => r[i]);
+  return !on.length ? '주자 없음' : on.length === 3 ? '만루' : on.join('·') + '루';
+};
 
 function _zoneBox(z) {
   const cw = (ZX2 - ZX1) / 3, ch = (ZY2 - ZY1) / 3;
@@ -912,15 +920,16 @@ export function exportPitcherXlsx(P, S, calc) {
   // ── 투구 기록 ──
   const rec = new Sheet('투구 기록');
   rec.print = 'data'; rec.freeze = 1;
-  const H = ['순번', '경기', '이닝', '타자', '구종', '코스', '결과', '위치 기록', '위치 X', '위치 Y'];
-  [6, 26, 6, 10, 9, 10, 9, 10, 8, 8].forEach((w, i) => rec.width(i, w));
+  const H = ['순번', '경기', '이닝', '아웃', '주자', '타자', '구종', '코스', '결과', '위치 기록', '위치 X', '위치 Y'];
+  [6, 26, 6, 6, 9, 10, 9, 10, 9, 10, 8, 8].forEach((w, i) => rec.width(i, w));
   rec.line(0, 0, H, 'th');
   plist.forEach((o, i) => {
     const { p } = o;
-    rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', p.batter || '', p.pt || '', p.zone || '', p.result || '',
+    rec.line(i + 1, 0, [o.seq, o.app.label, p.inning || '', _ptOuts(p), _ptRunners(p), p.batter || '', p.pt || '', p.zone || '', p.result || '',
       o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : ''],
-    ['td', 'tdL', 'td', 'td', 'td', 'td', 'tdB', 'td', 'tdC', 'tdC']);
+    ['td', 'tdL', 'td', 'td', 'td', 'td', 'td', 'td', 'tdB', 'td', 'tdC', 'tdC']);
   });
+  const noSit = plist.filter(o => _ptOuts(o.p) === '').length;
   let hc = H.length;
   const ser = pts.map((pt, k) => {
     const pick = o => (o.pos && ptOf(o) === pt ? o.pos : null);
@@ -969,9 +978,10 @@ export function exportPitcherXlsx(P, S, calc) {
   const notes = [
     '스트라이크% = 볼·볼넷을 뺀 모든 공 (파울·인플레이 포함) — SprayLab 투수 탭과 같은 기준.',
     '존 안% = 코스가 기록된 공 중 스트라이크존 9칸에 들어간 비율.',
-    '「투구 기록」 시트에서 필터(▼)를 걸면 「구종별 투구위치」 차트도 같이 바뀌어요. 예: 결과 = 안타, 이닝 = 5.',
+    '「투구 기록」 시트에서 필터(▼)를 걸면 「구종별 투구위치」 차트도 같이 바뀌어요. 예: 결과 = 안타, 이닝 = 5, 주자 = 1·3루.',
   ];
   if (S.n < 50) notes.unshift(`표본이 적어요 (${S.n}구) — 수치는 참고용으로 봐 주세요.`);
+  if (noSit) notes.push(`「투구 기록」 아웃·주자 빈 칸 ${noSit}구 — 아웃·주자(던지기 직전)는 경기 운영 모드에서 기록한 공만 저장돼요. 일반 모드로 기록했거나 2026년 10월 11일 업데이트 전에 기록한 공은 추정하지 않고 비워 뒀어요.`);
   _bullets(rep, r, 0, notes);
 
   // ── 구종별 투구위치 ──

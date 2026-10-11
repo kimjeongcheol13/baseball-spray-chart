@@ -148,4 +148,25 @@
     recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     eq(P()[3].result, '볼넷', '투수 쪽은 볼넷'); eq(AS.abs.length, 0, '타석 기록 없음'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화'); eq(AS.currentPitches.length, 0, '이번 타석 투구 비움');
   });
+
+  // 투구의 outs · runners: 경기 운영 모드일 때만 '던지기 직전' 값을 저장하고, 아니면 null
+  run('투수 탭: 경기 운영 모드면 투구에 던지기 직전 아웃·주자를 저장, 아니면 null', true, function () {
+    var g0 = { active: GF.active, inning: GF.inning, half: GF.half, outs: GF.outs, batterIdx: GF.batterIdx, bases: GF.bases };
+    try {
+      recordPitch('볼');
+      eq([P()[0].outs, P()[0].runners], [null, null], '일반 모드는 null');
+      GF.active = true; GF.outs = 1; GF.bases = [false, true, false]; GF.batterIdx = 0;
+      recordPitch('스트라이크');
+      eq([P()[1].outs, P()[1].runners], [1, [false, true, false]], '운영 모드 값');
+      GF.bases[0] = true;
+      eq(P()[1].runners, [false, true, false], '저장값은 복사본 (나중에 주자가 바뀌어도 그대로)');
+      GF.bases[0] = false;
+      // 기록 탭에서 끝난 타석(볼넷 → 1·2루)도 마지막 공에는 타석 전 상황이 남는다
+      recOther('볼넷');
+      eq(P()[2].result, '볼넷', '마지막 공'); eq([P()[2].outs, P()[2].runners], [1, [false, true, false]], '타석 전 아웃·주자');
+      eq(GF.bases, [true, true, false], '운영 모드 진루는 그대로');
+    } finally {
+      Object.keys(g0).forEach(function (k) { GF[k] = g0[k]; });
+    }
+  });
 })();

@@ -5490,10 +5490,18 @@ function selPitcherPt(el,pt){
   AS.pitcherPt=pt;
 }
 
+// 투구 기록 한 공(AS.currentPitcher.pitches[]): { id, inning, zone, zoneX, zoneY, pt, result, batter, ts, outs, runners }
+//  · outs    : 던지기 직전 아웃카운트 0~2 — 경기 운영 모드일 때만, 아니면 null (이 필드가 없는 예전 기록도 '기록 없음')
+//  · runners : 던지기 직전 주자 [1루,2루,3루] true/false — 경기 운영 모드일 때만, 아니면 null
+function _pitchSit(){
+  var gf=typeof GF!=='undefined'&&GF&&GF.active;
+  return{outs:gf?(GF.outs||0):null,runners:gf&&GF.bases?GF.bases.map(Boolean):null};
+}
 function recordPitch(result){
   if(!AS.currentPitcher){showToast('투수를 먼저 선택하세요',false,false);return;}
   result=_pitchLiveResult(result);   // 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진 (기록 탭 볼카운트 기준)
   var hitResults=['안타','2루타','3루타','홈런'];
+  var sit=_pitchSit();
   var entry={
     id:Date.now(),
     inning:document.getElementById('innSel')?document.getElementById('innSel').value:null,
@@ -5503,7 +5511,9 @@ function recordPitch(result){
     pt:AS.pitcherPt,
     result:result,
     batter:AS.batter?AS.batter.name:null,
-    ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+    ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    outs:sit.outs,
+    runners:sit.runners
   };
   if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];
   AS.currentPitcher._batterLog.push(entry);
@@ -5571,7 +5581,8 @@ function _recordToPitch(ab){
   if(!last||!last.result||(last.result in _PITCH_END))return;   // 투수 탭에서 온 공이 아니거나 이미 끝난 타석
   var pr=_RES_TO_PITCH[ab.res];
   if(!pr)return;
-  var entry={id:Date.now(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||''};
+  var sit=_pitchSit();   // gfAfterRecord 보다 먼저 불리므로 아직 이 타석 전 상황
+  var entry={id:Date.now(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||'',outs:sit.outs,runners:sit.runners};
   if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];
   AS.currentPitcher._batterLog.push(entry);
   AS.currentPitcher.pitches.push(entry);

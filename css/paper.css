@@ -1170,9 +1170,14 @@ body.sb #cardCtxSheet { background: var(--paper-2) !important; border: var(--car
 body.sb #cardCtxSheet .ctx-btn { min-height: 44px; border-radius: 0; font-family: var(--f-body); font-weight: 700; }
 body.sb #cardCtxSheet .ctx-btn:hover { background: var(--highlight-soft); }
 body.sb #helpModeIndicator { background: var(--ink) !important; color: var(--paper) !important; border-radius: 0 !important; box-shadow: none !important; font-family: var(--f-body); font-size: 12px; }
-body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3px solid var(--ink) !important; color: var(--ink); }
+body.sb #helpModeTooltip { background: var(--paper-2) !important; border-top: 3px solid var(--ink) !important; color: var(--ink); font-family: var(--f-body); }   /* body로 옮긴 뒤에도 #app-page 때와 같은 글꼴 */
 body.sb #helpModeTooltip .hmt-title { color: var(--ink) !important; font-family: var(--f-display); font-weight: 400; font-size: 16px; }
 body.sb #helpModeTooltip .hmt-close { min-width: 44px; min-height: 44px; color: var(--ink) !important; }
+/* 경기설정 · 분석 탭 안내 모드: 입력칸 · 선택칸을 눌러도 키보드 · 날짜창 · 목록 대신 그 칸의 설명이 뜨도록 감싼 칸([data-help])으로 넘김 */
+body.help-mode :is(#stNew, #analysisView) :is(input, select) { pointer-events: none; }
+/* 분석 서브탭: 안내 모드에서도 바뀌면서 설명이 뜬다(anahelp.js) — 다른 설명 대상과 같은 점선 표시 */
+body.help-mode #anaSubnav .ana-sub { outline: 2px dashed rgba(246, 194, 62, .45); outline-offset: -4px; cursor: help; }
+body.sb #helpModeTooltip .hmt-off { border: 1.5px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); }
 body.sb .scout-intro-sheet { border-radius: 0 !important; box-shadow: none !important; }
 
 /* ── 첫 화면 가림막 (index.html 이 모바일·공유 링크에서 html.sb-boot 를 붙이고, scorebook.js 가 테마를 다 입힌 뒤 걷는다) ──

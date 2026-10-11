@@ -1,7 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
-import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=6';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=13';
+import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=7';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=17';
 import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=3';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
@@ -53,7 +53,7 @@ export function setPitcherView(k, v) {
 // 투수별 등판 목록: [{ name, num, role, apps: [{ label, d, current, pitches, all }] }] — all = 그 경기 모든 투수의 투구 목록
 function _pitchers() {
   const AS = window.AS || {};
-  const map = {};
+  const map = Object.create(null);
   const add = (p, g, pitches, all) => {
     if (!p || !p.name || !pitches.length) return;
     const P = map[p.name] || (map[p.name] = { name: p.name, num: p.num || '', role: p.role || null, apps: [] });
@@ -201,7 +201,7 @@ function _hero(P, S) {
 
 // ── 구종 구성 ────────────────────────────────────────────────
 function _byPitch(S) {
-  const by = {};
+  const by = Object.create(null);
   S.pitches.forEach(p => {
     const k = p.pt || '미기록';
     const o = by[k] || (by[k] = { pt: k, n: 0, s: 0, h: 0, k: 0, bip: 0, bb: 0 });
@@ -579,7 +579,7 @@ function _bucketCard(P) {
 
 // ── 상대 타자 ────────────────────────────────────────────────
 function _battersCard(S) {
-  const by = {};
+  const by = Object.create(null);
   S.done.forEach(x => {
     const k = x.batter || '타자 미기록';
     (by[k] = by[k] || []).push(x);

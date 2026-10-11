@@ -1,8 +1,8 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
 import { pitchInfo } from './pitchcalc.js?v=3';
-import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=6';
-import { buildColumn, columnText, renderColumnFigure } from './column.js?v=3';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=7';
+import { buildColumn, columnText, renderColumnFigure } from './column.js?v=4';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -192,7 +192,7 @@ function _analyze(P, pool) {
   const zoned = zones.reduce((n, z) => n + z.pa, 0);
 
   // 구종 (결과가 나온 공의 구종)
-  const byPt = {};
+  const byPt = Object.create(null);
   abs.forEach(a => { if (a.pt) (byPt[a.pt] = byPt[a.pt] || []).push(a); });
   const pitches = Object.keys(byPt).map(pt => ({ pt, ...calcStats(byPt[pt]) })).sort((x, y) => y.pa - x.pa);
 
@@ -509,7 +509,7 @@ function _recentCard(P) {
 function _pitchLogCard(P) {
   const log = ((window.AS && window.AS.pitchLog) || []).filter(p => p.batter === P.name);
   if (!log.length) return '';
-  const ptCnt = {};
+  const ptCnt = Object.create(null);
   log.forEach(p => { if (p.pt) ptCnt[p.pt] = (ptCnt[p.pt] || 0) + 1; });
   const mix = Object.entries(ptCnt).sort((a, b) => b[1] - a[1]);
   const top = mix.length ? mix[0][1] : 1;

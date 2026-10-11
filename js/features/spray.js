@@ -1,6 +1,6 @@
 // 스프레이 차트 — 타구 위치를 필드 위에: 대상(팀/선수) · 범위(이번 경기/시즌) · 결과 필터 · 상세 필터(filter.js) · 점/구역 보기
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, emptyState } from './batdata.js?v=6';
+import { buildData, calcStats, f3, pct, emptyState } from './batdata.js?v=7';
 
 let _scope = 'game';     // game | season
 let _who = 'all';        // all | home | away | p:<이름>
@@ -61,7 +61,7 @@ function _source() {
 }
 
 function _players(all) {
-  const m = {};
+  const m = Object.create(null);
   all.forEach(a => { if (a.bname) m[a.bname] = (m[a.bname] || 0) + 1; });
   return Object.entries(m).sort((a, b) => b[1] - a[1]).map(([n, c]) => ({ n, c }));
 }

@@ -117,4 +117,36 @@
       $('app-page').style.display = S.ap;
     }
   });
+
+  // 투수 엑셀 「투구 기록」 시트: 이닝 뒤에 아웃 · 주자 열, 값이 없는 공은 빈 칸 + 리포트에 빈 칸 수 안내
+  // (xlsxreport 는 무압축 ZIP 이라 내려받을 Blob 의 글자를 그대로 읽어 확인한다)
+  test('투수 엑셀: 투구 기록 시트에 아웃 · 주자 열 (경기 운영 모드 기록만, 나머지는 빈 칸)', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher }, cou = URL.createObjectURL, clk = HTMLAnchorElement.prototype.click, blob = null;
+    var sit = function (p, o, r) { p.outs = o; p.runners = r; return p; };
+    try {
+      AS.pitchers = [{ id: 'pk3', name: '엑셀투수', num: '7', role: null, pitches: [
+        sit(pz('직구', '볼', 0.30, 0.30), 0, [false, false, false]),
+        sit(pz('커브', '스트라이크', 0.40, 0.40), 2, [true, false, true]),
+        pz('직구', '볼', 0.50, 0.50)   // 예전 기록
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      setPitcherView('scope', 'game'); setPitcherView('sel', '엑셀투수');
+      URL.createObjectURL = function (b) { blob = b; return 'blob:sl-test'; };
+      HTMLAnchorElement.prototype.click = function () {};
+      exportPitcherExcel();
+      ok(blob, '엑셀 Blob');
+      var text = await blob.text();
+      var cells = []; text.replace(/<t xml:space="preserve">([^<]*)<\/t>/g, function (_, t) { cells.push(t); });
+      var h = cells.indexOf('순번');
+      while (h >= 0 && cells[h + 1] !== '경기') h = cells.indexOf('순번', h + 1);
+      eq(cells.slice(h, h + 9), ['순번', '경기', '이닝', '아웃', '주자', '타자', '구종', '코스', '결과'], '투구 기록 머리글');
+      ok(cells.indexOf('1·3루') >= 0 && cells.indexOf('주자 없음') >= 0, '주자 값');
+      ok(/<v>2<\/v><\/c><c [^>]*t="inlineStr"><is><t xml:space="preserve">1·3루<\/t>/.test(text), '2아웃 · 1·3루가 같은 줄');
+      ok(cells.some(function (t) { return t.indexOf('아웃·주자 빈 칸 1구') >= 0; }), '리포트 안내: 빈 칸 1구');
+    } finally {
+      URL.createObjectURL = cou; HTMLAnchorElement.prototype.click = clk;
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+    }
+  });
 })();

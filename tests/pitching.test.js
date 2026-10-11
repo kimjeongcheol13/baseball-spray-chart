@@ -9,7 +9,12 @@
   var PC = function () { return window.PitchCalc; };
 
   // ── 공통 ──
+  // 투수 탭에서 볼넷 · 삼진 등으로 타석이 끝나면 기록 탭 타석도 생긴다(main #102 흡수) — 이 파일에서는 그 타석을 매번 비우고,
+  // 실시간 클라우드 동기화(로그인 전이면 '나중에 올림' 표시가 남아 다음 파일의 로그인 때 올라간다)는 끈다. 마지막 정리에서 되돌린다
+  var _keep = null;
   function reset() {
+    if (!_keep) { _keep = { abs: AS.abs, sync: window.cloudAutoSyncRecord }; window.cloudAutoSyncRecord = function () {}; }
+    AS.abs = []; AS.currentPitches = [];
     AS.pitchers = []; AS.currentPitcher = null; AS.pitchLog = []; AS.batter = null; AS.pitchNewPA = false;
     window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
     AS.pitcherZone = null; AS.pitcherZoneX = null; AS.pitcherZoneY = null; AS.pitcherPt = null;
@@ -546,5 +551,8 @@
     eq(back[0].hand, 'L', '투수 손');
   });
 
-  test('(정리) 이 파일이 만든 상태를 비운다', function () { reset(); setPitcherView('scope', 'season'); eq(AS.pitchers.length, 0, '투수'); });
+  test('(정리) 이 파일이 만든 상태를 비운다', function () {
+    reset(); setPitcherView('scope', 'season'); eq(AS.pitchers.length, 0, '투수');
+    AS.abs = _keep.abs; window.cloudAutoSyncRecord = _keep.sync; AS.balls = 0; AS.strikes = 0; renderCount();
+  });
 })();

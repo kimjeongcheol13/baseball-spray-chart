@@ -16,11 +16,12 @@ import './features/spray.js?v=3';
 import './features/shell.js?v=13';
 import './features/record.js?v=6';
 import './features/settings.js?v=3';
-import './features/scorebook.js?v=11';
+import './features/scorebook.js?v=12';
 import './features/dashboard.js?v=5';
-import './features/setup.js?v=3';
+import './features/setup.js?v=4';
 import './features/report.js?v=3';
 
+import './features/anahelp.js?v=1';
 // ── Bottom Navigation ──
 function initSavantNav() {
   const nav = document.getElementById('savantNav');

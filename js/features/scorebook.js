@@ -427,11 +427,11 @@ function _sideHtml() {
     <section class="sb-card sb-count" aria-label="볼카운트">
       <div class="sb-card-hd"><h2>COUNT</h2><button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
       <div class="sb-cnt">
-        <button type="button" class="sb-cg b" onclick="chCount('b')" aria-label="볼 ${b}, 누르면 +1"><span>B</span>${dots(b, 3)}</button>
-        <button type="button" class="sb-cg s" onclick="chCount('s')" aria-label="스트라이크 ${s}, 누르면 +1"><span>S</span>${dots(s, 2)}</button>
+        <button type="button" class="sb-cg b" onclick="chCount('b')" title="볼 +1 · 4개째에 볼넷 기록" aria-label="볼 ${b}, 누르면 ${b >= 3 ? '볼넷 기록' : '+1'}"><span>B</span>${dots(b, 3)}</button>
+        <button type="button" class="sb-cg s" onclick="chCount('s')" title="스트라이크 +1 · 3개째에 삼진 기록" aria-label="스트라이크 ${s}, 누르면 ${s >= 2 ? '삼진 기록' : '+1'}"><span>S</span>${dots(s, 2)}</button>
         ${gf
           ? `<span class="sb-cg o ro" role="img" aria-label="아웃 ${outs} (경기 운영 모드가 자동으로 셈)"><span>O</span>${dots(outs, 2)}</span>`
-          : `<button type="button" class="sb-cg o" onclick="chCount('o')" aria-label="아웃 ${outs}, 누르면 +1"><span>O</span>${dots(outs, 2)}</button>`}
+          : `<button type="button" class="sb-cg o" onclick="chCount('o')" title="아웃 +1 · 3개째에 다음 이닝" aria-label="아웃 ${outs}, 누르면 ${outs >= 2 ? '다음 이닝' : '+1'}"><span>O</span>${dots(outs, 2)}</button>`}
       </div>
     </section>
     <section class="sb-stamps" role="group" aria-label="기록 도장 — 타구 없는 결과">

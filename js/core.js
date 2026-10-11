@@ -2519,8 +2519,9 @@ function deleteGame(key){
   saves=saves.filter(function(s){return s.key!==key;});
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   localStorage.removeItem(key);
+  localStorage.removeItem('sl_auto_'+key.replace(/^sl_(?:auto_)?/,''));   // 이 경기를 열어 둔 동안 쌓인 로컬 자동저장 스냅샷(restoreGame 의 AS.curGame 규칙)도 바로 지운다
   if(window.cloudDelete)cloudDelete(key);
-  if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다
+  if(window.cloudDeleteGame)cloudDeleteGame(key);   // 로그인 계정 클라우드(user_games)에서도 지운다 — 안 지우면 다음 시작 동기화가 되살린다. 스냅샷 행(sl_auto_<뒷부분>)도 함께
   openLoad();
   showToast('삭제되었습니다',false);
 }
@@ -5527,6 +5528,7 @@ function _pitchBatterCtx(){return AS.batter?{id:AS.batter.id,name:AS.batter.name
 function _pitchChanged(){   // 투구가 늘거나 줄거나 바뀐 뒤 공통 갱신
   renderPitchLog();   // 안에서 카운트 줄도 다시 그린다
   renderPitcherStats();
+  if(typeof renderPitcherRoster==='function')renderPitcherRoster();   // 투수 버튼의 'N구' (main #104)
   scheduleAutoSave();
   _gameSaved=false;   // 투구만 기록해도 '저장 안 된 기록'으로 (새 경기 저장 확인·창 닫기 경고)
 }
@@ -5619,6 +5621,8 @@ function _pitchToRecord(e){
 // 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 결과 팝업)
 function _countOpenField(res,msg){
   if(window.shellNav)window.shellNav('record');
+  var w=document.getElementById('cwrap');
+  if(w&&w.scrollIntoView&&window.innerWidth<=720)requestAnimationFrame(function(){w.scrollIntoView({block:'nearest'});});   // 모바일: 필드가 화면 밖이면 보이게 (main #104)
   if(res){AS.pendingQuickRes=res;_showFieldTapPrompt(res);}
   showToast(msg,false,2500);
 }
@@ -5642,7 +5646,12 @@ function undoPitch(){
   if(_aa&&_aa.pitchId===e.id){
     var _ab=AS.abs.filter(function(a){return a.id===_aa.abId;})[0];
     AS._pitchAutoAb=null;
-    if(_ab){AS.abs=AS.abs.filter(function(a){return a!==_ab;});AS.currentPitches=(_ab.pitches||[]).slice();if(typeof updateAll==='function')updateAll();}
+    if(_ab){
+      var _cps=(_ab.pitches||[]).slice();
+      if(AS.abs[AS.abs.length-1]===_ab)window.undoLast();   // 기록 탭 지우개와 같은 길 — 그 타석의 카운트 · 그 타자로 돌아간다
+      else{AS.abs=AS.abs.filter(function(a){return a!==_ab;});if(typeof updateAll==='function')updateAll();}
+      AS.currentPitches=_cps;
+    }
   }
   AS.currentPitches=AS.currentPitches.filter(function(p){return p.pitchId!==e.id;});
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();

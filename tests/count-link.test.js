@@ -1,7 +1,7 @@
 // 볼카운트 자동 기록 · 투수 탭 ↔ 기록 탭 연동 검증 (core.js chCount / recordPitch / _pitchToRecord / _recordToPitch)
 //  · 기록 탭 COUNT: 4볼 → 볼넷, 3스트라이크 → 삼진이 타석 기록(AS.abs)에 들어가고 카운트는 0-0 · 3아웃 → 다음 이닝
 //  · 투수 탭(recordPitch): 공 하나하나가 볼카운트·이번 타석 투구(currentPitches)로 이어지고, 4번째 볼/3번째 스트라이크는 볼넷/삼진으로 양쪽에 기록
-//  · 기록 탭에서 끝난 타석: 투수 탭에 그 타석의 공이 있을 때만 마지막 공을 보태 투수 쪽 타석을 닫는다
+//  · 기록 탭에서 끝난 타석: 투수 탭에 같은 타자의 열린 타석이 있을 때만 마지막으로 기록된 공에 결과를 달아 닫는다 (공을 보태지 않는다)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
 
@@ -96,6 +96,16 @@
     eq(P().length, 4, '투수 쪽 4구'); eq(AS.abs.length, 0, '타석은 아직');
   });
 
+  run('투수 탭: 투수 버튼의 투구 수가 갱신되고, 모바일 투구 시트에 구종 없는 공이 null 로 보이지 않는다', true, function () {
+    AS.pitcherPt = null;
+    recordPitch('볼'); recordPitch('스트라이크');
+    ok(/\(2구\)/.test($('pitcherRoster').textContent), '투수 버튼 2구 — 실제 ' + $('pitcherRoster').textContent.trim());
+    _renderMobPitchLog();
+    var t = $('mobPitchLogList').textContent;
+    ok(t.indexOf('null') < 0, '모바일 투구 시트에 null — ' + t);
+    ok(t.indexOf('구종 —') >= 0 && t.indexOf('볼') >= 0 && t.indexOf('스트라이크') >= 0, '구종 자리표시 · 결과 표시 — ' + t);
+  });
+
   run('투수 탭: 4번째 볼은 볼넷으로 저장되고 타석 기록에도 볼넷이 들어간다 (중복 없음)', true, function () {
     recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     eq(P().length, 4, '투수 쪽 4구 (되돌아온 연동으로 늘지 않음)'); eq(P()[3].result, '볼넷', '4번째 공 = 볼넷'); eq(P()[3].batter, '첫타자', '상대 타자');
@@ -120,12 +130,38 @@
     eq(P().length, 2, '투수 쪽 중복 없음'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화');
   });
 
-  run('기록 탭에서 타석이 끝나면 투수 탭의 열린 타석을 마지막 공으로 닫는다', true, function () {
+  run('기록 탭에서 타석이 끝나면 투수 탭의 열린 타석을 마지막으로 기록된 공으로 닫는다 (공을 지어내지 않는다)', true, function () {
     recordPitch('볼'); recordPitch('스트라이크');
     recOther('병살');
-    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '병살', '병살');
-    eq(P().length, 3, '투수 쪽에 마지막 공 추가'); eq(P()[2].result, '병살', '결과'); eq(P()[2].batter, '첫타자', '타자'); eq(P()[2].pt, null, '구종은 모름');
-    eq(AS.pitchLog[0].result, '병살', '투구 로그 맨 앞');
+    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '병살', '병살'); eq(AS.abs[0].count, { b: 1, s: 1, o: 0 }, '기록 시점 카운트 = 투구 기록의 카운트');
+    eq(P().length, 2, '투수 쪽 공 수 그대로'); eq(P()[1].end, '병살', '마지막 공에 타석 결과'); eq(P()[1].result, '병살', '옛 클라이언트용 결과'); eq(P()[1].pt, '직구', '그 공의 구종 그대로');
+    eq(PitchCalc.openPA(P()), null, '투수 쪽 타석 닫힘'); eq(AS.pitchLog[0], P()[1], '투구 로그 맨 앞 = 그 공');
+  });
+
+  run('타자를 모르는 투수 탭 타석은 기록 탭 타석이 끝나도 닫지 않는다 (누구 타석인지 모르면 건드리지 않는다)', true, function () {
+    AS.batter = null; renderLP();
+    recordPitch('볼');
+    selBatter('cl1'); recOther('삼진');
+    eq(AS.abs.length, 1, '타석 기록'); eq(P().length, 1, '투수 쪽 1구'); eq(P()[0].end == null, true, '결과 없음');
+    ok(PitchCalc.openPA(P()) != null, '투수 쪽 타석은 열린 채');
+  });
+
+  run('투수 탭: 볼넷을 만든 공을 되돌리면 자동으로 만든 타석도 지워지고 그 타자 · 3볼로 돌아온다', true, async function () {
+    recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
+    eq(AS.abs.length, 1, '볼넷 기록'); eq(AS.batter && AS.batter.id, 'cl2', '다음 타자');
+    undoPitch();
+    eq(AS.abs.length, 0, '자동 타석 지움'); eq(P().length, 3, '투수 쪽 3구'); eq([AS.balls, AS.strikes], [3, 0], '3-0');
+    eq(AS.currentPitches.length, 3, '이번 타석 투구 3구'); eq(AS.batter && AS.batter.id, 'cl1', '그 타자로 복귀');
+    await T.sleep(750);   // 연타 방지 가드(0.7초)
+    recordPitch('볼');
+    eq(AS.abs.length, 1, '다시 볼넷'); eq(AS.abs[0].bname, '첫타자', '같은 타자'); eq(AS.abs[0].pitches.length, 4, '4구 첨부');
+  });
+
+  run('투수 탭: 투구 기록의 카운트가 기록 탭 볼카운트 (헛갈리지 않게 하나)', true, function () {
+    recordPitch('볼'); recordPitch('볼');
+    eq([AS.balls, AS.strikes], [2, 0], '2-0');
+    undoPitch();
+    eq([AS.balls, AS.strikes], [1, 0], '되돌리면 1-0'); eq(AS.currentPitches.length, 1, '이번 타석 투구 1구');
   });
 
   run('투수 탭을 안 쓴 타석에는 투구를 지어내지 않는다', true, function () {

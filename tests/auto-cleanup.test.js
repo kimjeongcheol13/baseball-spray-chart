@@ -200,14 +200,18 @@
   });
 
   // ── 3. 삭제가 클라우드에도 반영 ──
-  test('삭제: 목록에서 지우면 user_games 에서도 지운다 → 다음 동기화에 되살아나지 않는다', async function () {
+  var K1A = 'sl_auto_' + K1.slice(3);   // K1 을 열어 둔 동안 cloudAutoSyncRecord 가 올린 실시간 스냅샷 행(restoreGame: AS.curGame = 키 뒷부분)
+  test('삭제: 목록에서 지우면 user_games 에서도 지운다(열어 둔 동안 쌓인 스냅샷 행 sl_auto_<뒷부분>까지) → 다음 동기화에 되살아나지 않는다', async function () {
     await boot();
     reset([{ key: K1, data: game(1, { ts: T0 }) }]); localStorage.setItem(FIXED, DONE);
-    srv.user_games = [row(K1, game(1, { ts: T0 }))];
+    localStorage.setItem(K1A, JSON.stringify(game(1, { ts: T0 })));
+    srv.user_games = [row(K1, game(1, { ts: T0 })), row(K1A, game(1, { ts: T0 }))];
     await runLogin();
     var c0 = window.confirm; window.confirm = function () { return true; };
     try { deleteGame(K1); await quiet(); } finally { window.confirm = c0; }
     eq(srvProper(), [], '서버에서 삭제');
+    ok(srvKeys().indexOf(K1A) < 0, '서버의 스냅샷 행(sl_auto_<뒷부분>)도 삭제: ' + JSON.stringify(srvKeys()));
+    eq(ls(K1A), null, '로컬 스냅샷도 삭제');
     eq(ls(DEL), null, '삭제 대기 목록 비움');
     var s = await runLogin();
     ok(!s.timedOut, '동기화가 끝나지 않음');
@@ -217,19 +221,21 @@
   test('삭제: 오프라인이면 대기 목록에 남겼다가 온라인이 되면 지운다 · 그 사이 내려받지 않는다', async function () {
     await boot();
     reset([{ key: K1, data: game(1, { ts: T0 }) }]); localStorage.setItem(FIXED, DONE);
-    srv.user_games = [row(K1, game(1, { ts: T0 }))];
+    srv.user_games = [row(K1, game(1, { ts: T0 })), row(K1A, game(1, { ts: T0 }))];
     await runLogin();
     var c0 = window.confirm; window.confirm = function () { return true; };
     try {
       window.dispatchEvent(new Event('offline'));
       deleteGame(K1); await sleep(300);
       ok((ls(DEL) || {})[K1], '오프라인 삭제 → 대기 목록에 기록');
+      ok((ls(DEL) || {})[K1A], '스냅샷 키도 대기 목록에 기록');
       eq(srvProper(), [K1], '오프라인이라 서버는 아직 그대로');
-      window.dispatchEvent(new Event('online'));
-      var s = await quiet();
-      ok(!s.timedOut, '동기화가 끝나지 않음');
-    } finally { window.confirm = c0; }
+      ok(srvKeys().indexOf(K1A) >= 0, '스냅샷 행도 아직 그대로');
+    } finally { window.confirm = c0; window.dispatchEvent(new Event('online')); }   // 단언이 실패해도 온라인으로 되돌린다 — 안 그러면 뒤의 테스트가 전부 오프라인으로 깨진다
+    var s = await quiet();
+    ok(!s.timedOut, '동기화가 끝나지 않음');
     eq(srvProper(), [], '온라인 복귀 뒤 서버에서 삭제');
+    ok(srvKeys().indexOf(K1A) < 0, '온라인 복귀 뒤 스냅샷 행도 삭제: ' + JSON.stringify(srvKeys()));
     eq(ls(DEL), null, '대기 목록 비움');
     eq(keys(), [], '지운 경기가 되살아나지 않음');
   });

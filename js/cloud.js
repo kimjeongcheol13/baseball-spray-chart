@@ -730,14 +730,18 @@
     }, 3000);
   };
 
-  /* deleteGame() → cloudDeleteGame(key): 로그인 계정 클라우드(user_games)에서도 지운다. 못 지우면 대기 목록에 남겨 시작 동기화가 처리한다 */
+  /* deleteGame() → cloudDeleteGame(key): 로그인 계정 클라우드(user_games)에서도 지운다. 못 지우면 대기 목록에 남겨 시작 동기화가 처리한다.
+     그 경기를 열어 둔 동안 cloudAutoSyncRecord 가 올린 실시간 스냅샷 행(sl_auto_<뒷부분>, core.js restoreGame 의 AS.curGame 규칙)도 함께 지운다 —
+     목록에는 안 보이지만 서버에 남아 쌓였다. 지운 경기가 아직 화면에 열려 있으면 다음 타석 기록 때 같은 키가 다시 생기는데 이는 정상이다 */
   window.cloudDeleteGame = function (key) {
     if (typeof key !== 'string' || !key) return;
-    _markDel([key]);
+    var keys = [key, AUTO + key.replace(/^sl_(?:auto_)?/, '')];
+    if (keys[1] === key) keys.pop();
+    _markDel(keys);
     if (!_online) { _pendSync = true; return; }
     _ensureAuth().then(function (user) {
       if (!user) return;   // 로그인 전: 서버에 없다(로그인하면 시작 동기화가 대기 목록을 처리한다)
-      return _deleteRows(_client(), user, [key]);
+      return _deleteRows(_client(), user, keys);
     }).catch(function (e) { console.warn('[Cloud] delete:', e && e.message); });
   };
 

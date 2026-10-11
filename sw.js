@@ -37,11 +37,11 @@ self.addEventListener('install', function(e) {
 });
 
 self.addEventListener('activate', function(e) {
-  // 구버전 캐시 삭제, 현재 캐시 유지
+  // 구버전 캐시 삭제, 현재 캐시 유지 — 이 앱이 만든 캐시(spraylab-*)만 지운다 (같은 출처의 다른 캐시는 건드리지 않음)
   e.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(
-        keys.filter(function(k) { return k !== CACHE_NAME; })
+        keys.filter(function(k) { return k.startsWith('spraylab-') && k !== CACHE_NAME; })
             .map(function(k) { return caches.delete(k); })
       );
     }).then(function() { return self.clients.claim(); })

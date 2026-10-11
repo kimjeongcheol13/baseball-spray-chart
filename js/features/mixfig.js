@@ -1,7 +1,7 @@
 // 타석 결과 구성 그림 (비교 · 프로필 공용) — 줄마다 100% 누적 막대 + 정확한 비율 표(표 머리 = 색 범례)
 // 색: 안타 계열 = 앰버 단계(진할수록 장타) · 볼넷·사구 = 틸 · 삼진/범타 = 무채색 → css/analysis.css --mx0~5
 import { esc as _esc } from '../constants.js';
-import { pct } from './batdata.js?v=5';
+import { pct } from './batdata.js?v=6';
 
 // mix: [{ k, label }] 6칸 — 단타 · 2·3루타 · 홈런 · 볼넷·사구 · 삼진 · 범타 순 (색 순서와 같아야 함)
 // rows: [{ name, st, mark?: 이름 앞 표시(HTML, 있으면 표에는 이름 대신 이것만), tname?: 표에 쓸 짧은 이름, ref?: 기준 줄(얇은 막대), cnt?: { [k]: 개수 } }]

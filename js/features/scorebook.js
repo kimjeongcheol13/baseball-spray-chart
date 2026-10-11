@@ -11,13 +11,13 @@ import { HITS, esc } from '../constants.js';
 const $ = id => document.getElementById(id);
 
 // ── 결과 → 약어 · 기호 ───────────────────────────────────────
-const ABBR = {
+const ABBR = { __proto__: null,
   '안타': '1B', '내야안타': 'IH', '2루타': '2B', '3루타': '3B', '홈런': 'HR',
   '땅볼 아웃': 'G', '플라이 아웃': 'F', '삼진': 'K', '볼넷': 'BB', '사구': 'HBP',
   '희타': 'SH', '희비': 'SF', '병살': 'GDP',
 };
-const KIND = { '안타': 'hit', '내야안타': 'hit', '2루타': 'xbh', '3루타': 'xbh', '홈런': 'hr', '삼진': 'k', '볼넷': 'bb', '사구': 'hbp' };
-const DIR = { LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
+const KIND = { __proto__: null, '안타': 'hit', '내야안타': 'hit', '2루타': 'xbh', '3루타': 'xbh', '홈런': 'hr', '삼진': 'k', '볼넷': 'bb', '사구': 'hbp' };
+const DIR = { __proto__: null, LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
 const kindOf = res => KIND[res] || 'out';
 // 방향은 필드를 탭한 타구만 (내야안타 버튼은 방향 없이 중견 기본값이 들어가므로 표시하지 않음)
 const abbrOf = a => {
@@ -281,7 +281,7 @@ function paperZone(cvs, dots, isSmall) {
   ctx.fillText('볼', W / 2, zy2 + fs + 2);
   ctx.save(); ctx.translate(zx1 - 3, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('볼', 0, 0); ctx.restore();
   ctx.save(); ctx.translate(zx2 + 3, H / 2); ctx.rotate(Math.PI / 2); ctx.fillText('볼', 0, 0); ctx.restore();
-  const col = {
+  const col = { __proto__: null,
     '볼': T.blue, '스트라이크': T.hl, '파울': T.inkSoft, '안타': T.red, '2루타': T.hl, '3루타': T.hl,
     '홈런': T.red, '타격됨': T.red, '직구': T.red, '슬라이더': T.hl, '커브': T.blue, '체인지업': T.grass,
     '포크볼': T.mound, '커터': T.inkSoft, 'preview': T.paper2,

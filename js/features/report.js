@@ -2,8 +2,8 @@
 // 선수 → 기간 → 코치 코멘트 → PNG 저장·공유 / 인쇄(PDF)
 // 계산·그림은 기존 것을 그대로 쓴다: calcStats · sprayFigure(batdata.js) · hotColdFigure(zonefig.js)
 // 저장 경기는 읽기만 한다. 새로 쓰는 키는 sl_report_cmt(선수별 마지막 코치 코멘트, 이 기기에만 · 동기화 안 함) 하나뿐
-import { buildData, calcStats, f3, pct, sampleBadge, sprayFigure } from './batdata.js?v=7';
-import { hotColdFigure } from './zonefig.js?v=5';
+import { buildData, calcStats, f3, pct, sampleBadge, sprayFigure } from './batdata.js?v=8';
+import { hotColdFigure } from './zonefig.js?v=6';
 
 const CMT_KEY = 'sl_report_cmt';
 const CMT_MAX = 80;           // 코멘트 최대 글자 (3줄 안쪽)
@@ -89,7 +89,7 @@ const SUM_CELL = 0.45; // 규칙 1: 그 한 칸이 유형을 아는 타구에서
 const SUM_SIDE = 0.65; // 규칙 2: 한 방향이 차지하는 최소 비율
 const SUM_TYPE = 0.70; // 규칙 3: 한 유형이 차지하는 최소 비율
 const SIDE_TXT = ['좌측', '중앙', '우측'];
-const TYPE_TXT = { 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
+const TYPE_TXT = { __proto__: null, 땅볼: '땅볼', 라인드라이브: '라인드라이브', 플라이볼: '뜬공' };
 const _sideOf = a => (a.deg < 72 ? 0 : a.deg > 108 ? 2 : 1);
 
 export function dirSplit(abs) {
@@ -733,7 +733,7 @@ function _hasMine() {
 function _fillPlayers() {
   // 팀별 묶음 (팀 순서 = 그 팀 타석 합계 많은 순)
   // 팀명은 선수 묶기와 같은 기준(띄어쓰기 무시)으로 모으고, 이름표는 가장 최근 경기의 표기
-  const teams = {}, label = {};
+  const teams = Object.create(null), label = Object.create(null);
   _players.forEach(p => {
     const t = _norm(p.team);
     (teams[t] = teams[t] || []).push(p);

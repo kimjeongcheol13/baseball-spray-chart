@@ -2,7 +2,7 @@
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=6';
 import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=13';
-import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf } from './pitchcalc.js?v=3';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=3';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -50,23 +50,27 @@ export function setPitcherView(k, v) {
 }
 
 // ── 데이터 ───────────────────────────────────────────────────
-// 투수별 등판 목록: [{ name, num, role, apps: [{ label, d, current, pitches }] }]
+// 투수별 등판 목록: [{ name, num, role, apps: [{ label, d, current, pitches, all }] }] — all = 그 경기 모든 투수의 투구 목록
 function _pitchers() {
   const AS = window.AS || {};
   const map = {};
-  const add = (p, g, pitches) => {
+  const add = (p, g, pitches, all) => {
     if (!p || !p.name || !pitches.length) return;
     const P = map[p.name] || (map[p.name] = { name: p.name, num: p.num || '', role: p.role || null, apps: [] });
     if (!P.num && p.num) P.num = p.num;
     if (p.role) P.role = p.role;
-    P.apps.push({ label: g.label, d: g.d || '', current: !!g.current, opp: g.ta || g.th || '', pitches });
+    P.apps.push({ label: g.label, d: g.d || '', current: !!g.current, opp: g.ta || g.th || '', pitches, all });
   };
   if (_scope === 'game') {
-    (AS.pitchers || []).forEach(p => add(p, { label: '현재 경기', current: true }, p.pitches || []));
+    const all = (AS.pitchers || []).map(q => q.pitches || []);
+    (AS.pitchers || []).forEach(p => add(p, { label: '현재 경기', current: true }, p.pitches || [], all));
     // 등판은 했지만 아직 투구가 없는 투수도 선택할 수 있게
     (AS.pitchers || []).forEach(p => { if (p.name && !map[p.name]) map[p.name] = { name: p.name, num: p.num || '', role: p.role || null, apps: [] }; });
   } else {
-    buildData().games.forEach(g => (g.pitchers || []).forEach(p => add(p, g, p.pitches || [])));
+    buildData().games.forEach(g => {
+      const all = (g.pitchers || []).map(q => q.pitches || []);
+      (g.pitchers || []).forEach(p => add(p, g, p.pitches || [], all));
+    });
   }
   const cur = AS.currentPitcher && AS.currentPitcher.name;
   return Object.values(map).map(P => ({ ...P, n: P.apps.reduce((s, a) => s + a.pitches.length, 0), live: P.name === cur }))
@@ -320,6 +324,9 @@ const _inBox = (p, b) => { const x = p.zoneX * 100, y = p.zoneY * 120; return x 
 const _innTxt = v => (v == null || v === '' ? '' : /^\d+$/.test(String(v)) ? `${v}회` : String(v));
 // 던지기 직전 아웃·주자 (core.js recordPitch 의 outs · runners — 경기 운영 모드에서만 저장, 아니면 null · 예전 기록엔 없음)
 const _outsTxt = p => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? `${p.outs}아웃` : '');
+// 공 카드의 던지기 직전 아웃: 경기 운영 모드에서 저장한 값, 없으면 투구 기록으로 센 값(est) — 둘 다 없으면 null
+const _outOf = (p, c) => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? { n: p.outs, est: false } : c && c.oc != null ? { n: c.oc, est: true } : null);
+const _outLabel = o => (o ? `${o.n}아웃${o.est ? '(투구 기록)' : ''}` : '');
 const _runTxt = p => {
   const r = p.runners;
   if (!Array.isArray(r) || r.length !== 3) return '';
@@ -332,11 +339,23 @@ const _runTxt = p => {
 function _pitchCtx(apps) {
   const m = new Map();
   apps.forEach((a, ai) => {
+    // 던지기 직전 아웃(투구 기록 기준): 이 경기 모든 투수의 끝난 타석 가운데 같은 이닝 · 이 공보다 먼저 끝난 것의 아웃 합
+    // (투수 탭 O 점 · 3아웃 이닝 넘김과 같은 규칙 — pitchcalc outsOfPA. 도루 실패 · 견제사처럼 타석 밖 아웃은 투구 기록에 없다)
+    const done = [];
+    (a.all || [a.pitches]).forEach(ps => groupPA(ps).forEach(x => {
+      const last = x.pitches[x.pitches.length - 1];
+      if (x.end && last && last.inning) done.push({ id: Number(last.id), inn: last.inning, o: outsOfPA(x) });
+    }));
+    const outsBefore = p => {
+      if (!p.inning) return null;
+      const o = done.reduce((t, d) => t + (d.inn === p.inning && d.id < Number(p.id) ? d.o : 0), 0);
+      return o <= 2 ? o : null;   // 3 이상 = 기록이 어긋났다 — 추정하지 않는다
+    };
     let no = 0;
     groupPA(a.pitches).forEach(pa => {
       pa.pitches.forEach((p, k) => {
         const c = countOf(pa.pitches.slice(0, k));
-        m.set(p, { a, ai, no: ++no, pa, k, b: Math.min(3, c.b), s: Math.min(2, c.s) });
+        m.set(p, { a, ai, no: ++no, pa, k, b: Math.min(3, c.b), s: Math.min(2, c.s), oc: outsBefore(p) });
       });
     });
   });
@@ -422,12 +441,18 @@ function _pickHtml(sel) {
     : [`존 안 ${zin} · 존 밖 ${n - zin}`, n >= PICK_SUM ? `스트라이크 ${pct(strikes / n)}` : ''].filter(Boolean).join(' · ');
   const list = sel.slice().sort((x, y) => C(y).ai - C(x).ai || C(y).no - C(x).no);   // 최근 경기 · 최근 공부터
   const shown = _boxAll || n < PICK_SUM ? list : list.slice(0, PICK_N);
+  const outOf = p => _outOf(p, C(p));
+  const foot = [
+    sel.some(p => { const o = outOf(p); return o && o.est; }) ? '* 아웃은 경기 운영 모드 기록이 없으면 투구 기록(끝난 타석)으로 셌어요 — 도루 실패 · 견제사처럼 타석 밖에서 나온 아웃은 빠져요.' : '',
+    sel.some(p => !outOf(p)) ? '아웃은 이닝이 기록된 공만 셀 수 있어요.' : '',
+    sel.some(p => !_runTxt(p)) ? '주자는 경기 운영 모드로 기록한 공만 보여요.' : '',
+  ].filter(Boolean);
   return `
     ${head(`고른 공 ${n}개`, sub)}
     ${n >= PICK_SUM ? _pickSummary(sel, C) + '<h4>공 하나씩<small>최근 공부터</small></h4>' : ''}
     <ol class="pc-pcs">${shown.map(p => _pitchCard(p, C(p))).join('')}</ol>
     ${list.length > shown.length ? `<button type="button" class="pc-pick-more" onclick="setPitchPick('all')">나머지 ${list.length - shown.length}구 더 보기</button>` : ''}
-    ${sel.some(p => !_outsTxt(p)) ? '<p class="pc-pick-foot">아웃 · 주자는 경기 운영 모드로 기록한 공만 보여요.</p>' : ''}`;
+    ${foot.length ? `<p class="pc-pick-foot">${foot.join(' ')}</p>` : ''}`;
 }
 
 // 결과 막대 + 한 줄 요약 (4구 이상)
@@ -488,10 +513,10 @@ function _pitchCard(p, c) {
 }
 
 // 던지기 직전 전광판 (중계 화면처럼 B · S · O 세로 + 주자 다이아몬드)
-// B · S 는 공 순서로 다시 센 값, O · 주자는 경기 운영 모드 기록만 (없으면 안 그린다)
+// B · S 는 공 순서로 다시 센 값, O 는 경기 운영 모드 기록 · 없으면 투구 기록으로 센 값(O*), 주자는 경기 운영 모드 기록만 (없으면 안 그린다)
 function _scoreboard(p, c) {
   const dots = (n, max) => Array.from({ length: max }, (_, i) => `<i class="sbdot${i < n ? ' on' : ''}"></i>`).join('');
-  const outs = _outsTxt(p), run = _runTxt(p);
+  const o = _outOf(p, c), outs = _outLabel(o), run = _runTxt(p);
   const label = `던지기 직전 ${[`${c.b}볼 ${c.s}스트라이크`, outs, run].filter(Boolean).join(' · ')}`;
   const base = (x, y, on) => `<rect x="${x - 4.5}" y="${y - 4.5}" width="9" height="9" transform="rotate(45 ${x} ${y})"${on ? ' class="on"' : ''}/>`;
   return `
@@ -500,7 +525,7 @@ function _scoreboard(p, c) {
       <div class="sb-bso">
         <span class="sb-b"><b>B</b>${dots(c.b, 3)}</span>
         <span class="sb-s"><b>S</b>${dots(c.s, 2)}</span>
-        ${outs ? `<span class="sb-o"><b>O</b>${dots(p.outs, 2)}</span>` : ''}
+        ${o ? `<span class="sb-o"${o.est ? ' title="투구 기록(끝난 타석)으로 센 아웃"' : ''}><b>O${o.est ? '*' : ''}</b>${dots(o.n, 2)}</span>` : ''}
       </div>
       ${run ? `<div class="sb-r"><svg class="pc-dia" viewBox="0 0 38 26" aria-hidden="true">${base(30, 15, p.runners[0])}${base(19, 7, p.runners[1])}${base(8, 15, p.runners[2])}</svg><small>${_esc(run)}</small></div>` : ''}
     </div>`;

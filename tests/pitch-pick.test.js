@@ -107,4 +107,77 @@
       $('app-page').style.display = S.ap;
     }
   });
+
+  // 카드의 아웃 · 주자 줄: outs · runners 가 있는 공만 세고, 없는 공(일반 모드 · 예전 기록)은 '기록 없음'
+  function sitRow(label) {
+    var r = Array.prototype.find.call(document.querySelectorAll('#pcPick .pc-pick-row'), function (el) { return el.firstElementChild.textContent === label; });
+    return r ? Array.prototype.map.call(r.querySelectorAll('.pc-pick-chips i'), function (i) { var b = i.querySelector('b'); return (i.firstChild.textContent + ' ' + (b ? b.textContent : '')).trim(); }) : null;
+  }
+  test('투수 코스: 고른 공의 아웃 · 주자 (경기 운영 모드 기록만) · 없으면 기록 없음', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    var sit = function (p, o, r) { p.outs = o; p.runners = r; return p; };
+    try {
+      AS.pitchers = [{ id: 'pk2', name: '상황투수', num: '8', role: null, pitches: [
+        sit(pz('직구', '볼', 0.30, 0.30), 0, [false, false, false]),
+        sit(pz('직구', '스트라이크', 0.40, 0.40), 1, [true, false, true]),
+        sit(pz('커브', '파울', 0.50, 0.50), 1, [true, false, true]),
+        sit(pz('직구', '볼', 0.60, 0.60), null, null),
+        pz('슬라이더', '볼', 0.70, 0.70)   // 필드 자체가 없는 예전 기록
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      shellNav('analysis', 'pitcher');
+      setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '상황투수'); setPitcherView('zone', 'plot');
+
+      drag(0, 0, 100, 120);
+      eq(card().title, '고른 구역 · 5구', '전체');
+      eq(sitRow('아웃'), ['0아웃 1', '1아웃 2', '기록 없음 2'], '아웃 줄');
+      eq(sitRow('주자'), ['주자 없음 1', '1·3루 2', '득점권 2', '기록 없음 2'], '주자 줄');
+      var lines = Array.prototype.map.call(document.querySelectorAll('#pcPick .pc-pick-list small'), function (el) { return el.textContent; });
+      ok(lines.some(function (t) { return t.indexOf('1회초 · 1아웃 1·3루 · 가타자 상대') === 0; }), '공 하나씩에 아웃·주자: ' + lines.join(' / '));
+      ok(lines.some(function (t) { return t.indexOf('1회초 · 0아웃 주자 없음 · ') === 0; }), '주자 없음 표시');
+
+      // 아웃·주자가 하나도 없는 구역 → 한 줄 안내
+      drag(55, 66, 90, 100);
+      eq(card().title, '고른 구역 · 2구', '기록 없는 두 공');
+      eq(sitRow('아웃'), null, '아웃 줄 없음');
+      eq(sitRow('아웃 · 주자'), ['기록 없음 — 경기 운영 모드에서 기록한 공만 나와요'], '안내');
+    } finally {
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+      try { shellNav('record'); } catch (e) {}
+      $('app-page').style.display = S.ap;
+    }
+  });
+
+  // 투수 엑셀 「투구 기록」 시트: 이닝 뒤에 아웃 · 주자 열, 값이 없는 공은 빈 칸 + 리포트에 빈 칸 수 안내
+  // (xlsxreport 는 무압축 ZIP 이라 내려받을 Blob 의 글자를 그대로 읽어 확인한다)
+  test('투수 엑셀: 투구 기록 시트에 아웃 · 주자 열 (경기 운영 모드 기록만, 나머지는 빈 칸)', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher }, cou = URL.createObjectURL, clk = HTMLAnchorElement.prototype.click, blob = null;
+    var sit = function (p, o, r) { p.outs = o; p.runners = r; return p; };
+    try {
+      AS.pitchers = [{ id: 'pk3', name: '엑셀투수', num: '7', role: null, pitches: [
+        sit(pz('직구', '볼', 0.30, 0.30), 0, [false, false, false]),
+        sit(pz('커브', '스트라이크', 0.40, 0.40), 2, [true, false, true]),
+        pz('직구', '볼', 0.50, 0.50)   // 예전 기록
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      setPitcherView('scope', 'game'); setPitcherView('sel', '엑셀투수');
+      URL.createObjectURL = function (b) { blob = b; return 'blob:sl-test'; };
+      HTMLAnchorElement.prototype.click = function () {};
+      exportPitcherExcel();
+      ok(blob, '엑셀 Blob');
+      var text = await blob.text();
+      var cells = []; text.replace(/<t xml:space="preserve">([^<]*)<\/t>/g, function (_, t) { cells.push(t); });
+      var h = cells.indexOf('순번');
+      while (h >= 0 && cells[h + 1] !== '경기') h = cells.indexOf('순번', h + 1);
+      eq(cells.slice(h, h + 9), ['순번', '경기', '이닝', '아웃', '주자', '타자', '구종', '코스', '결과'], '투구 기록 머리글');
+      ok(cells.indexOf('1·3루') >= 0 && cells.indexOf('주자 없음') >= 0, '주자 값');
+      ok(/<v>2<\/v><\/c><c [^>]*t="inlineStr"><is><t xml:space="preserve">1·3루<\/t>/.test(text), '2아웃 · 1·3루가 같은 줄');
+      ok(cells.some(function (t) { return t.indexOf('아웃·주자 빈 칸 1구') >= 0; }), '리포트 안내: 빈 칸 1구');
+    } finally {
+      URL.createObjectURL = cou; HTMLAnchorElement.prototype.click = clk;
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+    }
+  });
 })();

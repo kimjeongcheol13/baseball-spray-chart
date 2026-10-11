@@ -205,4 +205,25 @@
     eq([a.res, a.bname, a.inn, a.count.o, a.count.b], ['땅볼 아웃', '첫타자', '1회초', 2, 1], '타구는 1회초 2아웃 1볼에서');
     eq(AS.outs, 0, '새 이닝 0아웃'); eq([AS._pitchEndInn, AS._pitchEndOuts], [null, null], '보정 값은 한 번만 쓴다'); eq(a.pa, P()[P().length - 1].pa, '투구 기록과 연결');
   });
+
+  // 투구의 outs · runners: 경기 운영 모드일 때만 '던지기 직전' 값을 저장하고, 아니면 null
+  run('투수 탭: 경기 운영 모드면 투구에 던지기 직전 아웃·주자를 저장, 아니면 null', true, function () {
+    var g0 = { active: GF.active, inning: GF.inning, half: GF.half, outs: GF.outs, batterIdx: GF.batterIdx, bases: GF.bases };
+    try {
+      recordPitch('볼');
+      eq([P()[0].outs, P()[0].runners], [null, null], '일반 모드는 null');
+      GF.active = true; GF.outs = 1; GF.bases = [false, true, false]; GF.batterIdx = 0;
+      recordPitch('스트라이크');
+      eq([P()[1].outs, P()[1].runners], [1, [false, true, false]], '운영 모드 값');
+      GF.bases[0] = true;
+      eq(P()[1].runners, [false, true, false], '저장값은 복사본 (나중에 주자가 바뀌어도 그대로)');
+      GF.bases[0] = false;
+      // 기록 탭에서 끝난 타석(볼넷 → 1·2루)은 마지막으로 기록된 공에 결과가 붙는다(공을 보태지 않음) — 그 공의 아웃·주자는 던질 때 값 = 타석 전 상황
+      recOther('볼넷');
+      eq(P().length, 2, '공 수 그대로'); eq([P()[1].end, P()[1].result], ['볼넷', '볼넷'], '마지막 공에 결과'); eq([P()[1].outs, P()[1].runners], [1, [false, true, false]], '타석 전 아웃·주자');
+      eq(GF.bases, [true, true, false], '운영 모드 진루는 그대로');
+    } finally {
+      Object.keys(g0).forEach(function (k) { GF[k] = g0[k]; });
+    }
+  });
 })();

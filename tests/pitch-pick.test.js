@@ -76,4 +76,45 @@
       $('app-page').style.display = S.ap;
     }
   });
+
+  // 카드의 아웃 · 주자 줄: outs · runners 가 있는 공만 세고, 없는 공(일반 모드 · 예전 기록)은 '기록 없음'
+  function sitRow(label) {
+    var r = Array.prototype.find.call(document.querySelectorAll('#pcPick .pc-pick-row'), function (el) { return el.firstElementChild.textContent === label; });
+    return r ? Array.prototype.map.call(r.querySelectorAll('.pc-pick-chips i'), function (i) { var b = i.querySelector('b'); return (i.firstChild.textContent + ' ' + (b ? b.textContent : '')).trim(); }) : null;
+  }
+  test('투수 코스: 고른 공의 아웃 · 주자 (경기 운영 모드 기록만) · 없으면 기록 없음', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    var sit = function (p, o, r) { p.outs = o; p.runners = r; return p; };
+    try {
+      AS.pitchers = [{ id: 'pk2', name: '상황투수', num: '8', role: null, pitches: [
+        sit(pz('직구', '볼', 0.30, 0.30), 0, [false, false, false]),
+        sit(pz('직구', '스트라이크', 0.40, 0.40), 1, [true, false, true]),
+        sit(pz('커브', '파울', 0.50, 0.50), 1, [true, false, true]),
+        sit(pz('직구', '볼', 0.60, 0.60), null, null),
+        pz('슬라이더', '볼', 0.70, 0.70)   // 필드 자체가 없는 예전 기록
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      shellNav('analysis', 'pitcher');
+      setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '상황투수'); setPitcherView('zone', 'plot');
+
+      drag(0, 0, 100, 120);
+      eq(card().title, '고른 구역 · 5구', '전체');
+      eq(sitRow('아웃'), ['0아웃 1', '1아웃 2', '기록 없음 2'], '아웃 줄');
+      eq(sitRow('주자'), ['주자 없음 1', '1·3루 2', '득점권 2', '기록 없음 2'], '주자 줄');
+      var lines = Array.prototype.map.call(document.querySelectorAll('#pcPick .pc-pick-list small'), function (el) { return el.textContent; });
+      ok(lines.some(function (t) { return t.indexOf('1회초 · 1아웃 1·3루 · 가타자 상대') === 0; }), '공 하나씩에 아웃·주자: ' + lines.join(' / '));
+      ok(lines.some(function (t) { return t.indexOf('1회초 · 0아웃 주자 없음 · ') === 0; }), '주자 없음 표시');
+
+      // 아웃·주자가 하나도 없는 구역 → 한 줄 안내
+      drag(55, 66, 90, 100);
+      eq(card().title, '고른 구역 · 2구', '기록 없는 두 공');
+      eq(sitRow('아웃'), null, '아웃 줄 없음');
+      eq(sitRow('아웃 · 주자'), ['기록 없음 — 경기 운영 모드에서 기록한 공만 나와요'], '안내');
+    } finally {
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+      try { shellNav('record'); } catch (e) {}
+      $('app-page').style.display = S.ap;
+    }
+  });
 })();

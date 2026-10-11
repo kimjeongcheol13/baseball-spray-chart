@@ -2,7 +2,7 @@
 // 순수 함수는 모듈에서 바로 불러 쓰고(앱이 이미 올린 같은 모듈 인스턴스), 그림은 앱의 openPlayerReport({ sample: true }) 로 실제로 그려 크기를 확인한다.
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep;
-  var MOD = '/js/features/report.js?v=4';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/report.js?v=5';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var BAT = '/js/features/batdata.js?v=7';
 
   // 타구 한 개: deg(방향) · res · launchType

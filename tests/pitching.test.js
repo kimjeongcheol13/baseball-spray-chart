@@ -551,6 +551,12 @@
     eq(back[0].hand, 'L', '투수 손');
   });
 
+  // main 보안 수정(_pitchOk)이 P0 투구 기록 필드도 막는다 — pitchcalc 가 pr · end 를 표의 키로 읽는다
+  test('가져온 경기 검사: 투구의 pr · end · bid 에 __proto__ 같은 이름이 있으면 거부 · 정상 v2 투구는 통과', function () {
+    var g = function (p) { return { abs: [], home_lineup: [], away_lineup: [], pitchers: [{ id: 1, name: '투수', pitches: [p] }] }; };
+    ok(_gameDataOk(g({ id: 1, v: 2, pa: 1, bid: 'b1', pr: '볼', result: '볼넷', end: '볼넷' })), '정상 v2 투구');
+    ['pr', 'end', 'bid'].forEach(function (k) { var p = { id: 1, v: 2, pa: 1, pr: '볼' }; p[k] = '__proto__'; ok(!_gameDataOk(g(p)), k + ' = __proto__ 거부'); });
+  });
   test('(정리) 이 파일이 만든 상태를 비운다', function () {
     reset(); setPitcherView('scope', 'season'); eq(AS.pitchers.length, 0, '투수');
     AS.abs = _keep.abs; window.cloudAutoSyncRecord = _keep.sync; AS.balls = 0; AS.strikes = 0; renderCount();

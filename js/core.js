@@ -4409,7 +4409,7 @@ function importSingleTableGames(rows, hIdx, input) {
 
   groups.forEach(function(g,gi){
     // 팀 → 홈/원정 매핑 (이닝 초/말 기준, 매핑 안 되면 폴백)
-    var side={};
+    var side=Object.create(null);
     g.rows.forEach(function(row){
       var inn=C.inn>=0?String(row[C.inn]||'').trim():'';
       var teamRaw=C.team>=0?String(row[C.team]||'').trim():'';

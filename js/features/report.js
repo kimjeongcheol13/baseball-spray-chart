@@ -733,7 +733,7 @@ function _hasMine() {
 function _fillPlayers() {
   // 팀별 묶음 (팀 순서 = 그 팀 타석 합계 많은 순)
   // 팀명은 선수 묶기와 같은 기준(띄어쓰기 무시)으로 모으고, 이름표는 가장 최근 경기의 표기
-  const teams = {}, label = {};
+  const teams = Object.create(null), label = Object.create(null);
   _players.forEach(p => {
     const t = _norm(p.team);
     (teams[t] = teams[t] || []).push(p);

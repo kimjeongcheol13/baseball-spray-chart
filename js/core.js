@@ -2702,7 +2702,8 @@ function _dropForeignSaveKey(key,d){ if(typeof key==='string'&&key.indexOf('sl_a
 // 경기 저장 key 형식(_isSaveKey)은 항상 유지하고, 형식에 없는 옛 key도 설정 키 이름이 아니면 건드리지 않는다. 목록은 앱이 경기 저장 말고 쓰는 sl_ 키 전부다.
 var _SETTINGS_KEYS=['sl_cloud_session','sl_cloud_uid','sl_saves','sl_teams','sl_team_code','sl_autosave',
   'sl_uid','sl_visited','sl_ga_first_record','sl_ftu_done','sl_menu_moved_seen','sl_scout_intro_seen','sl_scout_info_closed',
-  'sl_lp_w','sl_lp_w_mob','sl_rp_w','sl_ev_unit','sl_stadium','sl_stadium_custom','sl_field_overlays','sl_hc','sl_feedback','sl_report_cmt'];
+  'sl_lp_w','sl_lp_w_mob','sl_rp_w','sl_ev_unit','sl_stadium','sl_stadium_custom','sl_field_overlays','sl_hc','sl_feedback','sl_report_cmt',
+  'sl_lineup_banner_closed'];   // 첫 실행 라인업 배너 닫음 (firstrun.js)
 function _purgeSettingsKeyEntries(){
   try{
     var raw=localStorage.getItem('sl_saves');if(!raw)return 0;
@@ -7492,27 +7493,16 @@ function initOfflineDetection(){
 // POST-GAME REPORT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function showPostGameReport(){
-  var fade=document.getElementById('pgFade');
   var ov=document.getElementById('pgReport');
   var skel=document.getElementById('pgSkeleton');
   var card=document.getElementById('pgCard');
   if(!ov)return;
-  // 1) 페이드 인
-  fade.classList.add('fading');
-  setTimeout(function(){
-    ov.style.display='flex';
-    fade.classList.remove('fading');
-    skel.style.display='flex';
-    card.classList.remove('up');
-    // 2) 스켈레톤 → 콘텐츠 슬라이드업
-    setTimeout(function(){
-      _pgBuild();
-      skel.style.display='none';
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){card.classList.add('up');});
-      });
-    },1100);
-  },320);
+  // 바로 표시 — 예전 연출(320ms 페이드 + 1100ms 스켈레톤 + 슬라이드업)은 기다리게만 해서 뺐다
+  // 같은 프레임에 보이게 하고 'up'을 붙이므로 카드 슬라이드 전환도 일어나지 않는다 (닫기 슬라이드는 그대로)
+  _pgBuild();
+  if(skel)skel.style.display='none';
+  ov.style.display='flex';
+  card.classList.add('up');
 }
 
 function closePgReport(){
@@ -7520,7 +7510,7 @@ function closePgReport(){
   var card=document.getElementById('pgCard');
   if(!ov)return;
   card.classList.remove('up');
-  setTimeout(function(){ov.style.display='none';},420);
+  setTimeout(function(){if(!card.classList.contains('up'))ov.style.display='none';},420);   // 닫는 사이 다시 열었으면(바로 표시) 숨기지 않음
 }
 
 function _pgBuild(){

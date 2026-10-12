@@ -769,13 +769,17 @@
   };
 
   /* updateAll() → 타구 기록 시 디바운스 3초 자동 동기화 */
+  // 공유받아 보기만 하는 경기(core.js _sharedViewActive)는 올리지 않는다 — 호출 때 한 번, 3초 뒤 올리기 직전에 한 번(그 사이 공유 경기로 바뀔 수 있다)
+  function _viewingShared() { return typeof window._sharedViewActive === 'function' && window._sharedViewActive(); }
   window.cloudAutoSyncRecord = function () {
     if (!_online || !window.AS || !(AS.abs && AS.abs.length)) {
       if (!_online) _pendSync = true;
       return;
     }
+    if (_viewingShared()) return;
     clearTimeout(_debTimer);
     _debTimer = setTimeout(function () {
+      if (_viewingShared()) return;
       if (!AS.curGame) AS.curGame = Date.now();   // 경기마다 키 하나(core.js _doAutoSave 와 같은 규칙) — 비어 있으면 타석마다 새 행이 생겨 서버에 스냅샷이 쌓였다
       var key = AUTO + AS.curGame;
       _upsertGame(key, {

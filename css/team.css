@@ -268,3 +268,27 @@
   .tm-ldr-tabs button { height: 44px; }
   .tm-roster thead button { min-height: 44px; min-width: 44px; }
 }
+
+/* ── 예전 종합 내용 (분석 서브탭 7→5: 종합 → 팀) ── */
+/* KPI 9칸 (BABIP 추가): 모바일 3×3 · 넓은 화면 한 줄 9칸 */
+@media (max-width: 720px) { .tm-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 721px) { .tm-kpis { grid-template-columns: repeat(9, 1fr); } }
+/* 타석 결과 막대 · 표본 경고: 카드 안쪽 여백(14px)과 겹치지 않게 */
+.tm-resbar .ad-bar { margin: 4px 0 8px; }
+.tm-resbar .ad-bar-lg { padding: 0; }
+.tm-resbar .ad-warn { margin: 12px 0 0; padding: 10px 0 0; }
+/*   분석 카드의 결과 칩 규칙(.an-card i[class^="r-"])이 막대 · 범례 칸을 덮지 않게 종합과 같은 모양으로 */
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i { padding: 0; border-radius: 0; font-size: 0; line-height: 0; }
+#analysisView .tm-resbar .ad-bar i { border: 0; }
+#analysisView .tm-resbar .ad-bar i + i { border-left: 1px solid var(--ink); }
+#analysisView .tm-resbar .ad-bar-lg i { border: 1.5px solid var(--ink); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-hit { background: var(--pen-red); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-k { background: var(--ink); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-go { background: var(--dirt); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-fo { background: var(--paper-2); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-bb { background: var(--pen-blue); }
+#analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-etc { background: var(--rule); }
+/* 5구역 방향도: 넓은 화면에서도 방향도 · 범례 · 비율 띠가 같은 폭(최대 540px) */
+.tm-dir .an-hd .sb-mini { margin-left: auto; }
+.tm-dir .ad-field-box, .tm-dir .ad-legend, .tm-dir .ad-band { width: 100%; max-width: 540px; box-sizing: border-box; margin-left: auto; margin-right: auto; }
+.tm-dir .ad-band { margin-bottom: 0; }

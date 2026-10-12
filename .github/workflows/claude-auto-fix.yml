@@ -60,14 +60,16 @@ jobs:
             5. 절대 package.json, README.md는 건드리지 마" \
             --allowedTools "Edit,Write,Read,Bash" \
             --max-turns 30 \
-            --output-format text > claude_output.txt 2>&1
+            --output-format text > "$RUNNER_TEMP/claude_output.txt" 2>&1
 
-          cat claude_output.txt
+          cat "$RUNNER_TEMP/claude_output.txt"
 
       - name: 🔍 Check for changes
         id: check_changes
+        # git diff 는 새로 만든(추적 안 된) 파일을 보지 않는다 → git status 로 새 파일까지 센다
+        # (claude 출력은 $RUNNER_TEMP 에 써서 저장소 변경으로 잡히지도, git add -A 로 커밋되지도 않는다)
         run: |
-          if git diff --quiet && git diff --staged --quiet; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -95,7 +97,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const claudeOutput = require('fs').readFileSync('claude_output.txt', 'utf8');
+            const claudeOutput = require('fs').readFileSync(require('path').join(process.env.RUNNER_TEMP, 'claude_output.txt'), 'utf8');
             const pr = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,

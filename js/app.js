@@ -2,29 +2,29 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=19';
+import './features/profile.js?v=21';
 import './features/compare.js?v=12';
 import './features/scouting.js?v=19';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
-import './features/team.js?v=7';
+import './features/team.js?v=9';
 import './features/pitcher.js?v=33';
-import './features/batter.js?v=21';
+import './features/batter.js?v=25';
 import './features/spray.js?v=5';
-import './features/shell.js?v=13';
-import './features/record.js?v=10';
+import './features/shell.js?v=15';
+import './features/record.js?v=12';
 import './features/settings.js?v=3';
-import './features/scorebook.js?v=15';
-import './features/dashboard.js?v=7';
+import './features/scorebook.js?v=16';
+import './features/dashboard.js?v=8';
 import './features/setup.js?v=5';
 import './features/report.js?v=6';
-import './features/anahelp.js?v=1';
+import './features/anahelp.js?v=2';
 import './features/firstrun.js?v=3';
 
-import './features/anahelp.js?v=1';
-import './features/anahelp.js?v=1';
+import './features/anahelp.js?v=2';
+import './features/anahelp.js?v=2';
 // ── Bottom Navigation ──
 function initSavantNav() {
   const nav = document.getElementById('savantNav');

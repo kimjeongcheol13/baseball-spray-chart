@@ -149,8 +149,7 @@ function _render() {
       </div>
       ${_memoCard(P, data)}
       ${season_ && P.st.pa ? profileSeasonHtml(P, data) : ''}
-      <div class="bt-links">
-        <button type="button" class="tm-act" onclick="openBatterIn('profile')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg></span><b>프로필에서 자세히</b><small>팀 내 위치 · 상황별 · 경기 로그</small></button>
+      <div class="bt-links bt-links-1">
         <button type="button" class="tm-act" onclick="openBatterIn('scout')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span><b>스카우트 리포트</b><small>공략 코스 · 구종 · 수비 위치</small></button>
       </div>
       ${P.abs.length ? xlsxButton('exportBatterExcel', '시즌 전체 타석 · 요약 · 타구 차트 · 투구 위치 · 핫/콜드 존 · 원본 기록') : ''}

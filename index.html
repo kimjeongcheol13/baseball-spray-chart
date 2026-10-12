@@ -89,7 +89,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=4">
 <link rel="stylesheet" href="css/pitcher.css?v=6">
-<link rel="stylesheet" href="css/batter.css?v=4">
+<link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=8">
 <link rel="stylesheet" href="css/settings.css?v=2">
@@ -1879,21 +1879,20 @@ var _kakaoSdkLoaded = false;
 </div>
 
 
-<!-- ═══ 분석 탭 (서브탭: 스프레이·타자·투수·비교·프로필·스카우트·팀) ═══ -->
+<!-- ═══ 분석 탭 (서브탭: 타자·투수·비교·스카우트·팀 — 종합은 팀, 프로필은 타자 [시즌]으로 합침) ═══ -->
 <div id="analysisView" class="savant-view">
   <div class="ana-subnav" id="anaSubnav" role="tablist" aria-label="분석 항목">
     <div class="ana-subnav-inner">
-      <button class="ana-sub on" data-sub="spray" role="tab" onclick="shellSub('spray')">스프레이</button>
-      <button class="ana-sub" data-sub="batter" role="tab" onclick="shellSub('batter')">타자</button>
+      <button class="ana-sub on" data-sub="batter" role="tab" onclick="shellSub('batter')">타자</button>
       <button class="ana-sub" data-sub="pitcher" role="tab" onclick="shellSub('pitcher')">투수</button>
       <button class="ana-sub" data-sub="compare" role="tab" onclick="shellSub('compare')">비교</button>
-      <button class="ana-sub" data-sub="profile" role="tab" onclick="shellSub('profile')">프로필</button>
       <button class="ana-sub" data-sub="scout" role="tab" onclick="shellSub('scout')">스카우트</button>
       <button class="ana-sub" data-sub="team" role="tab" onclick="shellSub('team')">팀</button>
     </div>
   </div>
   <div class="shell-inner" id="anaBody">
-    <section class="ana-sec on" data-sub="spray">
+    <!-- 예전 종합(spray) · 프로필 칸: 서브탭에서는 빠졌지만 spray.js · dashboard.js · profile.js가 찾으므로 숨긴 채 남겨 둠 -->
+    <section class="ana-sec" data-sub="spray">
       <div class="ana-spray-ctrls" id="anaSprayCtrls"></div>
       <div class="ana-spray-wrap">
         <canvas id="anaSprayCanvas" aria-label="스프레이 차트"></canvas>
@@ -1901,7 +1900,7 @@ var _kakaoSdkLoaded = false;
       </div>
       <div class="ana-note">기록 탭의 필드와 같은 데이터입니다 · 선수별 성적은 <button class="ana-link" onclick="shellSub('batter')">타자</button> / <button class="ana-link" onclick="shellSub('team')">팀</button></div>
     </section>
-    <section class="ana-sec" data-sub="batter" id="anaSecBatter"></section>
+    <section class="ana-sec on" data-sub="batter" id="anaSecBatter"></section>
     <section class="ana-sec" data-sub="pitcher" id="anaSecPitcher"></section>
     <section class="ana-sec" data-sub="compare" id="anaSecCompare"></section>
     <section class="ana-sec" data-sub="profile" id="anaSecProfile"></section>
@@ -2383,7 +2382,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=141"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=64"></script>
+<script type="module" src="js/app.js?v=65"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

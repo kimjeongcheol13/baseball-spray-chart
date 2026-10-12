@@ -1,12 +1,14 @@
 // SprayLab Shell — 하단 탭 3개(기록 / 분석 / 경기설정) + 분석 서브탭
 // 기존 패널·뷰는 새로 만들지 않고 DOM 노드를 옮겨서 재사용한다 (ID·핸들러 유지).
 
-const ANA_SUBS = ['spray', 'batter', 'pitcher', 'compare', 'profile', 'scout', 'team'];
+const ANA_SUBS = ['batter', 'pitcher', 'compare', 'scout', 'team'];
+// 합친 예전 서브탭 이름 → 새 서브탭 (분석 서브탭 7→5: 종합 → 팀 · 프로필 → 타자 [시즌])
+const OLD_SUB = { spray: 'team', profile: 'batter' };
 // 기존 swTab 이름 → 분석 서브탭
 const SWTAB_TO_SUB = { batter: 'batter', pitcher: 'pitcher', stat: 'team', chart: 'team', team: 'team' };
 
 let _tab = 'record';
-let _sub = 'spray';
+let _sub = 'batter';
 
 const $ = (id) => document.getElementById(id);
 
@@ -131,7 +133,9 @@ function _renderSub(sub) {
 }
 
 function shellSub(sub) {
-  if (ANA_SUBS.indexOf(sub) < 0) sub = 'spray';
+  const old = sub;
+  if (OLD_SUB[sub]) sub = OLD_SUB[sub];
+  if (ANA_SUBS.indexOf(sub) < 0) sub = 'batter';
   _sub = sub;
   _trackTab('analysis', sub);
   document.querySelectorAll('#anaSubnav .ana-sub').forEach((b) => {
@@ -144,8 +148,11 @@ function shellSub(sub) {
   if (view) view.scrollTop = 0;
   const btn = document.querySelector('#anaSubnav .ana-sub.on');
   if (btn && btn.scrollIntoView) btn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  // 렌더는 다음 태스크로 (탭 반응 우선)
-  setTimeout(() => _renderSub(sub), 0);
+  // 렌더는 다음 태스크로 (탭 반응 우선) · 예전 '프로필'로 들어오면 타자 탭을 [시즌]으로
+  setTimeout(() => {
+    if (old === 'profile' && window.setBatterView) { try { window.setBatterView('scope', 'season'); } catch (e) {} }
+    _renderSub(sub);
+  }, 0);
 }
 
 // ── 경기설정 상태 동기화 ────────────────────────────────────
@@ -491,6 +498,7 @@ function shellRecSheet(open) {
 // ── 기존 진입점 호환 ────────────────────────────────────────
 function _patchLegacy() {
   // 기존 switchSavantView('spray'|'profile'|'compare'|'scout'|'record') 호출 → 새 탭으로
+  //   ('spray' → 팀 · 'profile' → 타자 [시즌]: shellSub의 OLD_SUB)
   window.switchSavantView = function (view) {
     if (view === 'record') shellNav('record');
     else shellNav('analysis', view);

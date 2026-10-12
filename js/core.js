@@ -7291,27 +7291,16 @@ function initOfflineDetection(){
 // POST-GAME REPORT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function showPostGameReport(){
-  var fade=document.getElementById('pgFade');
   var ov=document.getElementById('pgReport');
   var skel=document.getElementById('pgSkeleton');
   var card=document.getElementById('pgCard');
   if(!ov)return;
-  // 1) 페이드 인
-  fade.classList.add('fading');
-  setTimeout(function(){
-    ov.style.display='flex';
-    fade.classList.remove('fading');
-    skel.style.display='flex';
-    card.classList.remove('up');
-    // 2) 스켈레톤 → 콘텐츠 슬라이드업
-    setTimeout(function(){
-      _pgBuild();
-      skel.style.display='none';
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){card.classList.add('up');});
-      });
-    },1100);
-  },320);
+  // 바로 표시 — 예전 연출(320ms 페이드 + 1100ms 스켈레톤 + 슬라이드업)은 기다리게만 해서 뺐다
+  // 같은 프레임에 보이게 하고 'up'을 붙이므로 카드 슬라이드 전환도 일어나지 않는다 (닫기 슬라이드는 그대로)
+  _pgBuild();
+  if(skel)skel.style.display='none';
+  ov.style.display='flex';
+  card.classList.add('up');
 }
 
 function closePgReport(){
@@ -7319,7 +7308,7 @@ function closePgReport(){
   var card=document.getElementById('pgCard');
   if(!ov)return;
   card.classList.remove('up');
-  setTimeout(function(){ov.style.display='none';},420);
+  setTimeout(function(){if(!card.classList.contains('up'))ov.style.display='none';},420);   // 닫는 사이 다시 열었으면(바로 표시) 숨기지 않음
 }
 
 function _pgBuild(){
@@ -8112,6 +8101,12 @@ var uiStates={
   },900);
 })();
 
+// 복구본의 경기 정보(AS.info) — 없으면(sl_auto_* · 예전 자동저장) 복구가 덮어쓸 저장 경기(saveKey)의 값.
+// updateAll 전에 정해 둔다: 그 안의 자동저장 감싸기(setup.js)가 빈 정보를 채우면 저장 경기의 정보를 덮게 된다
+function _recInfo(d){
+  if(d.info)return d.info;
+  try{var g=d.saveKey&&JSON.parse(localStorage.getItem(d.saveKey)||'null');return g&&g.info||null;}catch(e){return null;}
+}
 function archRecoverAutosave(){
   var rec=storageManager.getRecovery();
   if(!rec||!rec.data)return;
@@ -8122,6 +8117,7 @@ function archRecoverAutosave(){
   AS.hs=d.hs||0;AS.as=d.as||0;
   AS.zoneHistory=d.zoneHistory||{};
   AS.pitchers=d.pitchers||[];
+  AS.info=_recInfo(d);   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
   if(a&&d.ta)a.value=d.ta;
@@ -8153,6 +8149,7 @@ function _archQuietSave(saveKey){
         existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
+        existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
         existing.ts=Date.now();
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
@@ -8169,7 +8166,7 @@ function _archQuietSave(saveKey){
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
       d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
-      pitchers:AS.pitchers||[]};
+      pitchers:AS.pitchers||[],info:AS.info||null};
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
@@ -8248,6 +8245,7 @@ function recoverHiddenAutosave(key){
     AS.hs=d.hs||0;AS.as=d.as||0;
     AS.zoneHistory=d.zoneHistory||{};
     AS.pitchers=d.pitchers||[];
+    AS.info=_recInfo(d);   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게
     var h=document.getElementById('tHome'),a=document.getElementById('tAway');
     if(h&&d.th)h.value=d.th;
     if(a&&d.ta)a.value=d.ta;

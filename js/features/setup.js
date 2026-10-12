@@ -1,6 +1,7 @@
 // 경기설정 탭 — 경기 정보 · 데이터 · 타순표 편집 · 구장 규격
 //   경기 정보(AS.info = { date, venue, side, innings }): 저장 경기·자동저장에 함께 저장 (없던 옛 경기는 기본값)
 //   구장: 기존 STADIUMS 4개 + 리틀야구(61·70·61) + 직접 입력(sl_stadium_custom) — 거리를 바꾸면 기록 필드 펜스와 추정 비거리(ft)에 반영
+//         새 사용자 기본값 = 리틀야구 · 경기마다 구장을 경기 정보(info.stadium)에 저장하고 불러올 때 되살림
 //   버튼은 기존 함수(core.js · shell.js · cloud.js)를 그대로 부른다
 import { esc } from '../constants.js';
 
@@ -31,6 +32,30 @@ function _extendStadiums() {
 if (typeof window !== 'undefined') _extendStadiums();   // 모듈을 읽자마자 (저장된 구장이 little/custom이면 첫 그림부터 맞게)
 
 function _st() { const S = window.STADIUMS || {}; return S[_AS().stadium] || S.standard || { lfDist: 90, cfDist: 120, rfDist: 90 }; }
+
+// 구장 기본값: 구장을 고른 적 없는(sl_stadium 없음) 새 사용자는 리틀야구(61·70·61).
+//   이미 쓰던 사용자(core _isReturningUser — 첫 기록을 했거나 저장 경기가 있음)는 지금처럼 표준(core 기본값 그대로).
+//   새 사용자로 판단하면 setStadium 으로 sl_stadium 에 'little'을 남긴다 — 안 남기면 첫 기록 뒤 '쓰던 사용자'가 되어 다음 실행에 표준으로 바뀐다
+function _defaultStadium() {
+  try { if (localStorage.getItem('sl_stadium')) return; } catch (e) { return; }
+  if (typeof _isReturningUser !== 'function' || _isReturningUser()) return;
+  if (window.setStadium) window.setStadium('little');
+}
+// 경기별 구장: 경기 정보(AS.info)에 stadium(구장 id)을 함께 둔다 — info 는 이미 저장 경기 · 자동저장에 들어가고 불러올 때 되살아난다
+//   · 구장을 바꾸면 info.stadium 도 바꿈 · 저장/자동저장 직전에 비어 있으면 지금 구장으로 채움 (불러온 경기 값은 덮지 않음)
+//   · 불러온 경기에 stadium 이 있으면 그 구장으로, 없으면(이 기능 전에 저장한 경기) 지금 구장 그대로
+//   · 직접 입력(custom)은 id 만 저장 — 거리는 그때의 직접 입력값(sl_stadium_custom)
+function _stadiumOk(id) { const S = window.STADIUMS; return typeof id === 'string' && !!S && Object.prototype.hasOwnProperty.call(S, id); }
+function _infoStadium(id) {
+  const A = _AS();
+  if (id === undefined && A.info && A.info.stadium) return;
+  const s = id === undefined ? A.stadium : id;
+  if (_stadiumOk(s)) A.info = Object.assign({}, A.info || {}, { stadium: s });
+}
+function _applyInfoStadium() {
+  const A = _AS(), id = A.info && A.info.stadium;
+  if (_stadiumOk(id) && id !== A.stadium && window.setStadium) window.setStadium(id);
+}
 
 function stPickStadium(id) {
   if (window.setStadium) window.setStadium(id);
@@ -449,6 +474,32 @@ function _hook() {
     w._st = true;
     window[fn] = w;
   });
+  // 경기별 구장 (_infoStadium · _applyInfoStadium) — 위 경기 정보 연결보다 바깥에서 감싼다
+  //   구장 변경 → info.stadium · 저장/자동저장 직전 → 빈 info.stadium 채움 · 불러온 뒤(저장 경기 · 자동저장 복구) → 그 경기 구장 적용
+  const ss = window.setStadium;
+  if (typeof ss === 'function' && !ss._stStad) {
+    const w = function (id) { const r = ss.apply(this, arguments); if (_AS().stadium === id) _infoStadium(id); return r; };
+    w._stStad = true;
+    window.setStadium = w;
+  }
+  if (typeof storageManager !== 'undefined' && storageManager && !storageManager._stStad) {
+    const o = storageManager.scheduleAutosave.bind(storageManager);
+    storageManager.scheduleAutosave = function () { _infoStadium(); return o.apply(null, arguments); };
+    storageManager._stStad = true;
+  }
+  const sg = window.saveGame;
+  if (typeof sg === 'function' && !sg._stStad) {
+    const w = function () { _infoStadium(); return sg.apply(this, arguments); };
+    w._stStad = true;
+    window.saveGame = w;
+  }
+  ['restoreGame', 'archRecoverAutosave'].forEach(fn => {
+    const o = window[fn];
+    if (typeof o !== 'function' || o._stStad) return;
+    const w = function () { const r = o.apply(this, arguments); _applyInfoStadium(); return r; };
+    w._stStad = true;
+    window[fn] = w;
+  });
   // 저장 상태 표시(#saveInd) 바뀌면 데이터 칸 갱신
   const ind = $('saveInd');
   if (ind && window.MutationObserver) new MutationObserver(() => { if (view && view.classList.contains('active')) { const d = $('stData'); if (d) d.innerHTML = _dataHtml(); } }).observe(ind, { childList: true, characterData: true, subtree: true });
@@ -464,6 +515,9 @@ function _init() {
     const A = _AS(), r = storageManager.getRecovery(), d = r && r.data;
     if (!A.info && d && d.info && (d.abs || []).length === (A.abs || []).length) A.info = d.info;
   } catch (e) {}
+  // 시작 때 이미 열린 경기(위 연결 전에 불러왔을 수 있음)의 구장 적용 → 구장을 고른 적 없는 새 사용자는 리틀야구
+  _applyInfoStadium();
+  _defaultStadium();
   // 저장된 구장이 리틀/직접이면 확장 뒤 다시 그림
   try { if (window.drawField) window.drawField(); if (window.safeRender) window.safeRender(); } catch (e) {}
   render();

@@ -6,6 +6,7 @@
 -- 변경 : 기준 시각(cutoff) 이전에 만든 행의 payload 에서 이름 필드만 클라이언트(_anonSharePayload)와 같은 규칙으로 치환한다.
 --          hl[].n · al[].n (홈/원정 라인업) · pitchers[].nm · abs[].bn (타석마다 반복되는 타자 이름)
 --        id · 등번호 · 타구 좌표 · 결과 등 나머지 필드는 그대로라, 열어 보면 같은 스프레이차트 · 같은 통계가 나온다.
+--        이름 필드가 없는 원소(v1 형식의 타석은 bn · bid 가 없다)는 지울 이름이 없으므로 건드리지 않는다 — 그런 행은 "이미 같음"으로 센다.
 --        규칙: 등번호가 있으면 "#7", 없으면 "김OO". 같은 표기가 겹치면 "#7 원정" · "김OO 홈" · "김OO 2" 로 구분(이름으로 집계해도 선수가 합쳐지지 않게).
 -- 안전장치 :
 --   · 기본값은 미리보기 — 아무것도 바꾸지 않고, 결과를 예외 메시지(DRY_RUN …)로 보여 주며 전부 롤백된다. apply 를 true 로 바꿔야 적용된다.
@@ -75,10 +76,10 @@ create or replace function pg_temp.sl_has_num(v jsonb) returns boolean language 
     else false
   end
 $$;
--- 배열 arr 의 i 번째 객체에 k = labels['sec:i'] 를 써 넣는다 (객체가 아닌 원소는 그대로)
+-- 배열 arr 의 i 번째 객체에 k = labels['sec:i'] 를 써 넣는다 (객체가 아니거나 k 필드가 없는 원소는 그대로)
 create or replace function pg_temp.sl_apply(arr jsonb, sec text, k text, labels jsonb) returns jsonb language sql immutable as $$
   select coalesce(jsonb_agg(
-           case when jsonb_typeof(e) = 'object' then e || jsonb_build_object(k, labels ->> (sec || ':' || (i - 1))) else e end
+           case when jsonb_typeof(e) = 'object' and (e -> k) is not null then e || jsonb_build_object(k, labels ->> (sec || ':' || (i - 1))) else e end
            order by i), '[]'::jsonb)
   from jsonb_array_elements(arr) with ordinality as t(e, i)
 $$;
@@ -105,7 +106,7 @@ begin
       select 4, 'abs', 'bat', e ->> 't', 'bn', 'bno', 'bid', e, i
         from jsonb_array_elements(case when jsonb_typeof(p -> 'abs') = 'array' then p -> 'abs' else '[]'::jsonb end) with ordinality as t(e, i)
     ) x
-    where jsonb_typeof(e) = 'object'
+    where jsonb_typeof(e) = 'object' and (e -> nk) is not null   -- 이름 필드가 없는 원소(v1 형식의 타석 등 — 지울 이름이 없다)는 건드리지도, 표기를 쓰지도 않는다
     order by ord, i
   loop
     v_name := pg_temp.sl_trim(r.e ->> r.nk);

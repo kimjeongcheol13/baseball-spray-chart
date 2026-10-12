@@ -19,6 +19,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `09_drop_team_members_insert.sql` | `team_members_insert` 정책 삭제(가입은 RPC 로만). **클라이언트 배포 후** SQL Editor 에서 수동 실행 | 정책 1개 삭제 (DROP) |
 | `10_one_team_per_user.sql` | 한 사람당 팀 하나를 DB 가 강제: `teams(owner_id)` · `team_members(user_id)` unique index, `join_team_by_code` 재정의(다른 팀 소속이면 예외), `teams_insert` 에 "팀원 아님" 조건 + `is_in_any_team()`. 08 선행(가정 확인이 검사). **클라이언트 배포 전에** 적용 | 인덱스 2개·함수 1개 생성, 함수 1개 교체, 정책 1개 교체 (DROP 없음) |
 | `11_owner_reads_team_games.sql` | `user_games_select` 에 "내가 소유한 팀의 `team_id`" 조건 추가 — 팀장이 팀원 경기를 읽는다(Realtime 도 같은 정책). 10 선행(가정 확인이 검사). **미적용 — 팀장용 목록 화면 PR 과 함께 적용**(PR #72 에서는 적용하지 않는다) | 정책 1개 교체 (DROP 없음) |
+| `12_anonymize_existing_shared_links.sql` | 이미 만들어진 `?gid=` 공유 링크(`shared_links.payload`)의 선수 이름 필드(`hl.n` · `al.n` · `pitchers.nm` · `abs.bn`)를 `#등번호` / `성OO` 로 치환(클라이언트 `_anonSharePayload` 와 같은 규칙). **기본값은 미리보기**(`DRY_RUN` 예외로 전부 롤백) · `cutoff`(치환된 클라이언트 배포 시각) 필수 · 적용 시 원본을 `sl_maint.shared_links_backup` 에 먼저 백업 · 치환 후 이전 이름이 남으면 전부 롤백. PR #121 배포 후에 실행 | `shared_links` UPDATE(payload) · `sl_maint` 스키마 + 백업 표 생성 (DROP 없음 — 정리 블록만 DROP) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.
@@ -42,6 +43,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `08` — `user_games_update` USING/WITH CHECK · `user_games_insert` WITH CHECK 교체(내 행 + 내가 속한/소유한 팀의 `team_id` 만), `join_team_by_code` 생성(authenticated 만 실행, anon 차단). 적용 후 `pg_policies` · `pg_proc` 조회로 반영 확인 |
 | 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `10` — `teams(owner_id)` · `team_members(user_id)` unique index, `is_in_any_team()` 생성, `teams_insert` WITH CHECK 에 "팀원 아님" 추가, `join_team_by_code` 교체(다른 팀 소속이면 P0001). 적용 후 인덱스 · `pg_policies` · `pg_proc` 조회로 반영 확인. `11` 은 미적용(팀장 목록 화면 PR 과 함께 적용) |
 | 2026-10-05 | **(기록 없음 — SQL Editor 수동 적용)** | `09` — `team_members_insert` 정책 삭제(DROP). 가입은 `join_team_by_code` RPC 로만. 적용 후 `pg_policies` 조회로 `team_members` 에 SELECT · DELETE 정책만 남은 것 확인. 하루 대기 없이 적용한 이유: 구버전 클라이언트는 입력칸 id 중복(#73 이전)으로 가입이 원래 불가능했고, 적용 시점 팀 0개 |
+| 2026-10-12 | **(기록 없음 — Supabase MCP `execute_sql` 로 적용)** | `12` — `shared_links` 32행 중 18행의 선수 이름 필드를 `#등번호` / `성OO` 로 치환. `cutoff` = `2026-10-12 21:05:00+09`(클라이언트 PR #121 배포 #231 완료 직후). 미리보기 → 적용 순서. 미리보기: 대상 18 · 이미 같음 13(이름이 없는 빈 경기 9 + v1 형식 4) · 건너뜀 1(`test` 키만 있는 비경기 행) · 이름 잔존 0. 적용 후 확인: 백업 32행 · 변경 18행 · 이름 필드 외 변경 0 · 이전 이름 잔존 0 · 이름으로 집계해 선수가 합쳐지는 행 0 · `get_shared_link` RPC 결과 = 테이블 · 백업 표 RLS 켬, anon/authenticated 읽기 불가. 적용한 SQL 은 병합본에서 "이름 필드가 없는 원소(v1 형식 타석 — 지울 이름이 없음)는 건드리지 않는다" 2줄을 고친 것(그대로면 v1 행 4개에 `bn` 이 새로 생겨 옛 링크 표시가 바뀜 — 첫 미리보기가 이 4행을 대상 22로 잡아 발견). **원본(실명 포함)이 `sl_maint.shared_links_backup` 에 남아 있다 — 브라우저에서 기존 `?gid=` 링크 확인 후 12 의 정리 블록으로 삭제할 것.** 브라우저 확인과 정리는 미실시(이 기록 시점) |
 
 적용 후 `03b`(36개 시험)와 `04b`(12개 시험) 모두 통과, 재귀 0건. `06`(Phase 3)은 클라이언트 배포·게이트 1~4 확인 후 사용자 승인을 받아 적용했고, `06b` 23개 시험이 전부 통과했다. 단, `03b` 의 `teams BY CODE` 2건은 `02` 단계에서는 MISMATCH 로 남고 `04` + 프론트(`cloud.js` ?v=7)로 해소된다.
 

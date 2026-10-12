@@ -418,9 +418,9 @@ function _fieldFtHtml() {
 // ── 오른쪽: 볼카운트 → 도장 → 보조 버튼 → 타석 기록 ────────
 function _sideHtml() {
   const AS = _AS(), gf = _gfOn();
-  const outs = gf ? (GF.outs || 0) : (AS.outs || 0);
+  const outs = +(gf ? (GF.outs || 0) : (AS.outs || 0)) || 0;
   const dots = (n, max) => Array.from({ length: max }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('');
-  const b = AS.balls || 0, s = AS.strikes || 0;
+  const b = +AS.balls || 0, s = +AS.strikes || 0;   // 숫자로만 — 가져온 경기의 카운트가 문자열이어도 HTML 에 섞이지 않게
   const all = AS.abs || [];
   const list = all.slice(-12).reverse();
   return `

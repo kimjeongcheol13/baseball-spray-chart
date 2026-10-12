@@ -357,3 +357,7 @@ if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(_init, 0));
   else setTimeout(_init, 0);
 }
+
+// 팀 탭(team.js)도 같은 5구역 방향도 · 구역 경계 · 타석 결과 막대를 쓴다 (분석 서브탭 7→5: 종합 → 팀)
+//   import로 가져오면 모듈 실행 순서가 바뀌어(spray.js보다 먼저) openSprayView 덮어쓰기 순서가 달라지므로 window로 넘긴다
+if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, resultBar: _bar };

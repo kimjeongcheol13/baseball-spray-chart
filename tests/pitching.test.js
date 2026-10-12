@@ -523,7 +523,7 @@
   });
 
   // ═══ 공유 링크 왕복 ═══
-  test('공유 링크: pa · end · nk · batter · bid · inning · zoneX/Y · v 가 shareGameLink → JSON → 복원으로 살아 돌아온다 (옛 기록도)', function () {
+  test('공유 링크: pa · end · nk · batter · bid · inning · zoneX/Y · v 가 shareGameLink → JSON → 복원으로 살아 돌아온다 (옛 기록도 · 실명 포함 링크) · 기본 링크는 투구의 타자 이름도 치환', function () {
     reset(); var p = pitcher(11, '링크투수'); p.hand = 'L';
     AS.pitcherPt = '직구'; AS.pitcherZone = '외각 낮음'; AS.pitcherZoneX = 0.61; AS.pitcherZoneY = 0.74;
     batter('a', '가'); rec('볼'); AS.pitcherZone = '중앙 중간'; AS.pitcherZoneX = 0.5; AS.pitcherZoneY = 0.55; rec('스트라이크', '스트라이크', '스트라이크'); togglePitchNK();
@@ -531,10 +531,15 @@
     batter('c', '다'); rec('볼', '볼', '볼', '볼');
     var legacyP = { id: 12, name: '옛링크투수', num: '3', pitches: v1('Z', ['볼', '스트라이크', '안타']) }; AS.pitchers.push(legacyP);
     var orig = JSON.parse(JSON.stringify(AS.pitchers));
-    var oldPush = window.pushSharedLink, payload = null;
+    var oldPush = window.pushSharedLink, payload = null, anon = null;
     window.pushSharedLink = function (pl) { payload = pl; };   // 서버로 보내지 않고 payload 만 잡는다
-    try { shareGameLink(); } finally { window.pushSharedLink = oldPush; }
+    try {
+      shareGameLink(); anon = payload;   // 기본 = 선수 실명 치환 (main #121)
+      shareNameToggle(true);             // 공유 모달 "선수 실명 포함" 체크
+    } finally { window.pushSharedLink = oldPush; shareNameToggle && (_shareNames = false); }
     ok(payload && payload.pitchers, 'shareGameLink 가 payload 를 안 만듦');
+    var anonB = anon.pitchers[0].pitches.map(function (q) { return q.b; });
+    ok(anonB.every(function (b) { return ['가', '나', '다'].indexOf(b) < 0; }), '기본 링크의 투구에 타자 실명이 남음: ' + anonB.join(','));
     var back = _restorePitchersFromPayload(JSON.parse(JSON.stringify(payload.pitchers)));   // 링크는 JSON 으로 오간다
     var keys = ['id', 'pt', 'result', 'pr', 'zone', 'inning', 'batter', 'ts', 'zoneX', 'zoneY', 'v', 'pa', 'bid', 'end', 'nk'];
     orig.forEach(function (op, i) {
@@ -555,6 +560,19 @@
     var g = function (p) { return { abs: [], home_lineup: [], away_lineup: [], pitchers: [{ id: 1, name: '투수', pitches: [p] }] }; };
     ok(_gameDataOk(g({ id: 1, v: 2, pa: 1, bid: 'b1', pr: '볼', result: '볼넷', end: '볼넷' })), '정상 v2 투구');
     ['pr', 'end', 'bid'].forEach(function (k) { var p = { id: 1, v: 2, pa: 1, pr: '볼' }; p[k] = '__proto__'; ok(!_gameDataOk(g(p)), k + ' = __proto__ 거부'); });
+  });
+  // main #121 공유 링크 실명 치환: P0 공유 데이터는 투구마다 상대 타자 이름(b)을 싣는다 — 그 이름도 치환돼야 한다
+  test('공유 링크 실명 치환: 투구마다 실린 상대 타자 이름도 라인업 · 타석과 같은 표기로 바뀌고 실명이 남지 않는다', function () {
+    var pitchers = [{ id: 'p1', name: '김투수', num: '11', pitches: [
+      { id: 1, v: 2, pa: 1, bid: 'b1', batter: '홍길동', pr: '볼', result: '볼', inning: '1회초' },
+      { id: 2, v: 2, pa: 1, bid: 'b1', batter: '홍길동', pr: '스트라이크', result: '스트라이크', inning: '1회초' },
+      { id: 3, inning: '1회초', batter: '이몽룡', result: '안타' }   // 옛 기록: 타자 id 없이 이름만
+    ] }];
+    var payload = { hl: [{ id: 'b1', n: '홍길동', no: '7' }, { id: 'b2', n: '이몽룡', no: '' }], al: [], abs: [{ bid: 'b1', bn: '홍길동', bno: '7', t: 'home' }], pitchers: _pitchersToPayload(pitchers) };
+    var anon = _anonSharePayload(payload), json = JSON.stringify(anon);
+    ['홍길동', '이몽룡', '김투수'].forEach(function (nm) { ok(json.indexOf(nm) < 0, nm + ' 실명이 남음: ' + json); });
+    eq(anon.pitchers[0].pitches.map(function (q) { return q.b; }), ['#7', '#7', anon.hl[1].n], '투구의 타자 = 라인업 표기 (id 로 · 이름으로)');
+    ok(JSON.stringify(payload).indexOf('홍길동') >= 0, '원본은 그대로');
   });
   test('(정리) 이 파일이 만든 상태를 비운다', function () {
     reset(); setPitcherView('scope', 'season'); eq(AS.pitchers.length, 0, '투수');

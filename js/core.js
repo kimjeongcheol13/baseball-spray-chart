@@ -3494,11 +3494,17 @@ function getGameCond(){return {weather:_gameCond.w,field:_gameCond.f};}
 
 // ── 공유 QR 모달 ──
 var _shareURL='';
-function showShareQR(url){
+function showShareQR(url,withNameOpt){
   _shareURL=url;
   var wrap=document.getElementById('shareQRWrap');
   var ov=document.getElementById('shareQROv');
   if(!ov){alert('공유 모달을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');return;}
+
+  // "선수 실명 포함" 옵션은 경기 공유(shareGameLink)에서만 보인다 — 팀 공유 등 다른 호출은 인자 없이 부른다
+  var nameOpt=document.getElementById('shareNameOpt');
+  if(nameOpt)nameOpt.style.display=withNameOpt?'':'none';
+  var nameChk=document.getElementById('shareNameChk');
+  if(nameChk&&withNameOpt)nameChk.checked=!!_shareNames;
 
   // URL 표시
   var urlEl=document.getElementById('shareQRUrl');
@@ -3526,6 +3532,7 @@ function showShareQR(url){
 function closeShareQR(){
   var ov=document.getElementById('shareQROv');
   if(!ov)return;
+  _shareReq++;_shareBusy(false);   // 링크를 만드는 중에 닫았다면 늦게 온 응답이 모달을 다시 열지 않게 하고, 막아 둔 버튼도 풀어 둔다
   ov.classList.remove('show');
   ov.style.display='none';
 }
@@ -5019,7 +5026,75 @@ function renderWeaknessAlerts(abs){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE 3: SHARE LINK
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── 공유 데이터 실명 치환 ──
+// 공유 JSON(full · compact 공통 키)의 선수 이름을 "#등번호", 등번호가 없으면 "성OO" 로 바꾼 복사본을 돌려준다(원본은 그대로).
+// 이름 · 등번호 · id 외에 사람을 가리키는 필드는 공유 JSON 에 없다(생년월일 · 연락처 같은 값은 앱 데이터에 존재하지 않음).
+// 같은 경기 안에서 서로 다른 선수가 같은 표기가 되면(양 팀 #7 등) 이름으로 집계하는 화면에서 한 명으로 합쳐지므로, 겹친 쪽에는 구분을 붙인다.
+function _hasNum(v){return v!=null&&v!==0&&String(v).trim()!=='';}   // 숫자 0 은 payload 가 "번호 없음" 대신 채우는 값 — 문자열 '0' 만 실제 등번호로 본다
+function _anonLabel(name,num){
+  if(_hasNum(num))return '#'+String(num).trim();
+  var s=String(name==null?'':name).trim();
+  return s?s.charAt(0)+'OO':'선수';
+}
+function _anonSharePayload(p){
+  var out=Object.assign({},p),used={bat:Object.create(null),pit:Object.create(null)},map={bat:Object.create(null),pit:Object.create(null)},batByName=Object.create(null);
+  function label(kind,id,name,num,team){
+    var key=id!=null&&id!==-1?'i'+id:'n'+(team||'')+'|'+name+'|'+(_hasNum(num)?String(num).trim():'');   // 같은 선수는 lineup · abs 어디서든 같은 표기
+    if(map[kind][key]!==undefined)return map[kind][key];
+    var base=_anonLabel(name,num),l=base;
+    if(used[kind][l])l=base+(team==='away'?' 원정':team==='home'?' 홈':'');
+    for(var n=2;used[kind][l];n++)l=base+' '+n;
+    used[kind][l]=true;map[kind][key]=l;
+    if(kind==='bat'&&name!=null&&batByName[name]===undefined)batByName[name]=l;
+    return l;
+  }
+  function lineup(arr,team){return Array.isArray(arr)?arr.map(function(e){return Object.assign({},e,{n:label('bat',e.id,e.n,e.no,team)});}):arr;}
+  out.hl=lineup(p.hl,'home');
+  out.al=lineup(p.al,'away');
+  if(Array.isArray(p.abs))out.abs=p.abs.map(function(a){return Object.assign({},a,{bn:label('bat',a.bid,a.bn,a.bno,a.t)});});
+  // 투구 기록(P0)은 공마다 상대 타자 이름(b)을 싣는다 — 라인업 · 타석과 같은 사람이면 같은 표기로 (타자 id 가 있으면 id, 없으면 이름으로 찾는다)
+  function pitchBatter(bid,name){
+    if(name==null||name==='')return name;
+    var byId=bid!=null&&bid!==-1?map.bat['i'+bid]:undefined;
+    return byId!==undefined?byId:batByName[name]!==undefined?batByName[name]:label('bat',bid,name,null,'');
+  }
+  if(Array.isArray(p.pitchers))out.pitchers=p.pitchers.map(function(e){
+    var o=Object.assign({},e,{nm:label('pit',e.id,e.nm,e.no)});
+    if(Array.isArray(e.pitches))o.pitches=e.pitches.map(function(q){return q&&q.b!=null?Object.assign({},q,{b:pitchBatter(q.bid,q.b)}):q;});
+    return o;
+  });
+  return out;
+}
+
+// ── 공유 링크 만들기 ──
+// 공유 모달의 "선수 실명 포함" 체크박스로 실명/치환 링크를 오간다. 기본은 치환(체크 해제).
+// 같은 모달을 여는 동안 모드별 링크는 한 번만 만들어 재사용한다(체크를 껐다 켜도 shared_links 행이 늘지 않게).
+var _shareNames=false,_shareReq=0,_shareLinks={};
 function shareGameLink(){
+  _shareNames=false;_shareLinks={};
+  _shareGameBuild(false);
+}
+function shareNameToggle(on){
+  _shareNames=!!on;
+  _shareGameBuild(_shareNames);
+}
+// 링크를 만드는 동안 모달의 복사 · 카카오 버튼을 막고 이전 모드의 링크를 비운다 — 체크 상태와 다른 링크가 복사되지 않게
+function _shareBusy(on){
+  var ov=document.getElementById('shareQROv');
+  var open=!!(ov&&ov.classList.contains('show'));
+  if(on){
+    _shareURL='';
+    if(!open){showToast('🔗 링크 생성 중…',false,true);return;}
+  }
+  ['shareQRCopyBtn','kakaoShareBtn'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=!!on;});
+  if(on){
+    var w=document.getElementById('shareQRWrap');if(w)w.innerHTML='';
+    var u=document.getElementById('shareQRUrl');if(u)u.textContent='링크 생성 중…';
+  }
+}
+function _shareGameBuild(withNames){
+  var mode=withNames?'real':'anon',req=++_shareReq;
+  if(_shareLinks[mode]){_shareBusy(false);showShareQR(_shareLinks[mode],true);return;}
   var ht=document.getElementById('tHome').value||'홈팀';
   var at=document.getElementById('tAway').value||'원정팀';
 
@@ -5060,26 +5135,33 @@ function shareGameLink(){
     };})
   };
 
+  /* 기본: 선수 실명을 치환해서 내보낸다 (체크박스 "선수 실명 포함" 을 켠 경우만 실명 그대로) */
+  if(!withNames){fullPayload=_anonSharePayload(fullPayload);compactPayload=_anonSharePayload(compactPayload);}
+
   // Supabase short link 시도 (full payload)
   if(typeof pushSharedLink==='function'){
-    showToast('🔗 링크 생성 중…',false,true);
+    _shareBusy(true);
     pushSharedLink(fullPayload,
       function(id){
+        if(req!==_shareReq)return;   // 그 사이 체크를 바꿨거나 모달을 닫았다 — 오래된 응답은 버린다
         var url=location.origin+location.pathname+'?gid='+id;
-        showShareQR(url);
+        _shareLinks[mode]=url;
+        _shareBusy(false);
+        showShareQR(url,true);
       },
       function(err){
+        if(req!==_shareReq)return;
         console.warn('[SprayLab] pushSharedLink failed, fallback:',err);
-        _shareGameLinkLegacy(compactPayload);
+        _shareGameLinkLegacy(compactPayload,mode);
       }
     );
   }else{
-    _shareGameLinkLegacy(compactPayload);
+    _shareGameLinkLegacy(compactPayload,mode);
   }
 }
 
 // LZString 폴백 (Supabase 불가 시)
-function _shareGameLinkLegacy(payload){
+function _shareGameLinkLegacy(payload,mode){
   var url;
   try{
     var json=JSON.stringify(payload);
@@ -5089,7 +5171,9 @@ function _shareGameLinkLegacy(payload){
     url=location.origin+location.pathname+'?game='+encoded;
   }catch(e){url=location.href;}
   /* 외부 단축 서비스로 URL을 보내지 않는다(선수 데이터 포함) — 길면 안내만 */
-  showShareQR(url);
+  if(mode)_shareLinks[mode]=url;
+  _shareBusy(false);
+  showShareQR(url,true);
   if(url.length>300)showToast('링크가 깁니다. QR이 안 보이면 링크 복사를 사용하세요.',false,true);
 }
 function _fallbackCopy(text){

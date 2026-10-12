@@ -87,9 +87,9 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/compare.css?v=6">
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
-<link rel="stylesheet" href="css/team.css?v=3">
+<link rel="stylesheet" href="css/team.css?v=4">
 <link rel="stylesheet" href="css/pitcher.css?v=6">
-<link rel="stylesheet" href="css/batter.css?v=3">
+<link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=10">
 <link rel="stylesheet" href="css/settings.css?v=2">
@@ -692,14 +692,16 @@ var _kakaoSdkLoaded = false;
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(7)">
         <div class="hm-ch-icon">📱</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">분석 뷰<span class="hm-new">NEW</span></div><div class="hm-ch-sub">프로필 · 비교 · 스카우팅 리포트</div></div>
+        <div class="hm-ch-body"><div class="hm-ch-title">분석 뷰<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타자 · 투수 · 비교 · 스카우트 · 팀</div></div>
         <div class="hm-ch-arrow">▶</div>
       </div>
       <div class="hm-body" id="hmc7">
-        <p>하단 네비게이션으로 뷰를 전환합니다</p>
-        <p>👤 <b>프로필</b> — 선수 통산 AVG·OBP·SLG·OPS·wOBA·BABIP·ISO·K%·BB% + 경기별 타율 추이</p>
+        <p>하단 <b>분석</b> 탭 위쪽의 서브탭 5개로 화면을 바꿉니다</p>
+        <p>👤 <b>타자</b> — [이번 경기] 오늘 타석 · 본 공 위치 · 타구 방향 / [시즌 전체] wOBA+ · 유형 태그 · 팀 내 위치 · 핫/콜드 존 · 상황별 성적 · 경기 로그 · 선수 리포트 만들기</p>
+        <p>⚾ <b>투수</b> — 투구 기록으로 보는 제구 · 구종 · 코스 · 체력 분석</p>
         <p>⚡ <b>비교</b> — 두 선수 레이더 차트 + 17개 지표 나란히 비교 + 타구 방향 분포</p>
         <p>🔍 <b>스카우트</b> — 존별 타율 히트맵 · 카운트별 성적 · 약점 분석 · 투구 전략 자동 제안 · 텍스트 리포트 복사</p>
+        <p>🏟️ <b>팀</b> — 팀 지표(BABIP 포함) · 타석 결과 · 리더보드 · 경기 결과 · 5구역 타구 방향도(상세 필터)</p>
       </div>
     </div>
     <!-- ⑨ 스프레이 필터 -->
@@ -1879,21 +1881,20 @@ var _kakaoSdkLoaded = false;
 </div>
 
 
-<!-- ═══ 분석 탭 (서브탭: 스프레이·타자·투수·비교·프로필·스카우트·팀) ═══ -->
+<!-- ═══ 분석 탭 (서브탭: 타자·투수·비교·스카우트·팀 — 종합은 팀, 프로필은 타자 [시즌]으로 합침) ═══ -->
 <div id="analysisView" class="savant-view">
   <div class="ana-subnav" id="anaSubnav" role="tablist" aria-label="분석 항목">
     <div class="ana-subnav-inner">
-      <button class="ana-sub on" data-sub="spray" role="tab" onclick="shellSub('spray')">스프레이</button>
-      <button class="ana-sub" data-sub="batter" role="tab" onclick="shellSub('batter')">타자</button>
+      <button class="ana-sub on" data-sub="batter" role="tab" onclick="shellSub('batter')">타자</button>
       <button class="ana-sub" data-sub="pitcher" role="tab" onclick="shellSub('pitcher')">투수</button>
       <button class="ana-sub" data-sub="compare" role="tab" onclick="shellSub('compare')">비교</button>
-      <button class="ana-sub" data-sub="profile" role="tab" onclick="shellSub('profile')">프로필</button>
       <button class="ana-sub" data-sub="scout" role="tab" onclick="shellSub('scout')">스카우트</button>
       <button class="ana-sub" data-sub="team" role="tab" onclick="shellSub('team')">팀</button>
     </div>
   </div>
   <div class="shell-inner" id="anaBody">
-    <section class="ana-sec on" data-sub="spray">
+    <!-- 예전 종합(spray) · 프로필 칸: 서브탭에서는 빠졌지만 spray.js · dashboard.js · profile.js가 찾으므로 숨긴 채 남겨 둠 -->
+    <section class="ana-sec" data-sub="spray">
       <div class="ana-spray-ctrls" id="anaSprayCtrls"></div>
       <div class="ana-spray-wrap">
         <canvas id="anaSprayCanvas" aria-label="스프레이 차트"></canvas>
@@ -1901,7 +1902,7 @@ var _kakaoSdkLoaded = false;
       </div>
       <div class="ana-note">기록 탭의 필드와 같은 데이터입니다 · 선수별 성적은 <button class="ana-link" onclick="shellSub('batter')">타자</button> / <button class="ana-link" onclick="shellSub('team')">팀</button></div>
     </section>
-    <section class="ana-sec" data-sub="batter" id="anaSecBatter"></section>
+    <section class="ana-sec on" data-sub="batter" id="anaSecBatter"></section>
     <section class="ana-sec" data-sub="pitcher" id="anaSecPitcher"></section>
     <section class="ana-sec" data-sub="compare" id="anaSecCompare"></section>
     <section class="ana-sec" data-sub="profile" id="anaSecProfile"></section>
@@ -2119,7 +2120,7 @@ var _kakaoSdkLoaded = false;
     기록
   </button>
   <button class="savant-nav-btn" data-tab="analysis" role="tab" aria-selected="false" onclick="shellNav('analysis')"
-    data-help-title="📊 분석" data-help="<b>스프레이 · 타자 · 투수 · 비교 · 프로필 · 스카우트 · 팀</b> 분석을 한곳에서 봅니다.">
+    data-help-title="📊 분석" data-help="<b>타자 · 투수 · 비교 · 스카우트 · 팀</b> 분석을 한곳에서 봅니다.">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V9"/><path d="M8 17V4"/><path d="M13 17v-6"/><path d="M18 17V7"/></svg>
     분석
   </button>
@@ -2383,7 +2384,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=146"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=65"></script>
+<script type="module" src="js/app.js?v=69"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

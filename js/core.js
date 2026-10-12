@@ -3511,7 +3511,7 @@ function showShareQR(url,withNameOpt){
   var ov=document.getElementById('shareQROv');
   if(!ov){alert('공유 모달을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');return;}
 
-  // "선수 실명 포함" 옵션은 경기 공유(shareGameLink)에서만 보인다 — 팀 공유 등 다른 호출은 인자 없이 부른다
+  // "선수 실명 포함" 옵션은 경기 공유(shareGameLink) · 팀 공유(shareTeamURL)에서 보인다 — 인자 없이 부르면 숨는다
   var nameOpt=document.getElementById('shareNameOpt');
   if(nameOpt)nameOpt.style.display=withNameOpt?'':'none';
   var nameChk=document.getElementById('shareNameChk');
@@ -4228,7 +4228,7 @@ function downloadGameTemplate() {
   var ws1=XLSX.utils.aoa_to_sheet(sumData); ws1['!cols']=[{wch:14},{wch:14},{wch:14}];
   var abData=[
     ['이닝','팀','선수','번호','결과','방향','타점','거리(ft)','구종','존','시간'],
-    ['1회초','홈','김정철','7','안타','LF',1,280,'직구',5,'14:30'],
+    ['1회초','홈','홍길동','7','안타','LF',1,280,'직구',5,'14:30'],
     ['1회초','홈','이민준','12','삼진','',0,'','','',''],
     ['1회말','원정','박성현','3','홈런','CF',2,380,'','','']
   ];
@@ -4789,7 +4789,7 @@ function _doExportToExcel(data) {
 // ─────────────────────────────────────────────────────────
 function downloadExcelTemplate() {
   if (typeof XLSX === 'undefined') {
-    var csv = '﻿이닝,팀,선수이름,등번호,결과,방향,타점,거리(ft)\n1회초,홈,김정철,7,안타,LF,1,280\n1회초,홈,이민준,12,삼진,,,\n1회말,원정,박성현,3,홈런,CF,2,380\n';
+    var csv = '﻿이닝,팀,선수이름,등번호,결과,방향,타점,거리(ft)\n1회초,홈,홍길동,7,안타,LF,1,280\n1회초,홈,이민준,12,삼진,,,\n1회말,원정,박성현,3,홈런,CF,2,380\n';
     var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
     downloadBlob(blob, 'spraylab_template.csv');
     showToast('서식 CSV 다운로드 완료', false);
@@ -4803,7 +4803,7 @@ function downloadExcelTemplate() {
     ['팀: 홈 또는 원정'],
     [],
     ['이닝','팀','선수이름','등번호','결과','방향','타점','거리(ft)'],
-    ['1회초','홈','김정철','7','안타','LF',1,280],
+    ['1회초','홈','홍길동','7','안타','LF',1,280],
     ['1회초','홈','이민준','12','삼진','',0,''],
     ['1회말','원정','박성현','3','홈런','CF',2,380]
   ];
@@ -5080,14 +5080,15 @@ function _anonSharePayload(p){
 // ── 공유 링크 만들기 ──
 // 공유 모달의 "선수 실명 포함" 체크박스로 실명/치환 링크를 오간다. 기본은 치환(체크 해제).
 // 같은 모달을 여는 동안 모드별 링크는 한 번만 만들어 재사용한다(체크를 껐다 켜도 shared_links 행이 늘지 않게).
-var _shareNames=false,_shareReq=0,_shareLinks={};
+var _shareNames=false,_shareReq=0,_shareLinks={},_shareKind='game';   // _shareKind: 지금 모달이 보여 주는 공유 — 'game'(경기) | 'team'(팀, shareTeamURL)
 function shareGameLink(){
-  _shareNames=false;_shareLinks={};
+  _shareNames=false;_shareLinks={};_shareKind='game';
   _shareGameBuild(false);
 }
 function shareNameToggle(on){
   _shareNames=!!on;
-  _shareGameBuild(_shareNames);
+  if(_shareKind==='team')_shareTeamBuild(_shareNames);
+  else _shareGameBuild(_shareNames);
 }
 // 링크를 만드는 동안 모달의 복사 · 카카오 버튼을 막고 이전 모드의 링크를 비운다 — 체크 상태와 다른 링크가 복사되지 않게
 function _shareBusy(on){
@@ -8363,18 +8364,34 @@ function loadTeamGame(key){
 }
 
 // ── 팀 URL 공유 ──
+// 경기 공유와 같은 모달 · 같은 "선수 실명 포함" 체크박스(기본 해제). 기본은 MVP 이름을 경기 공유와 같은 규칙(_anonSharePayload)으로 치환한다
 function shareTeamURL(){
   tdLoad();var team=tdGetActive();
   if(!team){showToast('공유할 팀이 없습니다',true);return;}
+  _shareNames=false;_shareKind='team';
+  _shareTeamBuild(false);
+}
+function _shareTeamBuild(withNames){
+  tdLoad();var team=tdGetActive();
+  if(!team){showToast('공유할 팀이 없습니다',true);return;}
+  _shareReq++;_shareBusy(false);   // 만들던 경기 링크가 늦게 도착해 팀 링크를 덮지 않게 하고, 막아 둔 버튼을 푼다
   var payload={v:1,type:'team',name:team.name,color:team.color,stadium:team.stadium,
     games:team.games.map(function(g){return {date:g.date,th:g.th,ta:g.ta,hs:g.hs,as:g.as,result:g.result,
       mvpName:g.mvp?g.mvp.name:null};})};
+  if(!withNames){
+    /* MVP 이름 → 타석 모양({bn, bno})으로 _anonSharePayload 에 넘긴다: 등번호(mvp.num)가 있으면 "#번호", 없으면 "성OO".
+       같은 선수(이름+번호)는 모든 경기에서 같은 표기, 서로 다른 선수가 같은 표기가 되면 " 2" 로 구분된다 */
+    var gi=[],abs=[];
+    team.games.forEach(function(g,i){if(g.mvp&&g.mvp.name!=null){gi.push(i);abs.push({bn:String(g.mvp.name),bno:g.mvp.num});}});
+    var lab=_anonSharePayload({abs:abs}).abs;
+    gi.forEach(function(i,j){payload.games[i].mvpName=lab[j].bn;});
+  }
   var json=JSON.stringify(payload);
   var enc=typeof LZString!=='undefined'
     ?'z'+LZString.compressToEncodedURIComponent(json)
     :'b'+btoa(unescape(encodeURIComponent(json)));
   var url=location.origin+location.pathname+'?team='+enc;
-  showShareQR(url);
+  showShareQR(url,true);
 }
 
 // ── URL에서 팀 데이터 로드 ──

@@ -95,11 +95,12 @@ function _countHtml() {
   const AS = window.AS || {};
   const gf = typeof window.GF !== 'undefined' && window.GF && window.GF.active;
   const dots = (n, max, cls) => Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on ' + cls : ''}"></i>`).join('');
-  const outs = gf ? (window.GF.outs || 0) : (AS.outs || 0);
+  const outs = +(gf ? (window.GF.outs || 0) : (AS.outs || 0)) || 0;
+  const nb = +AS.balls || 0, ns = +AS.strikes || 0;   // 숫자로만 — 가져온 경기의 카운트가 문자열이어도 HTML 에 섞이지 않게
   return `
     <div class="rv-count" role="group" aria-label="볼카운트">
-      <button type="button" class="rv-cg" onclick="chCount('b')" aria-label="볼 ${AS.balls || 0}, 누르면 +1"><span>B</span>${dots(AS.balls || 0, 3, 'b')}</button>
-      <button type="button" class="rv-cg" onclick="chCount('s')" aria-label="스트라이크 ${AS.strikes || 0}, 누르면 +1"><span>S</span>${dots(AS.strikes || 0, 2, 's')}</button>
+      <button type="button" class="rv-cg" onclick="chCount('b')" aria-label="볼 ${nb}, 누르면 +1"><span>B</span>${dots(nb, 3, 'b')}</button>
+      <button type="button" class="rv-cg" onclick="chCount('s')" aria-label="스트라이크 ${ns}, 누르면 +1"><span>S</span>${dots(ns, 2, 's')}</button>
       ${gf
         ? `<span class="rv-cg ro" title="경기 운영 모드가 아웃을 자동으로 셉니다"><span>O</span>${dots(outs, 2, 'o')}</span>`
         : `<button type="button" class="rv-cg" onclick="chCount('o')" aria-label="아웃 ${outs}, 누르면 +1"><span>O</span>${dots(outs, 2, 'o')}</button>`}

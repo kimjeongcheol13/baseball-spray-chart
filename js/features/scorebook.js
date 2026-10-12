@@ -378,7 +378,7 @@ function _orderHtml() {
       </div>
       <button type="button" class="sb-sheet-x" onclick="sbOrderSheet(false)" aria-label="타순표 닫기">${ICON.close}</button>
     </header>
-    <div class="sb-ot-h" aria-hidden="true"><span>#</span><span>타자</span><span>결과</span><span>기록</span></div>
+    <div class="sb-ot-h" aria-hidden="true"><span>#</span><span>타자</span><span>직전 타석</span><span>이번 경기</span></div>
     <ol class="sb-ot">${rows.join('')}</ol>`;
 }
 
@@ -465,7 +465,8 @@ function render() {
   const set = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
   const mid = $('sbHdrMid');
   if (mid) mid.innerHTML = _lsHtml() + _innHtml();
-  set('sbOrder', _orderHtml());
+  // 타순표 빈 행에 이름을 입력하는 중이면(firstrun.js) 타순표는 건너뜀 — 입력칸이 사라지지 않게 (끝나면 firstrun.js 가 다시 그림)
+  if (!(act && act.closest && act.closest('#sbOrder') && act.matches('input'))) set('sbOrder', _orderHtml());
   set('sbNow', _nowHtml());
   set('sbNowBar', _nowBarHtml());
   set('sbFieldFt', _fieldFtHtml());

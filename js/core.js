@@ -426,7 +426,7 @@ var _lastSaveUpdated=false;   // 마지막 저장이 기존 항목 덮어쓰기�
 var _saveReminderShown=false;
 var _saveReminderTimer=null;
 function checkSaveReminder(){
-  if(_saveReminderShown||_gameSaved)return;
+  if(_saveReminderShown||_gameSaved||_sharedViewActive())return;   // 공유받아 보기만 하는 경기는 알리지 않는다(_sharedView 설명)
   if(AS.abs&&AS.abs.length>=5){
     _saveReminderShown=true;
     showToast('💾 지금 저장하세요! (저장 버튼 또는 Ctrl+S)',false,true);
@@ -2419,6 +2419,7 @@ function saveGame(){
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
     _curSaveKey=key;_lastSaveUpdated=!!prev;
+    _sharedView=null;   // 공유받아 보던 경기도 저장하면 내 경기 — 이후 기록은 평소처럼 자동저장
     if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
@@ -2766,7 +2767,11 @@ function importGames(input) {
 
 
 function restoreGame(key){
-  const d=JSON.parse(localStorage.getItem(key));if(!d)return;
+  if(!localStorage.getItem(key))return;
+  // 열기 전에 작업 중인 경기를 먼저 저장 — 저장 안 한 타구가 이 경기로 덮여 사라지지 않게(공유 경기 열기와 같은 방식). 저장 못 하면 열지 않는다
+  var savedMine=_saveWorkBeforeReplace();
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 경기를 열지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return false;}
+  const d=JSON.parse(localStorage.getItem(key));if(!d)return;   // 저장한 뒤에 읽는다 — 같은 경기를 다시 열 때 방금 저장한 내용이 열리도록
   _curSaveKey=key;   // 이 경기를 다시 저장하면 이 항목을 덮어씀
   AS.curGame=key.replace(/^sl_(?:auto_)?/,''); // 자동저장·실시간 키를 저장 키 기준으로 고정 — d.ts 는 복구(_archQuietSave)가 바꿔 열 때마다 새 키가 생겼다
   document.getElementById('tHome').value=d.th||'홈팀';document.getElementById('tAway').value=d.ta||'원정팀';
@@ -2796,7 +2801,7 @@ function restoreGame(key){
   _updateSaveUI(false);
   updateAll();
   _gameSaved=true;_updateSaveUI(false);   // updateAll이 '저장 안 됨'으로 바꾸므로 되돌림 (불러온 직후엔 새 기록 없음)
-  showToast('경기 불러오기 완료',false);
+  showToast(savedMine?'경기 불러오기 완료 · 이전 경기는 저장됨':'경기 불러오기 완료',false,savedMine?8000:true);
 }
 
 
@@ -3340,7 +3345,7 @@ function scheduleAutoSave(){
   _autoTimer=setTimeout(_doAutoSave,10000);
 }
 function _doAutoSave(){
-  if(!AS.abs.length)return;
+  if(!AS.abs.length||_sharedViewActive())return;   // 공유받아 보기만 하는 경기는 자동저장하지 않는다(_sharedView 설명)
   if(!AS.curGame)AS.curGame=Date.now();   // 마법사를 거치지 않은 경기(복구 등)도 키 하나로 고정 (cloud.js cloudAutoSyncRecord 와 같은 규칙)
   var key='sl_auto_'+AS.curGame;
   _autoKey=key;
@@ -3717,6 +3722,7 @@ function saveEditRec(){
   var id=parseInt(document.getElementById('editRecId').value);
   var ab=AS.abs.find(function(a){return a.id===id;});
   if(!ab)return;
+  _sharedView=null;   // 공유받아 보던 경기도 기록을 고치면 내 경기(제자리 수정이라 _sharedViewActive 가 못 알아챈다)
   ab.inn=document.getElementById('editInn').value;
   ab.res=document.getElementById('editRes').value;
   ab.pt=document.getElementById('editPt').value||null;
@@ -5303,6 +5309,46 @@ function _restorePitchersFromPayload(payloadPitchers){
     })
   };});
 }
+// 공유받은 경기를 "불러오기"로 열어 둔 보기 상태. 이 상태에서는 자동저장(sl_auto_*) · 복구 슬롯(sl_autosave) · 클라우드 자동 동기화(user_games)에
+// 올리지 않는다 — 올리면 내 경기처럼 남고, 같은 키를 쓰던 내 작업 중 경기의 자동저장본을 덮어쓴다. 사용자가 저장을 누르거나(saveGame) 기록을 고치면
+// (타구 · 점수 · 투구가 달라지거나 saveEditRec) 그때부터는 내 경기로 보고 평소처럼 자동저장한다. "저장되지 않은 기록" 경고도 같은 기준이다
+// (_unsavedCounts · checkSaveReminder): 보기만 하는 동안은 뜨지 않고, 고친 순간부터 뜬다.
+// 초기값을 넣지 않는다(_sharedPayload 와 같은 이유 — 이 줄보다 먼저 불리는 코드가 채운 값을 지우지 않게)
+var _sharedView;
+function _sharedSig(){   // 보기 중에 사용자가 고치면 달라지는 값: 타구 수 · 점수 · 투구 수(마지막 타구와 타구 배열은 _sharedViewActive 가 따로 본다)
+  var pc=(AS.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
+  return AS.abs.length+'|'+AS.hs+'|'+AS.as+'|'+pc;
+}
+function _sharedViewActive(){
+  var v=_sharedView;
+  return !!v&&v.abs===AS.abs&&AS.abs[AS.abs.length-1]===v.last&&_sharedSig()===v.sig;
+}
+// 공유 데이터의 경기 정보(info)를 AS.info 형식({date,venue,side,innings})으로. 없거나 쓸 수 없으면 null — 이전 경기의 날짜·구장이 남지 않게 비운다.
+// 링크는 누가 만들었는지 알 수 없으므로 경기설정 탭의 입력 제약(setup.js stSetInfo)과 같게 거른다
+function _restoreInfoFromPayload(i){
+  if(!i||typeof i!=='object')return null;
+  var o={},n=+i.innings;
+  if(typeof i.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(i.date))o.date=i.date;
+  if(typeof i.venue==='string'&&i.venue.trim())o.venue=i.venue.trim().slice(0,20);
+  if(i.side==='home'||i.side==='away')o.side=i.side;
+  if([5,7,9].indexOf(n)>=0)o.innings=n;
+  return Object.keys(o).length?o:null;
+}
+// 다른 경기로 AS 를 덮어쓰기 전에(공유 경기 열기 · 저장 목록에서 경기 열기 · 복구), 작업 중인 경기(타구 1개 이상)에 저장 안 한 기록이 있으면
+// 내 저장 목록에 먼저 저장한다(지금 경기의 저장 항목(_curSaveKey)이 있으면 그 항목에 덮어쓰고, 새 경기면 새 항목 — _archQuietSave).
+// 돌려주는 값: 저장했으면 true · 저장할 게 없으면 false · 저장에 실패했으면 null(이때는 새 경기를 열지 않는다)
+function _saveWorkBeforeReplace(){
+  // 저장할 게 없는 경우: 타구가 없다 · 저장한 뒤 바꾼 게 없다(_gameSaved — 페이지 이탈 경고 · 새 경기 확인과 같은 기준) ·
+  // 공유 경기를 보기만 했다(내 경기가 아니다). _gameSaved 를 보지 않으면 로그인 정리(cloud.js _relinkOpenGame)가 지운 중복 항목을 여기서 되살린다
+  if(!AS.abs||!AS.abs.length||_gameSaved||_sharedViewActive())return false;
+  if(!_archQuietSave(_curSaveKey))return null;
+  try{   // 평소 "경기 저장"과 같이 클라우드에도(로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함)
+    var d=JSON.parse(localStorage.getItem(_curSaveKey)||'null');
+    var e=JSON.parse(localStorage.getItem('sl_saves')||'[]').find(function(s){return s.key===_curSaveKey;});
+    if(d&&window.cloudSave)cloudSave(_curSaveKey,d,e&&e.label||_curSaveKey,d.ts);
+  }catch(err){console.warn('[Load] 저장한 경기를 클라우드에 올리지 못함',err);}
+  return true;
+}
 function loadSharedGame(){
   if(!_sharedPayload)return;
   var payload=_sharedPayload;
@@ -5312,7 +5358,10 @@ function loadSharedGame(){
   var pitchersLP=_restorePitchersFromPayload(payload.pitchers);
   var abs=_restoreAbsFromPayload(payload.abs);
   if(!_gameDataOk({abs:abs,home_lineup:homeLP,away_lineup:awayLP,pitchers:pitchersLP,zoneHistory:payload.zh})){showToast('공유 데이터 형식이 올바르지 않습니다',false);return;}
+  var savedMine=_saveWorkBeforeReplace();   // 덮어쓰기 전에 작업 중인 경기를 내 저장 목록에 — 저장 못 하면 열지 않는다
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 공유받은 경기를 열지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
   _curSaveKey=null;   // 공유받은 경기는 처음 저장할 때 새 항목
+  AS.curGame=null;_autoKey=null;   // 자동저장 · 실시간 키도 내 경기에서 풀어, 내 경기의 자동저장본(sl_auto_*)과 겹치지 않게
   /* 팀명 · 점수 */
   AS.hs=payload.hs||0; AS.as=payload.as||0;
   var tH=document.getElementById('tHome'); if(tH)tH.value=payload.ht||'홈팀';
@@ -5329,6 +5378,8 @@ function loadSharedGame(){
   AS.pitchers.forEach(function(p){p.pitches.slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
   /* 타석 기록 */
   AS.abs=abs;
+  _sharedView={abs:AS.abs,last:AS.abs[AS.abs.length-1],sig:_sharedSig()};   // 보기 상태(위 _sharedView 설명)
+  AS.info=_restoreInfoFromPayload(payload.info);   // 경기 정보(날짜·구장…): 공유 데이터 값, 없으면 비움 — 이전 경기 값이 따라오지 않게
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
   /* 상태 초기화 */
@@ -5342,7 +5393,8 @@ function loadSharedGame(){
     updateAll();
     if(typeof renderPitcherRoster==='function')renderPitcherRoster();
     if(typeof renderPitchLog==='function')renderPitchLog();
-    showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
+    if(savedMine)showToast('공유받은 경기를 열었어요 · 내 경기는 저장됨',false,8000);
+    else showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
   },500);
 }
 
@@ -7003,7 +7055,7 @@ var _afterSaveCb=null;   // saveGame이 끝난 뒤 요약 대신 실행할 일
 function _unsavedCounts(){
   var pa=(AS&&AS.abs||[]).length;
   var pc=(AS&&AS.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
-  return {pa:pa,pc:pc,any:!_gameSaved&&(pa>0||pc>0)};
+  return {pa:pa,pc:pc,any:!_gameSaved&&!_sharedViewActive()&&(pa>0||pc>0)};   // 공유받아 보기만 하는 경기는 잃을 내 기록이 아니다
 }
 function openNewGameGuard(){
   var el=document.getElementById('newGameGuard');
@@ -8228,7 +8280,8 @@ function renderGameHistory(){
   }).join('');
 }
 function loadTeamGame(key){
-  restoreGame(key);enterFocusMode();
+  if(restoreGame(key)===false)return;   // 내 경기를 저장하지 못해 열지 않았으면 이어서 화면을 바꾸지 않는다
+  enterFocusMode();
   swTab('rec',document.getElementById('tab-rec'));
   showToast('경기를 불러왔습니다 ✓',false);
 }
@@ -8376,6 +8429,7 @@ var storageManager=(function(){
       catch(e){console.warn('[SM] load error',key,e);return null;}
     },
     scheduleAutosave:function(data,delay){
+      if(_sharedViewActive())return;   // 공유받아 보기만 하는 경기로 복구 슬롯을 덮지 않는다(이미 걸린 타이머는 그대로 둔다)
       clearTimeout(_timer);
       _timer=setTimeout(function(){
         try{localStorage.setItem(AUTOSAVE_KEY,_ser({_v:VERSION,_ts:Date.now(),data:data}));}
@@ -8588,10 +8642,20 @@ function _recInfo(d){
   if(d.info)return d.info;
   try{var g=d.saveKey&&JSON.parse(localStorage.getItem(d.saveKey)||'null');return g&&g.info||null;}catch(e){return null;}
 }
+// 복구 배너의 "복구하기" 버튼. 배너는 시작할 때 AS 가 비어 있으면 뜨지만 사라지지 않아서, 그 사이 새로 기록한 게 있으면 복구가 그 위를 덮는다
+// → 먼저 저장하고(저장 못 하면 복구하지 않는다) 복구한다. archRecoverAutosave 는 AS 가 빈 시작 때(_openLastGame)나 여기서만 부른다
+// (래퍼 setup.js 가 복구 뒤 경기 정보 · 구장을 덧씌우므로 가드는 래퍼 바깥인 이 함수가 맡는다)
+function archRecoverFromBanner(){
+  var savedMine=_saveWorkBeforeReplace();
+  if(savedMine===null){showToast('내 경기를 저장하지 못해서 복구하지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
+  archRecoverAutosave();
+  if(savedMine)showToast('✓ 마지막 기록을 복구했습니다 · 방금 기록은 저장됨',false,8000);
+}
 function archRecoverAutosave(){
   var rec=storageManager.getRecovery();
   if(!rec||!rec.data)return;
   var d=rec.data;
+  AS.curGame=null;_autoKey=null;   // 자동저장 키를 이전 경기에서 풀어, 복구한 경기가 그 경기의 자동저장본을 덮지 않게(아래 _archQuietSave 가 복구한 경기 키로 다시 정한다)
   AS.abs=d.abs||[];
   AS.home_lineup=d.home_lineup||[];
   AS.away_lineup=d.away_lineup||[];
@@ -8631,6 +8695,8 @@ function _archQuietSave(saveKey){
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
         existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
+        var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
+        if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명 — 다른 경기를 열기 전에 저장할 때 사라지지 않게
         existing.ts=Date.now();
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
@@ -8638,11 +8704,13 @@ function _archQuietSave(saveKey){
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
         AS.curGame=latest.key.replace(/^sl_(?:auto_)?/,'');   // 복구한 경기도 그 저장 항목의 자동저장 키를 쓴다
-        return;
+        return true;
       }
     }
     // 저장 없으면 새로 생성
-    var key='sl_rec_'+Date.now();
+    // 키는 밀리초 시각 — 열기 전 저장과 복구 저장처럼 같은 밀리초에 두 번 불리면 같은 키라 뒤의 것이 앞의 것을 덮으므로, 이미 있으면 1씩 올린다
+    var kt=Date.now();while(localStorage.getItem('sl_rec_'+kt)!==null)kt++;
+    var key='sl_rec_'+kt;
     var data={key,hs:AS.hs,as:AS.as,th:th,ta:ta,
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
@@ -8654,7 +8722,9 @@ function _archQuietSave(saveKey){
     if(window._slMarkMod)window._slMarkMod(key);
     _curSaveKey=key;_gameSaved=true;
     AS.curGame=key.replace(/^sl_/,'');
+    return true;
   }catch(e){console.warn('[Recovery] quiet save failed',e);}
+  return false;   // 저장 못 함(용량 초과 등) — 호출부(_saveWorkBeforeReplace)가 알 수 있게
 }
 
 function archDismissRecovery(){
@@ -8719,6 +8789,10 @@ function recoverHiddenAutosave(key){
     // 복구하면 saveKey 가 가리키는 저장된 경기를 덮어쓴다 — 바꾸기 전에 확인
     var _tgt=d.saveKey&&JSON.parse(localStorage.getItem('sl_saves')||'[]').find(function(s){return s.key===d.saveKey;});
     if(_tgt&&!confirm('저장된 경기 "'+_tgt.label+'"을(를) 이 임시저장으로 덮어쓸까요?'))return;
+    // 복구가 작업 중인 경기를 덮기 전에 먼저 저장 — 저장 못 하면 복구하지 않는다(공유 경기 열기 · 저장 목록 열기와 같은 방식)
+    var savedMine=_saveWorkBeforeReplace();
+    if(savedMine===null){showToast('내 경기를 저장하지 못해서 복구하지 않았어요 — 저장 공간을 확인해 주세요',false,8000);return;}
+    AS.curGame=null;_autoKey=null;   // 자동저장 키를 이전 경기에서 푼다(sl_auto_* 복구는 바로 아래에서 그 키를 이어 쓴다)
     if(key.indexOf('sl_auto_')===0)AS.curGame=key.slice(8);   // 복구한 경기는 같은 자동저장 키를 이어 쓴다(새 키로 또 쌓이지 않게)
     AS.abs=d.abs||[];
     AS.home_lineup=d.home_lineup||[];
@@ -8736,7 +8810,7 @@ function recoverHiddenAutosave(key){
     updateAll();
     storageManager.cancelPendingAutosave();
     _archQuietSave(d.saveKey);
-    showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)',false);
+    showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)'+(savedMine?' · 이전 경기는 저장됨':''),false,savedMine?8000:true);
   }catch(e){showToast('복구 실패: '+e.message,false);}
 }
 

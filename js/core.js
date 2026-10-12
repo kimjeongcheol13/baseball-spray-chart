@@ -1913,7 +1913,7 @@ function renderSeasonStats(){
   var condGames=games.filter(function(g){return g.weather||g.field;});
   var condHTML='';
   if(condGames.length){
-    var wMap={};
+    var wMap=Object.create(null);
     condGames.forEach(function(g){
       var w=g.weather||'기타';
       if(!wMap[w])wMap[w]={ab:0,h:0};
@@ -2645,7 +2645,7 @@ function _pitchOk(e){return _plainObj(e)&&!_protoName(e.pt)&&!_protoName(e.zone)
 // 존 기록(zoneHistory) = { 구역 이름: [{pt, symbol}, …] } — 객체가 아니거나 값이 배열이 아니면 투구 기록 · 존 표시가 예외로 멈춘다
 function _zhOk(z){return !z||(_plainObj(z)&&Object.keys(z).every(function(k){return Array.isArray(z[k])&&z[k].every(_plainObj);}));}
 function _gameDataOk(d){
-  if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers)||!_zhOk(d.zoneHistory))return false;
+  if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers)||!_zhOk(d.zoneHistory)||_protoName(d.cond&&d.cond.weather))return false;
   return (d.abs||[]).every(function(a){return _plainObj(a)&&!_protoName(a.bname)&&!_protoName(a.bid)&&!_protoName(a.pt)&&!_protoName(a.zone)&&!_protoName(a.res)&&!_protoName(a.dir)&&_listOk(a.pitches)&&(a.pitches||[]).every(_pitchOk);})&&
     ['home_lineup','away_lineup'].every(function(k){return (d[k]||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id);});})&&
     (d.pitchers||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id)&&_listOk(p.pitches)&&(p.pitches||[]).every(_pitchOk);});

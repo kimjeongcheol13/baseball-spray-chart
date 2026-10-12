@@ -12,14 +12,14 @@ import './features/team.js?v=7';
 import './features/pitcher.js?v=15';
 import './features/batter.js?v=13';
 import './features/spray.js?v=4';
-import './features/shell.js?v=14';
+import './features/shell.js?v=15';
 import './features/record.js?v=8';
 import './features/settings.js?v=2';
 import './features/scorebook.js?v=13';
 import './features/dashboard.js?v=7';
 import './features/setup.js?v=3';
 import './features/report.js?v=5';
-import './features/anahelp.js?v=1';
+import './features/anahelp.js?v=2';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

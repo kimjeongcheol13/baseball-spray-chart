@@ -688,18 +688,20 @@ var _kakaoSdkLoaded = false;
         <p>💡 메뉴 → <b>💡 안내 모드</b> — 버튼마다 설명 툴팁 표시<br>🏟️ 필드 탭 → 결과 팝업 자동 표시 &nbsp;·&nbsp; 📸 차트 탭 → PNG 공유</p>
       </div>
     </div>
-    <!-- ⑧ Savant 분석 뷰 -->
+    <!-- ⑧ 분석 뷰 -->
     <div class="hm-card">
       <div class="hm-ch" onclick="toggleHelpCard(7)">
         <div class="hm-ch-icon">📱</div>
-        <div class="hm-ch-body"><div class="hm-ch-title">Savant 분석 뷰<span class="hm-new">NEW</span></div><div class="hm-ch-sub">프로필 · 비교 · 스카우팅 리포트</div></div>
+        <div class="hm-ch-body"><div class="hm-ch-title">분석 뷰<span class="hm-new">NEW</span></div><div class="hm-ch-sub">타자 · 투수 · 비교 · 스카우트 · 팀</div></div>
         <div class="hm-ch-arrow">▶</div>
       </div>
       <div class="hm-body" id="hmc7">
-        <p>하단 네비게이션으로 뷰를 전환합니다</p>
-        <p>👤 <b>프로필</b> — 선수 통산 AVG·OBP·SLG·OPS·wOBA·BABIP·ISO·K%·BB% + 경기별 타율 추이</p>
+        <p>하단 <b>분석</b> 탭 위쪽의 서브탭 5개로 화면을 바꿉니다</p>
+        <p>👤 <b>타자</b> — [이번 경기] 오늘 타석 · 본 공 위치 · 타구 방향 / [시즌 전체] wOBA+ · 유형 태그 · 팀 내 위치 · 핫/콜드 존 · 상황별 성적 · 경기 로그 · 선수 리포트 만들기</p>
+        <p>⚾ <b>투수</b> — 투구 기록으로 보는 제구 · 구종 · 코스 · 체력 분석</p>
         <p>⚡ <b>비교</b> — 두 선수 레이더 차트 + 17개 지표 나란히 비교 + 타구 방향 분포</p>
         <p>🔍 <b>스카우트</b> — 존별 타율 히트맵 · 카운트별 성적 · 약점 분석 · 투구 전략 자동 제안 · 텍스트 리포트 복사</p>
+        <p>🏟️ <b>팀</b> — 팀 지표(BABIP 포함) · 타석 결과 · 리더보드 · 경기 결과 · 5구역 타구 방향도(상세 필터)</p>
       </div>
     </div>
     <!-- ⑨ 스프레이 필터 -->
@@ -2118,7 +2120,7 @@ var _kakaoSdkLoaded = false;
     기록
   </button>
   <button class="savant-nav-btn" data-tab="analysis" role="tab" aria-selected="false" onclick="shellNav('analysis')"
-    data-help-title="📊 분석" data-help="<b>스프레이 · 타자 · 투수 · 비교 · 프로필 · 스카우트 · 팀</b> 분석을 한곳에서 봅니다.">
+    data-help-title="📊 분석" data-help="<b>타자 · 투수 · 비교 · 스카우트 · 팀</b> 분석을 한곳에서 봅니다.">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V9"/><path d="M8 17V4"/><path d="M13 17v-6"/><path d="M18 17V7"/></svg>
     분석
   </button>
@@ -2382,7 +2384,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=141"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=65"></script>
+<script type="module" src="js/app.js?v=66"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

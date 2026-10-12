@@ -186,6 +186,8 @@ function shellGfToggle() {
 
 // ── 하단 탭 ─────────────────────────────────────────────────
 // GA4: 어느 탭을 얼마나 보는지 (탭 정리 판단용) — 탭 이름만 보내고 선수·기록 내용은 보내지 않는다
+//   analysis_tab_view { tab: record | analysis | settings, sub: batter | pitcher | compare | scout | team }
+//   (분석 서브탭 7→5: 예전 spray · profile 이름으로 들어와도 shellSub가 team · batter로 바꾼 뒤 보낸다)
 let _lastTrack = '';
 function _trackTab(tab, sub) {
   const k = tab + '/' + (sub || '');

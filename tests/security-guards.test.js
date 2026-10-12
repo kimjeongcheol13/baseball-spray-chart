@@ -1,4 +1,5 @@
-// 보안 감사(#111 · #112) 회귀 테스트 — 프로토타입 오염 · 팀 색상 CSS 주입 · 가져온 임시저장 saveKey · 엑셀 가져오기 · zoneHistory · 워크플로 셸 인젝션.
+// 보안 감사(#111 · #112) 회귀 테스트 — 프로토타입 오염 · 팀 색상 CSS 주입 · 가져온 임시저장 saveKey · 엑셀 가져오기 · zoneHistory · 워크플로 셸 인젝션 ·
+// HTML 주입(되돌리기로 복원되는 볼 · 스트라이크 카운트) · 날씨별 집계 키.
 // 배경: 데이터 문자열(선수 이름 · 구종 · 결과 …)을 일반 객체({})의 키로 쓰면 '__proto__' · 'constructor' 같은 값에서
 //       분석 탭이 예외로 멈추거나 'function Object() { [native code] }' 가 화면에 나왔다. 입구(가져오기 · 공유 링크 · 클라우드)는
 //       _gameDataOk 로 막고, 집계 객체 · 상수 표는 프로토타입 없는 객체로 바꿔 예전에 저장된 데이터도 견디게 했다.
@@ -223,6 +224,54 @@
     ok(/persist-credentials:\s*false/.test(y), 'checkout persist-credentials: false');
     ok(/author_association/.test(y) && /"OWNER","MEMBER","COLLABORATOR"/.test(y), '이슈 작성자 OWNER/MEMBER/COLLABORATOR 게이트');
     ok(/@anthropic-ai\/claude-code@\d+\.\d+\.\d+/.test(y), 'claude-code 버전 고정');
+  });
+
+  // ── 6. HTML 주입(XSS) — 가져온 경기의 카운트 · 날씨 ──
+  // 실행 코드 없이 표식 태그만 넣고, 그 태그가 실제 요소로 생기면(= HTML 로 해석되면) 실패로 본다
+  var PROBE = '"><b data-xss-probe="1">x</b><i data-xss-probe="2">';
+  function probes() { return document.querySelectorAll('[data-xss-probe]').length; }
+
+  test('보안: 되돌리기 — 가져온 경기의 볼 · 스트라이크가 문자열이어도 숫자로만 복원되고, 카운트 버튼 · 투구 기록에 HTML 이 섞이지 않는다', async function () {
+    var S = saveAS(), cp = AS.currentPitches, z = AS.zone, pt = AS.pt, K = 'sl_1790000000601';
+    try {
+      eq(probes(), 0, '시작 전 표식 없음');
+      localStorage.setItem(K, JSON.stringify({ key: K, th: 'A', ta: 'B', abs: [
+        { id: 1790000000601, bid: 1, bname: '김타자', res: '안타', count: { b: 1, s: 1 } },
+        { id: 1790000000602, bid: 1, bname: '김타자', res: '삼진', count: { b: PROBE, s: PROBE } }] }));   // 검증을 거치지 않은 예전 데이터 가정
+      localStorage.setItem('sl_saves', JSON.stringify([{ key: K, label: '카운트 경기', ts: 1 }]));
+      restoreGame(K); await sleep(300);
+      undoLast(); await sleep(300);
+      eq([typeof AS.balls, typeof AS.strikes], ['number', 'number'], '되돌리기 후 카운트는 숫자');
+      ok(AS.balls >= 0 && AS.balls <= 3 && AS.strikes >= 0 && AS.strikes <= 2, '카운트 범위: ' + AS.balls + '-' + AS.strikes);
+      AS.currentPitches = []; AS.zone = '중앙 중간'; AS.pt = '직구';
+      logPitchAction(); await sleep(200);   // 모바일 투구 기록(mobPitchLogList)을 그린다
+      eq(probes(), 0, '되돌리기 · 투구 기록 뒤 표식이 HTML 로 해석됨');
+
+      // 표시하는 쪽도 숫자로만 쓰는지 (다른 경로로 문자열이 들어와도) — 카운트 버튼 · 모바일 투구 기록을 직접 다시 그린다
+      AS.balls = PROBE; AS.strikes = PROBE; AS.outs = PROBE;
+      renderCount(); updateAll(); await sleep(300);
+      AS.currentPitches = [{ pt: '직구', zone: '중앙 중간', balls: PROBE, strikes: PROBE, outs: PROBE, ts: PROBE }];
+      _renderMobPitchLog();
+      eq(probes(), 0, '카운트 · 투구 기록 표시에 HTML 이 섞임');
+      var labels = Array.prototype.map.call(document.querySelectorAll('[aria-label^="볼 "]'), function (el) { return el.getAttribute('aria-label'); });
+      ok(labels.length > 0 && labels.every(function (l) { return /^볼 0,/.test(l); }), '카운트 버튼 이름은 숫자: ' + JSON.stringify(labels));
+    } finally {
+      AS.balls = 0; AS.strikes = 0; AS.outs = 0; AS.currentPitches = cp || []; AS.zone = z; AS.pt = pt;
+      loadAS(S); try { renderCount(); _renderMobPitchLog(); } catch (e) {}
+      Array.prototype.forEach.call(document.querySelectorAll('[data-xss-probe]'), function (el) { el.remove(); });
+    }
+  });
+
+  test('보안: 날씨별 집계 — cond.weather 가 프로토타입 이름이면 입구에서 거부하고, 예전 데이터여도 Object.prototype 을 오염시키지 않는다', function () {
+    ok(!_gameDataOk({ cond: { weather: '__proto__' } }), '입구 검증이 거부');
+    ok(_gameDataOk({ cond: { weather: '맑음' } }) && _gameDataOk({ cond: null }), '정상 날씨 · 없음은 통과');
+    var K = 'sl_1790000000701';
+    try {
+      localStorage.setItem(K, JSON.stringify({ key: K, ts: 1790000000000, cond: { weather: '__proto__' }, abs: [{ id: 1, bid: 1, bname: '김타자', res: '안타' }] }));
+      localStorage.setItem('sl_saves', JSON.stringify([{ key: K, label: '날씨 경기', ts: 1 }]));
+      renderSeasonStats();
+      eq([({}).ab, ({}).h], [undefined, undefined], 'Object.prototype 오염');
+    } finally { delete Object.prototype.ab; delete Object.prototype.h; localStorage.removeItem(K); }
   });
 
   test('(정리) 보안 테스트가 만든 상태를 비운다', async function () { srv.signOut(); await sleep(1000); srv.reset(); localStorage.clear(); eq(srv.user, null, '로그아웃'); });

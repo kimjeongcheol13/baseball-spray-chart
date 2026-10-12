@@ -63,7 +63,7 @@ end $$;
 --    클라이언트 js/core.js 의 _hasNum · _anonLabel · _anonSharePayload 와 같은 규칙. 순서도 같다: 홈 라인업 → 원정 라인업 → 투수 → 타석.
 -- JS String.prototype.trim 이 지우는 공백(전각 공백 · NBSP 포함)을 같이 지운다
 create or replace function pg_temp.sl_trim(t text) returns text language sql immutable as $$
-  select regexp_replace(coalesce(t, ''), '^[\s   -     　﻿]+|[\s   -     　﻿]+$', '', 'g')
+  select regexp_replace(coalesce(t, ''), '^[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$', '', 'g')
 $$;
 -- 등번호가 "있는" 값인가: null · 숫자 0(payload 가 번호 없음 대신 채우는 값) · 빈 문자열은 없음, 문자열 '0' 은 있음
 create or replace function pg_temp.sl_has_num(v jsonb) returns boolean language sql immutable as $$

@@ -776,6 +776,10 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .share-qr-url{background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;font-size:10px;color:rgba(255,255,255,.35);word-break:break-all;margin-bottom:12px;line-height:1.5;font-family:var(--mono)}
 .share-qr-copy{width:100%;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;font-family:var(--font);padding:12px;cursor:pointer;margin-bottom:8px;transition:filter .1s}
 .share-qr-copy:active{filter:brightness(.85)}
+.share-qr-copy:disabled,.share-kakao-btn:disabled{opacity:.45;cursor:default}
+.share-qr-opt{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 4px;cursor:pointer;color:var(--text);font-size:13px;font-weight:600}
+.share-qr-opt input{width:20px;height:20px;margin:0;flex:0 0 auto;accent-color:var(--accent)}
+.share-qr-note{font-size:11px;color:var(--text2);margin:0 4px 12px;line-height:1.5}
 .share-qr-close{width:100%;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:rgba(255,255,255,.4);font-size:13px;font-family:var(--font);padding:10px;cursor:pointer}
 
 /* 寃쎄린 而⑤뵒???쒓렇 */

@@ -24,9 +24,9 @@
 
   // ── 가짜 서버(메모리) ──
   // failRead / failWrite: null | 'reject'(요청 자체가 reject) | {status,code,message} | 함수(rows, 테이블 이름)→위 값
-  var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], user: null, log: [], failRead: null, failWrite: null, channels: [] };   // channels: cloud.js 가 건 realtime 구독 {name, type, filter, cb}
+  var srv = window.__srv = { games: [], user_games: [], teams: [], team_members: [], shared_links: [], user: null, log: [], failRead: null, failWrite: null, channels: [] };   // channels: cloud.js 가 건 realtime 구독 {name, type, filter, cb}
   srv.reset = function () {
-    srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.user = null;
+    srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.shared_links = []; srv.user = null;
     srv.log = []; srv.failRead = null; srv.failWrite = null; srv.channels = [];
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
@@ -93,6 +93,7 @@
   }
   // 핸들러는 행 배열을 돌려주거나, {error:{code,message}} 로 서버 예외를 흉내 낸다
   var rpcs = {
+    get_shared_link: function (a) { var r = srv.shared_links.filter(function (x) { return x.id === a.p_id; })[0]; return r ? clone(r.payload) : null; },   // 실제 SQL 은 sql/05: id 정확 일치 1건의 payload, 없으면 null
     find_team_by_code: function (a) { return teamsByCode(a.p_code); },
     join_team_by_code: function (a) {   // 실제 SQL 은 sql/10: 내 팀이면 is_owner 만 · 이미 이 팀이면 같은 행 · 다른 팀 소속이면 예외 · 아니면 team_members 에 넣는다
       var rows = teamsByCode(a.p_code), uid = (srv.user || {}).id;

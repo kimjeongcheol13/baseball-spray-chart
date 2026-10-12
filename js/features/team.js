@@ -230,7 +230,7 @@ function _resCard(T) {
     <section class="an-card tm-resbar">
       <header class="an-hd"><h3>타석 결과</h3><span class="an-hd-note">${T.st.pa}타석</span></header>
       ${window.slDash.resultBar({ ...T.st, list: T.abs })}
-      <p class="ad-warn">표본 ${T.st.pa}타석. 타율·OPS는 참고용이며 30타석 이상부터 추세로 읽으세요.</p>
+      <p class="ad-warn">표본 ${T.st.pa}타석${T.st.pa < 30 ? '. 타율·OPS는 참고용이며 30타석 이상부터 추세로 읽으세요.' : ''}</p>
     </section>`;
 }
 

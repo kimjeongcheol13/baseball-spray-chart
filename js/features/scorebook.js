@@ -378,7 +378,7 @@ function _orderHtml() {
       </div>
       <button type="button" class="sb-sheet-x" onclick="sbOrderSheet(false)" aria-label="타순표 닫기">${ICON.close}</button>
     </header>
-    <div class="sb-ot-h" aria-hidden="true"><span>#</span><span>타자</span><span>결과</span><span>기록</span></div>
+    <div class="sb-ot-h" aria-hidden="true"><span>#</span><span>타자</span><span>직전 타석</span><span>이번 경기</span></div>
     <ol class="sb-ot">${rows.join('')}</ol>`;
 }
 

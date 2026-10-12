@@ -224,13 +224,140 @@
     } finally { window.pushSharedLink = push; tearDown(); }
   });
 
-  test('팀 공유 등 경기 공유가 아닌 곳에서 모달을 열면 "선수 실명 포함" 옵션은 숨겨진다', function () {
+  test('공유 모달을 옵션 없이 열면(인자 없는 showShareQR) "선수 실명 포함" 옵션은 숨겨진다', function () {
     try {
-      showShareQR('https://example.invalid/?team=x');
+      showShareQR('https://example.invalid/?x=1');
       eq($('shareNameOpt').style.display, 'none', '옵션 숨김');
       showShareQR('https://example.invalid/?gid=abcd1234', true);
-      ok($('shareNameOpt').style.display !== 'none', '경기 공유에서는 보임');
+      ok($('shareNameOpt').style.display !== 'none', '경기 · 팀 공유에서는 보임');
     } finally { closeShareQR(); }
+  });
+
+  // ── 팀 공유(?team=) — MVP 이름을 경기 공유와 같은 규칙(_anonSharePayload)으로 치환, 받는 쪽 코드는 그대로 ──
+  var TEAM_NAMES = ['김민수', '박지훈', '김도윤', '이강인'];
+  function teamLeaks(obj) { var s = JSON.stringify(obj); return TEAM_NAMES.filter(function (n) { return s.indexOf(n) >= 0; }); }
+  function teamFixture() {
+    var g = function (k, mvp) { return { key: 'sl_10' + k, date: '2026.10.0' + k, th: '남서울대', ta: '상대' + k, hs: 5, as: 3, result: 'W', mvp: mvp }; };
+    return { id: 'tTEST', name: '남서울대', color: '#4b8cf5', stadium: '교내구장', createdAt: '2026.10.01',
+      games: [g(1, { name: '김민수', num: '7', h: 2, ab: 3, rbi: 1 }), g(2, { name: '박지훈', num: '', h: 1, ab: 2, rbi: 0 }), g(3, { name: '김민수', num: '7', h: 3, ab: 4, rbi: 2 }),
+        g(4, null), g(5, { name: '김도윤', h: 1, ab: 3, rbi: 0 }), g(6, { name: '이강인', num: '7', h: 2, ab: 2, rbi: 1 })] };
+  }
+  var TEAM_ANON = ['#7', '박OO', '#7', null, '김OO', '#7 2'], TEAM_REAL = ['김민수', '박지훈', '김민수', null, '김도윤', '이강인'];
+  function mvps(p) { return p.games.map(function (g) { return g.mvpName; }); }
+  function decodeTeamUrl(url) {   // shareTeamURL 이 만든 링크의 데이터 (하네스는 CDN 을 막아 LZString 이 없다 → 'b'+base64)
+    var enc = url.split('?team=')[1];
+    var json = enc[0] === 'z' && typeof LZString !== 'undefined' ? LZString.decompressFromEncodedURIComponent(enc.slice(1)) : decodeURIComponent(escape(atob(enc[0] === 'b' ? enc.slice(1) : enc)));
+    return JSON.parse(json);
+  }
+  async function openTeamLink(url) {   // 받는 쪽 코드(core.js 의 _loadTeamFromURL — 페이지 로드 때 한 번 도는 IIFE)를 수정 없이 소스 그대로 다시 실행한다
+    var src = await (await fetch('/js/core.js')).text();
+    var a = src.indexOf('(function _loadTeamFromURL(){'), b = src.indexOf('})();', a);
+    ok(a > 0 && b > a, 'core.js 에서 _loadTeamFromURL 을 찾지 못함 — 테스트 갱신 필요');
+    url = url.replace(/\?team=(.*)$/, function (m, v) { return '?team=' + encodeURIComponent(v); });   // base64 폴백(+ / =)을 퍼센트 인코딩 (운영은 LZString 의 URL-safe 인코딩)
+    var u = new URL(url);
+    history.replaceState(null, '', u.pathname + u.search);
+    window._sharedTeamPayload = undefined;
+    (0, eval)(src.slice(a, b + 5));
+    return window._sharedTeamPayload;
+  }
+  var teamSaved = null;
+  function teamSetUp() {
+    teamSaved = { raw: localStorage.getItem('sl_teams'), url: location.pathname + location.search + location.hash, tp: window._sharedTeamPayload, rows: srv.shared_links.length };
+    localStorage.setItem('sl_teams', JSON.stringify({ teams: [teamFixture()], activeTeamId: 'tTEST' }));
+    tdLoad();
+  }
+  function teamTearDown() {
+    try { closeShareQR(); } catch (e) {}
+    if (teamSaved.raw == null) localStorage.removeItem('sl_teams'); else localStorage.setItem('sl_teams', teamSaved.raw);
+    _TD = { teams: [], activeTeamId: null }; tdLoad();
+    window._sharedTeamPayload = teamSaved.tp; history.replaceState(null, '', teamSaved.url);
+    var b = $('teamSharedBanner'); if (b) b.style.display = 'none';
+  }
+
+  test('팀 공유: 기본은 MVP 이름을 "#등번호" / "성OO" 로 치환 — 같은 선수는 같은 표기, 나머지 필드는 그대로, 모달에 "선수 실명 포함"(기본 해제)', function () {
+    teamSetUp();
+    try {
+      shareTeamURL();
+      ok($('shareQROv').classList.contains('show'), '공유 모달');
+      var chk = $('shareNameChk');
+      ok($('shareNameOpt').style.display !== 'none' && chk.checked === false, '팀 공유에도 "선수 실명 포함" 체크박스(기본 해제)');
+      eq(document.querySelector('#shareNameOpt .share-qr-note').textContent.trim(), '링크를 아는 사람은 누구나 열 수 있습니다.', '안내 문구');
+      var url = $('shareQRUrl').textContent;
+      ok(/\?team=/.test(url), '?team= 링크: ' + url.slice(0, 50));
+      eq(_shareURL, url, '복사될 링크 = 화면의 링크');
+      var p = decodeTeamUrl(url), f = teamFixture();
+      eq(mvps(p), TEAM_ANON, 'MVP: 번호 있으면 #번호 · 없으면 성OO · 같은 선수(김민수 #7)는 두 경기 모두 #7 · 번호가 겹친 다른 선수는 "#7 2" · MVP 없는 경기는 null');
+      eq(teamLeaks(p), [], '링크 안에 선수 실명이 없다');
+      eq([p.v, p.type, p.name, p.color, p.stadium], [1, 'team', f.name, f.color, f.stadium], '팀 정보는 그대로');
+      eq(p.games.map(function (g) { return [g.date, g.th, g.ta, g.hs, g.as, g.result]; }), f.games.map(function (g) { return [g.date, g.th, g.ta, g.hs, g.as, g.result]; }), '경기 정보는 그대로');
+      eq(Object.keys(p.games[0]).sort(), ['as', 'date', 'hs', 'mvpName', 'result', 'ta', 'th'], '경기 항목의 필드 구성은 예전 링크와 같다(받는 쪽 호환)');
+      eq(tdGetActive().games.map(function (g) { return g.mvp ? g.mvp.name : null; }), TEAM_REAL, '내 기기의 팀 데이터(원본)는 실명 그대로 — 치환은 링크에만');
+    } finally { teamTearDown(); }
+  });
+
+  test('팀 공유: "선수 실명 포함" 을 켜면 실명, 끄면 다시 치환 — 서버(shared_links)에는 아무것도 저장하지 않는다', function () {
+    teamSetUp();
+    try {
+      shareTeamURL();
+      var url1 = $('shareQRUrl').textContent, chk = $('shareNameChk');
+      chk.checked = true; chk.dispatchEvent(new Event('change'));
+      var url2 = $('shareQRUrl').textContent;
+      ok(url2 !== url1 && /\?team=/.test(url2), '체크하면 새 팀 링크');
+      eq(mvps(decodeTeamUrl(url2)), TEAM_REAL, '체크하면 MVP 실명 그대로');
+      ok($('shareNameChk').checked, '체크 상태 유지');
+      eq(_shareURL, url2, '복사될 링크 = 실명 링크');
+      chk.checked = false; chk.dispatchEvent(new Event('change'));
+      eq([$('shareQRUrl').textContent, _shareURL], [url1, url1], '끄면 치환 링크로 복귀');
+      eq(srv.shared_links.length, teamSaved.rows, '팀 링크는 URL 에 담긴다 — 서버 행이 생기지 않는다');
+    } finally { teamTearDown(); }
+  });
+
+  test('팀 공유 받는 쪽: 치환된 ?team= 링크도, 예전(실명) ?team= 링크도 그대로 읽고 가져온다 (받는 쪽 코드 수정 없음)', async function () {
+    teamSetUp();
+    try {
+      shareTeamURL();
+      var url = $('shareQRUrl').textContent;
+      closeShareQR();
+      var p = await openTeamLink(url);
+      ok(p && p.type === 'team', '받는 쪽이 치환된 링크를 읽음');
+      ok($('teamSharedBanner').style.display === 'block' && $('tsbTeamName').textContent === '남서울대' && /6경기/.test($('tsbTeamGames').textContent), '팀 공유 배너: ' + $('tsbTeamGames').textContent);
+      importSharedTeam();
+      var t = tdGetActive();
+      ok(t.id !== 'tTEST' && t.name === '남서울대', '새 팀으로 가져옴');
+      eq(mvps(t), TEAM_ANON, '가져온 팀에는 치환된 표기로 저장');
+      eq(teamLeaks(t), [], '가져온 팀 데이터에 실명이 없다');
+      // 예전 링크(실명 · 이 PR 이전 형식)
+      var old = { v: 1, type: 'team', name: '옛팀', color: '#ff0000', stadium: '', games: [{ date: '2026.06.01', th: '옛팀', ta: '상대', hs: 3, as: 1, result: 'W', mvpName: '김민수' }] };
+      var p2 = await openTeamLink(location.origin + location.pathname + '?team=b' + btoa(unescape(encodeURIComponent(JSON.stringify(old)))));
+      eq(p2 && p2.games[0].mvpName, '김민수', '예전 실명 링크도 그대로 읽힌다');
+      importSharedTeam();
+      eq([tdGetActive().name, tdGetActive().games[0].mvpName], ['옛팀', '김민수'], '예전 링크 가져오기');
+    } finally { teamTearDown(); }
+  });
+
+  test('팀 공유 ↔ 경기 공유를 오가도 체크박스는 지금 열린 공유의 링크만 다시 만든다 (경기 링크가 늦게 와도 팀 링크를 덮지 않음)', async function () {
+    teamSetUp(); setUp();
+    try {
+      shareTeamURL();
+      var chk = $('shareNameChk'); chk.checked = true; chk.dispatchEvent(new Event('change'));
+      ok(/\?team=/.test($('shareQRUrl').textContent), '팀 실명 링크');
+      shareGameLink();
+      await waitFor(function () { return /\?gid=/.test($('shareQRUrl').textContent) && srv.shared_links.length === 1; }, 2000, '경기 링크');
+      ok(!$('shareNameChk').checked, '경기 공유를 열면 다시 기본(해제)');
+      eq(leaks(srv.shared_links[0].payload), [], '경기 기본 링크는 치환');
+      chk.checked = true; chk.dispatchEvent(new Event('change'));
+      await waitFor(function () { return srv.shared_links.length === 2 && !$('shareQRCopyBtn').disabled; }, 2000, '경기 실명 링크');
+      ok(/\?gid=/.test($('shareQRUrl').textContent), '경기 공유에서 체크하면 경기 링크(gid)를 만든다');
+      eq(srv.shared_links[1].payload.hl[0].n, '김민수', '경기 실명 링크');
+      shareTeamURL();
+      ok(!$('shareNameChk').checked && /\?team=/.test($('shareQRUrl').textContent), '팀 공유를 다시 열면 기본(해제) · 팀 링크');
+      chk.checked = true; chk.dispatchEvent(new Event('change'));
+      ok(/\?team=/.test($('shareQRUrl').textContent) && srv.shared_links.length === 2, '팀 공유에서 체크하면 팀 링크 — 경기 행은 늘지 않는다');
+      // 경기 링크를 만드는 중에 팀 공유를 연다 → 늦게 도착한 경기 응답이 팀 링크를 덮지 않는다
+      closeShareQR(); shareGameLink(); shareTeamURL();
+      await sleep(300);
+      ok(/\?team=/.test($('shareQRUrl').textContent) && !$('shareQRCopyBtn').disabled, '늦게 도착한 경기 링크가 팀 링크를 덮지 않고, 버튼도 막혀 있지 않다');
+    } finally { teamTearDown(); tearDown(); }
   });
 
   // 경기를 열면 자동저장 · 실시간 동기화가 몇 초 뒤로 예약된다 — 끝나기를 기다렸다가 지워, 뒤 테스트(동기화 요청 수를 세는)에 섞이지 않게

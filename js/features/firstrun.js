@@ -4,6 +4,8 @@
 //      · 라인업이 비면: 이름 입력 → 기존 addPlayer 로 추가하고 이어서 / [이름 없이 기록] = 기존 '타자 1' 자동 생성 그대로
 //      · 경기 운영 모드: 지금 타순 타자를 자동 선택하고 팝업 없이 이어서
 //   ② 토스트: 하단 탭을 눌러 탭이 바뀌면 바로 지움 (모바일 위치는 css/shell.css — 하단 탭 바로 위)
+//   ③ 빈 라인업 첫 화면: 타순표 빈 '이름' 행을 누르면 그 자리에서 이름 입력 · 저장된 라인업이 없으면 "라인업을 먼저 만들까요?" 배너
+//      새 키: sl_lineup_banner_closed (배너를 닫으면 '1' — core _SETTINGS_KEYS · sample.js 설정 키 목록에도 추가)
 import { esc } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -263,10 +265,131 @@ function _toastInit() {
   }, true);
 }
 
+// ── ③-a 타순표 빈 '이름' 행: 그 자리에서 이름 입력 ─────────
+// 빈 행은 라인업 서랍을 열었다(scorebook sbEditLineup). 이제 행이 입력칸으로 바뀌고, Enter = 추가 후 다음 빈 행으로 이어서.
+// 추가는 기존 addPlayer 입력칸을 채워 그대로 호출 (setup.js stAdd 와 같은 방식 — 등번호 = 타순, 첫 선수는 addPlayer 가 현재 타자로)
+// 입력 중에는 scorebook render 가 타순표를 건너뛴다(입력칸 보호) → 끝나면 sbRender 로 다시 그림
+function _otAdd(nm) {
+  const n = $('pName'), num = $('pNum');
+  if (!n || !window.addPlayer) return;
+  n.value = nm;
+  if (num) num.value = '';
+  window.addPlayer();
+}
+function _otOpen(li, i) {
+  li.innerHTML = `<div class="sb-ot-row empty fr-ot-edit"><span class="n">${i + 1}</span>`
+    + `<input type="text" class="fr-ot-in" data-i="${i}" maxlength="8" placeholder="이름" aria-label="${i + 1}번 이름 — 입력하고 Enter 를 누르면 추가하고 다음 칸으로" enterkeyhint="next" autocomplete="off"></div>`;
+  const inp = li.querySelector('input');
+  inp.focus({ preventScroll: true });
+  if (inp.scrollIntoView) inp.scrollIntoView({ block: 'nearest' });
+}
+function _otEnd() {
+  const a = document.activeElement;
+  if (a && a.classList && a.classList.contains('fr-ot-in')) { a.dataset.done = '1'; a.blur(); }
+  if (window.sbRender) window.sbRender();
+}
+function _otCommit(inp, next) {
+  if (inp.dataset.done) return;
+  inp.dataset.done = '1';
+  const nm = String(inp.value || '').trim().slice(0, 8);
+  if (!nm) { _otEnd(); return; }
+  const li = inp.closest('li'), i = +inp.dataset.i;
+  // 다음 빈 행에 먼저 포커스를 옮긴다 (지금 칸을 지우기 전에 → 모바일 키보드가 닫히지 않게)
+  const nx = next && li && li.nextElementSibling;
+  if (nx && nx.querySelector('.sb-ot-row.empty')) _otOpen(nx, i + 1);
+  // 다시 그려질 때까지 이 칸은 넣은 이름으로 보여 준다
+  if (li) li.innerHTML = `<div class="sb-ot-row fr-ot-added"><span class="n"><i>${i + 1}</i></span><span class="nm">${esc(nm)}</span><span class="ls"></span><span class="mk"></span></div>`;
+  _otAdd(nm);
+  if (!document.querySelector('#sbOrder .fr-ot-in')) _otEnd();
+}
+function _otInit() {
+  const box = $('sbOrder');
+  if (!box || box._fr) return;
+  box._fr = true;
+  // 캡처 단계: 빈 행 버튼의 onclick(라인업 서랍)보다 먼저
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button.sb-ot-row.empty');
+    if (!b) return;
+    e.stopPropagation();
+    e.preventDefault();
+    // 타순은 비울 수 없으므로(addPlayer 는 맨 뒤에 붙임) 어느 빈 행을 눌러도 첫 빈 행에서 입력
+    const lis = box.querySelectorAll('.sb-ot > li'), i = Math.min(_lineup().length, lis.length - 1);
+    if (lis[i] && lis[i].querySelector('button.sb-ot-row.empty')) _otOpen(lis[i], i);
+  }, true);
+  box.addEventListener('keydown', e => {
+    const inp = e.target;
+    if (!inp.classList || !inp.classList.contains('fr-ot-in')) return;
+    if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter 는 글자 확정용
+    if (e.key === 'Enter') { e.preventDefault(); _otCommit(inp, true); }
+    else if (e.key === 'Escape') { e.stopPropagation(); inp.dataset.done = '1'; _otEnd(); }
+  });
+  // 다른 곳을 누르면: 쓴 이름이 있으면 추가하고 끝
+  box.addEventListener('focusout', e => {
+    const inp = e.target;
+    if (inp.classList && inp.classList.contains('fr-ot-in') && !inp.dataset.done) _otCommit(inp, false);
+  });
+}
+
+// ── ③-b 첫 실행 배너: 저장된 라인업이 하나도 없으면 필드 카드 위에 "라인업을 먼저 만들까요?" ──
+// [라인업 만들기] = 경기설정 탭 타순표 첫 빈칸 · [닫기] = 다시 안 띄움 (새 키 sl_lineup_banner_closed 하나)
+const LU_KEY = 'sl_lineup_banner_closed';
+const X_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function _luWanted() {
+  try { if (localStorage.getItem(LU_KEY)) return false; } catch (e) { return false; }
+  if (window.slSample && window.slSample.isOn && window.slSample.isOn()) return false;
+  const A = _AS();
+  if ((A.home_lineup || []).length || (A.away_lineup || []).length) return false;   // 지금 경기(복구 · 마지막 경기 포함)에 라인업이 있음
+  try { const s = JSON.parse(localStorage.getItem('sl_saves') || '[]'); if (Array.isArray(s) && s.length) return false; } catch (e) {}   // 저장한 경기가 있음
+  return true;
+}
+function _luResize() {
+  // 모바일: 필드 크기는 필드 위 요소 높이를 빼서 잰다 → 배너가 생기거나 없어지면 다시 계산
+  if (window.innerWidth <= 720) requestAnimationFrame(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} });
+}
+function _luSync() {
+  const want = _luWanted();
+  let el = $('frLuBanner');
+  if (!want) { if (el) { el.remove(); _luResize(); } return; }
+  if (el) return;
+  const card = $('sbField');
+  if (!card) return;
+  card.insertAdjacentHTML('beforebegin', `<div class="fr-lu" id="frLuBanner" role="region" aria-label="라인업 안내">`
+    + `<p>라인업을 먼저 만들까요?</p>`
+    + `<button type="button" class="fr-lu-go">라인업 만들기</button>`
+    + `<button type="button" class="fr-lu-x" aria-label="라인업 안내 닫기 (다시 안 보임)">${X_ICON}</button></div>`);
+  el = $('frLuBanner');
+  el.querySelector('.fr-lu-go').addEventListener('click', () => {
+    if (window.shellNav) window.shellNav('settings');
+    requestAnimationFrame(() => {
+      const f = document.querySelector('#stLu .st-row.empty .st-in.nm');
+      if (!f) return;
+      if (f.scrollIntoView) f.scrollIntoView({ block: 'center' });
+      f.focus({ preventScroll: true });
+    });
+  });
+  el.querySelector('.fr-lu-x').addEventListener('click', () => {
+    try { localStorage.setItem(LU_KEY, '1'); } catch (e) {}
+    _luSync();
+  });
+  _luResize();
+}
+function _luInit() {
+  // 라인업이 바뀌는 길(선수 추가 · 삭제 · 팀 전환 · 경기 불러오기 · 새 경기)은 모두 renderLP 를 부른다
+  const orig = window.renderLP;
+  if (typeof orig === 'function' && !orig._fr) {
+    const w = function () { const r = orig.apply(this, arguments); try { _luSync(); } catch (e) {} return r; };
+    w._fr = true;
+    window.renderLP = w;
+  }
+  _luSync();
+}
+
 function _init() {
   _hookFieldTap();
   _pkInit();
   _toastInit();
+  _otInit();
+  _luInit();
 }
 
 if (typeof window !== 'undefined') {

@@ -218,3 +218,28 @@
 .bp-anon { min-height: 44px; border: 0; background: none; color: var(--ink-soft, #55605A); font: 600 12px var(--f-body, serif); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .bp-b:active, .bp-anon:active { background: var(--highlight-soft, #FFF4C2); }
 .bat-pick button:focus-visible, .bat-pick input:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }
+
+/* ── 타순표 빈 '이름' 행 → 그 자리 입력칸 (firstrun.js) — 입력칸이 이름 · 결과 · 기록 칸을 차지 ── */
+.sb-ot-row.fr-ot-edit { cursor: text; background: var(--highlight-soft, #FFF4C2); }
+.fr-ot-in {
+  grid-column: 2 / -1; min-width: 0; width: 100%; height: 40px; box-sizing: border-box; padding: 0 10px;
+  border: 1.5px solid var(--ink, #1F2A23); border-radius: 0; background: #fff; color: var(--ink, #1F2A23);
+  font: 700 16px var(--f-body, serif);   /* 16px: iOS 입력 확대 방지 */
+}
+.fr-ot-in:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }
+.sb-ot-row.fr-ot-added { cursor: default; }
+
+/* ── 첫 실행 배너: 필드 카드 바로 위 한 줄 (firstrun.js) — 데스크톱은 가운데 열 맨 위, 모바일은 NOW BATTING 바 아래 ── */
+.fr-lu {
+  flex: none; align-self: stretch; display: flex; align-items: center; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 2px 2px 2px 12px;
+  border: var(--card-bw, 1.5px) solid var(--ink, #1F2A23); border-left: 6px solid var(--pen-blue, #2C4F8A);
+  background: var(--highlight-soft, #FFF4C2); color: var(--ink, #1F2A23);
+}
+.fr-lu p { flex: 1 1 auto; min-width: 0; margin: 0; font: 700 14px/1.35 var(--f-body, serif); }
+.fr-lu-go {
+  flex: none; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--ink, #1F2A23); border-radius: 0;
+  background: var(--ink, #1F2A23); color: var(--paper, #F3EDDF); font: 700 12px/1 var(--f-body, serif); white-space: nowrap; cursor: pointer;
+}
+.fr-lu-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--ink, #1F2A23); cursor: pointer; }
+.fr-lu-x:active { background: var(--paper, #F3EDDF); }
+.fr-lu button:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }

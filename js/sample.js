@@ -18,7 +18,8 @@
   // 설정 키(core.js _SETTINGS_KEYS 중 경기·클라우드 키 제외): 샘플 칸 → 실제 순으로 읽는다
   var THROUGH = {};
   ['sl_uid', 'sl_visited', 'sl_ga_first_record', 'sl_ftu_done', 'sl_menu_moved_seen', 'sl_scout_intro_seen', 'sl_scout_info_closed',
-    'sl_lp_w', 'sl_lp_w_mob', 'sl_rp_w', 'sl_ev_unit', 'sl_stadium', 'sl_stadium_custom', 'sl_field_overlays', 'sl_hc', 'sl_feedback', 'sl_report_cmt']
+    'sl_lp_w', 'sl_lp_w_mob', 'sl_rp_w', 'sl_ev_unit', 'sl_stadium', 'sl_stadium_custom', 'sl_field_overlays', 'sl_hc', 'sl_feedback', 'sl_report_cmt',
+    'sl_lineup_banner_closed']   // 배너 닫음 플래그는 '내 데이터'가 아님 (닫았다고 샘플 버튼이 사라지지 않게)
     .forEach(function (k) { THROUGH[k] = 1; });
   var BLOCK_RE = /^sl_cloud_|^sl_team_code$/;   // 클라우드 세션 · 팀 코드: 읽으면 항상 null, 쓰기는 버린다
 

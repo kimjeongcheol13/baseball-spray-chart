@@ -1191,3 +1191,13 @@ html.sb-boot body::after {
   font: 700 18px/1 var(--f-num);
   letter-spacing: .3em;
 }
+
+/* ── 볼카운트 B · S · O (모바일): 누르면 +1 되는 버튼인지 모호했다 → 버튼 테두리 + 눌림 상태.
+   경기 운영 모드의 O 는 버튼이 아니라(scorebook.js 가 span.ro 로 그림) 테두리 없이 '자동' 표시만 ── */
+@media (max-width: 720px) {
+  .sb-cg { border: 1.5px solid var(--ink); background: var(--paper-2); transition: transform .06s ease; }
+  .sb-cg:active { background: var(--highlight-soft); transform: translateY(1px); }
+  .sb-cg.ro { border-color: transparent; background: none; }
+  .sb-cg.ro:active { background: none; transform: none; }
+  .sb-cg.ro::after { content: '자동'; margin-left: 2px; font: 600 10px/1 var(--f-body); color: var(--ink-soft); }
+}

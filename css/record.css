@@ -185,3 +185,36 @@
   .rv-reset, .rv-open, .rv-undo, .rv-all, .rv-more button { height: 44px; }
   .rv-order button { height: 44px; min-width: 64px; }
 }
+
+/* ── 타자 없이 필드 탭 → 탭 자리 타자 선택 팝업 (firstrun.js) ──
+   기존 결과 팝업(.tap-pop)과 같은 종이 카드 · 버튼은 모든 폭에서 44px 이상 (새 요소라 기존 데스크톱 스타일은 그대로) */
+.bat-pick {
+  position: absolute; z-index: 12;
+  width: 236px; max-width: calc(100% - 8px); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 6px; padding: 6px;
+  background: var(--paper-2, #FBF7EE); border: 1.5px solid var(--ink, #1F2A23);
+  cursor: default; touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.bat-pick[hidden] { display: none; }
+.bp-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 2px 0; }
+.bp-hd b { font: 700 13px var(--f-body, serif); color: var(--ink, #1F2A23); }
+.bp-hd small { font: 500 11px var(--f-num, sans-serif); letter-spacing: .5px; color: var(--ink-soft, #55605A); white-space: nowrap; }
+.bp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; max-height: 236px; overflow-y: auto; overscroll-behavior: contain; }
+.bp-b {
+  display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 0 8px;
+  border: 1.5px solid var(--ink, #1F2A23); border-radius: 0; background: var(--paper-2, #FBF7EE); color: var(--ink, #1F2A23);
+  font: 700 13px var(--f-body, serif); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.bp-b i { flex: none; min-width: 14px; font: 700 12px var(--f-num, sans-serif); font-style: normal; color: var(--pen-red, #C8322B); }
+.bp-b span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-add { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.bp-add input {
+  min-height: 44px; box-sizing: border-box; padding: 0 10px;
+  border: 1.5px solid var(--ink, #1F2A23); border-radius: 0; background: #fff; color: var(--ink, #1F2A23);
+  font: 500 16px var(--f-body, serif);   /* 16px: iOS 입력 확대 방지 */
+  -webkit-user-select: text; user-select: text;
+}
+.bp-go { min-height: 44px; border: 0; border-radius: 0; background: var(--ink, #1F2A23); color: var(--paper, #F3EDDF); font: 700 13px var(--f-body, serif); cursor: pointer; }
+.bp-anon { min-height: 44px; border: 0; background: none; color: var(--ink-soft, #55605A); font: 600 12px var(--f-body, serif); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.bp-b:active, .bp-anon:active { background: var(--highlight-soft, #FFF4C2); }
+.bat-pick button:focus-visible, .bat-pick input:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }

@@ -20,6 +20,7 @@ import './features/dashboard.js?v=6';
 import './features/setup.js?v=3';
 import './features/report.js?v=5';
 import './features/anahelp.js?v=1';
+import './features/firstrun.js?v=1';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

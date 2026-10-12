@@ -385,3 +385,15 @@
   .score-chip { min-height: 44px; }
   .hdr-menu-btn { width: 44px; height: 44px; }
 }
+
+/* ── 알림(토스트) ──
+   탭을 눌러 바꿀 때 바로 지우는 순간에만 쓰는 클래스 (firstrun.js — 사라지는 전환 없이) */
+.toast.toast-cut { transition: none !important; }
+/* 모바일: 하단 탭 바로 위에 고정. bottom:80px 고정이라 아이폰 홈 표시줄(안전 영역 ~34px)만큼 하단 탭이 높아지면(54+34=88px) 탭에 겹쳤다
+   · 저장 뒤 클라우드 안내(#cloudUpsellToast, 인라인 bottom:80px)도 같은 자리
+   · 긴 문구는 화면 밖으로 잘리지 않게 줄바꿈 · 되돌리기 버튼 44px */
+@media (max-width: 720px) {
+  .toast, #cloudUpsellToast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px) !important; }
+  .toast { width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; white-space: normal; line-height: 1.4; }
+  .toast-undo { flex: none; min-height: 44px; min-width: 44px; }
+}

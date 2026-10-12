@@ -3,6 +3,7 @@
 //      · 고르면 같은 위치로 기존 onFClick 을 이어서 부른다 → 기존 결과 팝업(안타·장타·땅볼·플라이)이 그 자리에 뜬다
 //      · 라인업이 비면: 이름 입력 → 기존 addPlayer 로 추가하고 이어서 / [이름 없이 기록] = 기존 '타자 1' 자동 생성 그대로
 //      · 경기 운영 모드: 지금 타순 타자를 자동 선택하고 팝업 없이 이어서
+//   ② 토스트: 하단 탭을 눌러 탭이 바뀌면 바로 지움 (모바일 위치는 css/shell.css — 하단 탭 바로 위)
 import { esc } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -225,9 +226,47 @@ function _hookFieldTap() {
   window.onFClick = w;
 }
 
+// ── ② 토스트: 하단 탭을 눌러 탭이 바뀌면 바로 지움 ─────────
+// 기록 탭에서 뜬 알림(되돌리기 버튼 포함)이 분석 · 경기설정 탭까지 남아 안내문을 가리고, 다른 탭에서 되돌리기가 눌렸다.
+// 사용자가 하단 탭을 누를 때만 지운다 — 저장 뒤 자동 이동 · '필드에서 위치를 탭하세요'처럼 코드가 탭을 옮기며 띄우는 안내는 그대로
+function _toastOff() {
+  const t = $('toast');
+  if (t && t.classList.contains('show')) {
+    t.classList.add('toast-cut');   // 사라지는 전환(280ms) 없이 바로
+    t.classList.remove('show');
+    void t.offsetWidth;
+    t.classList.remove('toast-cut');
+  }
+  // 저장 뒤 클라우드 안내(core _showCloudUpsellToast — 인라인 스타일로 켜고 끔): 같은 방식으로 숨김
+  const u = $('cloudUpsellToast');
+  if (u && u.style.opacity === '1') {
+    const tr = u.style.transition;
+    u.style.transition = 'none';
+    u.style.opacity = '0';
+    u.style.transform = 'translateX(-50%) translateY(20px)';
+    u.style.pointerEvents = 'none';
+    void u.offsetWidth;
+    u.style.transition = tr;
+  }
+}
+function _toastInit() {
+  const nav = $('savantNav');
+  if (!nav || nav._fr) return;
+  nav._fr = true;
+  // 캡처 단계: 버튼의 onclick(shellNav)보다 먼저 — 지금 탭과 다른 탭을 누를 때만
+  nav.addEventListener('click', e => {
+    const b = e.target.closest('.savant-nav-btn');
+    if (!b || !b.dataset.tab) return;
+    const cur = nav.querySelector('.savant-nav-btn.active');
+    if (cur && cur.dataset.tab === b.dataset.tab) return;
+    _toastOff();
+  }, true);
+}
+
 function _init() {
   _hookFieldTap();
   _pkInit();
+  _toastInit();
 }
 
 if (typeof window !== 'undefined') {

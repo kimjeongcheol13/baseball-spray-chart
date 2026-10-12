@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=76">
+<link rel="stylesheet" href="css/styles.css?v=77">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=11">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -1753,7 +1753,11 @@ var _kakaoSdkLoaded = false;
     <p class="share-qr-sub">QR 코드를 스캔하거나 링크를 복사해 팀원에게 공유하세요</p>
     <div class="share-qr-wrap" id="shareQRWrap"></div>
     <div class="share-qr-url" id="shareQRUrl"></div>
-    <button class="share-qr-copy" onclick="copyShareURL()">링크 복사</button>
+    <div id="shareNameOpt">
+      <label class="share-qr-opt"><input type="checkbox" id="shareNameChk" onchange="shareNameToggle(this.checked)"><span>선수 실명 포함</span></label>
+      <p class="share-qr-note">링크를 아는 사람은 누구나 열 수 있습니다.</p>
+    </div>
+    <button class="share-qr-copy" id="shareQRCopyBtn" onclick="copyShareURL()">링크 복사</button>
     <button class="share-kakao-btn" id="kakaoShareBtn" onclick="kakaoShareGame()">💛 카카오로 공유</button>
     <button class="share-qr-close" onclick="closeShareQR()">닫기</button>
   </div>
@@ -2369,7 +2373,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=175"></script>
+<script defer src="js/core.js?v=179"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script type="module" src="js/app.js?v=93"></script>
 <script>

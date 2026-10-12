@@ -19,10 +19,10 @@
     }
   }
 
-  // 파일마다 새 브라우저로 돈다(#129) — 앱 시작 처리(scorebook 마운트가 설명 창을 body 로 옮김)가 끝난 뒤에 본다
-  test('(준비) 앱 시작 처리가 끝날 때까지 기다린다', async function () { await sleep(2500); ok(true); });
-
   test('안내 모드: 표시 · 설명 창이 body 바로 아래 — 경기설정 탭에서 하단 탭을 누르면 설명이 보이고 탭은 그대로', async function () {
+    // body 로 옮기는 건 scorebook.js 초기화(DOMContentLoaded 뒤 setTimeout 0)다. 파일마다 새 페이지라(run.mjs) 이 테스트가 load 직후 맨 먼저 돌면
+    // 그보다 앞설 수 있다 → 초기화가 끝날 때까지 최대 2초 기다린 뒤 검사한다(안 옮겨지면 아래에서 그대로 실패)
+    for (var w = 0; w < 200 && $('helpModeTooltip').parentElement !== document.body; w++) await sleep(10);
     ok($('helpModeTooltip').parentElement === document.body, '설명 창이 body 바로 아래가 아님: ' + $('helpModeTooltip').parentElement.id);
     ok($('helpModeIndicator').parentElement === document.body, '표시가 body 바로 아래가 아님: ' + $('helpModeIndicator').parentElement.id);
     await withHelp(async function () {

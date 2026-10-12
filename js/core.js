@@ -8121,6 +8121,7 @@ function archRecoverAutosave(){
   AS.hs=d.hs||0;AS.as=d.as||0;
   AS.zoneHistory=d.zoneHistory||{};
   AS.pitchers=d.pitchers||[];
+  if(d.info)AS.info=d.info;   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
   if(a&&d.ta)a.value=d.ta;
@@ -8152,6 +8153,8 @@ function _archQuietSave(saveKey){
         existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
+        if(!AS.info)AS.info=existing.info||null;   // 경기 정보: 복구본에 없으면(예전 자동저장) 그 경기에 저장된 값
+        existing.info=AS.info;
         existing.ts=Date.now();
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
@@ -8168,7 +8171,7 @@ function _archQuietSave(saveKey){
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
       d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
-      pitchers:AS.pitchers||[]};
+      pitchers:AS.pitchers||[],info:AS.info||null};
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
@@ -8247,6 +8250,7 @@ function recoverHiddenAutosave(key){
     AS.hs=d.hs||0;AS.as=d.as||0;
     AS.zoneHistory=d.zoneHistory||{};
     AS.pitchers=d.pitchers||[];
+    AS.info=d.info||null;   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게 (sl_auto_* 엔 info 가 없음 → 저장 경기 값)
     var h=document.getElementById('tHome'),a=document.getElementById('tAway');
     if(h&&d.th)h.value=d.th;
     if(a&&d.ta)a.value=d.ta;

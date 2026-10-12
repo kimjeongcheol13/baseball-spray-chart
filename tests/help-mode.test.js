@@ -19,6 +19,9 @@
     }
   }
 
+  // 파일마다 새 브라우저로 돈다(#129) — 앱 시작 처리(scorebook 마운트가 설명 창을 body 로 옮김)가 끝난 뒤에 본다
+  test('(준비) 앱 시작 처리가 끝날 때까지 기다린다', async function () { await sleep(2500); ok(true); });
+
   test('안내 모드: 표시 · 설명 창이 body 바로 아래 — 경기설정 탭에서 하단 탭을 누르면 설명이 보이고 탭은 그대로', async function () {
     ok($('helpModeTooltip').parentElement === document.body, '설명 창이 body 바로 아래가 아님: ' + $('helpModeTooltip').parentElement.id);
     ok($('helpModeIndicator').parentElement === document.body, '표시가 body 바로 아래가 아님: ' + $('helpModeIndicator').parentElement.id);

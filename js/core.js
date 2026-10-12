@@ -1697,7 +1697,7 @@ function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){
   if(!AS.abs.length)return;
   var _last=AS.abs.pop();
-  if(_last&&_last.count){AS.balls=_last.count.b||0;AS.strikes=_last.count.s||0;renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
+  if(_last&&_last.count){AS.balls=Math.min(3,Math.max(0,Number(_last.count.b)||0));AS.strikes=Math.min(2,Math.max(0,Number(_last.count.s)||0));renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
   if(AS.zoneHistory&&Object.keys(AS.zoneHistory).length){
     var _zk=Object.keys(AS.zoneHistory).pop();
     if(_zk)delete AS.zoneHistory[_zk];
@@ -1920,7 +1920,7 @@ function renderSeasonStats(){
   var condGames=games.filter(function(g){return g.weather||g.field;});
   var condHTML='';
   if(condGames.length){
-    var wMap={};
+    var wMap=Object.create(null);
     condGames.forEach(function(g){
       var w=g.weather||'기타';
       if(!wMap[w])wMap[w]={ab:0,h:0};
@@ -2652,7 +2652,7 @@ function _pitchOk(e){return _plainObj(e)&&!_protoName(e.pt)&&!_protoName(e.zone)
 // 존 기록(zoneHistory) = { 구역 이름: [{pt, symbol}, …] } — 객체가 아니거나 값이 배열이 아니면 투구 기록 · 존 표시가 예외로 멈춘다
 function _zhOk(z){return !z||(_plainObj(z)&&Object.keys(z).every(function(k){return Array.isArray(z[k])&&z[k].every(_plainObj);}));}
 function _gameDataOk(d){
-  if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers)||!_zhOk(d.zoneHistory))return false;
+  if(!_listOk(d.abs)||!_listOk(d.home_lineup)||!_listOk(d.away_lineup)||!_listOk(d.pitchers)||!_zhOk(d.zoneHistory)||_protoName(d.cond&&d.cond.weather))return false;
   return (d.abs||[]).every(function(a){return _plainObj(a)&&!_protoName(a.bname)&&!_protoName(a.bid)&&!_protoName(a.pt)&&!_protoName(a.zone)&&!_protoName(a.res)&&!_protoName(a.dir)&&_listOk(a.pitches)&&(a.pitches||[]).every(_pitchOk);})&&
     ['home_lineup','away_lineup'].every(function(k){return (d[k]||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id);});})&&
     (d.pitchers||[]).every(function(p){return _plainObj(p)&&!_protoName(p.name)&&!_protoName(p.id)&&_listOk(p.pitches)&&(p.pitches||[]).every(_pitchOk);});
@@ -5079,7 +5079,7 @@ function _fallbackCopy(text){
   try{document.execCommand('copy');showToast('링크 복사됨!');}catch(e){prompt('링크를 복사하세요:',text);}
   document.body.removeChild(ta);
 }
-var _sharedPayload=null;
+var _sharedPayload;   // 초기값을 넣지 않는다 — 위(페이지 로드 중)의 _loadSharedGame() 이 ?game= 링크의 payload 를 먼저 채운다. 여기서 null 로 덮으면 배너의 보기 · 저장이 아무 일도 하지 않는다
 function _loadSharedGame(){
   var sp=new URLSearchParams(location.search);
 

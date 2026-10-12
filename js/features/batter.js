@@ -1,7 +1,11 @@
 // 타자 — 경기 중 "지금 타석에 선 타자" 브리핑: 오늘 기록 · 시즌/최근 폼 · 오늘 타석별 공 순서 · 본 공 위치 · 공략 메모
+//   [시즌 전체]는 예전 프로필 서브탭 내용까지 (분석 서브탭 7→5): 맨 위 리포트 버튼 · 팀 내 위치 · 코스별 핫/콜드 존 ·
+//   타석 결과 구성 · 상황별 · 경기별 누적 흐름 · 경기 로그 · 구종별 · 누적 기록 — 카드는 profile.js 함수를 그대로 부른다
+//   히어로에 wOBA+ · 유형 태그, 분석 요약(프로필)과 '이런 타자예요'(타자 메모)는 한 카드로
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
 import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=20';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=21';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -102,7 +106,7 @@ function _render() {
   const head = `
     <div class="savant-view-header">
       <div class="svh-title">타자</div>
-      <div class="svh-sub">지금 타석에 선 타자 브리핑 · 오늘 기록과 시즌 흐름</div>
+      <div class="svh-sub">${scope === 'season' ? '시즌 전체 기록 · 팀 내 위치 · 상황별 성적 · 경기 로그' : '지금 타석에 선 타자 브리핑 · 오늘 기록과 시즌 흐름'}</div>
     </div>
     <div class="bt-ctrls">
       ${seg('scope', scope, [['game', '이번 경기'], ['season', '시즌 전체']])}
@@ -132,27 +136,30 @@ function _render() {
   const today = _todayAbs(_sel);
   // 시즌 전체에서 오늘 타석이 없는 타자면 타구 방향·본 공 위치도 시즌 기록으로
   if (scope === 'season' && !today.length) { _spray = 'season'; _plot = 'season'; }
+  const season_ = scope === 'season';
   v.innerHTML = head + `
     <div class="bt-result">
-      ${_hero(P, info, order, today, live)}
+      ${season_ ? `<div class="pf-report"><button type="button" class="pf-report-btn" data-name="${_esc(P.name)}" onclick="openPlayerReport({ name: this.dataset.name })">🧾 이 선수 리포트 만들기 <small>학부모 공유용 이미지</small></button></div>` : ''}
+      ${_hero(P, info, order, today, live, data.pool)}
       ${_formCard(P, today)}
-      ${scope === 'season' && !today.length ? '' : _todayCard(today)}
+      ${season_ && !today.length ? '' : _todayCard(today)}
       <div class="bt-2col">
         ${_plotCard(P, today)}
-        ${_sprayCard(P, today)}
+        ${_sprayCard(P, today, season_)}
       </div>
-      ${_memoCard(P, data.pool)}
-      <div class="bt-links">
-        <button type="button" class="tm-act" onclick="openBatterIn('profile')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg></span><b>프로필에서 자세히</b><small>팀 내 위치 · 상황별 · 경기 로그</small></button>
+      ${_memoCard(P, data)}
+      ${season_ && P.st.pa ? profileSeasonHtml(P, data) : ''}
+      <div class="bt-links bt-links-1">
         <button type="button" class="tm-act" onclick="openBatterIn('scout')"><span class="tm-act-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span><b>스카우트 리포트</b><small>공략 코스 · 구종 · 수비 위치</small></button>
       </div>
       ${P.abs.length ? xlsxButton('exportBatterExcel', '시즌 전체 타석 · 요약 · 타구 차트 · 투구 위치 · 핫/콜드 존 · 원본 기록') : ''}
     </div>`;
 }
 
-function _hero(P, info, order, today, live) {
+function _hero(P, info, order, today, live, pool) {
   const t = calcStats(today);
   const s = P.st;
+  const X = profileHeroBits(P, pool);   // 예전 프로필 히어로의 wOBA+ · 유형 태그 · 표본 배지
   const isLive = live && live.name === P.name;
   const meta = [order >= 0 ? `${order + 1}번 타자` : '', _esc(info.pos || ''), P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
   const line = t.pa
@@ -164,11 +171,13 @@ function _hero(P, info, order, today, live) {
         <div class="bt-eyebrow">${isLive ? '<span class="bt-dot"></span>지금 타석' : '타자 브리핑'}</div>
         <div class="bt-name">${_esc(P.name)}</div>
         <div class="bt-meta">${meta}</div>
+        ${X.tags.length || X.smp ? `<div class="pf-tags">${X.tags.map(g => `<span class="pf-tag">${g}</span>`).join('')}${X.smp ? `<span class="an-badge ${X.smp.cls}">${X.smp.txt}</span>` : ''}</div>` : ''}
       </div>
       <div class="bt-season">
         <small>시즌 ${s.pa}타석</small>
         <b>${f3(s.avg)}</b>
         <span>${f3(s.obp)} / ${f3(s.slg)}</span>
+        ${X.woba != null ? `<em class="bt-wplus" title="내 기록 전체 평균 wOBA를 100으로 둔 값">wOBA ${f3(X.woba)}${X.idx != null ? ` · <b>${X.idx}</b> wOBA+` : ''}</em>` : ''}
       </div>
       <div class="bt-today">
         <small>오늘</small>
@@ -263,50 +272,43 @@ function _plotCard(P, today) {
     </section>`;
 }
 
-function _sprayCard(P, today) {
+function _sprayCard(P, today, seasonView) {
   const abs = _spray === 'season' ? P.abs : today;
   const seg = `<div class="an-seg" role="tablist">${[['today', '오늘'], ['season', '시즌']].map(([k, l]) => `<button role="tab" class="${_spray === k ? 'on' : ''}" aria-selected="${_spray === k}" onclick="setBatterView('spray','${k}')">${l}</button>`).join('')}</div>`;
   return `
     <section class="an-card">
       <header class="an-hd"><h3>타구 방향</h3>${seg}</header>
       <div class="bt-spray">${sprayFigure({ name: P.name, abs, st: calcStats(abs) })}</div>
+      ${seasonView && _spray === 'season' ? profileDirTable(P) : ''}
       <div class="an-spray-key">
         <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
       </div>
     </section>`;
 }
 
-// 시즌 기록에서 뽑은 짧은 메모 — 타석 들어가기 전에 볼 것만
-function _memoCard(P, pool) {
+// 분석 요약 — 예전 프로필 '분석 요약'(종합 생산성 · 강점/보완 · 최근 폼 · 방향 · 2스트라이크 · 팀 내 1위) 문장에
+//   타자 메모에만 있던 문장(초구 승부 · 구종 강약)을 붙여 한 카드로. 겹치던 메모 문장(wOBA 지수 → 히어로의 wOBA+,
+//   타구 방향 · 2스트라이크 → 프로필 문장)은 빼고, 표본 경고는 프로필 문구 하나만
+function _memoCard(P, data) {
   const s = P.st;
-  const out = [];
-  const nm = _esc(P.name);
-  if (s.pa >= 5 && pool.woba > 0) {
-    const idx = Math.round(s.woba / pool.woba * 100);
-    out.push(`시즌 wOBA ${f3(s.woba)} — 전체 평균을 100으로 두면 <b>${idx}</b>.`);
-  }
-  if (s.dn >= 5) {
-    const dirs = [['당겨치기', s.pull], ['센터', s.center], ['밀어치기', s.oppo]].sort((a, b) => b[1] - a[1]);
-    out.push(`타구 <b>${Math.round(dirs[0][1] / s.dn * 100)}%</b>가 ${dirs[0][0]} 방향 (${s.dn}타구).`);
-  }
+  if (!s.pa) return '';
+  const { out, warn } = profileInsights(P, data);
   const first = P.abs.filter(a => a.pitches && a.pitches.length === 1);
   if (first.length >= 3) {
     const c = calcStats(first);
     out.push(`초구에 승부한 타석 ${c.pa}번 — 타율 <b>${c.ab ? f3(c.avg) : '—'}</b>.`);
   }
-  const two = calcStats(P.abs.filter(a => a.count && a.count.s >= 2));
-  if (two.pa >= 5) out.push(`2스트라이크 이후 타율 <b>${two.ab ? f3(two.avg) : '—'}</b>, 삼진 ${pct(two.kRate)} (${two.pa}타석).`);
   const pts = Object.entries(P.pitch).filter(([, st]) => st.ab >= 3).sort((a, b) => b[1].avg - a[1].avg);
   if (pts.length >= 2) {
     const [bn, bs] = pts[0], [wn, ws] = pts[pts.length - 1];
     if (bs.avg - ws.avg >= 0.15) out.push(`<b>${_esc(bn)}</b>에 강하고(${f3(bs.avg)}), <b>${_esc(wn)}</b>에 약해요(${f3(ws.avg)}).`);
   }
-  if (!out.length) return '';
+  if (!out.length && !warn) return '';
   return `
     <section class="an-card an-insight">
-      <header class="an-hd"><h3>${nm}${josa(P.name, '은', '는')} 이런 타자예요</h3><span class="an-hd-note">시즌 기록 기준</span></header>
-      <ul>${out.map(t => `<li>${t}</li>`).join('')}</ul>
-      ${s.pa < 30 ? `<p class="an-warn">⚠ 시즌 ${s.pa}타석 — 참고용이에요.</p>` : ''}
+      <header class="an-hd"><h3>${out.length ? `${_esc(P.name)}${josa(P.name, '은', '는')} 이런 타자예요` : '분석 요약'}</h3><span class="an-hd-note">시즌 기록 기준</span></header>
+      ${out.length ? `<ul>${out.map(t => `<li>${t}</li>`).join('')}</ul>` : ''}
+      ${warn}
     </section>`;
 }
 
@@ -324,6 +326,8 @@ function _hookLegacy() {
 
 if (typeof window !== 'undefined') {
   _hookLegacy();
+  // 시즌 화면의 프로필 카드 버튼(흐름 지표 타율/OPS · 경기 로그 전체 보기) → 타자 탭이 열려 있으면 다시 그림
+  onProfileChange(() => { if (document.querySelector('#anaBody .ana-sec.on[data-sub="batter"]')) openBatterView(); });
   window.openBatterView = openBatterView;
   window.setBatterView = setBatterView;
   window.selectBatterSeason = name => setBatterView('sel', name);

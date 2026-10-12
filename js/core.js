@@ -5079,7 +5079,7 @@ function _fallbackCopy(text){
   try{document.execCommand('copy');showToast('링크 복사됨!');}catch(e){prompt('링크를 복사하세요:',text);}
   document.body.removeChild(ta);
 }
-var _sharedPayload=null;
+var _sharedPayload;   // 초기값을 넣지 않는다 — 위(페이지 로드 중)의 _loadSharedGame() 이 ?game= 링크의 payload 를 먼저 채운다. 여기서 null 로 덮으면 배너의 보기 · 저장이 아무 일도 하지 않는다
 function _loadSharedGame(){
   var sp=new URLSearchParams(location.search);
 

@@ -81,11 +81,63 @@ export function selectProfilePlayer(name) {
 export function setProfileTrend(key) {
   _trendKey = key === 'ops' ? 'ops' : 'avg';
   _renderProfile();
+  if (_onEmbed) _onEmbed();
 }
 
 export function toggleProfileLog() {
   _logAll = !_logAll;
   _renderProfile();
+  if (_onEmbed) _onEmbed();
+}
+
+// ── 타자 탭(시즌 화면)에 끼워 넣기 — 분석 서브탭 7→5: 프로필 내용은 타자 탭 [시즌]으로 간다 ──
+//   아래 함수들은 기존 카드 함수를 그대로 부른다 (계산 · 문구 그대로). 프로필 서브탭 화면(openProfileView)도 그대로 남아 있다
+let _onEmbed = null;     // 흐름 지표 · 경기 로그 버튼을 누른 뒤 타자 탭을 다시 그리는 함수 (batter.js가 등록)
+let _embedName = null;   // 타자 탭에서 보고 있는 선수 — 바뀌면 경기 로그 '전체 보기'를 접는다
+export function onProfileChange(fn) { _onEmbed = typeof fn === 'function' ? fn : null; }
+// 히어로에 붙일 것: wOBA · wOBA+(전체=100) · 유형 태그 · 표본 배지
+export function profileHeroBits(P, pool) {
+  const s = P.st;
+  return {
+    woba: s.pa ? s.woba : null,
+    idx: pool.woba > 0 && s.pa ? Math.round(s.woba / pool.woba * 100) : null,
+    tags: s.pa ? _types(s, pool) : [],
+    smp: s.pa ? sampleBadge(s.pa) : null,
+  };
+}
+// 분석 요약 문장 (팀 내 1위 문장에 쓰는 순위표까지 계산)
+export function profileInsights(P, data) {
+  _data = data;
+  return _insightList(P, data.pool, _rankTable(P));
+}
+// 방향별 성적 표 (타구 방향 카드 아래)
+export function profileDirTable(P) { return _dirTable(P); }
+// 시즌 화면 카드: 팀 내 위치 · 코스별 핫/콜드 존 · 타석 결과 구성 + 상황별 · 경기별 누적 흐름 · 경기 로그 · 구종별 + 누적 기록
+export function profileSeasonHtml(P, data) {
+  _data = data;
+  if (_embedName !== P.name) { _embedName = P.name; _logAll = false; }
+  return `
+    ${_rankCard(P, _rankTable(P))}
+    <section class="an-card">
+      <header class="an-hd"><h3>코스별 핫/콜드 존</h3><span class="an-hd-note">타석 결과가 나온 공 기준 · 타율</span></header>
+      ${hotColdFigure(P.abs, P.st.avg, P.st.pa) || '<div class="an-note">코스(존)가 기록된 타석이 없어요. 기록할 때 존을 함께 누르면 코스별 핫/콜드 존이 나와요.</div>'}
+    </section>
+    <div class="pf-2col">
+      ${_mixCard(P, data.pool)}
+      ${_splitCard(P)}
+    </div>
+    <section class="an-card">
+      <header class="an-hd">
+        <h3>경기별 누적 흐름</h3>
+        <div class="an-seg" role="tablist" aria-label="흐름 지표">
+          <button role="tab" class="${_trendKey === 'avg' ? 'on' : ''}" aria-selected="${_trendKey === 'avg'}" onclick="setProfileTrend('avg')">타율</button>
+          <button role="tab" class="${_trendKey === 'ops' ? 'on' : ''}" aria-selected="${_trendKey === 'ops'}" onclick="setProfileTrend('ops')">OPS</button>
+        </div>
+      </header>
+      ${trendChart([{ name: P.name, cls: 'a', trend: P.trend }], _trendKey, 'N번째 출전 경기까지의 누적 기록 · 최근 15경기')}
+    </section>
+    ${_gameLog(P)}
+    ${_pitchAndCounts(P)}`;
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────
@@ -367,8 +419,19 @@ function _counts(P) {
 
 // ── 자동 분석 코멘트 (숫자 근거를 같이 보여준다) ─────────────
 function _insights(P, pool, R) {
-  const s = P.st;
   const nm = _esc(P.name);
+  const { out, warn } = _insightList(P, pool, R);
+  if (!out.length) return warn ? `<section class="an-card an-insight"><header class="an-hd"><h3>분석 요약</h3></header>${warn}</section>` : '';
+  return `
+    <section class="an-card an-insight">
+      <header class="an-hd"><h3>${nm}${josa(P.name, '은', '는')} 이런 타자예요</h3></header>
+      <ul>${out.map(t => `<li>${t}</li>`).join('')}</ul>
+      ${warn}
+    </section>`;
+}
+// 문장 목록 + 표본 경고 (위 카드와 타자 탭이 같이 쓴다)
+function _insightList(P, pool, R) {
+  const s = P.st;
   const out = [];
 
   if (pool.woba > 0) {
@@ -421,13 +484,7 @@ function _insights(P, pool, R) {
   const warn = s.pa < 30
     ? `<p class="an-warn">⚠ ${s.pa < 10 ? '타석 수가 아주 적어서' : '타석 수가 적어서'}(${s.pa}타석) 몇 타석만 더 쌓여도 지표가 크게 바뀔 수 있어요. 경향을 보는 참고용으로 활용하세요.</p>`
     : '';
-  if (!out.length) return warn ? `<section class="an-card an-insight"><header class="an-hd"><h3>분석 요약</h3></header>${warn}</section>` : '';
-  return `
-    <section class="an-card an-insight">
-      <header class="an-hd"><h3>${nm}${josa(P.name, '은', '는')} 이런 타자예요</h3></header>
-      <ul>${out.map(t => `<li>${t}</li>`).join('')}</ul>
-      ${warn}
-    </section>`;
+  return { out, warn };
 }
 
 if (typeof window !== 'undefined') {

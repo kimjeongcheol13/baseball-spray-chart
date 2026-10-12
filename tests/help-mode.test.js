@@ -57,7 +57,8 @@
   test('안내 모드: 분석 탭 — 서브탭 화면 · 제목 있는 카드에 모두 설명 (새 카드는 js/features/anahelp.js CARD에 추가)', async function () {
     var miss = [];
     await withHelp(async function () {
-      var subs = ['spray', 'batter', 'pitcher', 'compare', 'profile', 'scout', 'team'];
+      // batter:season = 타자 탭 [시즌 전체] (예전 프로필 카드가 여기로 옮겨짐)
+      var subs = ['batter', 'batter:season', 'pitcher', 'compare', 'scout', 'team'];
       var bare = function (sub, sec) {
         return Array.prototype.filter.call(sec.querySelectorAll('section.sb-card, section.an-card'), function (c) {
           var h = c.querySelector('h2, h3');
@@ -65,20 +66,23 @@
         }).map(function (c) { return sub + ': ' + c.querySelector('h2, h3').textContent.trim(); });
       };
       for (var i = 0; i < subs.length; i++) {
-        shellNav('analysis', subs[i]);
-        var sec = document.querySelector('#analysisView .ana-sec[data-sub="' + subs[i] + '"]'), left = [];
+        var sub = subs[i].split(':')[0];
+        shellNav('analysis', sub);
+        if (subs[i] === 'batter:season') { await sleep(30); setBatterView('scope', 'season'); }
+        var sec = document.querySelector('#analysisView .ana-sec[data-sub="' + sub + '"]'), left = [];
         // 카드는 탭마다 그리는 시점이 달라(팀 탭은 늦게) 다 그려질 때까지 잠깐 기다린다
         for (var k = 0; k < 40; k++) { await sleep(25); left = bare(subs[i], sec); if (!left.length && k >= 2) break; }
         ok(sec.hasAttribute('data-help'), subs[i] + ' 화면 설명');
         miss = miss.concat(left);
       }
+      setBatterView('scope', 'game');
     });
     eq(miss, [], '설명 없는 카드');
   });
 
   test('안내 모드: 분석 서브탭은 바뀌면서 그 서브탭 설명이 뜬다', async function () {
     await withHelp(async function () {
-      shellNav('analysis', 'spray');
+      shellNav('analysis', 'batter');
       await sleep(30);
       document.querySelector('#anaSubnav .ana-sub[data-sub="team"]').click();
       eq(document.querySelector('#anaSubnav .ana-sub.on').dataset.sub, 'team', '서브탭 바뀜');

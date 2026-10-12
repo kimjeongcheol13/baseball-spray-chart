@@ -1,4 +1,5 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
+//   예전 '종합' 서브탭 내용도 여기로: 5구역 타구 방향도 + 상세 필터 · BABIP · 타석 결과 막대 · 표본 경고
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=8';
 
@@ -155,6 +156,7 @@ function _render() {
   el.innerHTML = `
     ${_hero(team, S, T)}
     ${_kpis(T)}
+    ${_resCard(T)}
     ${_insights(T, S)}
     <div class="tm-2col">
       ${_leaderCard(T)}
@@ -174,16 +176,62 @@ function _render() {
       ${_inningCard(T)}
       ${_countCard(T)}
     </div>
-    <section class="an-card">
-      <header class="an-hd"><h3>팀 타구 방향</h3><span class="an-hd-note">좌·우타별로 당김/밀어 판정 후 합산</span></header>
-      <div class="tm-spray">${sprayFigure({ name: '팀', st: T.st, abs: T.abs })}</div>
-      <div class="an-spray-key">
-        <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
-      </div>
-    </section>
+    ${_dirCard(T)}
     ${pitchTable([{ name: '팀', cls: 'a', pitch: _pitchMap(T.abs) }])}
     ${_exportCard(team)}
   `;
+  requestAnimationFrame(_paintField);
+}
+
+// ── 팀 타구 방향 (예전 종합의 5구역 방향도 · 상세 필터는 이 방향도에만 적용) ──
+let _fieldList = [];
+const FILTER_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h16M7 12h10M10 18h4"/></svg>';
+
+function _dirCard(T) {
+  const K = window.slDash;   // dashboard.js: 5구역 방향도 그리기 · 구역 경계 · 구역별 타구 수
+  if (!K) return '';
+  const pass = window._sfPass || (() => true);   // 상세 필터(filter.js)와 같은 판정
+  const list = T.abs.filter(a => pass(a));
+  const nF = window._sfCount ? window._sfCount() : 0;
+  const zc = K.zoneCounts(list), zt = zc.reduce((a, b) => a + b, 0);
+  _fieldList = list;
+  const band = zt
+    ? K.ZONES.map((z, i) => `<div class="ad-band-c${zc[i] === Math.max(...zc) ? ' top' : ''}" style="flex:${Math.max(zc[i], zt * 0.08)}" title="${z.full} ${zc[i]}개"><b>${z.l}</b><span>${Math.round(zc[i] / zt * 100)}%</span></div>`).join('')
+    : '<p class="ad-none">방향이 기록된 타구가 없어요. 기록 탭 필드에서 타구 위치를 누르면 쌓여요.</p>';
+  return `
+    <section class="an-card ad-field tm-dir">
+      <header class="an-hd"><h3>팀 타구 방향</h3>
+        <span class="an-hd-note">${nF ? `상세 필터 ${nF}개 · 이 방향도에만 적용` : '숫자 = 구역별 타구 수'}</span>
+        <button type="button" class="sb-mini${nF ? ' on' : ''}" onclick="_sfOpen && _sfOpen()" aria-label="상세 필터${nF ? ' ' + nF + '개 켜짐' : ''}">${FILTER_ICON}상세 필터${nF ? `<b class="ad-fn">${nF}</b>` : ''}</button>
+      </header>
+      <div class="ad-field-box"><canvas id="tmField" role="img" aria-label="팀 타구 방향도: ${K.ZONES.map((z, i) => z.full + ' ' + zc[i]).join(', ')}"></canvas></div>
+      <ul class="sb-legend ad-legend" aria-label="기호">${[['hit', '안타'], ['xbh', '장타'], ['hr', '홈런'], ['out', '아웃']].map(([k, l]) => `<li>${window.sbPaint ? window.sbPaint.markSvg(k, 16) : ''}${l}</li>`).join('')}</ul>
+      <div class="ad-band" aria-label="방향 비율">${band}</div>
+    </section>`;
+}
+
+function _paintField() {
+  const cv = document.getElementById('tmField');
+  if (!cv || !window.slDash) return;
+  const w = (cv.parentElement.clientWidth || 320) - 20;
+  const S = Math.max(200, Math.floor(Math.min(w, 520)));
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  cv.width = S * dpr; cv.height = S * dpr;
+  cv.style.width = S + 'px'; cv.style.height = S + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  window.slDash.drawField(ctx, S, _fieldList);
+}
+
+// ── 타석 결과 막대 + 표본 경고 (예전 종합) ──────────────────
+function _resCard(T) {
+  if (!window.slDash) return '';
+  return `
+    <section class="an-card tm-resbar">
+      <header class="an-hd"><h3>타석 결과</h3><span class="an-hd-note">${T.st.pa}타석</span></header>
+      ${window.slDash.resultBar({ ...T.st, list: T.abs })}
+      <p class="ad-warn">표본 ${T.st.pa}타석${T.st.pa < 30 ? '. 타율·OPS는 참고용이며 30타석 이상부터 추세로 읽으세요.' : ''}</p>
+    </section>`;
 }
 
 function _hero(team, S, T) {
@@ -242,6 +290,7 @@ function _kpis(T) {
       ${k('장타율', f3(s.slg))}
       ${k('OPS', f3(s.ops))}
       ${k('wOBA', f3(s.woba))}
+      ${k('BABIP', f3(s.babip))}
       ${k('홈런', s.hr, `장타 ${s.s2 + s.s3 + s.hr}`)}
       ${k('볼넷%', pct(s.bbRate), `${s.bb}개`)}
       ${k('삼진%', pct(s.kRate), `${s.k}개`)}
@@ -525,8 +574,24 @@ function _hookLegacy() {
   window.renderTeamDashboard = wrapped;
 }
 
+// 상세 필터 적용 · 초기화 뒤 팀 탭이 열려 있으면 다시 그림 (dashboard.js와 같은 방식) · 창 크기 바뀌면 방향도 다시 그림
+const _teamOn = () => !!document.querySelector('#analysisView.active #anaBody .ana-sec.on[data-sub="team"]');
+function _hookFilter() {
+  ['_sfApply', '_sfReset'].forEach(fn => {
+    const orig = window[fn];
+    if (typeof orig !== 'function' || orig._tmf) return;
+    const w = function () { try { orig.apply(this, arguments); } catch (e) {} if (_teamOn()) openTeamView(); };
+    w._tmf = true;
+    window[fn] = w;
+  });
+  let t = 0;
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (_teamOn()) _paintField(); }, 120); });
+}
+
 if (typeof window !== 'undefined') {
   _hookLegacy();
   window.openTeamView = openTeamView;
   window.setTeamScope = setTeamScope;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(_hookFilter, 0));
+  else setTimeout(_hookFilter, 0);
 }

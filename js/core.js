@@ -7290,27 +7290,16 @@ function initOfflineDetection(){
 // POST-GAME REPORT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function showPostGameReport(){
-  var fade=document.getElementById('pgFade');
   var ov=document.getElementById('pgReport');
   var skel=document.getElementById('pgSkeleton');
   var card=document.getElementById('pgCard');
   if(!ov)return;
-  // 1) 페이드 인
-  fade.classList.add('fading');
-  setTimeout(function(){
-    ov.style.display='flex';
-    fade.classList.remove('fading');
-    skel.style.display='flex';
-    card.classList.remove('up');
-    // 2) 스켈레톤 → 콘텐츠 슬라이드업
-    setTimeout(function(){
-      _pgBuild();
-      skel.style.display='none';
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){card.classList.add('up');});
-      });
-    },1100);
-  },320);
+  // 바로 표시 — 예전 연출(320ms 페이드 + 1100ms 스켈레톤 + 슬라이드업)은 기다리게만 해서 뺐다
+  // 같은 프레임에 보이게 하고 'up'을 붙이므로 카드 슬라이드 전환도 일어나지 않는다 (닫기 슬라이드는 그대로)
+  _pgBuild();
+  if(skel)skel.style.display='none';
+  ov.style.display='flex';
+  card.classList.add('up');
 }
 
 function closePgReport(){
@@ -7318,7 +7307,7 @@ function closePgReport(){
   var card=document.getElementById('pgCard');
   if(!ov)return;
   card.classList.remove('up');
-  setTimeout(function(){ov.style.display='none';},420);
+  setTimeout(function(){if(!card.classList.contains('up'))ov.style.display='none';},420);   // 닫는 사이 다시 열었으면(바로 표시) 숨기지 않음
 }
 
 function _pgBuild(){

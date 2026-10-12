@@ -34,6 +34,8 @@
     AS.abs = []; AS.home_lineup = []; AS.away_lineup = []; AS.info = undefined;   // 앱을 막 연 상태
   }
   function game(key, info) { return { key: key, th: '홈', ta: '원정', hs: 0, as: 0, abs: [], home_lineup: [], away_lineup: [], zoneHistory: {}, pitchers: [], d: '2026. 5. 17.', ts: 1, info: info }; }
+  // OLD 의 항목만 비교 — 구장(info.stadium)이 없으면 저장 직전에 지금 구장으로 채우는 기능(PR #115)이 있어도 같은 결과
+  function base(i) { return i && { date: i.date, venue: i.venue, side: i.side, innings: i.innings }; }
   function recEntry() { return ls('sl_saves').filter(function (e) { return /^sl_rec_/.test(e.key); }).map(function (e) { return ls(e.key); })[0]; }
 
   test('자동저장 복구: 새 경기 — 경기 정보가 AS.info 와 복구 저장 항목(sl_rec_…)에 남는다', async function () {
@@ -60,8 +62,8 @@
     await isolated(function () {
       seed({ abs: AB, home_lineup: [], away_lineup: [], hs: 1, as: 0, zoneHistory: {}, pitchers: [], saveKey: K1 }, [game(K1, OLD)]);
       archRecoverAutosave();
-      eq(ls(K1).info, OLD, '저장 경기의 info');
-      eq(AS.info, OLD, 'AS.info');
+      eq(base(ls(K1).info), OLD, '저장 경기의 info');
+      eq(base(AS.info), OLD, 'AS.info');
     });
   });
   test('숨겨진 자동저장 복구(sl_auto_*): 열려 있던 다른 경기의 info 가 복구한 경기에 적히지 않는다', async function () {
@@ -71,8 +73,8 @@
       AS.info = NEW;   // 지금 열려 있는 다른 경기
       window.confirm = function () { return true; };
       recoverHiddenAutosave('sl_auto_77');
-      eq(ls(K1).info, OLD, '저장 경기의 info');
-      eq(AS.info, OLD, 'AS.info');
+      eq(base(ls(K1).info), OLD, '저장 경기의 info');
+      eq(base(AS.info), OLD, 'AS.info');
     });
   });
 })();

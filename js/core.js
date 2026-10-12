@@ -8111,6 +8111,12 @@ var uiStates={
   },900);
 })();
 
+// 복구본의 경기 정보(AS.info) — 없으면(sl_auto_* · 예전 자동저장) 복구가 덮어쓸 저장 경기(saveKey)의 값.
+// updateAll 전에 정해 둔다: 그 안의 자동저장 감싸기(setup.js)가 빈 정보를 채우면 저장 경기의 정보를 덮게 된다
+function _recInfo(d){
+  if(d.info)return d.info;
+  try{var g=d.saveKey&&JSON.parse(localStorage.getItem(d.saveKey)||'null');return g&&g.info||null;}catch(e){return null;}
+}
 function archRecoverAutosave(){
   var rec=storageManager.getRecovery();
   if(!rec||!rec.data)return;
@@ -8121,7 +8127,7 @@ function archRecoverAutosave(){
   AS.hs=d.hs||0;AS.as=d.as||0;
   AS.zoneHistory=d.zoneHistory||{};
   AS.pitchers=d.pitchers||[];
-  if(d.info)AS.info=d.info;   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
+  AS.info=_recInfo(d);   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
   if(a&&d.ta)a.value=d.ta;
@@ -8153,8 +8159,7 @@ function _archQuietSave(saveKey){
         existing.abs=AS.abs;existing.hs=AS.hs;existing.as=AS.as;
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
-        if(!AS.info)AS.info=existing.info||null;   // 경기 정보: 복구본에 없으면(예전 자동저장) 그 경기에 저장된 값
-        existing.info=AS.info;
+        existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
         existing.ts=Date.now();
         localStorage.setItem(latest.key,JSON.stringify(existing));
         latest.ts=existing.ts;
@@ -8250,7 +8255,7 @@ function recoverHiddenAutosave(key){
     AS.hs=d.hs||0;AS.as=d.as||0;
     AS.zoneHistory=d.zoneHistory||{};
     AS.pitchers=d.pitchers||[];
-    AS.info=d.info||null;   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게 (sl_auto_* 엔 info 가 없음 → 저장 경기 값)
+    AS.info=_recInfo(d);   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게
     var h=document.getElementById('tHome'),a=document.getElementById('tAway');
     if(h&&d.th)h.value=d.th;
     if(a&&d.ta)a.value=d.ta;

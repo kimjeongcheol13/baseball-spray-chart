@@ -5692,8 +5692,21 @@ function selectPitcher(id){
   renderPitcherRoster();
   var lbl=document.getElementById('currentPitcherLabel');
   if(lbl)lbl.textContent=AS.currentPitcher?(AS.currentPitcher.num?'#'+AS.currentPitcher.num+' ':'')+AS.currentPitcher.name:'미선택';
+  renderPitchLog();   // 최근 투구 로그도 고른 투수 것으로 (예전엔 다음 공을 기록할 때까지 이전 화면 그대로 — 새로고침 뒤엔 비어 보였다)
   renderPitcherStats();
   renderPitchCount();
+}
+
+// 경기를 복구 · 새로 시작해 AS.pitchers 가 바뀐 뒤: 투수 선택을 풀고(이전 경기 투수 객체에 공이 쌓이지 않게) 전체 투구 로그를 다시 만들어 그린다 — restoreGame 과 같은 규칙
+function _resetPitcherUI(){
+  AS.currentPitcher=null;
+  AS.pitchLog=[];
+  (AS.pitchers||[]).forEach(function(p){(p.pitches||[]).slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
+  AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
+  var lbl=document.getElementById('currentPitcherLabel');
+  if(lbl)lbl.textContent='미선택';
+  renderPitcherRoster();
+  renderPitchLog();
 }
 
 function renderPitcherRoster(){
@@ -7101,6 +7114,7 @@ function startFromWizard(){
   AS.advFilter=null; AS.pitchers=[]; AS.currentPitcher=null;
   AS.pitcherZone=null; AS.pitcherZoneX=null; AS.pitcherZoneY=null; AS.pitcherPt=null; AS.pitcherRole=null;
   AS.pitchLog=[]; AS.pitchNewPA=false; AS.recFilterBid=null; AS.pendingQuickRes=null;
+  _resetPitcherUI();   // 이전 경기 투수 목록 · 투구 로그가 화면에 남지 않게
   if(typeof _ibZoneDots!=='undefined')_ibZoneDots=[];
   // GF(경기운영) 초기화
   if(window.GF){GF.on=false;GF.half='top';GF.inn=1;GF.outs=0;GF.order={home:0,away:0};}
@@ -8642,6 +8656,7 @@ function archRecoverAutosave(){
   AS.hs=d.hs||0;AS.as=d.as||0;
   AS.zoneHistory=d.zoneHistory||{};
   AS.pitchers=d.pitchers||[];
+  _resetPitcherUI();   // 새로고침 뒤 최근 투구 로그가 비어 있던 문제
   AS.info=_recInfo(d);   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
@@ -8779,6 +8794,7 @@ function recoverHiddenAutosave(key){
     AS.hs=d.hs||0;AS.as=d.as||0;
     AS.zoneHistory=d.zoneHistory||{};
     AS.pitchers=d.pitchers||[];
+    _resetPitcherUI();
     AS.info=_recInfo(d);   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게
     var h=document.getElementById('tHome'),a=document.getElementById('tAway');
     if(h&&d.th)h.value=d.th;

@@ -745,6 +745,10 @@ function addPlayer(){
   if(getActiveLineup().length===1)selBatter(p.id);
 }
 
+// 지금 볼카운트 · 이번 타석 투구가 누구 타석의 것인지 (타자 id, 모르면 null). 다른 타자를 고르면 새 타석으로 0-0 부터 —
+// 예전엔 카운트가 그대로 넘어가 홈팀 타자 0-2 에서 원정팀 타자로 바꾸면 다음 스트라이크에 그 타자가 삼진이 됐다.
+// 타자를 아직 안 고르고 센 카운트(null)는 처음 고른 타자 것으로 이어진다
+var _cntBid=null;
 function selBatter(id){
   const targetLineup = getActiveLineup();
   const clicked=targetLineup.find(p=>String(p.id)===String(id))||null;
@@ -762,8 +766,16 @@ function selBatter(id){
   if(AS.batter) d.innerHTML=`<span class="batter-display">#${_escHtml(AS.batter.num)} ${_escHtml(AS.batter.name)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
   else d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   closeHitDetail();
+  // 다른 타자를 고르면 새 타석: 볼카운트 · 이번 타석 투구를 비운다 (같은 타자 · 주인 없는 카운트는 그대로 — 해제했다 다시 골라도 0구째가 되지 않게)
+  if(AS.batter){
+    if(_cntBid!=null&&String(_cntBid)!==String(AS.batter.id)&&((AS.balls||0)||(AS.strikes||0)||AS.currentPitches.length)){
+      AS.balls=0;AS.strikes=0;AS.currentPitches=[];renderCount();
+      showToast('타자를 바꿔서 볼카운트를 0-0 부터 셉니다',false,true);
+    }else if(_cntBid!=null&&String(_cntBid)!==String(AS.batter.id))AS.currentPitches=[];
+    _cntBid=AS.batter.id;
+  }
   // 새 타자 선택 시 인게임 코스 초기화 (에러 방지용 try-catch)
-  try{AS.currentPitches=[];AS.zone=null;AS.pt=null;AS.zoneX=null;AS.zoneY=null;
+  try{AS.zone=null;AS.pt=null;AS.zoneX=null;AS.zoneY=null;
   if(typeof _ibZoneDots!=='undefined')_ibZoneDots=[];
   if(typeof ibZoneRedraw==='function')ibZoneRedraw();
   if(AS.currentPitcher)AS.currentPitcher._batterLog=[];}catch(e){}
@@ -952,6 +964,7 @@ function selZone(el){clickZone(el);}
 
 function logPitchAction(){
   if(!AS.zone||!AS.pt)return;
+  if(AS.batter)_cntBid=AS.batter.id;
   if(!AS.zoneHistory[AS.zone])AS.zoneHistory[AS.zone]=[];
   var symMap={'커브':'Ｃ','커터':'CT','직구':'Ｆ','슬라이더':'Ｓ','체인지업':'CH','포크볼':'FK'};
   var symbol=symMap[AS.pt]||'•';
@@ -1693,6 +1706,7 @@ function undoLast(){
   if(!AS.abs.length)return;
   var _last=AS.abs.pop();
   if(_last&&_last.count){AS.balls=Math.min(3,Math.max(0,Number(_last.count.b)||0));AS.strikes=Math.min(2,Math.max(0,Number(_last.count.s)||0));renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
+  if(_last)_cntBid=_last.bid!=null?_last.bid:null;   // 되살린 카운트는 그 타석 타자 것 (shell.js 가 그 타자를 다시 골라도 비우지 않게)
   var _lp=_dropAbPitch(_last);   // 이 타석을 끝낸 투수 탭 공도 지운다 — 남겨 두면 다시 기록할 때 투수 쪽 삼진이 두 개가 됐다
   if(_lp&&!AS.currentPitches.length){   // 그 타석의 앞 공들은 이번 타석 투구로 되살린다 (투수 탭에 남아 있는 공과 같게)
     AS.currentPitches=(_last.pitches||[]).filter(function(x){return!(x&&x.pid!=null&&String(x.pid)===String(_lp.id));});
@@ -2771,6 +2785,7 @@ function restoreGame(key){
   if(typeof renderPitcherRoster==='function')renderPitcherRoster();
   if(typeof renderPitchLog==='function')setTimeout(renderPitchLog,50);
   AS.batter=null;AS.balls=0;AS.strikes=0;AS.outs=0;AS.batterFilter=false;AS.showHotCold=false;AS.teamFilter=null;AS.advFilter=null;
+  AS.currentPitches=[];_cntBid=null;   // 이전 경기의 이번 타석 투구가 남지 않게 (예전엔 다음 타자 선택이 비웠다 — 이제 같은 타자면 이어지므로)
   var afBtns=document.querySelectorAll('#advStatFilter .sf-btn');if(afBtns.length){afBtns.forEach(function(b,i){b.classList.toggle('on',i===0);});}
   closeOverlay('loadOverlay');
   refreshZoneDisplay();renderCount();
@@ -2789,6 +2804,7 @@ function restoreGame(key){
 // B·S·O 를 누르면 +1. 카운트가 차면 그 자리에서 타석을 끝낸다 — 4볼 → 볼넷, 3스트라이크 → 삼진 (K/BB 도장과 같은 recQuick 경로), 3아웃 → 다음 이닝
 // (예전에는 0 으로 되돌아가기만 해서 "볼 4개·스트라이크 3개를 눌러도 기록이 안 된다"는 문제가 있었다)
 function chCount(type){
+  if(AS.batter)_cntBid=AS.batter.id;
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
   else if(type==='o'){if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;}
@@ -5347,7 +5363,7 @@ function loadSharedGame(){
   /* 존 히스토리 */
   AS.zoneHistory=payload.zh||{};
   /* 상태 초기화 */
-  AS.batter=null; AS.balls=0; AS.strikes=0; AS.outs=0;
+  AS.batter=null; AS.balls=0; AS.strikes=0; AS.outs=0; AS.currentPitches=[]; _cntBid=null;
   AS.batterFilter=false; AS.showHotCold=false; AS.teamFilter=null; AS.advFilter=null;
   history.replaceState(null,'',location.pathname);
   dismissSharedBanner();
@@ -5661,6 +5677,7 @@ function selectPitcher(id){
 
 // 경기를 복구 · 새로 시작해 AS.pitchers 가 바뀐 뒤: 투수 선택을 풀고(이전 경기 투수 객체에 공이 쌓이지 않게) 전체 투구 로그를 다시 만들어 그린다 — restoreGame 과 같은 규칙
 function _resetPitcherUI(){
+  AS.currentPitches=[];_cntBid=null;   // 경기가 바뀌면 이번 타석도 새로 (복구는 이 뒤에 _applyLive 가 되살린다)
   AS.currentPitcher=null;
   AS.pitchLog=[];
   (AS.pitchers||[]).forEach(function(p){(p.pitches||[]).slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
@@ -5748,6 +5765,7 @@ function recordPitch(result){
     pt:AS.pitcherPt,
     result:result,
     batter:AS.batter?AS.batter.name:null,
+    bteam:AS.batter?(AS.curTeam==='away'?'away':'home'):null,bnum:AS.batter&&AS.batter.num?String(AS.batter.num):null,   // 상대 타자 팀 · 번호 (투구 로그 표시)
     ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
     outs:sit.outs,
     runners:sit.runners
@@ -5781,6 +5799,7 @@ function _pitchLiveResult(result){
 }
 function _pitchToRecord(e){
   var r=e.result;
+  if(AS.batter)_cntBid=AS.batter.id;
   renderPitcherRoster();   // 투수 버튼의 'N구' 갱신
   AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
     balls:AS.balls||0,strikes:AS.strikes||0,outs:AS.outs||0,
@@ -5821,7 +5840,7 @@ function _recordToPitch(ab){
   var pr=_RES_TO_PITCH[ab.res];
   if(!pr)return;
   var sit=_pitchSit();   // gfAfterRecord 보다 먼저 불리므로 아직 이 타석 전 상황
-  var entry={id:_pitchId(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||'',outs:sit.outs,runners:sit.runners,abId:ab.id};
+  var entry={id:_pitchId(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,bteam:ab.team||null,bnum:ab.bnum!=null?String(ab.bnum):null,ts:ab.ts||'',outs:sit.outs,runners:sit.runners,abId:ab.id};
   if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];
   AS.currentPitcher._batterLog.push(entry);
   AS.currentPitcher.pitches.push(entry);
@@ -5860,6 +5879,7 @@ function _applyLive(L){
     }
   }
   AS.balls=num(L.b,3);AS.strikes=num(L.s,2);AS.outs=num(L.o,2);
+  _cntBid=AS.batter?AS.batter.id:null;
   AS.currentPitches=(Array.isArray(L.pitches)?L.pitches:[]).filter(function(x){return x&&typeof x==='object';}).slice(0,60).map(function(x){
     return{zone:str(x.zone),pt:str(x.pt),x:fin(x.x),y:fin(x.y),balls:num(x.balls,3),strikes:num(x.strikes,2),outs:num(x.outs,2),
       pitcher:str(x.pitcher)||'',ts:str(x.ts)||'',result:str(x.result),pid:fin(x.pid)};
@@ -5902,6 +5922,7 @@ function _resumeLiveAtBat(){
     return x;
   });
   AS.balls=b;AS.strikes=s;renderCount();
+  _cntBid=AS.batter?AS.batter.id:null;
   selectPitcher(P.id);
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
   safeRender();
@@ -6034,7 +6055,7 @@ function _syncAbPitchEdit(ab){
     var id=parked?parked.pid:Number(prev.e.id)+1;   // 바로 앞 공 다음 번호 — 다시 열어도(id 순 정렬) 던진 순서 그대로
     if(!parked){if(!isFinite(id))id=_pitchId();else while(_findPitch(id))id++;}
     var e={id:id,inning:ab.inn||null,zone:parked?parked.zone||null:null,zoneX:parked&&parked.x!=null?parked.x:null,zoneY:parked&&parked.y!=null?parked.y:null,
-      pt:parked?parked.pt||null:null,result:pr,batter:ab.bname||null,ts:parked?parked.ts||'':ab.ts||'',
+      pt:parked?parked.pt||null:null,result:pr,batter:ab.bname||null,bteam:ab.team||null,bnum:ab.bnum!=null?String(ab.bnum):null,ts:parked?parked.ts||'':ab.ts||'',
       outs:prev&&prev.e.outs!=null?prev.e.outs:null,runners:prev&&prev.e.runners?prev.e.runners.slice():null,abId:ab.id};
     var at=prev?P.pitches.indexOf(prev.e)+1:P.pitches.findIndex(function(q){return Number(q.id)>Number(id);});
     if(at<0)at=P.pitches.length;   // 앞 공이 없으면 id 순서 자리 (뒤에 공이 없으면 맨 끝)
@@ -6066,6 +6087,17 @@ function loadPitchEntry(pt, zone, zoneX, zoneY){
   showToast((pt||'')+(zone?' · '+zone:'')+'  입력 설정 완료',false,true);
 }
 
+// 투구 로그 한 줄의 상대 타자: 'vs 홈팀 #1 백승민' — 팀 · 번호가 없는 예전 기록은 명단에서 이름으로 찾는다(두 팀에 같은 이름이면 팀은 빼고)
+function _pitchBatterTxt(p){
+  if(!p||!p.batter)return'';
+  var team=p.bteam,num=p.bnum;
+  if(team!=='home'&&team!=='away'){
+    var h=(AS.home_lineup||[]).find(function(q){return q.name===p.batter;}),a=(AS.away_lineup||[]).find(function(q){return q.name===p.batter;});
+    if(h&&!a){team='home';num=num||h.num;}else if(a&&!h){team='away';num=num||a.num;}
+  }
+  var tn=team==='home'?((document.getElementById('tHome')||{}).value||'홈팀'):team==='away'?((document.getElementById('tAway')||{}).value||'원정팀'):'';
+  return 'vs '+(tn?tn+' ':'')+(num?'#'+num+' ':'')+p.batter;
+}
 function renderPitchLog(){
   var el=document.getElementById('pitchLog');
   if(!el)return;
@@ -6082,7 +6114,7 @@ function renderPitchLog(){
     var zy=p.zoneY!=null?_numArg(p.zoneY):'null';
     return '<div class="pitch-entry" style="cursor:pointer" onclick="loadPitchEntry('+ptE+','+zoneE+','+zx+','+zy+')" title="클릭하면 입력값 복원">'
       +'<div class="pe-result" style="background:'+col+'"></div>'
-      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+_escHtml(p.inning)+'</span> ':'')+_escHtml(p.pt||'—')+(p.zone?' · '+_escHtml(p.zone):'')+' → <strong style="color:'+col+'">'+_escHtml(p.result)+'</strong></span>'
+      +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+_escHtml(p.inning)+'</span> ':'')+_escHtml(p.pt||'—')+(p.zone?' · '+_escHtml(p.zone):'')+' → <strong style="color:'+col+'">'+_escHtml(p.result)+'</strong>'+(p.batter?'<span class="pe-bat">'+_escHtml(_pitchBatterTxt(p))+'</span>':'')+'</span>'
       +'<span style="font-size:9px;color:var(--text3)">'+_escHtml(p.ts)+'</span>'
       +'<button type="button" class="pitch-del" onclick="event.stopPropagation();delPitch('+_numArg(p.id)+')" aria-label="이 투구 삭제" title="이 투구 삭제">✕</button>'
       +'</div>';
@@ -8803,8 +8835,10 @@ function toggleHighContrast(){
   var _orig=storageManager.scheduleAutosave.bind(storageManager);
   storageManager.scheduleAutosave=function(data,delay){
     var enhanced=Object.assign({},data,{
-      gf:{active:GF.active,inning:GF.inning,half:GF.half,outs:GF.outs,
-          batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false]}
+      gf:{toJSON:function(){   // 적을 때의 값으로 — 타석 기록은 타순 · 주자를 옮기기 전에 저장을 예약한다
+        return{active:GF.active,inning:GF.inning,half:GF.half,outs:GF.outs,
+          batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false]};
+      }}
     });
     _orig(enhanced,delay);
   };
@@ -8820,12 +8854,23 @@ function toggleHighContrast(){
     if(gfData&&gfData.active){
       setTimeout(function(){
         try{
-          GF.inning=gfData.inning||1;
-          GF.half=gfData.half||'top';
-          GF.outs=gfData.outs||0;
-          GF.batterIdx=gfData.batterIdx||0;
-          GF.bases=gfData.bases||[false,false,false];
+          // gfActivate 는 켜면서 1회초 · 첫 타자 · 주자 없음으로 초기화한다 → 켠 다음에 저장된 값으로 되돌린다
+          // (예전엔 값을 먼저 넣고 gfActivate 가 덮어서, 새로고침하면 1회초 첫 타자로 돌아가고 이번 타석 투구가 비었다 — 볼카운트만 남아 그 타자가 삼진)
+          var keep={bid:AS.batter?AS.batter.id:null,cp:AS.currentPitches,b:AS.balls,s:AS.strikes};   // _applyLive 가 되살린 이번 타석
+          AS.balls=0;AS.strikes=0;AS.currentPitches=[];   // 첫 타자를 고를 때 '타자를 바꿔 0-0' 안내가 뜨지 않게 — 아래에서 되돌린다
           if(typeof gfActivate==='function')gfActivate();
+          GF.inning=Math.max(1,Number(gfData.inning)||1);
+          GF.half=gfData.half==='bottom'?'bottom':'top';
+          GF.outs=Math.min(2,Math.max(0,Number(gfData.outs)||0));
+          GF.batterIdx=Math.max(0,Number(gfData.batterIdx)||0);
+          GF.bases=Array.isArray(gfData.bases)&&gfData.bases.length===3?gfData.bases.map(Boolean):[false,false,false];
+          swLineupTab(GF.half==='top'?'home':'away');   // 공격 팀 명단에서 그 타순 타자
+          var lu=gfGetLineup(),p=lu.length?lu[GF.batterIdx%lu.length]:null;
+          if(p){AS.batter=null;selBatter(p.id);}
+          if(p&&keep.bid!=null&&String(keep.bid)===String(p.id)){AS.currentPitches=keep.cp;AS.balls=keep.b;AS.strikes=keep.s;}
+          _cntBid=AS.batter?AS.batter.id:null;
+          renderCount();gfSyncInnSel();gfUpdateBar();
+          if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
         }catch(e){console.warn('[Recovery] GF 복구 실패',e);}
       },200);
     }

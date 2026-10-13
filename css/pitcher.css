@@ -229,6 +229,13 @@
   margin-bottom: 12px;
 }
 #anaSecPitcher.pc-input #pnl-pitcher .sc-title { font-size: 13px; font-weight: 800; color: #eef0f8; letter-spacing: -.2px; text-transform: none; margin-bottom: 10px; }
+/* 최근 투구 로그: ↩ 되돌리기(마지막 공) · 줄마다 ✕ 삭제 (core.js undoPitch · delPitch) */
+#pnl-pitcher .pitch-log-hdr { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+#pnl-pitcher .pitch-undo-btn { padding: 4px 10px; border-radius: 8px; border: 1.5px solid var(--border2); background: none; color: var(--text2); font: 700 11px var(--font); cursor: pointer; }
+#pnl-pitcher .pitch-undo-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+#pnl-pitcher .pitch-undo-btn:disabled { opacity: .4; cursor: default; }
+#pnl-pitcher .pitch-del { flex-shrink: 0; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--text3); font: 700 11px var(--font); cursor: pointer; align-self: stretch; }
+#pnl-pitcher .pitch-del:hover { color: var(--accent); background: var(--accent-dim); }
 
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {
@@ -253,6 +260,8 @@
   #anaSecPitcher.pc-input #pnl-pitcher .ptr-btn { min-height: 44px; min-width: 44px; flex: 1 1 56px; }
   #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-collapse-toggle { min-height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .pitch-entry { min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-undo-btn { min-width: 44px; min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-del { min-width: 44px; min-height: 44px; }
 }
 
 /* ── 데스크톱 터치 타겟 44×44px 이상 (분석 탭 데스크톱은 이번만 예외로 모바일과 같게) ── */
@@ -267,4 +276,6 @@
   #anaSecPitcher.pc-input #pnl-pitcher .ptr-btn { min-height: 44px; min-width: 44px; flex: 1 1 56px; }
   #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-collapse-toggle { min-height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .pitch-entry { min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-undo-btn { min-width: 44px; min-height: 44px; }
+  #anaSecPitcher.pc-input #pnl-pitcher .pitch-del { min-width: 44px; min-height: 44px; }
 }

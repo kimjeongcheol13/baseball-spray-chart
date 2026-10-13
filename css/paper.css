@@ -1057,6 +1057,16 @@ select.st-in { cursor: pointer; font-size: 14px; }
   .stx-more { margin-top: 12px !important; }
   .st-hbtn { margin-left: 0; width: 100%; }
   .st-hbtn .sb-mini { flex: 1 1 0; padding: 0 8px; }
+  /* 저장하고 기록 시작: 헤더 맨 위라 날짜 → … → 타순표를 다 채운 뒤 다시 올라가야 했다 → 하단 탭바 바로 위에 고정
+     (버튼이 헤더 띠 .st-hbtn 안이라 sticky 로는 아래에 붙지 않아 fixed — 경기설정 뷰가 닫히면 같이 숨는다)
+     지난 경기 불러오기는 헤더 그대로 · 콘텐츠 끝과 포커스 스크롤은 버튼(48 + 위아래 8px) 위에서 멈춘다
+     · 둘레 종이색 띠(흐림 없는 box-shadow — 그림자가 아니라 배경 띠): 버튼 위아래 틈으로 뒤 카드가 잘려 비치지 않게 화면 폭 전체를 덮는다 */
+  .st-hbtn .st-go {
+    position: fixed; left: 12px; right: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px); min-height: 48px;
+    box-shadow: 0 0 0 8px var(--paper), -12px 0 0 8px var(--paper), 12px 0 0 8px var(--paper);
+  }
+  .stx { padding-bottom: 88px; }
+  #settingsView { scroll-padding-bottom: 72px; }
   .st-lu-h, .st-row { grid-template-columns: 30px minmax(0, 1fr) 62px 70px 44px; column-gap: 6px; }
   .st-lu-h, .st-lu-list { padding-left: 10px; padding-right: 10px; }
   .st-in { font-size: 14px; }

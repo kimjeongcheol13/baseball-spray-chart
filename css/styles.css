@@ -664,7 +664,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .tt-row{color:var(--text2);line-height:1.65}
 /* ?? ???湲곕줉 ?섏젙 踰꾪듉 ?? */
 .rec-edit{position:absolute;top:7px;right:25px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:1px 4px;border-radius:3px;transition:all 100ms;opacity:0;font-family:var(--font)}
-.rec-item:hover .rec-edit{opacity:1}
+.rec-item:hover .rec-edit,.rec-item:focus-within .rec-edit{opacity:1}
 .rec-edit:hover{color:var(--accent);background:var(--accent-dim)}
 .rec-del{position:absolute;top:7px;right:5px}
 /* ?? zone 援ъ쥌 ?쒓렇 ?? */

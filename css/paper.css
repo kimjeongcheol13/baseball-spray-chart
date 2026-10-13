@@ -475,6 +475,16 @@ body.sb .overlay .modal { background: var(--paper-2); border: var(--card-bw) sol
   .sb-hdr-mid { justify-content: flex-end; }
   .sb-tagline { display: none; }
 }
+/* ═══ 가로로 든 폰 (터치 · 721–1023px · 높이 560px 이하) ═══
+   한 화면 고정 2열 배치로는 필드 칸이 수십 px 로 눌려 캔버스가 위아래 잘린 띠로 보였다 → 화면을 세로 스크롤로 풀고 필드는 열 폭의 정사각형
+   (core _fieldFS 는 >720px 에서 필드 칸(.field-wrap)의 가로·세로 중 작은 쪽을 쓰므로 칸을 정사각형으로 — 칸은 overflow:hidden 이라 자식 크기로 되읽는 순환 없음).
+   터치 조건은 필드 자리표시(#139) · shell.css 수정 창(#143)과 같다 — CLAUDE.md 모바일 720px 규칙의 예외. 마우스 데스크톱은 그대로 */
+@media (any-pointer: coarse) and (min-width: 721px) and (max-width: 1023.98px) and (max-height: 560px) {
+  /* 행은 max-content: 열(.pnl-center · .sb-side)이 min-height:0 · overflow 라 auto 행은 남는 공간(화면 높이)까지만 커져 내용이 잘린다 */
+  body.sb .app-layout { grid-template-rows: max-content !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+  body.sb .sb-field { flex: none; }
+  body.sb .sb-field > .field-wrap { flex: none; aspect-ratio: 1; }
+}
 .sb-order-bd { display: none; position: fixed; inset: 0; z-index: 455; background: rgba(31, 42, 35, .45); }
 
 /* 타자 바 (태블릿·모바일) */
@@ -1263,4 +1273,45 @@ html.sb-boot body::after {
   .sb-cg.ro { border-color: transparent; background: none; }
   .sb-cg.ro:active { background: none; transform: none; }
   .sb-cg.ro::after { content: '자동'; margin-left: 2px; font: 600 10px/1 var(--f-body); color: var(--ink-soft); }
+}
+
+/* ═══ 터치 기기: 누르는 것은 최소 44 × 44px (iOS HIG 44pt · Material 48dp 의 하한) ═══
+   · (pointer: coarse) = 손가락이 주 입력인 기기 (폭과 상관없이 폰 · 태블릿 · 터치 노트북). 마우스 데스크톱(pointer: fine · hover: hover)은 그대로
+   · 글자 크기는 키우지 않고 min 크기로만. 화면에서 작게 보여야 하는 건 ::before 투명 히트 영역으로 (아래 개별 규칙)
+   · 공통 규칙은 태그 선택자(우선순위 낮음)라 클래스 규칙이 min 크기를 정하지 않은 곳에만 걸린다
+     — 우선순위를 올리면 원래 44 보다 크게 잡힌 버튼(K · BB · HBP 64 · SH/SF 48 · 이닝 64 폭 …)까지 44 로 줄어든다
+   · 클래스 · id 규칙이 44 보다 작게 정해 둔 곳은 아래에서 하나씩 44 로 (paper.css 가 나중에 로드돼 같은 우선순위면 이김)
+   · checkbox · radio 는 감싼 label 이 터치 영역 (경기 정보 홈/원정: label 97 × 44) */
+@media (pointer: coarse) {
+  button, [role="button"], select,
+  input:is(:not([type]), [type="text"], [type="number"], [type="date"], [type="time"], [type="search"], [type="email"], [type="tel"], [type="password"], [type="url"]) { min-height: 44px; }
+  button, [role="button"] { min-width: 44px; }
+
+  /* 클래스 · id 규칙이 44 보다 작게 정해 둔 곳 */
+  body.sb #savantNav .savant-nav-btn:not(.active) { height: 44px; min-height: 44px; }   /* 하단 바인더 탭 40 → 44 (현재 탭 46 그대로, ::before 막혀 있어 높이로) */
+  .sb-seg button { min-height: 44px; }                                                  /* 타순표 내 팀 / 원정팀 34 */
+  .btn, .btn.btn-ghost { min-height: 44px; }                                            /* 클라우드 · 라인업 서랍 등 옛 .btn 36 */
+  .hm-close { min-width: 44px; min-height: 44px; }                                     /* 사용 방법 닫기 36 */
+  .ffm-tag { min-height: 44px; }                                                        /* 피드백 태그 36 */
+  .ldr-tab { min-height: 44px; }                                                        /* 팀 리더보드 탭 28 (기록이 쌓이면 보임) */
+  /* 점수판(.scoreboard)은 폰에서 scale(.92) 로 줄여 그린다(styles.css) → 안의 버튼 · 입력은 48px 이어야 화면에서 44px */
+  body.sb .se-body .sc-btn { min-width: 48px; min-height: 48px; }
+  .se-body .team-inp { min-height: 48px; }
+
+  /* 44 로 키우면 깨지는 곳 — 보이는 크기는 그대로 두고 ::before 투명 히트 영역으로 44 × 44 (가운데 맞춤, 눌리면 버튼이 눌린 것)
+     · 라인업 서랍 행(연필 · 주전/후보 · ✕): 높이 44 면 행이 58 → 66 — 연필 · ✕ 는 폭 44 · 높이 36(원래 값), 주전(글자 9px)은 보이는 크기 그대로.
+       세 버튼 사이 간격 8 > 주전 히트 영역이 옆으로 나가는 7 이라 서로 겹치지 않음
+     · 최근 기록 시트 ◀ ▶ (32 × 24): 44 로 키우면 가운데 '전체 (n명)' 칸(24)과 높이가 어긋남 */
+  .starter-btn, .rpn-btn { min-width: 0; min-height: 0; }
+  .p-edit { min-width: 44px; }
+  .starter-btn, .rpn-btn, .p-edit, .p-del { position: relative; }
+  :is(.starter-btn, .rpn-btn, .p-edit, .p-del)::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .rec-player-nav { margin-bottom: 12px; }   /* ◀ ▶ 히트 영역(위아래 +10)이 바로 아래 기록 카드와 겹치지 않게 간격 7 → 12 (겹치면 카드가 위에 그려져 탭을 가져감) */
+  /* 최근 기록 카드 오른쪽 위 '수정'(right 25) · ✕(right 5): 둘 다 44 가 되면 ✕ 가 '수정'을 덮어 '수정'을 누르면 타석이 지워짐 → '수정'을 ✕ 왼쪽(5 + 44 + 4)으로 */
+  .rec-edit { right: 53px; }
+  .rec-edit { padding-bottom: 27px; }   /* 44 칸 안에서 글자는 위(첫 줄 높이, main 과 같은 자리)로 — 가운데면 둘째 줄(상세 · 시각)과 겹침 */
+  .rec-del { padding-bottom: 22px; }    /* ✕ 줄 높이 21 이라 27 이면 49 가 돼 카드 밖으로 나감 */
+  /* 라인업 서랍 ✕(선수 삭제): 마우스를 올려야 보이는(opacity 0) 버튼이 행 오른쪽에 떠 있어(position: absolute) '주전' 버튼을 덮고 있었다
+     → 터치에선 보이지 않는 ✕ 가 눌려 '주전'을 누르면 선수가 지워짐 (main 도 같음). 행 안 마지막 칸으로 내리고 보이게 */
+  .p-del { right: auto; top: auto; transform: none; opacity: 1; flex-shrink: 0; min-height: 36px; }
 }

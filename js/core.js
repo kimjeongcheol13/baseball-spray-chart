@@ -3676,6 +3676,9 @@ var _editRbi=0;
 function openEditRec(id){
   var ab=AS.abs.find(function(a){return a.id===id;});
   if(!ab)return;
+  // 휴대폰(≤720px): 「최근 기록」 시트에서 수정을 누르면 시트를 먼저 닫는다 — 시트(z-index 470)가 수정 창(.overlay 395)보다 위라
+  // 수정 창이 시트 뒤에 열려 보이지도 눌리지도 않았다. 저장 · 취소 뒤에 시트를 다시 열지 않는다(기록 화면으로 돌아감). 데스크톱은 그대로
+  if(document.body.classList.contains('rec-sheet-open')&&window.matchMedia&&window.matchMedia('(max-width: 720px)').matches&&typeof window.shellRecSheet==='function')window.shellRecSheet(false);
   document.getElementById('editRecId').value=id;
   document.getElementById('editInn').value=ab.inn||'1회초';
   document.getElementById('editRes').value=ab.res||'안타';
@@ -3710,6 +3713,7 @@ function saveEditRec(){
 // 지금 열린 경기의 저장 항목(_curSaveKey)에 반영한다. 항목이 없으면(새 경기 · 공유받은 경기 · 항목이 지워진 경기) 새 항목 — 다른 경기 항목은 건드리지 않는다.
 // 「경기 저장」(saveGame)과 같은 규칙(팀명 · 경기 정보 · 이름 · ts 유지 · 클라우드)으로, 다만 바로 저장하고 요약 창은 띄우지 않는다.
 // 예전에는 목록의 마지막 항목을 덮어써서, 다른 경기를 열어 고치면 그 마지막 경기가 이 경기 기록으로 바뀌었다(서버 user_games 에도 그대로 올라감)
+// saveGame 이 "저장됨"(_gameSaved=true · _updateSaveUI)도 둔다 — 안 두면 다른 경기를 열 때 _saveWorkBeforeReplace 가 한 번 더 저장했다(#136)
 function _saveEditImmediate(){
   saveGame(true);
 }
@@ -8291,10 +8295,9 @@ function _archQuietSave(saveKey){
         existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
         var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
         if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명 — 다른 경기를 열기 전에 저장할 때 사라지지 않게
-        existing.ts=Date.now();
+        // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 예전엔 지금 시각으로 바꿔서, 다른 경기를 열기 전 저장 ·
+        // 복구 때마다 그 경기의 날짜가 오늘로 바뀌었다. 수정 시각은 아래 _slMarkMod(sl_cloud_mod)가 지금처럼 남긴다(동기화는 그 값을 본다)
         localStorage.setItem(latest.key,JSON.stringify(existing));
-        latest.ts=existing.ts;
-        localStorage.setItem('sl_saves',JSON.stringify(saves));
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
         AS.curGame=latest.key.replace(/^sl_(?:auto_)?/,'');   // 복구한 경기도 그 저장 항목의 자동저장 키를 쓴다

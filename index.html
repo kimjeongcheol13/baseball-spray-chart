@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=76">
+<link rel="stylesheet" href="css/styles.css?v=77">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -88,12 +88,12 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=4">
-<link rel="stylesheet" href="css/pitcher.css?v=6">
+<link rel="stylesheet" href="css/pitcher.css?v=7">
 <link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=10">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=18">
+<link rel="stylesheet" href="css/paper.css?v=19">
 <link rel="stylesheet" href="css/report.css?v=2">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -1418,16 +1418,16 @@ var _kakaoSdkLoaded = false;
           <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
             <div class="pt-result-chips" style="margin-bottom:5px">
               <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
-              <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
-              <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
-              <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+              <button class="ptr-btn ptr-2b" onclick="recordPitch('2루타')">2루타</button>
+              <button class="ptr-btn ptr-3b" onclick="recordPitch('3루타')">3루타</button>
+              <button class="ptr-btn ptr-hr" onclick="recordPitch('홈런')">홈런</button>
             </div>
             <div class="pt-result-chips" style="margin-bottom:6px">
-              <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
-              <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
-              <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
-              <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
-              <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
+              <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')">파울</button>
+              <button class="ptr-btn ptr-k" onclick="recordPitch('삼진')">삼진</button>
+              <button class="ptr-btn ptr-out" onclick="recordPitch('아웃')">아웃</button>
+              <button class="ptr-btn ptr-bb" onclick="recordPitch('볼넷')">볼넷</button>
+              <button class="ptr-btn ptr-dp" onclick="recordPitch('병살')">병살</button>
             </div>
           </div>
 
@@ -1482,22 +1482,22 @@ var _kakaoSdkLoaded = false;
                 <div class="pt-result-chips" style="margin-bottom:5px">
                   <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
                   <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
-                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
-                  <button class="ptr-btn" onclick="recordPitch('삼진')" style="background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)">삼진</button>
-                  <button class="ptr-btn" onclick="recordPitch('아웃')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">아웃</button>
-                  <button class="ptr-btn" onclick="recordPitch('볼넷')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">볼넷</button>
+                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')">파울</button>
+                  <button class="ptr-btn ptr-k" onclick="recordPitch('삼진')">삼진</button>
+                  <button class="ptr-btn ptr-out" onclick="recordPitch('아웃')">아웃</button>
+                  <button class="ptr-btn ptr-bb" onclick="recordPitch('볼넷')">볼넷</button>
                 </div>
                 <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">안타</div>
                 <div class="pt-result-chips" style="margin-bottom:5px">
                   <button class="ptr-btn ptr-hit" onclick="recordPitch('안타')">안타</button>
-                  <button class="ptr-btn" onclick="recordPitch('2루타')" style="background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)">2루타</button>
-                  <button class="ptr-btn" onclick="recordPitch('3루타')" style="background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)">3루타</button>
-                  <button class="ptr-btn" onclick="recordPitch('홈런')" style="background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)">홈런</button>
+                  <button class="ptr-btn ptr-2b" onclick="recordPitch('2루타')">2루타</button>
+                  <button class="ptr-btn ptr-3b" onclick="recordPitch('3루타')">3루타</button>
+                  <button class="ptr-btn ptr-hr" onclick="recordPitch('홈런')">홈런</button>
                 </div>
                 <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">기타</div>
                 <div class="pt-result-chips">
-                  <button class="ptr-btn" onclick="recordPitch('병살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">병살</button>
-                  <button class="ptr-btn" onclick="recordPitch('삼중살')" style="background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)">삼중살</button>
+                  <button class="ptr-btn ptr-dp" onclick="recordPitch('병살')">병살</button>
+                  <button class="ptr-btn ptr-tp" onclick="recordPitch('삼중살')">삼중살</button>
                 </div>
               </div>
             </div>
@@ -2386,9 +2386,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=155"></script>
+<script defer src="js/core.js?v=156"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=70"></script>
+<script type="module" src="js/app.js?v=71"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -5592,7 +5592,18 @@ function addPitcher(){
   var name=document.getElementById('pitcherName').value.trim();
   var num=document.getElementById('pitcherNum').value.trim();
   if(!name){showToast('투수 이름을 입력하세요',false,false);return;}
-  var p={id:Date.now(),name:name,num:num,role:AS.pitcherRole||null,pitches:[]};
+  // 같은 투수를 또 등록하지 않는다(이름이 같고 번호가 같거나 한쪽이 비어 있으면) — 불러온 경기에서 선택이 풀려 다시 등록하면 투구 0구짜리 빈 칸이 늘었다 → 있는 투수를 고른다
+  var dup=AS.pitchers.find(function(p){return p.name===name&&(!num||!p.num||String(p.num)===num);});
+  if(dup){
+    selectPitcher(dup.id);
+    document.getElementById('pitcherName').value='';
+    document.getElementById('pitcherNum').value='';
+    showToast('이미 등록된 투수예요 — '+(dup.num?'#'+dup.num+' ':'')+dup.name+' 선택 ('+(dup.pitches||[]).length+'구)',false,true);
+    return;
+  }
+  var id=Date.now();
+  while(AS.pitchers.some(function(q){return q.id===id;}))id++;   // 같은 밀리초에 둘을 등록하면 id 가 겹쳐 selectPitcher 가 앞 투수를 골랐다
+  var p={id:id,name:name,num:num,role:AS.pitcherRole||null,pitches:[]};
   AS.pitchers.push(p);
   selectPitcher(p.id);
   document.getElementById('pitcherName').value='';
@@ -5618,11 +5629,39 @@ function renderPitcherRoster(){
   el.innerHTML=AS.pitchers.map(function(p){
     var on=AS.currentPitcher&&AS.currentPitcher.id===p.id;
     var roleHtml=p.role?('<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:'+roleColors[p.role]+'33;color:'+roleColors[p.role]+';margin-left:3px">'+_escHtml(p.role)+'</span>'):'';
-    return '<button class="pitcher-tag'+(on?' on':'')+'" onclick="selectPitcher('+_numArg(p.id)+')">'
-      +(p.num?'#'+_escHtml(p.num)+' ':'')+_escHtml(p.name)+roleHtml
+    var who=(p.num?'#'+_escHtml(p.num)+' ':'')+_escHtml(p.name);
+    // 선택 버튼 + 삭제(✕) 버튼 한 쌍 — 버튼 안에 버튼을 넣을 수 없어 span 으로 묶는다
+    return '<span class="pitcher-tag-wrap">'
+      +'<button class="pitcher-tag'+(on?' on':'')+'" onclick="selectPitcher('+_numArg(p.id)+')" aria-pressed="'+(on?'true':'false')+'">'
+      +who+roleHtml
       +' <span style="font-size:9px;color:inherit;opacity:.7">('+p.pitches.length+'구)</span>'
-      +'</button>';
+      +'</button>'
+      +'<button type="button" class="pitcher-tag-x" onclick="removePitcher('+_numArg(p.id)+')" aria-label="'+who+' 삭제" title="투수 삭제">✕</button>'
+      +'</span>';
   }).join('');
+}
+
+// 투수 삭제: 그 투수의 투구 기록(pitches)도 같이 지운다. 기록 탭 타석(AS.abs)에 남은 공은 건드리지 않는다
+function removePitcher(id){
+  var i=AS.pitchers.findIndex(function(p){return String(p.id)===String(id);});
+  if(i<0)return;
+  var p=AS.pitchers[i],n=(p.pitches||[]).length;
+  var who=(p.num?'#'+p.num+' ':'')+p.name;
+  if(n&&!confirm(who+' 삭제 — 이 투수의 투구 기록 '+n+'구도 함께 지워집니다. 계속할까요?'))return;
+  AS.pitchers.splice(i,1);
+  if(AS.currentPitcher&&String(AS.currentPitcher.id)===String(id))AS.currentPitcher=null;
+  // 전체 투구 로그 다시 만들기 (restoreGame 과 같은 규칙)
+  AS.pitchLog=[];
+  AS.pitchers.forEach(function(q){(q.pitches||[]).slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
+  AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
+  renderPitcherRoster();
+  var lbl=document.getElementById('currentPitcherLabel');
+  if(lbl)lbl.textContent=AS.currentPitcher?(AS.currentPitcher.num?'#'+AS.currentPitcher.num+' ':'')+AS.currentPitcher.name:'미선택';
+  renderPitchLog();
+  renderPitcherStats();
+  scheduleAutoSave();
+  _gameSaved=false;
+  showToast('투수 삭제: '+who+(n?' · '+n+'구':''),false,true);
 }
 
 function selPitcherZone(el){

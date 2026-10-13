@@ -434,7 +434,6 @@
     { file: 'js/core.js', fn: 'startFromWizard', line: /AS\.abs=\[\]; AS\.batter=null/, why: '새 경기 — 저장 안 한 기록이 있으면 openGameWizard 가 확인 창(저장하고 / 저장하지 않고 새 경기 시작)을 먼저 띄운다. 마법사 버튼에서만 불린다(아래 호출처 검사)' },
     { file: 'js/core.js', fn: 'clearAll', line: /confirm\(/, why: '전체 삭제 — 사용자가 확인 창("모든 타석 기록을 삭제할까요?")에서 누른 뒤 의도적으로 지운다(되돌리기 스냅샷도 남는다)' },
     { file: 'js/core.js', fn: 'delRec', line: /AS\.abs=AS\.abs\.filter/, why: '기록 한 건 삭제 — 사용자가 그 기록을 직접 지운다(filter 로 한 건만 빠진다, 되돌리기 스냅샷도 남는다)' },
-    { file: 'js/core.js', fn: 'undoPitch', line: /AS\.abs=AS\.abs\.filter\(function\(a\)\{return a!==_ab;\}\)/, why: '투수 탭 공 되돌리기 — 그 공(볼넷 · 삼진 등)이 기록 탭에 자동으로 만든 타석 한 건만 지운다(filter 로 한 건, P0 의 main #102 흡수). 그 타석이 마지막이면 이 줄 대신 기록 탭 지우개(undoLast)를 쓴다' },
     { file: 'js/core.js', fn: '_apply', line: /AS\.abs=s\.abs/, why: 'undoManager 되돌리기 스냅샷 적용 — 같은 경기의 이전 상태. 부르는 곳이 없다(아래 호출처 검사: undoManager.undo( 호출 금지)' },
     { file: 'js/cloud.js', fn: '_onTeamGameUpdate', line: /AS\.abs = \(AS\.abs \|\| \[\]\)\.concat\(/, why: '팀원의 새 타구를 덧붙이기만 한다(.concat) — 내 기록은 그대로' },
   ];

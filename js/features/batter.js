@@ -4,7 +4,7 @@
 //   히어로에 wOBA+ · 유형 태그, 분석 요약(프로필)과 '이런 타자예요'(타자 메모)는 한 카드로
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=19';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=24';
 import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=21';
 
 let _side = null;       // home | away (null = 기록 중인 팀)

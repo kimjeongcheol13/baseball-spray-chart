@@ -8184,12 +8184,11 @@ function importSharedTeam(){
     _o.apply(this,arguments);
     setTimeout(function(){
       tdLoad();if(!tdGetActive())return;
-      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-      if(!saves.length)return;
-      var last=saves[saves.length-1];
-      var raw=localStorage.getItem(last.key);if(!raw)return;
+      // 방금 저장한 경기(saveGame 이 0.3초 뒤 _curSaveKey 로 정함)를 잇는다 — 목록의 마지막 항목이 아니다(불러온 경기는 제자리에 덮어써진다)
+      var key=_curSaveKey;if(!key)return;
+      var raw=localStorage.getItem(key);if(!raw)return;
       var d;try{d=JSON.parse(raw);}catch(e){return;}
-      linkGameToTeam(last.key,{hs:d.hs||0,as:d.as||0,d:d.d||'',th:d.th||'',ta:d.ta||'',abs:d.abs||[]});
+      linkGameToTeam(key,{hs:d.hs||0,as:d.as||0,d:d.d||'',th:d.th||'',ta:d.ta||'',abs:d.abs||[]});
     },700);
   };
 })();

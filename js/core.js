@@ -1691,6 +1691,11 @@ function undoLast(){
   if(!AS.abs.length)return;
   var _last=AS.abs.pop();
   if(_last&&_last.count){AS.balls=Math.min(3,Math.max(0,Number(_last.count.b)||0));AS.strikes=Math.min(2,Math.max(0,Number(_last.count.s)||0));renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
+  var _lp=_dropAbPitch(_last);   // 이 타석을 끝낸 투수 탭 공도 지운다 — 남겨 두면 다시 기록할 때 투수 쪽 삼진이 두 개가 됐다
+  if(_lp&&!AS.currentPitches.length){   // 그 타석의 앞 공들은 이번 타석 투구로 되살린다 (투수 탭에 남아 있는 공과 같게)
+    AS.currentPitches=(_last.pitches||[]).filter(function(x){return!(x&&x.pid!=null&&String(x.pid)===String(_lp.id));});
+    if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  }
   if(AS.zoneHistory&&Object.keys(AS.zoneHistory).length){
     var _zk=Object.keys(AS.zoneHistory).pop();
     if(_zk)delete AS.zoneHistory[_zk];
@@ -5716,7 +5721,7 @@ function recordPitch(result){
   var hitResults=['안타','2루타','3루타','홈런'];
   var sit=_pitchSit();
   var entry={
-    id:Date.now(),
+    id:_pitchId(),
     inning:document.getElementById('innSel')?document.getElementById('innSel').value:null,
     zone:AS.pitcherZone,
     zoneX:AS.pitcherZoneX||null,
@@ -5760,7 +5765,7 @@ function _pitchToRecord(e){
   renderPitcherRoster();   // 투수 버튼의 'N구' 갱신
   AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
     balls:AS.balls||0,strikes:AS.strikes||0,outs:AS.outs||0,
-    pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts,result:r});
+    pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts,result:r,pid:e.id});   // pid: 투수 탭의 어느 공인지 (투구 삭제·되돌리기 짝)
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
   if(r==='볼'){AS.balls=Math.min(3,(AS.balls||0)+1);renderCount();return;}
   if(r==='스트라이크'||r==='파울'){if((AS.strikes||0)<2)AS.strikes=(AS.strikes||0)+1;renderCount();return;}
@@ -5790,19 +5795,110 @@ function _countOpenField(res,msg){
   showToast(msg,false,true);
 }
 function _recordToPitch(ab){
+  _linkPitchAb(ab);
   if(_pitchLinking||!AS.currentPitcher||!ab||!ab.pitches||!ab.pitches.length)return;
   var last=ab.pitches[ab.pitches.length-1];
   if(!last||!last.result||(last.result in _PITCH_END))return;   // 투수 탭에서 온 공이 아니거나 이미 끝난 타석
   var pr=_RES_TO_PITCH[ab.res];
   if(!pr)return;
   var sit=_pitchSit();   // gfAfterRecord 보다 먼저 불리므로 아직 이 타석 전 상황
-  var entry={id:Date.now(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||'',outs:sit.outs,runners:sit.runners};
+  var entry={id:_pitchId(),inning:ab.inn||null,zone:null,zoneX:null,zoneY:null,pt:null,result:pr,batter:ab.bname||null,ts:ab.ts||'',outs:sit.outs,runners:sit.runners,abId:ab.id};
   if(!AS.currentPitcher._batterLog)AS.currentPitcher._batterLog=[];
   AS.currentPitcher._batterLog.push(entry);
   AS.currentPitcher.pitches.push(entry);
   AS.pitchLog.unshift(entry);
   renderPitchLog();renderPitcherStats();renderPitcherRoster();
   _scheduleRecoverySave();
+}
+
+// ─── 투구 삭제 · 되돌리기 (투수 탭 최근 투구 로그의 ✕ · ↩ 되돌리기) ───
+// 투수 탭의 공(AS.pitchers[].pitches)을 지우면 기록 탭도 같이 되돌린다 — 이번 타석 투구(AS.currentPitches) · 볼카운트 · 그 공이 끝낸 타석(AS.abs).
+//  · pid  : 이번 타석 · 타석 기록의 공(currentPitches · ab.pitches)이 투수 탭의 어느 공인지 (= 투수 쪽 공의 id)
+//  · abId : 투수 쪽 공이 타석을 끝냈으면 그 타석의 id. 기록 탭 지우개(undoLast)도 이걸로 투수 쪽 공을 같이 지운다
+//           (예전엔 타석만 지워져서, 되돌린 뒤 다시 삼진을 넣으면 투수 쪽에 삼진이 두 개 남았다)
+function _linkPitchAb(ab){
+  var ps=ab&&ab.pitches,last=ps&&ps[ps.length-1];
+  if(!last||last.pid==null||!(last.result in _PITCH_END))return;   // 투수 탭 공(삼진·볼넷·안타·아웃…)으로 끝난 타석만
+  var f=_findPitch(last.pid);
+  if(f)f.e.abId=ab.id;
+}
+function _pitchId(){var id=Date.now();while(_findPitch(id))id++;return id;}   // 같은 밀리초에 공 두 개가 들어와도 id 가 겹치지 않게 (삭제 · 되돌리기가 id 로 공을 찾는다)
+function _findPitch(id){
+  for(var i=0;i<AS.pitchers.length;i++){
+    var ps=AS.pitchers[i].pitches||[];
+    for(var j=ps.length-1;j>=0;j--)if(String(ps[j].id)===String(id))return{p:AS.pitchers[i],e:ps[j]};
+  }
+  return null;
+}
+function _rmPitchItem(arr,e){   // 같은 객체 우선, 없으면 같은 id (_batterLog 는 자동저장에서 따로 복원돼 객체가 다르다)
+  if(!arr)return;
+  var i=arr.indexOf(e);
+  if(i<0)i=arr.findIndex(function(x){return x&&String(x.id)===String(e.id);});
+  if(i>=0)arr.splice(i,1);
+}
+function _dropPitch(P,e){_rmPitchItem(P.pitches,e);_rmPitchItem(P._batterLog,e);_rmPitchItem(AS.pitchLog,e);}
+// 지운 타석을 끝낸 투수 쪽 공을 지운다 → 지운 공 (없으면 null)
+function _dropAbPitch(ab){
+  var hit=null;
+  if(!ab)return null;
+  AS.pitchers.forEach(function(P){
+    (P.pitches||[]).slice().forEach(function(e){if(e.abId!=null&&String(e.abId)===String(ab.id)){_dropPitch(P,e);hit=e;}});
+  });
+  if(hit){renderPitchLog();renderPitcherStats();renderPitcherRoster();}
+  return hit;
+}
+// 이번 타석 k번째 공을 빼고 볼카운트를 다시 센다 (뒤 공들의 '던지기 직전 카운트'도 고친다)
+function _cpRemove(k){
+  var cp=AS.currentPitches;
+  var d=cp.map(function(x,j){var n=cp[j+1]||{balls:AS.balls||0,strikes:AS.strikes||0};return[(n.balls||0)-(x.balls||0),(n.strikes||0)-(x.strikes||0)];});
+  var b=cp[k].balls||0,s=cp[k].strikes||0;
+  cp.splice(k,1);d.splice(k,1);
+  for(var j=k;j<cp.length;j++){
+    cp[j].balls=b;cp[j].strikes=s;
+    var r=cp[j].result;
+    if(r==='볼')b=Math.min(3,b+1);
+    else if(r==='스트라이크'||r==='파울')s=Math.min(2,s+1);
+    else{b=Math.max(0,Math.min(3,b+d[j][0]));s=Math.max(0,Math.min(2,s+d[j][1]));}   // 기록 탭에서 넣은 공 · 필드 탭 대기 공: 원래 카운트 변화 그대로
+  }
+  AS.balls=b;AS.strikes=s;
+}
+function delPitch(id){
+  var f=_findPitch(id);
+  if(!f)return;
+  var P=f.p,e=f.e,desc=(e.pt?e.pt+' ':'')+e.result;
+  var ab=e.abId!=null?AS.abs.find(function(a){return String(a.id)===String(e.abId);}):null;
+  if(ab){   // 이 공이 끝낸 타석도 같이 지운다 — 남겨 두면 다시 기록할 때 삼진·볼넷이 두 번 들어간다
+    if(ab===AS.abs[AS.abs.length-1]&&!AS.currentPitches.length){
+      undoLast();   // 지우개와 같은 길: 타석 · 이 공을 지우고 그 타석의 볼카운트 · 앞 공들 · 타자로 돌아간다
+      showToast('↩ 투구 취소: '+desc+' — 타석 기록('+ab.res+')도 취소',false,true);
+      return;
+    }
+    if(!confirm('이 공으로 끝난 타석 기록('+(ab.bname?ab.bname+' ':'')+ab.res+')도 함께 지워집니다. 계속할까요?'))return;
+    AS.abs.splice(AS.abs.indexOf(ab),1);   // 그 타석 한 건만
+    updateAll();
+  }else{
+    var k=AS.currentPitches.findIndex(function(x){return x&&x.pid!=null&&String(x.pid)===String(e.id);});
+    if(k>=0){
+      _cpRemove(k);
+      if(AS.pendingQuickRes&&AS.pendingQuickRes===_PITCH_END[e.result])_clearFieldTapPrompt();   // 안타 → 필드 탭 대기 중이었으면 대기도 취소
+    }else{   // 이미 끝난 타석의 공이면 그 타석의 투구 목록에서도 뺀다
+      AS.abs.forEach(function(a){if(a.pitches)a.pitches=a.pitches.filter(function(x){return!(x&&x.pid!=null&&String(x.pid)===String(e.id));});});
+    }
+  }
+  _dropPitch(P,e);
+  renderPitchLog();renderPitcherStats();renderPitcherRoster();renderCount();
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  scheduleAutoSave();
+  _scheduleRecoverySave();
+  _gameSaved=false;
+  showToast('투구 삭제: '+desc,false,true);
+}
+// ↩ 되돌리기: 지금 투수의 마지막 공 (투수 미선택이면 전체 로그의 가장 최근 공)
+function undoPitch(){
+  var P=AS.currentPitcher,ps=P&&P.pitches;
+  var e=ps&&ps.length?ps[ps.length-1]:(P?null:AS.pitchLog[0]);
+  if(!e){showToast('되돌릴 투구가 없습니다',false,true);return;}
+  delPitch(e.id);
 }
 
 function loadPitchEntry(pt, zone, zoneX, zoneY){
@@ -5830,6 +5926,8 @@ function renderPitchLog(){
   var el=document.getElementById('pitchLog');
   if(!el)return;
   var log=AS.currentPitcher?AS.currentPitcher.pitches.slice().reverse().slice(0,15):AS.pitchLog.slice(0,15);
+  var ub=document.getElementById('pitchUndoBtn');
+  if(ub)ub.disabled=!log.length;
   if(!log.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>';return;}
   var resColor={__proto__:null,'볼':'#2dd4a0','스트라이크':'#f6c23e','파울':'#a78bfa','안타':'#2dd4a0','2루타':'#4b8cf5','3루타':'#f6c23e','홈런':'#f56565','타격됨':'#f56565'};
   el.innerHTML=log.map(function(p){
@@ -5842,6 +5940,7 @@ function renderPitchLog(){
       +'<div class="pe-result" style="background:'+col+'"></div>'
       +'<span style="font-size:10px;color:var(--text2);flex:1">'+(p.inning?'<span style="color:var(--text3);font-size:9px">'+_escHtml(p.inning)+'</span> ':'')+_escHtml(p.pt||'—')+(p.zone?' · '+_escHtml(p.zone):'')+' → <strong style="color:'+col+'">'+_escHtml(p.result)+'</strong></span>'
       +'<span style="font-size:9px;color:var(--text3)">'+_escHtml(p.ts)+'</span>'
+      +'<button type="button" class="pitch-del" onclick="event.stopPropagation();delPitch('+_numArg(p.id)+')" aria-label="이 투구 삭제" title="이 투구 삭제">✕</button>'
       +'</div>';
   }).join('');
 }

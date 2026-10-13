@@ -15,12 +15,15 @@
     localStorage.setItem('sl_cloud_mod', '{}');
   }
   // 시나리오가 건드리는 앱 전역 상태를 되돌릴 함수
+  // 경기 요약 창(showGameSummary)이 불린 횟수 — 타석 수정은 요약 창을 띄우지 않아야 한다(「경기 저장」만 띄움)
+  var summaries = 0;
   function keepApp() {
     var a = window.AS, s = { abs: a.abs, hs: a.hs, as: a.as, hl: a.home_lineup, al: a.away_lineup, p: a.pitchers, z: a.zoneHistory, cur: a.curGame, info: a.info,
-      sk: window._curSaveKey, gs: window._gameSaved, th: $('tHome').value, ta: $('tAway').value };
+      sk: window._curSaveKey, gs: window._gameSaved, th: $('tHome').value, ta: $('tAway').value, sg: window.showGameSummary };
+    summaries = 0; window.showGameSummary = function () { summaries++; };
     return function () {
       a.abs = s.abs; a.hs = s.hs; a.as = s.as; a.home_lineup = s.hl; a.away_lineup = s.al; a.pitchers = s.p; a.zoneHistory = s.z; a.curGame = s.cur; a.info = s.info;
-      window._curSaveKey = s.sk; window._gameSaved = s.gs; $('tHome').value = s.th; $('tAway').value = s.ta;
+      window._curSaveKey = s.sk; window._gameSaved = s.gs; $('tHome').value = s.th; $('tAway').value = s.ta; window.showGameSummary = s.sg;
       try { closeOverlay('editRecOverlay'); } catch (e) {}
       try { closeGameSummary(); } catch (e) {}
     };
@@ -45,13 +48,16 @@
       await fresh(false); seed();
       var beforeB = localStorage.getItem(KB), beforeList = localStorage.getItem('sl_saves');
       restoreGame(KA);
+      AS.info = { venue: '잠실' };   // 경기설정 탭에서 구장을 적은 상태 — 「경기 저장」처럼 함께 저장돼야 한다
       edit(1781000000101, '2루타'); await sleep(500);
       eq(localStorage.getItem(KB), beforeB, '마지막 경기(B)의 저장 데이터가 바뀜');
       var a = JSON.parse(localStorage.getItem(KA));
       eq(a.abs.map(function (x) { return x.res; }), ['2루타'], '열린 경기(A)에 수정이 들어가야 함');
       eq(a.ts, TA, '열린 경기(A)의 경기 날짜(ts)는 그대로');
+      eq(a.info && a.info.venue, '잠실', '경기 정보(info)도 「경기 저장」처럼 저장');
       eq(localStorage.getItem('sl_saves'), beforeList, '저장 목록(순서 · 날짜 · 이름)은 그대로');
       ok(/수정 완료/.test($('toastTxt').textContent), '안내 문구: ' + $('toastTxt').textContent);
+      eq(summaries, 0, '타석 수정에서는 경기 요약 창을 띄우지 않음');
     } finally { restore(); }
   });
 
@@ -76,7 +82,7 @@
       var beforeA = localStorage.getItem(KA), beforeB = localStorage.getItem(KB);
       AS.abs = [ab(1781000000301, '새타자', '안타')]; AS.hs = 0; AS.as = 0; AS.pitchers = []; AS.home_lineup = []; AS.away_lineup = [];
       window._curSaveKey = null; $('tHome').value = '새팀'; $('tAway').value = '새상대';
-      edit(1781000000301, '홈런'); await sleep(1000);              // saveGame 디바운스 0.3초
+      edit(1781000000301, '홈런'); await sleep(1000);              // 요약 창 지연(0.4초)보다 길게
       eq(localStorage.getItem(KA), beforeA, '기존 경기 A 가 바뀜');
       eq(localStorage.getItem(KB), beforeB, '기존 경기 B 가 바뀜');
       var list = JSON.parse(localStorage.getItem('sl_saves'));
@@ -84,6 +90,8 @@
       var added = list.filter(function (e) { return e.key !== KA && e.key !== KB; })[0];
       eq(added && JSON.parse(localStorage.getItem(added.key)).abs.map(function (x) { return x.res; }), ['홈런'], '새 항목의 기록');
       eq(window._curSaveKey, added && added.key, '이후 수정은 새 항목에 들어가도록 저장 대상이 바뀜');
+      ok(/수정 완료/.test($('toastTxt').textContent), '안내 문구(새 항목이어도 수정 완료): ' + $('toastTxt').textContent);
+      eq(summaries, 0, '타석 수정에서는 경기 요약 창을 띄우지 않음(새 항목이어도)');
     } finally { restore(); }
   });
 
@@ -97,6 +105,7 @@
       edit(1781000000101, '볼넷'); await sleep(1000);
       eq(localStorage.getItem(KB), beforeB, '마지막 경기(B)의 저장 데이터가 바뀜');
       ok(JSON.parse(localStorage.getItem('sl_saves')).some(function (e) { return e.key !== KB; }), '고친 경기가 새 항목으로 저장되지 않음');
+      eq(summaries, 0, '타석 수정에서는 경기 요약 창을 띄우지 않음');
     } finally { restore(); }
   });
 })();

@@ -1297,6 +1297,10 @@ html.sb-boot body::after {
   .starter-btn, .rpn-btn, .p-edit, .p-del { position: relative; }
   :is(.starter-btn, .rpn-btn, .p-edit, .p-del)::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
   .rec-player-nav { margin-bottom: 12px; }   /* ◀ ▶ 히트 영역(위아래 +10)이 바로 아래 기록 카드와 겹치지 않게 간격 7 → 12 (겹치면 카드가 위에 그려져 탭을 가져감) */
+  /* 최근 기록 카드 오른쪽 위 '수정'(right 25) · ✕(right 5): 둘 다 44 가 되면 ✕ 가 '수정'을 덮어 '수정'을 누르면 타석이 지워짐 → '수정'을 ✕ 왼쪽(5 + 44 + 4)으로 */
+  .rec-edit { right: 53px; }
+  .rec-edit { padding-bottom: 27px; }   /* 44 칸 안에서 글자는 위(첫 줄 높이, main 과 같은 자리)로 — 가운데면 둘째 줄(상세 · 시각)과 겹침 */
+  .rec-del { padding-bottom: 22px; }    /* ✕ 줄 높이 21 이라 27 이면 49 가 돼 카드 밖으로 나감 */
   /* 라인업 서랍 ✕(선수 삭제): 마우스를 올려야 보이는(opacity 0) 버튼이 행 오른쪽에 떠 있어(position: absolute) '주전' 버튼을 덮고 있었다
      → 터치에선 보이지 않는 ✕ 가 눌려 '주전'을 누르면 선수가 지워짐 (main 도 같음). 행 안 마지막 칸으로 내리고 보이게 */
   .p-del { right: auto; top: auto; transform: none; opacity: 1; flex-shrink: 0; min-height: 36px; }

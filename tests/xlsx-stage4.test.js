@@ -2,8 +2,9 @@
 //  · 빈 열 숨김(타구속도 · 발사각 · 타구 유형) · 타구 유형은 내보낼 때 결과 이름에서(직접 입력 우선) · 핫/콜드 3타수 미만 = 안타/타수만
 //  · 차트: 타구 점마다 타석 번호 라벨 · 투구 위치 코스만 = 속 빈 원(별도 시리즈) + 범례 '코스만(칸 안 임의 위치)'
 //  · 주요 분석 규칙 a~d(표본 기준 미달 줄 생략 · 줄 끝 n) · 투수별 성적 · 데이터 설명 시트(맨 뒤) · 요약표 SUBTOTAL 수식(필터 연동)
+//  · 5단계: 주요 분석 확정 기준(방향 10개 · 2S 개수만 · n < 10 이면 % 없음) · 등번호 빈칸 유지 · APP_VERSION · 투수 엑셀 데이터 설명
 (function () {
-  var T = window.__T, ok = T.ok, eq = T.eq, test = T.test;
+  var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
 
   function snapLS() { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return o; }
   function restoreLS(o) {
@@ -70,7 +71,7 @@
   }
   // 내보내기 → { wb: 파일, sheets: Sheet 객체 배열, texts: 캔버스에 쓴 글자(핫/콜드 그림) }
   async function exportOf(name) {
-    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=12');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=13');
     var blob = null, u0 = URL.createObjectURL, ft0 = CanvasRenderingContext2D.prototype.fillText, texts = [];
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     CanvasRenderingContext2D.prototype.fillText = function (t) { texts.push(String(t)); return ft0.apply(this, arguments); };
@@ -187,18 +188,18 @@
     eq([nExact, nZo], [9, 26], '정확 9 · 코스만 26 (투구 기록 위치 기록 열)');
   });
 
-  run('주요 분석: 규칙 a~d 수치만 · 줄 끝 n · 평가어 없음 / 표본 미달 줄 생략', async function () {
+  run('주요 분석(5단계 확정 기준): 수치만 · 줄 끝 n · 평가어 없음 · 방향은 10개부터 · 2S 이후는 개수만 · n < 10 이면 % 없음 / 표본 미달 줄 생략', async function () {
     jungFixture();
     var r = await exportOf('정타자');
     var hz = r.wb.sheets['핫콜드존'];
-    var lines = rowsAfter(hz, '■ 주요 분석', 5).map(function (x) { return x && x[0]; });
-    eq(lines.slice(0, 4), [
+    var lines = rowsAfter(hz, '■ 주요 분석', 4).map(function (x) { return x && x[0]; });
+    eq(lines.slice(0, 3), [
       '• 볼넷 1/12 (8.3%) · 삼진 3/12 (25.0%) — 삼진이 16.7%p 많음 · n = 12타석',
-      '• 결정구 존 밖 5/12 (41.7%) — 그 타석 결과: 안타 0 · 볼넷 1 · 삼진 3 · 아웃·기타 1 · n = 12 코스 기록 타석',
-      '• 타구 방향 당겨치기 쏠림 — 당겨치기 6/8 (75.0%) · 센터 2/8 (25.0%) · 밀어치기 0/8 (0.0%) · n = 8 방향 기록',
-      '• 2스트라이크 이후 타석 결과: 안타 2 · 볼넷 0 · 삼진 2 · 아웃·기타 2 (타율 .333 = 2/6) · n = 6타석 (B-S 자동 계산 10타석 중)',
-    ], '4줄');
-    ok(/^표본 기준 — /.test(lines[4]), '표본 기준 안내(분석 줄과 다른 서식)');
+      '• 결정구 존 밖 5/12 (41.7%) — 그 타석 결과: 안타 0 · 삼진 3 · 볼넷 1 · 그 외 1 · n = 12 코스 기록 타석',
+      '• 2S 이후 6타석: 안타 2·삼진 2·볼넷 0·그 외 2 (B-S 자동 계산 타석만) · n = 6타석',
+    ], '3줄 — 방향 기록 8개(< 10)라 쏠림 줄 없음 · 2S 이후는 개수만');
+    ok(!/%|타율/.test(lines[2]), '2S 이후(n = 6 < 10): 비율 없음');
+    ok(/^표본 기준 — .*방향 기록 10개 이상.*2스트라이크까지 간 타석 5개 이상\(개수만\).*10 미만이면 %를 쓰지 않아요/.test(lines[3]), '표본 기준 안내 — ' + lines[3]);
     var all = hz.map(function (x) { return (x || []).join(' '); }).join('\n');
     ok(!/강점|약점|강한 코스|약한 코스/.test(all), '평가어 없음');
     // 표본 미달: 9타석 · 방향 기록 6개 중 3/3 동률 → 쏠림 줄 없음
@@ -209,6 +210,22 @@
       ab('s1', '소표본', '삼진', null, '7회말'), ab('s1', '소표본', '삼진', null, '8회말'), ab('s1', '소표본', '삼진', null, '9회말')]);
     var s = await exportOf('소표본');
     eq(rowsAfter(s.wb.sheets['핫콜드존'], '■ 주요 분석', 1)[0][0], '• 아래 표본 기준을 넘는 항목이 아직 없어요.', '기준 미달이면 억지 문장 없이 한 줄');
+  });
+
+  run('주요 분석 방향 쏠림 기준: 방향 기록 9개는 줄 없음 · 10개부터 줄(이때만 %) — 1위 하나 · 50% 이상 조건은 그대로', async function () {
+    var L = [{ id: 'd1', name: '방향9', num: '', bh: 'R' }, { id: 'd2', name: '방향10', num: '', bh: 'R' }];
+    var list = [];
+    for (var i = 0; i < 9; i++) list.push(ab('d1', '방향9', '안타', 40, (i + 1) + '회말'));
+    list.push(ab('d1', '방향9', '삼진', null, '연장'));
+    for (var j = 0; j < 7; j++) list.push(ab('d2', '방향10', '안타', 40, (j + 1) + '회말'));
+    list.push(ab('d2', '방향10', '안타', 90, '8회말'), ab('d2', '방향10', '안타', 90, '9회말'), ab('d2', '방향10', '안타', 140, '연장'));
+    game('sl_900000000066', '2026. 5. 8.', 1790000000000, L, list);
+    var ins = function (wb) { return rowsAfter(wb.sheets['핫콜드존'], '■ 주요 분석', 3).map(function (x) { return x && x[0]; }); };
+    var a = ins((await exportOf('방향9')).wb);
+    ok(a.every(function (t) { return !/타구 방향/.test(t || ''); }), '9개 — 쏠림 줄 없음: ' + a.join(' / '));
+    eq(a[0], '• 볼넷 0/10 (0.0%) · 삼진 1/10 (10.0%) — 삼진이 10.0%p 많음 · n = 10타석', '볼넷·삼진 줄은 10타석부터 %');
+    var b = ins((await exportOf('방향10')).wb);
+    eq(b.filter(function (t) { return /타구 방향/.test(t || ''); }), ['• 타구 방향 당겨치기 쏠림 — 당겨치기 7/10 (70.0%) · 센터 2/10 (20.0%) · 밀어치기 1/10 (10.0%) · n = 10 방향 기록'], '10개 — 줄 + %');
   });
 
   run('투수별 성적(리포트): 투수가 연결된 타석만 · 투수 · 타석 · 타수 · 안타 · 삼진 · 볼넷 · 타율 / 투수 기록 없으면 표 생략', async function () {
@@ -237,11 +254,12 @@
     var row = function (a, b) { return d.find(function (x) { return x && x[0] === a && (b == null || x[1] === b); }); };
     var W = C.WOBA_W;
     eq(row('가중치')[2], '볼넷 ' + W.bb.toFixed(2) + ' · 사구 ' + W.hbp.toFixed(2) + ' · 단타 ' + W.s1.toFixed(2) + ' · 2루타 ' + W.s2.toFixed(2) + ' · 3루타 ' + W.s3.toFixed(2) + ' · 홈런 ' + W.hr.toFixed(2), 'wOBA 가중치 = WOBA_W');
-    ok(/출처 표기가 없어요/.test(row('출처')[2]), '출처는 지어내지 않음');
+    ok(/^출처 표기 없음/.test(row('출처')[2]), '출처는 지어내지 않음(웹 대조 못 함 — 5단계)');
+    eq(row('기준')[2], 'MLB 기준 선형 가중치이며 아마추어 환경 보정은 하지 않음', 'MLB 기준 안내 한 줄');
     var w7 = d.slice(d.findIndex(function (x) { return x && x[0] === '■ 확인 필요 (7종)'; }) + 2).slice(0, 7).map(function (x) { return x[1]; });
     eq(w7, ['삼진인데 스트라이크 n개', '볼넷인데 볼 n개', '(결과)인데 마지막 공이 …', '삼진/볼넷인데 마지막 공이 인플레이', '투구 결과 일부 누락', '초/말 섞임', '같은 이닝 3타석 이상'], '7종 이름');
-    var core = /[?&]v=(\d+)/.exec(document.querySelector('script[src*="js/core.js"]').getAttribute('src'))[1];
-    eq(row('앱 버전')[3], 'core v' + core + ' · 엑셀 모듈 v12', '앱 버전 = 빌드 번호');
+    ok(/^\d{4}\.\d{2}\.\d{2}$/.test(APP_VERSION), 'APP_VERSION 날짜형 — ' + APP_VERSION);
+    eq(row('앱 버전')[3], APP_VERSION, '앱 버전 = core.js APP_VERSION');
     ok(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(row('생성일')[3]), '생성일');
     eq(row('앱')[3], 'https://kimjeongcheol13.github.io/baseball-spray-chart/', '앱 URL');
     eq(row('선수')[3], '등번호 9', '등번호');
@@ -307,5 +325,67 @@
     eq(_gameDateParts({ info: { date: '2026-05-17' }, d: '2026. 10. 13.' }), [2026, 5, 17], '경기 정보 날짜 우선');
     var src = String(exportAllGamesToExcel) + String(exportFullReport);
     eq((src.match(/_savesByDate\(saves\)/g) || []).length, 2, '전체 경기 · 전체 리포트 내보내기 둘 다 날짜순 목록 사용');
+  });
+
+  // ── 5단계: 등번호 빈칸 · APP_VERSION · 투수 엑셀 데이터 설명 ──
+  run('등번호 빈칸(5단계): #번을 비우고 추가하면 빈칸으로 저장(라인업 순서를 채우지 않음) · 타순은 라인업 순서로 따로 · 옛 화면도 # 없이 이름만', async function () {
+    var team0 = AS.curTeam;
+    try {
+      AS.curTeam = 'home';
+      var add = function (nm, no) { $('pName').value = nm; $('pNum').value = no; addPlayer(); };
+      add('첫째', ''); add('둘째', '27'); add('셋째', '');
+      eq(AS.home_lineup.map(function (p) { return [p.name, p.num]; }), [['첫째', ''], ['둘째', '27'], ['셋째', '']], '빈칸은 빈칸 그대로(예전: 1 · 3 이 채워졌다)');
+      eq([_numTag(''), _numTag(null), _numTag('27')], ['', '', '#27 '], '_numTag');
+      window.sbRender(); await T.sleep(60);
+      var rows = [].map.call(document.querySelectorAll('#sbOrder .sb-ot-row:not(.empty)'), function (b) { return [b.querySelector('.n').textContent.trim(), b.querySelector('.nm').textContent.trim()]; });
+      eq(rows, [['1', '첫째'], ['2', '둘째'], ['3', '셋째']], '타순표 순서 = 라인업 배열 순서(등번호와 무관)');
+      renderMob();
+      var chips = [].map.call(document.querySelectorAll('.mob-chip'), function (c) { return c.textContent.trim(); });
+      ok(chips.indexOf('첫째') >= 0 && chips.indexOf('#27 둘째') >= 0 && !chips.some(function (t) { return /^#\s/.test(t); }), '옛 화면 칩: 등번호 없으면 이름만 — ' + chips.join(','));
+      AS.batter = null; selBatter(AS.home_lineup[0].id); recOther('삼진');
+      eq($('toastTxt').textContent, '저장됨 · 첫째 삼진', '저장 알림도 # 없이');
+      eq(AS.abs[AS.abs.length - 1].bnum, '', '타석의 등번호도 빈칸');
+    } finally { AS.curTeam = team0; }
+  });
+
+  run('등번호 빈칸(5단계) 엑셀: 등번호가 없으면 리포트 부제목 · 데이터 설명에 「등번호」 표기 자체가 없다 (타자 · 투수)', async function () {
+    var L = [{ id: 'e1', name: '무번호', num: '', bh: 'R' }];
+    game('sl_900000000067', '2026. 5. 9.', 1790000000000, L, [ab('e1', '무번호', '안타', 40, '1회말', { pt: '직구', zone: '중앙 중간' })]);
+    var r = await exportOf('무번호');
+    ok(!/등번호/.test(r.wb.sheets['리포트'][1][0]), '리포트 부제목 — ' + r.wb.sheets['리포트'][1][0]);
+    ok(!/등번호/.test(JSON.stringify(r.wb.sheets['데이터 설명'])), '데이터 설명에 등번호 없음');
+    eq(r.wb.sheets['데이터 설명'].find(function (x) { return x && x[0] === '선수'; }).slice(0, 2), ['선수', '무번호'], '선수 줄은 이름만');
+    var X = await import('/js/features/xlsxreport.js?v=13');
+    var pitcher = async function (num) {
+      var P = { name: '테스트투수', num: num, role: 'SP', apps: [{ label: '2026. 5. 9. 우리 vs 상대', pitches: [
+        { id: 1, pt: '직구', zone: '중앙 중간', zoneX: 0.5, zoneY: 0.5, result: '스트라이크', batter: '갑', inning: 1 },
+        { id: 2, pt: '커브', zone: '볼 아래', result: '볼', batter: '갑', inning: 1 },
+        { id: 3, pt: '직구', zone: '내각 높음', result: '삼진', batter: '갑', inning: 1 }] }] };
+      var S = { n: 3, sPct: 2 / 3, kRate: 1, bbRate: 0, ab: 1, avg: 0, ppa: 3, pa: 1 };
+      var calc = function () { return { n: 3, sPct: 2 / 3, pa: 1, h: 0, k: 1, bb: 0 }; };
+      var blob = null, u0 = URL.createObjectURL;
+      URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
+      try { X.exportPitcherXlsx(P, S, calc); } finally { URL.createObjectURL = u0; }
+      ok(blob, '투수 엑셀 생성');
+      return readZip(blob);
+    };
+    var p0 = await pitcher('');
+    eq(p0.names, ['리포트', '구종별 투구위치', '코스 분포', '타구 허용', '투구 기록', '차트 배경', '데이터 설명'], '투수 엑셀: 기존 시트 순서 그대로 + 데이터 설명 맨 뒤');
+    ok(!/등번호/.test(p0.sheets['리포트'][1][0]) && !/등번호/.test(JSON.stringify(p0.sheets['데이터 설명'])), '투수도 등번호 없으면 표기 없음');
+    var pd = p0.sheets['데이터 설명'], prow = function (k) { return pd.find(function (x) { return x && x[0] === k; }); };
+    eq(prow('앱 버전')[3], APP_VERSION, '투수 엑셀 데이터 설명에도 APP_VERSION');
+    ok(/볼 · 볼넷을 뺀 모든 공/.test(pd.find(function (x) { return x && x[1] === '스트라이크%'; })[2]), '투수 지표 정의(투수 탭과 같은 식)');
+    var p1 = await pitcher('11');
+    ok(/^등번호 11  ·  선발/.test(p1.sheets['리포트'][1][0]), '등번호 있으면 표기 — ' + p1.sheets['리포트'][1][0]);
+    eq(p1.sheets['데이터 설명'].find(function (x) { return x && x[0] === '선수'; })[3], '등번호 11', '데이터 설명 선수 줄');
+  });
+
+  test('APP_VERSION(5단계): core.js 상수 하나(날짜형) · ☰ 메뉴 맨 아래 작은 글씨 · 스크립트 ?v= 번호는 그대로', function () {
+    ok(/^\d{4}\.\d{2}\.\d{2}$/.test(APP_VERSION), '날짜형 — ' + APP_VERSION);
+    eq(window.APP_VERSION, APP_VERSION, 'window 에도');
+    var v = $('slmVer');
+    ok(v && v.parentElement === $('slMenu') && v === $('slMenu').lastElementChild, '☰ 메뉴 맨 아래');
+    eq(v.textContent, 'SprayLab v' + APP_VERSION, '표시 글자');
+    ok(/[?&]v=\d+$/.test(document.querySelector('script[src*="js/core.js"]').getAttribute('src')), '?v= 관례 유지');
   });
 })();

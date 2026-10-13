@@ -180,7 +180,7 @@
     return out;
   }
   async function exportOf(name) {
-    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=12');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=13');
     var blob = null, u0 = URL.createObjectURL;
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     try { X.exportBatterXlsx(B.playerData(B.buildData(), name)); } finally { URL.createObjectURL = u0; }

@@ -1,4 +1,10 @@
 // ═══ SprayLab Core ═══
+// 앱 버전(사람이 보는 용도 · 날짜형) — ☰ 메뉴 맨 아래 · 엑셀 「데이터 설명」에 표시. 캐시용 스크립트 ?v= 번호와는 따로 간다
+var APP_VERSION='2026.10.13';
+// 등번호 표시: 있으면 '#번호 ', 없으면 빈 문자열 — '#번' 칸을 비운 선수는 등번호 없이 이름만(5단계)
+function _numTag(n){return n!=null&&String(n)!==''?'#'+n+' ':'';}
+window.APP_VERSION=APP_VERSION;
+(function(){var e=document.getElementById('slmVer');if(e)e.textContent='SprayLab v'+APP_VERSION;})();   // ☰ 메뉴 맨 아래 (core.js 는 defer — 문서를 다 읽은 뒤 실행)
 // ── 출루율(OBP) 공용 계산 — js/features/batdata.js calcStats 와 같은 공식 ──
 // OBP = (H+BB+HBP) / (AB+BB+HBP+SF). bb=볼넷만, hbp=사구, sf=희비, 희타는 분모에서 제외. 분모 0이면 null.
 var _OBP_HITS=['안타','내야안타','2루타','3루타','홈런'];
@@ -790,7 +796,7 @@ function getActiveLineup() {
 
 function addPlayer(){
   const n=document.getElementById('pName').value.trim();
-  const num=document.getElementById('pNum').value.trim()||(getActiveLineup().length+1)+'';
+  const num=document.getElementById('pNum').value.trim();   // 비우면 빈칸 그대로 저장(5단계 — 예전엔 라인업 순서를 채웠다). 타순은 라인업 배열 순서로 따로 보인다
   const pos=(document.getElementById('pPos')||{}).value||'';
   if(!n)return;
   const bh=(document.getElementById('pBH')||{}).value||'';
@@ -819,7 +825,7 @@ function selBatter(id){
   renderLP();
   renderMob();
   const d=document.getElementById('batterDisp');
-  if(AS.batter) d.innerHTML=`<span class="batter-display">#${_escHtml(AS.batter.num)} ${_escHtml(AS.batter.name)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
+  if(AS.batter) d.innerHTML=`<span class="batter-display">${_escHtml(_numTag(AS.batter.num))}${_escHtml(AS.batter.name)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
   else d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
   closeHitDetail();
   // 새 타자 선택 시 인게임 코스 초기화 (에러 방지용 try-catch)
@@ -868,7 +874,7 @@ function renamePlayer(id,e){
   if(AS.batter&&String(AS.batter.id)===String(id)){
     AS.batter=p;
     const d=document.getElementById('batterDisp');
-    if(d)d.innerHTML=`<span class="batter-display">#${_escHtml(p.num)} ${_escHtml(nm)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
+    if(d)d.innerHTML=`<span class="batter-display">${_escHtml(_numTag(p.num))}${_escHtml(nm)}<span style="font-size:10px;color:var(--text3);font-weight:400"> (${AS.curTeam==='home'?'홈':'원정'})</span></span>`;
   }
   renderMob();updateAll();
 }
@@ -913,7 +919,7 @@ function renderMob(){
   const b=document.getElementById('mobBar');if(!b)return;
   b.innerHTML=targetLineup.map(p=>{
     const on=AS.batter&&AS.batter.id===p.id;
-    return`<div class="mob-chip${on?' on':''}" onclick="selBatter(${_jsArg(p.id)})" data-pid="${_escHtml(p.id)}" data-pname="${_escHtml(p.name)}">#${_escHtml(p.num)} ${_escHtml(p.name)}</div>`;
+    return`<div class="mob-chip${on?' on':''}" onclick="selBatter(${_jsArg(p.id)})" data-pid="${_escHtml(p.id)}" data-pname="${_escHtml(p.name)}">${_escHtml(_numTag(p.num))}${_escHtml(p.name)}</div>`;
   }).join('');
 }
 function openMobPlayerModal(){
@@ -943,7 +949,7 @@ function renderMobPlayerList(){
   if(!lineup.length){list.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">선수가 없습니다</div>';return;}
   list.innerHTML=lineup.map(function(p){
     return'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg-raised);border-radius:8px">'
-      +'<span style="font-size:13px;color:var(--text)">#'+_escHtml(p.num)+' '+_escHtml(p.name)+'</span>'
+      +'<span style="font-size:13px;color:var(--text)">'+_escHtml(_numTag(p.num))+_escHtml(p.name)+'</span>'
       +'<button onclick="mobDelPlayer('+_jsArg(p.id)+')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer">삭제</button>'
       +'</div>';
   }).join('');
@@ -1646,7 +1652,7 @@ function recHit(res){
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
-  AS.abs.push(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
+  AS.abs.push(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · ${_numTag(r.bnum)}${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
   _showMiniSprayAfterRecord();
   _countAfterRecord();_recordToPitch(r);
   gfAfterRecord(res,r.rbi);
@@ -1661,7 +1667,7 @@ function recOther(res){
   var _infieldY=res==='내야안타'?0.55:null;
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:0,x:_infieldX,y:_infieldY,deg:_infieldDeg,dir:_infieldDir,ft:null,inn:document.getElementById('innSel').value,ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:AS.outs},pitches:[...AS.currentPitches]};
 AS.currentPitches=[];
-  AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}`,true,3000);
+  AS.abs.push(r);updateAll();ftuDone();showToast(`저장됨 · ${_numTag(r.bnum)}${r.bname} ${res}`,true,3000);
   _showMiniSprayAfterRecord();
   _countAfterRecord();_recordToPitch(r);
   gfAfterRecord(res,0);
@@ -2300,7 +2306,7 @@ function showMVP(){
   reasons.push('타율 '+mv.avg.toFixed(3).replace('0.','.')+' / OPS '+(mv.obp+mv.slg).toFixed(3).replace('0.','.'));
   content.innerHTML='<div class="mvp-card">'
     +'<div class="mvp-badge">MVP · '+mv.score+'pts</div>'
-    +'<div class="mvp-name">#'+_escHtml(p.num)+' '+_escHtml(p.name)+(p.pos?' <span style="font-size:11px;color:var(--text3)">('+_escHtml(p.pos)+')</span>':'')+'</div>'
+    +'<div class="mvp-name">'+_escHtml(_numTag(p.num))+_escHtml(p.name)+(p.pos?' <span style="font-size:11px;color:var(--text3)">('+_escHtml(p.pos)+')</span>':'')+'</div>'
     +'<div class="mvp-reason">'+reasons.join(' · ')+'</div>'
     +'<div style="margin-top:6px;display:flex;gap:10px">'
     +'<span style="font-size:10px;color:var(--text3)">AVG <strong style="color:var(--text)">'+mv.avg.toFixed(3).replace('0.','.')+'</strong></span>'
@@ -3391,7 +3397,7 @@ function updBatterStat(){
   ph.style.display='none';pc.style.display='';
   var b=AS.batter;
   var bhLbl={__proto__:null,'R':'우타','L':'좌타','S':'스위치'};
-  document.getElementById('bsName').textContent='#'+b.num+' '+b.name+(b.pos?' ('+b.pos+')':'')+(b.bh?' ['+( bhLbl[b.bh]||b.bh)+']':'');
+  document.getElementById('bsName').textContent=_numTag(b.num)+b.name+(b.pos?' ('+b.pos+')':'')+(b.bh?' ['+( bhLbl[b.bh]||b.bh)+']':'');
   var bAbs=AS.abs.filter(function(a){return a.bid===b.id;});
   var oab=bAbs.filter(function(a){return!_NOAB.includes(a.res);}).length;
   var h=bAbs.filter(function(a){return _HITS.includes(a.res);}).length;
@@ -4223,7 +4229,7 @@ function showHitDetail(ab, clientX, clientY) {
   el.innerHTML=`
     <button class="hdc-close" onclick="closeHitDetail()">✕</button>
     <div class="hdc-res" style="color:${col}">${_escHtml(ab.res)}</div>
-    <div class="hdc-player">#${_escHtml(ab.bnum||'')} ${_escHtml(ab.bname)}</div>
+    <div class="hdc-player">${_escHtml(_numTag(ab.bnum))}${_escHtml(ab.bname)}</div>
     ${rows}
   `;
   el.style.display='block';
@@ -4499,7 +4505,7 @@ function exportFullReport() {
 
   // ── Sheet 2: 선수 비교 (항목 행, 선수 열) ──
   var compareItems=[
-    ['항목'].concat(players.map(function(m){return '#'+m.num+' '+m.name;}))
+    ['항목'].concat(players.map(function(m){return _numTag(m.num)+m.name;}))
   ];
   var metrics=[
     {k:'AVG',fn:function(m){return m.ab?m.h/m.ab:0},f:f3},
@@ -5864,7 +5870,7 @@ function openPlayerProfile(){
       var f3=function(v){return v.toFixed(3).replace('0.','.'); };
       var opsColor=ops>=0.9?'#2dd4a0':ops>=0.75?'#4b8cf5':ops>=0.6?'#f6c23e':'var(--text3)';
       return '<tr style="border-bottom:1px solid var(--border)">'
-        +'<td style="padding:6px 4px;font-weight:700">#'+_escHtml(p.num)+' '+_escHtml(p.name)+'</td>'
+        +'<td style="padding:6px 4px;font-weight:700">'+_escHtml(_numTag(p.num))+_escHtml(p.name)+'</td>'
         +'<td style="padding:6px 4px;text-align:center;color:var(--text2)">'+p.pa+'</td>'
         +'<td style="padding:6px 4px;text-align:center;color:var(--text2)">'+p.ab+'</td>'
         +'<td style="padding:6px 4px;text-align:center;color:#2dd4a0;font-weight:700">'+p.h+'</td>'
@@ -7551,7 +7557,7 @@ function gfUpdateBar(){
   var bEl=document.getElementById('gfbBatter');
   if(bEl){
     var p=lu[idx];
-    bEl.textContent=p?(idx+1)+'번 #'+p.num+' '+p.name:'타자 없음';
+    bEl.textContent=p?(idx+1)+'번 '+_numTag(p.num)+p.name:'타자 없음';
   }
   var sc=document.getElementById('gfbScore');
   if(sc)sc.textContent=AS.hs+':'+AS.as;
@@ -8309,7 +8315,7 @@ function renderTeamLeaderboard(sort){
     var v=String(vf[sort](p));if(v.length>3&&v.startsWith('0.'))v=v.slice(1);
     return '<div class="ldr-row">'
       +'<div class="ldr-rank">'+(['🥇','🥈','🥉'][i]||i+1)+'</div>'
-      +'<div class="ldr-info"><div class="ldr-name">#'+_escHtml(p.num)+' '+_escHtml(p.name)+'</div>'
+      +'<div class="ldr-info"><div class="ldr-name">'+_escHtml(_numTag(p.num))+_escHtml(p.name)+'</div>'
       +'<div class="ldr-detail">'+p.g+'경기 · '+p.ab+'AB · AVG '+p.avg.toFixed(3).replace('0.','.') +'</div></div>'
       +'<div class="ldr-stat">'+_escHtml(v)+'</div></div>';
   }).join('');
@@ -8324,7 +8330,7 @@ function renderGameHistory(){
   }
   el.innerHTML=[...team.games].reverse().slice(0,20).map(function(g){
     var rc=g.result==='W'?'w':g.result==='L'?'l':'d';
-    var mv=g.mvp?'⭐ #'+_escHtml(g.mvp.num)+' '+_escHtml(g.mvp.name||''):'';
+    var mv=g.mvp?'⭐ '+_escHtml(_numTag(g.mvp.num))+_escHtml(g.mvp.name||''):'';
     return '<div class="gh-item" onclick="loadTeamGame('+_jsArg(g.key)+')">'
       +'<div class="gh-res '+rc+'">'+_escHtml(g.result)+'</div>'
       +'<div class="gh-info"><div class="gh-vs">vs '+_escHtml(g.ta)+'</div>'

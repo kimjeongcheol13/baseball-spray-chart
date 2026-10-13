@@ -268,7 +268,7 @@ function _toastInit() {
 
 // ── ③-a 타순표 빈 '이름' 행: 그 자리에서 이름 입력 ─────────
 // 빈 행은 라인업 서랍을 열었다(scorebook sbEditLineup). 이제 행이 입력칸으로 바뀌고, Enter = 추가 후 다음 빈 행으로 이어서.
-// 추가는 기존 addPlayer 입력칸을 채워 그대로 호출 (setup.js stAdd 와 같은 방식 — 등번호 = 타순, 첫 선수는 addPlayer 가 현재 타자로)
+// 추가는 기존 addPlayer 입력칸을 채워 그대로 호출 (setup.js stAdd 와 같은 방식 — 등번호는 빈칸(타순은 라인업 순서), 첫 선수는 addPlayer 가 현재 타자로)
 // 입력 중에는 scorebook render 가 타순표를 건너뛴다(입력칸 보호) → 끝나면 sbRender 로 다시 그림
 function _otAdd(nm) {
   const n = $('pName'), num = $('pNum');

@@ -3730,6 +3730,8 @@ function _saveEditImmediate(){
   // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 수정 시각은 cloudSave 가 sl_cloud_mod 에 남긴다(동기화는 그 값으로 최신을 고른다)
   localStorage.setItem(cur.key,JSON.stringify(existing));
   if(window.cloudSave)cloudSave(cur.key,existing,cur.label,existing.ts);
+  // 지금 경기 = 방금 쓴 저장 항목 → "저장됨". 안 바꾸면(updateAll 이 "저장 안 됨"으로 둠) 다른 경기를 열 때 _saveWorkBeforeReplace 가 한 번 더 저장했다
+  _gameSaved=true;_updateSaveUI(false);
   triggerSavePulse();
   showToast('타석 기록 수정 완료 — 저장됨 ✓',false);
 }
@@ -8522,10 +8524,9 @@ function _archQuietSave(saveKey){
         existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
         var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
         if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명 — 다른 경기를 열기 전에 저장할 때 사라지지 않게
-        existing.ts=Date.now();
+        // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 예전엔 지금 시각으로 바꿔서, 다른 경기를 열기 전 저장 ·
+        // 복구 때마다 그 경기의 날짜가 오늘로 바뀌었다. 수정 시각은 아래 _slMarkMod(sl_cloud_mod)가 지금처럼 남긴다(동기화는 그 값을 본다)
         localStorage.setItem(latest.key,JSON.stringify(existing));
-        latest.ts=existing.ts;
-        localStorage.setItem('sl_saves',JSON.stringify(saves));
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
         AS.curGame=latest.key.replace(/^sl_(?:auto_)?/,'');   // 복구한 경기도 그 저장 항목의 자동저장 키를 쓴다

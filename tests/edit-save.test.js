@@ -99,4 +99,48 @@
       ok(JSON.parse(localStorage.getItem('sl_saves')).some(function (e) { return e.key !== KB; }), '고친 경기가 새 항목으로 저장되지 않음');
     } finally { restore(); }
   });
+
+  // ── 수정 저장 뒤 상태 · 다른 경기를 열 때 원래 경기의 날짜 ──
+  function openFromList(key) { window._lpFired = false; _lpClick(key); }   // 저장 목록 카드를 누르는 것과 같다
+  test('수정 저장 → 다른 경기 열기 → 원래 경기 날짜 불변(다시 저장되지 않고 "이전 경기는 저장됨" 안내도 없다)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      edit(1781000000101, '2루타'); await sleep(300);
+      openFromList(KB); await sleep(500);
+      var a = JSON.parse(localStorage.getItem(KA)), entry = JSON.parse(localStorage.getItem('sl_saves')).filter(function (e) { return e.key === KA; })[0];
+      eq(a.ts, TA, 'A 저장본의 경기 날짜(ts)');
+      eq(entry && entry.ts, TA, '저장 목록에 보이는 A 의 날짜');
+      eq(a.abs.map(function (x) { return x.res; }), ['2루타'], 'A 의 수정 내용');
+      ok(!/이전 경기는 저장됨/.test($('toastTxt').textContent), '이미 저장한 경기인데 다시 저장했다는 안내: ' + $('toastTxt').textContent);
+      eq(AS.abs.map(function (x) { return x.bname; }), ['비타자', '비타자2'], 'B 가 열려야 함');
+    } finally { restore(); }
+  });
+
+  test('수정 저장 후에는 "저장됨" 상태다(dirty=false — 페이지 이탈 경고 · 새 경기 확인이 뜨지 않는다)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      edit(1781000000101, '3루타'); await sleep(300);
+      eq(window._gameSaved, true, '_gameSaved');
+      eq(_unsavedCounts().any, false, '저장 안 한 기록이 있다는 판단');
+    } finally { restore(); }
+  });
+
+  test('저장 안 한 기록이 있는 채로 다른 경기를 열면 그 기록은 저장되고, 원래 경기 날짜는 그대로다(_archQuietSave)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      AS.abs = AS.abs.concat([ab(1781000000111, '새기록타자', '안타')]); updateAll();   // 기록(저장 안 함)
+      openFromList(KB); await sleep(500);
+      var a = JSON.parse(localStorage.getItem(KA)), entry = JSON.parse(localStorage.getItem('sl_saves')).filter(function (e) { return e.key === KA; })[0];
+      eq(a.abs.map(function (x) { return x.bname; }), ['에이타자', '새기록타자'], 'A 에 저장 안 했던 기록이 저장돼야 함');
+      eq(a.ts, TA, 'A 저장본의 경기 날짜(ts)');
+      eq(entry && entry.ts, TA, '저장 목록에 보이는 A 의 날짜');
+      ok(/이전 경기는 저장됨/.test($('toastTxt').textContent), '안내 문구: ' + $('toastTxt').textContent);
+    } finally { restore(); }
+  });
 })();

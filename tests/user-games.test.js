@@ -133,6 +133,7 @@
   });
   test('경로: 타석 수정 저장 → 수정 시각 기록', async function () {
     seed([G(K1, T0)], {}); setGame();
+    window._curSaveKey = K1;   // 열린 경기 = K1 — 타석 수정은 열린 경기의 저장 항목에만 반영된다(예전엔 목록의 마지막 항목을 덮어썼다, tests/edit-save.test.js)
     var t0 = Date.now(); _saveEditImmediate();
     ok(mod(K1) >= t0, '기록 안 됨: ' + mod(K1));
   });

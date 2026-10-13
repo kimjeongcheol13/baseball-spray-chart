@@ -852,7 +852,7 @@ export function exportBatterXlsx(P) {
   rep.merge(r - games - 1, 0, r - games - 1, 2, '경기', 'th');
   r++;
   const notes = [
-    `wOBA 가중치: 볼넷 ${WOBA_W.bb.toFixed(2)} · 사구 ${WOBA_W.hbp.toFixed(2)} · 단타 ${WOBA_W.s1.toFixed(2)} · 2루타 ${WOBA_W.s2.toFixed(2)} · 3루타 ${WOBA_W.s3.toFixed(2)} · 홈런 ${WOBA_W.hr.toFixed(2)} (SprayLab 앱과 같은 값)`,
+    `wOBA 가중치: 볼넷 ${WOBA_W.bb.toFixed(3)} · 사구 ${WOBA_W.hbp.toFixed(3)} · 단타 ${WOBA_W.s1.toFixed(3)} · 2루타 ${WOBA_W.s2.toFixed(3)} · 3루타 ${WOBA_W.s3.toFixed(3)} · 홈런 ${WOBA_W.hr.toFixed(3)} (FanGraphs Guts 2013시즌 · SprayLab 앱과 같은 값)`,
     '타구 위치는 기록자가 화면에서 찍은 자리예요 (측정 장비 값 아님).',
     '「타석 기록」 시트에서 필터(▼)를 걸면 「타구 차트」도 걸러진 타석만 보여줘요. 예: 구종 = 직구, 이닝 = 7회 이후.',
   ];
@@ -1042,7 +1042,7 @@ function _fileRows(name, num, src) {
 // o = { P, st, games, first, last, bats, hidden: 숨긴 열 이름[], evUnit }
 function _batterDictSheet(o) {
   return _dictSheet(`${o.P.name} 엑셀 — 데이터 설명`, sec => {
-    const W = WOBA_W, w2 = v => v.toFixed(2);
+    const W = WOBA_W, w2 = v => v.toFixed(3);
     sec('이 파일', [
       ..._fileRows(o.P.name, o.P.num, `경기설정 라인업의 '#번' 칸 값. 앱 버전 ${NUM_AUTO_UNTIL} 전에 칸을 비우고 추가한 선수는 라인업 순서 번호가 자동으로 들어가 있어 실제 등번호와 다를 수 있어요`),
       ['기간', o.first && o.last ? (o.first === o.last ? o.first : `${o.first} ~ ${o.last}`) : '', '경기 날짜 순(날짜를 못 읽으면 저장 시각 순) · 한 경기 안은 이닝 순', `${o.games}경기 · ${o.st.pa}타석`],
@@ -1073,7 +1073,7 @@ function _batterDictSheet(o) {
     ]);
     sec('wOBA 가중치', [
       ['가중치', 'WOBA_W', `볼넷 ${w2(W.bb)} · 사구 ${w2(W.hbp)} · 단타 ${w2(W.s1)} · 2루타 ${w2(W.s2)} · 3루타 ${w2(W.s3)} · 홈런 ${w2(W.hr)}`, '앱 코드(js/constants.js) 값 그대로'],
-      ['출처', '', '출처 표기 없음 — 코드에 출처가 적혀 있지 않아요. 앱 안 비교 · 프로필 · 스카우트 화면과 같은 값', ''],
+      ['출처', '', 'FanGraphs Guts 2013시즌 선형 가중치 (fangraphs.com/guts.aspx?type=cn)', '앱 안 비교 · 프로필 · 스카우트 화면과 같은 값'],
       ['기준', '', 'MLB 기준 선형 가중치이며 아마추어 환경 보정은 하지 않음', ''],
     ]);
     const hid = o.hidden.length ? ` (이 파일에서 숨긴 열: ${o.hidden.join(' · ')})` : '';

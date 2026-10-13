@@ -391,7 +391,7 @@
     await T.sleep(750);
     $('innSel').selectedIndex = 4;   // 3회초
     useBatter(); AS.pt = '체인지업'; AS.zone = '외각 중간'; recOther('삼진');   // 로그 없는 타석 (수기 0-0 → 2단계부터 경고 없음)
-    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=13');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=14');
     var blob = null, u0 = URL.createObjectURL;
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     try { X.exportBatterXlsx(B.playerData(B.buildData(), '정합타자')); } finally { URL.createObjectURL = u0; }

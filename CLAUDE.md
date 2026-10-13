@@ -20,8 +20,9 @@ URL: kimjeongcheol13.github.io/baseball-spray-chart/
 - localStorage 키는 sl_ 접두사. 기존 키 이름은 바꾸지 않는다.
 
 ## 지표 공식
-공유 가중치 (WOBA_W) — js/constants.js
-export const WOBA_W = { bb: 0.69, hbp: 0.72, s1: 0.89, s2: 1.27, s3: 1.62, hr: 2.10 };
+공유 가중치 (WOBA_W) — js/constants.js · 출처: FanGraphs Guts 2013시즌 선형 가중치 (fangraphs.com/guts.aspx?type=cn)
+export const WOBA_W = { bb: 0.690, hbp: 0.722, s1: 0.888, s2: 1.271, s3: 1.616, hr: 2.101 };
+core.js(일반 스크립트라 import 불가)의 같은 가중치 4곳도 함께 맞춘다: calcXStats · renderExtStats · exportFullReport · _drawSeasonCard
 
 wOBA
 분자: WOBA_W.bb*bb + WOBA_W.hbp*hbp + WOBA_W.s1*1B + WOBA_W.s2*2B + WOBA_W.s3*3B + WOBA_W.hr*HR

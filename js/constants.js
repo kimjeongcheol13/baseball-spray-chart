@@ -47,9 +47,10 @@ export const PITCH_STRATEGIES = {
 
 /**
  * wOBA 가중치 (core.js renderExtStats 기준 통일)
+ * 출처: FanGraphs Guts 2013시즌 선형 가중치 (fangraphs.com/guts.aspx?type=cn) — 원표 그대로 소수 셋째 자리
  * bb = 볼넷만 (사구 제외), hbp = 사구만
  */
-export const WOBA_W = { bb: 0.69, hbp: 0.72, s1: 0.89, s2: 1.27, s3: 1.62, hr: 2.10 };
+export const WOBA_W = { bb: 0.690, hbp: 0.722, s1: 0.888, s2: 1.271, s3: 1.616, hr: 2.101 };
 
 /** HTML 이스케이프 — compare/profile/scouting/insights 공용 */
 export function esc(s) {

@@ -71,7 +71,7 @@ function calcXStats(ev_kmh, la_deg) {
   phr=Math.min(0.50,Math.max(0,phr));
   const xba  = Math.min(0.99, p1b+p2b+p3b+phr);
   const xslg = Math.min(4.0,  p1b*1+p2b*2+p3b*3+phr*4);
-  const xwoba= 0.89*p1b + 1.27*p2b + 1.62*p3b + 2.10*phr;
+  const xwoba= 0.888*p1b + 1.271*p2b + 1.616*p3b + 2.101*phr;   // constants.js WOBA_W(FanGraphs Guts 2013)와 같은 가중치
   return { xba, xslg, xwoba };
 }
 window.calcXStats = calcXStats;
@@ -1947,7 +1947,7 @@ function renderExtStats(abs){
   const hr=abs.filter(a=>a.res==='홈런').length;
   const k=abs.filter(a=>a.res==='삼진').length;
   const h=hits.reduce((n,r)=>n+abs.filter(a=>a.res===r).length,0);
-  const wNum=0.69*bb+0.72*hbp+0.89*s1+1.27*s2+1.62*s3+2.10*hr;
+  const wNum=0.690*bb+0.722*hbp+0.888*s1+1.271*s2+1.616*s3+2.101*hr;   // constants.js WOBA_W(FanGraphs Guts 2013)와 같은 가중치
   const wDen=ab+bb+sf+hbp;
   const woba=wDen?wNum/wDen:null;
   const babipDen=ab-k-hr+sf;
@@ -4485,7 +4485,7 @@ function exportFullReport() {
   // ── Sheet 1: 선수별 통산 성적 ──
   var hdr1=['이름','번호','경기수','타석','타수','안타','2루타','3루타','홈런','타점','볼넷','삼진','타율','출루율','장타율','OPS','wOBA','BABIP','ISO','K%','BB%','당김%','중앙%','밀어%'];
   // wOBA 가중치 — renderExtStats 및 constants.js WOBA_W 통일
-  var wBB=0.69,wHBP=0.72,w1B=0.89,w2B=1.27,w3B=1.62,wHR=2.10;
+  var wBB=0.690,wHBP=0.722,w1B=0.888,w2B=1.271,w3B=1.616,wHR=2.101;   // FanGraphs Guts 2013
   var profileRows=[hdr1];
   players.forEach(function(m){
     var t=m.fdN||1,denom=m.ab+m.bb+m.hbp+m.sf,
@@ -6924,7 +6924,7 @@ function _drawSeasonCard(){
   });
   var s=_cardStats(allAbs);
   // wOBA — constants.js WOBA_W와 동일 가중치, 분모 AB+BB+HBP+SF
-  var WOBA_W={bb:0.69,hbp:0.72,s1:0.89,s2:1.27,s3:1.62,hr:2.10};
+  var WOBA_W={bb:0.690,hbp:0.722,s1:0.888,s2:1.271,s3:1.616,hr:2.101};   // FanGraphs Guts 2013
   var wD=s.ab+s.bb+s.hbp+s.sf;
   var woba=wD?(WOBA_W.bb*s.bb+WOBA_W.hbp*s.hbp+WOBA_W.s1*s.s1+WOBA_W.s2*s.s2+WOBA_W.s3*s.s3+WOBA_W.hr*s.hr)/wD:0;
 

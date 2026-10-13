@@ -71,7 +71,7 @@
   }
   // 내보내기 → { wb: 파일, sheets: Sheet 객체 배열, texts: 캔버스에 쓴 글자(핫/콜드 그림) }
   async function exportOf(name) {
-    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=13');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=14');
     var blob = null, u0 = URL.createObjectURL, ft0 = CanvasRenderingContext2D.prototype.fillText, texts = [];
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     CanvasRenderingContext2D.prototype.fillText = function (t) { texts.push(String(t)); return ft0.apply(this, arguments); };
@@ -253,8 +253,9 @@
     var d = r.wb.sheets['데이터 설명'], C = await import('/js/constants.js');
     var row = function (a, b) { return d.find(function (x) { return x && x[0] === a && (b == null || x[1] === b); }); };
     var W = C.WOBA_W;
-    eq(row('가중치')[2], '볼넷 ' + W.bb.toFixed(2) + ' · 사구 ' + W.hbp.toFixed(2) + ' · 단타 ' + W.s1.toFixed(2) + ' · 2루타 ' + W.s2.toFixed(2) + ' · 3루타 ' + W.s3.toFixed(2) + ' · 홈런 ' + W.hr.toFixed(2), 'wOBA 가중치 = WOBA_W');
-    ok(/^출처 표기 없음/.test(row('출처')[2]), '출처는 지어내지 않음(웹 대조 못 함 — 5단계)');
+    eq(W, { bb: 0.690, hbp: 0.722, s1: 0.888, s2: 1.271, s3: 1.616, hr: 2.101 }, 'WOBA_W = FanGraphs Guts 2013 원표 3자리');
+    eq(row('가중치')[2], '볼넷 0.690 · 사구 0.722 · 단타 0.888 · 2루타 1.271 · 3루타 1.616 · 홈런 2.101', 'wOBA 가중치 = WOBA_W(3자리)');
+    eq(row('출처')[2], 'FanGraphs Guts 2013시즌 선형 가중치 (fangraphs.com/guts.aspx?type=cn)', '출처(사용자가 원표로 대조해 확정)');
     eq(row('기준')[2], 'MLB 기준 선형 가중치이며 아마추어 환경 보정은 하지 않음', 'MLB 기준 안내 한 줄');
     var w7 = d.slice(d.findIndex(function (x) { return x && x[0] === '■ 확인 필요 (7종)'; }) + 2).slice(0, 7).map(function (x) { return x[1]; });
     eq(w7, ['삼진인데 스트라이크 n개', '볼넷인데 볼 n개', '(결과)인데 마지막 공이 …', '삼진/볼넷인데 마지막 공이 인플레이', '투구 결과 일부 누락', '초/말 섞임', '같은 이닝 3타석 이상'], '7종 이름');
@@ -355,7 +356,7 @@
     ok(!/등번호/.test(r.wb.sheets['리포트'][1][0]), '리포트 부제목 — ' + r.wb.sheets['리포트'][1][0]);
     ok(!/등번호/.test(JSON.stringify(r.wb.sheets['데이터 설명'])), '데이터 설명에 등번호 없음');
     eq(r.wb.sheets['데이터 설명'].find(function (x) { return x && x[0] === '선수'; }).slice(0, 2), ['선수', '무번호'], '선수 줄은 이름만');
-    var X = await import('/js/features/xlsxreport.js?v=13');
+    var X = await import('/js/features/xlsxreport.js?v=14');
     var pitcher = async function (num) {
       var P = { name: '테스트투수', num: num, role: 'SP', apps: [{ label: '2026. 5. 9. 우리 vs 상대', pitches: [
         { id: 1, pt: '직구', zone: '중앙 중간', zoneX: 0.5, zoneY: 0.5, result: '스트라이크', batter: '갑', inning: 1 },
@@ -387,5 +388,15 @@
     ok(v && v.parentElement === $('slMenu') && v === $('slMenu').lastElementChild, '☰ 메뉴 맨 아래');
     eq(v.textContent, 'SprayLab v' + APP_VERSION, '표시 글자');
     ok(/[?&]v=\d+$/.test(document.querySelector('script[src*="js/core.js"]').getAttribute('src')), '?v= 관례 유지');
+  });
+
+  test('wOBA 가중치(FanGraphs Guts 2013 · 원표 3자리): 기록 화면(core renderExtStats)과 분석 · 엑셀(batdata calcStats)이 같은 값', async function () {
+    var abs = [{ res: '3루타' }, { res: '홈런' }];
+    try {
+      renderExtStats(abs);
+      eq($('sWOBA').textContent, '1.859', 'core: (1.616 + 2.101) / 2 = 1.8585 (예전 2자리 가중치면 1.860)');
+      var B = await import('/js/features/batdata.js?v=10');
+      eq(Math.round(B.calcStats(abs).woba * 10000) / 10000, 1.8585, 'batdata(엑셀 · 비교 · 프로필 · 스카우트)도 같은 값');
+    } finally { try { renderExtStats(AS.abs || []); } catch (e) {} }
   });
 })();

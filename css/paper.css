@@ -1192,6 +1192,25 @@ html.sb-boot body::after {
   letter-spacing: .3em;
 }
 
+/* ── 필드 자리표시 (가림막이 걷힌 뒤 scorebook.js 마운트 전까지) ──
+   그동안 필드는 core.js 가 옛 색(어두운 잔디)으로 그린 그림이고, 구장도 아직 표준(리틀야구 · 직접 입력은 setup.js 가 붙임)이라
+   마운트 때 펜스 모양까지 바뀐다 → 캔버스를 숨기고 빈 종이 칸을 보여 준다 (숨긴 캔버스는 탭도 받지 않는다)
+   · .field-wrap 이 .pnl-center 바로 아래일 때만 = 마운트 전. 마운트 때 #sbField 카드로 옮겨지면 자동으로 안 걸린다
+   · 조건은 가림막(index.html)과 같다: 터치 기기 + 폭 1024px 미만 (태블릿 포함 — CLAUDE.md 모바일 720px 규칙의 예외)
+   · 테두리는 box-shadow 로: border 는 core 가 #cwrap 크기로 재는 캔버스 크기를 바꾼다 */
+@media (any-pointer: coarse) and (max-width: 1023.98px) {
+  body.sb .pnl-center > .field-wrap .canvas-wrap { background: var(--paper-2); box-shadow: inset 0 0 0 1.5px var(--rule); }
+  body.sb .pnl-center > .field-wrap .canvas-wrap > * { visibility: hidden; }
+  body.sb .pnl-center > .field-wrap .canvas-wrap::after {
+    content: '필드 준비 중';
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft);
+    font: 700 13px/1 var(--f-body);
+    letter-spacing: .1em;
+  }
+}
+
 /* ── 볼카운트 B · S · O (모바일): 누르면 +1 되는 버튼인지 모호했다 → 버튼 테두리 + 눌림 상태.
    경기 운영 모드의 O 는 버튼이 아니라(scorebook.js 가 span.ro 로 그림) 테두리 없이 '자동' 표시만 ── */
 @media (max-width: 720px) {

@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=77">
+<link rel="stylesheet" href="css/styles.css?v=78">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -88,12 +88,12 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=4">
-<link rel="stylesheet" href="css/pitcher.css?v=15">
+<link rel="stylesheet" href="css/pitcher.css?v=18">
 <link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=10">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=18">
+<link rel="stylesheet" href="css/paper.css?v=20">
 <link rel="stylesheet" href="css/report.css?v=2">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -1482,7 +1482,7 @@ var _kakaoSdkLoaded = false;
                 <div class="pt-result-chips" style="margin-bottom:5px">
                   <button class="ptr-btn ptr-ball" onclick="recordPitch('볼')">볼</button>
                   <button class="ptr-btn ptr-strike" onclick="recordPitch('스트라이크')">스트라이크</button>
-                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')" style="background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)">파울</button>
+                  <button class="ptr-btn ptr-foul" onclick="recordPitch('파울')">파울</button>
                 </div>
                 <!-- 타석 결과 (core.js renderPitchButtons 가 채움) -->
                 <div data-pend></div>
@@ -2373,9 +2373,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=202"></script>
+<script defer src="js/core.js?v=206"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=97"></script>
+<script type="module" src="js/app.js?v=101"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

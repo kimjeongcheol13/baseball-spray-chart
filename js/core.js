@@ -3713,25 +3713,23 @@ function saveEditRec(){
 
 function _saveEditImmediate(){
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  if(!saves.length){
-    // 저장된 게임이 없으면 새 저장 생성
+  // 지금 열린 경기의 저장 항목(_curSaveKey)에 반영한다. 예전에는 목록의 마지막 항목을 덮어써서, 다른 경기를 열어 고치면
+  // 그 마지막 경기가 이 경기 기록으로 바뀌었다(서버 user_games 에도 그대로 올라감)
+  var cur=_curSaveKey?saves.find(function(s){return s.key===_curSaveKey;}):null;
+  var existing=cur?JSON.parse(localStorage.getItem(cur.key)||'null'):null;
+  if(!existing){
+    // 저장 항목이 없는 경기(새 경기 · 공유받은 경기 · 항목이 지워진 경기)는 "경기 저장"처럼 새 항목으로 — 다른 경기 항목은 건드리지 않는다
     saveGame();
     return;
   }
-  // 가장 최근 저장 항목을 현재 AS 상태로 덮어씀
-  var latest=saves[saves.length-1];
-  var existing=JSON.parse(localStorage.getItem(latest.key)||'null');
-  if(!existing){saveGame();return;}
   existing.abs=AS.abs;
   existing.hs=AS.hs;existing.as=AS.as;
   existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
   existing.zoneHistory=AS.zoneHistory;
   existing.pitchers=AS.pitchers||[];
-  existing.ts=Date.now();
-  localStorage.setItem(latest.key,JSON.stringify(existing));
-  latest.ts=existing.ts;
-  localStorage.setItem('sl_saves',JSON.stringify(saves));
-  if(window.cloudSave)cloudSave(latest.key,existing,latest.label,existing.ts);
+  // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 수정 시각은 cloudSave 가 sl_cloud_mod 에 남긴다(동기화는 그 값으로 최신을 고른다)
+  localStorage.setItem(cur.key,JSON.stringify(existing));
+  if(window.cloudSave)cloudSave(cur.key,existing,cur.label,existing.ts);
   triggerSavePulse();
   showToast('타석 기록 수정 완료 — 저장됨 ✓',false);
 }

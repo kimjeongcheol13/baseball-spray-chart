@@ -3,14 +3,14 @@
 
 import './features/profile.js?v=18';
 import './features/compare.js?v=11';
-import './features/scouting.js?v=18';
+import './features/scouting.js?v=22';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
 import './features/team.js?v=8';
-import './features/pitcher.js?v=36';
-import './features/batter.js?v=24';
+import './features/pitcher.js?v=40';
+import './features/batter.js?v=28';
 import './features/spray.js?v=4';
 import './features/shell.js?v=16';
 import './features/record.js?v=9';

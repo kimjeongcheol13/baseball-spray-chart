@@ -4,7 +4,7 @@
 // SheetJS 무료판은 차트·셀 서식을 쓰지 못해서, xlsx(OOXML)를 직접 만들고 무압축 ZIP으로 묶는다 (외부 라이브러리 없음).
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
-import { buildData, calcStats } from './batdata.js?v=7';
+import { buildData, calcStats } from './batdata.js?v=8';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -591,8 +591,11 @@ export function exportBatterXlsx(P) {
   // ── 타석 기록 (필터 = 슬라이서 대신) ──
   const rec = new Sheet('타석 기록');
   rec.print = 'data'; rec.freeze = 1;
-  const H = ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '거리(ft)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y'];
-  const W = [6, 26, 6, 10, 9, 10, 9, 8, 8, 7, 11, 6, 6, 6, 7, 8, 8];
+  // 구종·코스·B-S: 투구 로그가 있으면 마지막 공에서 파생된 값(batdata 가 읽을 때 core.js _pSyncAb 로 맞춘 a.pt · a.zone · a.count)
+  // 확인 필요: core.js _pWarn 정합성 경고(삼진인데 스트라이크 < 3 등) — 기존 열 뒤에 붙여 기존 열 위치는 그대로
+  const H = ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '거리(ft)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y', '확인 필요'];
+  const W = [6, 26, 6, 10, 9, 10, 9, 8, 8, 7, 11, 6, 6, 6, 7, 8, 8, 30];
+  const warnOf = a => (window._pWarn ? window._pWarn(a) : []);
   rec.line(0, 0, H, 'th');
   W.forEach((w, i) => rec.width(i, w));
   const xy = rows.map(({ a }) => {
@@ -606,8 +609,8 @@ export function exportBatterXlsx(P) {
       i + 1, game, a.inn || '', a.res || '', a.pt || '', zoneOf(a), dirOf(a),
       a.ft != null ? +a.ft : '', a.ev != null ? +a.ev : '', a.launchAngle != null ? +a.launchAngle : '', a.launchType || '',
       cnt, a.count && a.count.o != null ? a.count.o : '', a.rbi || 0, (a.pitches || []).length,
-      xy[i] ? r4(xy[i][0]) : '', xy[i] ? r4(xy[i][1]) : '',
-    ], ['td', 'tdL', 'td', 'tdB', 'td', 'td', 'td', 'td', 'td1', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC']);
+      xy[i] ? r4(xy[i][0]) : '', xy[i] ? r4(xy[i][1]) : '', warnOf(a).join(' / '),
+    ], ['td', 'tdL', 'td', 'tdB', 'td', 'td', 'td', 'td', 'td1', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC', 'tdL']);
   });
   // 차트용 열: 결과별 · 구종별 X/Y — 해당하는 행에만 값이 있다
   let hc = H.length;
@@ -632,14 +635,17 @@ export function exportBatterXlsx(P) {
   // ── 투구 기록 (상대한 공) ──
   const pit = new Sheet('투구 기록');
   pit.print = 'data'; pit.freeze = 1;
-  const PH = ['순번', '경기', '타석 번호', '이닝', '구종', '코스', 'B-S', '투수', '위치 기록', '위치 X', '위치 Y', '타석 결과'];
-  const PW = [6, 26, 8, 6, 9, 10, 6, 10, 10, 8, 8, 10];
+  // 타석 내 순번 = 투구 seq(1부터) · 투구 결과 = 볼/루킹/헛스윙/파울/인플레이 · 스트라이크(구분 모름 = 투수 탭 연동) · 미기록(null)
+  // 투구 로그 없는 타석의 결정구 1구(타석 구종·코스로 만든 행)는 둘 다 빈 칸
+  const PH = ['순번', '경기', '타석 번호', '이닝', '구종', '코스', 'B-S', '투수', '위치 기록', '위치 X', '위치 Y', '타석 결과', '타석 내 순번', '투구 결과'];
+  const PW = [6, 26, 8, 6, 9, 10, 6, 10, 10, 8, 8, 10, 8, 14];
+  const resOf = p => (p.synth ? '' : !p.result ? '미기록' : p.result === 'strike' ? '스트라이크(구분 모름)' : ((window.P_RESULT_LBL || {})[p.result] || p.result));
   pit.line(0, 0, PH, 'th');
   PW.forEach((w, i) => pit.width(i, w));
   const plist = [];
   const abFlat = _abFlatMap();
   rows.forEach(({ a, game }, i) => {
-    const ps = a.pitches && a.pitches.length ? a.pitches : (a.zone || a.pt ? [{ zone: a.zone, pt: a.pt, last: true }] : []);
+    const ps = a.pitches && a.pitches.length ? a.pitches : (a.zone || a.pt ? [{ zone: a.zone, pt: a.pt, last: true, synth: true }] : []);
     const abP = ps.length ? _abPitcher(a, abFlat.get(a.id) || []).name : '';
     ps.forEach((p, j) => {
       const pos = _pitchXY(p.x, p.y, p.zone, (a.id || i) % 100000 + j * 7919);
@@ -655,7 +661,8 @@ export function exportBatterXlsx(P) {
     pit.line(i + 1, 0, [
       o.seq, o.game, o.ab, a.inn || '', p.pt || '', p.zone || '', cntOf(o),
       pNameOf(o), o.pos ? (o.pos.exact ? '정확' : '코스만') : '', o.pos ? r4(o.pos.x) : '', o.pos ? r4(o.pos.y) : '', a.res || '',
-    ], ['td', 'tdL', 'td', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC', 'td']);
+      p.synth ? '' : (p.seq != null ? p.seq : ''), resOf(p),
+    ], ['td', 'tdL', 'td', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC', 'td', 'td', 'td']);
   });
   const pNoCnt = plist.filter(o => !cntOf(o)).length, pNoName = plist.filter(o => !pNameOf(o)).length;
   const pPts = [...new Set(plist.map(o => o.p.pt || '미기록'))].sort((x, y) => plist.filter(o => (o.p.pt || '미기록') === y).length - plist.filter(o => (o.p.pt || '미기록') === x).length);
@@ -708,6 +715,8 @@ export function exportBatterXlsx(P) {
     '「타석 기록」 시트에서 필터(▼)를 걸면 「타구 차트」도 걸러진 타석만 보여줘요. 예: 구종 = 직구, 이닝 = 7회 이후.',
   ];
   if (st.pa < 30) notes.unshift(`표본이 적어요 (${st.pa}타석) — 수치는 참고용으로 봐 주세요.`);
+  const nWarn = rows.filter(({ a }) => warnOf(a).length).length;
+  if (nWarn) notes.push(`「타석 기록」 확인 필요 ${nWarn}타석 — 결과와 볼카운트·마지막 공 결과가 맞지 않아요(예: 삼진인데 스트라이크 2개). 저장은 그대로 두고 표시만 했어요. 「확인 필요」 열에서 필터로 모아 볼 수 있어요.`);
   if (pNoCnt || pNoName) notes.push(`「투구 기록」 B-S 빈 칸 ${pNoCnt}구 · 투수 빈 칸 ${pNoName}구 — 2026년 6월 7일 업데이트 전에 기록한 공은 공마다 카운트·투수가 저장되지 않았고, 투수 탭에서 투수를 고르지 않고 기록한 공도 투수가 비어요. 타석 마지막 공은 타석 카운트로, 투수는 같은 경기 투수 탭 기록으로 채울 수 있는 만큼 채웠어요.`);
   _bullets(rep, r, 0, notes);
   if (first && last && first !== last) rep.set(1, 0, [P.num !== '' && P.num != null ? '#' + P.num : '', bats, `${games}경기 ${st.pa}타석`, `${first} ~ ${last}`, `생성 ${_today()}`].filter(Boolean).join('  ·  '), 'sub');

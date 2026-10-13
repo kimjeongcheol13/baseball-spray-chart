@@ -92,7 +92,7 @@
     recordPitch('볼'); recordPitch('스트라이크'); recordPitch('파울'); recordPitch('파울');
     eq([AS.balls, AS.strikes], [1, 2], '1-2 (2S 뒤 파울은 그대로)');
     eq(AS.currentPitches.length, 4, '이번 타석 투구 4구');
-    eq(AS.currentPitches[0].result, '볼', '결과 보존'); eq(AS.currentPitches[0].pt, '직구', '구종 보존'); eq(AS.currentPitches[1].balls, 1, '그 공 직전 카운트');
+    eq(AS.currentPitches[0].result, 'ball', '결과 enum 매핑(볼 → ball)'); eq(AS.currentPitches[1].result, 'strike', '스트라이크 → strike(루킹/헛스윙 모름)'); eq(AS.currentPitches[2].result, 'foul', '파울 → foul'); eq(AS.currentPitches.map(function (p) { return p.seq; }), [1, 2, 3, 4], '타석 내 순번'); eq(AS.currentPitches[0].pt, '직구', '구종 보존'); eq(AS.currentPitches[1].balls, 1, '그 공 직전 카운트');
     eq(P().length, 4, '투수 쪽 4구'); eq(AS.abs.length, 0, '타석은 아직');
   });
 
@@ -109,7 +109,7 @@
   run('투수 탭: 4번째 볼은 볼넷으로 저장되고 타석 기록에도 볼넷이 들어간다 (중복 없음)', true, function () {
     recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     eq(P().length, 4, '투수 쪽 4구 (되돌아온 연동으로 늘지 않음)'); eq(P()[3].result, '볼넷', '4번째 공 = 볼넷'); eq(P()[3].batter, '첫타자', '상대 타자');
-    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '볼넷', '볼넷'); eq(AS.abs[0].pitches.length, 4, '타석에 4구 첨부'); eq(AS.abs[0].pitches[3].result, '볼넷', '마지막 공');
+    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '볼넷', '볼넷'); eq(AS.abs[0].pitches.length, 4, '타석에 4구 첨부'); eq(AS.abs[0].pitches[3].result, 'ball', '마지막 공(볼넷 = 4번째 볼 → ball)'); eq(AS.abs[0].count.b, 3, '타석 B-S = 마지막 공 직전 3볼');
     eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화'); eq(AS.currentPitches.length, 0, '이번 타석 투구 비움'); eq(AS.batter && AS.batter.id, 'cl2', '다음 타자');
   });
 
@@ -126,7 +126,7 @@
     eq(P().length, 2, '투수 쪽 2구'); eq(AS.currentPitches.length, 2, '이번 타석 투구 유지');
     // 필드 탭 흉내 (onFClick 의 즉시 기록 경로)
     AS.pending = { x: 0.5, y: 0.3, deg: 90, dir: 'CF', ft: 300 }; var res = AS.pendingQuickRes; _clearFieldTapPrompt(); AS.rbi = 0; recHit(res);
-    eq(AS.abs.length, 1, '안타 기록'); eq(AS.abs[0].res, '안타', '안타'); eq(AS.abs[0].pitches.length, 2, '2구 첨부'); eq(AS.abs[0].pitches[1].result, '안타', '마지막 공');
+    eq(AS.abs.length, 1, '안타 기록'); eq(AS.abs[0].res, '안타', '안타'); eq(AS.abs[0].pitches.length, 2, '2구 첨부'); eq(AS.abs[0].pitches[1].result, 'in_play', '마지막 공(안타 → in_play)');
     eq(P().length, 2, '투수 쪽 중복 없음'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화');
   });
 

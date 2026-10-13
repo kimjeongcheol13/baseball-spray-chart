@@ -764,7 +764,8 @@ function selBatter(id){
   try{AS.currentPitches=[];AS.zone=null;AS.pt=null;AS.zoneX=null;AS.zoneY=null;
   if(typeof _ibZoneDots!=='undefined')_ibZoneDots=[];
   if(typeof ibZoneRedraw==='function')ibZoneRedraw();
-  if(AS.currentPitcher)AS.currentPitcher._batterLog=[];}catch(e){}
+  if(AS.currentPitcher)AS.currentPitcher._batterLog=[];
+  _prRender();}catch(e){}
   // 타자 선택 시 타자 탭으로 자동 전환 + 오른쪽 패널 표시
   if(AS.batter){
     var _bt=document.getElementById('tab-batter');
@@ -955,6 +956,7 @@ function logPitchAction(){
   var symbol=symMap[AS.pt]||'•';
   AS.zoneHistory[AS.zone].push({pt:AS.pt,symbol:symbol});
   AS.currentPitches.push({
+    seq:AS.currentPitches.length+1, result:null,   // 결과는 바로 뒤 결과 버튼(setPitchResult)으로 — 안 누르면 null(미기록)
     zone:AS.zone, pt:AS.pt, x:AS.zoneX||null, y:AS.zoneY||null,
     balls:AS.balls||0, strikes:AS.strikes||0, outs:AS.outs||0,
     pitcher: AS.currentPitcher ? (AS.currentPitcher.name||'') : '',
@@ -962,7 +964,104 @@ function logPitchAction(){
   });
   refreshZoneDisplay();
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  _prRender();
 }
+
+// ▼ pitch-seq — 투구 단위 결과 · 카운트 파생 · 타석 동기화 · 정합성 경고 (데이터 정합성 1단계)
+// 투구 한 공(ab.pitches[] · AS.currentPitches[]): { seq, result, zone, pt, x, y, balls, strikes, outs, pitcher, ts }
+//  · seq    : 타석 안 투구 순번(1부터, 저장 순서)
+//  · result : 'ball' | 'strike' | 'called_strike' | 'swinging_strike' | 'foul' | 'in_play' | null(미기록)
+//             'strike' = 스트라이크인데 루킹/헛스윙을 모름(투수 탭 연동). 카운트·경고는 스트라이크로 센다 · 스윙 지표(다음 단계)에서는 분모에서 뺀다
+//  · balls/strikes : 그 공을 던지기 직전 카운트. 타석에 result 가 하나라도 있으면 result 순서로 다시 계산한 값
+// 타석(ab)의 pt · zone · count.b/s 는 투구 로그가 있으면 마지막 공(seq 최대)에서 파생해 "저장할 때" 덮어쓴다(_pSyncAb).
+//   읽는 쪽(통계·스카우트·엑셀 등 20여 곳)은 지금처럼 a.pt · a.zone · a.count 를 그대로 읽는다 → 값이 두 군데 따로 놀지 않는다.
+//   로그 없는 타석은 기존 수기값 그대로. 로그는 있지만 result 가 전부 null 이면 B-S 만 수기값(구종·코스는 마지막 공).
+var P_RESULTS=['ball','strike','called_strike','swinging_strike','foul','in_play'];
+var P_RESULT_LBL={__proto__:null,ball:'볼',strike:'스트라이크',called_strike:'루킹',swinging_strike:'헛스윙',foul:'파울',in_play:'인플레이'};
+// 투수 탭 결과(한글) → result. 볼넷·삼진은 그 공이 4번째 볼·3번째 스트라이크(_pitchLiveResult 가 바꾼 이름)
+var _P_KO={__proto__:null,'볼':'ball','볼넷':'ball','스트라이크':'strike','삼진':'strike','헛스윙':'swinging_strike','파울':'foul',
+  '안타':'in_play','내야안타':'in_play','2루타':'in_play','3루타':'in_play','홈런':'in_play','타격됨':'in_play','아웃':'in_play','병살':'in_play','삼중살':'in_play'};
+function _pResult(v){
+  if(v==null||v==='')return null;
+  if(P_RESULTS.indexOf(v)>=0)return v;
+  if(typeof v==='string'&&_P_KO[v])return _P_KO[v];
+  try{console.warn('[pitch-seq] 알 수 없는 투구 결과 → null',v);}catch(e){}
+  return null;
+}
+// 타석 결과가 인플레이(안타·아웃류)인지 — 삼진·볼넷·사구가 아닌 타구 결과
+var _P_INPLAY_RES=['희타','희비','병살','삼중살','실책','야수선택'];
+function _pInPlayRes(res){return typeof res==='string'&&(_OBP_HITS.indexOf(res)>=0||/아웃$/.test(res)||_P_INPLAY_RES.indexOf(res)>=0);}
+// result 순서로 카운트: 볼 +1, 스트라이크(루킹·헛스윙·모름) +1, 파울은 2스트라이크 전까지만 +1, 인플레이·null 은 그대로
+// → { pre:[각 공 직전 {b,s}], b, s(마지막 공까지 반영), known(result 있는 공 수), missing(null 인 공 수) }
+function _pCount(ps){
+  var b=0,s=0,pre=[],known=0;
+  (ps||[]).forEach(function(p){
+    pre.push({b:b,s:s});
+    var r=p&&p.result;
+    if(r==null)return;
+    known++;
+    if(r==='ball')b++;
+    else if(r==='foul'){if(s<2)s++;}
+    else if(r!=='in_play')s++;
+  });
+  return {pre:pre,b:b,s:s,known:known,missing:(ps||[]).length-known};
+}
+// 투구 목록 정규화(제자리): result → enum(옛 한글값 매핑), seq → 모두 있으면 seq 순 정렬, 하나라도 없으면 저장 순서 · 1..n 으로 다시 매김
+function _pNormList(ps){
+  var hasSeq=ps.every(function(p){return p&&typeof p.seq==='number'&&isFinite(p.seq);});
+  if(hasSeq&&ps.some(function(p,i){return i&&ps[i-1].seq>p.seq;})){
+    var ix=ps.map(function(p,i){return [p,i];});
+    ix.sort(function(a,b){return (a[0].seq-b[0].seq)||(a[1]-b[1]);});
+    ix.forEach(function(x,i){ps[i]=x[0];});
+  }
+  ps.forEach(function(p,i){
+    if(!p||typeof p!=='object')return;
+    p.seq=i+1;
+    p.result=_pResult(p.result);
+  });
+}
+// 타석 하나를 투구 로그에 맞춘다(제자리 · 몇 번을 불러도 같은 결과). 바뀐 게 있으면 true
+function _pSyncAb(ab){
+  if(!ab||typeof ab!=='object'||!Array.isArray(ab.pitches)||!ab.pitches.length)return false;
+  var ps=ab.pitches;
+  if(!ps.every(function(p){return p&&typeof p==='object'&&!Array.isArray(p);}))return false;   // 깨진 투구가 섞인 타석은 건드리지 않는다
+  var before=JSON.stringify([ab.pt,ab.zone,ab.count,ps]);
+  _pNormList(ps);
+  var c=_pCount(ps),last=ps[ps.length-1];
+  if(c.known){
+    ps.forEach(function(p,i){p.balls=c.pre[i].b;p.strikes=c.pre[i].s;});
+    var o=ab.count&&typeof ab.count==='object'&&ab.count.o!=null?ab.count.o:(last.outs!=null?last.outs:0);
+    ab.count={b:c.pre[ps.length-1].b,s:c.pre[ps.length-1].s,o:o};
+  }
+  ab.pt=last.pt||null;
+  ab.zone=last.zone||null;
+  return JSON.stringify([ab.pt,ab.zone,ab.count,ps])!==before;
+}
+function _pSyncAbs(abs){var n=0;(Array.isArray(abs)?abs:[]).forEach(function(a){if(_pSyncAb(a))n++;});return n;}
+// 정합성 경고(저장은 막지 않고 표시만) → 문구 배열. 결과가 하나도 없는 로그는 수기 B-S(마지막 공 직전 카운트)로 삼진·볼넷만 본다
+function _pWarn(ab){
+  if(!ab||typeof ab!=='object')return [];
+  var res=ab.res,w=[];
+  var ps=Array.isArray(ab.pitches)?ab.pitches:[];
+  var c=_pCount(ps);
+  if(!c.known){
+    var cnt=ab.count;
+    if(cnt&&typeof cnt==='object'&&cnt.b!=null&&cnt.s!=null){
+      if(res==='삼진'&&+cnt.s<2)w.push('삼진인데 B-S '+cnt.b+'-'+cnt.s+' (2스트라이크 아님)');
+      if(res==='볼넷'&&+cnt.b<3)w.push('볼넷인데 B-S '+cnt.b+'-'+cnt.s+' (3볼 아님)');
+    }
+    return w;
+  }
+  var last=ps[ps.length-1],lr=last&&last.result;
+  var miss=c.missing?' · 결과 미기록 '+c.missing+'구':'';
+  if(res==='삼진'&&c.s<3)w.push('삼진인데 스트라이크 '+c.s+'개'+miss);
+  if(res==='볼넷'&&c.b<4)w.push('볼넷인데 볼 '+c.b+'개'+miss);
+  if(_pInPlayRes(res)&&lr!=='in_play')w.push(res+'인데 마지막 공이 '+(lr?P_RESULT_LBL[lr]:'결과 미기록'));
+  if((res==='삼진'||res==='볼넷')&&lr==='in_play')w.push(res+'인데 마지막 공이 인플레이');
+  return w;
+}
+window._pSyncAb=_pSyncAb;window._pSyncAbs=_pSyncAbs;window._pWarn=_pWarn;window._pCount=_pCount;window.P_RESULT_LBL=P_RESULT_LBL;
+// ▲ pitch-seq
 
 function refreshZoneDisplay(){
   document.querySelectorAll('.zone-cell,.zone-ball-btn').forEach(function(cell){
@@ -1634,7 +1733,8 @@ function safeRender(){
   });
 }
 
-function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
+// _pSyncAbs: 투구 로그 → 타석 구종·코스·B-S 동기화(pitch-seq). 기록·수정·불러오기·공유·복구가 모두 updateAll 을 지나므로 저장·업로드 전에 맞춰진다
+function updateAll(){_pSyncAbs(AS.abs);renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
 // GA4: 브라우저당 최초 1회, 첫 타구 기록이 실제로 저장된 시점(AS.abs에 1건 이상 존재)에만 발생
 function _trackFirstRecordGA(){
   if(!(AS.abs&&AS.abs.length>0))return;
@@ -1658,8 +1758,10 @@ function renderRecs(){
   const BC={__proto__:null,'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
-  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div></div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div>${_recWarnHtml(a)}</div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
 }
+// 정합성 경고(pitch-seq _pWarn): 저장은 그대로, 목록에 '확인 필요'로만 표시
+function _recWarnHtml(a){var w=_pWarn(a);return w.length?'<div class="rec-warn">⚠ 확인 필요 · '+_escHtml(w.join(' / '))+'</div>':'';}
 var _dragRecId=null;
 function recDragStart(e,id){_dragRecId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
 function recDragOver(e,id){e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.rec-item').forEach(el=>el.classList.remove('drag-over'));if(id!==_dragRecId)e.currentTarget.classList.add('drag-over');}
@@ -1690,6 +1792,8 @@ function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
 function undoLast(){
   if(!AS.abs.length)return;
   var _last=AS.abs.pop();
+  // 결과가 기록된 투구 로그가 있던 타석: 마지막 공(타석을 끝낸 공)을 뺀 투구를 이번 타석으로 되돌린다 — B·S 는 그 결과로 다시 계산(아래 renderCount)
+  if(_last&&Array.isArray(_last.pitches)&&_pCount(_last.pitches).known)AS.currentPitches=_last.pitches.slice(0,-1);
   if(_last&&_last.count){AS.balls=Math.min(3,Math.max(0,Number(_last.count.b)||0));AS.strikes=Math.min(2,Math.max(0,Number(_last.count.s)||0));renderCount();}   // 그 타석의 볼카운트로 복귀 (자동 볼넷·삼진을 되돌리면 3볼·2스트라이크부터 다시)
   if(AS.zoneHistory&&Object.keys(AS.zoneHistory).length){
     var _zk=Object.keys(AS.zoneHistory).pop();
@@ -2677,7 +2781,8 @@ function _dropForeignSaveKey(key,d){ if(typeof key==='string'&&key.indexOf('sl_a
 var _SETTINGS_KEYS=['sl_cloud_session','sl_cloud_uid','sl_saves','sl_teams','sl_team_code','sl_autosave',
   'sl_uid','sl_visited','sl_ga_first_record','sl_ftu_done','sl_menu_moved_seen','sl_scout_intro_seen','sl_scout_info_closed',
   'sl_lp_w','sl_lp_w_mob','sl_rp_w','sl_ev_unit','sl_stadium','sl_stadium_custom','sl_field_overlays','sl_hc','sl_feedback','sl_report_cmt',
-  'sl_lineup_banner_closed'];   // 첫 실행 라인업 배너 닫음 (firstrun.js)
+  'sl_lineup_banner_closed',   // 첫 실행 라인업 배너 닫음 (firstrun.js)
+  'sl_schema_ver','sl_migr_v2'];   // 저장 형식 버전 · 마이그레이션 때 덮어쓴 이전 값 (아래 schema-migrate)
 function _purgeSettingsKeyEntries(){
   try{
     var raw=localStorage.getItem('sl_saves');if(!raw)return 0;
@@ -2689,6 +2794,50 @@ function _purgeSettingsKeyEntries(){
 }
 _purgeSettingsKeyEntries();
 // ▲ settings-key purge
+
+// ▼ schema-migrate (pitch-seq) — 저장된 경기의 투구 로그를 새 형식으로 한 번 변환. sl_schema_ver: 없음(= 1) → '2'
+//  · 투구: seq = 저장 순서 1..n · result = 옛 한글값(투수 탭 연동)은 enum 으로, 없으면 null · 투수 탭 자체 로그(pitchers[].pitches)는 건드리지 않는다
+//  · 타석: 투구 로그가 있으면 구종·코스(결과가 있으면 B-S 도)를 마지막 공 값으로 다시 채운다(_pSyncAb). 로그 없는 타석은 그대로
+//  · 덮어쓰는 이전 값(구종·코스·B-S)은 먼저 sl_migr_v2 에 남긴다(되돌리기·확인용 — 앱은 읽지 않음). 이걸 못 쓰면(저장 공간) 아무것도 바꾸지 않는다
+//  · 쓰기 실패가 하나라도 있으면 버전을 올리지 않는다 → 다음 실행에 다시(변환은 몇 번 돌아도 같은 결과). 그 사이 연 경기는 updateAll 이 메모리에서 맞춘다
+var SCHEMA_VER=2;
+function _pMigrateStored(){
+  try{if(+localStorage.getItem('sl_schema_ver')>=SCHEMA_VER)return null;}catch(e){return null;}
+  var keys=[],seen=Object.create(null);
+  try{(JSON.parse(localStorage.getItem('sl_saves')||'[]')||[]).forEach(function(s){var k=s&&s.key;if(typeof k==='string'&&_SETTINGS_KEYS.indexOf(k)<0&&!seen[k]){seen[k]=1;keys.push(k);}});}catch(e){}
+  try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&!seen[k]&&(_isSaveKey(k)||k==='sl_autosave')){seen[k]=1;keys.push(k);}}}catch(e){}
+  var todo=[],log=[],abN=0;
+  keys.forEach(function(k){
+    var obj;
+    try{var raw=localStorage.getItem(k);if(!raw)return;obj=JSON.parse(raw);}catch(e){return;}
+    var d=obj&&k==='sl_autosave'&&obj.data?obj.data:obj;
+    if(!d||typeof d!=='object'||!Array.isArray(d.abs))return;
+    var n=0;
+    d.abs.forEach(function(a){
+      if(!a||typeof a!=='object')return;
+      var cnt=function(){return a.count&&typeof a.count==='object'?{b:a.count.b,s:a.count.s}:null;};
+      var pre=JSON.stringify({pt:a.pt==null?null:a.pt,zone:a.zone==null?null:a.zone,count:cnt()});
+      if(!_pSyncAb(a))return;
+      n++;
+      if(JSON.stringify({pt:a.pt,zone:a.zone,count:cnt()})!==pre){var o=JSON.parse(pre);o.k=k;o.id=a.id;log.push(o);}
+    });
+    if(n){todo.push([k,obj]);abN+=n;}
+  });
+  var res={games:todo.length,abs:abN,overwritten:log.length,fail:0};
+  if(log.length){
+    try{
+      var prev=JSON.parse(localStorage.getItem('sl_migr_v2')||'null');
+      var list=(prev&&Array.isArray(prev.list)?prev.list:[]).concat(log);
+      localStorage.setItem('sl_migr_v2',JSON.stringify({v:SCHEMA_VER,ts:Date.now(),list:list}));
+    }catch(e){res.fail=todo.length;console.warn('[schema-migrate] 이전 값 백업 실패 — 이번에는 변환하지 않음',e);return res;}
+  }
+  todo.forEach(function(t){try{localStorage.setItem(t[0],JSON.stringify(t[1]));}catch(e){res.fail++;}});
+  if(!res.fail){try{localStorage.setItem('sl_schema_ver',String(SCHEMA_VER));}catch(e){res.fail++;}}
+  if(res.games||res.fail)console.info('[schema-migrate] v'+SCHEMA_VER+': 경기 '+res.games+'개 · 타석 '+res.abs+'개 변환 · 값이 바뀐 타석 '+res.overwritten+'개'+(res.fail?' · 쓰기 실패 '+res.fail:''));
+  return res;
+}
+_pMigrateStored();
+// ▲ schema-migrate
 
 function _doImportText(text) {
   try {
@@ -2778,13 +2927,49 @@ function restoreGame(key){
 // ─── COUNT BOARD ───
 // B·S·O 를 누르면 +1. 카운트가 차면 그 자리에서 타석을 끝낸다 — 4볼 → 볼넷, 3스트라이크 → 삼진 (K/BB 도장과 같은 recQuick 경로), 3아웃 → 다음 이닝
 // (예전에는 0 으로 되돌아가기만 해서 "볼 4개·스트라이크 3개를 눌러도 기록이 안 된다"는 문제가 있었다)
+// 이번 타석 투구에 결과(result)가 하나라도 있으면 B·S 는 결과로 자동 계산 — 손으로 못 바꾼다(읽기 전용). 아웃은 그대로 손으로
 function chCount(type){
+  if((type==='b'||type==='s')&&_pAuto()){renderCount();showToast('B·S는 투구 결과로 자동 계산돼요 — 공마다 결과 버튼을 눌러 주세요',false,true);return;}
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
   else if(type==='o'){if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;}
   renderCount();
 }
-function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();}
+function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();}   // 자동 모드면 renderCount 가 B·S 를 결과로 다시 채운다(아웃만 초기화)
+// ── 투구 결과 → 카운트 (pitch-seq) ──
+function _pAuto(){return (AS.currentPitches||[]).some(function(p){return p&&p.result!=null;});}
+function _pLiveCount(){var c=_pCount(AS.currentPitches||[]);if(!c.known)return false;AS.balls=c.b;AS.strikes=c.s;return true;}
+window._pAuto=_pAuto;
+// 결과 버튼(볼/루킹/스윙/파울/인플레이): 방금 찍은 공(이번 타석 마지막 공)에 결과를 붙인다. 같은 버튼을 다시 누르면 미기록(null)으로
+// 4번째 볼 → 볼넷, 3번째 스트라이크 → 삼진은 카운트판과 같은 경로(_countFull)로 바로 기록 · 인플레이는 필드 탭 안내만
+function setPitchResult(r){
+  var ps=AS.currentPitches||[];
+  if(!ps.length||P_RESULTS.indexOf(r)<0||r==='strike')return;   // 'strike'(루킹/헛스윙 모름)는 투수 탭 연동 전용
+  var p=ps[ps.length-1];
+  p.result=p.result===r?null:r;
+  if(!_pLiveCount()){AS.balls=p.balls||0;AS.strikes=p.strikes||0;}   // 결과가 모두 없어졌으면 그 공 직전(수기) 카운트로
+  renderCount();
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  if(p.result==='ball'&&AS.balls>=4){_countFull('볼넷');return;}
+  if((p.result==='called_strike'||p.result==='swinging_strike')&&AS.strikes>=3){_countFull('삼진');return;}
+  if(p.result==='in_play')showToast('인플레이 — 필드에서 타구 위치를 탭하거나 결과 버튼으로 타석을 기록하세요',false,true);
+}
+// 결과 버튼 줄(.pr-bar: 기록 탭 코스 캔버스 아래 · 모바일 투구 시트): 이번 타석에 공이 있으면 마지막 공 기준으로 보인다
+var _PR_BTNS=[['ball','볼'],['called_strike','루킹'],['swinging_strike','스윙'],['foul','파울'],['in_play','인플레이']];
+function _prRender(){
+  var bars=document.querySelectorAll('.pr-bar');
+  if(!bars.length)return;
+  var ps=AS.currentPitches||[],p=ps[ps.length-1];
+  bars.forEach(function(el){
+    if(!p){el.hidden=true;el.innerHTML='';return;}
+    el.hidden=false;
+    el.innerHTML='<div class="pr-hd"><b>'+ps.length+'구 결과</b><span>'+_escHtml(p.pt||'구종 —')+(p.zone?' · '+_escHtml(p.zone):'')+'</span><em class="'+(p.result?'on':'')+'">'+(p.result?_escHtml(P_RESULT_LBL[p.result]):'미기록')+'</em></div>'
+      +'<div class="pr-btns" role="group" aria-label="'+ps.length+'구 결과">'+_PR_BTNS.map(function(b){
+        var on=p.result===b[0];
+        return '<button type="button" class="pr-btn pr-'+b[0]+(on?' on':'')+'" aria-pressed="'+on+'" onclick="setPitchResult(\''+b[0]+'\')">'+b[1]+'</button>';
+      }).join('')+'</div>';
+  });
+}
 // 카운트가 찼을 때: 도장과 같은 recQuick 으로 기록. 타자가 없으면(안내 토스트만 뜸) 카운트는 그대로 둔다
 function _countFull(res){
   var n=AS.abs.length;
@@ -2805,6 +2990,11 @@ function _countThreeOuts(){
 // 타석이 끝나면(필드·도장·자동) 볼·스트라이크는 0-0 으로. 아웃은 기존대로 O 버튼(또는 경기 운영 모드)이 센다
 function _countAfterRecord(){AS.balls=0;AS.strikes=0;renderCount();}
 function renderCount(){
+  var auto=_pAuto();
+  if(auto)_pLiveCount();
+  var cb=document.getElementById('countBoard');
+  if(cb){cb.classList.toggle('cnt-auto',auto);cb.title=auto?'B·S = 투구 결과로 자동 계산 (읽기 전용)':'';}
+  _prRender();
   [{id:'cntBalls',n:AS.balls,cls:'lit-b'},{id:'cntStrikes',n:AS.strikes,cls:'lit-s'},{id:'cntOuts',n:AS.outs,cls:'lit-o'}].forEach(function(s){
     var el=document.getElementById(s.id);if(!el)return;
     el.querySelectorAll('.cnt-dot').forEach(function(dot,i){dot.classList.toggle(s.cls,i<s.n);});
@@ -3676,12 +3866,33 @@ function openEditRec(id){
   document.getElementById('editRecId').value=id;
   document.getElementById('editInn').value=ab.inn||'1회초';
   document.getElementById('editRes').value=ab.res||'안타';
-  document.getElementById('editPt').value=ab.pt||'';
-  document.getElementById('editZone').value=ab.zone||'';
+  // 투구 로그가 있는 타석: 구종·코스(결과가 있으면 B-S 도)는 마지막 공에서 자동 — 여기서는 보여 주기만(읽기 전용). 고치려면 투구 로그를 고친다
+  var logged=Array.isArray(ab.pitches)&&ab.pitches.length>0;
+  _editSelSet('editPt',ab.pt,logged);
+  _editSelSet('editZone',ab.zone,logged);
+  _editLogInfo(ab);
   document.getElementById('editDir').value=ab.dir||'';
   _editRbi=ab.rbi||0;
   document.getElementById('editRbiVal').textContent=_editRbi;
   openOverlay('editRecOverlay');
+}
+// 목록에 없는 값(확장 구종 등)도 그대로 보이게 선택지를 더한다 — 없으면 '없음'으로 보이다가 저장 때 지워졌다
+function _editSelSet(id,v,ro){
+  var el=document.getElementById(id);if(!el)return;
+  if(v&&![].some.call(el.options,function(o){return o.value===v;})){var o=document.createElement('option');o.textContent=v;el.appendChild(o);}
+  el.value=v||'';el.disabled=!!ro;
+  el.title=ro?'투구 로그 마지막 공에서 자동 (읽기 전용)':'';
+}
+function _editLogInfo(ab){
+  var el=document.getElementById('editLogInfo');if(!el)return;
+  var ps=Array.isArray(ab.pitches)?ab.pitches:[],c=_pCount(ps),w=_pWarn(ab),h='';
+  if(ps.length){
+    h+='<div>투구 로그 <b>'+ps.length+'구</b> — 구종·코스'+(c.known?'·B-S':'')+'는 마지막 공에서 자동 (읽기 전용)</div>';
+    if(c.known&&ab.count)h+='<div>B-S <b>'+_escHtml(ab.count.b+'-'+ab.count.s)+'</b> <small>(마지막 공 직전 · 결과 '+c.known+'구로 계산'+(c.missing?' · 미기록 '+c.missing+'구':'')+')</small></div>';
+    h+='<div class="edit-log-ps">'+ps.map(function(p){return _escHtml((p.seq||'')+'. '+(p.pt||'—')+' '+(p.result?P_RESULT_LBL[p.result]:'미기록'));}).join(' · ')+'</div>';
+  }
+  if(w.length)h+='<div class="rec-warn">⚠ 확인 필요 · '+_escHtml(w.join(' / '))+'</div>';
+  el.innerHTML=h;el.hidden=!h;
 }
 function chEditRbi(d){_editRbi=Math.max(0,_editRbi+d);document.getElementById('editRbiVal').textContent=_editRbi;}
 function saveEditRec(){
@@ -3691,8 +3902,10 @@ function saveEditRec(){
   _sharedView=null;   // 공유받아 보던 경기도 기록을 고치면 내 경기(제자리 수정이라 _sharedViewActive 가 못 알아챈다)
   ab.inn=document.getElementById('editInn').value;
   ab.res=document.getElementById('editRes').value;
-  ab.pt=document.getElementById('editPt').value||null;
-  ab.zone=document.getElementById('editZone').value||null;
+  if(!(Array.isArray(ab.pitches)&&ab.pitches.length)){   // 로그 없는 타석만 수기값 — 로그가 있으면 updateAll(_pSyncAb)이 마지막 공으로 맞춘다
+    ab.pt=document.getElementById('editPt').value||null;
+    ab.zone=document.getElementById('editZone').value||null;
+  }
   const dirVal=document.getElementById('editDir').value;
   const dirDeg={'LF':36,'LC':66,'CF':90,'RC':114,'RF':150};
   ab.dir=dirVal||null;
@@ -3855,7 +4068,7 @@ function exportAllGamesToExcel() {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
   var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   if (!saves.length) { showToast('저장된 경기가 없습니다', false); return; }
-  var allGames = saves.map(function(s){ return JSON.parse(localStorage.getItem(s.key)); }).filter(Boolean);
+  var allGames = saves.map(function(s){ var d=JSON.parse(localStorage.getItem(s.key)); if(d)_pSyncAbs(d.abs); return d; }).filter(Boolean);   // 구버전 경기도 투구 로그 기준 구종·코스(pitch-seq)
 
   var NOAB=['볼넷','사구','희타','희비'], HITS=['안타','내야안타','2루타','3루타','홈런'];
   var BASE={__proto__:null,'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
@@ -3982,7 +4195,7 @@ function exportAllGamesToExcel() {
 function exportFullReport() {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
   var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  var allGames = saves.map(function(s){ return JSON.parse(localStorage.getItem(s.key)); }).filter(Boolean);
+  var allGames = saves.map(function(s){ var d=JSON.parse(localStorage.getItem(s.key)); if(d)_pSyncAbs(d.abs); return d; }).filter(Boolean);   // 구버전 경기도 투구 로그 기준 구종·코스(pitch-seq)
   // 현재 경기도 포함
   if(AS.abs && AS.abs.length) {
     allGames.push({th:document.getElementById('tHome').value||'홈팀',ta:document.getElementById('tAway').value||'원정팀',
@@ -4535,6 +4748,7 @@ function importSingleTableGames(rows, hIdx, input) {
 function exportGameToExcel(key) {
   var d = JSON.parse(localStorage.getItem(key));
   if (!d) { showToast('데이터를 찾을 수 없습니다', false); return; }
+  _pSyncAbs(d.abs);   // 구버전 경기도 투구 로그 기준 구종·코스(pitch-seq)
   _doExportToExcel(d);
 }
 
@@ -5696,15 +5910,20 @@ function _pitchLiveResult(result){
   if(result==='스트라이크'&&(AS.strikes||0)>=2)return'삼진';
   return result;
 }
+// 투수 탭에서 온 공 → 그 공의 투수 탭 결과(한글). 메모리에만 둔다(저장 안 함 · 저장되는 건 result enum 하나).
+// _recordToPitch 가 "이 타석의 마지막 공이 투수 탭에서 왔고 투수 쪽 타석이 아직 안 끝났나"를 볼 때만 쓴다(예전엔 result 에 한글이 있는지로 봤다)
+var _pFromTab=typeof WeakMap==='function'?new WeakMap():null;
 function _pitchToRecord(e){
   var r=e.result;
   renderPitcherRoster();   // 투수 버튼의 'N구' 갱신
-  AS.currentPitches.push({zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
+  var cp={seq:AS.currentPitches.length+1,result:_pResult(r),   // 한글 → enum ('스트라이크'는 루킹/헛스윙을 몰라 'strike')
+    zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
     balls:AS.balls||0,strikes:AS.strikes||0,outs:AS.outs||0,
-    pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts,result:r});
+    pitcher:AS.currentPitcher?(AS.currentPitcher.name||''):'',ts:e.ts};
+  AS.currentPitches.push(cp);
+  if(_pFromTab)_pFromTab.set(cp,r);
   if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
-  if(r==='볼'){AS.balls=Math.min(3,(AS.balls||0)+1);renderCount();return;}
-  if(r==='스트라이크'||r==='파울'){if((AS.strikes||0)<2)AS.strikes=(AS.strikes||0)+1;renderCount();return;}
+  if(r==='볼'||r==='스트라이크'||r==='파울'){renderCount();return;}   // 카운트는 renderCount 가 결과 순서로 계산(2S 뒤 파울은 그대로)
   if(!(r in _PITCH_END))return;
   var res=_PITCH_END[r];
   var clear=function(){AS.balls=0;AS.strikes=0;AS.currentPitches=[];renderCount();};
@@ -5733,7 +5952,8 @@ function _countOpenField(res,msg){
 function _recordToPitch(ab){
   if(_pitchLinking||!AS.currentPitcher||!ab||!ab.pitches||!ab.pitches.length)return;
   var last=ab.pitches[ab.pitches.length-1];
-  if(!last||!last.result||(last.result in _PITCH_END))return;   // 투수 탭에서 온 공이 아니거나 이미 끝난 타석
+  var ko=_pFromTab&&last?_pFromTab.get(last):null;
+  if(!ko||(ko in _PITCH_END))return;   // 투수 탭에서 온 공이 아니거나 이미 끝난 타석
   var pr=_RES_TO_PITCH[ab.res];
   if(!pr)return;
   var sit=_pitchSit();   // gfAfterRecord 보다 먼저 불리므로 아직 이 타석 전 상황

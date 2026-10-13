@@ -2,7 +2,7 @@
 //   모바일: 필드 아래 즉시 지표 줄(기록 직후 1.5초 강조) · 기록 뒤 필드 접힘 없음
 //   이닝 ◀ ▶ · B·S·O 카운트 · 현재 타자 카드(오늘 기록·시즌·다음 타자) · 필드 밖 결과 버튼 · 최근 기록(모바일 3개 · 데스크톱 6개) + 되돌리기
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3 } from './batdata.js?v=7';
+import { buildData, playerData, calcStats, f3 } from './batdata.js?v=8';
 
 const $ = id => document.getElementById(id);
 const SHORT = { __proto__: null,
@@ -97,14 +97,18 @@ function _countHtml() {
   const dots = (n, max, cls) => Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on ' + cls : ''}"></i>`).join('');
   const outs = +(gf ? (window.GF.outs || 0) : (AS.outs || 0)) || 0;
   const nb = +AS.balls || 0, ns = +AS.strikes || 0;   // 숫자로만 — 가져온 경기의 카운트가 문자열이어도 HTML 에 섞이지 않게
+  const auto = !!(window._pAuto && window._pAuto());   // 투구 결과가 있으면 B·S 는 자동 계산(읽기 전용) — core.js pitch-seq
   return `
     <div class="rv-count" role="group" aria-label="볼카운트">
-      <button type="button" class="rv-cg" onclick="chCount('b')" aria-label="볼 ${nb}, 누르면 +1"><span>B</span>${dots(nb, 3, 'b')}</button>
-      <button type="button" class="rv-cg" onclick="chCount('s')" aria-label="스트라이크 ${ns}, 누르면 +1"><span>S</span>${dots(ns, 2, 's')}</button>
+      ${auto
+        ? `<span class="rv-cg ro" role="img" aria-label="볼 ${nb} (투구 결과로 자동)"><span>B</span>${dots(nb, 3, 'b')}</span>
+      <span class="rv-cg ro" role="img" aria-label="스트라이크 ${ns} (투구 결과로 자동)"><span>S</span>${dots(ns, 2, 's')}</span>`
+        : `<button type="button" class="rv-cg" onclick="chCount('b')" aria-label="볼 ${nb}, 누르면 +1"><span>B</span>${dots(nb, 3, 'b')}</button>
+      <button type="button" class="rv-cg" onclick="chCount('s')" aria-label="스트라이크 ${ns}, 누르면 +1"><span>S</span>${dots(ns, 2, 's')}</button>`}
       ${gf
         ? `<span class="rv-cg ro" title="경기 운영 모드가 아웃을 자동으로 셉니다"><span>O</span>${dots(outs, 2, 'o')}</span>`
         : `<button type="button" class="rv-cg" onclick="chCount('o')" aria-label="아웃 ${outs}, 누르면 +1"><span>O</span>${dots(outs, 2, 'o')}</button>`}
-      <small>누르면 +1</small>
+      <small>${auto ? '투구 결과로 자동' : '누르면 +1'}</small>
       <button type="button" class="rv-reset" onclick="resetCount()">초기화</button>
     </div>`;
 }

@@ -243,3 +243,56 @@
 .fr-lu-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--ink, #1F2A23); cursor: pointer; }
 .fr-lu-x:active { background: var(--paper, #F3EDDF); }
 .fr-lu button:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }
+
+/* ═══ 투구 결과 버튼 줄 · 자동 카운트 · 확인 필요 (core.js pitch-seq · 데이터 정합성 1단계) ═══
+   새 요소·새 클래스만 — 기존 데스크톱 스타일은 그대로. 결과 버튼은 모든 폭에서 44×44px 이상
+   색: 볼 Teal · 루킹/스윙 Amber · 파울 보라 · 인플레이 Signal Blue (카운트·투구 기록 색 계열) */
+.pr-bar { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border2, #1e2535); }
+.pr-bar[hidden] { display: none !important; }
+.pr-hd { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; font-size: 11px; color: var(--text2, #7c8898); }
+.pr-hd b { flex: none; font-size: 12px; color: var(--text, #eef0f8); }
+.pr-hd span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-hd em { flex: none; font-style: normal; font-weight: 700; }
+.pr-hd em.on { color: var(--blue, #4b8cf5); }
+.pr-btns { display: flex; gap: 4px; }
+.pr-btn { flex: 1 1 0; min-width: 44px; min-height: 44px; padding: 0 2px; border: 1.5px solid var(--border2, #1e2535); border-radius: 8px; background: none; color: var(--text, #eef0f8); font: 700 13px var(--font); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pr-btn:focus-visible { outline: 2px solid var(--blue, #4b8cf5); outline-offset: 2px; }
+.pr-btn.pr-ball { border-color: rgba(45, 212, 160, .5); }
+.pr-btn.pr-called_strike, .pr-btn.pr-swinging_strike { border-color: rgba(246, 194, 62, .5); }
+.pr-btn.pr-foul { border-color: rgba(167, 139, 250, .5); }
+.pr-btn.pr-in_play { border-color: rgba(75, 140, 245, .55); }
+.pr-btn.on { color: #07090f; }
+.pr-btn.pr-ball.on { background: #2dd4a0; border-color: #2dd4a0; }
+.pr-btn.pr-called_strike.on, .pr-btn.pr-swinging_strike.on { background: #f6c23e; border-color: #f6c23e; }
+.pr-btn.pr-foul.on { background: #a78bfa; border-color: #a78bfa; }
+.pr-btn.pr-in_play.on { background: #4b8cf5; border-color: #4b8cf5; color: #fff; }
+
+/* 옛 카운트판: 자동 계산 중 B·S 는 누를 수 없음 */
+.count-board.cnt-auto .cnt-grp:nth-child(-n+2) { cursor: default; }
+
+/* 타석 목록 · 수정 창: 확인 필요 (저장은 막지 않고 표시만) */
+.rec-warn { margin-top: 3px; font-size: 10px; font-weight: 700; line-height: 1.4; color: #f6c23e; }
+.edit-log { padding: 8px 10px; border: 1px dashed var(--border2, #1e2535); border-radius: 8px; font-size: 11px; line-height: 1.6; color: var(--text2, #7c8898); }
+.edit-log[hidden] { display: none !important; }
+.edit-log b { color: var(--text, #eef0f8); }
+.edit-log-ps { font-size: 10px; word-break: keep-all; }
+#editRecOverlay .inp:disabled { opacity: .6; cursor: not-allowed; }
+
+/* 스코어북(종이) 테마 */
+body.sb .pr-bar { border-top-color: var(--rule); }
+body.sb .pr-hd { color: var(--ink-soft); font-family: var(--f-body); }
+body.sb .pr-hd b { color: var(--ink); }
+body.sb .pr-hd em.on { color: var(--pen-blue); }
+body.sb .pr-btn { border-radius: 0; background: var(--paper-2); border: 1.5px solid var(--ink); color: var(--ink); font-family: var(--f-body); }
+body.sb .pr-btn.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+body.sb .rec-warn { color: var(--pen-red); }
+body.sb .edit-log { border-color: var(--rule); border-radius: 0; color: var(--ink-soft); }
+body.sb .edit-log b { color: var(--ink); }
+.sb-auto { font: 600 11px/1 var(--f-num); letter-spacing: .5px; color: var(--pen-blue); white-space: nowrap; }
+.sb-pa-list li.has-warn { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+.sb-warn { padding: 2px 4px; border: 1px solid var(--pen-red); font: 700 10px/1 var(--f-body); color: var(--pen-red); white-space: nowrap; }
+@media (max-width: 720px) {
+  /* 모바일 한 줄 카운트: B·S 옆 '자동'(paper.css .sb-cg.ro::after)으로 충분 — 머리글 표시는 빼서 초기화 버튼이 밀려나지 않게 */
+  .sb-count .sb-auto { display: none; }
+  .sb-cg.ro::after { white-space: nowrap; }
+}

@@ -14,6 +14,8 @@ function _loadGames() {
   const raw = [];
   saves.forEach(s => {
     const d = _read(s.key);
+    // 시작 뒤에 들어온 구버전 경기(파일 가져오기·클라우드 복원 등)도 투구 로그 기준 구종·코스·B-S 로 읽는다 (core.js pitch-seq · 읽은 복사본만)
+    if (d && window._pSyncAbs) window._pSyncAbs(d.abs);
     if (d) raw.push({
       label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
       key: s.key, d: d.d || '', ts: d.ts || s.ts || 0, th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0,

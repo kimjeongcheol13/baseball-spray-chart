@@ -421,14 +421,19 @@ function _sideHtml() {
   const outs = +(gf ? (GF.outs || 0) : (AS.outs || 0)) || 0;
   const dots = (n, max) => Array.from({ length: max }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('');
   const b = +AS.balls || 0, s = +AS.strikes || 0;   // 숫자로만 — 가져온 경기의 카운트가 문자열이어도 HTML 에 섞이지 않게
+  const auto = !!(window._pAuto && window._pAuto());   // 이번 타석 투구에 결과가 있으면 B·S 는 결과로 자동 계산(읽기 전용) — core.js pitch-seq
   const all = AS.abs || [];
   const list = all.slice(-12).reverse();
+  const warnN = a => (window._pWarn ? window._pWarn(a).length : 0);
   return `
     <section class="sb-card sb-count" aria-label="볼카운트">
-      <div class="sb-card-hd"><h2>COUNT</h2><button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
+      <div class="sb-card-hd"><h2>COUNT</h2>${auto ? '<small class="sb-auto" title="B·S = 투구 결과로 자동 계산 (읽기 전용)">결과 자동</small>' : ''}<button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
       <div class="sb-cnt">
-        <button type="button" class="sb-cg b" onclick="chCount('b')" title="볼 +1 · 4개째에 볼넷 기록" aria-label="볼 ${b}, 누르면 ${b >= 3 ? '볼넷 기록' : '+1'}"><span>B</span>${dots(b, 3)}</button>
-        <button type="button" class="sb-cg s" onclick="chCount('s')" title="스트라이크 +1 · 3개째에 삼진 기록" aria-label="스트라이크 ${s}, 누르면 ${s >= 2 ? '삼진 기록' : '+1'}"><span>S</span>${dots(s, 2)}</button>
+        ${auto
+          ? `<span class="sb-cg b ro" role="img" aria-label="볼 ${b} (투구 결과로 자동 계산)"><span>B</span>${dots(b, 3)}</span>
+        <span class="sb-cg s ro" role="img" aria-label="스트라이크 ${s} (투구 결과로 자동 계산)"><span>S</span>${dots(s, 2)}</span>`
+          : `<button type="button" class="sb-cg b" onclick="chCount('b')" title="볼 +1 · 4개째에 볼넷 기록" aria-label="볼 ${b}, 누르면 ${b >= 3 ? '볼넷 기록' : '+1'}"><span>B</span>${dots(b, 3)}</button>
+        <button type="button" class="sb-cg s" onclick="chCount('s')" title="스트라이크 +1 · 3개째에 삼진 기록" aria-label="스트라이크 ${s}, 누르면 ${s >= 2 ? '삼진 기록' : '+1'}"><span>S</span>${dots(s, 2)}</button>`}
         ${gf
           ? `<span class="sb-cg o ro" role="img" aria-label="아웃 ${outs} (경기 운영 모드가 자동으로 셈)"><span>O</span>${dots(outs, 2)}</span>`
           : `<button type="button" class="sb-cg o" onclick="chCount('o')" title="아웃 +1 · 3개째에 다음 이닝" aria-label="아웃 ${outs}, 누르면 ${outs >= 2 ? '다음 이닝' : '+1'}"><span>O</span>${dots(outs, 2)}</button>`}
@@ -449,7 +454,7 @@ function _sideHtml() {
         <button type="button" class="sb-mini" onclick="shellRecSheet(true)" aria-label="전체 ${all.length}타석 보기 · 수정">전체 ${all.length}</button>
       </div>
       ${list.length
-        ? `<ol class="sb-pa-list">${list.map((a, k) => `<li><span class="no">${all.length - k}</span><span class="nm">${esc(a.bname || '')}</span><span class="rs k-${kindOf(a.res)}">${esc(abbrOf(a))}</span></li>`).join('')}</ol>`
+        ? `<ol class="sb-pa-list">${list.map((a, k) => `<li${warnN(a) ? ' class="has-warn"' : ''}><span class="no">${all.length - k}</span><span class="nm">${esc(a.bname || '')}</span>${warnN(a) ? `<span class="sb-warn" title="${esc(window._pWarn(a).join(' / '))}">확인 필요</span>` : ''}<span class="rs k-${kindOf(a.res)}">${esc(abbrOf(a))}</span></li>`).join('')}</ol>`
         : '<p class="sb-none">아직 기록이 없습니다. 필드를 누르거나 도장을 찍어 첫 타석을 기록하세요.</p>'}
     </section>`;
 }

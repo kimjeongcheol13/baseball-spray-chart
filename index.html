@@ -6,7 +6,7 @@
   crossorigin="anonymous"
 ></script>
 <script src="js/analytics.js"></script>
-<script src="js/sample.js?v=2"></script>
+<script src="js/sample.js?v=3"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>
@@ -91,7 +91,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/pitcher.css?v=6">
 <link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
-<link rel="stylesheet" href="css/record.css?v=10">
+<link rel="stylesheet" href="css/record.css?v=11">
 <link rel="stylesheet" href="css/settings.css?v=2">
 <link rel="stylesheet" href="css/paper.css?v=13">
 <link rel="stylesheet" href="css/report.css?v=2">
@@ -983,6 +983,7 @@ var _kakaoSdkLoaded = false;
     <div style="font-size:10px;font-weight:800;color:#6b7280;margin-bottom:6px;letter-spacing:.5px">스트라이크 존</div>
     <canvas id="mobZoneCanvas" width="120" height="120" style="cursor:crosshair;border-radius:6px;display:block;margin:0 auto"></canvas>
     <div id="mobZoneLbl" style="font-size:9px;color:#6b7280;text-align:center;margin-top:4px">존을 탭해서 코스 기록</div>
+    <div class="pr-bar" hidden></div><!-- 방금 찍은 공의 결과 (core.js _prRender) -->
   </div>
 </div>
 
@@ -1196,6 +1197,7 @@ var _kakaoSdkLoaded = false;
             <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px" id="ibZoneLabel">탭하여 코스 기록</div>
           </div>
         </div>
+        <div class="pr-bar" hidden></div><!-- 방금 찍은 공의 결과: 볼/루킹/스윙/파울/인플레이 (core.js _prRender) -->
       </div>
       <div class="ib-tab-pnl" id="ib-pnl-result"><div class="ib-row">
         <div class="ib-sec-grow"><div class="sec-lbl">즉시 기록</div><div class="other-btns"><button class="o-btn walk" onclick="recOther('볼넷')" onmouseenter="showTT(this,'볼넷 (BB / 4볼)','투수가 스트라이크존 밖으로 4번 던지면\n타자는 자동으로 1루 진출\n\nBase on Balls')" onmouseleave="hideTT()">볼넷</button><button class="o-btn k" onclick="recOther('삼진')" onmouseenter="showTT(this,'삼진 (K / Strikeout)','스트라이크 3개로 타석 종료\n헛스윙 또는 존 통과로 스트라이크 누적')" onmouseleave="hideTT()">삼진</button><button class="o-btn hbp" onclick="recOther('사구')" onmouseenter="showTT(this,'사구 (HBP)','투수가 던진 공이 타자 몸에 맞은 경우\n볼넷처럼 1루로 자동 진루\n\nHit By Pitch')" onmouseleave="hideTT()">사구</button><button class="o-btn sac" onclick="recOther('희타')" onmouseenter="showTT(this,'희생번트 (SAC)','타자가 아웃되더라도\n주자를 다음 베이스로 진루시키는 번트\n\nSacrifice Bunt')" onmouseleave="hideTT()">희타</button><button class="o-btn sac" onclick="recOther('희비')" onmouseenter="showTT(this,'희생플라이 (SF)','외야 플라이 아웃으로\n3루 주자를 홈으로 불러들이는 타격\n\nSacrifice Fly')" onmouseleave="hideTT()">희비</button><button class="o-btn dp" onclick="recOther('병살')" onmouseenter="showTT(this,'병살 (DP / Double Play)','한 번의 플레이로 두 명이 아웃되는 상황\n주로 땅볼 → 2루 → 1루 순서로 발생')" onmouseleave="hideTT()">병살</button><button class="o-btn dp" onclick="recOther('내야안타')" onmouseenter="showTT(this,'내야안타 (Infield Hit)','내야에서 타구를 잡았지만\n타자가 1루에 먼저 도달한 안타')" onmouseleave="hideTT()">내야안타</button></div><div class="sb-row"><button class="sb-btn" onclick="recSB(true)">+ 도루</button><button class="sb-btn" onclick="recSB(false)">도루실패</button></div></div>
@@ -1612,6 +1614,7 @@ var _kakaoSdkLoaded = false;
       <div><div class="sec-lbl" style="margin-bottom:4px">결과</div><select class="inp" id="editRes"><option>안타</option><option>내야안타</option><option>2루타</option><option>3루타</option><option>홈런</option><option>볼넷</option><option>사구</option><option>삼진</option><option>플라이 아웃</option><option>땅볼 아웃</option><option>희타</option><option>희비</option><option>병살</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">구종</div><select class="inp" id="editPt"><option value="">없음</option><option>직구</option><option>커브</option><option>슬라이더</option><option>체인지업</option><option>포크볼</option><option>커터</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">코스</div><select class="inp" id="editZone"><option value="">없음</option><option>내각 높음</option><option>중앙 높음</option><option>외각 높음</option><option>내각 중간</option><option>중앙 중간</option><option>외각 중간</option><option>내각 낮음</option><option>중앙 낮음</option><option>외각 낮음</option><option>볼 위</option><option>볼 아래</option><option>볼 내</option><option>볼 외</option></select></div>
+      <div id="editLogInfo" class="edit-log" hidden></div><!-- 투구 로그가 있는 타석: 구종·코스·B-S 는 마지막 공에서 자동(읽기 전용) · 확인 필요 (core.js openEditRec) -->
       <div><div class="sec-lbl" style="margin-bottom:4px">타구 방향</div><select class="inp" id="editDir"><option value="">없음</option><option value="LF">당겨치기(LF)</option><option value="LC">좌중간(LC)</option><option value="CF">센터(CF)</option><option value="RC">우중간(RC)</option><option value="RF">밀어치기(RF)</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">타점</div><div class="rbi-row" style="margin-bottom:0"><button class="rbi-btn" onclick="chEditRbi(-1)">−</button><span class="rbi-val" id="editRbiVal">0</span><button class="rbi-btn" onclick="chEditRbi(1)">+</button></div></div>
     </div>
@@ -2181,7 +2184,8 @@ function _renderMobPitchLog() {
   var E = typeof _escHtml === 'function' ? _escHtml : String;
   logList.innerHTML = pitches.map(function(p, i) {
     var countStr = p.balls !== undefined ? (p.balls + 'B ' + p.strikes + 'S ' + p.outs + 'O') : '';
-    var zoneStr = E([p.zone, p.result].filter(Boolean).join(' · '));   // 투수 탭에서 온 공은 결과(볼·스트라이크…)도 함께
+    var lbl = window.P_RESULT_LBL || {};
+    var zoneStr = E([p.zone, p.result ? (lbl[p.result] || p.result) : ''].filter(Boolean).join(' · '));   // 결과(볼·루킹·스윙·파울·인플레이 · 투수 탭 공은 '스트라이크')도 함께
     return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #1e1e2a">'
       + '<span style="font-size:10px;font-weight:800;color:#434c5e;min-width:18px">' + (i+1) + '구</span>'
       + '<span style="font-size:12px;font-weight:800;color:#4b8cf5;background:#1a2235;padding:2px 8px;border-radius:6px;flex-shrink:0">' + E(p.pt || '구종 —') + '</span>'
@@ -2386,9 +2390,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=150"></script>
+<script defer src="js/core.js?v=151"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=69"></script>
+<script type="module" src="js/app.js?v=70"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

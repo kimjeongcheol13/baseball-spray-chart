@@ -297,7 +297,9 @@ function _patchBatterFlow() {
       const last = typeof AS !== 'undefined' && AS.abs.length ? AS.abs[AS.abs.length - 1] : null;
       const r = origUndo.apply(this, arguments);
       if (last && !_gfOn() && (last.team || 'home') === AS.curTeam && _lineup().some((p) => String(p.id) === String(last.bid))) {
+        const cps = AS.currentPitches;   // core undoLast 가 되돌린 이번 타석 투구(결과가 있던 타석) — selBatter 가 비우므로 다시 넣는다
         _selectBatter(last.bid);
+        if (cps && cps.length) { AS.currentPitches = cps; if (window.renderCount) window.renderCount(); }
       }
       return r;
     };

@@ -3,9 +3,9 @@
 //   타석 결과 구성 · 상황별 · 경기별 누적 흐름 · 경기 로그 · 구종별 · 누적 기록 — 카드는 profile.js 함수를 그대로 부른다
 //   히어로에 wOBA+ · 유형 태그, 분석 요약(프로필)과 '이런 타자예요'(타자 메모)는 한 카드로
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=7';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=9';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=18';
+import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=10';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=19';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름

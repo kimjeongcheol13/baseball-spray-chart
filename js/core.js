@@ -5753,8 +5753,8 @@ function recordPitch(result){
 // 투수 탭(분석 → 투수 → 투구 기록)의 공 하나하나가 기록 탭의 볼카운트(AS.balls/strikes)·이번 타석 투구(AS.currentPitches)·타석 기록(AS.abs)으로 이어진다.
 // 반대로 기록 탭에서 타석이 끝나면, 투수 탭에 이 타석의 공이 쌓여 있는데 아직 끝나지 않았을 때만 마지막 공을 보태 투수 쪽 타석도 닫는다
 // (투수 탭을 안 쓰는 경기에는 투구를 지어내지 않는다 — 투구수·스트라이크% 가 망가지므로).
-var _PITCH_END={'볼넷':'볼넷','삼진':'삼진','병살':'병살','안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','아웃':null,'삼중살':null};   // 투수 탭 결과 → 타석 결과 (null = 필드에서 고르거나 타석 결과 없음)
-var _RES_TO_PITCH={__proto__:null,'삼진':'삼진','볼넷':'볼넷','안타':'안타','내야안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','땅볼 아웃':'아웃','플라이 아웃':'아웃','희타':'아웃','희비':'아웃','병살':'병살'};   // 타석 결과 → 투수 탭 결과 (사구는 투수 탭에 없음)
+var _PITCH_END={'볼넷':'볼넷','사구':'사구','삼진':'삼진','병살':'병살','안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','아웃':null,'삼중살':null};   // 투수 탭 결과 → 타석 결과 (null = 필드에서 고르거나 타석 결과 없음)
+var _RES_TO_PITCH={__proto__:null,'삼진':'삼진','볼넷':'볼넷','사구':'사구','안타':'안타','내야안타':'안타','2루타':'2루타','3루타':'3루타','홈런':'홈런','땅볼 아웃':'아웃','플라이 아웃':'아웃','희타':'아웃','희비':'아웃','병살':'병살'};   // 타석 결과 → 투수 탭 결과
 var _pitchLinking=false;   // 투수 탭에서 시작된 타석 기록 중 (되돌아오는 연동 방지)
 function _pitchLiveResult(result){
   if(result==='볼'&&(AS.balls||0)>=3)return'볼넷';
@@ -5918,10 +5918,10 @@ function _dropAbPitches(ab){
   L.forEach(function(f){_dropPitch(f.p,f.e);});
   if(L.length){renderPitchLog();renderPitcherStats();renderPitcherRoster();}
 }
-// 타석 「수정」(saveEditRec): 이닝은 이 타석의 투수 쪽 공 전부에, 결과는 이 타석을 끝낸 공에 반영
-//  · 사구는 투수 탭에 없는 결과라 끝낸 공을 지운다 — 처음부터 사구로 적었을 때와 같게 (타석 투구 목록의 그 공은 결과만 '사구'로 남긴다)
-//  · 끝낸 공이 없는 타석(사구였던 타석 등)을 다른 결과로 고치면, 투수 탭 공이 있을 때만 끝낸 공을 보탠다 (_recordToPitch 와 같은 규칙).
-//    사구로 고치며 지웠던 공이면 그 공(구종 · 코스)을 되살린다
+// 타석 「수정」(saveEditRec): 이닝은 이 타석의 투수 쪽 공 전부에, 결과는 이 타석을 끝낸 공에 반영 (_RES_TO_PITCH)
+//  · 투수 탭에 없는 결과면 끝낸 공을 지운다 (타석 투구 목록의 그 공은 결과만 남긴다). 사구가 투수 탭에 들어오기 전(2026-10-13)엔 사구가 그랬다
+//  · 끝낸 공이 없는 타석(그 전에 사구로 적은 타석 등)을 고치면, 투수 탭 공이 있을 때만 끝낸 공을 보탠다 (_recordToPitch 와 같은 규칙).
+//    그렇게 지웠던 공이면 그 공(구종 · 코스)을 되살린다
 function _syncAbPitchEdit(ab){
   var L=_abPitchList(ab),ps=ab.pitches||[],pr=_RES_TO_PITCH[ab.res]||null;
   var pidOf=function(id){return ps.find(function(q){return q&&q.pid!=null&&String(q.pid)===String(id);});};
@@ -5932,7 +5932,7 @@ function _syncAbPitchEdit(ab){
     if(pr){end.e.result=pr;if(x)x.result=pr;}
     else{_dropPitch(end.p,end.e);if(x)x.result=ab.res;}
   }else if(pr){
-    var lastX=ps[ps.length-1],parked=lastX&&lastX.pid!=null&&!_findPitch(lastX.pid)?lastX:null;   // 사구로 고치며 지웠던 끝낸 공
+    var lastX=ps[ps.length-1],parked=lastX&&lastX.pid!=null&&!_findPitch(lastX.pid)?lastX:null;   // 수정하며 지웠던 끝낸 공
     var prev=L[L.length-1]||null;
     var P=prev?prev.p:parked?AS.pitchers.find(function(q){return q.name===parked.pitcher;}):null;
     if(!P)return;   // 투수 탭을 안 쓴 타석에는 투구를 지어내지 않는다 (이 경우 L 도 비어 있다)

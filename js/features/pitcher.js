@@ -1,13 +1,13 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=7';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=9';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=10';
 
 const HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];
 const TB = { __proto__: null, '안타': 1, '타격됨': 1, '2루타': 2, '3루타': 3, '홈런': 4 };
 const OUTS = { __proto__: null, '삼진': 1, '아웃': 1, '병살': 2, '삼중살': 3 };
-const BALL = ['볼', '볼넷'];
-const END = [...HIT, '삼진', '아웃', '병살', '삼중살', '볼넷'];   // 타석이 끝나는 결과
+const BALL = ['볼', '볼넷', '사구'];   // 볼로 세는 공 — 사구(몸에 맞는 공)도 투구수에선 볼
+const END = [...HIT, '삼진', '아웃', '병살', '삼중살', '볼넷', '사구'];   // 타석이 끝나는 결과
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const FIP_C = 3.10;   // FIP 상수 — 리그 평균에 맞춰야 하지만 아마추어 리그 값이 없어 MLB 수준 값으로 가정
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -110,14 +110,14 @@ function _calc(apps) {
   const strikes = pitches.filter(p => !BALL.includes(p.result)).length;
   const r = res => done.filter(x => x.result === res).length;
   const h = done.filter(x => HIT.includes(x.result)).length;
-  const hr = r('홈런'), k = r('삼진'), bb = r('볼넷');
+  const hr = r('홈런'), k = r('삼진'), bb = r('볼넷'), hbp = r('사구');
   const outs = done.reduce((s, x) => s + (OUTS[x.result] || 0), 0);
-  const ab = done.length - bb;
+  const ab = done.length - bb - hbp;   // 볼넷 · 사구는 타수가 아니다
   const tb = done.reduce((s, x) => s + (TB[x.result] || 0), 0);
   const ip = outs / 3;
   const first = pas.filter(x => x.pitches.length);
   return {
-    n, strikes, pa: done.length, h, hr, k, bb, outs, ab, tb,
+    n, strikes, pa: done.length, h, hr, k, bb, hbp, outs, ab, tb,
     sPct: n ? strikes / n : 0,
     fsPct: first.length ? first.filter(x => !BALL.includes(x.pitches[0].result)).length / first.length : 0,
     kRate: done.length ? k / done.length : 0,
@@ -125,7 +125,7 @@ function _calc(apps) {
     avg: ab ? h / ab : 0,
     slg: ab ? tb / ab : 0,
     whip: ip ? (bb + h) / ip : null,
-    fip: ip >= 1 ? (13 * hr + 3 * bb - 2 * k) / ip + FIP_C : null,
+    fip: ip >= 1 ? (13 * hr + 3 * (bb + hbp) - 2 * k) / ip + FIP_C : null,   // FanGraphs 식: 3×(볼넷+사구)
     ppa: done.length ? done.reduce((s, x) => s + x.pitches.length, 0) / done.length : 0,
     r3b: pas.length ? pas.filter(x => x.reached3B).length / pas.length : 0,
     twoS: pas.filter(x => x.reached2S),
@@ -202,7 +202,7 @@ function _liveCard() {
     <section class="pc-live">
       <div class="pc-live-who"><small>등판 중</small><b>${P.num ? '#' + _esc(P.num) + ' ' : ''}${_esc(P.name)}</b></div>
       <div class="pc-live-kpis">
-        ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${k('볼넷', S.bb)}${k('피안타', S.h)}
+        ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${S.hbp ? k('볼넷·사구', `${S.bb}·${S.hbp}`) : k('볼넷', S.bb)}${k('피안타', S.h)}
       </div>
     </section>`;
 }
@@ -239,13 +239,13 @@ function _hero(P, S) {
       </div>
       <div class="pc-ip"><b>${ipTxt(S.outs)}</b><small>이닝</small></div>
       <div class="pc-kpis">
-        ${kpi('스트라이크%', pct(S.sPct), `${S.strikes}/${S.n}구`, '볼·볼넷을 뺀 모든 공 (파울·인플레이 포함)')}
+        ${kpi('스트라이크%', pct(S.sPct), `${S.strikes}/${S.n}구`, '볼·볼넷·사구를 뺀 모든 공 (파울·인플레이 포함)')}
         ${kpi('초구 S%', pct(S.fsPct), '', '타자에게 던진 첫 공이 스트라이크(파울·인플레이 포함)인 비율')}
         ${kpi('삼진%', pct(S.kRate), `${S.k}개`)}
-        ${kpi('볼넷%', pct(S.bbRate), `${S.bb}개`)}
+        ${kpi('볼넷%', pct(S.bbRate), `${S.bb}개${S.hbp ? ` · 사구 ${S.hbp}` : ''}`)}
         ${kpi('피안타율', S.ab ? f3(S.avg) : '—', `${S.h}/${S.ab}`)}
         ${kpi('WHIP', num2(S.whip), '', '이닝당 볼넷+피안타')}
-        ${kpi('FIP', num2(S.fip), 'C=3.10 가정', 'FIP = (13×피홈런 + 3×볼넷 − 2×삼진) ÷ 이닝 + 상수. 상수는 리그 평균에 맞춰야 하는데 아마추어 리그 값이 없어 3.10으로 가정했어요 (참고용)')}
+        ${kpi('FIP', num2(S.fip), 'C=3.10 가정', 'FIP = (13×피홈런 + 3×(볼넷+사구) − 2×삼진) ÷ 이닝 + 상수. 상수는 리그 평균에 맞춰야 하는데 아마추어 리그 값이 없어 3.10으로 가정했어요 (참고용)')}
         ${kpi('타자당 투구', S.ppa ? S.ppa.toFixed(1) : '—', '')}
       </div>
     </section>`;
@@ -608,12 +608,13 @@ function _battersCard(S) {
     const k = x.batter || '타자 미기록';
     (by[k] = by[k] || []).push(x);
   });
-  const SH = { __proto__: null, '안타': ['안타', '1b'], '타격됨': ['안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'], '볼넷': ['볼넷', 'bb'], '삼진': ['삼진', 'k'], '아웃': ['아웃', 'out'], '병살': ['병살', 'out'], '삼중살': ['삼중살', 'out'] };
+  const SH = { __proto__: null, '안타': ['안타', '1b'], '타격됨': ['안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'], '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '아웃': ['아웃', 'out'], '병살': ['병살', 'out'], '삼중살': ['삼중살', 'out'] };
   const rows = Object.entries(by).map(([name, list]) => ({
     name, list,
     h: list.filter(x => HIT.includes(x.result)).length,
     k: list.filter(x => x.result === '삼진').length,
     bb: list.filter(x => x.result === '볼넷').length,
+    hbp: list.filter(x => x.result === '사구').length,
   })).sort((a, b) => b.list.length - a.list.length || b.h - a.h).slice(0, 10);
   if (!rows.length) return '';
   return `
@@ -621,7 +622,7 @@ function _battersCard(S) {
       <header class="an-hd"><h3>상대 타자</h3><span class="an-hd-note">많이 상대한 순 · 최대 10명</span></header>
       <ol class="pc-bat">${rows.map(r => `
         <li>
-          <div class="pc-bat-who"><b>${_esc(r.name)}</b><small>${r.list.length}타석 · 피안타 ${r.h} · 삼진 ${r.k}${r.bb ? ` · 볼넷 ${r.bb}` : ''}</small></div>
+          <div class="pc-bat-who"><b>${_esc(r.name)}</b><small>${r.list.length}타석 · 피안타 ${r.h} · 삼진 ${r.k}${r.bb ? ` · 볼넷 ${r.bb}` : ''}${r.hbp ? ` · 사구 ${r.hbp}` : ''}</small></div>
           <div class="pc-bat-res">${r.list.slice(-8).map(x => { const [t, c] = SH[x.result] || [x.result, 'out']; return `<i class="r-${c}">${_esc(t)}</i>`; }).join('')}</div>
         </li>`).join('')}
       </ol>
@@ -636,9 +637,9 @@ function _appsCard(P) {
       <header class="an-hd"><h3>등판 기록</h3><span class="an-hd-note">최근 경기부터</span></header>
       <div class="pc-apps-wrap">
         <table class="pc-apps">
-          <thead><tr><th scope="col">경기</th><th scope="col">이닝</th><th scope="col">투구</th><th scope="col">S%</th><th scope="col">피안타</th><th scope="col">삼진</th><th scope="col">볼넷</th></tr></thead>
+          <thead><tr><th scope="col">경기</th><th scope="col">이닝</th><th scope="col">투구</th><th scope="col">S%</th><th scope="col">피안타</th><th scope="col">삼진</th><th scope="col">볼넷</th><th scope="col">사구</th></tr></thead>
           <tbody>${apps.map(a => { const c = _calc([a]); return `
-            <tr><th scope="row">${a.current ? '<span class="pf-live">현재</span>' : ''}${_esc(_short(a))}</th><td>${ipTxt(c.outs)}</td><td>${c.n}</td><td>${pct(c.sPct)}</td><td>${c.h}</td><td>${c.k}</td><td>${c.bb}</td></tr>`; }).join('')}
+            <tr><th scope="row">${a.current ? '<span class="pf-live">현재</span>' : ''}${_esc(_short(a))}</th><td>${ipTxt(c.outs)}</td><td>${c.n}</td><td>${pct(c.sPct)}</td><td>${c.h}</td><td>${c.k}</td><td>${c.bb}</td><td>${c.hbp}</td></tr>`; }).join('')}
           </tbody>
         </table>
       </div>

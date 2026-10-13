@@ -3673,6 +3673,9 @@ var _editRbi=0;
 function openEditRec(id){
   var ab=AS.abs.find(function(a){return a.id===id;});
   if(!ab)return;
+  // 휴대폰(≤720px): 「최근 기록」 시트에서 수정을 누르면 시트를 먼저 닫는다 — 시트(z-index 470)가 수정 창(.overlay 395)보다 위라
+  // 수정 창이 시트 뒤에 열려 보이지도 눌리지도 않았다. 저장 · 취소 뒤에 시트를 다시 열지 않는다(기록 화면으로 돌아감). 데스크톱은 그대로
+  if(document.body.classList.contains('rec-sheet-open')&&window.matchMedia&&window.matchMedia('(max-width: 720px)').matches&&typeof window.shellRecSheet==='function')window.shellRecSheet(false);
   document.getElementById('editRecId').value=id;
   document.getElementById('editInn').value=ab.inn||'1회초';
   document.getElementById('editRes').value=ab.res||'안타';

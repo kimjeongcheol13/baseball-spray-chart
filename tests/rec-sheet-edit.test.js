@@ -1,4 +1,4 @@
-// 휴대폰에서 「최근 기록」 시트(shell.js shellRecSheet)의 「수정」을 누르면 시트가 닫히고 수정 창이 보여야 한다.
+// 「최근 기록」 시트(shell.js shellRecSheet)의 「수정」을 누르면 시트가 닫히고 수정 창이 보여야 한다(모든 폭).
 // 배경: 시트(z-index 470)가 수정 창(.overlay 395)보다 위라, 수정 창이 시트 뒤에 열려 보이지도 눌리지도 않았다(시트를 ✕ 로 닫아야 보임).
 // 이 파일은 휴대폰 폭의 낮은 창에서 돈다(아래 @window 줄 — 러너가 읽는다. 윈도우 526×364 · 리눅스 400×520). 화면 배치(CSS)가 휴대폰 그대로라
 // 수정 창이 하단 탭(z 400)에 가려지지 않는지도 함께 본다. 휴대폰 폭 판단(matchMedia '(max-width: 720px)')은 테스트마다 바꿔 끼운다(데스크톱 동작 확인용).
@@ -21,6 +21,7 @@
       a.abs = s.abs; window._gameSaved = s.gs; window._curSaveKey = s.sk;
       try { closeOverlay('editRecOverlay'); } catch (e) {}
       try { shellRecSheet(false); } catch (e) {}
+      try { hideToast(); } catch (e) {}   // 저장 알림(.toast z 396 — 창 위에 뜨는 게 맞다)이 6초 남아 다음 테스트의 「저장」을 덮지 않게
       try { updateAll(); } catch (e) {}
     };
   }
@@ -73,13 +74,16 @@
     } finally { undo(); restore(); }
   });
 
-  test('데스크톱(>720px): 「수정」을 눌러도 시트는 그대로다(동작 변경 없음)', async function () {
+  // 시트(z 470)가 수정 창(395)을 덮는 것은 폭과 무관 — 처음(#138)엔 폰에서만 닫았고, 데스크톱 · 가로로 든 폰에서는 수정 창이 시트 뒤에 열렸다
+  test('데스크톱(>720px): 「수정」 → 시트가 닫히고 수정 창이 보인다', async function () {
     var restore = keepApp(), undo = phoneWidth(false);
     try {
       await setup();
       editBtn().click(); await sleep(100);
-      eq(sheetOpen(), true, '데스크톱에서는 시트를 건드리지 않음');
-      eq(dialogOpen(), true, '수정 창은 지금처럼 열림');
+      eq(sheetOpen(), false, '데스크톱에서도 시트가 닫혀야 함');
+      eq(dialogOpen(), true, '수정 창이 열려야 함');
+      settle();
+      eq(onTop('#editRecOverlay [onclick="saveEditRec()"]'), 'ok', '수정 창의 「저장」 버튼이 맨 위에서 눌려야 함');
     } finally { undo(); restore(); }
   });
 })();

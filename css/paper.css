@@ -475,6 +475,16 @@ body.sb .overlay .modal { background: var(--paper-2); border: var(--card-bw) sol
   .sb-hdr-mid { justify-content: flex-end; }
   .sb-tagline { display: none; }
 }
+/* ═══ 가로로 든 폰 (터치 · 721–1023px · 높이 560px 이하) ═══
+   한 화면 고정 2열 배치로는 필드 칸이 수십 px 로 눌려 캔버스가 위아래 잘린 띠로 보였다 → 화면을 세로 스크롤로 풀고 필드는 열 폭의 정사각형
+   (core _fieldFS 는 >720px 에서 필드 칸(.field-wrap)의 가로·세로 중 작은 쪽을 쓰므로 칸을 정사각형으로 — 칸은 overflow:hidden 이라 자식 크기로 되읽는 순환 없음).
+   터치 조건은 필드 자리표시(#139) · shell.css 수정 창(#143)과 같다 — CLAUDE.md 모바일 720px 규칙의 예외. 마우스 데스크톱은 그대로 */
+@media (any-pointer: coarse) and (min-width: 721px) and (max-width: 1023.98px) and (max-height: 560px) {
+  /* 행은 max-content: 열(.pnl-center · .sb-side)이 min-height:0 · overflow 라 auto 행은 남는 공간(화면 높이)까지만 커져 내용이 잘린다 */
+  body.sb .app-layout { grid-template-rows: max-content !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+  body.sb .sb-field { flex: none; }
+  body.sb .sb-field > .field-wrap { flex: none; aspect-ratio: 1; }
+}
 .sb-order-bd { display: none; position: fixed; inset: 0; z-index: 455; background: rgba(31, 42, 35, .45); }
 
 /* 타자 바 (태블릿·모바일) */

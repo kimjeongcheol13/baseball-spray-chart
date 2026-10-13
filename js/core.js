@@ -2399,9 +2399,11 @@ function saveMethodCloud() {
   }, 150);
 }
 
-function saveGame(){
+// fromEdit = 타석 기록 수정(_saveEditImmediate)에서 온 저장: 바로 저장 · 수정 완료 토스트 · 요약 창 안 띄움
+function saveGame(fromEdit){
+  fromEdit=fromEdit===true;   // 이벤트 객체 등이 넘어와도 평소 저장
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
+  const run=()=>{
     // 팀명+날짜 기반 키 (가독성 향상)
     var th=(document.getElementById('tHome').value||'홈팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'홈팀';
     var ta=(document.getElementById('tAway').value||'원정팀').replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,6)||'원정팀';
@@ -2423,11 +2425,12 @@ function saveGame(){
     if(window.cloudSave)cloudSave(key,data,label,data.ts);
     _gameSaved=true;
     _updateSaveUI(false);
-    showToast(prev?'저장한 경기를 업데이트했어요 ✓':'경기 저장 완료 ✓',false);
+    showToast(fromEdit?'타석 기록 수정 완료 — 저장됨 ✓':prev?'저장한 경기를 업데이트했어요 ✓':'경기 저장 완료 ✓',false);
     triggerSavePulse();
     if(_afterSaveCb){var cb=_afterSaveCb;_afterSaveCb=null;setTimeout(cb,300);}   // 새 경기 저장 확인에서 온 저장: 요약 대신 새 경기
-    else setTimeout(showGameSummary, 400);
-  }, 300);
+    else if(!fromEdit)setTimeout(showGameSummary, 400);
+  };
+  if(fromEdit)run();else saveTimer=setTimeout(run,300);
 }
 
 // 저장 경기 데이터 — 같은 경기의 사본은 하나로(마지막 저장본). 저장 데이터는 고치지 않고 읽을 때만 정리한다 (js/features/games.js)
@@ -3741,29 +3744,12 @@ function saveEditRec(){
   _saveEditImmediate();
 }
 
+// 지금 열린 경기의 저장 항목(_curSaveKey)에 반영한다. 항목이 없으면(새 경기 · 공유받은 경기 · 항목이 지워진 경기) 새 항목 — 다른 경기 항목은 건드리지 않는다.
+// 「경기 저장」(saveGame)과 같은 규칙(팀명 · 경기 정보 · 이름 · ts 유지 · 클라우드)으로, 다만 바로 저장하고 요약 창은 띄우지 않는다.
+// 예전에는 목록의 마지막 항목을 덮어써서, 다른 경기를 열어 고치면 그 마지막 경기가 이 경기 기록으로 바뀌었다(서버 user_games 에도 그대로 올라감)
+// saveGame 이 "저장됨"(_gameSaved=true · _updateSaveUI)도 둔다 — 안 두면 다른 경기를 열 때 _saveWorkBeforeReplace 가 한 번 더 저장했다(#136)
 function _saveEditImmediate(){
-  var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  // 지금 열린 경기의 저장 항목(_curSaveKey)에 반영한다. 예전에는 목록의 마지막 항목을 덮어써서, 다른 경기를 열어 고치면
-  // 그 마지막 경기가 이 경기 기록으로 바뀌었다(서버 user_games 에도 그대로 올라감)
-  var cur=_curSaveKey?saves.find(function(s){return s.key===_curSaveKey;}):null;
-  var existing=cur?JSON.parse(localStorage.getItem(cur.key)||'null'):null;
-  if(!existing){
-    // 저장 항목이 없는 경기(새 경기 · 공유받은 경기 · 항목이 지워진 경기)는 "경기 저장"처럼 새 항목으로 — 다른 경기 항목은 건드리지 않는다
-    saveGame();
-    return;
-  }
-  existing.abs=AS.abs;
-  existing.hs=AS.hs;existing.as=AS.as;
-  existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
-  existing.zoneHistory=AS.zoneHistory;
-  existing.pitchers=AS.pitchers||[];
-  // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 수정 시각은 cloudSave 가 sl_cloud_mod 에 남긴다(동기화는 그 값으로 최신을 고른다)
-  localStorage.setItem(cur.key,JSON.stringify(existing));
-  if(window.cloudSave)cloudSave(cur.key,existing,cur.label,existing.ts);
-  // 지금 경기 = 방금 쓴 저장 항목 → "저장됨". 안 바꾸면(updateAll 이 "저장 안 됨"으로 둠) 다른 경기를 열 때 _saveWorkBeforeReplace 가 한 번 더 저장했다
-  _gameSaved=true;_updateSaveUI(false);
-  triggerSavePulse();
-  showToast('타석 기록 수정 완료 — 저장됨 ✓',false);
+  saveGame(true);
 }
 
 // ───── [백업 서브루틴] URL 다이렉트 스트림 복구 시스템 ─────

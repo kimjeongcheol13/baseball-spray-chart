@@ -20,6 +20,9 @@
   }
 
   test('안내 모드: 표시 · 설명 창이 body 바로 아래 — 경기설정 탭에서 하단 탭을 누르면 설명이 보이고 탭은 그대로', async function () {
+    // 옮기는 건 scorebook.js 마운트(DOMContentLoaded 뒤 setTimeout 0)라 하네스가 테스트를 시작하는 load 보다 늦을 수 있다
+    //   (측정: load 와의 간격 30~45ms — CPU 가 바쁘면 load 가 먼저 온다) → 최대 2초 기다린 뒤 같은 검사
+    for (var w = 0; w < 2000 && !($('helpModeTooltip').parentElement === document.body && $('helpModeIndicator').parentElement === document.body); w += 20) await sleep(20);
     ok($('helpModeTooltip').parentElement === document.body, '설명 창이 body 바로 아래가 아님: ' + $('helpModeTooltip').parentElement.id);
     ok($('helpModeIndicator').parentElement === document.body, '표시가 body 바로 아래가 아님: ' + $('helpModeIndicator').parentElement.id);
     await withHelp(async function () {

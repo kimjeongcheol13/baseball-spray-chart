@@ -879,12 +879,16 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   #analysisView .sb-vhdr { flex-wrap: nowrap !important; align-items: baseline; gap: 0 !important; }
   #analysisView .sb-vhdr .sb-brand small { display: none; }
   #analysisView .sb-vhdr .sb-brand b { font-size: 18px; }
-  #analysisView .sb-vhdr .sb-hdr-mid { flex: 1 1 0; min-width: 0; justify-content: flex-start; }
-  #analysisView .ad-hd { flex: 1 1 100%; max-width: 100%; flex-direction: row; align-items: baseline; gap: 0; }
+  #analysisView .sb-vhdr .sb-brand b::after,
+  #analysisView .ad-meta-m::before { content: '·'; display: inline-block; width: 20px; text-align: center; font: 700 13px/1 var(--f-body); color: var(--ink-soft); }
+  /* 날짜 · 팀이 한 줄에 다 안 들어가면(360px 에 3글자 팀 이름부터) 잘리지 않고 '경기 분석' 아래 줄로 내려간다
+     — 줄 맨 앞에 오는 '·'는 .ad-hd 를 20px 왼쪽으로 빼고 .sb-hdr-mid 에서 잘라 내 안 보이게 (제목 앞 20px 은 빈 칸) */
+  #analysisView .sb-vhdr .sb-hdr-mid { flex: 1 1 0; min-width: 0; justify-content: flex-start; overflow: hidden; }
+  #analysisView .ad-hd { flex: 0 0 calc(100% + 20px); max-width: none; margin-left: -20px; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 3px 0; }
   #analysisView .ad-title { flex: none; font-size: 16px; }
+  #analysisView .ad-title::before { content: ''; display: inline-block; width: 20px; }
   #analysisView .ad-meta { display: none; }
-  #analysisView .ad-meta-m { display: block; min-width: 0; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #analysisView .ad-title::before, #analysisView .ad-meta-m::before { content: '·'; margin: 0 7px; font: 700 13px/1 var(--f-body); color: var(--ink-soft); }
+  #analysisView .ad-meta-m { display: block; min-width: 0; max-width: 100%; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* 샘플 모드: 맨 위 고정 안내 띠(48px, sample.css)가 분석 뷰(top 0)를 덮는다 — 헤더가 한 줄로 낮아져 통째로 가려지지 않게 띠 아래로 */
   body.sl-sample-on #analysisView .sb-vhdr { padding-top: 56px !important; }
   body.sb #analysisView .ana-subnav { padding: 8px 12px; }

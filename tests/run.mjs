@@ -83,8 +83,12 @@ async function runFile(file) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
   // 파일에 「// @window 폭,높이」 줄이 있으면 그 크기 창으로 띄운다(휴대폰 화면 배치가 필요한 파일만 — 없으면 브라우저 기본 창, 윈도우에서 754×424)
   // 윈도우 헤드리스는 창 테두리 몫으로 높이를 ~156px 빼고 폭은 최소 ~526px 로 늘린다(리눅스는 준 그대로) → 파일이 innerWidth/innerHeight 로 전제를 확인할 것
-  const win = fs.readFileSync(path.join(ROOT, 'tests', file), 'utf8').match(/^\/\/ @window (\d+),(\d+)\s*$/m);
-  const args = ['--headless=new', ...(win ? [`--window-size=${win[1]},${win[2]}`] : []), '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
+  const src = fs.readFileSync(path.join(ROOT, 'tests', file), 'utf8'), win = src.match(/^\/\/ @window (\d+),(\d+)\s*$/m);
+  // 「// @pointer coarse」(터치 기기) · 「// @pointer fine」(마우스): 컴퓨터의 실제 입력 장치와 상관없이 (any-)pointer · (any-)hover 미디어 조건을 고정한다
+  // (터치 화면이 달린 노트북에서는 아무것도 주지 않아도 any-pointer: coarse 다 — 리눅스와 결과가 갈린다)
+  const ptr = src.match(/^\/\/ @pointer (coarse|fine)\s*$/m);
+  const POINTER = { coarse: 'primaryPointerType=2,availablePointerTypes=2,primaryHoverType=1,availableHoverTypes=1', fine: 'primaryPointerType=4,availablePointerTypes=4,primaryHoverType=2,availableHoverTypes=2' };
+  const args = ['--headless=new', ...(win ? [`--window-size=${win[1]},${win[2]}`] : []), ...(ptr ? [`--blink-settings=${POINTER[ptr[1]]}`] : []), '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
     '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', `--virtual-time-budget=${BUDGET_MS}`, '--enable-logging=stderr', '--v=0',
     ...((process.getuid && process.getuid() === 0) || process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), '--dump-dom', `http://127.0.0.1:${port}/?f=${encodeURIComponent(file)}`];
   const child = spawn(chrome, args);

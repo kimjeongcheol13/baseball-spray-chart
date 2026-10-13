@@ -71,6 +71,13 @@ function _gameMeta() {
   if (!d) d = new Date().toLocaleDateString('ko-KR');
   return [d, info.venue, `${th} vs ${ta}`].filter(Boolean).join(' · ');
 }
+// 폰(≤720px) 한 줄 헤더용 짧은 표기 "2026.5.17 홈팀 vs 원정팀" — _gameMeta 의 첫 칸(날짜) · 끝 칸(팀)만, 날짜는 점 사이 공백 없이 (구장은 뺌)
+function _gameMetaShort() {
+  const s = _gameMeta();
+  if (_scope === 'season') return s;
+  const p = s.split(' · ');
+  return `${p[0].replace(/\.\s*/g, '.').replace(/\.$/, '')} ${p[p.length - 1]}`;
+}
 
 // ── 필드 (캔버스): 기록 탭과 같은 필드 + 5구역 점선 + 구역별 타구 수 ──
 function drawDashField(ctx, S, list) {
@@ -148,7 +155,7 @@ function _mount() {
 
 function _hdrHtml() {
   const seg = (val, l) => `<button type="button" aria-pressed="${_scope === val}" onclick="setAnaDash('scope','${val}')">${l}</button>`;
-  return `<div class="ad-hd"><h1 class="ad-title">경기 분석</h1><span class="ad-meta">${esc(_gameMeta())}</span></div>
+  return `<div class="ad-hd"><h1 class="ad-title">경기 분석</h1><span class="ad-meta">${esc(_gameMeta())}</span><span class="ad-meta-m">${esc(_gameMetaShort())}</span></div>
     <div class="ad-hctrl">
       <div class="sb-seg ad-scope" role="group" aria-label="범위">${seg('game', '이번 경기')}${seg('season', '시즌 누적')}</div>
       <button type="button" class="sb-mini" onclick="adSaveImage()">${ICON.img}이미지로 저장</button>

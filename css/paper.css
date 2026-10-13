@@ -229,7 +229,9 @@ body.sb.rec-v2 .pnl-center > #liveStatLine { display: none !important; }
   font: 700 12px/1 var(--f-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
 }
 .sb-seg button + button { border-left: 1.5px solid var(--ink); }
-.sb-seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+/* 선택 = 잉크 2px 테두리 + 볼드 · 크림 배경 그대로 (잉크 채움은 화면의 주 CTA 하나만) — 테두리는 inset 이라 칸 크기가 안 바뀐다
+   · 본문 글꼴(Gowun Batang)은 700 한 벌만 불러와 굵기 차이가 안 난다 → 구분은 테두리. 이닝(Oswald)만 선택 안 된 칸을 500 으로 */
+.sb-seg button[aria-pressed="true"] { background: var(--paper-2); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); font-weight: 700; }
 .sb-sheet-x { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1.5px solid var(--ink); background: var(--paper-2); color: var(--ink); cursor: pointer; }
 .sb-ot-h, .sb-ot-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 78px 62px; align-items: center; column-gap: 6px; }
 .sb-ot-h { padding: 6px 8px 5px; border-bottom: 1.5px solid var(--ink); font: 600 10px/1 var(--f-num); letter-spacing: 2px; color: var(--ink-soft); }
@@ -595,12 +597,15 @@ body.sb #analysisView.savant-view {
 /* 각진 카드 · 그림자 없음 (점·원형 표시는 유지) */
 body.sb #analysisView *:not(svg *):not([class*="dot"]):not(.bt-dot):not(.sb-mk) { border-radius: 0 !important; }
 body.sb #analysisView * { box-shadow: none !important; text-shadow: none !important; }
+/* 세그먼트 선택 테두리(.sb-seg, inset box-shadow)는 그림자가 아니라 선택 표시 → 위 규칙에서 되살림 */
+body.sb #analysisView .sb-seg button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink) !important; }
 body.sb #analysisView .an-pick { mask-image: none; -webkit-mask-image: none; }
 
 /* 헤더 띠: 가운데 = 경기 분석 + 날짜·대진 + [이번 경기|시즌 누적] + [이미지로 저장] */
 .ad-hd { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ad-title { margin: 0; font: 400 24px/1 var(--f-display); color: var(--ink); white-space: nowrap; }
 .ad-meta { font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ad-meta-m { display: none; }   /* 폰 한 줄 헤더용 짧은 표기 "2026.5.17 홈팀 vs 원정팀" (≤720px 분석 탭에서만 보임) */
 .ad-hctrl { display: none; align-items: center; gap: 8px; margin-left: 12px; }
 #analysisView[data-sub="spray"] .ad-hctrl { display: flex; }
 .ad-scope button { min-height: 44px; max-width: none; padding: 0 14px; font-size: 13px; }
@@ -862,6 +867,15 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-hctrl { margin-left: 0; }
   .sb-vhdr .sb-hdr-mid { justify-content: flex-end; }
 }
+/* 선수 칩 가로 줄(.an-pick — 타자 · 투수 · 스카우트): 오른쪽 끝에 크림 → 투명 페이드를 얹어 '옆으로 더 있음'을 보이고, 끝까지 밀면 사라진다
+   · 줄 끝의 sticky 칸(::after)이 스크롤 중엔 오른쪽 가장자리에 붙어 칩 위를 덮고, 끝까지 가면 제자리(마지막 칩 뒤 빈칸)로 와서 안 보인다 — JS 없이
+   · 칩 줄이 가로로 스크롤되는 건 720px 미만뿐 (analysis.css: 720px 이상은 여러 줄로 감김) · 페이드 밑 칩도 눌린다(pointer-events: none) */
+@media (max-width: 719.98px) {
+  body.sb #analysisView .an-pick::after {
+    content: ''; flex: 0 0 40px; margin-left: -6px; position: sticky; right: -2px;
+    background: linear-gradient(to left, var(--paper) 20%, transparent); pointer-events: none;
+  }
+}
 /* 모바일: 헤더 두 줄 · 대상 목록은 가로 스크롤 · 한 열로 쌓기 */
 @media (max-width: 720px) {
   .sb-vhdr { flex-wrap: wrap !important; gap: 8px !important; }
@@ -869,6 +883,26 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-title { font-size: 20px; }
   .ad-hctrl { margin-left: 0; width: 100%; justify-content: space-between; }
   .ad-scope button { padding: 0 10px; }
+  /* 분석 탭 헤더 한 줄: SPRAYLAB · 경기 분석 · 2026.5.17 홈팀 vs 원정팀 — GAME ANALYSIS 소제목 · 구장은 폰에서 숨김
+     (.sb-vhdr · .ad-hd 는 경기설정 헤더도 쓰므로 #analysisView 로 한정. 종합(spray) 대시보드 컨트롤 .ad-hctrl 은 다음 줄로 접힌다) */
+  #analysisView .sb-vhdr { flex-wrap: nowrap !important; align-items: baseline; gap: 0 !important; }
+  #analysisView .sb-vhdr .sb-brand small { display: none; }
+  #analysisView .sb-vhdr .sb-brand b { font-size: 18px; }
+  #analysisView .sb-vhdr .sb-brand b::after,
+  #analysisView .ad-meta-m::before { content: '·'; display: inline-block; width: 20px; text-align: center; font: 700 13px/1 var(--f-body); color: var(--ink-soft); }
+  /* 날짜 · 팀이 한 줄에 다 안 들어가면(360px 에 3글자 팀 이름부터) 잘리지 않고 '경기 분석' 아래 줄로 내려간다
+     — 줄 맨 앞에 오는 '·'는 .ad-hd 를 20px 왼쪽으로 빼고 .sb-hdr-mid 에서 잘라 내 안 보이게 (제목 앞 20px 은 빈 칸) */
+  #analysisView .sb-vhdr .sb-hdr-mid { flex: 1 1 0; min-width: 0; justify-content: flex-start; overflow: hidden; }
+  #analysisView .ad-hd { flex: 0 0 calc(100% + 20px); max-width: none; margin-left: -20px; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 3px 0; }
+  #analysisView .ad-title { flex: none; font-size: 16px; }
+  #analysisView .ad-title::before { content: ''; display: inline-block; width: 20px; }
+  #analysisView .ad-meta { display: none; }
+  #analysisView .ad-meta-m { display: block; min-width: 0; max-width: 100%; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 서브탭 콘텐츠 맨 위 제목 · 설명(예: "타자 / 지금 타석에 선 타자 브리핑 …"): 바로 위 서브탭 이름과 겹쳐 폰에서 숨김
+     (타자 · 투수 · 팀은 각 JS 가, 비교 · 스카우트는 index.html 이 그림 — DOM · 문구는 그대로 두고 CSS 로만) */
+  body.sb #analysisView .savant-view-header { display: none; }
+  /* 샘플 모드: 맨 위 고정 안내 띠(48px, sample.css)가 분석 뷰(top 0)를 덮는다 — 헤더가 한 줄로 낮아져 통째로 가려지지 않게 띠 아래로 */
+  body.sl-sample-on #analysisView .sb-vhdr { padding-top: 56px !important; }
   body.sb #analysisView .ana-subnav { padding: 8px 12px; }
   body.sb #analysisView .ana-sub { padding: 0 14px; }
   body.sb #analysisView[data-sub="spray"] .shell-inner { padding: 12px 12px 24px; }
@@ -935,10 +969,10 @@ body.sb #settingsView .shell-inner.st { display: none !important; }   /* 옛 경
 .st-side small { font-size: 12px; color: var(--ink-soft); }
 .st-side input { width: 20px; height: 20px; margin: 0; accent-color: var(--pen-red); }
 .st-inn { align-self: flex-start; }
-.st-inn button { min-height: 44px; min-width: 64px; max-width: none; font: 600 15px var(--f-num); }
+.st-inn button { min-height: 44px; min-width: 64px; max-width: none; font: 500 15px var(--f-num); }
 .st-gf { margin: 10px 14px 14px; padding-top: 12px; border-top: 1px dashed var(--ink); display: flex; flex-wrap: wrap; gap: 8px; }
 .st-gf .sb-btn { flex: 1 1 140px; min-height: 48px; background: var(--paper-2); }
-.st-gf .sb-btn.on { background: var(--ink); color: var(--paper); }
+.st-gf .sb-btn.on { background: var(--paper-2); color: var(--ink); border-width: 2px; }   /* 켜짐 = 선택 표시와 같게 (채움 아님) */
 .st-gf p { width: 100%; margin: 0; font: 700 12px/1.5 var(--f-body); color: var(--ink-soft); }
 .st-danger { border-color: var(--pen-red) !important; color: var(--pen-red) !important; background: var(--paper-2) !important; }
 
@@ -989,8 +1023,8 @@ select.st-in { cursor: pointer; font-size: 14px; }
 .st-pre b { font: 700 14px var(--f-body); }
 .st-pre span { font: 500 13px var(--f-num); letter-spacing: 1px; color: var(--ink-soft); }
 .st-pre:hover { background: var(--paper); }
-.st-pre.on { background: var(--ink); color: var(--paper); }
-.st-pre.on span { color: var(--paper); }
+.st-pre.on { background: var(--paper-2); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }   /* 선택 = 2px 테두리 + 볼드 (채움 아님) */
+.st-pre.on span { color: var(--ink); font-weight: 700; }   /* 거리 숫자(Oswald)는 굵기가 실제로 바뀐다 */
 .st-prev { display: flex; justify-content: center; padding: 12px 14px 4px; border-top: 1.5px solid var(--ink); }
 .st-prev-svg { width: 100%; max-width: 240px; height: auto; display: block; }
 .st-prev-svg .g { fill: var(--grass); }
@@ -1057,6 +1091,16 @@ select.st-in { cursor: pointer; font-size: 14px; }
   .stx-more { margin-top: 12px !important; }
   .st-hbtn { margin-left: 0; width: 100%; }
   .st-hbtn .sb-mini { flex: 1 1 0; padding: 0 8px; }
+  /* 저장하고 기록 시작: 헤더 맨 위라 날짜 → … → 타순표를 다 채운 뒤 다시 올라가야 했다 → 하단 탭바 바로 위에 고정
+     (버튼이 헤더 띠 .st-hbtn 안이라 sticky 로는 아래에 붙지 않아 fixed — 경기설정 뷰가 닫히면 같이 숨는다)
+     지난 경기 불러오기는 헤더 그대로 · 콘텐츠 끝과 포커스 스크롤은 버튼(48 + 위아래 8px) 위에서 멈춘다
+     · 둘레 종이색 띠(흐림 없는 box-shadow — 그림자가 아니라 배경 띠): 버튼 위아래 틈으로 뒤 카드가 잘려 비치지 않게 화면 폭 전체를 덮는다 */
+  .st-hbtn .st-go {
+    position: fixed; left: 12px; right: 12px; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 8px); min-height: 48px;
+    box-shadow: 0 0 0 8px var(--paper), -12px 0 0 8px var(--paper), 12px 0 0 8px var(--paper);
+  }
+  .stx { padding-bottom: 88px; }
+  #settingsView { scroll-padding-bottom: 72px; }
   .st-lu-h, .st-row { grid-template-columns: 30px minmax(0, 1fr) 62px 70px 44px; column-gap: 6px; }
   .st-lu-h, .st-lu-list { padding-left: 10px; padding-right: 10px; }
   .st-in { font-size: 14px; }

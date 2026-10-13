@@ -99,4 +99,18 @@
       ok(JSON.parse(localStorage.getItem('sl_saves')).some(function (e) { return e.key !== KB; }), '고친 경기가 새 항목으로 저장되지 않음');
     } finally { restore(); }
   });
+
+  // 저장 뒤 0.7초에 경기를 활성 팀에 잇는 _patchSaveForTeam 도 예전에는 저장 목록의 "마지막 항목"을 이었다
+  test('오래된 경기를 열어 저장하면 그 경기가 활성 팀에 이어지고, 목록의 마지막 경기는 이어지지 않는다', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      localStorage.setItem('sl_teams', JSON.stringify({ teams: [{ id: 'tLink', name: '링크팀', color: '#4b8cf5', stadium: '', createdAt: '', games: [] }], activeTeamId: 'tLink' }));
+      restoreGame(KA);
+      saveGame(); await sleep(1200);                               // saveGame 디바운스 0.3초 + 팀 연결 0.7초
+      var keys = JSON.parse(localStorage.getItem('sl_teams')).teams[0].games.map(function (g) { return g.key; });
+      ok(keys.indexOf(KA) >= 0, '저장한 경기(A)가 팀에 이어지지 않음: ' + JSON.stringify(keys));
+      ok(keys.indexOf(KB) < 0, '저장하지 않은 마지막 경기(B)가 팀에 이어짐: ' + JSON.stringify(keys));
+    } finally { restore(); localStorage.removeItem('sl_teams'); window._TD = { teams: [], activeTeamId: null }; }   // tdLoad 는 키가 없으면 메모리의 팀을 그대로 두므로 같이 비운다
+  });
 })();

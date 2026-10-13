@@ -501,7 +501,8 @@
     var ogw = core.slice(core.indexOf('function openGameWizard('), core.indexOf('function openGameWizard(') + 600);
     ok(/_unsavedCounts\(\)\.any\)\{openNewGameGuard\(\)/.test(ogw), 'openGameWizard 가 저장 안 한 기록이 있을 때 openNewGameGuard 확인 창을 띄우지 않는다');
     eq(callers('archRecoverAutosave', all.srcs).sort(), ['js/core.js _openLastGame', 'js/core.js archRecoverFromBanner'], 'archRecoverAutosave() 를 부르는 곳(AS 가 빈 시작 때와 먼저 저장하는 배너 함수뿐이어야 한다)');
-    ok(/function _openLastGame\(\)\{\s*if\(AS\.abs\.length\|\|AS\.home_lineup\.length\|\|AS\.away_lineup\.length\)return;/.test(core), '_openLastGame 이 AS 가 비어 있을 때만 열도록 막지 않음');
+    // _hasAnyRecord() = 타석 또는 투구가 있으면 (투수 탭에서만 기록한 경기도 '비어 있지 않음' — pitch-only-recovery.test.js)
+    ok(/function _openLastGame\(\)\{\s*if\(_hasAnyRecord\(\)\|\|AS\.home_lineup\.length\|\|AS\.away_lineup\.length\)return;/.test(core), '_openLastGame 이 AS 가 비어 있을 때(타석 · 투구 · 라인업 없음)만 열도록 막지 않음');
     ok(all.html.indexOf('archRecoverAutosave(') < 0 && all.html.indexOf('archRecoverFromBanner()') >= 0, '복구 배너 버튼이 archRecoverFromBanner 를 부르지 않음');
     eq(callers('undoManager\\.undo', all.srcs), [], 'undoManager.undo() 를 부르는 곳(생기면 경기를 바꿀 때 undoManager.clear 로 스택을 비우는지 먼저 확인)');
   });

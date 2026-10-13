@@ -3707,6 +3707,9 @@ var _editRbi=0;
 function openEditRec(id){
   var ab=AS.abs.find(function(a){return a.id===id;});
   if(!ab)return;
+  // 휴대폰(≤720px): 「최근 기록」 시트에서 수정을 누르면 시트를 먼저 닫는다 — 시트(z-index 470)가 수정 창(.overlay 395)보다 위라
+  // 수정 창이 시트 뒤에 열려 보이지도 눌리지도 않았다. 저장 · 취소 뒤에 시트를 다시 열지 않는다(기록 화면으로 돌아감). 데스크톱은 그대로
+  if(document.body.classList.contains('rec-sheet-open')&&window.matchMedia&&window.matchMedia('(max-width: 720px)').matches&&typeof window.shellRecSheet==='function')window.shellRecSheet(false);
   document.getElementById('editRecId').value=id;
   document.getElementById('editInn').value=ab.inn||'1회초';
   document.getElementById('editRes').value=ab.res||'안타';
@@ -3740,25 +3743,25 @@ function saveEditRec(){
 
 function _saveEditImmediate(){
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-  if(!saves.length){
-    // 저장된 게임이 없으면 새 저장 생성
+  // 지금 열린 경기의 저장 항목(_curSaveKey)에 반영한다. 예전에는 목록의 마지막 항목을 덮어써서, 다른 경기를 열어 고치면
+  // 그 마지막 경기가 이 경기 기록으로 바뀌었다(서버 user_games 에도 그대로 올라감)
+  var cur=_curSaveKey?saves.find(function(s){return s.key===_curSaveKey;}):null;
+  var existing=cur?JSON.parse(localStorage.getItem(cur.key)||'null'):null;
+  if(!existing){
+    // 저장 항목이 없는 경기(새 경기 · 공유받은 경기 · 항목이 지워진 경기)는 "경기 저장"처럼 새 항목으로 — 다른 경기 항목은 건드리지 않는다
     saveGame();
     return;
   }
-  // 가장 최근 저장 항목을 현재 AS 상태로 덮어씀
-  var latest=saves[saves.length-1];
-  var existing=JSON.parse(localStorage.getItem(latest.key)||'null');
-  if(!existing){saveGame();return;}
   existing.abs=AS.abs;
   existing.hs=AS.hs;existing.as=AS.as;
   existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
   existing.zoneHistory=AS.zoneHistory;
   existing.pitchers=AS.pitchers||[];
-  existing.ts=Date.now();
-  localStorage.setItem(latest.key,JSON.stringify(existing));
-  latest.ts=existing.ts;
-  localStorage.setItem('sl_saves',JSON.stringify(saves));
-  if(window.cloudSave)cloudSave(latest.key,existing,latest.label,existing.ts);
+  // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 수정 시각은 cloudSave 가 sl_cloud_mod 에 남긴다(동기화는 그 값으로 최신을 고른다)
+  localStorage.setItem(cur.key,JSON.stringify(existing));
+  if(window.cloudSave)cloudSave(cur.key,existing,cur.label,existing.ts);
+  // 지금 경기 = 방금 쓴 저장 항목 → "저장됨". 안 바꾸면(updateAll 이 "저장 안 됨"으로 둠) 다른 경기를 열 때 _saveWorkBeforeReplace 가 한 번 더 저장했다
+  _gameSaved=true;_updateSaveUI(false);
   triggerSavePulse();
   showToast('타석 기록 수정 완료 — 저장됨 ✓',false);
 }
@@ -8354,12 +8357,11 @@ function importSharedTeam(){
     _o.apply(this,arguments);
     setTimeout(function(){
       tdLoad();if(!tdGetActive())return;
-      var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
-      if(!saves.length)return;
-      var last=saves[saves.length-1];
-      var raw=localStorage.getItem(last.key);if(!raw)return;
+      // 방금 저장한 경기(saveGame 이 0.3초 뒤 _curSaveKey 로 정함)를 잇는다 — 목록의 마지막 항목이 아니다(불러온 경기는 제자리에 덮어써진다)
+      var key=_curSaveKey;if(!key)return;
+      var raw=localStorage.getItem(key);if(!raw)return;
       var d;try{d=JSON.parse(raw);}catch(e){return;}
-      linkGameToTeam(last.key,{hs:d.hs||0,as:d.as||0,d:d.d||'',th:d.th||'',ta:d.ta||'',abs:d.abs||[]});
+      linkGameToTeam(key,{hs:d.hs||0,as:d.as||0,d:d.d||'',th:d.th||'',ta:d.ta||'',abs:d.abs||[]});
     },700);
   };
 })();
@@ -8697,10 +8699,9 @@ function _archQuietSave(saveKey){
         existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
         var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
         if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명 — 다른 경기를 열기 전에 저장할 때 사라지지 않게
-        existing.ts=Date.now();
+        // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 예전엔 지금 시각으로 바꿔서, 다른 경기를 열기 전 저장 ·
+        // 복구 때마다 그 경기의 날짜가 오늘로 바뀌었다. 수정 시각은 아래 _slMarkMod(sl_cloud_mod)가 지금처럼 남긴다(동기화는 그 값을 본다)
         localStorage.setItem(latest.key,JSON.stringify(existing));
-        latest.ts=existing.ts;
-        localStorage.setItem('sl_saves',JSON.stringify(saves));
         if(window._slMarkMod)window._slMarkMod(latest.key);   // 로컬 수정 시각 기록(cloud.js)
         _curSaveKey=latest.key;_gameSaved=true;
         AS.curGame=latest.key.replace(/^sl_(?:auto_)?/,'');   // 복구한 경기도 그 저장 항목의 자동저장 키를 쓴다

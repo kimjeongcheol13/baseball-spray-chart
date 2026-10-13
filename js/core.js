@@ -359,6 +359,7 @@ function _openLastGame(){
   var last=saves.reduce(function(a,b){return (b.ts||0)>=(a.ts||0)?b:a;});
   if(!localStorage.getItem(last.key))return;
   restoreGame(last.key);
+  if(_curSaveKey===last.key){try{_applyLive((JSON.parse(localStorage.getItem(last.key))||{}).live);}catch(e){}}   // 열렸으면 진행 상태도 (목록에서 직접 연 경기는 그대로 처음부터)
   _resumeLiveAtBat();
   showToast('마지막 경기를 열었어요',false);
 }
@@ -2410,7 +2411,7 @@ function saveGame(fromEdit){
     let prev=null;
     if(si>=0){try{prev=JSON.parse(localStorage.getItem(_curSaveKey));}catch(e){prev=null;}}
     const key=prev?_curSaveKey:'sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
-    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers,info:AS.info||(prev&&prev.info)||null});   // info = 경기 정보(날짜·구장·홈/원정·이닝, 경기설정 탭)
+    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers,info:AS.info||(prev&&prev.info)||null,live:_liveState()});   // info = 경기 정보(날짜·구장·홈/원정·이닝, 경기설정 탭)
     const label=_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as;
     if(prev)saves[si].label=label;
     else saves.push({key,label,ts:data.ts});
@@ -2792,8 +2793,9 @@ function chCount(type){
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
   else if(type==='o'){if(AS.outs>=2){_countThreeOuts();return;}AS.outs++;}
   renderCount();
+  _scheduleRecoverySave();   // 볼카운트 · 아웃도 새로고침 뒤에 남게 (복구 슬롯의 live)
 }
-function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();}
+function resetCount(){AS.balls=0;AS.strikes=0;AS.outs=0;renderCount();_scheduleRecoverySave();}
 // 카운트가 찼을 때: 도장과 같은 recQuick 으로 기록. 타자가 없으면(안내 토스트만 뜸) 카운트는 그대로 둔다
 function _countFull(res){
   var n=AS.abs.length;
@@ -2804,6 +2806,7 @@ function _countFull(res){
 function _countThreeOuts(){
   AS.outs=0;AS.balls=0;AS.strikes=0;
   renderCount();
+  _scheduleRecoverySave();
   var gf=typeof GF!=='undefined'&&GF&&GF.active;
   var s=document.getElementById('innSel');
   if(!gf&&s&&s.selectedIndex<s.options.length-1&&typeof window.recStepInning==='function'){
@@ -3338,7 +3341,8 @@ function _scheduleRecoverySave(delay){
     hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
     pitchers:AS.pitchers||[],saveKey:_curSaveKey,
     th:(document.getElementById('tHome')||{}).value||'',
-    ta:(document.getElementById('tAway')||{}).value||''
+    ta:(document.getElementById('tAway')||{}).value||'',
+    live:{toJSON:_liveState}   // 진행 상태는 적을 때의 값으로 (예약한 뒤 바뀐 볼카운트까지 — 투구 기록은 카운트를 올리기 전에 예약한다)
   },delay);
 }
 function scheduleAutoSave(){
@@ -5826,13 +5830,53 @@ function _recordToPitch(ab){
   _scheduleRecoverySave();
 }
 
+// ─── 진행 상태(기록 탭): 이닝 · 볼카운트 · 아웃 · 고른 타자 · 이번 타석 투구 · 현재 투수 ───
+// 복구 슬롯(sl_autosave) · 저장 항목에 live 로 같이 적고(추가 필드, 기존 필드 · 키 그대로), 앱을 다시 열 때(_openLastGame) · 복구할 때 되살린다.
+// 목록에서 직접 연 경기(restoreGame)는 예전처럼 처음 상태로 연다
+function _liveState(){
+  var s=document.getElementById('innSel');
+  return{inn:s?s.value:null,b:AS.balls||0,s:AS.strikes||0,o:AS.outs||0,team:AS.curTeam==='away'?'away':'home',
+    bid:AS.batter?AS.batter.id:null,pit:AS.currentPitcher?AS.currentPitcher.id:null,pitches:AS.currentPitches||[]};
+}
+// 저장 데이터는 가져온 경기일 수도 있으므로 값을 거른다 — 숫자는 범위 안으로, 이닝은 목록에 있는 값만, 타자 · 투수는 이 경기 명단에 있는 사람만
+function _applyLive(L){
+  if(!L||typeof L!=='object')return;
+  var num=function(v,max){v=Math.floor(Number(v));return isFinite(v)?Math.min(max,Math.max(0,v)):0;};
+  var str=function(v){return typeof v==='string'?v:null;};
+  var fin=function(v){return typeof v==='number'&&isFinite(v)?v:null;};
+  var sel=document.getElementById('innSel');
+  if(sel&&typeof L.inn==='string'&&Array.prototype.some.call(sel.options,function(o){return o.value===L.inn;})){
+    sel.value=L.inn;
+    var di=document.getElementById('innDisp');if(di)di.textContent=sel.value;
+  }
+  var gf=typeof GF!=='undefined'&&GF&&GF.active;   // 경기 운영 모드는 타자 순서를 따로 관리한다
+  if(!gf&&(L.team==='home'||L.team==='away')){
+    swLineupTab(L.team);
+    var pl=L.bid!=null?getActiveLineup().find(function(p){return String(p.id)===String(L.bid);}):null;
+    if(pl){
+      AS.batter=null;selBatter(pl.id);   // selBatter 가 이번 타석 투구를 비우므로 먼저 고른다
+      AS.batterFilter=false;   // 필드를 그 타자로 거르지 않는다 (shell.js 의 자동 타자 이동과 같게)
+      var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+    }
+  }
+  AS.balls=num(L.b,3);AS.strikes=num(L.s,2);AS.outs=num(L.o,2);
+  AS.currentPitches=(Array.isArray(L.pitches)?L.pitches:[]).filter(function(x){return x&&typeof x==='object';}).slice(0,60).map(function(x){
+    return{zone:str(x.zone),pt:str(x.pt),x:fin(x.x),y:fin(x.y),balls:num(x.balls,3),strikes:num(x.strikes,2),outs:num(x.outs,2),
+      pitcher:str(x.pitcher)||'',ts:str(x.ts)||'',result:str(x.result),pid:fin(x.pid)};
+  });
+  var P=L.pit!=null?(AS.pitchers||[]).find(function(p){return String(p.id)===String(L.pit);}):null;
+  if(P)selectPitcher(P.id);
+  renderCount();
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+}
+
 // ─── 앱을 다시 열 때(_openLastGame): 아직 안 끝난 타석 되살리기 ───
 // 기록 탭의 이번 타석 투구(AS.currentPitches) · 볼카운트는 저장되지 않아, 새로고침하면 투수 탭엔 공이 있는데 「현재 타자 · 0구째」로 보였다.
 // 투수 탭 공으로 다시 만든다: 가장 최근에 던진 투수의 마지막 공들 중 타석을 끝낸 결과 뒤에 온, 같은 타자에게 던진 공 = 아직 안 끝난 타석
 //  · 이미 타석 기록에 들어간 공(pid)이면 하지 않는다 · 그 타자가 명단에 있으면 고른다(경기 운영 모드는 타자 순서를 따로 관리하므로 고르지 않는다)
 //  · 볼카운트는 공 결과로 다시 센다 (기록 탭에서 넣은 공 · 아웃 카운트는 저장되지 않아 되살리지 못한다)
 function _resumeLiveAtBat(){
-  if(AS.currentPitches.length||AS.batter)return;
+  if(AS.currentPitches.length||AS.batter||AS.balls||AS.strikes)return;   // 저장된 진행 상태(_applyLive)를 이미 되살렸으면 하지 않는다
   var P=null,lastId=-Infinity;
   (AS.pitchers||[]).forEach(function(p){var q=p.pitches||[];if(!q.length)return;var n=Number(q[q.length-1].id)||0;if(n>=lastId){lastId=n;P=p;}});
   if(!P)return;
@@ -8297,10 +8341,12 @@ var storageManager=(function(){
     scheduleAutosave:function(data,delay){
       if(_sharedViewActive())return;   // 공유받아 보기만 하는 경기로 복구 슬롯을 덮지 않는다(이미 걸린 타이머는 그대로 둔다)
       clearTimeout(_timer);
-      _timer=setTimeout(function(){
+      var write=function(){
         try{localStorage.setItem(AUTOSAVE_KEY,_ser({_v:VERSION,_ts:Date.now(),data:data}));}
         catch(e){}
-      },delay===undefined?3000:delay);
+      };
+      if(delay===0){_timer=null;write();return;}   // 0 = 지금 바로 (페이지 숨김 · 새로고침 직전 — 페이지가 내려가면 setTimeout 은 돌지 않는다)
+      _timer=setTimeout(write,delay===undefined?3000:delay);
     },
     hasRecovery:function(){try{return!!localStorage.getItem(AUTOSAVE_KEY);}catch(e){return false;}},
     getRecovery:function(){return this.load(AUTOSAVE_KEY);},
@@ -8421,6 +8467,9 @@ var undoManager=(function(){
 })();
 
 // ─── 페이지 숨김 시 즉시 autosave ─────────────
+// 새로고침 · 닫기: visibilitychange 가 안 오는 브라우저도 있어 pagehide 에서도 바로 적는다 (진행 상태 — 이닝 · 볼카운트 · 아웃 · 타자 — 까지)
+window.addEventListener('pagehide',function(){if(AS)_scheduleRecoverySave(0);});
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='innSel'&&AS)_scheduleRecoverySave();});   // 이닝을 바꾸면 복구 슬롯에도
 document.addEventListener('visibilitychange',function(){
   if(document.hidden){
     if(AS)_scheduleRecoverySave(0);
@@ -8512,6 +8561,7 @@ function archRecoverAutosave(){
   AS.zoneHistory=d.zoneHistory||{};
   AS.pitchers=d.pitchers||[];
   _resetPitcherUI();   // 새로고침 뒤 최근 투구 로그가 비어 있던 문제
+  _applyLive(d.live);   // 이닝 · 볼카운트 · 아웃 · 타자 · 이번 타석 투구
   AS.info=_recInfo(d);   // 경기 정보(setup.js) — 모바일은 모듈이 이 함수를 감싸기 전에 여기로 오므로 core 에서 되살린다
   var h=document.getElementById('tHome'),a=document.getElementById('tAway');
   if(h&&d.th)h.value=d.th;
@@ -8545,6 +8595,7 @@ function _archQuietSave(saveKey){
         existing.home_lineup=AS.home_lineup;existing.away_lineup=AS.away_lineup;
         existing.zoneHistory=AS.zoneHistory;existing.pitchers=AS.pitchers||[];
         existing.info=AS.info||existing.info||null;   // 경기 정보 (saveGame 과 같은 규칙)
+        existing.live=_liveState();   // 진행 상태 — 다음에 앱을 열 때 이어서 (_openLastGame)
         var tH=(document.getElementById('tHome')||{}).value,tA=(document.getElementById('tAway')||{}).value;
         if(tH)existing.th=tH;if(tA)existing.ta=tA;   // 바꾼 팀명 — 다른 경기를 열기 전에 저장할 때 사라지지 않게
         // ts(경기 날짜 · 목록 순서)는 그대로 둔다 — saveGame 과 같은 규칙. 예전엔 지금 시각으로 바꿔서, 다른 경기를 열기 전 저장 ·
@@ -8564,7 +8615,7 @@ function _archQuietSave(saveKey){
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
       d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
-      pitchers:AS.pitchers||[],info:AS.info||null};
+      pitchers:AS.pitchers||[],info:AS.info||null,live:_liveState()};
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
@@ -8650,6 +8701,7 @@ function recoverHiddenAutosave(key){
     AS.zoneHistory=d.zoneHistory||{};
     AS.pitchers=d.pitchers||[];
     _resetPitcherUI();
+    _applyLive(d.live);
     AS.info=_recInfo(d);   // 열려 있던 다른 경기의 정보가 _archQuietSave 로 이 경기에 적히지 않게
     var h=document.getElementById('tHome'),a=document.getElementById('tAway');
     if(h&&d.th)h.value=d.th;

@@ -1264,3 +1264,23 @@ html.sb-boot body::after {
   .sb-cg.ro:active { background: none; transform: none; }
   .sb-cg.ro::after { content: '자동'; margin-left: 2px; font: 600 10px/1 var(--f-body); color: var(--ink-soft); }
 }
+
+/* ═══ 터치 기기: 누르는 것은 최소 44 × 44px (iOS HIG 44pt · Material 48dp 의 하한) ═══
+   · (pointer: coarse) = 손가락이 주 입력인 기기 (폭과 상관없이 폰 · 태블릿 · 터치 노트북). 마우스 데스크톱(pointer: fine · hover: hover)은 그대로
+   · 글자 크기는 키우지 않고 min 크기로만. 화면에서 작게 보여야 하는 건 ::before 투명 히트 영역으로 (아래 개별 규칙)
+   · 아이콘 전용 버튼(＋ − ✕ ◀ ▶ 등)도 min-width 44 — 글자 버튼은 원래 44 보다 넓어 사실상 아이콘 버튼에만 걸린다
+   · :not(#_) 는 우선순위를 id 하나만큼 올리는 장치: .sb-seg button(34) · .p-edit(36) · .btn(36) 같은 클래스 규칙의 min 크기를
+     !important 없이 이기고, 꼭 필요한 예외는 id 를 넣은 개별 규칙으로 다시 정할 수 있다
+   · checkbox · radio 는 감싼 label 이 터치 영역 (경기 정보 홈/원정: label 97 × 44) */
+@media (pointer: coarse) {
+  :is(button, [role="button"], select,
+      input:is(:not([type]), [type="text"], [type="number"], [type="date"], [type="time"], [type="search"], [type="email"], [type="tel"], [type="password"], [type="url"])):not(#_) { min-height: 44px; }
+  :is(button, [role="button"]):not(#_) { min-width: 44px; }
+
+  /* 공통 규칙이 닿지 않는 곳 */
+  /* 하단 바인더 탭: id 가 든 규칙이 40px 로 고정 (현재 탭 46px 은 그대로 — 현재 탭은 잉크 채움으로도 구분) · ::before/::after 는 막혀 있어 히트 영역 대신 높이로 */
+  body.sb #savantNav .savant-nav-btn:not(.active) { height: 44px; min-height: 44px; }
+  /* 점수판(.scoreboard)은 폰에서 scale(.92) 로 줄여 그린다(styles.css) → 안의 버튼 · 입력은 48px 이어야 화면에서 44px */
+  .scoreboard :is(button, input):not(#_) { min-height: 48px; }
+  .scoreboard button:not(#_) { min-width: 48px; }
+}

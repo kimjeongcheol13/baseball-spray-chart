@@ -99,6 +99,7 @@ function _render() {
 
   _plot = null;   // 위치 차트를 그리면 _zoneCard가 다시 채운다
   if (_mode === 'input') {
+    _autoSelect();
     v.innerHTML = head + _liveCard();
     return;
   }
@@ -123,6 +124,18 @@ function _render() {
     ${ps.length ? `<div class="an-pick" role="radiogroup" aria-label="투수 선택">${chips}</div>` : ''}
     <div class="pc-result">${body}</div>`;
   _bindPlot();
+}
+
+// 불러온 경기(저장 목록 · 자동저장 복구)는 core.js 가 currentPitcher 를 비워 두어, 투수가 있는데도 "등록하거나 선택하세요" 안내만 보이고
+// 투구 기록이 사라진 것처럼 보였다(그래서 다시 등록하면 0구짜리 빈 칸이 늘었다) → 투구 기록 화면을 열 때 마지막으로 공을 던진 투수(없으면 마지막 등록)를 골라 둔다
+function _autoSelect() {
+  const AS = window.AS || {};
+  const ps = AS.pitchers || [];
+  if (AS.currentPitcher || !ps.length || typeof window.selectPitcher !== 'function') return;
+  const last = p => { const q = p.pitches || []; return q.length ? Number(q[q.length - 1].id) || 0 : 0; };   // 마지막 공의 id(= 기록 시각) · id 가 없는 옛 공은 0
+  const thrown = ps.filter(p => (p.pitches || []).length);
+  const P = thrown.length ? thrown.reduce((a, b) => (last(b) >= last(a) ? b : a)) : ps[ps.length - 1];
+  window.selectPitcher(P.id);   // → renderPitcherStats → (_hookLegacy) 이 화면을 다시 그린다. currentPitcher 가 채워졌으니 다시 들어오지 않는다
 }
 
 // 투구 기록 모드: 현재 투수의 이번 경기 요약만 (입력 UI는 기존 패널을 그대로 씀)

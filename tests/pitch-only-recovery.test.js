@@ -32,6 +32,7 @@
     // 투수 탭 화면도 막 연 상태(index.html 그대로)로 — 앞에서 그린 목록이 남아 있으면 복구 뒤 다시 그리지 않아도 검사가 통과해 버린다
     $('pitchLog').innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>';
     $('pitcherRoster').innerHTML = '<div style="font-size:11px;color:var(--text3)">투수를 등록하세요</div>';
+    $('innSel').selectedIndex = 0;   // 이닝도 처음(1회초)
   }
   function recEntry() { return ls('sl_saves').filter(function (e) { return /^sl_rec_/.test(e.key); }).map(function (e) { return { e: e, d: ls(e.key) }; })[0]; }
   function autoKeys() { var r = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('sl_auto_') === 0) r.push(k); } return r; }
@@ -125,8 +126,68 @@
         // 끝난 타석뿐이면 되살릴 것이 없다
         await T.sleep(3100);
         fresh(); _openLastGame();
-        eq(AS.currentPitches.length, 0, '안 끝난 타석 없음'); eq([AS.balls, AS.strikes], [0, 0], '0-0'); eq(AS.batter, null, '타자를 고르지 않음');
+        eq(AS.currentPitches.length, 0, '안 끝난 타석 없음'); eq([AS.balls, AS.strikes], [0, 0], '0-0'); eq(AS.batter && AS.batter.name, '첫타자', '다음 타자(타순이 돌아 첫타자)는 진행 상태로 남는다');
       } finally { AS.batter = b0; AS.batterFilter = f0; AS.curTeam = t0; window.cloudAutoSyncRecord = cs0; renderLP(); }
+    });
+  });
+
+  // 기록 탭만 쓴 경기: B·S·O 버튼 · 이닝 · 고른 타자 · 코스로 넣은 공(이번 타석 투구)도 새로고침 뒤에 남는다 (복구 슬롯 · 저장 항목의 live)
+  test('기록 탭 진행 상태(이닝 · 볼카운트 · 아웃 · 타자 · 이번 타석 투구)가 새로고침 뒤에도 남는다 — 복구 슬롯 · 저장 목록', async function () {
+    await isolated(async function () {
+      var b0 = AS.batter, f0 = AS.batterFilter, t0 = AS.curTeam, z0 = [AS.zone, AS.pt];
+      try {
+        localStorage.clear(); fresh();
+        AS.curTeam = 'home';
+        AS.home_lineup = [{ id: 'lv1', name: '첫타자', num: '1', pos: '', bh: '', isStarter: true }, { id: 'lv2', name: '둘째타자', num: '2', pos: '', bh: '', isStarter: true }];
+        renderLP(); selBatter('lv1');
+        recOther('삼진');   // 기록이 하나는 있어야 저장 · 복구한다 → 둘째타자로
+        eq(AS.batter && AS.batter.id, 'lv2', '다음 타자(전제)');
+        recStepInning(5);   // 3회말
+        chCount('o'); chCount('o'); chCount('b'); chCount('s');
+        AS.zone = '내각 낮음'; AS.pt = '커브'; logPitchAction();   // 기록 탭 코스 · 구종으로 넣은 공
+        eq([$('innSel').value, AS.balls, AS.strikes, AS.outs, AS.currentPitches.length], ['3회말', 1, 1, 2, 1], '진행 상태(전제)');
+        _scheduleRecoverySave(0);   // 페이지 숨김 · 새로고침 직전 — 지금 바로 적는다
+        var live = (ls('sl_autosave') || {}).data;
+        ok(live && live.live, '복구 슬롯에 진행 상태 (지연 0 = 바로 기록)');
+        eq([live.live.inn, live.live.b, live.live.s, live.live.o, live.live.bid, live.live.pitches.length], ['3회말', 1, 1, 2, 'lv2', 1], '슬롯 내용');
+        var check = function (how) {
+          eq($('innSel').value, '3회말', how + ': 이닝');
+          eq([AS.balls, AS.strikes, AS.outs], [1, 1, 2], how + ': 볼카운트 · 아웃');
+          eq(AS.batter && AS.batter.name, '둘째타자', how + ': 타자'); eq(AS.batterFilter, false, how + ': 필드는 거르지 않음');
+          eq(AS.currentPitches.map(function (x) { return [x.zone, x.pt]; }), [['내각 낮음', '커브']], how + ': 이번 타석 투구');
+          ok(Array.prototype.filter.call(document.querySelectorAll('#cntOuts .cnt-dot'), function (d) { return d.classList.contains('lit-o'); }).length === 2, how + ': 아웃 표시');
+        };
+        fresh(); _openLastGame();   // 새로고침 1 — 복구 슬롯
+        check('복구 슬롯');
+        ok(!localStorage.getItem('sl_autosave'), '복구 뒤 복구 슬롯은 비운다(전제)');
+        fresh(); _openLastGame();   // 새로고침 2 — 저장 목록의 [복구] 항목
+        check('저장 목록');
+        // 이어서: 볼카운트가 그대로 이어져 3번째 스트라이크에서 삼진
+        chCount('s'); await T.sleep(750); chCount('s');
+        eq(AS.abs.length, 2, '이어서 기록'); eq(AS.abs[1].res, '삼진', '삼진'); eq(AS.abs[1].count, { b: 1, s: 2, o: 2 }, '기록 시점 카운트');
+        // 목록에서 직접 연 경기는 예전처럼 처음 상태
+        var key = window._curSaveKey;
+        saveGame(true);
+        fresh(); restoreGame(key);
+        eq([AS.balls, AS.strikes, AS.outs, AS.batter], [0, 0, 0, null], '목록에서 연 경기는 처음 상태');
+      } finally { AS.batter = b0; AS.batterFilter = f0; AS.curTeam = t0; AS.zone = z0[0]; AS.pt = z0[1]; $('innSel').selectedIndex = 0; renderLP(); renderCount(); }
+    });
+  });
+
+  test('저장된 진행 상태 값 거르기: 범위 밖 숫자 · 없는 이닝 · 명단에 없는 타자 · 이상한 공은 쓰지 않는다', async function () {
+    await isolated(async function () {
+      var b0 = AS.batter, t0 = AS.curTeam;
+      try {
+        fresh();
+        AS.home_lineup = [{ id: 'lz1', name: '가', num: '1', pos: '', bh: '', isStarter: true }];
+        _applyLive({ inn: '<b>x</b>', b: 99, s: -3, o: '2', team: 'home', bid: 'nobody', pit: 'nobody',
+          pitches: [null, 5, { zone: '<img src=x onerror=alert(1)>', pt: 7, x: 'a', y: 0.5, balls: 9, strikes: 9, outs: 9, ts: {}, result: ['볼'], pitchId: 'p' }] });   // P0: 공 짝은 pitchId
+        eq($('innSel').value, '1회초', '없는 이닝은 무시');
+        eq([AS.balls, AS.strikes, AS.outs], [3, 0, 2], '범위 안으로');
+        eq(AS.batter, null, '명단에 없는 타자는 고르지 않음'); eq(AS.currentPitcher, null, '없는 투수는 고르지 않음');
+        eq(AS.currentPitches, [{ zone: '<img src=x onerror=alert(1)>', pt: null, x: null, y: 0.5, balls: 3, strikes: 2, outs: 2, pitcher: '', ts: '', result: null, pitchId: null }], '객체만 · 필드 모양 고정');
+        ok(!document.querySelector('#mobPitchLogList img'), '모바일 투구 목록에 태그로 들어가지 않음');
+      } finally { AS.batter = b0; AS.curTeam = t0; AS.balls = 0; AS.strikes = 0; AS.outs = 0; AS.currentPitches = []; renderCount(); }
     });
   });
 

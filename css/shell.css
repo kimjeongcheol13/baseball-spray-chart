@@ -398,10 +398,12 @@
   .toast-undo { flex: none; min-height: 44px; min-width: 44px; }
 }
 
-/* ── 타석 기록 수정 창 (모바일) ──
+/* ── 타석 기록 수정 창 (모바일 · 가로로 든 폰) ──
    창(.overlay z 395)은 하단 탭(z 400) 아래인데 수정 창(높이 ~494px)은 화면 전체 기준 가운데라, 화면이 낮으면(~560px 미만: 가로 화면 · 작은 폰 · 앱 안 브라우저)
-   「저장」이 하단 탭에 가려졌다(~520px 미만이면 「저장」 가운데를 눌러도 탭이 눌림) → 창 영역을 하단 탭 위까지로, 그래도 낮으면 창 안에서 스크롤 */
-@media (max-width: 720px) {
+   「저장」이 하단 탭에 가려졌다(~520px 미만이면 「저장」 가운데를 눌러도 탭이 눌림) → 창 영역을 하단 탭 위까지로, 그래도 낮으면 창 안에서 스크롤
+   · 가로로 든 폰은 폭이 720px 을 넘어(예: 844×390) 터치 기기 + 폭 1024px 미만도 넣는다 — paper.css 필드 자리표시(#139)와 같은 조건 · CLAUDE.md 모바일 720px 규칙의 예외.
+     마우스 데스크톱은 그대로 */
+@media (max-width: 720px), (any-pointer: coarse) and (max-width: 1023.98px) {
   #editRecOverlay { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); }
   #editRecOverlay .modal { max-height: calc(100% - 16px); overflow-y: auto; }
 }

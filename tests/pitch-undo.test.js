@@ -1,7 +1,8 @@
 // 투수 탭 투구 삭제 · 되돌리기 검증 (core.js undoPitch / delPitch / undoLast ↔ 투수 탭 연동)
 //  · 최근 투구 로그: ↩ 되돌리기(마지막 공) · 줄마다 ✕ — 기록 탭 볼카운트 · 이번 타석 투구도 같이 되돌린다
 //  · 삼진을 되돌린 뒤 다시 삼진을 넣어도 투수 쪽 삼진은 하나 (예전엔 기록 탭 타석만 지워져 투수 쪽 삼진이 두 개가 됐다)
-//  · 기록 탭 타석 ✕(delRec): 투수 탭의 그 타석 공 전부 삭제 · 「수정」(saveEditRec): 결과 · 이닝을 투수 쪽 공에 반영 (사구는 끝낸 공 삭제)
+//  · 기록 탭 타석 ✕(delRec): 투수 탭의 그 타석 공 전부 삭제 · 「수정」(saveEditRec): 결과 · 이닝을 투수 쪽 공에 반영
+//  · 사구: 투수 탭 버튼 · 투수 분석(타석 종료 · 볼 · 타수 제외 · FIP)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
 
@@ -211,5 +212,38 @@
     undoLast();
     eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '공은 그대로 · 원래 값'); ok(P()[1].end == null && P()[1].recRes == null, '붙인 결과 · 표시를 뗐다');
     eq([AS.balls, AS.strikes], [1, 1], '1-1'); eq(AS.currentPitches.length, 2, '이번 타석 투구 2구');
+  });
+
+  // ── 사구: 투수 탭 버튼 · 투수 분석 ──
+  run('투수 탭 사구 버튼: 기록 탭에 사구 타석 · 카운트 초기화 · 다음 타자 · 되돌리면 그 타석도 취소', function () {
+    var btns = Array.prototype.filter.call(document.querySelectorAll('#pnl-pitcher .ptr-btn'), function (b) { return b.textContent.trim() === '사구'; });
+    eq(btns.length, 2, '사구 버튼 (모바일 패널 · 데스크톱)');
+    recordPitch('볼'); recordPitch('스트라이크');
+    btns[1].click();
+    eq([P().length, P()[2].pr, P()[2].end], [3, '사구', '사구'], '투수 쪽 3구 · 사구 (P0: 옛 호환 result 는 볼넷)'); eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '사구', '사구');
+    eq(AS.abs[0].pitches.length, 3, '3구 첨부'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화'); eq(AS.batter && AS.batter.id, 'pu2', '다음 타자');
+    undoPitch();
+    eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '사구 공 취소'); eq([AS.balls, AS.strikes], [1, 1], '1-1');
+  });
+
+  run('투수 분석: 사구는 타석을 끝내고 · 볼로 세고 · 타수에서 빠지고 · FIP 에 들어간다', async function () {
+    var pz = function (r) { return { id: 'hb' + Math.random(), inning: '1회초', zone: null, zoneX: null, zoneY: null, pt: '직구', result: r, batter: '가타자', ts: '' }; };
+    // 삼진 3 (1이닝) · 사구 · 볼넷 · 홈런 → 6타석 · 6구
+    AS.pitchers = [{ id: 'hb1', name: '사구투수', num: '5', role: null, pitches: ['삼진', '삼진', '삼진', '사구', '볼넷', '홈런'].map(pz) }];
+    AS.currentPitcher = AS.pitchers[0];
+    shellNav('analysis', 'pitcher');
+    setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '사구투수');
+    var kpi = {};
+    Array.prototype.forEach.call(document.querySelectorAll('#pitcherView .pc-kpi'), function (el) { kpi[el.querySelector('span').textContent] = [el.querySelector('b').textContent, (el.querySelector('small') || {}).textContent || '']; });
+    eq(kpi['스트라이크%'][1], '4/6구', '사구 · 볼넷은 볼');
+    eq(kpi['피안타율'], ['.250', '1/4'], '타수 4 (6타석 − 볼넷 − 사구)');
+    eq(kpi['FIP'][0], '16.10', 'FIP = (13×1 + 3×(1+1) − 2×3) ÷ 1 + 3.10');
+    eq(kpi['볼넷%'][1], '1개 · 사구 1', '볼넷% 는 볼넷만, 사구 수는 따로');
+    ok(/상대 6타석/.test(document.querySelector('#pitcherView .pc-meta').textContent), '사구도 상대 타석에 들어감 (P0 문구: 타석)');
+    ok(/사구 1/.test(document.querySelector('#pitcherView .pc-bat-who small').textContent), '상대 타자 카드에 사구');
+    ok(Array.prototype.some.call(document.querySelectorAll('#pitcherView .pc-bat-res i'), function (i) { return i.textContent === '사구' && i.className === 'r-bb'; }), '결과 칩 사구');
+    setPitcherView('mode', 'input');
+    ok(/볼넷·사구/.test(document.querySelector('#pitcherView .pc-live').textContent), '등판 중 카드: 볼넷·사구');
+    setPitcherView('mode', 'stats');
   });
 })();

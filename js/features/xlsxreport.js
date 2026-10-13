@@ -975,9 +975,9 @@ export function exportPitcherXlsx(P, S, calc) {
     colors: mix.map((m, k) => _ptColor(m.pt, k)) }, mixTop, 8);
   r = Math.max(r, mixTop + Math.ceil(Math.max(170, 60 + mix.length * 34) / 22) + 1);
   rep.set(r, 0, '■ 등판 기록', 'sec');
-  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb]; });
-  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타석', '피안타', '삼진', '볼넷'], apps,
-    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td']);
+  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb, s.hbp]; });
+  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타석', '피안타', '삼진', '볼넷', '사구'], apps,
+    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td', 'td']);
   P.apps.forEach((a, i) => rep.merge(r - apps.length + i, 0, r - apps.length + i, 2, a.label, 'tdL'));
   rep.merge(r - apps.length - 1, 0, r - apps.length - 1, 2, '경기', 'th');
   r++;

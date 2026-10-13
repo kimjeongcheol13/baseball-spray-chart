@@ -353,12 +353,13 @@ function _hasRecoveryData(){
 }
 function _openLastGame(){
   if(_hasAnyRecord()||AS.home_lineup.length||AS.away_lineup.length)return;
-  if(_hasRecoveryData()){archRecoverAutosave();return;}
+  if(_hasRecoveryData()){archRecoverAutosave();_resumeLiveAtBat();return;}
   var saves=[];try{saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');}catch(e){}
   if(!saves.length)return;
   var last=saves.reduce(function(a,b){return (b.ts||0)>=(a.ts||0)?b:a;});
   if(!localStorage.getItem(last.key))return;
   restoreGame(last.key);
+  _resumeLiveAtBat();
   showToast('마지막 경기를 열었어요',false);
 }
 
@@ -5823,6 +5824,43 @@ function _recordToPitch(ab){
   AS.pitchLog.unshift(entry);
   renderPitchLog();renderPitcherStats();renderPitcherRoster();
   _scheduleRecoverySave();
+}
+
+// ─── 앱을 다시 열 때(_openLastGame): 아직 안 끝난 타석 되살리기 ───
+// 기록 탭의 이번 타석 투구(AS.currentPitches) · 볼카운트는 저장되지 않아, 새로고침하면 투수 탭엔 공이 있는데 「현재 타자 · 0구째」로 보였다.
+// 투수 탭 공으로 다시 만든다: 가장 최근에 던진 투수의 마지막 공들 중 타석을 끝낸 결과 뒤에 온, 같은 타자에게 던진 공 = 아직 안 끝난 타석
+//  · 이미 타석 기록에 들어간 공(pid)이면 하지 않는다 · 그 타자가 명단에 있으면 고른다(경기 운영 모드는 타자 순서를 따로 관리하므로 고르지 않는다)
+//  · 볼카운트는 공 결과로 다시 센다 (기록 탭에서 넣은 공 · 아웃 카운트는 저장되지 않아 되살리지 못한다)
+function _resumeLiveAtBat(){
+  if(AS.currentPitches.length||AS.batter)return;
+  var P=null,lastId=-Infinity;
+  (AS.pitchers||[]).forEach(function(p){var q=p.pitches||[];if(!q.length)return;var n=Number(q[q.length-1].id)||0;if(n>=lastId){lastId=n;P=p;}});
+  if(!P)return;
+  var ps=P.pitches,who=ps[ps.length-1].batter||null,open=[];
+  for(var i=ps.length-1;i>=0;i--){var e=ps[i];if((e.result in _PITCH_END)||(e.batter||null)!==who)break;open.unshift(e);}
+  if(!open.length)return;
+  var inAb=function(e){return AS.abs.some(function(a){return(a.pitches||[]).some(function(x){return x&&x.pid!=null&&String(x.pid)===String(e.id);});});};
+  if(open.some(inAb))return;
+  var gf=typeof GF!=='undefined'&&GF&&GF.active,pl=null,team=null;
+  if(who&&!gf)[AS.curTeam,AS.curTeam==='away'?'home':'away'].some(function(t){pl=(t==='away'?AS.away_lineup:AS.home_lineup).find(function(q){return q.name===who;})||null;if(pl)team=t;return!!pl;});
+  if(pl){
+    swLineupTab(team);
+    selBatter(pl.id);   // selBatter 가 이번 타석 투구를 비우므로 먼저 고른다
+    AS.batterFilter=false;   // 필드를 그 타자로 거르지 않는다 (shell.js 의 자동 타자 이동과 같게)
+    var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+  }
+  var b=0,s=0;
+  AS.currentPitches=open.map(function(e){
+    var x={zone:e.zone||null,pt:e.pt||null,x:e.zoneX!=null?e.zoneX:null,y:e.zoneY!=null?e.zoneY:null,
+      balls:b,strikes:s,outs:AS.outs||0,pitcher:P.name||'',ts:e.ts,result:e.result,pid:e.id};   // _pitchToRecord 와 같은 모양
+    if(e.result==='볼')b=Math.min(3,b+1);
+    else if(e.result==='스트라이크'||e.result==='파울')s=Math.min(2,s+1);
+    return x;
+  });
+  AS.balls=b;AS.strikes=s;renderCount();
+  selectPitcher(P.id);
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  safeRender();
 }
 
 // ─── 투구 삭제 · 되돌리기 (투수 탭 최근 투구 로그의 ✕ · ↩ 되돌리기) ───

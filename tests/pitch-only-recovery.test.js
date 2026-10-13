@@ -85,6 +85,51 @@
     });
   });
 
+  // 기록 탭의 이번 타석 투구(AS.currentPitches) · 볼카운트는 저장되지 않는다 → 새로고침하면 「현재 타자 · 0구째」였다. 투수 탭 공으로 되살린다
+  test('새로고침 뒤에도 아직 안 끝난 타석이 이어진다 — 타자 · 볼카운트 · 이번 타석 투구 (복구 슬롯 · 저장 목록 두 경로)', async function () {
+    await isolated(async function () {
+      var b0 = AS.batter, f0 = AS.batterFilter, t0 = AS.curTeam, cs0 = window.cloudAutoSyncRecord;
+      try {
+        localStorage.clear(); fresh();
+        AS.curTeam = 'home';
+        AS.home_lineup = [{ id: 'rl1', name: '첫타자', num: '1', pos: '', bh: '', isStarter: true }, { id: 'rl2', name: '둘째타자', num: '2', pos: '', bh: '', isStarter: true }];
+        renderLP(); selBatter('rl1');
+        AS.pitchers = [{ id: 'rp1', name: '이어던지기', num: '18', role: null, pitches: [] }];
+        selectPitcher('rp1'); AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
+        recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크');   // 첫타자 삼진 → 둘째타자
+        eq(AS.batter && AS.batter.id, 'rl2', '다음 타자(전제)');
+        await T.sleep(750);
+        recordPitch('볼'); recordPitch('스트라이크'); recordPitch('파울');   // 둘째타자 1-2, 안 끝남
+        eq([AS.balls, AS.strikes, AS.currentPitches.length], [1, 2, 3], '1-2 · 3구째(전제)');
+        await T.sleep(3100);   // 복구 슬롯(3초 디바운스)
+        ok(localStorage.getItem('sl_autosave'), '복구 슬롯(전제)');
+        var check = async function (how) {
+          eq(AS.batter && AS.batter.name, '둘째타자', how + ': 그 타자');
+          eq(AS.currentPitches.map(function (x) { return x.result; }), ['볼', '스트라이크', '파울'], how + ': 이번 타석 투구');
+          eq(AS.currentPitches.map(function (x) { return [x.balls, x.strikes]; }), [[0, 0], [1, 0], [1, 1]], how + ': 던지기 직전 카운트');
+          eq([AS.balls, AS.strikes], [1, 2], how + ': 볼카운트');
+          eq(AS.currentPitcher && AS.currentPitcher.name, '이어던지기', how + ': 투수');
+          eq(AS.batterFilter, false, how + ': 필드를 그 타자로 거르지 않음');
+          await T.sleep(50);
+          eq($('linkBadgePitchCount').textContent, '3', how + ': 현재 타자 N구째');
+        };
+        fresh(); _openLastGame();   // 새로고침 1 — 복구 슬롯
+        await check('복구 슬롯');
+        ok(!localStorage.getItem('sl_autosave'), '복구 뒤 복구 슬롯은 비운다(전제)');
+        fresh(); _openLastGame();   // 새로고침 2 — 저장 목록의 [복구] 항목
+        await check('저장 목록');
+        await T.sleep(750);
+        recordPitch('스트라이크');   // 이어서 던지면 같은 타석이 끝난다
+        eq(AS.abs.length, 2, '타석 2'); eq(AS.abs[1].res, '삼진', '삼진'); eq(AS.abs[1].bname, '둘째타자', '그 타자');
+        eq(AS.abs[1].pitches.length, 4, '타석에 4구'); eq(AS.pitchers[0].pitches.length, 7, '투수 쪽 7구 (중복 없음)');
+        // 끝난 타석뿐이면 되살릴 것이 없다
+        await T.sleep(3100);
+        fresh(); _openLastGame();
+        eq(AS.currentPitches.length, 0, '안 끝난 타석 없음'); eq([AS.balls, AS.strikes], [0, 0], '0-0'); eq(AS.batter, null, '타자를 고르지 않음');
+      } finally { AS.batter = b0; AS.batterFilter = f0; AS.curTeam = t0; window.cloudAutoSyncRecord = cs0; renderLP(); }
+    });
+  });
+
   test('복구된 타석 0 경기: 저장 목록 · 분석 탭이 오류 없이 열리고 NaN/Infinity 가 없다', async function () {
     await isolated(async function () {
       localStorage.clear(); fresh();

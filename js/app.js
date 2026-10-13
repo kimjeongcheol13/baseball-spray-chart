@@ -21,6 +21,7 @@ import './features/setup.js?v=4';
 import './features/report.js?v=5';
 import './features/anahelp.js?v=2';
 import './features/firstrun.js?v=3';
+import './features/tabloop.js?v=1';
 
 // ── Bottom Navigation ──
 function initSavantNav() {

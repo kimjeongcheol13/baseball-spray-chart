@@ -99,4 +99,62 @@
       ok(JSON.parse(localStorage.getItem('sl_saves')).some(function (e) { return e.key !== KB; }), '고친 경기가 새 항목으로 저장되지 않음');
     } finally { restore(); }
   });
+
+  // 저장 뒤 0.7초에 경기를 활성 팀에 잇는 _patchSaveForTeam 도 예전에는 저장 목록의 "마지막 항목"을 이었다
+  test('오래된 경기를 열어 저장하면 그 경기가 활성 팀에 이어지고, 목록의 마지막 경기는 이어지지 않는다', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      localStorage.setItem('sl_teams', JSON.stringify({ teams: [{ id: 'tLink', name: '링크팀', color: '#4b8cf5', stadium: '', createdAt: '', games: [] }], activeTeamId: 'tLink' }));
+      restoreGame(KA);
+      saveGame(); await sleep(1200);                               // saveGame 디바운스 0.3초 + 팀 연결 0.7초
+      var keys = JSON.parse(localStorage.getItem('sl_teams')).teams[0].games.map(function (g) { return g.key; });
+      ok(keys.indexOf(KA) >= 0, '저장한 경기(A)가 팀에 이어지지 않음: ' + JSON.stringify(keys));
+      ok(keys.indexOf(KB) < 0, '저장하지 않은 마지막 경기(B)가 팀에 이어짐: ' + JSON.stringify(keys));
+    } finally { restore(); localStorage.removeItem('sl_teams'); window._TD = { teams: [], activeTeamId: null }; }   // tdLoad 는 키가 없으면 메모리의 팀을 그대로 두므로 같이 비운다
+  });
+
+  // ── 수정 저장 뒤 상태 · 다른 경기를 열 때 원래 경기의 날짜 ──
+  function openFromList(key) { window._lpFired = false; _lpClick(key); }   // 저장 목록 카드를 누르는 것과 같다
+  test('수정 저장 → 다른 경기 열기 → 원래 경기 날짜 불변(다시 저장되지 않고 "이전 경기는 저장됨" 안내도 없다)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      edit(1781000000101, '2루타'); await sleep(300);
+      openFromList(KB); await sleep(500);
+      var a = JSON.parse(localStorage.getItem(KA)), entry = JSON.parse(localStorage.getItem('sl_saves')).filter(function (e) { return e.key === KA; })[0];
+      eq(a.ts, TA, 'A 저장본의 경기 날짜(ts)');
+      eq(entry && entry.ts, TA, '저장 목록에 보이는 A 의 날짜');
+      eq(a.abs.map(function (x) { return x.res; }), ['2루타'], 'A 의 수정 내용');
+      ok(!/이전 경기는 저장됨/.test($('toastTxt').textContent), '이미 저장한 경기인데 다시 저장했다는 안내: ' + $('toastTxt').textContent);
+      eq(AS.abs.map(function (x) { return x.bname; }), ['비타자', '비타자2'], 'B 가 열려야 함');
+    } finally { restore(); }
+  });
+
+  test('수정 저장 후에는 "저장됨" 상태다(dirty=false — 페이지 이탈 경고 · 새 경기 확인이 뜨지 않는다)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      edit(1781000000101, '3루타'); await sleep(300);
+      eq(window._gameSaved, true, '_gameSaved');
+      eq(_unsavedCounts().any, false, '저장 안 한 기록이 있다는 판단');
+    } finally { restore(); }
+  });
+
+  test('저장 안 한 기록이 있는 채로 다른 경기를 열면 그 기록은 저장되고, 원래 경기 날짜는 그대로다(_archQuietSave)', async function () {
+    var restore = keepApp();
+    try {
+      await fresh(false); seed();
+      restoreGame(KA);
+      AS.abs = AS.abs.concat([ab(1781000000111, '새기록타자', '안타')]); updateAll();   // 기록(저장 안 함)
+      openFromList(KB); await sleep(500);
+      var a = JSON.parse(localStorage.getItem(KA)), entry = JSON.parse(localStorage.getItem('sl_saves')).filter(function (e) { return e.key === KA; })[0];
+      eq(a.abs.map(function (x) { return x.bname; }), ['에이타자', '새기록타자'], 'A 에 저장 안 했던 기록이 저장돼야 함');
+      eq(a.ts, TA, 'A 저장본의 경기 날짜(ts)');
+      eq(entry && entry.ts, TA, '저장 목록에 보이는 A 의 날짜');
+      ok(/이전 경기는 저장됨/.test($('toastTxt').textContent), '안내 문구: ' + $('toastTxt').textContent);
+    } finally { restore(); }
+  });
 })();

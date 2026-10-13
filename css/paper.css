@@ -867,6 +867,15 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-hctrl { margin-left: 0; }
   .sb-vhdr .sb-hdr-mid { justify-content: flex-end; }
 }
+/* 선수 칩 가로 줄(.an-pick — 타자 · 투수 · 스카우트): 오른쪽 끝에 크림 → 투명 페이드를 얹어 '옆으로 더 있음'을 보이고, 끝까지 밀면 사라진다
+   · 줄 끝의 sticky 칸(::after)이 스크롤 중엔 오른쪽 가장자리에 붙어 칩 위를 덮고, 끝까지 가면 제자리(마지막 칩 뒤 빈칸)로 와서 안 보인다 — JS 없이
+   · 칩 줄이 가로로 스크롤되는 건 720px 미만뿐 (analysis.css: 720px 이상은 여러 줄로 감김) · 페이드 밑 칩도 눌린다(pointer-events: none) */
+@media (max-width: 719.98px) {
+  body.sb #analysisView .an-pick::after {
+    content: ''; flex: 0 0 40px; margin-left: -6px; position: sticky; right: -2px;
+    background: linear-gradient(to left, var(--paper) 20%, transparent); pointer-events: none;
+  }
+}
 /* 모바일: 헤더 두 줄 · 대상 목록은 가로 스크롤 · 한 열로 쌓기 */
 @media (max-width: 720px) {
   .sb-vhdr { flex-wrap: wrap !important; gap: 8px !important; }

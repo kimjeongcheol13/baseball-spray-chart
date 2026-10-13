@@ -889,6 +889,9 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   #analysisView .ad-title::before { content: ''; display: inline-block; width: 20px; }
   #analysisView .ad-meta { display: none; }
   #analysisView .ad-meta-m { display: block; min-width: 0; max-width: 100%; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 서브탭 콘텐츠 맨 위 제목 · 설명(예: "타자 / 지금 타석에 선 타자 브리핑 …"): 바로 위 서브탭 이름과 겹쳐 폰에서 숨김
+     (타자 · 투수 · 팀은 각 JS 가, 비교 · 스카우트는 index.html 이 그림 — DOM · 문구는 그대로 두고 CSS 로만) */
+  body.sb #analysisView .savant-view-header { display: none; }
   /* 샘플 모드: 맨 위 고정 안내 띠(48px, sample.css)가 분석 뷰(top 0)를 덮는다 — 헤더가 한 줄로 낮아져 통째로 가려지지 않게 띠 아래로 */
   body.sl-sample-on #analysisView .sb-vhdr { padding-top: 56px !important; }
   body.sb #analysisView .ana-subnav { padding: 8px 12px; }

@@ -605,6 +605,7 @@ body.sb #analysisView .an-pick { mask-image: none; -webkit-mask-image: none; }
 .ad-hd { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ad-title { margin: 0; font: 400 24px/1 var(--f-display); color: var(--ink); white-space: nowrap; }
 .ad-meta { font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ad-meta-m { display: none; }   /* 폰 한 줄 헤더용 짧은 표기 "2026.5.17 홈팀 vs 원정팀" (≤720px 분석 탭에서만 보임) */
 .ad-hctrl { display: none; align-items: center; gap: 8px; margin-left: 12px; }
 #analysisView[data-sub="spray"] .ad-hctrl { display: flex; }
 .ad-scope button { min-height: 44px; max-width: none; padding: 0 14px; font-size: 13px; }
@@ -866,6 +867,15 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-hctrl { margin-left: 0; }
   .sb-vhdr .sb-hdr-mid { justify-content: flex-end; }
 }
+/* 선수 칩 가로 줄(.an-pick — 타자 · 투수 · 스카우트): 오른쪽 끝에 크림 → 투명 페이드를 얹어 '옆으로 더 있음'을 보이고, 끝까지 밀면 사라진다
+   · 줄 끝의 sticky 칸(::after)이 스크롤 중엔 오른쪽 가장자리에 붙어 칩 위를 덮고, 끝까지 가면 제자리(마지막 칩 뒤 빈칸)로 와서 안 보인다 — JS 없이
+   · 칩 줄이 가로로 스크롤되는 건 720px 미만뿐 (analysis.css: 720px 이상은 여러 줄로 감김) · 페이드 밑 칩도 눌린다(pointer-events: none) */
+@media (max-width: 719.98px) {
+  body.sb #analysisView .an-pick::after {
+    content: ''; flex: 0 0 40px; margin-left: -6px; position: sticky; right: -2px;
+    background: linear-gradient(to left, var(--paper) 20%, transparent); pointer-events: none;
+  }
+}
 /* 모바일: 헤더 두 줄 · 대상 목록은 가로 스크롤 · 한 열로 쌓기 */
 @media (max-width: 720px) {
   .sb-vhdr { flex-wrap: wrap !important; gap: 8px !important; }
@@ -873,6 +883,26 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-title { font-size: 20px; }
   .ad-hctrl { margin-left: 0; width: 100%; justify-content: space-between; }
   .ad-scope button { padding: 0 10px; }
+  /* 분석 탭 헤더 한 줄: SPRAYLAB · 경기 분석 · 2026.5.17 홈팀 vs 원정팀 — GAME ANALYSIS 소제목 · 구장은 폰에서 숨김
+     (.sb-vhdr · .ad-hd 는 경기설정 헤더도 쓰므로 #analysisView 로 한정. 종합(spray) 대시보드 컨트롤 .ad-hctrl 은 다음 줄로 접힌다) */
+  #analysisView .sb-vhdr { flex-wrap: nowrap !important; align-items: baseline; gap: 0 !important; }
+  #analysisView .sb-vhdr .sb-brand small { display: none; }
+  #analysisView .sb-vhdr .sb-brand b { font-size: 18px; }
+  #analysisView .sb-vhdr .sb-brand b::after,
+  #analysisView .ad-meta-m::before { content: '·'; display: inline-block; width: 20px; text-align: center; font: 700 13px/1 var(--f-body); color: var(--ink-soft); }
+  /* 날짜 · 팀이 한 줄에 다 안 들어가면(360px 에 3글자 팀 이름부터) 잘리지 않고 '경기 분석' 아래 줄로 내려간다
+     — 줄 맨 앞에 오는 '·'는 .ad-hd 를 20px 왼쪽으로 빼고 .sb-hdr-mid 에서 잘라 내 안 보이게 (제목 앞 20px 은 빈 칸) */
+  #analysisView .sb-vhdr .sb-hdr-mid { flex: 1 1 0; min-width: 0; justify-content: flex-start; overflow: hidden; }
+  #analysisView .ad-hd { flex: 0 0 calc(100% + 20px); max-width: none; margin-left: -20px; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 3px 0; }
+  #analysisView .ad-title { flex: none; font-size: 16px; }
+  #analysisView .ad-title::before { content: ''; display: inline-block; width: 20px; }
+  #analysisView .ad-meta { display: none; }
+  #analysisView .ad-meta-m { display: block; min-width: 0; max-width: 100%; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 서브탭 콘텐츠 맨 위 제목 · 설명(예: "타자 / 지금 타석에 선 타자 브리핑 …"): 바로 위 서브탭 이름과 겹쳐 폰에서 숨김
+     (타자 · 투수 · 팀은 각 JS 가, 비교 · 스카우트는 index.html 이 그림 — DOM · 문구는 그대로 두고 CSS 로만) */
+  body.sb #analysisView .savant-view-header { display: none; }
+  /* 샘플 모드: 맨 위 고정 안내 띠(48px, sample.css)가 분석 뷰(top 0)를 덮는다 — 헤더가 한 줄로 낮아져 통째로 가려지지 않게 띠 아래로 */
+  body.sl-sample-on #analysisView .sb-vhdr { padding-top: 56px !important; }
   body.sb #analysisView .ana-subnav { padding: 8px 12px; }
   body.sb #analysisView .ana-sub { padding: 0 14px; }
   body.sb #analysisView[data-sub="spray"] .shell-inner { padding: 12px 12px 24px; }

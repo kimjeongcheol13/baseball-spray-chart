@@ -188,7 +188,13 @@ function paintField(ctx, S, T) {
   if (ov.dir) {
     ctx.font = `700 ${Math.max(11, Math.round(13 * u))}px 'Gowun Batang', 'Nanum Myeongjo', serif`;
     ctx.fillStyle = T.paper2;
-    [[27, '당겨치기'], [90, '센터'], [153, '밀어치기']].forEach(([deg, txt]) => { const ph = _degToPhi(deg), p = P(ph, F(ph) * 0.6); ctx.fillText(txt, p[0], p[1]); });
+    // 기록 탭 필드 = 선택 타자 좌/우타(라인업 bh) 기준 — core drawField 와 같은 규칙: 좌타는 오른쪽(1루 쪽)이 당겨치기,
+    // 스위치는 당겨/밀어로 나누지 않아 필드 기준 좌/중/우, 미지정은 우타 가정. 타자가 정해지지 않은 그림(분석 탭 방향도 등)은 필드 기준 좌/중/우
+    const onRec = typeof fCtx !== 'undefined' && ctx === fCtx, A = window.AS || {};
+    const b = onRec ? ((A.batter && typeof _batsNorm === 'function' && _batsNorm(A.batter.bh)) || '') : 'S';
+    if (onRec) window._fieldDirKey = b;   // core _fieldDirSync 가 타자 좌/우타가 바뀌었을 때만 다시 그리도록
+    const lbl = b === 'S' ? ['좌', '중', '우'] : b === 'L' ? ['밀어치기', '센터', '당겨치기'] : ['당겨치기', '센터', '밀어치기'];
+    [27, 90, 153].forEach((deg, i) => { const ph = _degToPhi(deg), p = P(ph, F(ph) * 0.6); ctx.fillText(lbl[i], p[0], p[1]); });
   }
   if (ov.arcs) {
     ctx.save(); fair(); ctx.clip();

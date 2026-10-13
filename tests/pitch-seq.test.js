@@ -143,6 +143,20 @@
     eq(_pWarn({ res: '안타', count: { b: 0, s: 0 }, pitches: [] }), [], '로그 없는 인플레이 타석은 판단 안 함');
   });
 
+  run('모바일 투구 시트: 결과 버튼으로 자동 삼진이 되면 시트의 이번 타석 로그 · 안내도 새 타석 기준으로 비운다 (기기 에뮬레이션에서 찾은 것)', async function () {
+    mobPitchSheetOpen();
+    try {
+      pitch('직구', '중앙 높음', 'called_strike'); pitch('직구', '중앙 중간', 'foul');
+      ok($('mobPitchLog').style.display !== 'none' && $('mobPitchLogList').children.length === 2, '2구 로그가 보임');
+      $('mobZoneLbl').textContent = '2구 기록됨 · 다음 구종 선택';
+      pitch('슬라이더', '볼 외', 'swinging_strike');
+      eq(AS.abs.length, 1, '3번째 스트라이크 → 자동 삼진');
+      eq(AS.currentPitches.length, 0, '새 타석');
+      eq($('mobPitchLog').style.display, 'none', '시트 로그도 새 타석(빈 로그) — 이전 타석 공이 남아 보이지 않음');
+      eq($('mobZoneLbl').textContent, '존을 탭해서 코스 기록', '안내 문구 처음으로');
+    } finally { mobPitchSheetClose(); }
+  });
+
   // ── 2단계: 부분 누락 · 수기 B-S 경고 좁히기 ──
   run('부분 누락(기록 중): 앞 공 결과가 비면 B·S 는 수기 — 결과로 4볼이 돼도 볼넷 자동 기록 없음 · 저장하면 수기 B-S 그대로 + 일부 누락 경고', async function () {
     pitch('직구', '중앙 중간', 'ball');
@@ -333,7 +347,7 @@
       localStorage.setItem('sl_900000000002', JSON.stringify(legacyGame()));
       localStorage.setItem('sl_saves', JSON.stringify((JSON.parse(ls.sl_saves || '[]')).concat([{ key: 'sl_900000000002', label: '정합 vs 상대', ts: 1790000000000 }])));
       var raw = localStorage.getItem('sl_900000000002');
-      var B = await import('/js/features/batdata.js?v=9');
+      var B = await import('/js/features/batdata.js?v=10');
       var g = B.buildData().games.find(function (x) { return x.key === 'sl_900000000002'; });
       eq([g.abs[0].pt, g.abs[1].count.b, g.abs[1].count.s], ['포크볼', 3, 1], '읽은 값은 마지막 공 기준');
       eq(localStorage.getItem('sl_900000000002'), raw, '저장값은 그대로(경기를 열어 저장할 때 반영)');
@@ -377,7 +391,7 @@
     await T.sleep(750);
     $('innSel').selectedIndex = 4;   // 3회초
     useBatter(); AS.pt = '체인지업'; AS.zone = '외각 중간'; recOther('삼진');   // 로그 없는 타석 (수기 0-0 → 2단계부터 경고 없음)
-    var B = await import('/js/features/batdata.js?v=9'), X = await import('/js/features/xlsxreport.js?v=11');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=12');
     var blob = null, u0 = URL.createObjectURL;
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     try { X.exportBatterXlsx(B.playerData(B.buildData(), '정합타자')); } finally { URL.createObjectURL = u0; }

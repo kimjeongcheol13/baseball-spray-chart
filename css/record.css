@@ -295,6 +295,12 @@ body.sb .edit-log b { color: var(--ink); }
   /* 모바일 한 줄 카운트: B·S 옆 '자동'(paper.css .sb-cg.ro::after)으로 충분 — 머리글 표시는 빼서 초기화 버튼이 밀려나지 않게 */
   .sb-count .sb-auto { display: none; }
   .sb-cg.ro::after { white-space: nowrap; }
+  /* 터치 44px(기기 에뮬레이션 점검에서 모자랐던 것): 수정 창 선택 상자 · 타점 ± · 저장/취소, 투구 입력 시트 닫기 ✕, 하단 탭 */
+  #editRecOverlay .modal .inp { min-height: 44px; }
+  #editRecOverlay .modal .rbi-btn { min-width: 44px; min-height: 44px; }
+  #editRecOverlay .modal .btn { min-height: 44px; }
+  #mobPitchModal button[onclick="mobPitchSheetClose()"] { min-width: 44px; min-height: 44px; }
+  html body.sb #savantNav .savant-nav-btn { height: 44px; min-height: 44px; }   /* paper.css(뒤에 로드) 40px 보다 우선 · 선택된 탭 46px 은 그대로 */
 }
 
 /* ═══ 수정 창 투구별 편집 (core.js _editRender · 2단계) — 새 요소만, 버튼·선택 상자는 모든 폭에서 44px ═══ */

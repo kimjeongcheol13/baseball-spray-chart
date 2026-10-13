@@ -188,6 +188,20 @@ function _dirLbl(dir,bats){return dir?(DIR_LBL[dir]||''):'';}
 // 당겨/센터/밀어 이름(타자 기준) · 스위치는 필드 기준
 function _pullLbl(a){var sd=a?_fieldSide(a.deg):null;if(!sd)return '';if(_batsOf(a)==='S')return {L:'좌',C:'중',R:'우'}[sd];return _isPull(a)?'당김':_isOppo(a)?'밀어':'센터';}
 window._isPull=_isPull;window._isOppo=_isOppo;window._isCtr=_isCtr;window._dirLbl=_dirLbl;
+// 경기 날짜(시간순 정렬용): 경기 정보 날짜(info.date 'YYYY-MM-DD') → 저장 날짜(d.d '2026. 10. 5.') → 저장 시각(ts)
+function _gameDateParts(d){
+  var i=d&&d.info&&d.info.date,m=typeof i==='string'?/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(i):null;
+  if(!m&&d&&typeof d.d==='string')m=/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(d.d);
+  return m?[+m[1],+m[2],+m[3]]:null;
+}
+function _gameTime(d,s){var p=_gameDateParts(d);return p?new Date(p[0],p[1]-1,p[2]).getTime():(+(d&&d.ts)||+(s&&s.ts)||0);}
+// 저장 목록(sl_saves) → 경기 날짜 오래된 순(같은 날은 저장 순). 경기 데이터를 읽어 [{s, d}] 로 (못 읽는 항목은 뺀다)
+function _savesByDate(saves){
+  var L=[];(saves||[]).forEach(function(s){var d=null;try{d=JSON.parse(localStorage.getItem(s.key));}catch(e){}if(d)L.push({s:s,d:d,t:_gameTime(d,s)});});
+  L.sort(function(x,y){return (x.t-y.t)||((x.d.ts||x.s.ts||0)-(y.d.ts||y.s.ts||0));});
+  return L;
+}
+window._gameDateParts=_gameDateParts;window._gameTime=_gameTime;
 // 경기 안 타석 순서(시간순): 이닝(1회초 → 1회말 → … → 연장) → 기록 순(배열 순서). 이닝을 모르면 맨 뒤 · 원본 배열은 그대로
 function _innKey(inn){var m=/^(\d+)회(초|말)/.exec(inn||'');return m?(+m[1])*2+(m[2]==='말'?1:0):inn==='연장'?1000:1001;}
 function _absByInning(abs){return (abs||[]).map(function(a,i){return [a,i];}).sort(function(x,y){return _innKey(x[0]&&x[0].inn)-_innKey(y[0]&&y[0].inn)||x[1]-y[1];}).map(function(x){return x[0];});}
@@ -813,7 +827,7 @@ function selBatter(id){
   if(typeof _ibZoneDots!=='undefined')_ibZoneDots=[];
   if(typeof ibZoneRedraw==='function')ibZoneRedraw();
   if(AS.currentPitcher)AS.currentPitcher._batterLog=[];
-  _prRender();}catch(e){}
+  _prRender();_fieldDirSync();}catch(e){}
   // 타자 선택 시 타자 탭으로 자동 전환 + 오른쪽 패널 표시
   if(AS.batter){
     var _bt=document.getElementById('tab-batter');
@@ -1316,6 +1330,13 @@ function _showNearDot(event){
   }
 }
 
+var _fieldDirKey=null;   // 방향 레이블을 마지막으로 그린 타자 좌/우타 — 바뀌면 필드를 다시 그린다(_fieldDirSync)
+// 선택 타자(또는 그 bh)가 바뀌어 방향 레이블(당겨/밀어 위치)이 달라지면 필드 배경만 다시 그린다 — 타구 점(hC)은 그대로
+function _fieldDirSync(){
+  if(!_fieldOv||!_fieldOv.dir||typeof drawField!=='function'||!fCtx)return;
+  var k=(AS.batter&&_batsNorm(AS.batter.bh))||'';
+  if(k!==_fieldDirKey)drawField();
+}
 var _fieldOv=(function(){try{return JSON.parse(localStorage.getItem('sl_field_overlays'))||{};}catch(e){return {};}})();
 function setFieldOverlay(k,on){
   _fieldOv[k]=!!on;
@@ -1383,7 +1404,12 @@ function drawField(){
   if(_fieldOv.dir){
     const dl=Math.floor(S2*.026),lab=(deg,t,c)=>{const ph=_degToPhi(deg),p=P(ph,F(ph)*.6);ctx.fillStyle=c;ctx.fillText(t,p[0],p[1]);};
     ctx.font=`700 ${dl}px 'Noto Sans KR',sans-serif`;
-    lab(27,'당겨치기','rgba(245,101,101,.85)');lab(90,'센터','rgba(45,212,160,.85)');lab(153,'밀어치기','rgba(75,140,245,.85)');
+    // 선택 타자 좌/우타(라인업 bh) 기준 — 좌타는 오른쪽(1루 쪽)이 당겨치기, 스위치는 당겨/밀어로 나누지 않아 필드 기준 좌/중/우, 미지정은 우타 가정
+    var _b=_fieldDirKey=(AS.batter&&_batsNorm(AS.batter.bh))||'';
+    var PULL='rgba(245,101,101,.85)',OPPO='rgba(75,140,245,.85)',CTR='rgba(45,212,160,.85)',FLD='rgba(226,232,240,.85)';
+    if(_b==='S'){lab(27,'좌',FLD);lab(90,'중',FLD);lab(153,'우',FLD);}
+    else if(_b==='L'){lab(27,'밀어치기',OPPO);lab(90,'센터',CTR);lab(153,'당겨치기',PULL);}
+    else{lab(27,'당겨치기',PULL);lab(90,'센터',CTR);lab(153,'밀어치기',OPPO);}
   }
   // 거리 링 (홈 기준 실제 거리)
   if(!_fieldOv.arcs)return;
@@ -1808,7 +1834,7 @@ function safeRender(){
 
 // _syncAbs: 투구 로그 → 타석 구종·코스·B-S(pitch-seq) · 좌표 → 방향 · 라인업 bh → 좌/우타(hit-dir) 동기화.
 // 기록·수정·불러오기·공유·복구가 모두 updateAll 을 지나므로 저장·업로드 전에 맞춰진다
-function updateAll(){_syncAbs(AS.abs,[AS.home_lineup,AS.away_lineup]);renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
+function updateAll(){_syncAbs(AS.abs,[AS.home_lineup,AS.away_lineup]);_fieldDirSync();renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
 // GA4: 브라우저당 최초 1회, 첫 타구 기록이 실제로 저장된 시점(AS.abs에 1건 이상 존재)에만 발생
 function _trackFirstRecordGA(){
   if(!(AS.abs&&AS.abs.length>0))return;
@@ -3085,9 +3111,17 @@ function setPitchResult(r){
     if(p.result)showToast('앞 공 결과가 비어 있어 B·S 는 수기예요 — 카운트판으로 맞춰 주세요 (자동 볼넷·삼진 없음)',false,true);
     return;
   }
-  if(p.result==='ball'&&AS.balls>=4){_countFull('볼넷');return;}
-  if((p.result==='called_strike'||p.result==='swinging_strike')&&AS.strikes>=3){_countFull('삼진');return;}
+  if(p.result==='ball'&&AS.balls>=4){_countFull('볼넷');_pMobSync();return;}
+  if((p.result==='called_strike'||p.result==='swinging_strike')&&AS.strikes>=3){_countFull('삼진');_pMobSync();return;}
   if(p.result==='in_play')showToast('인플레이 — 필드에서 타구 위치를 탭하거나 결과 버튼으로 타석을 기록하세요',false,true);
+}
+// 자동 볼넷·삼진으로 다음 타석이 되면 열린 모바일 투구 시트(이번 타석 로그 · 존 점 · 안내)도 새 타석 기준으로 다시 그린다
+function _pMobSync(){
+  if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+  var c=document.getElementById('mobZoneCanvas');
+  if(c&&typeof _drawZoneCanvas==='function'){try{_drawZoneCanvas(c,(AS.currentPitches||[]).filter(function(p){return p.x!=null;}).map(function(p){return {cx:p.x,cy:p.y,result:p.pt};}),true);}catch(e){}}
+  var l=document.getElementById('mobZoneLbl');
+  if(l&&!(AS.currentPitches||[]).length)l.textContent='존을 탭해서 코스 기록';
 }
 // 결과 버튼 줄(.pr-bar: 기록 탭 코스 캔버스 아래 · 모바일 투구 시트): 이번 타석에 공이 있으면 마지막 공 기준으로 보인다
 var _PR_BTNS=[['ball','볼'],['called_strike','루킹'],['swinging_strike','스윙'],['foul','파울'],['in_play','인플레이']];
@@ -4251,7 +4285,7 @@ function exportAllGamesToExcel() {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
   var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
   if (!saves.length) { showToast('저장된 경기가 없습니다', false); return; }
-  var allGames = saves.map(function(s){ var d=JSON.parse(localStorage.getItem(s.key)); if(d)_syncAbs(d.abs,_gameLineups(d)); return d; }).filter(Boolean);   // 구버전 경기도 투구 로그 기준 구종·코스 · 좌표 기준 방향(pitch-seq · hit-dir)
+  var allGames = _savesByDate(saves).map(function(x){ _syncAbs(x.d.abs,_gameLineups(x.d)); return x.d; });   // 경기 날짜 오래된 순 · 구버전 경기도 투구 로그 기준 구종·코스 · 좌표 기준 방향(pitch-seq · hit-dir)
 
   var NOAB=['볼넷','사구','희타','희비'], HITS=['안타','내야안타','2루타','3루타','홈런'];
   var BASE={__proto__:null,'안타':1,'내야안타':1,'2루타':2,'3루타':3,'홈런':4};
@@ -4377,7 +4411,7 @@ function exportAllGamesToExcel() {
 function exportFullReport() {
   if (typeof XLSX === 'undefined') { showToast('Excel 라이브러리 로딩 중...', false); return; }
   var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
-  var allGames = saves.map(function(s){ var d=JSON.parse(localStorage.getItem(s.key)); if(d)_syncAbs(d.abs,_gameLineups(d)); return d; }).filter(Boolean);   // 구버전 경기도 투구 로그 기준 구종·코스 · 좌표 기준 방향(pitch-seq · hit-dir)
+  var allGames = _savesByDate(saves).map(function(x){ _syncAbs(x.d.abs,_gameLineups(x.d)); return x.d; });   // 경기 날짜 오래된 순 · 구버전 경기도 투구 로그 기준 구종·코스 · 좌표 기준 방향(pitch-seq · hit-dir)
   // 현재 경기도 포함
   if(AS.abs && AS.abs.length) {
     allGames.push({th:document.getElementById('tHome').value||'홈팀',ta:document.getElementById('tAway').value||'원정팀',

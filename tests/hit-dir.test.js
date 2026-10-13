@@ -62,7 +62,7 @@
   });
 
   test('당겨/센터/밀어 비율이 예전 집계(deg<72 · deg>108, 좌타 반대)와 같다 — 무작위 타구 500개(시드 고정)', async function () {
-    var B = await import('/js/features/batdata.js?v=9');
+    var B = await import('/js/features/batdata.js?v=10');
     var seed = 7, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
     var abs = [];
     for (var i = 0; i < 500; i++) {
@@ -180,7 +180,7 @@
     return out;
   }
   async function exportOf(name) {
-    var B = await import('/js/features/batdata.js?v=9'), X = await import('/js/features/xlsxreport.js?v=11');
+    var B = await import('/js/features/batdata.js?v=10'), X = await import('/js/features/xlsxreport.js?v=12');
     var blob = null, u0 = URL.createObjectURL;
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     try { X.exportBatterXlsx(B.playerData(B.buildData(), name)); } finally { URL.createObjectURL = u0; }
@@ -198,7 +198,7 @@
       abs: [ab('t1', '시간타자', '삼진', null, '1회말'), ab('t1', '시간타자', '삼진', null, '3회말')] });
     stored('sl_900000000032', { th: '먼저', ta: 'A', d: '2026. 10. 13.', info: { date: '2026-05-17' }, ts: 1790500000000, home_lineup: L, away_lineup: [], pitchers: [],
       abs: [ab('t1', '시간타자', '안타', 90, '5회말', { pitches: [{ seq: 1, pt: '직구', zone: '중앙 중간', result: 'in_play' }] }), ab('t1', '시간타자', '안타', 40, '1회말', { pt: '직구' }), ab('t1', '시간타자', '2루타', 140, '3회말', { pt: '커브' })] });   // 구종이 있어야 투구 기록 시트에 결정구 1행
-    var B = await import('/js/features/batdata.js?v=9');
+    var B = await import('/js/features/batdata.js?v=10');
     var P = B.playerData(B.buildData(), '시간타자');
     eq(P.gameList.map(function (g) { return g.label; }), ['2026. 5. 17. 먼저 vs A', '2026. 6. 7. 나중 vs B'], '경기 순서 · 이름은 경기 날짜');
     eq(P.gameList[0].abs.map(function (a) { return a.inn; }), ['1회말', '3회말', '5회말'], '경기 안 이닝 순');

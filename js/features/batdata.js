@@ -6,18 +6,10 @@ function _read(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
 }
 
-// 경기 날짜(시간순 정렬용 · 3단계): 경기 정보 날짜(info.date 'YYYY-MM-DD') → 저장 날짜(d.d '2026. 10. 5.') → 저장 시각(ts)
+// 경기 날짜(시간순 정렬용 · 3단계): 경기 정보 날짜 → 저장 날짜 → 저장 시각 — core.js _gameDateParts · _gameTime 한 벌을 같이 쓴다(전체 경기 엑셀도)
 // 예전엔 저장 시각(ts) 순이라, 나중에 저장·가져온 옛 경기가 뒤에 와서 기간이 "6.7 ~ 5.17" 처럼 거꾸로 나왔다
-function _dateParts(d) {
-  const i = d && d.info && d.info.date;
-  let m = typeof i === 'string' ? /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(i) : null;
-  if (!m && d && typeof d.d === 'string') m = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(d.d);
-  return m ? [+m[1], +m[2], +m[3]] : null;
-}
-function _gameTime(d, s) {
-  const p = _dateParts(d);
-  return p ? new Date(p[0], p[1] - 1, p[2]).getTime() : (+(d && d.ts) || +(s && s.ts) || 0);
-}
+const _dateParts = d => (window._gameDateParts ? window._gameDateParts(d) : null);
+const _gameTime = (d, s) => (window._gameTime ? window._gameTime(d, s) : (+(d && d.ts) || +(s && s.ts) || 0));
 
 // 저장 경기(경기 날짜 오래된 순 → 같은 날은 저장 순) + 현재 경기. 같은 타석(id)이 두 번 세어지지 않게 한다
 // (현재 경기를 저장했거나 저장 경기를 불러온 경우 같은 id가 양쪽에 있음). 경기 안 타석은 이닝 → 기록 순(core.js _absByInning)

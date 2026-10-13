@@ -1,8 +1,8 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips, dirDefs, dirNote, batsBadge } from './batdata.js?v=9';
-import { hotColdFigure } from './zonefig.js?v=7';
-import { mixFigure } from './mixfig.js?v=5';
+import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips, dirDefs, dirNote, batsBadge } from './batdata.js?v=10';
+import { hotColdFigure } from './zonefig.js?v=8';
+import { mixFigure } from './mixfig.js?v=6';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops

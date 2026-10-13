@@ -1,24 +1,24 @@
 // Amateur Baseball Savant — Entry Point
 // Imports new feature modules and initializes the Savant navigation
 
-import './features/profile.js?v=20';
-import './features/compare.js?v=13';
-import './features/scouting.js?v=14';
+import './features/profile.js?v=21';
+import './features/compare.js?v=14';
+import './features/scouting.js?v=15';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=3';
 import './features/insights.js?v=2';
 import './features/perf.js?v=2';
-import './features/team.js?v=10';
-import './features/pitcher.js?v=17';
-import './features/batter.js?v=15';
-import './features/spray.js?v=6';
+import './features/team.js?v=11';
+import './features/pitcher.js?v=18';
+import './features/batter.js?v=16';
+import './features/spray.js?v=7';
 import './features/shell.js?v=16';
-import './features/record.js?v=11';
+import './features/record.js?v=12';
 import './features/settings.js?v=2';
-import './features/scorebook.js?v=18';
-import './features/dashboard.js?v=9';
+import './features/scorebook.js?v=19';
+import './features/dashboard.js?v=10';
 import './features/setup.js?v=5';
-import './features/report.js?v=7';
+import './features/report.js?v=8';
 import './features/anahelp.js?v=2';
 import './features/firstrun.js?v=4';
 

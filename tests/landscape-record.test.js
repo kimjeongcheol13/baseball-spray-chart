@@ -21,6 +21,8 @@
   }
   async function setup() {
     await sleep(2500);   // 앱 시작 작업(마지막 경기 열기 등)이 끝난 뒤
+    // 랜딩 건너뛰기는 터치 지점(maxTouchPoints)으로 판단한다 — 리눅스 헤드리스(CI)는 0 이라 @pointer coarse 여도 랜딩이 남는다(필드 0×0)
+    if ($('landing-page').style.display !== 'none') { showApp(); await sleep(300); }
     ok(innerWidth > 720 && innerWidth < 1024 && innerHeight <= 560 && matchMedia('(any-pointer: coarse)').matches,
       '전제: 폭 721~1023px · 높이 560px 이하 · 터치 기기 창이어야 함(@window · @pointer) — 창 ' + innerWidth + '×' + innerHeight);
     localStorage.removeItem('sl_saves');

@@ -39,6 +39,8 @@
     }
     return 'ok';
   }
+  // 임시 진단(CI 리눅스에서만 0×0): 조상 사슬의 display · 크기 · 화면 상태
+  function _diag(cw) { var c = [], e = cw; while (e && e !== document.documentElement) { var s = getComputedStyle(e), r = e.getBoundingClientRect(); c.push((e.id || String(e.className).slice(0, 24) || e.tagName) + ':' + s.display + (s.visibility !== 'visible' ? '/' + s.visibility : '') + ':' + Math.round(r.width) + 'x' + Math.round(r.height)); e = e.parentElement; } var ov = [].slice.call(document.querySelectorAll('.overlay.on,.overlay.show,[class*=modal].on')).map(function (o) { return o.id; }); return ' | ' + innerWidth + 'x' + innerHeight + ' body=' + document.body.className + ' tab=' + (document.querySelector('.tab.on,.nav-item.on,[aria-selected=true]') || {}).id + ' ov=' + ov.join(',') + ' FS=' + (typeof FS !== 'undefined' ? FS : '?') + ' | ' + c.join(' < '); }
   function settle() { $('editRecOverlay').getAnimations({ subtree: true }).forEach(function (a) { a.finish(); }); }
 
   test('가로 폰: 필드가 정사각형으로 잘리지 않고 보이며, 기록 화면은 세로로 스크롤된다', async function () {
@@ -47,7 +49,7 @@
       await setup();
       var card = $('sbField'); ok(card, '전제: 스코어북 필드 카드(#sbField)가 있어야 함');
       var fw = card.querySelector('.field-wrap'), cw = $('cwrap'), f = R(fw), c = R(cw);
-      ok(cw.clientWidth >= 240 && cw.clientWidth === cw.clientHeight, '필드는 240px 이상의 정사각형이어야 함 — ' + cw.clientWidth + '×' + cw.clientHeight);
+      ok(cw.clientWidth >= 240 && cw.clientWidth === cw.clientHeight, '필드는 240px 이상의 정사각형이어야 함 — ' + cw.clientWidth + '×' + cw.clientHeight + _diag(cw));
       eq($('fldCanvas').style.width, cw.clientWidth + 'px', '캔버스가 그 크기로 그려져야 함');
       ok(c.top >= f.top - 1 && c.bottom <= f.bottom + 1, '필드가 칸 밖으로 잘리지 않아야 함 — 칸 ' + [f.top, f.bottom].map(Math.round) + ' · 필드 ' + [c.top, c.bottom].map(Math.round));
       var al = document.querySelector('.app-layout'), ov = getComputedStyle(al).overflowY;

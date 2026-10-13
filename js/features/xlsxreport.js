@@ -4,7 +4,7 @@
 // SheetJS 무료판은 차트·셀 서식을 쓰지 못해서, xlsx(OOXML)를 직접 만들고 무압축 ZIP으로 묶는다 (외부 라이브러리 없음).
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
-import { buildData, calcStats } from './batdata.js?v=8';
+import { buildData, calcStats, batsTag } from './batdata.js?v=9';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -577,8 +577,12 @@ export function exportBatterXlsx(P) {
   const st = P.st;
   const rows = [];
   P.gameList.forEach(g => g.abs.forEach(a => rows.push({ a, game: g.label })));
-  const bats = P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '';
-  const dirOf = a => (a.dir ? (window._dirLbl ? window._dirLbl(a.dir, a.bats || P.bats) || a.dir : a.dir) : '');
+  const bats = batsTag(P.bats).txt;   // 우타 · 좌타 · 스위치 · 방향 미분류 · 우타 가정(bh 모름 → 우타로 계산) — 3단계
+  const dirOf = a => (window._dirLbl ? window._dirLbl(a.dir) : a.dir || '');   // 필드 기준 5구역(좌 · 좌중 · 중 · 우중 · 우) — 좌표에서 계산
+  const sw = P.bats === 'S';   // 스위치: 당겨/센터/밀어 대신 필드 기준 좌/중/우
+  // 경기 단위 경고(초/말 섞임 · 같은 이닝 3타석 이상)는 경기마다 그 선수 타석으로 계산
+  const gWarn = Object.create(null);
+  P.gameList.forEach(g => { const m = window._gameWarnMap ? window._gameWarnMap(g.abs) : {}; Object.keys(m).forEach(k => { gWarn[k] = m[k]; }); });
   const zoneOf = a => a.zone || (a.pitches && a.pitches.length ? a.pitches[a.pitches.length - 1].zone : '') || '';
 
   // 구종 목록 (타석 마지막 공 기준, 많은 순)
@@ -592,10 +596,11 @@ export function exportBatterXlsx(P) {
   const rec = new Sheet('타석 기록');
   rec.print = 'data'; rec.freeze = 1;
   // 구종·코스·B-S: 투구 로그가 있으면 마지막 공에서 파생된 값(batdata 가 읽을 때 core.js _pSyncAb 로 맞춘 a.pt · a.zone · a.count)
-  // 확인 필요: core.js _pWarn 정합성 경고(삼진인데 스트라이크 < 3 등) — 기존 열 뒤에 붙여 기존 열 위치는 그대로
-  const H = ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '거리(ft)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y', '확인 필요'];
-  const W = [6, 26, 6, 10, 9, 10, 9, 8, 8, 7, 11, 6, 6, 6, 7, 8, 8, 30];
-  const warnOf = a => (window._pWarn ? window._pWarn(a) : []);
+  // 확인 필요: core.js _abWarn 정합성 경고(삼진인데 스트라이크 < 3 · 초/말 섞임 등) — 기존 열 뒤에 붙여 기존 열 위치는 그대로
+  // 추정 거리(m): 찍은 위치로 계산한 값(측정값 아님) — 저장은 ft, 표시만 m (× 0.3048, 반올림)
+  const H = ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '추정 거리(m)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y', '확인 필요'];
+  const W = [6, 26, 6, 10, 9, 10, 9, 10, 8, 7, 11, 6, 6, 6, 7, 8, 8, 30];
+  const warnOf = a => (window._abWarn ? window._abWarn(a, gWarn) : window._pWarn ? window._pWarn(a) : []);
   rec.line(0, 0, H, 'th');
   W.forEach((w, i) => rec.width(i, w));
   const xy = rows.map(({ a }) => {
@@ -607,7 +612,7 @@ export function exportBatterXlsx(P) {
     const cnt = a.count ? `${a.count.b ?? ''}-${a.count.s ?? ''}` : '';
     rec.line(i + 1, 0, [
       i + 1, game, a.inn || '', a.res || '', a.pt || '', zoneOf(a), dirOf(a),
-      a.ft != null ? +a.ft : '', a.ev != null ? +a.ev : '', a.launchAngle != null ? +a.launchAngle : '', a.launchType || '',
+      a.ft != null && a.ft !== '' && isFinite(a.ft) ? Math.round(a.ft * 0.3048) : '', a.ev != null ? +a.ev : '', a.launchAngle != null ? +a.launchAngle : '', a.launchType || '',
       cnt, a.count && a.count.o != null ? a.count.o : '', a.rbi || 0, (a.pitches || []).length,
       xy[i] ? r4(xy[i][0]) : '', xy[i] ? r4(xy[i][1]) : '', warnOf(a).join(' / '),
     ], ['td', 'tdL', 'td', 'tdB', 'td', 'td', 'td', 'td', 'td1', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC', 'tdL']);
@@ -690,9 +695,12 @@ export function exportBatterXlsx(P) {
   r = _table(rep, r + 1, 0, ['경기', '타석', '타수', '안타', '2루타', '3루타', '홈런', '타점', '볼넷', '사구', '삼진', '희생'],
     [[games, st.pa, st.ab, st.h, st.s2, st.s3, st.hr, st.rbi, st.bb, st.hbp, st.k, st.sf + st.sh]], 'td') + 1;
   rep.set(r, 0, '■ 비율 지표', 'sec');
-  const dn = st.dn || 0;
-  r = _table(rep, r + 1, 0, ['삼진%', '볼넷%', '장타%', 'ISO', '당겨%', '센터%', '밀어%', '방향 기록'],
-    [[st.kRate, st.bbRate, st.xbhRate, st.iso, dn ? st.pull / dn : '', dn ? st.center / dn : '', dn ? st.oppo / dn : '', dn]],
+  const dn = st.dn || 0, fn = st.fn || 0;
+  // 방향 3칸: 당겨/센터/밀어(타자 기준) — 스위치는 필드 기준 좌/중/우
+  const dirH = sw ? ['좌%', '중%', '우%'] : ['당겨%', '센터%', '밀어%'];
+  const dirV = sw ? [fn ? st.fl / fn : '', fn ? st.fc / fn : '', fn ? st.fr / fn : '', fn] : [dn ? st.pull / dn : '', dn ? st.center / dn : '', dn ? st.oppo / dn : '', dn];
+  r = _table(rep, r + 1, 0, ['삼진%', '볼넷%', '장타%', 'ISO', ...dirH, '방향 기록'],
+    [[st.kRate, st.bbRate, st.xbhRate, st.iso, ...dirV]],
     ['tdP', 'tdP', 'tdP', 'td3', 'tdP', 'tdP', 'tdP', 'td']) + 1;
   if (pts.length) {
     rep.set(r, 0, '■ 구종별 성적', 'sec');
@@ -715,8 +723,11 @@ export function exportBatterXlsx(P) {
     '「타석 기록」 시트에서 필터(▼)를 걸면 「타구 차트」도 걸러진 타석만 보여줘요. 예: 구종 = 직구, 이닝 = 7회 이후.',
   ];
   if (st.pa < 30) notes.unshift(`표본이 적어요 (${st.pa}타석) — 수치는 참고용으로 봐 주세요.`);
+  if (!P.bats) notes.push('좌/우타 미지정 → 우타로 가정해 당겨/센터/밀어를 계산했어요(「우타 가정」). 경기설정 라인업에서 타석(우타/좌타)을 고르면 바로 바뀌어요.');
+  if (sw) notes.push('스위치 타자는 타석마다 치는 쪽이 달라(투수 손 기록 없음) 당겨/밀어로 나누지 않고 필드 기준 좌/중/우로 보여 줘요.');
+  notes.push('방향 = 찍은 타구 위치의 각도로 나눈 필드 5구역(좌 <54° · 좌중 54~72° · 중 72~108° · 우중 108~126° · 우). 당겨/센터/밀어는 이 구역과 좌/우타로 계산 · 추정 거리(m)는 찍은 위치로 계산한 값이에요(측정값 아님).');
   const nWarn = rows.filter(({ a }) => warnOf(a).length).length;
-  if (nWarn) notes.push(`「타석 기록」 확인 필요 ${nWarn}타석 — 결과와 볼카운트·마지막 공 결과가 맞지 않아요(예: 삼진인데 스트라이크 2개). 저장은 그대로 두고 표시만 했어요. 「확인 필요」 열에서 필터로 모아 볼 수 있어요.`);
+  if (nWarn) notes.push(`「타석 기록」 확인 필요 ${nWarn}타석 — 결과 · 볼카운트 · 마지막 공 결과 · 이닝 기록이 서로 맞지 않아요(예: 삼진인데 스트라이크 2개, 한 경기에서 초/말 섞임). 저장은 그대로 두고 표시만 했어요. 「확인 필요」 열에서 필터로 모아 볼 수 있어요.`);
   if (pNoCnt || pNoName) notes.push(`「투구 기록」 B-S 빈 칸 ${pNoCnt}구 · 투수 빈 칸 ${pNoName}구 — 2026년 6월 7일 업데이트 전에 기록한 공은 공마다 카운트·투수가 저장되지 않았고, 투수 탭에서 투수를 고르지 않고 기록한 공도 투수가 비어요. 타석 마지막 공은 타석 카운트로, 투수는 같은 경기 투수 탭 기록으로 채울 수 있는 만큼 채웠어요.`);
   _bullets(rep, r, 0, notes);
   if (first && last && first !== last) rep.set(1, 0, [P.num !== '' && P.num != null ? '#' + P.num : '', bats, `${games}경기 ${st.pa}타석`, `${first} ~ ${last}`, `생성 ${_today()}`].filter(Boolean).join('  ·  '), 'sub');
@@ -726,7 +737,7 @@ export function exportBatterXlsx(P) {
   spr.print = 'landscape';
   for (let i = 0; i < 20; i++) spr.width(i, 10);
   const nXY = xy.filter(Boolean).length;
-  _header(spr, `${P.name} 타구 분포`, `타구 ${nXY}개 · ${bats || '타석'} · 점 = 타구가 떨어진 자리 (기록 화면에서 찍은 위치)`, 13);
+  _header(spr, `${P.name} 타구 분포`, `타구 ${nXY}개 · ${bats} · 점 = 타구가 떨어진 자리 (기록 화면에서 찍은 위치)`, 13);
   if (nXY && lines.field) {
     const fieldX = [0, 1], fieldY = _fieldRange(lines);
     spr.chart({ type: 'scatter', title: '결과별 타구', w: 510, h: 470, x: fieldX, y: fieldY,
@@ -737,8 +748,8 @@ export function exportBatterXlsx(P) {
     }
     let rr = 27;
     spr.set(rr, 0, '■ 타구 방향', 'sec');
-    rr = _table(spr, rr + 1, 0, ['당겨치기', '센터', '밀어치기', '방향 기록'],
-      [[dn ? st.pull / dn : '', dn ? st.center / dn : '', dn ? st.oppo / dn : '', dn]], ['tdP', 'tdP', 'tdP', 'td']) + 1;
+    rr = _table(spr, rr + 1, 0, [...(sw ? ['좌', '중', '우'] : ['당겨치기', '센터', '밀어치기']), '방향 기록'],
+      [dirV], ['tdP', 'tdP', 'tdP', 'td']) + 1;
     const lt = Object.create(null);
     rows.forEach(({ a }) => { if (a.launchType) lt[a.launchType] = (lt[a.launchType] || 0) + 1; });
     const ltN = Object.values(lt).reduce((s, v) => s + v, 0);
@@ -790,7 +801,7 @@ export function exportBatterXlsx(P) {
 
   // ── 핫콜드존 ──
   const hz = new Sheet('핫콜드존');
-  _header(hz, `${P.name} 코스별 핫/콜드 존`, `타율 기준 · 타석 마지막 공 코스 · 색 = 이 선수 전체 타율(${_f3(st.avg)}) 대비`, 6);
+  _header(hz, `${P.name} 코스별 핫/콜드 존`, `${bats} · 타율 기준 · 타석 마지막 공 코스 · 색 = 이 선수 전체 타율(${_f3(st.avg)}) 대비`, 6);
   const zs = {};
   ZONES_13.forEach(z => { zs[z] = calcStats(rows.filter(o => zoneOf(o.a) === z).map(o => o.a)); });
   const zoned = ZONES_13.reduce((s, z) => s + zs[z].pa, 0);

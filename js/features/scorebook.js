@@ -17,7 +17,7 @@ const ABBR = { __proto__: null,
   '희타': 'SH', '희비': 'SF', '병살': 'GDP',
 };
 const KIND = { __proto__: null, '안타': 'hit', '내야안타': 'hit', '2루타': 'xbh', '3루타': 'xbh', '홈런': 'hr', '삼진': 'k', '볼넷': 'bb', '사구': 'hbp' };
-const DIR = { __proto__: null, LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
+const DIR = { __proto__: null, LF: '좌', LC: '좌중', CF: '중', RC: '우중', RF: '우' };   // 방향 5구역 — core.js DIR_LBL(hit-dir)과 같은 이름
 const kindOf = res => KIND[res] || 'out';
 // 방향은 필드를 탭한 타구만 (내야안타 버튼은 방향 없이 중견 기본값이 들어가므로 표시하지 않음)
 const abbrOf = a => {
@@ -424,7 +424,9 @@ function _sideHtml() {
   const auto = !!(window._pAuto && window._pAuto());   // 이번 타석 투구에 결과가 있으면 B·S 는 결과로 자동 계산(읽기 전용) — core.js pitch-seq
   const all = AS.abs || [];
   const list = all.slice(-12).reverse();
-  const warnN = a => (window._pWarn ? window._pWarn(a).length : 0);
+  const wm = window._gameWarnMap ? window._gameWarnMap(all) : {};   // 경기 단위 경고(초/말 섞임 · 같은 이닝 3타석)
+  const wOf = a => (window._abWarn ? window._abWarn(a, wm) : window._pWarn ? window._pWarn(a) : []);
+  const warnN = a => wOf(a).length;
   return `
     <section class="sb-card sb-count" aria-label="볼카운트">
       <div class="sb-card-hd"><h2>COUNT</h2>${auto ? '<small class="sb-auto" title="B·S = 투구 결과로 자동 계산 (읽기 전용)">결과 자동</small>' : ''}<button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
@@ -454,7 +456,7 @@ function _sideHtml() {
         <button type="button" class="sb-mini" onclick="shellRecSheet(true)" aria-label="전체 ${all.length}타석 보기 · 수정">전체 ${all.length}</button>
       </div>
       ${list.length
-        ? `<ol class="sb-pa-list">${list.map((a, k) => `<li${warnN(a) ? ' class="has-warn"' : ''}><span class="no">${all.length - k}</span><span class="nm">${esc(a.bname || '')}</span>${warnN(a) ? `<span class="sb-warn" title="${esc(window._pWarn(a).join(' / '))}">확인 필요</span>` : ''}<span class="rs k-${kindOf(a.res)}">${esc(abbrOf(a))}</span></li>`).join('')}</ol>`
+        ? `<ol class="sb-pa-list">${list.map((a, k) => `<li${warnN(a) ? ' class="has-warn"' : ''}><span class="no">${all.length - k}</span><span class="nm">${esc(a.bname || '')}</span>${warnN(a) ? `<span class="sb-warn" title="${esc(wOf(a).join(' / '))}">확인 필요</span>` : ''}<span class="rs k-${kindOf(a.res)}">${esc(abbrOf(a))}</span></li>`).join('')}</ol>`
         : '<p class="sb-none">아직 기록이 없습니다. 필드를 누르거나 도장을 찍어 첫 타석을 기록하세요.</p>'}
     </section>`;
 }

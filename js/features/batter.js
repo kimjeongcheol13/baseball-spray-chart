@@ -3,9 +3,9 @@
 //   타석 결과 구성 · 상황별 · 경기별 누적 흐름 · 경기 로그 · 구종별 · 누적 기록 — 카드는 profile.js 함수를 그대로 부른다
 //   히어로에 wOBA+ · 유형 태그, 분석 요약(프로필)과 '이런 타자예요'(타자 메모)는 한 카드로
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=10';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=19';
+import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips, batsBadge } from './batdata.js?v=9';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=11';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=20';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -161,7 +161,7 @@ function _hero(P, info, order, today, live, pool) {
   const s = P.st;
   const X = profileHeroBits(P, pool);   // 예전 프로필 히어로의 wOBA+ · 유형 태그 · 표본 배지
   const isLive = live && live.name === P.name;
-  const meta = [order >= 0 ? `${order + 1}번 타자` : '', _esc(info.pos || ''), P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
+  const meta = [order >= 0 ? `${order + 1}번 타자` : '', _esc(info.pos || ''), P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', batsBadge(P.bats)].filter(Boolean).join(' · ');
   const line = t.pa
     ? `${t.ab}타수 ${t.h}안타${t.hr ? ` ${t.hr}홈런` : ''}${t.rbi ? ` ${t.rbi}타점` : ''}${t.bb + t.hbp ? ` ${t.bb + t.hbp}사사구` : ''}${t.k ? ` ${t.k}삼진` : ''}`
     : '오늘 아직 타석 없음';
@@ -217,7 +217,7 @@ function _formCard(P, today) {
 // 오늘 타석별: 이닝 · 결과 · 방향 · 공 순서
 function _todayCard(today) {
   if (!today.length) return `<section class="an-card"><header class="an-hd"><h3>오늘 타석</h3></header><div class="an-note">오늘 이 타자의 타석이 아직 없어요.</div></section>`;
-  const dir = a => (a.deg == null ? '' : window._isPull && window._isPull(a) ? '당김' : window._isOppo && window._isOppo(a) ? '밀어' : '센터');
+  const dir = a => (window._pullLbl ? window._pullLbl(a) : '');   // 당김/센터/밀어 · 스위치는 좌/중/우 (core.js hit-dir)
   return `
     <section class="an-card">
       <header class="an-hd"><h3>오늘 타석</h3><span class="an-hd-note">공 칩 = 구종·코스 순서 · 마지막 칩이 결과가 난 공</span></header>

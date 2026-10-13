@@ -8,7 +8,9 @@
 
   function ab(i, bid, bn, bno, team, res, x, y, deg, inn) {
     return { id: 1000 + i, bid: bid, bname: bn, bnum: bno, bats: 'R', team: team, res: res, pt: '직구', zone: '중앙 중간', rbi: res === '홈런' ? 1 : 0,
-      x: x, y: y, deg: deg, dir: null, ft: null, inn: inn || '1회초', ts: '10:0' + i, count: { b: 1, s: 2, o: 0 }, pitches: [] };
+      // 각도·방향은 좌표에서 계산(core.js hit-dir — 앱은 저장할 때 좌표로 다시 맞춘다). 인자 deg 는 예전 고정값(좌표와 어긋남)이라 쓰지 않는다
+      x: x, y: y, deg: x != null ? window._hitDeg({ x: x, y: y }) : null, dir: x != null ? window._dirCode(window._hitDeg({ x: x, y: y })) : null,
+      ft: null, inn: inn || '1회초', ts: '10:0' + i, count: { b: 1, s: 2, o: 0 }, pitches: [] };
   }
   function fixture() {
     return {

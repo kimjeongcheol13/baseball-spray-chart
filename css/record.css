@@ -296,3 +296,16 @@ body.sb .edit-log b { color: var(--ink); }
   .sb-count .sb-auto { display: none; }
   .sb-cg.ro::after { white-space: nowrap; }
 }
+
+/* ═══ 수정 창 투구별 편집 (core.js _editRender · 2단계) — 새 요소만, 버튼·선택 상자는 모든 폭에서 44px ═══ */
+#editRecOverlay .modal.ep-on { max-height: 92vh; overflow-y: auto; }   /* 투구 목록이 있을 때만 창 안에서 스크롤 (없는 타석은 기존 배치 그대로) */
+.ep-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.ep-row { padding: 6px 0 8px; border-top: 1px dashed var(--border2, #1e2535); }
+.ep-top { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.ep-top b { flex: none; min-width: 28px; font-size: 12px; }
+.ep-sel { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 4px !important; font-size: 12px !important; }
+.ep-del { flex: none; width: 44px; height: 44px; border: 1.5px solid var(--border2, #1e2535); border-radius: 8px; background: none; color: var(--red, #f56565); font-size: 14px; cursor: pointer; }
+.ep-note { margin-top: 3px; font-size: 10px; }
+body.sb .ep-row { border-top-color: var(--rule); }
+body.sb .ep-del { border-radius: 0; border-color: var(--ink); background: var(--paper-2); color: var(--pen-red); }
+.ep-row .pr-btn { padding: 0 1px; font-size: 11px; letter-spacing: -.5px; white-space: nowrap; }   /* 수정 창은 폭이 좁아 '인플레이'가 두 줄로 꺾이지 않게 */

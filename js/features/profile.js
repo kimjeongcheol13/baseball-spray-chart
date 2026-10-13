@@ -1,8 +1,8 @@
 // 선수 프로필 — 한 타자의 통산 기록을 팀 내 위치·상황별·경기별로 깊게 본다
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=8';
-import { hotColdFigure } from './zonefig.js?v=6';
-import { mixFigure } from './mixfig.js?v=4';
+import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips, dirDefs, dirNote, batsBadge } from './batdata.js?v=9';
+import { hotColdFigure } from './zonefig.js?v=7';
+import { mixFigure } from './mixfig.js?v=5';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -165,7 +165,7 @@ function _renderProfile() {
     ${_insights(P, _data.pool, ranks)}
     ${_rankCard(P, ranks)}
     <section class="an-card">
-      <header class="an-hd"><h3>타구 방향</h3><span class="an-hd-note">${P.bats === 'L' ? '좌타' : '우타'} 기준 당김/밀어 자동 판정</span></header>
+      <header class="an-hd"><h3>타구 방향</h3><span class="an-hd-note">${dirNote(P.bats)}</span></header>
       <div class="pf-spray">
         ${sprayFigure(P)}
         ${_dirTable(P)}
@@ -200,7 +200,7 @@ function _renderProfile() {
 function _hero(P, pool) {
   const s = P.st;
   const smp = s.pa ? sampleBadge(s.pa) : null;
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', batsBadge(P.bats), `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const idx = pool.woba > 0 && s.pa ? Math.round(s.woba / pool.woba * 100) : null;
   const tags = s.pa ? _types(s, pool) : [];
   const tile = (k, label) => {
@@ -302,11 +302,7 @@ function _rankCard(P, R) {
 
 // ── 방향별 성적 ──────────────────────────────────────────────
 function _dirTable(P) {
-  const dirs = [
-    { l: '당김', c: 'pull', f: a => window._isPull && window._isPull(a) },
-    { l: '센터', c: 'ctr', f: a => window._isCtr && window._isCtr(a) },
-    { l: '밀어', c: 'oppo', f: a => window._isOppo && window._isOppo(a) },
-  ];
+  const dirs = dirDefs(P.bats);   // 스위치는 필드 기준 좌/중/우
   const bip = P.abs.filter(a => a.deg != null);
   if (!bip.length) return '';
   const rows = dirs.map(d => {

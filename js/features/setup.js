@@ -139,6 +139,7 @@ function stEdit(id, f, v) {
   } else if (f === 'bh') {
     p.bh = ['R', 'L', 'S'].indexOf(v) >= 0 ? v : '';
     _refreshLineup();
+    try { if (window.updateAll) window.updateAll(); } catch (e) {}   // 이 선수 타석의 좌/우타·당겨/밀어도 바로 맞춘다(core.js hit-dir)
   }
   render();
 }

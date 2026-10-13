@@ -6,17 +6,32 @@ function _read(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
 }
 
-// 저장 경기(오래된 순) + 현재 경기. 같은 타석(id)이 두 번 세어지지 않게 한다
-// (현재 경기를 저장했거나 저장 경기를 불러온 경우 같은 id가 양쪽에 있음)
+// 경기 날짜(시간순 정렬용 · 3단계): 경기 정보 날짜(info.date 'YYYY-MM-DD') → 저장 날짜(d.d '2026. 10. 5.') → 저장 시각(ts)
+// 예전엔 저장 시각(ts) 순이라, 나중에 저장·가져온 옛 경기가 뒤에 와서 기간이 "6.7 ~ 5.17" 처럼 거꾸로 나왔다
+function _dateParts(d) {
+  const i = d && d.info && d.info.date;
+  let m = typeof i === 'string' ? /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(i) : null;
+  if (!m && d && typeof d.d === 'string') m = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(d.d);
+  return m ? [+m[1], +m[2], +m[3]] : null;
+}
+function _gameTime(d, s) {
+  const p = _dateParts(d);
+  return p ? new Date(p[0], p[1] - 1, p[2]).getTime() : (+(d && d.ts) || +(s && s.ts) || 0);
+}
+
+// 저장 경기(경기 날짜 오래된 순 → 같은 날은 저장 순) + 현재 경기. 같은 타석(id)이 두 번 세어지지 않게 한다
+// (현재 경기를 저장했거나 저장 경기를 불러온 경우 같은 id가 양쪽에 있음). 경기 안 타석은 이닝 → 기록 순(core.js _absByInning)
 function _loadGames() {
   const AS = window.AS || {};
-  const saves = (_read('sl_saves') || []).slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
+  const saves = [];
+  (_read('sl_saves') || []).forEach(s => { const d = s && _read(s.key); if (d) saves.push({ s, d, t: _gameTime(d, s) }); });
+  saves.sort((x, y) => (x.t - y.t) || ((x.d.ts || x.s.ts || 0) - (y.d.ts || y.s.ts || 0)));
   const raw = [];
-  saves.forEach(s => {
-    const d = _read(s.key);
-    // 시작 뒤에 들어온 구버전 경기(파일 가져오기·클라우드 복원 등)도 투구 로그 기준 구종·코스·B-S 로 읽는다 (core.js pitch-seq · 읽은 복사본만)
-    if (d && window._pSyncAbs) window._pSyncAbs(d.abs);
-    if (d) raw.push({
+  saves.forEach(({ s, d }) => {
+    // 시작 뒤에 들어온 구버전 경기(파일 가져오기·클라우드 복원 등)도 투구 로그 기준 구종·코스·B-S, 좌표 기준 방향, 라인업 bh 기준 좌/우타로 읽는다
+    // (core.js pitch-seq · hit-dir — 읽은 복사본만 바꾼다)
+    if (window._syncAbs) window._syncAbs(d.abs, [d.home_lineup || d.lineup || [], d.away_lineup || []]);
+    raw.push({
       label: _gameLabel(d, s), abs: d.abs || [], lineups: [...(d.home_lineup || []), ...(d.away_lineup || [])],
       key: s.key, d: d.d || '', ts: d.ts || s.ts || 0, th: d.th || '', ta: d.ta || '', hs: +d.hs || 0, as: +d.as || 0,
       pitchers: d.pitchers || [],
@@ -37,25 +52,20 @@ function _loadGames() {
     set.add(x.id);
     return true;
   };
+  const order = abs => (window._absByInning ? window._absByInning(abs) : abs);
   return raw.map(g => ({
     ...g,
-    abs: _fixBats(g.abs.filter(a => uniq(seen, a)), g.lineups),
+    abs: order(g.abs.filter(a => uniq(seen, a))),   // 타석 좌/우(bats)는 위 _syncAbs(현재 경기는 updateAll)가 라인업 bh 로 맞춘 값
     pitchers: (g.pitchers || []).map(p => ({ ...p, pitches: (p.pitches || []).filter(x => uniq(seenP, x)) })),
   }));
 }
 
-// 과거 타석 좌/우 보정 (읽을 때만): 예전 recHit/recOther는 선수의 bh를 무시하고 항상 'R'로 저장했다.
-// 같은 경기 라인업에서 bid로 선수를 찾아 bh가 L/S면 그 값으로 읽는다.
-// 저장값·AS.abs는 바꾸지 않도록 보정할 타석만 복사본을 만든다.
-function _fixBats(abs, lineups) {
-  const bh = Object.create(null);
-  lineups.forEach(p => { if (p && (p.bh === 'L' || p.bh === 'S')) bh[String(p.id)] = p.bh; });
-  return abs.map(a => (a && (!a.bats || a.bats === 'R') && bh[String(a.bid)] ? { ...a, bats: bh[String(a.bid)] } : a));
-}
-
+// 경기 이름: 정렬과 같은 날짜(경기 정보 날짜가 있으면 그것)로
 function _gameLabel(d, s) {
   const opp = d.th && d.ta ? `${d.th} vs ${d.ta}` : (s.label || '경기');
-  return d.d ? `${d.d} ${opp}` : opp;
+  const p = d.info && d.info.date ? _dateParts(d) : null;
+  const day = p ? `${p[0]}. ${p[1]}. ${p[2]}.` : d.d;
+  return day ? `${day} ${opp}` : opp;
 }
 
 export function buildData() {
@@ -69,7 +79,7 @@ export function buildData() {
     return map[name];
   };
   // 최신 경기 라인업이 번호를 먼저 정하도록 역순
-  games.slice().reverse().forEach(g => g.lineups.forEach(p => p && add(p.name, p.num, p.bats || p.ba)));
+  games.slice().reverse().forEach(g => g.lineups.forEach(p => p && add(p.name, p.num, window._batsNorm ? window._batsNorm(p.bh) : p.bh)));   // 좌/우타 = 라인업 bh 하나
   const all = [];
   games.forEach(g => g.abs.forEach(a => {
     const p = add(a.bname, a.bnum, a.bats);
@@ -101,9 +111,12 @@ export function calcStats(abs) {
   const woba = den ? (WOBA_W.bb * bb + WOBA_W.hbp * hbp + WOBA_W.s1 * s1 + WOBA_W.s2 * s2 + WOBA_W.s3 * s3 + WOBA_W.hr * hr) / den : 0;
   const r = x => (pa ? x / pa : 0);
 
-  const dabs = abs.filter(a => a.deg != null);
+  // 당겨/센터/밀어: 방향이 있는 타구 중 분류할 수 있는 것(스위치 타자 제외 — core.js _dirClassified). 필드 기준 좌/중/우는 모든 방향 타구
+  const fabs = abs.filter(a => a.deg != null);
+  const dabs = fabs.filter(a => (window._dirClassified ? window._dirClassified(a) : true));
   const pull = dabs.filter(a => window._isPull && window._isPull(a)).length;
   const center = dabs.filter(a => window._isCtr && window._isCtr(a)).length;
+  const side = k => fabs.filter(a => window._fieldSide && window._fieldSide(a.deg) === k).length;
 
   return {
     pa, ab, h, s1, s2, s3, hr, bb, hbp, k, sf, sh, rbi, tb,
@@ -113,6 +126,7 @@ export function calcStats(abs) {
     mix1b: r(s1), mixXbh: r(s2 + s3), mixHr: r(hr), mixBb: r(bb + hbp), mixK: r(k),
     mixOut: r(pa - s1 - s2 - s3 - hr - bb - hbp - k),
     dn: dabs.length, pull, center, oppo: dabs.length - pull - center,
+    fn: fabs.length, fl: side('L'), fc: side('C'), fr: side('R'),
   };
 }
 
@@ -142,6 +156,29 @@ export function playerData(data, name) {
   const bc = info.bats || {};
   const bats = (bc.S || 0) > Math.max(bc.L || 0, bc.R || 0) ? 'S' : (bc.L || 0) > (bc.R || 0) ? 'L' : (bc.R || bc.L) ? 'R' : null;
   return { ...info, bats, games: games.length, gameList: games, abs, trend, pitch, st: calcStats(abs) };
+}
+
+// 좌/우타 배지(3단계): 라인업 bh 기준 — 모르면 '우타 가정'(계산은 우타), 스위치는 당겨/밀어 분류 안 함
+export function batsTag(b) {
+  return b === 'L' ? { txt: '좌타', cls: 'l' } : b === 'R' ? { txt: '우타', cls: 'r' }
+    : b === 'S' ? { txt: '스위치 · 방향 미분류', cls: 's' } : { txt: '우타 가정', cls: 'na' };
+}
+
+// 방향 3칸 정의: 보통은 당김 · 센터 · 밀어(타자 기준), 스위치는 필드 기준 좌 · 중 · 우 (core.js hit-dir 함수)
+export function dirDefs(bats) {
+  const W = window, sd = k => a => !!W._fieldSide && W._fieldSide(a.deg) === k;
+  return bats === 'S'
+    ? [{ l: '좌', c: 'pull', f: sd('L') }, { l: '중', c: 'ctr', f: sd('C') }, { l: '우', c: 'oppo', f: sd('R') }]
+    : [{ l: '당김', c: 'pull', f: a => !!W._isPull && W._isPull(a) }, { l: '센터', c: 'ctr', f: a => !!W._isCtr && W._isCtr(a) }, { l: '밀어', c: 'oppo', f: a => !!W._isOppo && W._isOppo(a) }];
+}
+// 방향 카드 머리말: 어느 기준으로 나눴는지
+export function dirNote(bats) {
+  return bats === 'S' ? '스위치 · 필드 기준 좌/중/우' : `${batsTag(bats).txt} 기준 당김/밀어 자동 판정`;
+}
+// 선수 이름 옆 좌/우타 배지 (HTML)
+export function batsBadge(bats) {
+  const t = batsTag(bats);
+  return `<span class="an-bats an-bats-${t.cls}">${t.txt}</span>`;
 }
 
 // ── 포맷 ─────────────────────────────────────────────────────

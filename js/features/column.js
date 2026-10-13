@@ -3,7 +3,7 @@
 // 규칙: 표본 기준(MIN_ZONE_AB · MIN_SPLIT)에 못 미치는 코스·구종·카운트는 문장에 넣지 않는다.
 //       기록으로 확인되지 않는 해석은 쓰지 않고, 추정은 마지막 주석에 추정이라고 밝힌다.
 import { HITS, NOAB, ZONES_9 } from '../constants.js';
-import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=8';
+import { calcStats, f3, pct, josa as _josaPick, sprayFigure, batsTag } from './batdata.js?v=9';
 
 const MIN_ZONE_AB = 3;   // 코스·구종 판단 최소 타수 (scouting.js 와 동일)
 const MIN_SPLIT = 5;     // 카운트 판단 최소 타석 (scouting.js 와 동일)
@@ -86,7 +86,7 @@ export function buildColumn(P, data) {
   const { st, pool } = F;
   const name = P.name;
   const pick = picker(name);
-  const batsTxt = P.bats === 'L' ? '좌타' : P.bats === 'S' ? '스위치' : '우타';
+  const batsTxt = batsTag(P.bats).txt;   // 우타 · 좌타 · 스위치 · 방향 미분류 · 우타 가정
   const idx = pool.woba > 0 && st.pa >= 5 ? Math.round((st.woba / pool.woba) * 100) : null;
   const xbh = st.s2 + st.s3 + st.hr;
   const pullP = st.dn ? st.pull / st.dn : 0;

@@ -97,9 +97,9 @@ function _analyze(abs) {
     var hardR = hard / ftAbs.length;
     var avgFt = Math.round(ftAbs.reduce(function(s, a) { return s + a.ft; }, 0) / ftAbs.length);
     if (hardR >= 0.4)
-      out.push({ type: 'pos', icon: '💪', text: '강한 타구 생산력 우수 (평균 ' + avgFt + 'ft)' });
+      out.push({ type: 'pos', icon: '💪', text: '강한 타구 생산력 우수 (평균 추정 ' + Math.round(avgFt * 0.3048) + 'm)' });
     else if (avgFt < 180)
-      out.push({ type: 'neu', icon: '🎯', text: '타구 비거리가 짧은 편 (평균 ' + avgFt + 'ft) — 컨택 위주' });
+      out.push({ type: 'neu', icon: '🎯', text: '타구 비거리가 짧은 편 (평균 추정 ' + Math.round(avgFt * 0.3048) + 'm) — 컨택 위주' });
   }
 
   return out;

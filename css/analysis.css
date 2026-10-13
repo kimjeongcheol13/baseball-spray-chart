@@ -367,3 +367,9 @@
   /* 이름을 막대 위로 올려 막대가 카드 폭을 다 쓰게 (좁은 칸 숫자 잘림 방지) */
   .an-mixrow { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* ── 좌/우타 배지 (batdata.js batsBadge · 데이터 정합성 3단계) — 새 요소 ──
+   우타 · 좌타 = 라인업에서 고른 값, 우타 가정 = 모름(점선), 스위치 = 당겨/밀어 미분류 */
+.an-bats { display: inline-block; padding: 0 6px; border: 1px solid currentColor; border-radius: 4px; font-size: .9em; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.an-bats-na { border-style: dashed; opacity: .8; }
+body.sb .an-bats { border-radius: 0; }

@@ -1,7 +1,7 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
-import { buildColumn, columnText, renderColumnFigure } from './column.js?v=5';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips, dirDefs, dirNote, batsBadge, batsTag } from './batdata.js?v=9';
+import { buildColumn, columnText, renderColumnFigure } from './column.js?v=6';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -307,7 +307,7 @@ function _render() {
     </div>
     ${_countCard(A)}
     <section class="an-card">
-      <header class="an-hd"><h3>타구 방향 · 수비 위치</h3><span class="an-hd-note">${P.bats === 'L' ? '좌타' : '우타'} 기준 당김/밀어</span></header>
+      <header class="an-hd"><h3>타구 방향 · 수비 위치</h3><span class="an-hd-note">${dirNote(P.bats)}</span></header>
       <div class="sc-spray">
         ${sprayFigure(P)}
         ${_battedCard(P, A)}
@@ -330,7 +330,7 @@ function _render() {
 function _hero(P, A) {
   const s = P.st;
   const smp = sampleBadge(s.pa);
-  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
+  const meta = [P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', batsBadge(P.bats), `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ');
   const kpi = (l, v) => `<div class="sc-kpi"><span>${l}</span><b>${v}</b></div>`;
   return `
     <section class="sc-hero">
@@ -472,9 +472,7 @@ function _battedCard(P, A) {
       <div class="sc-batted-row">
         <span class="sc-bl">방향별 타구 타율</span>
         <div class="sc-dir3">
-          <div><i class="an-sw pull"></i>당김<b>${dirAvg(a => window._isPull(a))}</b><small>${s.pull}개</small></div>
-          <div><i class="an-sw ctr"></i>센터<b>${dirAvg(a => window._isCtr(a))}</b><small>${s.center}개</small></div>
-          <div><i class="an-sw oppo"></i>밀어<b>${dirAvg(a => window._isOppo(a))}</b><small>${s.oppo}개</small></div>
+          ${dirDefs(P.bats).map(d => `<div><i class="an-sw ${d.c}"></i>${d.l}<b>${dirAvg(d.f)}</b><small>${P.abs.filter(a => a.deg != null && d.f(a)).length}개</small></div>`).join('')}
         </div>
       </div>
       <div class="sc-batted-row">
@@ -492,7 +490,7 @@ function _battedCard(P, A) {
 
 function _recentCard(P) {
   const list = P.abs.slice(-10).reverse();
-  const dir = a => (a.deg == null ? '' : window._isPull(a) ? '당김' : window._isOppo(a) ? '밀어' : '센터');
+  const dir = a => (window._pullLbl ? window._pullLbl(a) : '');   // 당김/센터/밀어 · 스위치는 좌/중/우
   return `
     <section class="an-card">
       <header class="an-hd"><h3>최근 타석</h3><span class="an-hd-note">최근 ${list.length}타석 · 최신순</span></header>
@@ -530,7 +528,7 @@ function _textReport(P, A, plan) {
   const L = [];
   const TAG = { attack: '[공략]', avoid: '[주의]', field: '[수비]' };
   L.push(`■ ${P.name} 공략 리포트 (SprayLab)`);
-  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : '', `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
+  L.push(`${[P.num !== '' && P.num != null ? '#' + P.num : '', batsTag(P.bats).txt, `${P.games}경기 ${s.pa}타석`].filter(Boolean).join(' · ')} · 위협도: ${A.threat.l}`);
   L.push(`타율 ${f3(s.avg)} / 출루율 ${f3(s.obp)} / 장타율 ${f3(s.slg)} · 삼진 ${pct(s.kRate)} · 볼넷 ${pct(s.bbRate)}`);
   L.push('');
   L.push('[공략 포인트]');
@@ -552,6 +550,9 @@ function _textReport(P, A, plan) {
   if (s.dn) {
     L.push('');
     L.push(`[타구 방향] 당김 ${Math.round(s.pull / s.dn * 100)}% · 센터 ${Math.round(s.center / s.dn * 100)}% · 밀어 ${Math.round(s.oppo / s.dn * 100)}% (${s.dn}타구)`);
+  } else if (P.bats === 'S' && s.fn) {
+    L.push('');
+    L.push(`[타구 방향 · 스위치 필드 기준] 좌 ${Math.round(s.fl / s.fn * 100)}% · 중 ${Math.round(s.fc / s.fn * 100)}% · 우 ${Math.round(s.fr / s.fn * 100)}% (${s.fn}타구)`);
   }
   if (s.pa < 10) L.push('', `※ 표본 ${s.pa}타석 — 참고용`);
   return L.join('\n');

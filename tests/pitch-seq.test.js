@@ -130,17 +130,103 @@
     recOther('볼넷');
     eq(_pWarn(AS.abs[1]), ['볼넷인데 볼 0개', '볼넷인데 마지막 공이 인플레이'], '볼넷 경고 두 개');
     await T.sleep(750);
-    pitch('직구', '중앙 중간'); pitch('커브', '외각 낮음', 'swinging_strike');
+    pitch('직구', '중앙 중간', 'called_strike'); pitch('커브', '외각 낮음', 'swinging_strike');
     recOther('삼진');
-    eq(_pWarn(AS.abs[2]), ['삼진인데 스트라이크 1개 · 결과 미기록 1구'], '삼진인데 스트라이크 < 3 (미기록 공 수 함께)');
+    eq(_pWarn(AS.abs[2]), ['삼진인데 스트라이크 2개'], '삼진인데 스트라이크 < 3 (결과가 모두 있을 때)');
     // 기록 화면 표시
     renderRecs();
     var t = $('recList').textContent;
     ok((t.match(/확인 필요/g) || []).length === 3, '타석 목록에 확인 필요 3개 — ' + t);
-    // 결과 없는 로그·로그 없는 타석: 수기 B-S 로 삼진·볼넷만 본다
-    eq(_pWarn({ res: '삼진', count: { b: 0, s: 0 }, pitches: [] }), ['삼진인데 B-S 0-0 (2스트라이크 아님)'], '수기 0-0 삼진');
+    // 결과 없는 로그: 1단계 그대로(수기 B-S 로 삼진·볼넷) · 로그 없는 인플레이 타석은 판단 안 함
+    eq(_pWarn({ res: '삼진', count: { b: 0, s: 0 }, pitches: [{ pt: '직구', result: null }] }), ['삼진인데 B-S 0-0 (2스트라이크 아님)'], '결과 없는 로그 + 수기 0-0 삼진');
     eq(_pWarn({ res: '볼넷', count: { b: 3, s: 1 }, pitches: [{ pt: '직구', result: null }] }), [], '수기 3-1 볼넷은 정상');
     eq(_pWarn({ res: '안타', count: { b: 0, s: 0 }, pitches: [] }), [], '로그 없는 인플레이 타석은 판단 안 함');
+  });
+
+  // ── 2단계: 부분 누락 · 수기 B-S 경고 좁히기 ──
+  run('부분 누락(기록 중): 앞 공 결과가 비면 B·S 는 수기 — 결과로 4볼이 돼도 볼넷 자동 기록 없음 · 저장하면 수기 B-S 그대로 + 일부 누락 경고', async function () {
+    pitch('직구', '중앙 중간', 'ball');
+    eq(AS.balls + '-' + AS.strikes, '1-0', '앞 공이 모두 결과 있음 → 자동');
+    pitch('커브', '볼 아래');   // 결과 안 누름
+    ok(document.querySelector('#countBoard').classList.contains('cnt-auto'), '방금 찍은 공만 비어 있으면 아직 자동');
+    pitch('직구', '볼 위', 'ball');
+    ok(!document.querySelector('#countBoard').classList.contains('cnt-auto'), '앞 공(2구)이 비었으니 수기');
+    eq(AS.balls + '-' + AS.strikes, '1-0', '결과를 눌러도 수기 카운트는 그대로');
+    chCount('b'); eq(AS.balls, 2, '수기라 카운트판 B 가 동작');
+    pitch('슬라이더', '볼 외', 'ball'); chCount('b');
+    eq(AS.balls, 3, '수기 3볼');
+    pitch('슬라이더', '볼 외', 'ball');
+    eq(AS.abs.length, 0, '결과로는 4볼이지만 앞 공이 비어 자동 볼넷 없음');
+    recOther('볼넷');
+    var a = AS.abs[0];
+    eq([a.count.b, a.count.s], [3, 0], '타석 B-S = 수기 3-0 그대로(결과로 다시 세지 않음)');
+    eq(a.pitches.map(function (p) { return p.balls + '-' + p.strikes; }), ['0-0', '1-0', '1-0', '2-0', '3-0'], '공마다 B-S 도 기록할 때 값 그대로');
+    eq(_pWarn(a), ['투구 결과 일부 누락 (5구 중 1구 미기록)'], '일부 누락 경고(5번째 경고)');
+  });
+
+  run('부분 누락(저장된 타석): 5구 중 1구 null → 동기화가 B-S 를 결과로 덮지 않는다 · 경고는 일부 누락 + 마지막 공 규칙만', async function () {
+    var R = ['ball', 'called_strike', null, 'ball', 'in_play'];
+    var a = { id: 77001, bid: 'ps1', bname: '정합타자', res: '볼넷', inn: '1회말', pt: '직구', zone: null, count: { b: 2, s: 2, o: 0 },
+      pitches: R.map(function (r, i) { return { seq: i + 1, pt: i === 4 ? '포크볼' : '직구', zone: '외각 낮음', result: r, balls: [0, 1, 1, 2, 2][i], strikes: [0, 0, 1, 2, 2][i] }; }) };
+    _pSyncAb(a);
+    eq([a.count.b, a.count.s, a.pt], [2, 2, '포크볼'], '수기 2-2 유지 · 구종은 마지막 공');
+    eq(a.pitches.map(function (p) { return p.balls + '-' + p.strikes; }), ['0-0', '1-0', '1-1', '2-2', '2-2'], '공마다 기록값 그대로');
+    eq(_pWarn(a), ['투구 결과 일부 누락 (5구 중 1구 미기록)', '볼넷인데 마지막 공이 인플레이'], '일부 누락 + 마지막 공 규칙');
+    a.pitches[2].result = 'foul'; _pSyncAb(a);
+    eq([a.count.b, a.count.s], [2, 2], '모두 채우면 결과로 계산(볼·루킹·파울·볼 → 2-2)');
+    eq(_pWarn(a), ['볼넷인데 볼 2개', '볼넷인데 마지막 공이 인플레이'], '모두 채우면 1단계 경고');
+  });
+
+  test('수기 B-S 경고(로그 없는 타석): 0-0 은 경고 없음 · 0-0 이 아닌데 나올 수 없는 카운트만', function () {
+    var W = function (res, b, s) { return _pWarn({ res: res, count: { b: b, s: s, o: 0 }, pitches: [] }); };
+    eq(W('삼진', 0, 0), [], '삼진 0-0(카운트판 안 씀) → 경고 없음');
+    eq(W('볼넷', 0, 0), [], '볼넷 0-0 → 경고 없음');
+    eq(W('삼진', 1, 2), [], '삼진 1-2 정상'); eq(W('볼넷', 3, 1), [], '볼넷 3-1 정상');
+    eq(W('삼진', 1, 1), ['삼진인데 B-S 1-1 (2스트라이크 아님)'], '삼진인데 스트라이크 ≠ 2');
+    eq(W('삼진', 2, 0), ['삼진인데 B-S 2-0 (2스트라이크 아님)'], '삼진 2-0');
+    eq(W('볼넷', 2, 1), ['볼넷인데 B-S 2-1 (3볼 아님)'], '볼넷인데 볼 ≠ 3');
+    eq(W('안타', 4, 0), ['B-S 4-0 (나올 수 없는 카운트)'], '볼 4 이상');
+    eq(W('땅볼 아웃', 1, 3), ['B-S 1-3 (나올 수 없는 카운트)'], '스트라이크 3 이상');
+    eq(W('안타', 2, 1), [], '인플레이 결과의 정상 카운트');
+    eq(_pWarn({ res: '삼진', count: null, pitches: [] }), [], '카운트 없음');
+  });
+
+  run('수정 창 투구별 편집: 결과·구종·코스 바꾸기 · 같은 버튼 다시 = null · 삭제(순번 다시) — 저장하면 타석 구종·코스·B-S 가 마지막 공을 따라온다', async function () {
+    localStorage.setItem('sl_900000000010', JSON.stringify({ th: '정합', ta: '상대', abs: [], ts: 1 }));
+    localStorage.setItem('sl_saves', JSON.stringify((JSON.parse(localStorage.getItem('sl_saves') || '[]')).concat([{ key: 'sl_900000000010', label: '테스트', ts: 1 }])));
+    window._curSaveKey = 'sl_900000000010';
+    pitch('직구', '중앙 중간', 'ball'); pitch('직구', '내각 높음', 'called_strike'); pitch('커브', '외각 낮음', 'in_play');
+    recOther('땅볼 아웃');
+    var a = AS.abs[0];
+    eq([a.pt, a.zone, a.count.b, a.count.s], ['커브', '외각 낮음', 1, 1], '기록 직후');
+    openEditRec(a.id);
+    eq(document.querySelectorAll('#editLogInfo .ep-row').length, 3, '투구 3개 목록');
+    // (a) 마지막 공 구종 · 코스를 바꾸면 타석 구종 · 코스 칸(읽기 전용)이 바로 따라온다
+    _editPitchSet(2, 'pt', '포크볼'); _editPitchSet(2, 'zone', '볼 아래');
+    eq([$('editPt').value, $('editZone').value, $('editPt').disabled], ['포크볼', '볼 아래', true], '미리보기: 타석 칸 = 마지막 공');
+    // 1구 결과를 파울로 → B-S 다시 계산(파울 · 루킹 → 0-2)
+    _editPitchRes(0, 'foul');
+    ok(/B-S 0-2/.test($('editLogInfo').textContent), '미리보기 B-S 0-2 — ' + $('editLogInfo').textContent);
+    eq(a.pitches[0].result, 'ball', '저장 전에는 타석 그대로');
+    saveEditRec();
+    eq([a.pt, a.zone, a.count.b, a.count.s], ['포크볼', '볼 아래', 0, 2], '(a) 저장 → 타석 구종 · 코스 · B-S 가 마지막 공 기준');
+    eq(a.pitches.map(function (p) { return p.result; }), ['foul', 'called_strike', 'in_play'], '투구 결과 저장');
+    eq(a.pitches[2].x, null, '코스를 바꾼 공은 정확한 위치를 버림(코스만)');
+    var stored = JSON.parse(localStorage.getItem('sl_900000000010')).abs[0];
+    eq([stored.pt, stored.count.b, stored.count.s], ['포크볼', 0, 2], '저장값도');
+    // 같은 버튼 다시 = null → 일부 누락 · 삭제 → 순번 다시
+    openEditRec(a.id);
+    _editPitchRes(1, 'called_strike');
+    ok(/투구 결과 일부 누락/.test($('editLogInfo').textContent), '미리보기 경고: 일부 누락');
+    _editPitchDel(0);
+    eq(document.querySelectorAll('#editLogInfo .ep-row').length, 2, '삭제 → 2개');
+    saveEditRec();
+    eq(a.pitches.map(function (p) { return p.seq + ':' + p.result; }), ['1:null', '2:in_play'], '삭제 후 순번 1 · 2');
+    eq([a.count.b, a.count.s], [0, 2], '결과가 비어 B-S 는 그대로(수기)');
+    eq(_pWarn(a), ['투구 결과 일부 누락 (2구 중 1구 미기록)'], '경고 다시 계산');
+    // 취소하면 그대로
+    openEditRec(a.id); _editPitchDel(0); closeOverlay('editRecOverlay');
+    eq(a.pitches.length, 2, '취소 → 변경 없음');
   });
 
   run('수정 창: 투구 로그가 있는 타석은 구종·코스가 마지막 공 값으로 읽기 전용 — 바꿔 저장해도 마지막 공 값 유지 · 로그 없는 타석은 그대로 수정', async function () {
@@ -225,7 +311,8 @@
         eq([A[1].pt, A[1].zone, A[1].count], ['슬라이더', '볼 외', { b: 3, s: 1, o: 2 }], '② B-S 3-1 (아웃은 그대로)');
         eq(_pWarn(A[1]), [], '② 정상');
         eq(ress(A[2].pitches), ['foul', null, 'in_play'], '③ 파울·알 수 없는 값(null)·안타');
-        eq([A[2].pt, A[2].zone, A[2].count.b, A[2].count.s], ['직구', '내각 높음', 0, 1], '③ 마지막 공 · 0-1');
+        eq([A[2].pt, A[2].zone, A[2].count.b, A[2].count.s], ['직구', '내각 높음', 0, 0], '③ 마지막 공 · 결과가 비어 B-S 는 수기 0-0 그대로');
+        eq(_pWarn(A[2]), ['투구 결과 일부 누락 (3구 중 1구 미기록)'], '③ 일부 누락');
         eq([A[3].pt, A[3].zone, A[3].count, A[3].pitches], ['커브', '외각 중간', { b: 1, s: 1, o: 0 }, []], '④ 로그 없는 타석 그대로');
         eq(d.pitchers[0].pitches[0].result, '볼', '투수 탭 자체 로그는 그대로');
       });
@@ -246,7 +333,7 @@
       localStorage.setItem('sl_900000000002', JSON.stringify(legacyGame()));
       localStorage.setItem('sl_saves', JSON.stringify((JSON.parse(ls.sl_saves || '[]')).concat([{ key: 'sl_900000000002', label: '정합 vs 상대', ts: 1790000000000 }])));
       var raw = localStorage.getItem('sl_900000000002');
-      var B = await import('/js/features/batdata.js?v=8');
+      var B = await import('/js/features/batdata.js?v=9');
       var g = B.buildData().games.find(function (x) { return x.key === 'sl_900000000002'; });
       eq([g.abs[0].pt, g.abs[1].count.b, g.abs[1].count.s], ['포크볼', 3, 1], '읽은 값은 마지막 공 기준');
       eq(localStorage.getItem('sl_900000000002'), raw, '저장값은 그대로(경기를 열어 저장할 때 반영)');
@@ -284,18 +371,20 @@
     useBatter(); pitch('직구', '내각 높음', 'called_strike'); pitch('슬라이더', '외각 낮음', 'ball'); pitch('포크볼', '외각 낮음', 'in_play');
     AS.pending = { x: 0.5, y: 0.3, deg: 90, dir: 'CF', ft: 300 }; AS.rbi = 0; recHit('안타');
     await T.sleep(750);
+    $('innSel').selectedIndex = 2;   // 2회초 — 같은 이닝 3타석 경고(3단계)가 섞이지 않게 타석마다 이닝을 바꾼다
     useBatter(); pitch('직구', '중앙 중간', 'ball'); pitch('커브', '볼 아래');   // 결과 미기록 공 섞임
     recOther('땅볼 아웃');
     await T.sleep(750);
-    useBatter(); AS.pt = '체인지업'; AS.zone = '외각 중간'; recOther('삼진');   // 로그 없는 타석 (수기 0-0 → 확인 필요)
-    var B = await import('/js/features/batdata.js?v=8'), X = await import('/js/features/xlsxreport.js?v=10');
+    $('innSel').selectedIndex = 4;   // 3회초
+    useBatter(); AS.pt = '체인지업'; AS.zone = '외각 중간'; recOther('삼진');   // 로그 없는 타석 (수기 0-0 → 2단계부터 경고 없음)
+    var B = await import('/js/features/batdata.js?v=9'), X = await import('/js/features/xlsxreport.js?v=11');
     var blob = null, u0 = URL.createObjectURL;
     URL.createObjectURL = function (b) { blob = b; return u0.call(URL, b); };
     try { X.exportBatterXlsx(B.playerData(B.buildData(), '정합타자')); } finally { URL.createObjectURL = u0; }
     ok(blob, '엑셀 파일 생성');
     var wb = await readXlsx(blob);
     var rec = wb['타석 기록'], pit = wb['투구 기록'];
-    eq(rec[0].slice(0, 18), ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '거리(ft)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y', '확인 필요'], '타석 기록 머리글 (기존 17열 + 확인 필요)');
+    eq(rec[0].slice(0, 18), ['번호', '경기', '이닝', '결과', '구종', '코스', '방향', '추정 거리(m)', '타구속도', '발사각', '타구 유형', 'B-S', '아웃', '타점', '투구 수', '타구 X', '타구 Y', '확인 필요'], '타석 기록 머리글 (기존 17열 + 확인 필요)');
     eq(pit[0].slice(0, 14), ['순번', '경기', '타석 번호', '이닝', '구종', '코스', 'B-S', '투수', '위치 기록', '위치 X', '위치 Y', '타석 결과', '타석 내 순번', '투구 결과'], '투구 기록 머리글 (기존 12열 + 2열)');
     var cur = rec.slice(1).filter(function (r) { return r[1] === '현재 경기'; });
     eq(cur.length, 3, '이번 경기 3타석');
@@ -305,11 +394,11 @@
       eq([r[4], r[5], r[11]], [last[4], last[5], last[6]], r[0] + '번 타석 구종·코스·B-S = 마지막 공 행');
     });
     eq(cur.map(function (r) { return r[3]; }), ['안타', '땅볼 아웃', '삼진'], '결과');
-    eq(cur.map(function (r) { return r[17] || ''; }), ['', '땅볼 아웃인데 마지막 공이 결과 미기록', '삼진인데 B-S 0-0 (2스트라이크 아님)'], '확인 필요 열');
+    eq(cur.map(function (r) { return r[17] || ''; }), ['', '투구 결과 일부 누락 (2구 중 1구 미기록)', ''], '확인 필요 열 (로그 없는 0-0 삼진은 경고 없음)');
     var p1 = pit.slice(1).filter(function (p) { return p[2] === cur[0][0]; });
     eq(p1.map(function (p) { return [p[12], p[13], p[6]]; }), [[1, '루킹', '0-0'], [2, '볼', '0-1'], [3, '인플레이', '1-1']], '순번 · 결과 · 공마다 B-S');
     var p3 = pit.slice(1).filter(function (p) { return p[2] === cur[2][0]; });
     eq(p3.map(function (p) { return [p[4], p[12] === undefined ? '' : p[12], p[13] === undefined ? '' : p[13]]; }), [['체인지업', '', '']], '로그 없는 타석은 결정구 1행 · 순번·결과 빈 칸');
-    ok(wb['리포트'].some(function (r) { return r.some(function (v) { return /확인 필요 2타석/.test(String(v)); }); }), '리포트 메모에 확인 필요 타석 수');
+    ok(wb['리포트'].some(function (r) { return r.some(function (v) { return /확인 필요 1타석/.test(String(v)); }); }), '리포트 메모에 확인 필요 타석 수');
   });
 })();

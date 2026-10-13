@@ -26,11 +26,12 @@ function _tapAt(e) {
     const sp = _coneToSemi(_fieldGeo(FS), fx * FS, fy * FS);
     if (!sp) return null;
     // 방향 · 추정 거리: core onFClick 과 같은 계산 (표시용)
-    const d = sp.deg, dir = d < 54 ? 'LF' : d < 78 ? 'LC' : d < 102 ? 'CF' : d < 126 ? 'RC' : 'RF';
+    const d = sp.deg, wz = d < 54 ? 'LF' : d < 78 ? 'LC' : d < 102 ? 'CF' : d < 126 ? 'RC' : 'RF';   // 펜스 구간(추정 거리용 · core onFClick 과 같음)
     const st = STADIUMS[_AS().stadium] || STADIUMS.standard;
     const lf = st.lfDist, cf = st.cfDist, rf = st.rfDist;
-    const wall = { LF: lf, LC: (lf + cf) / 2, CF: cf, RC: (cf + rf) / 2, RF: rf }[dir];
-    return { fx, fy, sub: `${dir} · ${Math.round(sp.dist * wall)}m` };
+    const wall = { LF: lf, LC: (lf + cf) / 2, CF: cf, RC: (cf + rf) / 2, RF: rf }[wz];
+    const lbl = window._dirLbl && window._dirCode ? window._dirLbl(window._dirCode(d)) : wz;   // 방향 이름은 5구역(hit-dir)
+    return { fx, fy, sub: `${lbl} · 추정 ${Math.round(sp.dist * wall)}m` };
   } catch (e) { return null; }
 }
 

@@ -947,6 +947,12 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .pitcher-tag{padding:4px 10px;border-radius:14px;border:1.5px solid var(--border2);background:none;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;display:flex;align-items:center;gap:4px}
 .pitcher-tag.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 .pitcher-tag:active{transform:scale(.93)}
+/* 선택 버튼 + 삭제(✕) 한 쌍 (core.js renderPitcherRoster) */
+.pitcher-tag-wrap{display:inline-flex;align-items:stretch}
+.pitcher-tag-wrap .pitcher-tag{border-radius:14px 0 0 14px}
+.pitcher-tag-x{padding:0 9px;border-radius:0 14px 14px 0;border:1.5px solid var(--border2);border-left:0;background:none;color:var(--text3);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms}
+.pitcher-tag-x:hover{color:var(--accent);border-color:var(--accent)}
+.pitcher-tag-x:active{transform:scale(.93)}
 .pitch-log{max-height:130px;overflow-y:auto;margin-bottom:8px}
 .pitch-entry{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;background:var(--bg-raised);border:1px solid var(--border);margin-bottom:3px;font-size:11px}
 .pe-result{width:14px;height:14px;border-radius:50%;flex-shrink:0}
@@ -963,6 +969,13 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .ptr-ball{background:rgba(45,212,160,.18);color:#2dd4a0;border:1.5px solid rgba(45,212,160,.4)}
 .ptr-strike{background:rgba(246,194,62,.18);color:#f6c23e;border:1.5px solid rgba(246,194,62,.4)}
 .ptr-hit{background:rgba(245,101,101,.18);color:#f56565;border:1.5px solid rgba(245,101,101,.4)}
+/* 나머지 결과 버튼 — index.html 인라인 style 에 있던 값을 그대로 클래스로 (종이 테마 paper.css 가 덮어쓸 수 있게) */
+.ptr-foul,.ptr-bb{background:rgba(167,139,250,.18);color:#a78bfa;border:1px solid rgba(167,139,250,.4)}
+.ptr-k{background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.4)}
+.ptr-out,.ptr-dp,.ptr-tp{background:rgba(55,65,81,.5);color:#9ca3af;border:1px solid rgba(156,163,175,.35)}
+.ptr-2b{background:rgba(75,140,245,.18);color:#4b8cf5;border:1px solid rgba(75,140,245,.4)}
+.ptr-3b{background:rgba(246,194,62,.18);color:#f6c23e;border:1px solid rgba(246,194,62,.4)}
+.ptr-hr{background:rgba(245,101,101,.18);color:#f56565;border:1px solid rgba(245,101,101,.4)}
 .ptr-btn:active{transform:scale(.93)}
 .pitcher-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px}
 .ps-it{background:var(--bg-raised);border:1px solid var(--border);border-radius:7px;padding:8px 5px;text-align:center}

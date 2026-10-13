@@ -295,9 +295,13 @@ function _patchBatterFlow() {
   if (typeof origUndo === 'function') {
     window.undoLast = function () {
       const last = typeof AS !== 'undefined' && AS.abs.length ? AS.abs[AS.abs.length - 1] : null;
+      const cp0 = typeof AS !== 'undefined' ? AS.currentPitches : null;
       const r = origUndo.apply(this, arguments);
       if (last && !_gfOn() && (last.team || 'home') === AS.curTeam && _lineup().some((p) => String(p.id) === String(last.bid))) {
+        const cp = AS.currentPitches;
         _selectBatter(last.bid);
+        // core.js undoLast 가 그 타석의 앞 공들을 되살렸으면(투수 탭 연동) 타자를 다시 골라도(selBatter 가 비움) 지킨다
+        if (cp !== cp0) AS.currentPitches = cp;
       }
       return r;
     };

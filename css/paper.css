@@ -1281,10 +1281,23 @@ html.sb-boot body::after {
   body.sb #savantNav .savant-nav-btn:not(.active) { height: 44px; min-height: 44px; }   /* 하단 바인더 탭 40 → 44 (현재 탭 46 그대로, ::before 막혀 있어 높이로) */
   .sb-seg button { min-height: 44px; }                                                  /* 타순표 내 팀 / 원정팀 34 */
   .btn, .btn.btn-ghost { min-height: 44px; }                                            /* 클라우드 · 라인업 서랍 등 옛 .btn 36 */
-  .p-edit, .hm-close { min-width: 44px; min-height: 44px; }                            /* 라인업 연필 · 사용 방법 닫기 36 */
+  .hm-close { min-width: 44px; min-height: 44px; }                                     /* 사용 방법 닫기 36 */
   .ffm-tag { min-height: 44px; }                                                        /* 피드백 태그 36 */
   .ldr-tab { min-height: 44px; }                                                        /* 팀 리더보드 탭 28 (기록이 쌓이면 보임) */
   /* 점수판(.scoreboard)은 폰에서 scale(.92) 로 줄여 그린다(styles.css) → 안의 버튼 · 입력은 48px 이어야 화면에서 44px */
   body.sb .se-body .sc-btn { min-width: 48px; min-height: 48px; }
   .se-body .team-inp { min-height: 48px; }
+
+  /* 44 로 키우면 깨지는 곳 — 보이는 크기는 그대로 두고 ::before 투명 히트 영역으로 44 × 44 (가운데 맞춤, 눌리면 버튼이 눌린 것)
+     · 라인업 서랍 행(연필 · 주전/후보 · ✕): 높이 44 면 행이 58 → 66 — 연필 · ✕ 는 폭 44 · 높이 36(원래 값), 주전(글자 9px)은 보이는 크기 그대로.
+       세 버튼 사이 간격 8 > 주전 히트 영역이 옆으로 나가는 7 이라 서로 겹치지 않음
+     · 최근 기록 시트 ◀ ▶ (32 × 24): 44 로 키우면 가운데 '전체 (n명)' 칸(24)과 높이가 어긋남 */
+  .starter-btn, .rpn-btn { min-width: 0; min-height: 0; }
+  .p-edit { min-width: 44px; }
+  .starter-btn, .rpn-btn, .p-edit, .p-del { position: relative; }
+  :is(.starter-btn, .rpn-btn, .p-edit, .p-del)::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .rec-player-nav { margin-bottom: 12px; }   /* ◀ ▶ 히트 영역(위아래 +10)이 바로 아래 기록 카드와 겹치지 않게 간격 7 → 12 (겹치면 카드가 위에 그려져 탭을 가져감) */
+  /* 라인업 서랍 ✕(선수 삭제): 마우스를 올려야 보이는(opacity 0) 버튼이 행 오른쪽에 떠 있어(position: absolute) '주전' 버튼을 덮고 있었다
+     → 터치에선 보이지 않는 ✕ 가 눌려 '주전'을 누르면 선수가 지워짐 (main 도 같음). 행 안 마지막 칸으로 내리고 보이게 */
+  .p-del { right: auto; top: auto; transform: none; opacity: 1; flex-shrink: 0; min-height: 36px; }
 }

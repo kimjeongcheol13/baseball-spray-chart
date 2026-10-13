@@ -349,10 +349,10 @@ function showApp(){
 // 필드는 항상 마지막 경기 상태로 연다: 진행 중 자동저장 → 가장 최근 저장 경기 → 빈 필드
 function _hasRecoveryData(){
   var rec=storageManager.getRecovery(),d=rec&&rec.data;
-  return !!(d&&((d.abs&&d.abs.length)||(d.home_lineup&&d.home_lineup.length)||(d.away_lineup&&d.away_lineup.length)));
+  return !!(d&&(_hasAnyRecord(d)||(d.home_lineup&&d.home_lineup.length)||(d.away_lineup&&d.away_lineup.length)));
 }
 function _openLastGame(){
-  if(AS.abs.length||AS.home_lineup.length||AS.away_lineup.length)return;
+  if(_hasAnyRecord()||AS.home_lineup.length||AS.away_lineup.length)return;
   if(_hasRecoveryData()){archRecoverAutosave();return;}
   var saves=[];try{saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');}catch(e){}
   if(!saves.length)return;
@@ -3347,12 +3347,38 @@ document.addEventListener('keydown',e=>{
 // AUTO-SAVE ENGINE
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 var _autoTimer=null,_autoKey=null,_lastAutoLen=0;
+// 저장할 기록이 있는가 = 타석이 있거나 투수 탭에 기록한 공이 있으면. 자동저장(sl_auto_*) · 복구 슬롯(sl_autosave) · 복구 판단 · 복구 저장(_archQuietSave) ·
+// 다른 경기 열기 전 저장이 모두 이 기준을 쓴다. 예전엔 전부 타석만 봐서, 투수 탭에서만 기록한 경기는 새로고침하면 사라졌다.
+// d 를 주면 그 데이터(복구본 · 저장본)로, 없으면 지금 AS 로 판단
+function _hasAnyRecord(d){
+  d=d||AS;
+  if(!d)return false;
+  if(d.abs&&d.abs.length)return true;
+  return (d.pitchers||[]).some(function(p){return !!(p&&p.pitches&&p.pitches.length);});
+}
+// 복구 안내용 기록 수: '3타석' · '투구 12구' · '3타석 · 투구 12구'
+function _recordCountTxt(d){
+  d=d||AS;
+  var pa=(d&&d.abs||[]).length,pc=(d&&d.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
+  return [pa?pa+'타석':'',pc?'투구 '+pc+'구':''].filter(Boolean).join(' · ')||'0타석';
+}
+// 복구 슬롯(sl_autosave) 예약 — 타석 기록 뒤(updateAll) · 투구 기록 뒤 · 화면 숨김이 같은 모양으로 적는다. 기록이 없으면 적지 않는다
+function _scheduleRecoverySave(delay){
+  if(!_hasAnyRecord())return;
+  storageManager.scheduleAutosave({
+    abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
+    hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
+    pitchers:AS.pitchers||[],saveKey:_curSaveKey,
+    th:(document.getElementById('tHome')||{}).value||'',
+    ta:(document.getElementById('tAway')||{}).value||''
+  },delay);
+}
 function scheduleAutoSave(){
   clearTimeout(_autoTimer);
   _autoTimer=setTimeout(_doAutoSave,10000);
 }
 function _doAutoSave(){
-  if(!AS.abs.length||_sharedViewActive())return;   // 공유받아 보기만 하는 경기는 자동저장하지 않는다(_sharedView 설명)
+  if(!_hasAnyRecord()||_sharedViewActive())return;   // 기록이 없거나, 공유받아 보기만 하는 경기는 자동저장하지 않는다(_sharedView 설명)
   if(!AS.curGame)AS.curGame=Date.now();   // 마법사를 거치지 않은 경기(복구 등)도 키 하나로 고정 (cloud.js cloudAutoSyncRecord 와 같은 규칙)
   var key='sl_auto_'+AS.curGame;
   _autoKey=key;
@@ -5334,7 +5360,7 @@ function _restoreInfoFromPayload(i){
 function _saveWorkBeforeReplace(){
   // 저장할 게 없는 경우: 타구가 없다 · 저장한 뒤 바꾼 게 없다(_gameSaved — 페이지 이탈 경고 · 새 경기 확인과 같은 기준) ·
   // 공유 경기를 보기만 했다(내 경기가 아니다). _gameSaved 를 보지 않으면 로그인 정리(cloud.js _relinkOpenGame)가 지운 중복 항목을 여기서 되살린다
-  if(!AS.abs||!AS.abs.length||_gameSaved||_sharedViewActive())return false;
+  if(!_hasAnyRecord()||_gameSaved||_sharedViewActive())return false;
   if(!_archQuietSave(_curSaveKey))return null;
   try{   // 평소 "경기 저장"과 같이 클라우드에도(로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함)
     var d=JSON.parse(localStorage.getItem(_curSaveKey)||'null');
@@ -5640,7 +5666,18 @@ function addPitcher(){
   var name=document.getElementById('pitcherName').value.trim();
   var num=document.getElementById('pitcherNum').value.trim();
   if(!name){showToast('투수 이름을 입력하세요',false,false);return;}
-  var p={id:Date.now(),name:name,num:num,role:AS.pitcherRole||null,pitches:[]};
+  // 같은 투수를 또 등록하지 않는다(이름이 같고 번호가 같거나 한쪽이 비어 있으면) — 불러온 경기에서 선택이 풀려 다시 등록하면 투구 0구짜리 빈 칸이 늘었다 → 있는 투수를 고른다
+  var dup=AS.pitchers.find(function(p){return p.name===name&&(!num||!p.num||String(p.num)===num);});
+  if(dup){
+    selectPitcher(dup.id);
+    document.getElementById('pitcherName').value='';
+    document.getElementById('pitcherNum').value='';
+    showToast('이미 등록된 투수예요 — '+(dup.num?'#'+dup.num+' ':'')+dup.name+' 선택 ('+(dup.pitches||[]).length+'구)',false,true);
+    return;
+  }
+  var id=Date.now();
+  while(AS.pitchers.some(function(q){return q.id===id;}))id++;   // 같은 밀리초에 둘을 등록하면 id 가 겹쳐 selectPitcher 가 앞 투수를 골랐다
+  var p={id:id,name:name,num:num,role:AS.pitcherRole||null,pitches:[]};
   AS.pitchers.push(p);
   selectPitcher(p.id);
   document.getElementById('pitcherName').value='';
@@ -5669,11 +5706,40 @@ function renderPitcherRoster(){
   el.innerHTML=AS.pitchers.map(function(p){
     var on=AS.currentPitcher&&AS.currentPitcher.id===p.id;
     var roleHtml=p.role?('<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:'+roleColors[p.role]+'33;color:'+roleColors[p.role]+';margin-left:3px">'+_escHtml(p.role)+'</span>'):'';
-    return '<button class="pitcher-tag'+(on?' on':'')+'" onclick="selectPitcher('+_numArg(p.id)+')">'
-      +(p.num?'#'+_escHtml(p.num)+' ':'')+_escHtml(p.name)+roleHtml
+    var who=(p.num?'#'+_escHtml(p.num)+' ':'')+_escHtml(p.name);
+    // 선택 버튼 + 삭제(✕) 버튼 한 쌍 — 버튼 안에 버튼을 넣을 수 없어 span 으로 묶는다
+    return '<span class="pitcher-tag-wrap">'
+      +'<button class="pitcher-tag'+(on?' on':'')+'" onclick="selectPitcher('+_numArg(p.id)+')" aria-pressed="'+(on?'true':'false')+'">'
+      +who+roleHtml
       +' <span style="font-size:9px;color:inherit;opacity:.7">('+p.pitches.length+'구)</span>'
-      +'</button>';
+      +'</button>'
+      +'<button type="button" class="pitcher-tag-x" onclick="removePitcher('+_numArg(p.id)+')" aria-label="'+who+' 삭제" title="투수 삭제">✕</button>'
+      +'</span>';
   }).join('');
+}
+
+// 투수 삭제: 그 투수의 투구 기록(pitches)도 같이 지운다. 기록 탭 타석(AS.abs)에 남은 공은 건드리지 않는다
+function removePitcher(id){
+  var i=AS.pitchers.findIndex(function(p){return String(p.id)===String(id);});
+  if(i<0)return;
+  var p=AS.pitchers[i],n=(p.pitches||[]).length;
+  var who=(p.num?'#'+p.num+' ':'')+p.name;
+  if(n&&!confirm(who+' 삭제 — 이 투수의 투구 기록 '+n+'구도 함께 지워집니다. 계속할까요?'))return;
+  AS.pitchers.splice(i,1);
+  if(AS.currentPitcher&&String(AS.currentPitcher.id)===String(id))AS.currentPitcher=null;
+  // 전체 투구 로그 다시 만들기 (restoreGame 과 같은 규칙)
+  AS.pitchLog=[];
+  AS.pitchers.forEach(function(q){(q.pitches||[]).slice().reverse().forEach(function(e){AS.pitchLog.push(e);});});
+  AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
+  renderPitcherRoster();
+  var lbl=document.getElementById('currentPitcherLabel');
+  if(lbl)lbl.textContent=AS.currentPitcher?(AS.currentPitcher.num?'#'+AS.currentPitcher.num+' ':'')+AS.currentPitcher.name:'미선택';
+  renderPitchLog();
+  renderPitcherStats();
+  scheduleAutoSave();
+  _scheduleRecoverySave();
+  _gameSaved=false;
+  showToast('투수 삭제: '+who+(n?' · '+n+'구':''),false,true);
 }
 
 function selPitcherZone(el){
@@ -5705,6 +5771,7 @@ function _pitchChanged(){   // 투구가 늘거나 줄거나 바뀐 뒤 공통 �
   if(typeof renderPitcherRoster==='function')renderPitcherRoster();   // 투수 버튼의 'N구' (main #104)
   _syncOutsFromPitch();   // 기록 탭 O 점 = 이 이닝 투구 기록의 아웃 (B·S 처럼 하나)
   scheduleAutoSave();
+  _scheduleRecoverySave();   // 투구만 기록한 경기도 새로고침 뒤 복구되게 (main #147 — 타석은 updateAll 이 예약한다)
   _gameSaved=false;   // 투구만 기록해도 '저장 안 된 기록'으로 (새 경기 저장 확인·창 닫기 경고)
 }
 // 코스 입력은 공마다 새로 찍는다. 비우지 않으면 직전 공의 좌표가 다음 공에 그대로 저장된다 (구종만 바꾸고 코스를 안 찍은 공)
@@ -8668,15 +8735,7 @@ var undoManager=(function(){
   var _orig=updateAll;
   updateAll=function(){
     var r=_orig.apply(this,arguments);
-    if(AS&&AS.abs&&AS.abs.length>0){
-      storageManager.scheduleAutosave({
-        abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
-        hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
-        th:(document.getElementById('tHome')||{}).value||'',
-        ta:(document.getElementById('tAway')||{}).value||''
-      });
-    }
+    if(AS)_scheduleRecoverySave();
     return r;
   };
 })();
@@ -8684,15 +8743,7 @@ var undoManager=(function(){
 // ─── 페이지 숨김 시 즉시 autosave ─────────────
 document.addEventListener('visibilitychange',function(){
   if(document.hidden){
-    if(AS&&AS.abs&&AS.abs.length>0){
-      storageManager.scheduleAutosave({
-        abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
-        hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
-        th:(document.getElementById('tHome')||{}).value||'',
-        ta:(document.getElementById('tAway')||{}).value||''
-      },0);
-    }
+    if(AS)_scheduleRecoverySave(0);
   } else {
     setTimeout(function(){
       // 캔버스 컨텍스트 재복구
@@ -8736,24 +8787,23 @@ var uiStates={
 };
 
 // ─── Autosave 복구 ────────────────────────────
-(function _checkRecovery(){
-  setTimeout(function(){
-    // 앱 페이지가 활성화된 경우에만 복구 배너 표시
-    var ap=document.getElementById('app-page');
-    if(!ap||ap.style.display!=='flex')return;
-    if(!storageManager.hasRecovery())return;
-    var rec=storageManager.getRecovery();
-    if(!rec||!rec.data||!rec.data.abs||!rec.data.abs.length){storageManager.clearRecovery();return;}
-    if(AS.abs&&AS.abs.length>0)return; // 현재 기록 있으면 skip
-    var banner=document.getElementById('archRecoveryBanner');
-    var sub=document.getElementById('archRecoveryCount');
-    if(banner){
-      if(sub)sub.textContent=rec.data.abs.length+'타석 기록을 복구할 수 있습니다';
-      banner.classList.remove('arch-rec-hidden');
-      banner.style.display='block';
-    }
-  },900);
-})();
+// 복구 배너: 앱 페이지가 열려 있고 · 복구 슬롯에 기록(타석 또는 투구)이 있고 · 지금 기록이 없을 때만. 시작 0.9초 뒤 한 번 (테스트가 직접 부를 수 있게 이름 있는 함수)
+function _checkRecovery(){
+  var ap=document.getElementById('app-page');
+  if(!ap||ap.style.display!=='flex')return;
+  if(!storageManager.hasRecovery())return;
+  var rec=storageManager.getRecovery();
+  if(!rec||!rec.data||!_hasAnyRecord(rec.data)){storageManager.clearRecovery();return;}
+  if(_hasAnyRecord())return; // 현재 기록 있으면 skip
+  var banner=document.getElementById('archRecoveryBanner');
+  var sub=document.getElementById('archRecoveryCount');
+  if(banner){
+    if(sub)sub.textContent=_recordCountTxt(rec.data)+' 기록을 복구할 수 있습니다';
+    banner.classList.remove('arch-rec-hidden');
+    banner.style.display='block';
+  }
+}
+setTimeout(_checkRecovery,900);
 
 // 복구본의 경기 정보(AS.info) — 없으면(sl_auto_* · 예전 자동저장) 복구가 덮어쓸 저장 경기(saveKey)의 값.
 // updateAll 전에 정해 둔다: 그 안의 자동저장 감싸기(setup.js)가 빈 정보를 채우면 저장 경기의 정보를 덮게 된다
@@ -8799,7 +8849,7 @@ function archRecoverAutosave(){
 
 // saveKey = 복구한 기록이 원래 속한 저장 항목 (자동저장에 함께 적힘)
 function _archQuietSave(saveKey){
-  if(!AS.abs||!AS.abs.length)return;
+  if(!_hasAnyRecord())return;
   try{
     var th=(document.getElementById('tHome')||{}).value||'홈팀';
     var ta=(document.getElementById('tAway')||{}).value||'원정팀';
@@ -9006,16 +9056,8 @@ function toggleHighContrast(){
     banner.classList.toggle('show',!online);
     document.body.classList.toggle('offline-active',!online);
     var cnt=document.getElementById('fieldOfflineCount');
-    if(cnt)cnt.textContent=!online&&AS.abs&&AS.abs.length?'('+AS.abs.length+'타석 기록 중)':'';
-    if(!online&&AS.abs&&AS.abs.length>0){
-      storageManager.scheduleAutosave({
-        abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
-        hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
-        pitchers:AS.pitchers||[],saveKey:_curSaveKey,
-        th:(document.getElementById('tHome')||{}).value||'',
-        ta:(document.getElementById('tAway')||{}).value||''
-      },100);
-    }
+    if(cnt)cnt.textContent=!online&&_hasAnyRecord()?'('+_recordCountTxt()+' 기록 중)':'';
+    if(!online)_scheduleRecoverySave(100);   // 기록이 없으면 _scheduleRecoverySave 가 적지 않는다
   }
   window.addEventListener('offline',_update);
   window.addEventListener('online',function(){_update();showToast('인터넷 연결 복구 ✓',false);});
@@ -9902,7 +9944,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   // 이전 세션 자동 복구: autosave 있고 현재 기록 없으면 바로 게임 화면으로
   setTimeout(function(){
-    if(!_hasRecoveryData()||AS.abs.length)return;
+    if(!_hasRecoveryData()||_hasAnyRecord())return;
     var lp=document.getElementById('landing-page');
     if(lp&&lp.style.display!=='none')showApp();
     else _openLastGame();

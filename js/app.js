@@ -10,7 +10,7 @@ import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
 import './features/team.js?v=9';
-import './features/pitcher.js?v=35';
+import './features/pitcher.js?v=39';
 import './features/batter.js?v=27';
 import './features/spray.js?v=5';
 import './features/shell.js?v=15';
@@ -22,6 +22,7 @@ import './features/setup.js?v=5';
 import './features/report.js?v=6';
 import './features/anahelp.js?v=2';
 import './features/firstrun.js?v=3';
+import './features/tabloop.js?v=1';
 
 import './features/anahelp.js?v=2';
 import './features/anahelp.js?v=2';

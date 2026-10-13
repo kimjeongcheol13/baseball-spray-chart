@@ -90,7 +90,7 @@ async function runFile(file) {
   const POINTER = { coarse: 'primaryPointerType=2,availablePointerTypes=2,primaryHoverType=1,availableHoverTypes=1', fine: 'primaryPointerType=4,availablePointerTypes=4,primaryHoverType=2,availableHoverTypes=2' };
   const args = ['--headless=new', ...(win ? [`--window-size=${win[1]},${win[2]}`] : []), ...(ptr ? [`--blink-settings=${POINTER[ptr[1]]}`] : []), '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
     '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', `--virtual-time-budget=${BUDGET_MS}`, '--enable-logging=stderr', '--v=0',
-    ...((process.getuid && process.getuid() === 0) || process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), '--dump-dom', `http://127.0.0.1:${port}/?f=${encodeURIComponent(file)}`];
+    ...(process.getuid && process.getuid() === 0 ? ['--no-sandbox'] : []), '--dump-dom', `http://127.0.0.1:${port}/?f=${encodeURIComponent(file)}`];
   const child = spawn(chrome, args);
   let out = '', err = '', killed = false;
   child.stdout.on('data', (d) => (out += d));

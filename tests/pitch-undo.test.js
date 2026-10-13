@@ -11,14 +11,14 @@
     var s = $('innSel');
     return { abs: AS.abs, hl: AS.home_lineup, al: AS.away_lineup, team: AS.curTeam, batter: AS.batter, bf: AS.batterFilter,
       b: AS.balls, s: AS.strikes, o: AS.outs, pitchers: AS.pitchers, cp: AS.currentPitcher, pl: AS.pitchLog, cps: AS.currentPitches,
-      pt: AS.pitcherPt, pz: AS.pitcherZone, inn: s ? s.selectedIndex : 0, curGame: AS.curGame, autoKey: window._autoKey, saveKey: window._curSaveKey, saved: window._gameSaved, keys: snapKeys(),
+      pt: AS.pitcherPt, pz: AS.pitcherZone, inn: s ? s.selectedIndex : 0, curGame: AS.curGame, autoKey: window._autoKey, saveKey: window._curSaveKey, saved: window._gameSaved, keys: snapKeys(), info: AS.info,
       saves: localStorage.getItem('sl_saves') };
   }
   function restore(S) {
     clearTimeout(window._autoTimer);
     AS.abs = S.abs; AS.home_lineup = S.hl; AS.away_lineup = S.al; AS.curTeam = S.team; AS.batter = S.batter; AS.batterFilter = S.bf;
     AS.balls = S.b; AS.strikes = S.s; AS.outs = S.o; AS.pitchers = S.pitchers; AS.currentPitcher = S.cp; AS.pitchLog = S.pl; AS.currentPitches = S.cps;
-    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS.pending = null; AS.curGame = S.curGame; window._autoKey = S.autoKey; window._curSaveKey = S.saveKey; window._gameSaved = S.saved;
+    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS.pending = null; AS.curGame = S.curGame; AS.info = S.info; window._autoKey = S.autoKey; window._curSaveKey = S.saveKey; window._gameSaved = S.saved;
     if (S.saves != null) localStorage.setItem('sl_saves', S.saves);
     var s = $('innSel'); if (s) s.selectedIndex = S.inn;
     Object.keys(snapKeys()).forEach(function (k) { if (!S.keys[k]) localStorage.removeItem(k); });
@@ -247,5 +247,31 @@
     setPitcherView('mode', 'input');
     ok(/볼넷·사구/.test(document.querySelector('#pitcherView .pc-live').textContent), '등판 중 카드: 볼넷·사구');
     setPitcherView('mode', 'stats');
+  });
+
+  run('투수를 바꾸면 최근 투구 로그도 바로 그 투수 공으로 (다음 공을 기록하기 전에도)', function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    AS.pitchers.push({ id: 'pp2', name: '바꾼투수', num: '33', role: null, pitches: [] });
+    selectPitcher('pp2');
+    eq($('pitchLog').querySelectorAll('.pitch-entry').length, 0, '새 투수: 로그 비움');
+    ok(/투구를 기록하면/.test($('pitchLog').textContent), '안내 문구');
+    ok($('pitchUndoBtn').disabled, '되돌릴 공 없음');
+    selectPitcher('pp1');
+    eq($('pitchLog').querySelectorAll('.pitch-entry').length, 2, '처음 투수: 2구');
+    ok(!$('pitchUndoBtn').disabled, '되돌리기 켜짐');
+  });
+
+  run('경기를 복구하면 이전 경기 투수 선택이 풀리고(그 투수 객체에 공이 쌓이지 않게) 투구 로그를 다시 그린다', function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    var old = AS.currentPitcher;
+    var d = { abs: [], home_lineup: AS.home_lineup, away_lineup: [], hs: 0, as: 0, zoneHistory: {},
+      pitchers: [{ id: 'rp1', name: '복구투수', num: '1', role: null, pitches: [{ id: 1, inning: '1회초', result: '볼', pt: '직구', zone: null, ts: '' }, { id: 2, inning: '1회초', result: '파울', pt: '커브', zone: null, ts: '' }] }] };
+    var gr = storageManager.getRecovery, qs = window._archQuietSave;
+    storageManager.getRecovery = function () { return { data: d }; };
+    try { archRecoverAutosave(); } finally { storageManager.getRecovery = gr; }
+    ok(AS.currentPitcher !== old, '이전 경기 투수 선택 풀림'); eq(AS.currentPitcher, null, '선택 없음');
+    eq(AS.pitchLog.map(function (e) { return e.result; }), ['파울', '볼'], '전체 투구 로그 다시 만듦');
+    eq($('pitchLog').querySelectorAll('.pitch-entry').length, 2, '로그 2줄'); eq($('currentPitcherLabel').textContent, '미선택', '현재 투수 표시');
+    ok(/복구투수/.test($('pitcherRoster').textContent), '투수 목록도 복구한 경기');
   });
 })();

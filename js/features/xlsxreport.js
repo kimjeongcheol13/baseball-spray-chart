@@ -33,7 +33,7 @@ const ZX1 = 0.22, ZX2 = 0.78, ZY1 = 0.15, ZY2 = 0.85;
 const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];
 const ZONES_13 = [...ZONES_9, ...ZONE_BALL];
 const PT_HIT = ['안타', '2루타', '3루타', '홈런', '타격됨'];   // 투구 결과 중 피안타 (투수 탭과 같은 기준)
-const PT_BALL = ['볼', '볼넷'];
+const PT_BALL = ['볼', '볼넷', '사구'];   // 볼로 세는 공 (투수 탭과 같은 기준 — 사구도 투구수에선 볼)
 // 던지기 직전 아웃·주자 (core.js recordPitch 의 outs · runners — 경기 운영 모드에서만 저장, 아니면 null · 예전 기록엔 없음 → 빈 칸)
 const _ptOuts = p => (p.outs === 0 || p.outs === 1 || p.outs === 2 ? p.outs : '');
 const _ptRunners = p => {
@@ -969,14 +969,14 @@ export function exportPitcherXlsx(P, S, calc) {
     colors: mix.map((m, k) => _ptColor(m.pt, k)) }, mixTop, 8);
   r = Math.max(r, mixTop + Math.ceil(Math.max(170, 60 + mix.length * 34) / 22) + 1);
   rep.set(r, 0, '■ 등판 기록', 'sec');
-  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb]; });
-  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타자', '피안타', '삼진', '볼넷'], apps,
-    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td']);
+  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb, s.hbp]; });
+  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타자', '피안타', '삼진', '볼넷', '사구'], apps,
+    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td', 'td']);
   P.apps.forEach((a, i) => rep.merge(r - apps.length + i, 0, r - apps.length + i, 2, a.label, 'tdL'));
   rep.merge(r - apps.length - 1, 0, r - apps.length - 1, 2, '경기', 'th');
   r++;
   const notes = [
-    '스트라이크% = 볼·볼넷을 뺀 모든 공 (파울·인플레이 포함) — SprayLab 투수 탭과 같은 기준.',
+    '스트라이크% = 볼·볼넷·사구를 뺀 모든 공 (파울·인플레이 포함) — SprayLab 투수 탭과 같은 기준.',
     '존 안% = 코스가 기록된 공 중 스트라이크존 9칸에 들어간 비율.',
     '「투구 기록」 시트에서 필터(▼)를 걸면 「구종별 투구위치」 차트도 같이 바뀌어요. 예: 결과 = 안타, 이닝 = 5, 주자 = 1·3루.',
   ];

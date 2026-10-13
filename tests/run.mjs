@@ -81,7 +81,10 @@ const port = server.address().port;
 // 파일 하나를 새 브라우저(새 프로필)에서 돌린다 → { file, fail } (돌리지 못함 — 이유) 또는 { file, results, vms }
 async function runFile(file) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
-  const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
+  // 파일에 「// @window 폭,높이」 줄이 있으면 그 크기 창으로 띄운다(휴대폰 화면 배치가 필요한 파일만 — 없으면 브라우저 기본 창, 윈도우에서 754×424)
+  // 윈도우 헤드리스는 창 테두리 몫으로 높이를 ~156px 빼고 폭은 최소 ~526px 로 늘린다(리눅스는 준 그대로) → 파일이 innerWidth/innerHeight 로 전제를 확인할 것
+  const win = fs.readFileSync(path.join(ROOT, 'tests', file), 'utf8').match(/^\/\/ @window (\d+),(\d+)\s*$/m);
+  const args = ['--headless=new', ...(win ? [`--window-size=${win[1]},${win[2]}`] : []), '--disable-gpu', '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
     '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', `--virtual-time-budget=${BUDGET_MS}`, '--enable-logging=stderr', '--v=0',
     ...((process.getuid && process.getuid() === 0) || process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), '--dump-dom', `http://127.0.0.1:${port}/?f=${encodeURIComponent(file)}`];
   const child = spawn(chrome, args);

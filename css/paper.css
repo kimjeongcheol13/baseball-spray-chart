@@ -605,6 +605,7 @@ body.sb #analysisView .an-pick { mask-image: none; -webkit-mask-image: none; }
 .ad-hd { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ad-title { margin: 0; font: 400 24px/1 var(--f-display); color: var(--ink); white-space: nowrap; }
 .ad-meta { font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ad-meta-m { display: none; }   /* 폰 한 줄 헤더용 짧은 표기 "2026.5.17 홈팀 vs 원정팀" (≤720px 분석 탭에서만 보임) */
 .ad-hctrl { display: none; align-items: center; gap: 8px; margin-left: 12px; }
 #analysisView[data-sub="spray"] .ad-hctrl { display: flex; }
 .ad-scope button { min-height: 44px; max-width: none; padding: 0 14px; font-size: 13px; }
@@ -873,6 +874,19 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-title { font-size: 20px; }
   .ad-hctrl { margin-left: 0; width: 100%; justify-content: space-between; }
   .ad-scope button { padding: 0 10px; }
+  /* 분석 탭 헤더 한 줄: SPRAYLAB · 경기 분석 · 2026.5.17 홈팀 vs 원정팀 — GAME ANALYSIS 소제목 · 구장은 폰에서 숨김
+     (.sb-vhdr · .ad-hd 는 경기설정 헤더도 쓰므로 #analysisView 로 한정. 종합(spray) 대시보드 컨트롤 .ad-hctrl 은 다음 줄로 접힌다) */
+  #analysisView .sb-vhdr { flex-wrap: nowrap !important; align-items: baseline; gap: 0 !important; }
+  #analysisView .sb-vhdr .sb-brand small { display: none; }
+  #analysisView .sb-vhdr .sb-brand b { font-size: 18px; }
+  #analysisView .sb-vhdr .sb-hdr-mid { flex: 1 1 0; min-width: 0; justify-content: flex-start; }
+  #analysisView .ad-hd { flex: 1 1 100%; max-width: 100%; flex-direction: row; align-items: baseline; gap: 0; }
+  #analysisView .ad-title { flex: none; font-size: 16px; }
+  #analysisView .ad-meta { display: none; }
+  #analysisView .ad-meta-m { display: block; min-width: 0; font: 700 12px/1.2 var(--f-body); color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #analysisView .ad-title::before, #analysisView .ad-meta-m::before { content: '·'; margin: 0 7px; font: 700 13px/1 var(--f-body); color: var(--ink-soft); }
+  /* 샘플 모드: 맨 위 고정 안내 띠(48px, sample.css)가 분석 뷰(top 0)를 덮는다 — 헤더가 한 줄로 낮아져 통째로 가려지지 않게 띠 아래로 */
+  body.sl-sample-on #analysisView .sb-vhdr { padding-top: 56px !important; }
   body.sb #analysisView .ana-subnav { padding: 8px 12px; }
   body.sb #analysisView .ana-sub { padding: 0 14px; }
   body.sb #analysisView[data-sub="spray"] .shell-inner { padding: 12px 12px 24px; }

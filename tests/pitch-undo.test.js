@@ -1,6 +1,7 @@
 // 투수 탭 투구 삭제 · 되돌리기 검증 (core.js undoPitch / delPitch / undoLast ↔ 투수 탭 연동)
 //  · 최근 투구 로그: ↩ 되돌리기(마지막 공) · 줄마다 ✕ — 기록 탭 볼카운트 · 이번 타석 투구도 같이 되돌린다
 //  · 삼진을 되돌린 뒤 다시 삼진을 넣어도 투수 쪽 삼진은 하나 (예전엔 기록 탭 타석만 지워져 투수 쪽 삼진이 두 개가 됐다)
+//  · 기록 탭 타석 ✕(delRec): 투수 탭의 그 타석 공 전부 삭제 · 「수정」(saveEditRec): 결과 · 이닝을 투수 쪽 공에 반영 (사구는 끝낸 공 삭제)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
 
@@ -9,15 +10,18 @@
     var s = $('innSel');
     return { abs: AS.abs, hl: AS.home_lineup, al: AS.away_lineup, team: AS.curTeam, batter: AS.batter, bf: AS.batterFilter,
       b: AS.balls, s: AS.strikes, o: AS.outs, pitchers: AS.pitchers, cp: AS.currentPitcher, pl: AS.pitchLog, cps: AS.currentPitches,
-      pt: AS.pitcherPt, pz: AS.pitcherZone, inn: s ? s.selectedIndex : 0, curGame: AS.curGame, autoKey: window._autoKey, saved: window._gameSaved, keys: snapKeys() };
+      pt: AS.pitcherPt, pz: AS.pitcherZone, inn: s ? s.selectedIndex : 0, curGame: AS.curGame, autoKey: window._autoKey, saveKey: window._curSaveKey, saved: window._gameSaved, keys: snapKeys(),
+      saves: localStorage.getItem('sl_saves') };
   }
   function restore(S) {
     clearTimeout(window._autoTimer);
     AS.abs = S.abs; AS.home_lineup = S.hl; AS.away_lineup = S.al; AS.curTeam = S.team; AS.batter = S.batter; AS.batterFilter = S.bf;
     AS.balls = S.b; AS.strikes = S.s; AS.outs = S.o; AS.pitchers = S.pitchers; AS.currentPitcher = S.cp; AS.pitchLog = S.pl; AS.currentPitches = S.cps;
-    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS.pending = null; AS.curGame = S.curGame; window._autoKey = S.autoKey; window._gameSaved = S.saved;
+    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS.pending = null; AS.curGame = S.curGame; window._autoKey = S.autoKey; window._curSaveKey = S.saveKey; window._gameSaved = S.saved;
+    if (S.saves != null) localStorage.setItem('sl_saves', S.saves);
     var s = $('innSel'); if (s) s.selectedIndex = S.inn;
     Object.keys(snapKeys()).forEach(function (k) { if (!S.keys[k]) localStorage.removeItem(k); });
+    try { closeOverlay('editRecOverlay'); } catch (e) {}
     try { _clearFieldTapPrompt(); renderLP(); renderRecs(); renderCount(); renderPitcherRoster(); renderPitchLog(); } catch (e) {}
     try { shellNav('record'); } catch (e) {}
   }
@@ -132,5 +136,74 @@
     eq(AS.abs.length, 1, '볼넷'); eq(AS.abs[0].pitches.length, 4, '4구');
     delPitch(P()[1].id);
     eq(AS.abs.length, 1, '타석은 그대로'); eq(AS.abs[0].pitches.length, 3, '타석 투구 3구'); eq(P().length, 3, '투수 쪽 3구');
+  });
+
+  // ── 기록 탭 타석 ✕ · 수정 → 투수 탭 ──
+  function edit(id, res, inn) { openEditRec(id); $('editRes').value = res; if (inn) $('editInn').value = inn; saveEditRec(); }   // 앱의 "타석 기록 수정" 창
+
+  run('기록 탭 ✕: 그 타석의 투수 쪽 공이 전부 지워지고, 다른 타석 공은 그대로', async function () {
+    recordPitch('볼'); recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크');
+    eq(AS.abs.length, 1, '첫 타석 삼진');
+    await T.sleep(750);
+    recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
+    eq(AS.abs.length, 2, '둘째 타석 볼넷'); eq(P().length, 8, '투수 쪽 8구');
+    delRec(AS.abs[0].id);
+    eq(AS.abs.map(function (a) { return a.res; }), ['볼넷'], '삼진 타석 삭제'); eq(res(), ['볼', '볼', '볼', '볼넷'], '투수 쪽은 볼넷 타석 4구만');
+    eq(AS.pitchLog.length, 4, '전체 투구 로그도 4구'); ok(/\(4구\)/.test($('pitcherRoster').textContent), '투수 버튼 4구');
+  });
+
+  run('기록 탭 ✕: 기록 탭에서 끝낸 타석(투수 쪽에 덧붙인 마지막 공)도 전부 지운다 · 투수 탭을 안 쓴 타석은 투수 쪽 변화 없음', async function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    recOther('병살');
+    eq(res(), ['볼', '스트라이크', '병살'], '투수 쪽 3구');
+    await T.sleep(750);
+    recOther('삼진');   // 둘째 타자: 투수 탭을 안 쓴 타석
+    eq(AS.abs.length, 2, '두 타석'); eq(P().length, 3, '투구를 지어내지 않음');
+    delRec(AS.abs[1].id);
+    eq(P().length, 3, '투수 탭을 안 쓴 타석을 지워도 투수 쪽 그대로');
+    delRec(AS.abs[0].id);
+    eq(P().length, 0, '병살 타석 공 전부 삭제'); eq(AS.abs.length, 0, '타석 없음');
+  });
+
+  run('수정: 결과를 바꾸면 끝낸 공 결과도 바뀌고 · 이닝은 그 타석 공 전부에', function () {
+    recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크');
+    var id = AS.abs[0].id;
+    edit(id, '땅볼 아웃', '2회초');
+    eq(AS.abs[0].res, '땅볼 아웃', '타석 결과'); eq(res(), ['스트라이크', '스트라이크', '아웃'], '투수 쪽 끝낸 공 = 아웃'); eq(ks(), 0, '삼진 0');
+    eq(P().map(function (e) { return e.inning; }), ['2회초', '2회초', '2회초'], '이닝 반영');
+    eq(AS.abs[0].pitches[2].result, '아웃', '타석 투구 목록의 마지막 공도');
+    edit(id, '홈런');
+    eq(P()[2].result, '홈런', '다시 홈런으로'); eq(P().length, 3, '공 수 그대로');
+  });
+
+  run('수정: 사구로 바꾸면 투수 쪽 끝낸 공을 지우고, 다시 볼넷으로 고치면 그 공을 되살린다', function () {
+    AS.pitcherPt = '커브'; recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
+    AS.pitcherPt = '슬라이더'; AS.pitcherZone = '내각 낮음'; recordPitch('볼');
+    var id = AS.abs[0].id, endId = P()[3].id;
+    eq(P()[3].result, '볼넷', '4번째 공 볼넷');
+    edit(id, '사구');
+    eq(res(), ['볼', '볼', '볼'], '끝낸 공 삭제'); eq(AS.abs[0].res, '사구', '타석은 사구');
+    eq(AS.abs[0].pitches.length, 4, '타석 투구 목록엔 4구 그대로'); eq(AS.abs[0].pitches[3].result, '사구', '마지막 공 결과만 사구');
+    edit(id, '볼넷');
+    eq(res(), ['볼', '볼', '볼', '볼넷'], '끝낸 공 되살림'); eq(P()[3].id, endId, '같은 공(id)');
+    eq([P()[3].pt, P()[3].zone, P()[3].abId], ['슬라이더', '내각 낮음', id], '구종 · 코스 · 타석 짝 그대로');
+    eq(AS.abs[0].pitches[3].result, '볼넷', '타석 투구 목록도 볼넷');
+    edit(id, '사구'); edit(id, '사구');
+    eq(P().length, 3, '사구 → 사구는 변화 없음');
+  });
+
+  run('수정: 기록 탭에서 사구로 끝낸 타석을 다른 결과로 고치면 투수 쪽에 끝낸 공을 보탠다 (뒤 타석 공보다 앞에)', async function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    recOther('사구');
+    eq(P().length, 2, '사구는 투수 쪽에 공을 보태지 않음 (예전 그대로)');
+    var id = AS.abs[0].id;
+    await T.sleep(750);
+    recordPitch('스트라이크');   // 다음 타자 첫 공
+    edit(id, '볼넷');
+    eq(res(), ['볼', '스트라이크', '볼넷', '스트라이크'], '그 타석 마지막 공 다음 자리에 볼넷');
+    eq(P()[2].abId, id, '타석 짝'); eq(P()[2].batter, '첫타자', '타자'); eq(P()[2].pt, null, '구종은 모름');
+    ok(P()[2].id > P()[1].id && P()[2].id < P()[3].id, 'id 도 던진 순서');
+    delRec(id);
+    eq(res(), ['스트라이크'], '그 타석을 지우면 보탠 공까지 전부 삭제');
   });
 })();

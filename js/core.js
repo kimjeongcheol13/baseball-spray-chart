@@ -1686,7 +1686,7 @@ function shiftRecPlayer(dir){
   AS.recFilterBid=ids[idx];
   renderRecs();
 }
-function delRec(id){AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}
+function delRec(id){_dropAbPitches(AS.abs.find(a=>a.id===id));AS.abs=AS.abs.filter(a=>a.id!==id);updateAll();}   // 투수 탭의 이 타석 공도 전부 지운다
 function undoLast(){
   if(!AS.abs.length)return;
   var _last=AS.abs.pop();
@@ -3736,6 +3736,7 @@ function saveEditRec(){
   ab.dir=dirVal||null;
   ab.deg=dirVal?dirDeg[dirVal]||null:null;
   ab.rbi=_editRbi;
+  _syncAbPitchEdit(ab);   // 바뀐 결과 · 이닝을 투수 탭 공에도
   closeOverlay('editRecOverlay');
   updateAll();
   // 수정 내용을 localStorage에 즉시 영구 반영
@@ -5899,6 +5900,54 @@ function undoPitch(){
   var e=ps&&ps.length?ps[ps.length-1]:(P?null:AS.pitchLog[0]);
   if(!e){showToast('되돌릴 투구가 없습니다',false,true);return;}
   delPitch(e.id);
+}
+
+// ─── 기록 탭 타석 ✕ · 수정 → 투수 탭 ───
+// 이 타석의 투수 쪽 공: 타석 투구(ab.pitches)의 pid 로 찾은 공 + 이 타석을 끝낸 공(abId) — 던진 순서, 중복 없이
+function _abPitchList(ab){
+  var out=[];
+  if(!ab)return out;
+  var add=function(f){if(f&&!out.some(function(o){return o.e===f.e;}))out.push(f);};
+  (ab.pitches||[]).forEach(function(x){if(x&&x.pid!=null)add(_findPitch(x.pid));});
+  AS.pitchers.forEach(function(P){(P.pitches||[]).forEach(function(e){if(e.abId!=null&&String(e.abId)===String(ab.id))add({p:P,e:e});});});
+  return out;
+}
+// 타석 ✕(delRec): 투수 탭의 그 타석 공을 전부 지운다 — 두 탭 기록 · 투구수가 같게
+function _dropAbPitches(ab){
+  var L=_abPitchList(ab);
+  L.forEach(function(f){_dropPitch(f.p,f.e);});
+  if(L.length){renderPitchLog();renderPitcherStats();renderPitcherRoster();}
+}
+// 타석 「수정」(saveEditRec): 이닝은 이 타석의 투수 쪽 공 전부에, 결과는 이 타석을 끝낸 공에 반영
+//  · 사구는 투수 탭에 없는 결과라 끝낸 공을 지운다 — 처음부터 사구로 적었을 때와 같게 (타석 투구 목록의 그 공은 결과만 '사구'로 남긴다)
+//  · 끝낸 공이 없는 타석(사구였던 타석 등)을 다른 결과로 고치면, 투수 탭 공이 있을 때만 끝낸 공을 보탠다 (_recordToPitch 와 같은 규칙).
+//    사구로 고치며 지웠던 공이면 그 공(구종 · 코스)을 되살린다
+function _syncAbPitchEdit(ab){
+  var L=_abPitchList(ab),ps=ab.pitches||[],pr=_RES_TO_PITCH[ab.res]||null;
+  var pidOf=function(id){return ps.find(function(q){return q&&q.pid!=null&&String(q.pid)===String(id);});};
+  L.forEach(function(f){f.e.inning=ab.inn||null;});
+  var end=L.find(function(f){return f.e.abId!=null&&String(f.e.abId)===String(ab.id);});
+  if(end){
+    var x=pidOf(end.e.id);
+    if(pr){end.e.result=pr;if(x)x.result=pr;}
+    else{_dropPitch(end.p,end.e);if(x)x.result=ab.res;}
+  }else if(pr){
+    var lastX=ps[ps.length-1],parked=lastX&&lastX.pid!=null&&!_findPitch(lastX.pid)?lastX:null;   // 사구로 고치며 지웠던 끝낸 공
+    var prev=L[L.length-1]||null;
+    var P=prev?prev.p:parked?AS.pitchers.find(function(q){return q.name===parked.pitcher;}):null;
+    if(!P)return;   // 투수 탭을 안 쓴 타석에는 투구를 지어내지 않는다 (이 경우 L 도 비어 있다)
+    var id=parked?parked.pid:Number(prev.e.id)+1;   // 바로 앞 공 다음 번호 — 다시 열어도(id 순 정렬) 던진 순서 그대로
+    if(!parked){if(!isFinite(id))id=_pitchId();else while(_findPitch(id))id++;}
+    var e={id:id,inning:ab.inn||null,zone:parked?parked.zone||null:null,zoneX:parked&&parked.x!=null?parked.x:null,zoneY:parked&&parked.y!=null?parked.y:null,
+      pt:parked?parked.pt||null:null,result:pr,batter:ab.bname||null,ts:parked?parked.ts||'':ab.ts||'',
+      outs:prev&&prev.e.outs!=null?prev.e.outs:null,runners:prev&&prev.e.runners?prev.e.runners.slice():null,abId:ab.id};
+    var at=prev?P.pitches.indexOf(prev.e)+1:P.pitches.findIndex(function(q){return Number(q.id)>Number(id);});
+    if(at<0)at=P.pitches.length;   // 앞 공이 없으면 id 순서 자리 (뒤에 공이 없으면 맨 끝)
+    P.pitches.splice(at,0,e);
+    AS.pitchLog.push(e);AS.pitchLog.sort(function(a,b){return(b.id||0)-(a.id||0);});
+    if(parked)parked.result=pr;
+  }else if(!L.length)return;
+  renderPitchLog();renderPitcherStats();renderPitcherRoster();
 }
 
 function loadPitchEntry(pt, zone, zoneX, zoneY){

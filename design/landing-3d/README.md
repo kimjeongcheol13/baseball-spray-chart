@@ -27,6 +27,25 @@ python3 tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_
 리소스 id는 결정적(uuid5)이라 같은 입력이면 같은 결과가 나온다.
 `src/glbfig.js`가 실제로 고칠 코드이고, 빌드 시 템플릿의 `makeFigure` 자리에 들어간다.
 
+## 배포용 페이지 만들기 (`/landing.html`)
+
+```bash
+cd design/landing-3d
+python3 tools/unbundle.py SprayLab_Landing.glb.html ../..
+```
+
+번들(한 파일 6MB)을 실제 페이지로 푼다. 저장소 루트의 `landing.html`, `js/landing/`(런타임·React·three.js·애드온, `?v=` 버전),
+`assets/landing/`(폰트 95개·몸 GLB·동작 데이터)를 쓴다. 바뀌는 점:
+
+- 디자인 캔버스(회색 판, "Desktop · 1440" 라벨, 두 시안 동시 표시)를 걷어내고, 화면 폭 1024px 미만이면 모바일 시안,
+  이상이면 데스크톱 시안 하나만 그린다(기준선을 넘으면 바로 전환). 시안 폭을 CSS `zoom`으로 화면에 맞춘다
+  (데스크톱 최대 1.25배, 모바일 0.8–1.4배).
+- `window.__resources`가 런타임이 찾는 리소스 이름을 이 파일들로 연결해서 외부 CDN을 쓰지 않는다.
+- 폰트는 `unicode-range`대로 필요한 글자 묶음만 받는다(첫 화면 기준 95개 중 13개).
+- "차트 열기" 버튼 → 앱(`./`), GitHub 링크 → 저장소. **Instagram 링크는 주소 미정이라 `#` 그대로.**
+- `sw.js`는 수정하지 않았다(HTML 네트워크 우선, 나머지 stale-while-revalidate 규칙이 그대로 적용된다).
+- 스크립트를 바꾸면 `tools/unbundle.py`의 `V`를 올린다.
+
 ## 렌더 확인 (헤드리스 Chromium)
 
 ```bash

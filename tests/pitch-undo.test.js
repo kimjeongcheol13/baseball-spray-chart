@@ -275,4 +275,55 @@
     eq($('pitchLog').querySelectorAll('.pitch-entry').length, 2, '로그 2줄'); eq($('currentPitcherLabel').textContent, '미선택', '현재 투수 표시');
     ok(/복구투수/.test($('pitcherRoster').textContent), '투수 목록도 복구한 경기');
   });
+
+  // ── 타자 바꾸기 · 투구 로그의 상대 타자 ──
+  // P0: 투수 탭 타석이 열린 채 다른 타자를 고르면 그 타석 결과를 먼저 묻는다(_pitchGuardChange) — 여기서는 '모름'
+  function answerUnknown() { var b = document.querySelector('#pitchEndSheet .pes-unk'); ok(b, '앞 타석 결과 시트'); if (b) b.click(); }
+  run('카운트 중간에 다른 타자(원정팀)로 바꾸면 0-0 부터 — 다음 스트라이크에 그 타자가 삼진이 되지 않는다', function () {
+    AS.away_lineup = [{ id: 'pa1', name: '원정타자', num: '11', pos: '', bh: '', isStarter: true }];
+    recordPitch('스트라이크'); recordPitch('스트라이크');
+    eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 2, 2], '첫타자 0-2 (전제)');
+    swLineupTab('away'); selBatter('pa1'); answerUnknown();
+    eq(AS.batter && AS.batter.name, '원정타자', '원정 타자');
+    eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 0, 0], '새 타석 0-0 · 0구째');
+    ok(/0-0/.test($('toastTxt').textContent), '안내 — ' + $('toastTxt').textContent);
+    recordPitch('스트라이크');
+    eq(AS.abs.length, 0, '삼진 아님'); eq([AS.balls, AS.strikes], [0, 1], '0-1');
+    eq(P()[2].bteam, 'away', '투수 쪽 공에 상대 팀'); eq(P()[2].bnum, '11', '번호');
+    swLineupTab('home');
+  });
+
+  run('같은 타자를 해제했다 다시 고르거나, 타자 없이 센 카운트는 이어진다', function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    selBatter('pu1'); eq(AS.batter, null, '해제(토글)');
+    selBatter('pu1');
+    eq([AS.balls, AS.strikes, AS.currentPitches.length], [1, 1, 2], '같은 타자: 그대로');
+    _endOpenPitchPA('미상');   // P0: 열린 타석에는 타자 없이 던진 공도 이어 붙으므로 먼저 닫는다
+    AS.batter = null; AS.balls = 0; AS.strikes = 0; AS.currentPitches = []; _cntBid = null; renderLP();   // 타자를 아직 안 고른 상태
+    recordPitch('볼'); recordPitch('볼');
+    selBatter('pu2');
+    eq([AS.balls, AS.strikes, AS.currentPitches.length], [2, 0, 2], '처음 고른 타자로 이어짐');
+  });
+
+  run('지우개로 되돌리면 그 타자 · 카운트로 돌아오고(타자를 다시 골라도 비우지 않음) 다른 타자로 바꾸면 0-0', function () {
+    recordPitch('볼'); recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크');
+    eq(AS.batter && AS.batter.id, 'pu2', '다음 타자(전제)');
+    undoLast();
+    eq(AS.batter && AS.batter.id, 'pu1', '그 타자로'); eq([AS.balls, AS.strikes, AS.currentPitches.length], [1, 2, 3], '1-2 · 3구째');
+    selBatter('pu2'); answerUnknown();
+    eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 0, 0], '다른 타자 = 새 타석');
+  });
+
+  run('최근 투구 로그에 상대 타자(팀 · 번호 · 이름) — 팀 · 번호가 없는 예전 공은 명단에서 찾는다', function () {
+    var home = $('tHome').value || '홈팀';
+    recordPitch('볼');
+    eq(document.querySelector('#pitchLog .pe-bat').textContent, 'vs ' + home + ' #1 첫타자', '새 공');
+    AS.pitchers[0].pitches.push({ id: 9, inning: '2회초', zone: null, pt: '커브', result: '파울', batter: '둘째타자', ts: '' });   // 예전 기록(bteam · bnum 없음)
+    renderPitchLog();
+    eq(document.querySelector('#pitchLog .pe-bat').textContent, 'vs ' + home + ' #2 둘째타자', '예전 공: 명단에서');
+    AS.pitchers[0].pitches.push({ id: 10, inning: '2회초', zone: null, pt: '커브', result: '파울', batter: '<b>모름</b>', ts: '' });
+    renderPitchLog();
+    eq(document.querySelector('#pitchLog .pe-bat').textContent, 'vs <b>모름</b>', '명단에 없으면 이름만 (글자 그대로)');
+    ok(!document.querySelector('#pitchLog .pe-bat b'), '태그로 들어가지 않음');
+  });
 })();

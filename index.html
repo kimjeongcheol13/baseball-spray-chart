@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=78">
+<link rel="stylesheet" href="css/styles.css?v=79">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -88,7 +88,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=4">
-<link rel="stylesheet" href="css/pitcher.css?v=19">
+<link rel="stylesheet" href="css/pitcher.css?v=22">
 <link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=10">
@@ -1493,7 +1493,10 @@ var _kakaoSdkLoaded = false;
             </div>
           </div>
 
-          <div style="font-size:9px;color:var(--text3);margin-bottom:4px">최근 투구 로그</div>
+          <div class="pitch-log-hdr">
+            <span style="font-size:9px;color:var(--text3)">최근 투구 로그</span>
+            <button type="button" class="pitch-undo-btn" id="pitchUndoBtn" onclick="undoPitch()" aria-label="마지막 투구 되돌리기" title="잘못 누른 마지막 투구 취소 (이 공으로 끝난 타석 기록도 함께 취소)" disabled>↩ 되돌리기</button>
+          </div>
           <div class="pitch-log" id="pitchLog">
             <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>
           </div>
@@ -2376,9 +2379,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=208"></script>
+<script defer src="js/core.js?v=216"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=104"></script>
+<script type="module" src="js/app.js?v=110"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

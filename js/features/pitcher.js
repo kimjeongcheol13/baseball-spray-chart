@@ -1,8 +1,8 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=8';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=20';
-import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=5';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=25';
+import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=8';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -149,7 +149,7 @@ function _liveCard() {
     <section class="pc-live">
       <div class="pc-live-who"><small>등판 중</small><b>${P.num ? '#' + _esc(P.num) + ' ' : ''}${_esc(P.name)}</b></div>
       <div class="pc-live-kpis">
-        ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${k('볼넷', S.bb)}${k('피안타', S.h)}
+        ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${S.hbp ? k('볼넷·사구', `${S.bb}·${S.hbp}`) : k('볼넷', S.bb)}${k('피안타', S.h)}
       </div>
       ${warnLines(S).map(t => `<p class="an-warn">⚠ ${_esc(t)}</p>`).join('')}${_fixBtn(S)}
     </section>`;
@@ -200,10 +200,10 @@ function _hero(P, S) {
       </div>
       <div class="pc-ip"><b>${ipTxt(S.outs)}</b><small>이닝</small></div>
       <div class="pc-kpis">
-        ${kpi('스트라이크%', pct(S.sPct), `${S.strikes}/${S.n}구`, '볼·볼넷을 뺀 모든 공 (파울·인플레이 포함)')}
+        ${kpi('스트라이크%', pct(S.sPct), `${S.strikes}/${S.n}구`, '볼·볼넷·사구를 뺀 모든 공 (파울·인플레이 포함)')}
         ${kpi('초구 S%', pct(S.fsPct), '', '타자에게 던진 첫 공이 스트라이크(파울·인플레이 포함)인 비율')}
         ${kpi('삼진%', pct(S.kRate), `${S.k}개`)}
-        ${kpi('볼넷%', pct(S.bbRate), `${S.bb}개`)}
+        ${kpi('볼넷%', pct(S.bbRate), `${S.bb}개${S.hbp ? ` · 사구 ${S.hbp}` : ''}`)}
         ${kpi('피안타율', S.ab ? f3(S.avg) : '—', `${S.h}/${S.ab}`)}
         ${kpi('WHIP', num2(S.whip), '', '이닝당 볼넷+피안타')}
         ${kpi('FIP', num2(S.fip), 'C=3.10 가정', 'FIP = (13×피홈런 + 3×(볼넷+사구) − 2×삼진) ÷ 이닝 + 상수. 상수는 리그 평균에 맞춰야 하는데 아마추어 리그 값이 없어 3.10으로 가정했어요 (참고용)')}
@@ -603,6 +603,7 @@ function _battersCard(S) {
     h: list.filter(x => HIT_ENDS.includes(x.end)).length,
     k: list.filter(x => x.end === '삼진').length,
     bb: list.filter(x => x.end === '볼넷').length,
+    hbp: list.filter(x => x.end === '사구').length,
   })).sort((a, b) => b.list.length - a.list.length || b.h - a.h).slice(0, 10);
   if (!rows.length) return '';
   return `
@@ -610,7 +611,7 @@ function _battersCard(S) {
       <header class="an-hd"><h3>상대 타자</h3><span class="an-hd-note">많이 상대한 순 · 최대 10명</span></header>
       <ol class="pc-bat">${rows.map(r => `
         <li>
-          <div class="pc-bat-who"><b>${_esc(r.name)}</b><small>${r.list.length}타석 · 피안타 ${r.h} · 삼진 ${r.k}${r.bb ? ` · 볼넷 ${r.bb}` : ''}</small></div>
+          <div class="pc-bat-who"><b>${_esc(r.name)}</b><small>${r.list.length}타석 · 피안타 ${r.h} · 삼진 ${r.k}${r.bb ? ` · 볼넷 ${r.bb}` : ''}${r.hbp ? ` · 사구 ${r.hbp}` : ''}</small></div>
           <div class="pc-bat-res">${r.list.slice(-8).map(x => `<i class="r-${cls(x.end)}">${_esc(END_LABEL[x.end] || x.end)}${x.nk ? '(낫아웃)' : ''}</i>`).join('')}</div>
         </li>`).join('')}
       </ol>
@@ -625,9 +626,9 @@ function _appsCard(P) {
       <header class="an-hd"><h3>등판 기록</h3><span class="an-hd-note">최근 경기부터</span></header>
       <div class="pc-apps-wrap">
         <table class="pc-apps">
-          <thead><tr><th scope="col">경기</th><th scope="col">이닝</th><th scope="col">투구</th><th scope="col">S%</th><th scope="col">피안타</th><th scope="col">삼진</th><th scope="col">볼넷</th></tr></thead>
+          <thead><tr><th scope="col">경기</th><th scope="col">이닝</th><th scope="col">투구</th><th scope="col">S%</th><th scope="col">피안타</th><th scope="col">삼진</th><th scope="col">볼넷</th><th scope="col">사구</th></tr></thead>
           <tbody>${apps.map(a => { const c = _calc([a]); return `
-            <tr><th scope="row">${a.current ? '<span class="pf-live">현재</span>' : ''}${_esc(_short(a))}</th><td>${ipTxt(c.outs)}</td><td>${c.n}</td><td>${pct(c.sPct)}</td><td>${c.h}</td><td>${c.k}</td><td>${c.bb}</td></tr>`; }).join('')}
+            <tr><th scope="row">${a.current ? '<span class="pf-live">현재</span>' : ''}${_esc(_short(a))}</th><td>${ipTxt(c.outs)}</td><td>${c.n}</td><td>${pct(c.sPct)}</td><td>${c.h}</td><td>${c.k}</td><td>${c.bb}</td><td>${c.hbp}</td></tr>`; }).join('')}
           </tbody>
         </table>
       </div>

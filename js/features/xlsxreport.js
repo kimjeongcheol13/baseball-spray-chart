@@ -5,7 +5,7 @@
 // 차트는 '기록' 시트의 칸을 그대로 가리킨다 → 엑셀에서 필터(▼)로 행을 숨기면 차트도 남은 기록만 그린다 (피벗+슬라이서 대신).
 import { HITS, PT_TYPES, PT_COLORS, ZONES_9, WOBA_W } from '../constants.js';
 import { buildData, calcStats } from './batdata.js?v=8';
-import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=5';
+import { pitchInfo, isStrikePitch, warnLines, prLabel, innLabel, END_LABEL } from './pitchcalc.js?v=8';
 
 // ── 색 · 분류 ────────────────────────────────────────────────
 const C = { navy: '14213D', blue: '4B8CF5', ink2: '6B7280', line: 'D9DEE7', soft: 'F4F6FA', aux: 'EEF1F6' };
@@ -975,9 +975,9 @@ export function exportPitcherXlsx(P, S, calc) {
     colors: mix.map((m, k) => _ptColor(m.pt, k)) }, mixTop, 8);
   r = Math.max(r, mixTop + Math.ceil(Math.max(170, 60 + mix.length * 34) / 22) + 1);
   rep.set(r, 0, '■ 등판 기록', 'sec');
-  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb]; });
-  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타석', '피안타', '삼진', '볼넷'], apps,
-    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td']);
+  const apps = P.apps.map(a => { const s = calc([a]); return [a.label, '', '', s.n, s.sPct, s.pa, s.h, s.k, s.bb, s.hbp]; });
+  r = _table(rep, r + 1, 0, ['경기', '', '', '투구 수', '스트라이크%', '상대 타석', '피안타', '삼진', '볼넷', '사구'], apps,
+    ['tdL', 'tdL', 'tdL', 'td', 'tdP', 'td', 'td', 'td', 'td', 'td']);
   P.apps.forEach((a, i) => rep.merge(r - apps.length + i, 0, r - apps.length + i, 2, a.label, 'tdL'));
   rep.merge(r - apps.length - 1, 0, r - apps.length - 1, 2, '경기', 'th');
   r++;

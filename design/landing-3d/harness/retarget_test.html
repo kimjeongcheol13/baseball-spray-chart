@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body style="margin:0;background:#E7E3DC"><canvas id="c" width="1200" height="900" style="width:1200px;height:900px;display:block"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
+import { makeRetargeter } from './retarget.js';
+const q = new URLSearchParams(location.search), clipFile = q.get('clip') || 'Salute.fbx', times = (q.get('t') || '0.5,1.2,2.0').split(',').map(Number);
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(1200, 900, false); renderer.setClearColor(0xE7E3DC, 1);
+const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight(0xffffff, 0x8a857c, 1.2)); const sun = new THREE.DirectionalLight(0xfff3e6, 2.2); sun.position.set(-2, 4, 3); scene.add(sun);
+const gltf = await new GLTFLoader().loadAsync('../assets/body.glb');
+scene.add(gltf.scene);
+let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+mesh.material = new THREE.MeshStandardMaterial({ color: 0xbfb8ad, roughness: .7 }); mesh.frustumCulled = false;
+const bones = {}; mesh.skeleton.bones.forEach(b => bones[b.name.replace(/^mixamorig:?/, '')] = b);
+const fbx = await new FBXLoader().loadAsync('./clips/' + clipFile);
+const clip = fbx.animations[0];
+console.log('clip', clip.name, 'dur', clip.duration.toFixed(2), 'tracks', clip.tracks.length, 'fbx scale', fbx.scale.x, 'first track', clip.tracks[0].name);
+const rt = makeRetargeter(fbx, bones);
+console.log('retargeted bones', rt.names.length);
+const mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
+const cam = new THREE.PerspectiveCamera(30, 4 / 3, .1, 50); cam.position.set(0, 1.1, 5.2); cam.lookAt(0, .9, 0);
+// three copies side by side at different times
+const out = [];
+for (let i = 0; i < times.length; i++) {
+  mixer.setTime(times[i]); rt.apply();
+  gltf.scene.position.x = (i - (times.length - 1) / 2) * 1.25;
+  renderer.setScissorTest(true); const w = 1200 / times.length; renderer.setViewport(i * w, 0, w, 900); renderer.setScissor(i * w, 0, w, 900);
+  cam.aspect = w / 900; cam.updateProjectionMatrix(); cam.position.x = gltf.scene.position.x; cam.lookAt(gltf.scene.position.x, .9, 0);
+  renderer.render(scene, cam);
+}
+window.__ready = true;
+</script>

@@ -236,6 +236,7 @@
 #pnl-pitcher .pitch-undo-btn:disabled { opacity: .4; cursor: default; }
 #pnl-pitcher .pitch-del { flex-shrink: 0; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--text3); font: 700 11px var(--font); cursor: pointer; align-self: stretch; }
 #pnl-pitcher .pitch-del:hover { color: var(--accent); background: var(--accent-dim); }
+#pnl-pitcher .pe-bat { display: block; margin-top: 1px; font-size: 9px; color: var(--text2); }   /* 상대 타자: vs 팀 #번호 이름 */
 
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {

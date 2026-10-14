@@ -29,6 +29,9 @@
     AS.pitchers = []; AS.currentPitcher = null; AS.pitchLog = []; AS.currentPitches = []; AS.batter = null; AS.balls = 0; AS.strikes = 0; AS.outs = 0; AS.pendingQuickRes = null;
     AS.curGame = null; window._curSaveKey = null; window._autoKey = null; window._gameSaved = true;
     $('app-page').style.display = 'flex';
+    // 투수 탭 화면도 막 연 상태(index.html 그대로)로 — 앞에서 그린 목록이 남아 있으면 복구 뒤 다시 그리지 않아도 검사가 통과해 버린다
+    $('pitchLog').innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">투구를 기록하면 여기에 표시됩니다</div>';
+    $('pitcherRoster').innerHTML = '<div style="font-size:11px;color:var(--text3)">투수를 등록하세요</div>';
   }
   function recEntry() { return ls('sl_saves').filter(function (e) { return /^sl_rec_/.test(e.key); }).map(function (e) { return { e: e, d: ls(e.key) }; })[0]; }
   function autoKeys() { var r = []; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('sl_auto_') === 0) r.push(k); } return r; }
@@ -64,6 +67,8 @@
       _openLastGame();   // 시작할 때 부르는 자동 복구
       eq(AS.abs.length, 0, '복구: 타석 0');
       eq(JSON.stringify(AS.pitchers), expected, '복구: 투수 · 투구 그대로');
+      eq(AS.pitchLog.map(function (p) { return p.result; }), ['삼진', '스트라이크', '볼', '스트라이크'], '복구: 전체 투구 로그도 다시 만든다(최근 공부터)');
+      eq($('pitchLog').querySelectorAll('.pitch-entry').length, 4, '복구 직후 최근 투구 로그 4줄 (투수 선택 전)');
       ok(/복구/.test($('toastTxt').textContent), '복구 안내 토스트 — 실제 ' + $('toastTxt').textContent);
       ok(!localStorage.getItem('sl_autosave'), '복구 뒤 복구 슬롯은 비운다(전제)');
       var r = recEntry();

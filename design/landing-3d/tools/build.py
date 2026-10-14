@@ -1,9 +1,11 @@
 # Rebuild the landing bundle: python3 tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_Landing.glb.html
+# harness/clips/clips.json (baked Mixamo motion, not in git) is embedded when present; without it the figures use the mannequin keyframes.
 import sys, re, json, gzip, base64, uuid, os
 src, figjs, out = sys.argv[1:4]
 HERE = os.path.dirname(os.path.abspath(__file__))
 J = os.path.join(HERE, '..', 'vendor', 'three-0.184.0', 'examples', 'jsm') + os.sep
 BODY = os.path.join(HERE, '..', 'assets', 'body.glb')
+CLIPS = os.path.join(HERE, '..', 'harness', 'clips', 'clips.json')
 html = open(src, encoding='utf-8').read()
 def block(kind):
     m = re.search(r'(<script type="__bundler/%s">)(.*?)(</script>)' % kind, html, re.S); return m
@@ -25,17 +27,20 @@ tpl = sub(tpl, "      three().then(T => this.init(T)).catch(err => console.error
                "      three().then(T => loadBody(T).then(b => { BODY = b; }, err => console.warn('spray-play: realistic body unavailable, using mannequin', err)).then(() => this.init(T)))\n        .catch(err => console.error('spray-play: three.js failed to load', err));")
 # (5) pitcher's bones must be current before the ball is read from his hand
 tpl = sub(tpl, "      if (tau < 2.1) { P.handR.getWorldPosition(ball.position); ball.visible = true; }",
-               "      if (P.sync) P.sync();\n      if (tau < 2.1) { P.handR.getWorldPosition(ball.position); ball.visible = true; }")
+               "      if (P.sync) P.sync(tau);\n      if (tau < 2.1) { P.handR.getWorldPosition(ball.position); ball.visible = true; }")
 # (6) copy every figure's proxy pose onto its bones right before drawing
 tpl = sub(tpl, "      this.renderer.render(this.scene, this.camera);",
-               "      (this.figs || (this.figs = [this.pitcher, this.batter, this.catcher, this.ump, this.coach, ...this.fielders.map(f => f.F)])).forEach(f => f.sync && f.sync());\n      this.renderer.render(this.scene, this.camera);")
+               "      (this.figs || (this.figs = [this.pitcher, this.batter, this.catcher, this.ump, this.coach, ...this.fielders.map(f => f.F)])).forEach(f => f.sync && f.sync(tau));\n      this.renderer.render(this.scene, this.camera);")
 # ball was sized for the mannequin; next to a real-scale body it reads as a volleyball
 tpl = sub(tpl, "this.ball.castShadow = true; scene.add(this.ball);", "this.ball.castShadow = true; scene.add(this.ball); if (BODY) this.ball.scale.setScalar(.6);")
+# roles let the GLB figures pick their baked Mixamo motion
+for who, role in (('pitcher', 'pitcher'), ('batter', 'batter'), ('catcher', 'catcher'), ('ump', 'ump')):
+    tpl = sub(tpl, "this.%s = makeFigure(THREE, { " % who, "this.%s = makeFigure(THREE, { role: '%s', " % (who, role))
 # resources: body + three.js addons, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))
 add = [('body.glb', BODY, 'model/gltf-binary'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),
-       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')]
+       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')] + ([('clips.json', CLIPS, 'application/json')] if os.path.exists(CLIPS) else [])
 for rid, path, mime in add:
     u = str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid)); raw = open(path, 'rb').read()
     manifest[u] = {'mime': mime, 'compressed': True, 'data': base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode()}

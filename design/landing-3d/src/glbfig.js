@@ -19,7 +19,10 @@ function loadBody(THREE) {
     const bguURL = jsURL(toThree(bgu)), skuURL = jsURL(toThree(sku));
     const glURL = jsURL(toThree(gl).split("'../utils/BufferGeometryUtils.js'").join(`'${bguURL}'`).split("'../utils/SkeletonUtils.js'").join(`'${skuURL}'`));
     const [{ GLTFLoader }, SU] = await Promise.all([import(glURL), import(skuURL)]);
-    return prepBody(THREE, await new GLTFLoader().parseAsync(glb, ''), SU);
+    const BD = prepBody(THREE, await new GLTFLoader().parseAsync(glb, ''), SU);
+    // optional Mixamo motion baked for this body (pitcher / batter / catcher / umpire); without it the mannequin keyframes drive the bones
+    BD.clips = await resBlob('clips.json').then(b => b.text()).then(t => decodeClips(JSON.parse(t)), () => null);
+    return BD;
   })());
 }
 
@@ -154,6 +157,64 @@ if (vPart > .5 && vPart < 1.5) {
   return mat;
 }
 
+// ---- baked Mixamo motion (harness/bake.html): 30 fps local bone rotations (int16) + hips position (mm) ----
+function decodeClips(J) {
+  const i16 = (b64) => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new Int16Array(u.buffer); };
+  const out = {};
+  for (const id in J.clips) { const c = J.clips[id]; out[id] = { n: c.n, bones: c.bones, q: i16(c.q), h: i16(c.hips), fps: J.fps }; }
+  return out;
+}
+const smooth01 = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+function clipPlayer(BD, bones, role, fig) {
+  const C = BD.clips, names = (C.idle || C.pitch).bones, B = names.length, list = names.map(n => bones[n]);
+  const A = new Float32Array(B * 4 + 3), Bp = new Float32Array(B * 4 + 3), O = new Float32Array(B * 4 + 3);
+  const sample = (id, t, out) => {
+    const c = C[id], x = Math.max(0, Math.min(c.n - 1, t * c.fps)), f0 = Math.floor(x), f1 = Math.min(c.n - 1, f0 + 1), a = x - f0;
+    for (let i = 0; i < B; i++) {
+      const p = (f0 * B + i) * 4, q = (f1 * B + i) * 4;
+      let x0 = c.q[p], y0 = c.q[p + 1], z0 = c.q[p + 2], w0 = c.q[p + 3], x1 = c.q[q], y1 = c.q[q + 1], z1 = c.q[q + 2], w1 = c.q[q + 3];
+      if (x0 * x1 + y0 * y1 + z0 * z1 + w0 * w1 < 0) { x1 = -x1; y1 = -y1; z1 = -z1; w1 = -w1; }
+      const X = x0 + (x1 - x0) * a, Y = y0 + (y1 - y0) * a, Z = z0 + (z1 - z0) * a, W = w0 + (w1 - w0) * a, L = Math.hypot(X, Y, Z, W) || 1;
+      out[i * 4] = X / L; out[i * 4 + 1] = Y / L; out[i * 4 + 2] = Z / L; out[i * 4 + 3] = W / L;
+    }
+    for (let k = 0; k < 3; k++) out[B * 4 + k] = (c.h[f0 * 3 + k] + (c.h[f1 * 3 + k] - c.h[f0 * 3 + k]) * a) / 1000;
+  };
+  const mix = (a, b, w, out) => {
+    for (let i = 0; i < B; i++) {
+      const j = i * 4, sg = a[j] * b[j] + a[j + 1] * b[j + 1] + a[j + 2] * b[j + 2] + a[j + 3] * b[j + 3] < 0 ? -1 : 1;
+      let L = 0; for (let k = 0; k < 4; k++) { out[j + k] = a[j + k] + (sg * b[j + k] - a[j + k]) * w; L += out[j + k] * out[j + k]; }
+      L = Math.sqrt(L) || 1; for (let k = 0; k < 4; k++) out[j + k] /= L;
+    }
+    for (let k = 0; k < 3; k++) out[B * 4 + k] = a[B * 4 + k] + (b[B * 4 + k] - a[B * 4 + k]) * w;
+  };
+  // timelines on the page's 8 s cycle (tau); every one is continuous across the wrap from 8 back to 0
+  const IDLE = (t) => (t * .9375) % 1.5;                 // 5 idle loops per cycle
+  const SW = 2.55 - 1.33;                               // swing clip starts so its fastest hand frame lands on contact (tau 2.55)
+  const TL = {
+    pitcher(t) { if (t <= 5.2) sample('pitch', t, O); else { sample('pitch', 5.2, A); sample('pitch', 0, Bp); mix(A, Bp, smooth01((t - 5.4) / 2.2), O); } },   // release at 2.10 s in both
+    batter(t) {
+      if (t < SW - .25 || t >= 7.2) sample('idle', IDLE(t), O);
+      else if (t < SW) { sample('idle', IDLE(t), A); sample('swing', 0, Bp); mix(A, Bp, smooth01((t - SW + .25) / .25), O); }
+      else if (t < 5.6) sample('swing', Math.min(t - SW, 2.2), O);                                   // follow-through is held; the run-out is cut
+      else { sample('swing', 2.2, A); sample('idle', IDLE(t), Bp); mix(A, Bp, smooth01((t - 5.6) / 1.6), O); }
+    },
+    catcher(t) { sample('catcher', .45 * (1 - Math.cos(Math.PI * t / 2)), O); },
+    ump(t) { sample('ump', .3 * (1 - Math.cos(Math.PI * t / 2)), O); }
+  };
+  if (!TL[role] || (role === 'batter' && !(C.idle && C.swing)) || (role === 'pitcher' && !C.pitch) || (role !== 'batter' && role !== 'pitcher' && !C[role])) return null;
+  const YAW = { batter: Math.PI / 2 };                  // mocap batter stands side-on; turn him so the front shoulder faces the mound
+  let base = null, yaw0 = null;
+  return (t) => {
+    if (base === null && t < 1.8) base = fig.root.position.clone();     // page root offsets (pitcher's stride) are zero here; the mocap carries its own
+    if (yaw0 === null) yaw0 = fig.root.rotation.y;
+    if (base) fig.root.position.copy(base);
+    fig.root.rotation.y = yaw0 + (YAW[role] || 0);
+    TL[role](t);
+    for (let i = 0; i < B; i++) if (list[i]) list[i].quaternion.set(O[i * 4], O[i * 4 + 1], O[i * 4 + 2], O[i * 4 + 3]);
+    bones.Hips.position.set(O[B * 4], O[B * 4 + 1], O[B * 4 + 2]);
+  };
+}
+
 function makeFigureGLB(THREE, o, BD) {
   const kit = o.kit, k = BD.k, G = () => new THREE.Group();
   const root = G(), body = BD.SU.clone(BD.scene); body.scale.setScalar(k); root.add(body);
@@ -182,6 +243,9 @@ function makeFigureGLB(THREE, o, BD) {
   // hands are real nodes on the hand bones, oriented like the mannequin's hand, so bat / glove / tablet ride along
   const hand = (S) => {
     const h = G(); h.position.copy(BD.hand[S].palm); h.quaternion.copy(BD.R[S]).invert(); h.scale.setScalar(1 / k);
+    if (S === 'R' && o.role === 'batter' && BD.clips) {      // mocap grip: the handle runs through the fist along the knuckle line, knob on the pinky side
+      h.position.copy(BD.hand.R.palm).multiplyScalar(2.6); h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), BD.hand.R.knuckle);
+    }
     bones[(S === 'L' ? 'Left' : 'Right') + 'Hand'].add(h); return h;
   };
   // relaxed grip so hands read as holding a bat / ball / glove
@@ -226,7 +290,9 @@ function makeFigureGLB(THREE, o, BD) {
   const Rd = BD.R, Ri = {}; for (const s in Rd) Ri[s] = Rd[s].clone().invert();
   const q = new THREE.Quaternion(), qa = new THREE.Quaternion(), I = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1);
   const hb = bones.Hips, hip0 = hb.position.clone();
-  fig.sync = () => {
+  const play = BD.clips && o.role ? clipPlayer(BD, bones, o.role, fig) : null;
+  fig.sync = (tau) => {
+    if (play && tau !== undefined) return play(tau);
     hb.position.set(hip0.x, (BD.legS * (hips.position.y - .1) + BD.hipUp) / k, hip0.z);   // longer real legs: keep feet on the ground
     hb.quaternion.setFromEuler(hips.rotation);
     q.setFromEuler(torso.rotation); ['Spine', 'Spine1', 'Spine2'].forEach(n => bones[n].quaternion.slerpQuaternions(I, q, 1 / 3));

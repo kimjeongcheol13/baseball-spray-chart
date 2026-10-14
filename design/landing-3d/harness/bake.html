@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body><script type="module">
+// Bake retargeted Mixamo windows into compact local-pose tracks for the CC0 body (30 fps, int16).
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
+import { makeRetargeter } from './retarget.js';
+const JOBS = [  // id, file, window start, end (s)
+  ['idle', 'Baseball_Idle', 0, 1.5], ['pitch', 'Baseball_Pitching', 0, 5.2], ['swing', 'Baseball_Hit_2', 0, 2.2],
+  ['catcher', 'Baseball_Catcher', 0, .9], ['ump', 'Baseball_Umpire', 0, .6]];
+const gltf = await new GLTFLoader().loadAsync('../assets/body.glb');
+let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+const bones = {}; mesh.skeleton.bones.forEach(b => bones[b.name.replace(/^mixamorig:?/, '')] = b);
+const rest = {}; for (const n in bones) rest[n] = { q: bones[n].quaternion.clone(), p: bones[n].position.clone() };
+const b64 = (i16) => { const u8 = new Uint8Array(i16.buffer); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const out = { fps: 30, clips: {} };
+for (const [id, file, t0, t1] of JOBS) {
+  for (const n in bones) { bones[n].quaternion.copy(rest[n].q); bones[n].position.copy(rest[n].p); } gltf.scene.updateMatrixWorld(true);
+  const fbx = await new FBXLoader().loadAsync('./clips/' + file + '.fbx'), clip = fbx.animations[0];
+  const rt = makeRetargeter(fbx, bones), mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
+  const names = rt.names, B = names.length, N = Math.round((t1 - t0) * 30) + 1;
+  const q = new Int16Array(N * B * 4), h = new Int16Array(N * 3);
+  for (let f = 0; f < N; f++) {
+    mixer.setTime(Math.min(t0 + f / 30, clip.duration - 1e-4)); rt.apply();
+    names.forEach((n, i) => { const v = bones[n].quaternion; if (v.w < 0) v.set(-v.x, -v.y, -v.z, -v.w); [v.x, v.y, v.z, v.w].forEach((c, k) => q[(f * B + i) * 4 + k] = Math.round(c * 32767)); });
+    const p = bones.Hips.position; h[f * 3] = Math.round(p.x * 1000); h[f * 3 + 1] = Math.round(p.y * 1000); h[f * 3 + 2] = Math.round(p.z * 1000);   // mm
+  }
+  out.clips[id] = { src: file, from: t0, n: N, bones: names, q: b64(q), hips: b64(h) };
+}
+console.log('BAKE ' + JSON.stringify(out)); window.__ready = true;
+</script>

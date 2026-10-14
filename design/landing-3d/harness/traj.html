@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
+import { makeRetargeter } from './retarget.js';
+const gltf = await new GLTFLoader().loadAsync('../assets/body.glb');
+let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+const bones = {}; mesh.skeleton.bones.forEach(b => bones[b.name.replace(/^mixamorig:?/, '')] = b);
+const rest = {}; for (const n in bones) rest[n] = { q: bones[n].quaternion.clone(), p: bones[n].position.clone() };
+const out = {};
+for (const name of ['Baseball_Hit', 'Baseball_Hit_2', 'Baseball_Strike', 'Baseball_Catcher', 'Baseball_Umpire']) {
+  for (const n in bones) { bones[n].quaternion.copy(rest[n].q); bones[n].position.copy(rest[n].p); } gltf.scene.updateMatrixWorld(true);
+  const fbx = await new FBXLoader().loadAsync('./clips/' + name + '.fbx'), clip = fbx.animations[0];
+  const rt = makeRetargeter(fbx, bones), mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
+  const rows = [];
+  for (let t = 0; t <= clip.duration; t += .1) {
+    mixer.setTime(Math.min(t, clip.duration - 1e-4)); rt.apply(); gltf.scene.updateMatrixWorld(true);
+    const h = bones.Hips.getWorldPosition(new THREE.Vector3()), l = bones.LeftFoot.getWorldPosition(new THREE.Vector3()), r = bones.RightFoot.getWorldPosition(new THREE.Vector3());
+    rows.push([+t.toFixed(1), +h.x.toFixed(2), +h.y.toFixed(2), +h.z.toFixed(2), +l.x.toFixed(2), +l.z.toFixed(2), +r.x.toFixed(2), +r.z.toFixed(2)]);
+  }
+  out[name] = rows;
+}
+console.log('TRAJ ' + JSON.stringify(out)); window.__ready = true;
+</script>

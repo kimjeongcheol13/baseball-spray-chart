@@ -46,6 +46,15 @@ python3 tools/unbundle.py SprayLab_Landing.glb.html ../..
 - `sw.js`는 수정하지 않았다(HTML 네트워크 우선, 나머지 stale-while-revalidate 규칙이 그대로 적용된다).
 - 스크립트를 바꾸면 `tools/unbundle.py`의 `V`를 올린다.
 
+### 미리보기 링크용 한 파일 (claude.ai 아티팩트)
+
+```bash
+python3 tools/pagebundle.py SprayLab_Landing.glb.html SprayLab_Landing.page.html https://kimjeongcheol13.github.io/baseball-spray-chart/
+```
+
+외부 파일을 막는 호스트용으로, 위와 같은 페이지 변환을 한 파일 번들 그대로 적용한다("차트 열기"는 앱 주소로 새 탭).
+결과 파일은 재생성 가능하므로 커밋하지 않는다(`.gitignore`).
+
 ## 렌더 확인 (헤드리스 Chromium)
 
 ```bash

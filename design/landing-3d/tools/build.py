@@ -36,6 +36,9 @@ tpl = sub(tpl, "this.ball.castShadow = true; scene.add(this.ball);", "this.ball.
 # roles let the GLB figures pick their baked Mixamo motion
 for who, role in (('pitcher', 'pitcher'), ('batter', 'batter'), ('catcher', 'catcher'), ('ump', 'ump')):
     tpl = sub(tpl, "this.%s = makeFigure(THREE, { " % who, "this.%s = makeFigure(THREE, { role: '%s', " % (who, role))
+tpl = sub(tpl, "const F = makeFigure(THREE, { kit: AWAY,", "const F = makeFigure(THREE, { role: 'fielder', kit: AWAY,")
+# fielders: tell the GLB body when the page has this fielder running
+tpl = sub(tpl, "        const sw = Math.sin(t * 11 + i) * run;", "        const sw = Math.sin(t * 11 + i) * run; F.run = run;")
 # resources: body + three.js addons, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))

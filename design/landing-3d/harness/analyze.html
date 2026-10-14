@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
 import { makeRetargeter } from './retarget.js';
-const CLIPS = ['Baseball_Idle', 'Baseball_Pitching', 'Baseball_Hit', 'Baseball_Hit_1', 'Baseball_Hit_2', 'Baseball_Strike', 'Baseball_Catcher', 'Baseball_Umpire'];
+const CLIPS = (new URLSearchParams(location.search).get('clips') || 'Baseball_Idle,Baseball_Pitching,Baseball_Hit,Baseball_Hit_1,Baseball_Hit_2,Baseball_Strike,Baseball_Catcher,Baseball_Umpire').split(',');
 const COLS = 6, CW = 1440 / COLS, CH = 1920 / CLIPS.length;
 const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(1440, 1920, false); renderer.setClearColor(0xE7E3DC, 1); renderer.setScissorTest(true);
@@ -34,7 +34,9 @@ for (let r = 0; r < CLIPS.length; r++) {
   const sp = (k) => rows.map((x, i) => i ? x[k].distanceTo(rows[i - 1][k]) * 30 : 0);
   const peak = (a) => { let m = 0, j = 0; a.forEach((v, i) => { if (v > m) { m = v; j = i; } }); return [+(j / 30).toFixed(2), +m.toFixed(2)]; };
   const f3 = (v) => [v.x, v.y, v.z].map(x => +x.toFixed(2));
-  report[CLIPS[r]] = { dur: +clip.duration.toFixed(2), frames: N, hips0: f3(rows[0].hips), hipsEnd: f3(rows[N].hips), hipsMinY: +Math.min(...rows.map(x => x.hips.y)).toFixed(2), headMinY: +Math.min(...rows.map(x => x.head.y)).toFixed(2),
+  let seam = 0; { mixer.setTime(0); rt.apply(); const q0 = Object.values(bones).map(b => b.quaternion.clone()); mixer.setTime(clip.duration - 1e-4); rt.apply();
+    Object.values(bones).forEach((b, j) => { seam = Math.max(seam, b.quaternion.angleTo(q0[j])); }); seam = +(seam * 180 / Math.PI).toFixed(1); }
+  report[CLIPS[r]] = { seamMaxDeg: seam, dur: +clip.duration.toFixed(2), frames: N, hips0: f3(rows[0].hips), hipsEnd: f3(rows[N].hips), hipsMinY: +Math.min(...rows.map(x => x.hips.y)).toFixed(2), headMinY: +Math.min(...rows.map(x => x.head.y)).toFixed(2),
     yaw0: +rows[0].yaw.toFixed(0), yawEnd: +rows[N].yaw.toFixed(0), rHandPeak: peak(sp('rh')), lHandPeak: peak(sp('lh')), rh0: f3(rows[0].rh), lh0: f3(rows[0].lh) };
   for (let c = 0; c < COLS; c++) {
     const t = clip.duration * c / (COLS - 1) * .999; mixer.setTime(t); rt.apply(); gltf.scene.updateMatrixWorld(true);

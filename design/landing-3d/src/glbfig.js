@@ -201,6 +201,37 @@ function clipPlayer(BD, bones, role, fig) {
     catcher(t) { sample('catcher', .45 * (1 - Math.cos(Math.PI * t / 2)), O); },
     ump(t) { sample('ump', .3 * (1 - Math.cos(Math.PI * t / 2)), O); }
   };
+  const apply = () => {
+    for (let i = 0; i < B; i++) if (list[i]) list[i].quaternion.set(O[i * 4], O[i * 4 + 1], O[i * 4 + 2], O[i * 4 + 3]);
+    bones.Hips.position.set(O[B * 4], O[B * 4 + 1], O[B * 4 + 2]);
+  };
+  // fielders: the page moves and turns them (root); the mocap only animates the body in place.
+  // ready stance loops; the chaser blends into Running out to the ball, fields it (Goalkeeper Catch), and jogs back.
+  if (role === 'fielder') {
+    if (!(C.fidle && C.run)) return null;
+    const dur = (id) => (C[id].n - 1) / C[id].fps;
+    const ph = { fidle: Math.random() * dur('fidle'), run: 0, jog: 0 };
+    let last = null, wRun = 0, wC = 0, prevRun = 0, catchT = null, px = 0, pz = 0;
+    return (t) => {
+      let dt = last === null ? 0 : t - last; if (dt < 0) dt += 8; dt = Math.min(dt, .25); last = t;
+      const run = fig.run || 0, p = fig.root.position;
+      const mps = dt > 0 ? Math.hypot(p.x - px, p.z - pz) / dt / BD.k : 0; px = p.x; pz = p.z;   // ground speed, m/s
+      if (prevRun > .5 && run < .5 && t < 6 && C.fcatch) catchT = 0;                            // reached the ball
+      if (t >= 6 || run > .5) catchT = null;
+      prevRun = run;
+      const back = t >= 6 && !!C.jog, rid = back ? 'jog' : 'run';
+      ph.fidle += dt;
+      ph.run += dt * Math.min(1.6, Math.max(.9, mps / 3.7));                                      // cadence follows speed (capped)
+      ph.jog += dt * Math.min(1.4, Math.max(.9, mps / 2.0));
+      wRun += ((run > .5 ? 1 : 0) - wRun) * Math.min(1, dt * 8);
+      if (catchT !== null) catchT += dt;
+      const wT = catchT !== null ? 1 : 0; wC += (wT - wC) * Math.min(1, dt * (wT ? 10 : 5));
+      sample('fidle', ph.fidle % dur('fidle'), A);
+      if (wC > .002) { sample('fcatch', Math.min(catchT ?? dur('fcatch'), dur('fcatch')), Bp); mix(A, Bp, wC, A); }
+      if (wRun > .002) { sample(rid, (back ? ph.jog : ph.run) % dur(rid), Bp); mix(A, Bp, wRun, O); } else O.set(A);
+      apply();
+    };
+  }
   if (!TL[role] || (role === 'batter' && !(C.idle && C.swing)) || (role === 'pitcher' && !C.pitch) || (role !== 'batter' && role !== 'pitcher' && !C[role])) return null;
   const YAW = { batter: Math.PI / 2 };                  // mocap batter stands side-on; turn him so the front shoulder faces the mound
   let base = null, yaw0 = null;
@@ -210,8 +241,7 @@ function clipPlayer(BD, bones, role, fig) {
     if (base) fig.root.position.copy(base);
     fig.root.rotation.y = yaw0 + (YAW[role] || 0);
     TL[role](t);
-    for (let i = 0; i < B; i++) if (list[i]) list[i].quaternion.set(O[i * 4], O[i * 4 + 1], O[i * 4 + 2], O[i * 4 + 3]);
-    bones.Hips.position.set(O[B * 4], O[B * 4 + 1], O[B * 4 + 2]);
+    apply();
   };
 }
 

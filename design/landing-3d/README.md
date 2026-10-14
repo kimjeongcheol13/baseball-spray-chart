@@ -1,11 +1,11 @@
 # 랜딩 3D 선수 (GLB) 작업 백업
 
 Claude Design으로 내보낸 랜딩 페이지(`source/SprayLab_Landing.orig.html`)에 들어 있는 `<spray-play>` 3D 장면의
-절차적 마네킹 11명(투수·타자·포수·심판·코치·야수)을 사실적인 사람 GLB 몸으로 바꾼 작업이다.
+절차적 마네킹 12명(투수·타자·포수·심판·코치 + 야수 7명)을 사실적인 사람 GLB 몸으로 바꾼 작업이다.
 앱(`index.html`, `js/`, `css/`)과는 무관한 디자인 작업 폴더이고, 배포 대상이 아니다.
 
-- 결과물: `SprayLab_Landing.glb.html` (5.86MB, 브라우저로 바로 열림). 원본 4.87MB.
-- 미리보기: `previews/compare_glb.png`(마네킹 vs GLB), `previews/jersey_print.png`(등번호·로고), `previews/mocap_preview.png`(Mixamo 동작)
+- 결과물: `SprayLab_Landing.glb.html` (6.0MB, 브라우저로 바로 열림). 원본 4.87MB.
+- 미리보기: `previews/compare_glb.png`(마네킹 vs GLB), `previews/jersey_print.png`(등번호·로고), `previews/mocap_preview.png`(Mixamo 동작), `previews/fielder_sheet.png`(야수 대기·달리기·받기·복귀)
 
 ## 무엇을 바꿨나
 
@@ -13,7 +13,7 @@ Claude Design으로 내보낸 랜딩 페이지(`source/SprayLab_Landing.orig.htm
 - 동작: 기존 애니메이션 코드는 그대로다. 마네킹 관절 이름(`shR`, `elR`, `hipL` …)을 보이지 않는 대리 관절로 두고
   `fig.sync()`가 매 프레임 그 회전을 실제 뼈로 옮긴다. 손은 실제 손뼈에 붙어 배트·글러브·공이 따라간다.
 - 유니폼 프린트: 등번호·가슴 로고·단추줄·핀스트라이프를 셰이더에서 묶음 포즈(스키닝 전) 좌표로 투영한다.
-- 투수·타자·포수·심판은 Mixamo 모션캡처 동작으로 움직인다(아래). 코치·야수 7명은 기존 마네킹 키프레임 그대로다.
+- 투수·타자·포수·심판·야수 7명은 Mixamo 모션캡처 동작으로 움직인다(아래). 코치만 기존 마네킹 키프레임 그대로다.
 - 공 크기 0.6배(사람 몸 기준). GLB 로딩이 실패하면 기존 마네킹으로, 동작 데이터가 없으면 마네킹 키프레임으로 자동 대체된다.
 - 원본 템플릿에 대한 패치는 `tools/build.py` 안에 전부 있다(각 패치는 정확히 1회 매칭을 assert).
 
@@ -50,6 +50,7 @@ node tools/render_frames.mjs "$PWD/SprayLab_Landing.glb.html" out "1.6,2.56" 3 "
 | 타자 | Baseball Idle → Baseball Hit_2 | 대기 0–1.5초, 스윙 0–2.2초 | 대기 반복 → 1.22초 스윙 시작 → 손 속도 정점(1.33초)이 타격 순간 2.55에 오게 맞춤 → 마무리 유지(1루로 뛰는 2.4초 이후는 자름) → 대기로 복귀 |
 | 포수 | Baseball Catcher | 0–0.9초(앉은 자세) | 8초에 두 번 천천히 왕복 |
 | 심판 | Baseball Umpire | 0–0.6초(대기 자세) | 위와 같음 |
+| 야수 7명 | Goalkeeper Idle / Running / Goalkeeper Catch / Jogging | 대기·달리기·조깅은 전체 반복, 받기 0–0.9초(골반 수평 이동 고정) | 위치·방향은 페이지 코드가 정한다. 페이지가 넘기는 `F.run`으로 달리기를 섞고, 도착하면 받기 자세로 들어가 유지, tau 6초부터는 조깅으로 복귀. 발걸음 속도는 실제 이동 속도에 맞춰 0.9–1.6배 |
 
 - 리타깃팅: `harness/retarget.js`. 뼈마다 원본 기본자세 대비 월드 회전 변화를 적용하되, 먼저 대상 뼈 방향을
   원본 기본자세(T자) 방향에 맞춘다(우리 몸은 A자). three.ws의 Mixamo 샘플(경례·환호)과 위 8개 클립으로 확인했다.
@@ -58,11 +59,12 @@ node tools/render_frames.mjs "$PWD/SprayLab_Landing.glb.html" out "1.6,2.56" 3 "
 - 방향: 투수는 그대로 홈(+z)을 향해 던진다. 타자는 루트를 90° 더 돌려 앞어깨가 투수를 향하게 한다.
   투수의 앞쪽 이동은 모션캡처 쪽을 쓰고, 페이지 코드의 이동 오프셋은 덮어쓴다.
 - 배트: 모션캡처 타자일 때만 오른손 기준을 바꿔, 손잡이가 주먹을 손가락 마디선 방향으로 지나가게 했다.
-- 페이지 패치: `makeFigure` 호출 4곳에 `role`을 붙이고 `sync(tau)`로 페이지 시간을 넘긴다(`tools/build.py`).
+- 페이지 패치: `makeFigure` 호출 5곳(투수·타자·포수·심판·야수)에 `role`을 붙이고, `sync(tau)`로 페이지 시간을, 야수 루프에서 `F.run`을 넘긴다(`tools/build.py`).
+- 야수 확인: `node tools/render_chaser.mjs 파일 접두어 "1.5,3.4,4.85" 1 chaser 999`는 공을 쫓는 야수 근처로 카메라를 옮겨 그 프레임만 다시 그린다(확인용, 페이지에는 영향 없음).
 
 ### 다시 굽기
 
-1. Mixamo FBX 8개(또는 위 5개)를 `harness/clips/`에 넣는다. 파일명은 `Baseball_Pitching.fbx`처럼 Mixamo 이름 그대로다.
+1. Mixamo FBX(위 표의 9개)를 `harness/clips/`에 넣는다. 파일명은 `Baseball_Pitching.fbx`처럼 Mixamo 이름 그대로다.
 2. 이 폴더를 정적 서버로 띄우고(`python3 -m http.server`) `harness/bake.html`을 열면 콘솔에 `BAKE {...}`가 찍힌다.
    그 JSON을 `harness/clips/clips.json`으로 저장한다(`harness/analyze.html`, `harness/traj.html`은 구간을 고를 때 쓴 분석 페이지).
 3. `tools/build.py`를 다시 돌린다. `clips.json`이 있으면 자동으로 번들에 들어간다.
@@ -81,4 +83,5 @@ node tools/render_frames.mjs "$PWD/SprayLab_Landing.glb.html" out "1.6,2.56" 3 "
 
 ## 확인하지 못한 것
 
-- 실제 휴대폰 성능: 스키닝 메시 11개(+모바일 아트보드 11개)를 그린다. 헤드리스 소프트웨어 렌더러로만 확인했다.
+- 실제 휴대폰 성능: 스키닝 메시 12개(+모바일 아트보드 12개)를 그린다. 헤드리스 소프트웨어 렌더러로만 확인했다.
+- 연속 재생: 정지 프레임으로만 확인했다. 동작이 바뀌는 구간이 자연스러운지는 브라우저에서 직접 봐야 한다.

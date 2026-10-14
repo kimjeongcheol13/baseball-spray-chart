@@ -191,6 +191,43 @@
     });
   });
 
+  // 경기 운영 모드: 복구가 gfActivate 로 1회초 · 첫 타자 · 주자 없음으로 덮어써서, 새로고침하면 「#1 타자 · 0구째」 + 남은 볼카운트로 그 타자가 삼진이 됐다
+  test('경기 운영 모드도 새로고침 뒤 이닝 · 타순 · 주자 · 이번 타석이 그대로', async function () {
+    await isolated(async function () {
+      var g0 = { active: GF.active, inning: GF.inning, half: GF.half, outs: GF.outs, batterIdx: GF.batterIdx, bases: GF.bases }, b0 = AS.batter, t0 = AS.curTeam;
+      try {
+        localStorage.clear(); fresh();
+        AS.curTeam = 'home';
+        AS.home_lineup = [{ id: 'g1', name: '백승민', num: '1', pos: '', bh: '', isStarter: true }, { id: 'g2', name: '김둘째', num: '2', pos: '', bh: '', isStarter: true }, { id: 'g3', name: '박셋째', num: '3', pos: '', bh: '', isStarter: true }];
+        AS.away_lineup = [{ id: 'ga1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }];
+        renderLP();
+        AS.pitchers = [{ id: 'gp1', name: '운영투수', num: '18', role: null, pitches: [] }];
+        selectPitcher('gp1'); AS.pitcherPt = '직구'; AS.pitcherZone = '외각 낮음';
+        gfActivate();
+        await T.sleep(750);   // 앞 테스트 기록의 연타 방지(0.7초)가 풀리길 기다린다
+        recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');   // 백승민 볼넷 → 1루 · 김둘째
+        await T.sleep(750);
+        recordPitch('스트라이크'); recordPitch('스트라이크');
+        eq([AS.batter && AS.batter.name, GF.batterIdx, GF.bases, AS.balls, AS.strikes, AS.currentPitches.length], ['김둘째', 1, [true, false, false], 0, 2, 2], '전제');
+        _scheduleRecoverySave(0);   // 새로고침 직전(페이지 숨김)
+        // ── 새로고침: 경기 운영 모드도 꺼진 채로 앱을 막 연 상태 ──
+        gfDeactivate(); GF.inning = 1; GF.half = 'top'; GF.outs = 0; GF.batterIdx = 0; GF.bases = [false, false, false];
+        fresh(); AS.curTeam = 'home'; _openLastGame();
+        await T.sleep(400);   // 경기 운영 모드 복구는 200ms 뒤
+        eq(GF.active, true, '경기 운영 모드');
+        eq([GF.inning, GF.half, GF.batterIdx, GF.bases], [1, 'top', 1, [true, false, false]], '이닝 · 타순 · 주자');
+        eq(AS.batter && AS.batter.name, '김둘째', '그 타순 타자');
+        eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 2, 2], '0-2 · 2구째');
+        await T.sleep(750);
+        recordPitch('스트라이크');
+        eq(AS.abs.length, 2, '이어서 기록'); eq(AS.abs[1].bname, '김둘째', '삼진은 그 타자'); eq(AS.abs[1].pitches.length, 3, '3구');
+      } finally {
+        gfDeactivate(); Object.keys(g0).forEach(function (k) { GF[k] = g0[k]; });
+        AS.batter = b0; AS.curTeam = t0; renderLP();
+      }
+    });
+  });
+
   test('복구된 타석 0 경기: 저장 목록 · 분석 탭이 오류 없이 열리고 NaN/Infinity 가 없다', async function () {
     await isolated(async function () {
       localStorage.clear(); fresh();

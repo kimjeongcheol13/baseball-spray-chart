@@ -8,7 +8,7 @@
 // 같은 경기가 자동저장본(sl_auto_) · 저장본(sl_)으로 여러 행에 올라와 있으면 한 경기로 센다: 같은 기록자의 행끼리 타석 id 를 하나라도 공유하면 같은 경기다
 //   (타석 id 는 기록 시각이라 복사본은 같다. 작은 정수 id 는 공유 경기 복원이 붙인 순번이라 연결에 쓰지 않는다).
 import { MAX_HITS, esc } from '../constants.js';
-import { calcStats, f3, pct } from './batdata.js?v=5';
+import { calcStats, f3, pct } from './batdata.js?v=8';
 
 const LOW_PA = 10, RECENT_G = 3, STALE_DAYS = 7, TREND_STEP = 0.05, K_GAP = 0.15, K_MIN_PA = 6, MAX_NOTES = 3, DAY = 86400000;
 const t = v => esc(v == null ? '' : v);

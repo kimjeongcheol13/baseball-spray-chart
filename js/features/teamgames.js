@@ -2,7 +2,7 @@
 // 데이터는 cloud.js(_slLoadTeamGames · 실시간 INSERT → _slTeamGameInsert)가 넘겨준다. 여기서는 메모리에서 그리기만 한다:
 // localStorage · 서버에 아무것도 쓰지 않고, 경기 보기도 AS · 저장 경로(loadSharedGame 등 updateAll 을 부르는 길)를 거치지 않는다.
 import { MAX_HITS, esc } from '../constants.js';
-import { calcStats, f3 } from './batdata.js?v=5';
+import { calcStats, f3 } from './batdata.js?v=8';
 import { buildBoard, boardHtml } from './coachdash.js?v=1';
 
 let _team = null, _rows = [], _fresh = [];   // _fresh = 실시간으로 들어온 새 경기(최신이 앞). 창을 닫으면 비운다

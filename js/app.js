@@ -24,7 +24,7 @@ import './features/report.js?v=6';
 import './features/anahelp.js?v=3';
 import './features/firstrun.js?v=3';
 import './features/tabloop.js?v=1';
-import './features/gameoneimport.js?v=3';
+import './features/gameoneimport.js?v=4';
 
 import './features/anahelp.js?v=3';
 import './features/anahelp.js?v=3';

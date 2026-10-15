@@ -15,7 +15,7 @@
   'use strict';
 
   // ── 방향 접두어 → 매핑표 각도 (중견 0°, 좌측 음수, 파울라인 ±45°) ──
-  // pos: 실책(실)일 때 깊이로 쓸 야수 자리(FIELDER_DEPTH) · fence: 좌월·중월·우월 = 같은 각도, 깊이만 펜스 근처 이상(FENCE_DEPTH)
+  // pos: 실책(실) · 내야 뜬공/땅볼일 때 깊이로 쓸 야수 자리(FIELDER_DEPTH) · fence: 좌월·중월·우월 = 같은 각도, 깊이만 펜스 근처 이상(FENCE_DEPTH)
   // 2내·유내(내야안타)는 접두어 2·유 + 접미어 내안 으로 읽는다
   var PREFIX = {
     __proto__: null,
@@ -28,11 +28,13 @@
 
   // ── 결과 접미어 → 기존 결과 코드(res) · 매핑표 깊이 (0 = 홈플레이트, 1 = 그 방향 펜스) ──
   // wide: 안·플·땅처럼 떨어진 자리 폭이 넓은 결과 → confidence 'low' · memo: 의미 미확인 표시(notes 에 그대로 보존)
+  // fielded: 내야 방향(3·유·2·1·투·포)이면 깊이 = 해당 야수 위치(FIELDER_DEPTH) — 유플이 외야에, 포땅이 마운드 뒤에 찍히지 않게.
+  //          외야 방향(좌·중·우 …)은 표 깊이 그대로
   // 희플 → '희비'(기존 희생플라이 코드) · 실 → depth null = 해당 야수 위치(FIELDER_DEPTH)
   var SUFFIX = {
     __proto__: null,
-    '땅': { res: '땅볼 아웃', depth: 0.25, wide: true },
-    '땅R': { res: '땅볼 아웃', depth: 0.25, wide: true, memo: 'R' },
+    '땅': { res: '땅볼 아웃', depth: 0.25, wide: true, fielded: true },
+    '땅R': { res: '땅볼 아웃', depth: 0.25, wide: true, fielded: true, memo: 'R' },
     '내안': { res: '내야안타', depth: 0.30 },
     '안': { res: '안타', depth: 0.55, wide: true },
     '2': { res: '2루타', depth: 0.75 },
@@ -40,12 +42,12 @@
     '월2': { res: '2루타', depth: 0.92 },
     '월홈': { res: '홈런', depth: 1.05 },
     '홈': { res: '홈런', depth: 1.05 },
-    '플': { res: '플라이 아웃', depth: 0.65, wide: true },
+    '플': { res: '플라이 아웃', depth: 0.65, wide: true, fielded: true },
     '희플': { res: '희비', depth: 0.80 },
     '실': { res: '실책', depth: null }
   };
 
-  // 실책 깊이 = 해당 야수의 평소 수비 위치. 매핑표에 수치가 없어 정한 근사값(표준 구장 중앙 펜스 120m 기준):
+  // 실책 · 내야 뜬공/땅볼 깊이 = 해당 야수의 평소 수비 위치. 매핑표에 수치가 없어 정한 근사값(표준 구장 중앙 펜스 120m 기준):
   //   포수 0.05(홈 바로 앞) · 투수 0.15(마운드 18.44m ≈ 120m × 0.15) · 내야수 0.25(= 땅 깊이) · 외야수 0.65(= 플 깊이)
   var FIELDER_DEPTH = { __proto__: null, C: 0.05, P: 0.15, IF: 0.25, OF: 0.65 };
   // 좌월·중월·우월 접두어의 "펜스 근처 이상" = 매핑표 월2 깊이(0.92)를 하한으로 둔다 (좌월3 처럼 표에 따로 없는 조합용.
@@ -94,7 +96,8 @@
     for (var i = Math.min(2, tok.length - 1); i >= 1; i--) {
       var p = PREFIX[tok.slice(0, i)], s = SUFFIX[tok.slice(i)];
       if (!p || !s) continue;
-      var depth = s.depth != null ? s.depth : FIELDER_DEPTH[p.pos];
+      // 실, 또는 내야 방향 뜬공·땅볼 → 해당 야수 위치
+      var depth = s.depth == null || (s.fielded && p.pos !== 'OF') ? FIELDER_DEPTH[p.pos] : s.depth;
       if (p.fence) depth = Math.max(depth, FENCE_DEPTH);
       return { kind: 'batted', res: s.res, angle: p.angle, depth: depth, wide: !!s.wide, memo: s.memo || null };
     }

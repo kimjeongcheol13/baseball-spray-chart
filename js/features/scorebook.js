@@ -734,6 +734,7 @@ if (typeof window !== 'undefined') {
   window.sbOrderSheet = sbOrderSheet;
   window.sbEditLineup = sbEditLineup;
   window.sbRender = schedule;
+  window.sbRenderNow = render;   // 다음 프레임을 기다리지 않고 바로 그림 — 가상 시간으로 도는 테스트(tests/run.mjs)에서는 rAF 가 오지 않는다
   // record.js(setTimeout 0)가 필드 주변을 먼저 재배치한 뒤에 마운트
   const start = () => setTimeout(_init, 0);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

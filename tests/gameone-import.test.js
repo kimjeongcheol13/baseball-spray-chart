@@ -106,18 +106,17 @@
     var inn = Array.prototype.slice.call(td, 0, td.length - 3).map(function (c) { return c.textContent; });
     return [tr ? tr.querySelector('th').textContent : null].concat(inn, [td.length ? td[td.length - 3].textContent : null]);
   }
-  async function until(fn, ms) { for (var t = 0; t < (ms || 3000); t += 50) { if (fn()) return true; await T.sleep(50); } return false; }
-  // 저장 경기를 열고, 경기 정보(info.ls)가 그 경기 것으로 바뀐 뒤 라인스코어를 다시 그린다 — 고정 대기만 두면 부하가 클 때 앞 경기 표를 읽는다
+  // 기록 화면 라인스코어는 requestAnimationFrame(실제 화면 프레임)으로 다시 그린다. 이 하네스는 가상 시간으로 돌아 T.sleep 동안 실제 시간이 거의 흐르지 않고
+  // 프레임도 오지 않는다(측정: 가상 3초 대기 40번 중 40번 rAF 0회 · 프레임을 직접 기다리면 그 사이 앱 타이머가 가상 시간 예산을 수백 초 쓴다)
+  // → 경기를 연 뒤 바로 그리기(sbRenderNow)로 그린 표를 읽는다
   async function openSaved(key) {
     var want = JSON.stringify((JSON.parse(localStorage.getItem(key)).info || {}).ls || null);
     restoreGame(key);
-    ok(await until(function () { return JSON.stringify(window.gameInfo().ls || null) === want; }), '경기 열기: 경기 정보가 바뀌지 않음 — ' + key);
-    if (window.sbRender) window.sbRender();
-    await T.sleep(50);
+    eq(JSON.stringify(window.gameInfo().ls || null), want, '경기 열기: 경기 정보(info.ls) — ' + key);
+    window.sbRenderNow();
   }
-  async function eqCells(i, want, msg) {   // 다시 그리기는 다음 프레임 — 기대값이 될 때까지 최대 3초 기다린 뒤 비교
-    await until(function () { return JSON.stringify(lsCells(i)) === JSON.stringify(want); });
-    eq(lsCells(i), want, msg);
+  function eqCells(i, want, msg) {
+    eq(lsCells(i), want, msg + ' [curSaveKey=' + _curSaveKey + ' · info.ls=' + JSON.stringify(window.gameInfo().ls) + ']');
   }
 
   test('이닝별 점수표: 미리보기 미니 표 · 팀 이름이 비면 표의 이름 · 점수 = R', async function () {
@@ -141,15 +140,14 @@
     ok(_gameDataOk(g), '저장 형식 검증 통과');
     closeOverlay('loadOverlay');
     await openSaved(key);
-    await eqCells(0, ['상대팀', '2', '1', '0', '5', '0', '0', '0', '0', '0', '8'], '라인스코어 윗줄(원정 · 초)');
-    await eqCells(1, ['우리팀', '0', '0', '1', '0', '0', '0', '0', '0', '0', '1'], '라인스코어 아랫줄(홈 · 말)');
+    eqCells(0, ['상대팀', '2', '1', '0', '5', '0', '0', '0', '0', '0', '8'], '라인스코어 윗줄(원정 · 초)');
+    eqCells(1, ['우리팀', '0', '0', '1', '0', '0', '0', '0', '0', '0', '1'], '라인스코어 아랫줄(홈 · 말)');
   });
 
   test('이닝별 점수표 없이 가져온 경기는 이닝 칸이 그대로 비어 있다', async function () {
     var s = saves(), first = s.filter(function (e) { var d = JSON.parse(localStorage.getItem(e.key) || 'null'); return d && d.th === '우리' && d.ta === '상대'; })[0];
     ok(first, '앞에서 저장한 경기(점수표 없음)');
     await openSaved(first.key);
-    await until(function () { var r = lsCells(0); return r[0] === '상대' && r[r.length - 1] === '8'; });
     var top = lsCells(0);
     eq([top[0], top[top.length - 1]], ['상대', '8'], '팀 · R');
     ok(top.slice(1, -1).every(function (c) { return c === ''; }), '이닝 칸 비어 있음: ' + JSON.stringify(top));
@@ -163,12 +161,12 @@
     function put(d, label) { localStorage.setItem(d.key, JSON.stringify(d)); var sv = saves(); sv.push({ key: d.key, label: label, ts: d.ts }); localStorage.setItem('sl_saves', JSON.stringify(sv)); }
     put(g, '연장 경기');
     await openSaved(g.key);
-    await eqCells(1, ['B', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '3'], '라인스코어 11칸 (팀 이름 칸이 비면 점수표의 이름)');
-    var x =window.SLGameOneImport.buildGameOneGame({ scoreText: 'A\t0\t0\t0\t0\t0\t0\t0\t0\t1\t1\t3\t0\t1\nB\t1\t0\t0\t1\t0\t0\t0\t0\tX\t2\t5\t0\t2', homeText: HOME, now: 1790000000002 }).game;
+    eqCells(1, ['B', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '3'], '라인스코어 11칸 (팀 이름 칸이 비면 점수표의 이름)');
+    var x = window.SLGameOneImport.buildGameOneGame({ scoreText: 'A\t0\t0\t0\t0\t0\t0\t0\t0\t1\t1\t3\t0\t1\nB\t1\t0\t0\t1\t0\t0\t0\t0\tX\t2\t5\t0\t2', homeText: HOME, now: 1790000100000 }).game;
     eq(x.info.ls.home[8], 'X', '9회말 X');
     put(x, 'X 경기');
     await openSaved(x.key);
-    await eqCells(1, ['B', '1', '0', '0', '1', '0', '0', '0', '0', 'X', '2'], '라인스코어 X');
+    eqCells(1, ['B', '1', '0', '0', '1', '0', '0', '0', '0', 'X', '2'], '라인스코어 X');
   });
 
   test('타석 순서 복원: 타자일순 이닝 — 행 순서가 아니라 타순이 돌아가는 순서로', function () {

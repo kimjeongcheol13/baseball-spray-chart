@@ -1,8 +1,8 @@
-// 공유 링크의 이닝별 득점(info.ls — 게임원 가져오기 · 기록 화면 라인스코어)
-//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 info.ls 만 싣는다 — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
-//  · 이닝별 득점이 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
-//  · 받는 쪽(_restoreInfoFromPayload → _restoreLsFromPayload)은 0~99 정수 · 'X' 만 받고 나머지는 빈칸 — 링크는 누가 만들었는지 모른다
-//  · 받은 경기를 열면 기록 화면 라인스코어 이닝 칸에 보인다
+// 공유 링크의 경기 정보 — 날짜 · 구장(이름) · 이닝별 득점(info.ls, 게임원 가져오기 · 기록 화면 라인스코어)
+//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 이 셋만 싣는다(홈/원정 · 이닝 수 · 구장 크기는 싣지 않음) — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
+//  · 셋 다 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
+//  · 받는 쪽(_restoreInfoFromPayload · _restoreLsFromPayload)은 걸러 받는다 — 이닝 칸은 0~99 정수 · 'X' 만 (링크는 누가 만들었는지 모른다)
+//  · 받은 경기를 열면 분석 탭 경기 요약에 그 날짜 · 구장이(예전엔 연 날의 날짜), 기록 화면 라인스코어 이닝 칸에 이닝별 득점이 보인다
 // 서버는 tests/stub-supabase.js 의 메모리 shared_links 표
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep, $ = T.$;
@@ -62,42 +62,61 @@
     eq(_restoreInfoFromPayload({ innings: 7, ls: { away: [1], home: [] } }), { innings: 7, ls: { away: [1], home: [] } }, '다른 경기 정보와 함께');
   });
 
-  test('서버 링크(?gid=): 경기 정보 중 이닝별 득점만 실려 가고, 받아서 열면 라인스코어 이닝 칸에 보인다', async function () {
-    setUp({ date: '2026-10-07', venue: '안성맞춤야구장', ls: LS });
+  test('서버 링크(?gid=): 날짜 · 구장 · 이닝별 득점이 실려 가고, 받아서 열면 분석 탭 요약 · 라인스코어에 보인다', async function () {
+    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', ls: LS };
+    setUp(INFO);
     try {
       await share();
       eq(srv.shared_links.length, 1, 'shared_links 에 1건');
-      eq(srv.shared_links[0].payload.info, { ls: LS }, '서버에 저장된 payload 의 경기 정보 = 이닝별 득점만(날짜 · 구장은 예전처럼 싣지 않음)');
+      eq(srv.shared_links[0].payload.info, INFO, '서버에 저장된 payload 의 경기 정보');
       var url = $('shareQRUrl').textContent;
       ok(/\?gid=/.test(url), '서버 링크: ' + url);
       var p = await openLink(url);
-      eq(p.info, { ls: LS }, '링크로 받은 payload');
+      eq(p.info, INFO, '링크로 받은 payload');
       loadSharedGame();
       await waitFor(function () { return AS.info && AS.info.ls; }, 2000, '공유 경기 열기');
-      eq(AS.info, { ls: LS }, '연 경기의 경기 정보');
+      eq(AS.info, INFO, '연 경기의 경기 정보');
+      eq([gameInfo().date, gameInfo().venue], ['2026-10-07', '안성맞춤야구장'], '경기설정 탭에 보이는 날짜 · 구장');
+      window.openAnaDash();
+      var meta = document.querySelector('.ad-meta');
+      ok(meta && meta.textContent.indexOf('2026. 10. 7. · 안성맞춤야구장 · 우리팀 vs 상대팀') === 0, '분석 탭 경기 요약: ' + (meta && meta.textContent));
       window.sbRenderNow();   // 라인스코어는 rAF 로 다시 그린다 — 가상 시간 하네스에서는 바로 그리기로 (gameone-import.test.js 와 같은 이유)
       eq(lsCells(0), ['상대팀', '2', '1', '0', '5', '0', '0', '0', '0', '0', '8'], '라인스코어 윗줄(원정)');
       eq(lsCells(1), ['우리팀', '0', '0', '1', '0', '0', '0', '0', '0', 'X', '1'], '라인스코어 아랫줄(홈) · 9회말 X');
     } finally { tearDown(); }
   });
 
-  test('서버 저장이 안 될 때의 URL 링크(?game=)에도 이닝별 득점이 실린다', async function () {
-    setUp({ ls: LS });
+  test('서버 저장이 안 될 때의 URL 링크(?game=)에도 날짜 · 구장 · 이닝별 득점이 실린다', async function () {
+    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', ls: LS };
+    setUp(INFO);
     var push = window.pushSharedLink;
     try {
       window.pushSharedLink = function (payload, okCb, failCb) { failCb('offline'); };
       await share();
       var url = $('shareQRUrl').textContent;
       ok(/\?game=/.test(url), 'URL 링크: ' + url.slice(0, 60));
-      eq((await openLink(url)).info, { ls: LS }, '링크 안의 데이터');
+      eq((await openLink(url)).info, INFO, '링크 안의 데이터');
     } finally { window.pushSharedLink = push; tearDown(); }
   });
 
-  test('이닝별 득점이 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
-    setUp({ date: '2026-10-07', venue: '구장', side: 'home', innings: 7 });
+  test('경기 정보 중 날짜 · 구장 · 이닝별 득점만 싣는다 — 홈/원정 · 이닝 수 · 구장 크기는 빼고, 구장 이름은 다듬어서', async function () {
+    setUp({ date: '2026-10-07', venue: '  안성맞춤야구장  ', side: 'away', innings: 7, stadium: 'jamsil' });
     try {
       await share();
-      ok(!('info' in srv.shared_links[0].payload), '경기 정보는 있어도 이닝별 득점이 없으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
+      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', venue: '안성맞춤야구장' }, '날짜 · 구장만(앞뒤 공백 정리)');
+    } finally { tearDown(); }
+    setUp({ venue: new Array(31).join('가') });
+    try {
+      await share();
+      eq(srv.shared_links[0].payload.info, { venue: new Array(21).join('가') }, '구장 이름은 20자까지(경기설정 탭 입력 제한과 같음)');
+    } finally { tearDown(); }
+  });
+
+  test('날짜 · 구장 · 이닝별 득점이 다 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
+    setUp({ side: 'home', innings: 7, venue: '   ' });
+    try {
+      await share();
+      ok(!('info' in srv.shared_links[0].payload), '홈/원정 · 이닝 수 · 빈 구장만 있으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
     } finally { tearDown(); }
     setUp(null);
     try {

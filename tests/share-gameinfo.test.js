@@ -1,9 +1,10 @@
-// 공유 링크의 경기 정보 — 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 이닝별 득점(info.ls, 게임원 가져오기 · 기록 화면 라인스코어)
-//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 이 다섯만 싣는다(구장 크기는 싣지 않음) — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
-//  · 다섯 다 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
+// 공유 링크의 경기 정보 — 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 구장 크기 · 이닝별 득점(info.ls, 게임원 가져오기 · 기록 화면 라인스코어)
+//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 이 여섯만 싣는다 — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
+//    구장 크기는 경기별 구장(info.stadium), 없으면 지금 보는 구장(AS.stadium) — 직접 입력(custom)은 거리가 기기마다 따로라 싣지 않는다
+//  · 여섯 다 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
 //  · 받는 쪽(_restoreInfoFromPayload · _restoreLsFromPayload)은 걸러 받는다 — 이닝 칸은 0~99 정수 · 'X' 만 (링크는 누가 만들었는지 모른다)
 //  · 받은 경기를 열면 분석 탭 경기 요약에 그 날짜 · 구장이(예전엔 연 날의 날짜), 기록 화면 라인스코어 이닝 칸에 이닝별 득점이 보이고,
-//    라인스코어 줄 순서(내 팀이 원정이면 내 팀이 위) · 칸 수(5 · 7 · 9회)가 보낸 쪽과 같다
+//    라인스코어 줄 순서(내 팀이 원정이면 내 팀이 위) · 칸 수(5 · 7 · 9회)가 보낸 쪽과 같고, 구장 크기는 내 경기를 열 때처럼 그 구장으로 바뀐다(setup.js)
 // 서버는 tests/stub-supabase.js 의 메모리 shared_links 표
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep, $ = T.$;
@@ -24,19 +25,21 @@
     return window._sharedPayload;
   }
   var saved = null;
-  function setUp(info) {
-    saved = { abs: AS.abs, hl: AS.home_lineup, al: AS.away_lineup, p: AS.pitchers, zh: AS.zoneHistory, hs: AS.hs, as: AS.as, info: AS.info, ap: $('app-page').style.display,
+  function setUp(info, stadium) {
+    saved = { st: AS.stadium, sls: localStorage.getItem('sl_stadium'), abs: AS.abs, hl: AS.home_lineup, al: AS.away_lineup, p: AS.pitchers, zh: AS.zoneHistory, hs: AS.hs, as: AS.as, info: AS.info, ap: $('app-page').style.display,
       th: $('tHome').value, ta: $('tAway').value, url: location.pathname + location.search + location.hash, sp: window._sharedPayload };
     AS.abs = [{ id: 1790000000000, bid: 'h1', bname: '김민수', bnum: '7', team: 'home', res: '안타', pt: null, zone: null, rbi: 0,
       x: 0.3, y: 0.5, deg: 60, dir: 'LC', ft: 200, inn: '1회말', ts: '', pitches: [] }];
     AS.home_lineup = [{ id: 'h1', name: '김민수', num: '7', pos: '', bh: '' }]; AS.away_lineup = []; AS.pitchers = []; AS.zoneHistory = {};
-    AS.hs = 1; AS.as = 8; AS.info = info;
+    AS.hs = 1; AS.as = 8; AS.info = info; AS.stadium = stadium || 'custom';
+    localStorage.setItem('sl_stadium', AS.stadium);   // 지금 구장 설정도 같게 (새 사용자로 뜬 하네스는 시작할 때 리틀로 저장해 둔다 — setup.js _defaultStadium)
     $('tHome').value = '우리팀'; $('tAway').value = '상대팀';
     srv.shared_links = [];
   }
   function tearDown() {
     try { closeShareQR(); } catch (e) {}
     AS.abs = saved.abs; AS.home_lineup = saved.hl; AS.away_lineup = saved.al; AS.pitchers = saved.p; AS.zoneHistory = saved.zh; AS.hs = saved.hs; AS.as = saved.as; AS.info = saved.info;
+    AS.stadium = saved.st; if (saved.sls == null) localStorage.removeItem('sl_stadium'); else localStorage.setItem('sl_stadium', saved.sls);
     $('tHome').value = saved.th; $('tAway').value = saved.ta; $('app-page').style.display = saved.ap;
     window._sharedPayload = saved.sp; history.replaceState(null, '', saved.url);
     try { dismissSharedBanner(); } catch (e) {}
@@ -61,6 +64,13 @@
     eq(_restoreInfoFromPayload({ ls: [[1], [2]] }), null, '객체가 아닌 ls');
     eq(_restoreInfoFromPayload({ ls: { away: [null, null], home: [] } }), null, '빈칸뿐');
     eq(_restoreInfoFromPayload({ innings: 7, ls: { away: [1], home: [] } }), { innings: 7, ls: { away: [1], home: [] } }, '다른 경기 정보와 함께');
+  });
+
+  test('받는 쪽: 구장 크기는 고정 구장(표준 · 고척 · 잠실 · 지방 · 리틀)만 — 직접 입력 · 모르는 값은 버림', function () {
+    eq(['standard', 'gochuk', 'jamsil', 'local', 'little'].map(function (id) { return _restoreInfoFromPayload({ stadium: id }); }),
+      ['standard', 'gochuk', 'jamsil', 'local', 'little'].map(function (id) { return { stadium: id }; }), '고정 구장');
+    eq([_restoreInfoFromPayload({ stadium: 'custom' }), _restoreInfoFromPayload({ stadium: '__proto__' }), _restoreInfoFromPayload({ stadium: ['jamsil'] }),
+      _restoreInfoFromPayload({ stadium: 'toString' })], [null, null, null, null], '직접 입력 · 객체 속성 이름 · 배열 · 모르는 값');
   });
 
   test('서버 링크(?gid=): 날짜 · 구장 · 홈/원정 · 이닝 수 · 이닝별 득점이 실려 가고, 받아서 열면 분석 탭 요약 · 라인스코어에 보인다', async function () {
@@ -116,29 +126,63 @@
     } finally { tearDown(); }
   });
 
-  test('경기 정보 중 다섯 가지만 싣는다 — 구장 크기는 빼고, 구장 이름은 다듬고, 쓸 수 없는 홈/원정 · 이닝 수는 빼고', async function () {
-    setUp({ date: '2026-10-07', venue: '  안성맞춤야구장  ', side: 'away', innings: 7, stadium: 'jamsil' });
+  test('구장 크기: 경기별 구장(잠실)이 실려 가고, 받아서 열면 내 경기를 열 때처럼 그 구장으로 — 지금 구장 설정도 바뀐다', async function () {
+    setUp({ stadium: 'jamsil' }, 'standard');
     try {
       await share();
-      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', venue: '안성맞춤야구장', side: 'away', innings: 7 }, '구장 크기 제외 · 구장 이름 앞뒤 공백 정리');
-    } finally { tearDown(); }
-    setUp({ venue: new Array(31).join('가'), side: 'zzz', innings: 8 });
-    try {
-      await share();
-      eq(srv.shared_links[0].payload.info, { venue: new Array(21).join('가') }, '구장 이름 20자까지 · 홈/원정은 home/away 만 · 이닝 수는 5 · 7 · 9 만 (경기설정 탭 입력 제약과 같음)');
+      eq(srv.shared_links[0].payload.info, { stadium: 'jamsil' }, '서버에 저장된 경기 정보');
+      await openLink($('shareQRUrl').textContent);
+      eq([AS.stadium, localStorage.getItem('sl_stadium')], ['standard', 'standard'], '전제: 받는 쪽은 지금 표준 구장');
+      loadSharedGame();
+      await waitFor(function () { return AS.info && AS.info.stadium === 'jamsil'; }, 2000, '공유 경기 열기');
+      eq([AS.stadium, localStorage.getItem('sl_stadium')], ['jamsil', 'jamsil'], '받는 쪽 구장(필드 펜스 · 추정 비거리)과 지금 구장 설정');
     } finally { tearDown(); }
   });
 
-  test('다섯 다 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
-    setUp({ venue: '   ', side: 'zzz', innings: 8, stadium: 'jamsil' });
+  test('구장 크기: 경기별 구장이 없으면(이 기능 전 경기) 지금 보는 구장을 싣는다', async function () {
+    setUp({ date: '2026-10-07' }, 'little');
     try {
       await share();
-      ok(!('info' in srv.shared_links[0].payload), '빈 구장 · 쓸 수 없는 값 · 구장 크기만 있으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
+      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', stadium: 'little' }, '리틀');
     } finally { tearDown(); }
-    setUp(null);
+  });
+
+  test('구장 크기: 직접 입력은 싣지 않고, 받는 쪽 구장은 그대로 (구장 크기가 없는 예전 링크도 같음)', async function () {
+    setUp({ date: '2026-10-07', stadium: 'custom' }, 'custom');
     try {
       await share();
-      ok(!('info' in srv.shared_links[0].payload), '경기 정보가 없으면 싣지 않음');
+      eq(srv.shared_links[0].payload.info, { date: '2026-10-07' }, '직접 입력은 빠짐');
+      await openLink($('shareQRUrl').textContent);
+      AS.stadium = 'gochuk'; localStorage.setItem('sl_stadium', 'gochuk');   // 받는 쪽이 지금 쓰는 구장
+      loadSharedGame();
+      await waitFor(function () { return AS.info && AS.info.date === '2026-10-07'; }, 2000, '공유 경기 열기');
+      eq([AS.stadium, localStorage.getItem('sl_stadium')], ['gochuk', 'gochuk'], '받는 쪽 구장 · 구장 설정 그대로');
+    } finally { tearDown(); }
+  });
+
+  test('쓸 수 있는 값만 싣는다 — 구장 이름은 다듬고, 쓸 수 없는 홈/원정 · 이닝 수 · 구장 크기는 빼고', async function () {
+    setUp({ date: '2026-10-07', venue: '  안성맞춤야구장  ', side: 'away', innings: 7, stadium: 'jamsil' });
+    try {
+      await share();
+      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', venue: '안성맞춤야구장', side: 'away', innings: 7, stadium: 'jamsil' }, '구장 이름 앞뒤 공백 정리');
+    } finally { tearDown(); }
+    setUp({ venue: new Array(31).join('가'), side: 'zzz', innings: 8, stadium: 'zzz' });
+    try {
+      await share();
+      eq(srv.shared_links[0].payload.info, { venue: new Array(21).join('가') }, '구장 이름 20자까지 · 홈/원정은 home/away 만 · 이닝 수는 5 · 7 · 9 만 · 구장 크기는 고정 구장만 (경기설정 탭 입력 제약과 같음)');
+    } finally { tearDown(); }
+  });
+
+  test('여섯 다 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
+    setUp({ venue: '   ', side: 'zzz', innings: 8, stadium: 'custom' }, 'custom');
+    try {
+      await share();
+      ok(!('info' in srv.shared_links[0].payload), '빈 구장 이름 · 쓸 수 없는 값 · 직접 입력 구장만 있으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
+    } finally { tearDown(); }
+    setUp(null, 'custom');
+    try {
+      await share();
+      ok(!('info' in srv.shared_links[0].payload), '경기 정보가 없고 직접 입력 구장이면 싣지 않음');
     } finally { tearDown(); }
   });
 })();

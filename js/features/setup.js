@@ -493,7 +493,8 @@ function _hook() {
     w._stStad = true;
     window.saveGame = w;
   }
-  ['restoreGame', 'archRecoverAutosave'].forEach(fn => {
+  // loadSharedGame: 공유 링크로 받은 경기도 내 경기를 열 때와 같게 그 경기 구장으로(공유 데이터의 info.stadium — 직접 입력은 오지 않는다)
+  ['restoreGame', 'archRecoverAutosave', 'loadSharedGame'].forEach(fn => {
     const o = window[fn];
     if (typeof o !== 'function' || o._stStad) return;
     const w = function () { const r = o.apply(this, arguments); _applyInfoStadium(); return r; };

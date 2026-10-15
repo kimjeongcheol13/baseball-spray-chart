@@ -5199,13 +5199,15 @@ function _shareGameBuild(withNames){
     };})
   };
 
-  /* 경기 정보 중 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 이닝별 득점(info.ls — 게임원 가져오기)을 싣는다. 하나도 없으면 키를 만들지 않는다(예전 링크와 같은 모양).
-     구장 크기(stadium)는 싣지 않는다. 값은 경기설정 탭 입력 제약대로만 — 받는 쪽은 _restoreInfoFromPayload 가 다시 걸러 받는다 */
-  var _si=AS.info||{},_info={};
+  /* 경기 정보 중 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 구장 크기 · 이닝별 득점(info.ls — 게임원 가져오기)을 싣는다. 하나도 없으면 키를 만들지 않는다(예전 링크와 같은 모양).
+     값은 경기설정 탭 입력 제약대로만 — 받는 쪽은 _restoreInfoFromPayload 가 다시 걸러 받는다.
+     구장 크기는 경기별 구장(info.stadium), 없으면(이 기능 전에 저장한 경기) 지금 보는 구장 — 직접 입력(custom)은 거리가 기기마다 따로라 싣지 않는다 */
+  var _si=AS.info||{},_info={},_st=_si.stadium||AS.stadium;
   if(typeof _si.date==='string'&&_si.date)_info.date=_si.date;
   if(typeof _si.venue==='string'&&_si.venue.trim())_info.venue=_si.venue.trim().slice(0,20);
   if(_si.side==='home'||_si.side==='away')_info.side=_si.side;
   if([5,7,9].indexOf(+_si.innings)>=0)_info.innings=+_si.innings;
+  if(_SHARE_STADIUMS.indexOf(_st)>=0)_info.stadium=_st;
   if(_si.ls&&typeof _si.ls==='object')_info.ls=_si.ls;
   if(Object.keys(_info).length){fullPayload.info=_info;compactPayload.info=_info;}
 
@@ -5392,9 +5394,13 @@ function _restoreInfoFromPayload(i){
   if(typeof i.venue==='string'&&i.venue.trim())o.venue=i.venue.trim().slice(0,20);
   if(i.side==='home'||i.side==='away')o.side=i.side;
   if([5,7,9].indexOf(n)>=0)o.innings=n;
+  if(_SHARE_STADIUMS.indexOf(i.stadium)>=0)o.stadium=i.stadium;   // 적용은 setup.js 가 loadSharedGame 뒤에(내 경기를 열 때와 같게)
   var ls=_restoreLsFromPayload(i.ls);if(ls)o.ls=ls;
   return Object.keys(o).length?o:null;
 }
+// 공유 링크로 주고받는 구장 크기 — 고정 구장만(setup.js 의 리틀 포함). 직접 입력(custom)은 거리가 기기마다 따로(sl_stadium_custom)라 빼고,
+// 받는 쪽은 STADIUMS 를 보지 않고 이 목록으로 거른다(공유 데이터를 읽을 때 setup.js 가 리틀을 아직 안 붙였을 수 있다)
+var _SHARE_STADIUMS=['standard','gochuk','jamsil','local','little'];
 // 이닝별 득점(info.ls = { away: [...], home: [...] }, 게임원 가져오기 · scorebook.js 라인스코어): 칸 값은 0~99 정수 · 'X'(공격 안 함)만, 나머지는 null(빈칸).
 // 30이닝까지, 끝쪽 빈칸은 자르고, 두 팀 다 비면 버린다
 function _restoreLsFromPayload(ls){

@@ -36,6 +36,7 @@
     var s = $('innSel'); if (s) s.selectedIndex = 0;
     selBatter('pu1');
     AS.pitchers = [{ id: 'pp1', name: '되돌리기투수', num: '21', role: null, pitches: [] }];
+    window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
     selectPitcher('pp1');
     AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
     eq(AS.batter && AS.batter.id, 'pu1', '타자 선택');
@@ -111,6 +112,7 @@
 
   run('안타 → 필드 탭 대기 중에 되돌리면 대기도 취소', function () {
     recordPitch('볼'); recordPitch('안타');
+    var fb = document.querySelector('#pitchLinkSheet [data-act="field"]'); ok(fb, 'P2: 타구 위치 연결 창'); if (fb) fb.click();   // P2: 인플레이는 먼저 '필드에서 위치 찍기'
     eq(AS.pendingQuickRes, '안타', '필드 탭 대기');
     undoPitch();
     eq(AS.pendingQuickRes, null, '대기 취소'); eq(res(), ['볼'], '투수 쪽 1구'); eq(AS.currentPitches.length, 1, '이번 타석 1구'); eq([AS.balls, AS.strikes], [1, 0], '1-0');

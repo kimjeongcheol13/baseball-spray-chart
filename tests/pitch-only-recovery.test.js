@@ -41,6 +41,7 @@
     await isolated(async function () {
       localStorage.clear(); fresh();
       AS.pitchers = [{ id: 'po1', name: '투구만', num: '9', role: 'SP', pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
       selectPitcher('po1'); AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
       recordPitch('스트라이크'); recordPitch('볼'); recordPitch('스트라이크'); recordPitch('스트라이크');   // 3번째 스트라이크 = 삼진, 타자가 없으니 타석은 안 생긴다
       eq(AS.abs.length, 0, '타석 0 (전제)');
@@ -96,6 +97,7 @@
         AS.home_lineup = [{ id: 'rl1', name: '첫타자', num: '1', pos: '', bh: '', isStarter: true }, { id: 'rl2', name: '둘째타자', num: '2', pos: '', bh: '', isStarter: true }];
         renderLP(); selBatter('rl1');
         AS.pitchers = [{ id: 'rp1', name: '이어던지기', num: '18', role: null, pitches: [] }];
+        window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
         selectPitcher('rp1'); AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
         recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크');   // 첫타자 삼진 → 둘째타자
         eq(AS.batter && AS.batter.id, 'rl2', '다음 타자(전제)');
@@ -202,6 +204,7 @@
         AS.away_lineup = [{ id: 'ga1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }];
         renderLP();
         AS.pitchers = [{ id: 'gp1', name: '운영투수', num: '18', role: null, pitches: [] }];
+        window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
         selectPitcher('gp1'); AS.pitcherPt = '직구'; AS.pitcherZone = '외각 낮음';
         gfActivate();
         await T.sleep(750);   // 앞 테스트 기록의 연타 방지(0.7초)가 풀리길 기다린다

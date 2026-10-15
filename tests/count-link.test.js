@@ -123,6 +123,7 @@
     shellNav('analysis', 'pitcher');
     eq($('app-page').style.display, 'none', '분석 탭에서 시작');
     recordPitch('볼'); recordPitch('안타');
+    $('pitchLinkSheet').querySelector('[data-act="field"]').click();   // P2: 인플레이는 연결 시트에서 '필드에서 위치 찍기'
     eq(AS.pendingQuickRes, '안타', '필드 탭 대기'); eq($('app-page').style.display, 'flex', '기록 탭으로 전환'); eq(AS.abs.length, 0, '위치를 찍기 전엔 기록 없음');
     eq(P().length, 2, '투수 쪽 2구'); eq(AS.currentPitches.length, 2, '이번 타석 투구 유지');
     // 필드 탭 흉내 (onFClick 의 즉시 기록 경로)
@@ -199,11 +200,12 @@
     var s = $('innSel');
     strikeout(); await T.sleep(750); pick('cl2'); strikeout(); await T.sleep(750); pick('cl1');
     recordPitch('볼'); recordPitch('땅볼 아웃');
+    $('pitchLinkSheet').querySelector('[data-act="field"]').click();   // P2: 인플레이는 연결 시트에서 '필드에서 위치 찍기'
     eq(s.value, '2회초', '3아웃 → 다음 회'); eq(AS.pendingQuickRes, '땅볼 아웃', '필드 탭 대기'); eq(AS.abs.length, 2, '위치를 찍기 전엔 기록 없음');
-    AS.pending = { x: 0.45, y: 0.55, deg: 100, dir: 'SS', ft: 120 }; var res = AS.pendingQuickRes; _clearFieldTapPrompt(); AS.rbi = 0; recHit(res);
+    AS.pending = { x: 0.45, y: 0.55, deg: 100, dir: 'SS', ft: 120 }; var res = AS.pendingQuickRes, lk = AS._pendLink; _clearFieldTapPrompt(); AS._pendLink = lk; AS.rbi = 0; recHit(res);   // onFClick 의 즉시 기록 경로와 같이 (연결 대기는 살린다)
     var a = AS.abs[AS.abs.length - 1];
     eq([a.res, a.bname, a.inn, a.count.o, a.count.b], ['땅볼 아웃', '첫타자', '1회초', 2, 1], '타구는 1회초 2아웃 1볼에서');
-    eq(AS.outs, 0, '새 이닝 0아웃'); eq([AS._pitchEndInn, AS._pitchEndOuts], [null, null], '보정 값은 한 번만 쓴다');
+    eq(AS.outs, 0, '새 이닝 0아웃'); eq([AS._pitchEndInn, AS._pitchEndOuts], [null, null], '보정 값은 한 번만 쓴다'); eq(a.pa, P()[P().length - 1].pa, '투구 기록과 연결');
   });
 
   // 투구의 outs · runners: 경기 운영 모드일 때만 '던지기 직전' 값을 저장하고, 아니면 null

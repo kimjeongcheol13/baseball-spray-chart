@@ -208,7 +208,7 @@
   test('기록 탭 연동: 투수 탭 땅볼 아웃으로 3아웃 → 이닝은 바로 2회초, 기록 탭 필드를 찍은 타석은 1회초 · 그다음 타석은 2회초', async function () {
     await withRecordTab(async function () {
       fresh(); pitcher(1, '투수'); await twoKs();
-      batter('c', '다'); rec('볼', '땅볼 아웃');
+      batter('c', '다'); rec('볼', '땅볼 아웃'); $('pitchLinkSheet').querySelector('[data-act="field"]').click();   // P2: 연결 시트 → 필드에서 위치 찍기
       eq(AS.pendingQuickRes, '땅볼 아웃', '필드 탭 대기'); eq(inn(), '2회초', '이닝은 다음 회'); eq(AS.abs.length, 2, '위치를 찍기 전엔 타석 없음');
       AS.pending = { x: 0.45, y: 0.6, deg: 80, dir: 'SS', ft: 120 }; var res = AS.pendingQuickRes; _clearFieldTapPrompt(); AS.rbi = 0; recHit(res);
       eq(AS.abs.length, 3, '필드 탭으로 타석 기록'); eq([AS.abs[2].res, AS.abs[2].inn], ['땅볼 아웃', '1회초'], '그 타석은 1회초');
@@ -221,7 +221,7 @@
     await withRecordTab(async function () {
       fresh(); pitcher(1, '투수'); await twoKs();
       batter('c', '다'); rec('플라이 아웃');
-      _clearFieldTapPrompt(); eq(inn(), '2회초', '이닝은 다음 회');
+      $('pitchLinkSheet').querySelector('[data-act="skip"]').click();   // P2: 연결 시트 → 건너뛰기 eq(inn(), '2회초', '이닝은 다음 회');
       batter('d', '라'); rec('볼');   // 필드는 건너뛰고 다음 타자 공
       await sleep(750); recOther('사구');
       eq(AS.abs[AS.abs.length - 1].inn, '2회초', '지난 공의 이닝이 남아 있지 않다');

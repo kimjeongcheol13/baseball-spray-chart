@@ -2,19 +2,19 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=21';
+import './features/profile.js?v=22';
 import './features/compare.js?v=12';
-import './features/scouting.js?v=24';
+import './features/scouting.js?v=25';
 import './features/heatmap.js?v=3';
-import './features/filter.js?v=3';
+import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
 import './features/team.js?v=9';
-import './features/pitcher.js?v=43';
-import './features/batter.js?v=31';
+import './features/pitcher.js?v=44';
+import './features/batter.js?v=32';
 import './features/spray.js?v=5';
 import './features/shell.js?v=16';
-import './features/record.js?v=12';
+import './features/record.js?v=13';
 import './features/settings.js?v=3';
 import './features/scorebook.js?v=16';
 import './features/dashboard.js?v=10';

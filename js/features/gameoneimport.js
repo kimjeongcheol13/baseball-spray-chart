@@ -7,6 +7,9 @@
 //   · 홈런 위치는 펜스 밖 그대로 (파서 값 그대로 — 그리는 쪽이 펜스 1.06배까지 표시, 핫존 집계는 가장 깊은 칸)
 //   · 타석 타점은 0 — 게임원 표에는 타석별 타점이 없다(선수별 합계만). 미리보기에 안내한다
 //   · unknown 타석(결과를 모름)과 교체·주루 사건뿐인 칸은 저장하지 않고 미리보기에 보여 준다
+//   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
+//     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
+//     공유 링크는 경기 정보 중 날짜 · 구장 · 홈/원정 · 이닝 수만 옮기므로(core.js _restoreInfoFromPayload) 이닝별 득점은 빠진다
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 예시에서 확인한 건 二 · 유 · 중 — 나머지는 같은 표기 관례로 맞춘 값, 모르면 빈 칸
 const POS = {
@@ -38,12 +41,13 @@ function _orderSide(entries) {
 }
 
 /**
- * 원정 · 홈 붙여넣기 → { game, report }
+ * 원정 · 홈 붙여넣기 (+ 이닝별 점수표) → { game, report }
  *   game   = 저장할 경기 데이터 (core.js 엑셀 가져오기와 같은 모양: key · hs · as · th · ta · home_lineup · away_lineup · abs · zoneHistory · d · ts · info)
- *   report = 미리보기용 { away, home, pa, unknownTokens } — 팀별 { players, pa, batted, low, nonBatted, skipped:[{name,inning,raw}], noPA, noInning, runs, rbi }
+ *   report = 미리보기용 { away, home, pa, unknownTokens, ls, lsWarnings } — 팀별 { players, pa, batted, low, nonBatted, skipped:[{name,inning,raw}], noPA, noInning, runs, rbi }
+ *            ls = 이닝별 점수표를 썼으면 { away, home } (parseGameOneScoreboard 의 팀 줄), 아니면 null
  * now · stadiums · stadium 을 받아 순수하게 만든다 (테스트용)
  */
-export function buildGameOneGame({ awayText = '', homeText = '', th = '', ta = '', date = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
+export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '', th = '', ta = '', date = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
   const st = stadiums[stadium] || stadiums.standard || { lfDist: 90, cfDist: 120, rfDist: 90 };
   const lf = Math.round(st.lfDist * 3.281), cf = Math.round(st.cfDist * 3.281), rf = Math.round(st.rfDist * 3.281);
   const wallFt = { LF: lf, LC: Math.round((lf + cf) / 2), CF: cf, RC: Math.round((cf + rf) / 2), RF: rf };   // core.js onFClick 과 같은 담장 거리
@@ -102,13 +106,37 @@ export function buildGameOneGame({ awayText = '', homeText = '', th = '', ta = '
   });
   report.pa = abs.length;
 
+  // 이닝별 점수표: 윗줄 = 원정(초), 아랫줄 = 홈(말). 입력한 팀 이름과 반대로 맞으면 바꾼다
+  const tTh = String(th || '').trim(), tTa = String(ta || '').trim();
+  report.ls = null; report.lsWarnings = [];
+  if (String(scoreText).trim()) {
+    const sb = _P().parseGameOneScoreboard(scoreText);
+    report.lsWarnings = sb.warnings.slice();
+    if (sb.teams.length >= 2) {
+      let [aw, hm] = sb.teams;
+      if ((tTh && aw.name === tTh) || (tTa && hm.name === tTa)) [aw, hm] = [hm, aw];
+      report.ls = { away: aw, home: hm };
+      if (sb.teams.length > 2) report.lsWarnings.push(`팀 줄이 ${sb.teams.length}개 있어 앞의 2개만 씁니다`);
+      ['away', 'home'].forEach(t => {
+        if (report[t].players && report[t].runs !== report.ls[t].r) {
+          report.lsWarnings.push(`${t === 'away' ? '원정' : '홈'} 득점: 이닝별 점수표 R ${report.ls[t].r} · 타자 표 합계 ${report[t].runs} — 점수는 이닝별 점수표를 씁니다`);
+        }
+      });
+    } else if (sb.teams.length === 1) report.lsWarnings.push('팀 줄을 1개만 찾았습니다 — 원정 · 홈 두 줄이 다 있어야 씁니다');
+  }
+  const ls = report.ls;
+
   const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
   const d = (dm ? new Date(+dm[1], +dm[2] - 1, +dm[3]) : new Date(now)).toLocaleDateString('ko-KR');
   const game = {
-    key: 'sl_' + now, hs: report.home.runs, as: report.away.runs, th: String(th || '').trim() || '홈팀', ta: String(ta || '').trim() || '원정팀',
+    key: 'sl_' + now, hs: ls ? ls.home.r : report.home.runs, as: ls ? ls.away.r : report.away.runs,
+    th: tTh || (ls && ls.home.name.slice(0, 20)) || '홈팀', ta: tTa || (ls && ls.away.name.slice(0, 20)) || '원정팀',
     home_lineup: lineups.home, away_lineup: lineups.away, abs, zoneHistory: {}, d, ts: now,
   };
-  if (dm) game.info = { date: date };
+  const info = {};
+  if (dm) info.date = date;
+  if (ls) info.ls = { away: ls.away.innings, home: ls.home.innings };
+  if (Object.keys(info).length) game.info = info;
   return { game, report };
 }
 
@@ -119,7 +147,7 @@ let _timer = null;
 
 function _inputs() {
   return {
-    awayText: ($('goAway') || {}).value || '', homeText: ($('goHome') || {}).value || '',
+    awayText: ($('goAway') || {}).value || '', homeText: ($('goHome') || {}).value || '', scoreText: ($('goScore') || {}).value || '',
     ta: ($('goTa') || {}).value || '', th: ($('goTh') || {}).value || '', date: ($('goDate') || {}).value || '',
     stadium: (window.AS || {}).stadium || '',
   };
@@ -137,11 +165,20 @@ function _sideHtml(label, r) {
   return h + '</div>';
 }
 
+// 이닝별 점수 미니 표 (원정 위 · 홈 아래, 진행한 이닝까지)
+function _lsTable(ls, g) {
+  const n = Math.max(ls.away.innings.length, ls.home.innings.length, 1);
+  const cols = Array.from({ length: n }, (_, i) => i + 1);
+  const row = (name, t) => `<tr><th scope="row">${_esc(name)}</th>${cols.map(i => `<td>${t.innings[i - 1] == null ? '' : _esc(t.innings[i - 1])}</td>`).join('')}<td class="r">${t.r}</td></tr>`;
+  return `<div class="go-ls-wrap"><table class="go-ls"><caption>이닝별 점수</caption><thead><tr><th scope="col"><span class="go-sr">팀</span></th>${cols.map(i => `<th scope="col">${i}</th>`).join('')}<th scope="col" class="r">R</th></tr></thead>`
+    + `<tbody>${row(g.ta, ls.away)}${row(g.th, ls.home)}</tbody></table></div>`;
+}
+
 function _preview() {
   const box = $('goPrev'), btn = $('goSave');
   if (!box || !btn) return;
-  const inp = _inputs();
-  if (!inp.awayText.trim() && !inp.homeText.trim()) {
+  const inp = _inputs(), hasBat = !!(inp.awayText.trim() || inp.homeText.trim());
+  if (!hasBat && !inp.scoreText.trim()) {
     box.innerHTML = '<div class="go-empty">표를 붙여넣으면 여기에 가져올 내용이 나옵니다</div>';
     btn.disabled = true;
     return;
@@ -150,10 +187,13 @@ function _preview() {
   try { out = buildGameOneGame(Object.assign(inp, { now: Date.now() })); }
   catch (e) { box.innerHTML = '<div class="go-warn">읽지 못했습니다: ' + _esc(e && e.message || e) + '</div>'; btn.disabled = true; return; }
   const { report: R, game: g } = out;
+  const lsH = (R.ls ? _lsTable(R.ls, g) : '') + R.lsWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('');
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
-  if (!R.away.players && !R.home.players) h = '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요</div>';
-  else {
-    h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>` + h;
+  if (!R.away.players && !R.home.players) {
+    h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요</div>'
+      : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
+  } else {
+    h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>` + lsH + h;
     const rbi = R.away.rbi + R.home.rbi;
     h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 0으로 저장됩니다${rbi ? ` (표의 타점 합계 ${rbi})` : ''}.`
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
@@ -172,7 +212,7 @@ export function openGameOneImport() {
   if (dt && !dt.value) { const n = new Date(), p = v => String(v).padStart(2, '0'); dt.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; }
   _preview();
   if (window.openOverlay) window.openOverlay('goOverlay');
-  setTimeout(() => { const t = $('goAway'); if (t) t.focus(); }, 50);
+  setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
 }
 
 export function saveGameOneImport() {
@@ -192,7 +232,7 @@ export function saveGameOneImport() {
     localStorage.setItem('sl_saves', JSON.stringify(saves));
   } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
   if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
-  ['goAway', 'goHome'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  ['goScore', 'goAway', 'goHome'].forEach(id => { const t = $(id); if (t) t.value = ''; });
   _preview();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();

@@ -327,12 +327,17 @@ function _lsHtml() {
   const hits = t => (AS.abs || []).filter(a => (a.team || 'home') === t && HITS.includes(a.res)).length;
   // 이닝 칸 = 경기 정보의 이닝 수(5·7·9, 기본 9) — 연장으로 넘어가면 그만큼 늘림
   const info = window.gameInfo ? window.gameInfo() : { innings: 9, side: 'home' };
-  const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0) }, (_, i) => i + 1);
+  // 이닝별 득점: 직접 기록하는 경기에는 없다. 게임원 가져오기(gameoneimport.js)가 이닝별 점수표를 붙여넣으면 info.ls = { away: [...], home: [...] }
+  // (값 = 득점 숫자 · 'X'(공격 안 함) · null(진행 안 함)) — 있으면 이닝 칸에 그린다
+  const ls = info.ls && typeof info.ls === 'object' ? info.ls : null;
+  const lsOf = t => (ls && Array.isArray(ls[t]) ? ls[t] : []);
+  const lsCell = (t, n) => { const v = lsOf(t)[n - 1]; return typeof v === 'number' && isFinite(v) ? String(v) : v === 'X' ? 'X' : ''; };
+  const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0, lsOf('away').length, lsOf('home').length) }, (_, i) => i + 1);
   const head = `<tr><th scope="col" class="t">TEAM</th>${cols.map(n => `<th scope="col"${cur.n === n ? ' class="cur"' : ''}>${n}</th>`).join('')}<th scope="col" class="r">R</th><th scope="col">H</th><th scope="col">E</th></tr>`;
-  const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}></td>`).join('')}`
+  const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}>${lsCell(t, n)}</td>`).join('')}`
     + `<td class="r">${esc(runs)}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
   // R 칸은 44px 터치 타겟이 안 나와서 점수 수정은 옆 버튼으로 (기존 스코어 수정 팝오버)
-  return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — 이닝별 득점은 기록하지 않아 비워 둡니다</caption>`
+  return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — ${ls ? '이닝별 득점은 가져온 이닝별 점수표 값' : '이닝별 득점은 기록하지 않아 비워 둡니다'}</caption>`
     // 윗줄 = 초 공격(원정) 팀: 내 팀이 원정이면 내 팀이 위 (야구 라인스코어 표기)
     + `<thead>${head}</thead><tbody>${info.side === 'away' ? row(th, 'home', AS.hs || 0) + row(ta, 'away', AS.as || 0) : row(ta, 'away', AS.as || 0) + row(th, 'home', AS.hs || 0)}</tbody></table></div>`
     + `<button type="button" class="sb-score-btn" onclick="shellScore(true)" aria-label="스코어 수정">${ICON.pencil}<span>점수</span></button>`;

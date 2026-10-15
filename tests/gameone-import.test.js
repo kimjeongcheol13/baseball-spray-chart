@@ -97,6 +97,80 @@
     ok(g.abs.every(function (a) { return a.res !== null; }), '결과 없는 칸(교체 · 주루 사건뿐)은 저장하지 않음');
   });
 
+  // 이닝별 점수표: 원정(위) 2 1 0 5 0 0 0 0 0 = 8 · 홈(아래) 0 0 1 0 0 0 0 0 0 = 1 → 위 타자 표의 득점 합계(8 · 1)와 같다
+  var SB = 'Team\t\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB\n'
+    + '상대팀\t2\t1\t0\t5\t0\t0\t0\t0\t0\t8\t9\t1\t2\n'
+    + '우리팀\t0\t0\t1\t0\t0\t0\t0\t0\t0\t1\t1\t2\t3';
+  function lsCells(i) {   // 기록 화면 라인스코어 i번째 줄: [팀, 이닝 칸…, R]
+    var tr = document.querySelectorAll('#sbHdrMid .sb-ls tbody tr')[i], td = tr ? tr.querySelectorAll('td') : [];
+    var inn = Array.prototype.slice.call(td, 0, td.length - 3).map(function (c) { return c.textContent; });
+    return [tr ? tr.querySelector('th').textContent : null].concat(inn, [td.length ? td[td.length - 3].textContent : null]);
+  }
+  async function until(fn, ms) { for (var t = 0; t < (ms || 3000); t += 50) { if (fn()) return true; await T.sleep(50); } return false; }
+  // 저장 경기를 열고, 경기 정보(info.ls)가 그 경기 것으로 바뀐 뒤 라인스코어를 다시 그린다 — 고정 대기만 두면 부하가 클 때 앞 경기 표를 읽는다
+  async function openSaved(key) {
+    var want = JSON.stringify((JSON.parse(localStorage.getItem(key)).info || {}).ls || null);
+    restoreGame(key);
+    ok(await until(function () { return JSON.stringify(window.gameInfo().ls || null) === want; }), '경기 열기: 경기 정보가 바뀌지 않음 — ' + key);
+    if (window.sbRender) window.sbRender();
+    await T.sleep(50);
+  }
+  async function eqCells(i, want, msg) {   // 다시 그리기는 다음 프레임 — 기대값이 될 때까지 최대 3초 기다린 뒤 비교
+    await until(function () { return JSON.stringify(lsCells(i)) === JSON.stringify(want); });
+    eq(lsCells(i), want, msg);
+  }
+
+  test('이닝별 점수표: 미리보기 미니 표 · 팀 이름이 비면 표의 이름 · 점수 = R', async function () {
+    openGameOneImport();
+    type('goTa', ''); type('goTh', ''); type('goDate', '2026-10-12');
+    type('goScore', SB); type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    var t = $('goPrev').textContent;
+    ok(t.indexOf('상대팀 8 : 1 우리팀') >= 0, '점수 · 팀 이름 — ' + t);
+    eq($('goPrev').querySelectorAll('.go-ls tbody tr').length, 2, '미니 표 2줄');
+    eq(Array.prototype.map.call($('goPrev').querySelectorAll('.go-ls tbody tr:first-child td'), function (c) { return c.textContent; }),
+      ['2', '1', '0', '5', '0', '0', '0', '0', '0', '8'], '미니 표 원정 줄');
+    ok(t.indexOf('이닝별 점수표 R') < 0, '타자 표 득점 합계와 같으면 경고 없음 — ' + t);
+  });
+
+  test('이닝별 점수표 저장 → info.ls, 경기를 열면 기록 화면 라인스코어 이닝 칸에 표시', async function () {
+    $('goSave').click();
+    var s = saves(), key = s[s.length - 1].key, g = JSON.parse(localStorage.getItem(key));
+    eq([g.ta, g.th, g.as, g.hs], ['상대팀', '우리팀', 8, 1], '팀 · 점수');
+    eq(g.info, { date: '2026-10-12', ls: { away: [2, 1, 0, 5, 0, 0, 0, 0, 0], home: [0, 0, 1, 0, 0, 0, 0, 0, 0] } }, '경기 정보');
+    ok(_gameDataOk(g), '저장 형식 검증 통과');
+    closeOverlay('loadOverlay');
+    await openSaved(key);
+    await eqCells(0, ['상대팀', '2', '1', '0', '5', '0', '0', '0', '0', '0', '8'], '라인스코어 윗줄(원정 · 초)');
+    await eqCells(1, ['우리팀', '0', '0', '1', '0', '0', '0', '0', '0', '0', '1'], '라인스코어 아랫줄(홈 · 말)');
+  });
+
+  test('이닝별 점수표 없이 가져온 경기는 이닝 칸이 그대로 비어 있다', async function () {
+    var s = saves(), first = s.filter(function (e) { var d = JSON.parse(localStorage.getItem(e.key) || 'null'); return d && d.th === '우리' && d.ta === '상대'; })[0];
+    ok(first, '앞에서 저장한 경기(점수표 없음)');
+    await openSaved(first.key);
+    await until(function () { var r = lsCells(0); return r[0] === '상대' && r[r.length - 1] === '8'; });
+    var top = lsCells(0);
+    eq([top[0], top[top.length - 1]], ['상대', '8'], '팀 · R');
+    ok(top.slice(1, -1).every(function (c) { return c === ''; }), '이닝 칸 비어 있음: ' + JSON.stringify(top));
+  });
+
+  test('이닝별 점수표 이닝 수: 10회 이상 연장 · 9회말 X 도 칸이 늘어나고 X 표시', async function () {
+    var sb = 'A\t0\t0\t0\t0\t0\t0\t0\t1\t0\t0\t1\t1\t5\t0\t1\nB\t0\t0\t0\t0\t0\t0\t0\t1\t0\t0\t2\t3\t6\t0\t2';
+    var tbl = 'Team\t1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t11\tR\tH\tE\tB\n' + sb;
+    var g = window.SLGameOneImport.buildGameOneGame({ scoreText: tbl, homeText: HOME, now: 1790000000001 }).game;
+    eq(g.info.ls, { away: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1], home: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 2] }, '11회까지');
+    function put(d, label) { localStorage.setItem(d.key, JSON.stringify(d)); var sv = saves(); sv.push({ key: d.key, label: label, ts: d.ts }); localStorage.setItem('sl_saves', JSON.stringify(sv)); }
+    put(g, '연장 경기');
+    await openSaved(g.key);
+    await eqCells(1, ['B', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '2', '3'], '라인스코어 11칸 (팀 이름 칸이 비면 점수표의 이름)');
+    var x =window.SLGameOneImport.buildGameOneGame({ scoreText: 'A\t0\t0\t0\t0\t0\t0\t0\t0\t1\t1\t3\t0\t1\nB\t1\t0\t0\t1\t0\t0\t0\t0\tX\t2\t5\t0\t2', homeText: HOME, now: 1790000000002 }).game;
+    eq(x.info.ls.home[8], 'X', '9회말 X');
+    put(x, 'X 경기');
+    await openSaved(x.key);
+    await eqCells(1, ['B', '1', '0', '0', '1', '0', '0', '0', '0', 'X', '2'], '라인스코어 X');
+  });
+
   test('타석 순서 복원: 타자일순 이닝 — 행 순서가 아니라 타순이 돌아가는 순서로', function () {
     var rows = [], cells = { 1: ['삼진', '삼진', '삼진'], 2: [] };
     for (var k = 1; k <= 9; k++) {

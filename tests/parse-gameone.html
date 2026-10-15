@@ -180,6 +180,26 @@
       U(3, '좌직'),
       U(4, '번트')
     ], ['번트', '좌직']) },
+    { group: '이닝별 점수표 — parseGameOneScoreboard (게임원 화면 2026-10-07 경기: 팀에이스 25 : 3 우진스나이퍼, 4회 콜드)' },
+    { name: '탭 구분 · 머리글 있음 · 진행 안 한 5~9회는 빈 칸',
+      sb: 'Team\t\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB\n팀에이스\t4\t5\t4\t12\t\t\t\t\t\t25\t17\t0\t8\n우진스나이퍼\t0\t0\t3\t0\t\t\t\t\t\t3\t2\t3\t4',
+      expectSb: { teams: [{ name: '팀에이스', innings: [4, 5, 4, 12], r: 25, h: 17, e: 0, b: 8 }, { name: '우진스나이퍼', innings: [0, 0, 3, 0], r: 3, h: 2, e: 3, b: 4 }], warnings: [] } },
+    { name: '탭 구분 · › 칸이 팀 줄에도 끼고 빈 칸이 공백 한 칸',
+      sb: 'Team\t›\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB\n팀에이스\t \t4\t5\t4\t12\t \t \t \t \t \t25\t17\t0\t8\n우진스나이퍼\t \t0\t0\t3\t0\t \t \t \t \t \t3\t2\t3\t4',
+      expectSb: { teams: [{ name: '팀에이스', innings: [4, 5, 4, 12], r: 25 }, { name: '우진스나이퍼', innings: [0, 0, 3, 0], r: 3 }], warnings: [] } },
+    { name: '공백 구분 · 아래에 리그/날짜 줄이 같이 복사됨 (팀 줄 아님)',
+      sb: 'Team 1 2 3 4 5 6 7 8 9 R H E B\n팀에이스 4 5 4 12 25 17 0 8\n우진스나이퍼 0 0 3 0 3 2 3 4\n평일야간 안성리그 / 10.07(20:00) / 안성맞춤야구장',
+      expectSb: { teams: [{ name: '팀에이스', innings: [4, 5, 4, 12], r: 25, h: 17, e: 0, b: 8 }, { name: '우진스나이퍼', innings: [0, 0, 3, 0], r: 3, h: 2, e: 3, b: 4 }], warnings: [] } },
+    { name: '9회말 X (홈팀이 이겨서 공격 안 함)',
+      sb: '원정\t0\t1\t0\t0\t2\t0\t0\t0\t1\t4\t8\t1\t3\n홈\t1\t0\t0\t3\t0\t1\t0\t0\tX\t5\t9\t0\t2',
+      expectSb: { teams: [{ name: '원정', innings: [0, 1, 0, 0, 2, 0, 0, 0, 1], r: 4 }, { name: '홈', innings: [1, 0, 0, 3, 0, 1, 0, 0, 'X'], r: 5 }], warnings: [] } },
+    { name: '이닝 합 ≠ R → 경고 (10회 이상이 표에서 가려진 경우)',
+      sb: 'A팀\t1\t0\t0\t0\t0\t0\t0\t0\t0\t2\t5\t0\t1\nB팀\t0\t0\t0\t0\t0\t0\t0\t0\t1\t1\t4\t1\t2',
+      expectSb: { teams: [{ name: 'A팀', r: 2 }, { name: 'B팀', r: 1 }] },
+      extra: function () { var w = G.parseGameOneScoreboard('A팀\t1\t0\t0\t0\t0\t0\t0\t0\t0\t2\t5\t0\t1').warnings; return w.length === 1 && w[0].indexOf('A팀: 이닝 득점 합 1 ≠ R 2') === 0 ? [] : ['경고 — 실제 ' + JSON.stringify(w)]; } },
+    { name: '팀 줄이 없는 글 → teams 비고 경고', sb: '아무 글\n25\n승',
+      expectSb: { teams: [], warnings: ['팀 줄(팀 이름 · 이닝 점수 · R H E B)을 찾지 못했습니다'] } },
+    { group: '좌표 변환' },
     { name: '좌표 변환 기준점 — toStoredCoords(매핑표 각도, 깊이)', input: null,
       extra: function () {
         var e = [], pts = [
@@ -237,7 +257,7 @@
   CASES.forEach(function (c, ci) {
     if (c.group) { html += '<h2>' + esc(c.group) + '</h2>'; return; }
     nCase++;
-    var errs = [], rt = [], r = null;   // errs = 기대값 · 추가 검사, rt = 타구 왕복 검사
+    var errs = [], rt = [], r = null, sbr = null;   // errs = 기대값 · 추가 검사, rt = 타구 왕복 검사, sbr = 이닝별 점수표 결과
     try {
       if (c.input != null) {
         r = G.parseGameOne(c.input);
@@ -253,6 +273,7 @@
           });
         });
       }
+      if (c.sb != null) { sbr = G.parseGameOneScoreboard(c.sb); diff(sbr, c.expectSb, 'scoreboard', errs); }
       if (c.extra) errs = errs.concat(c.extra(r));
     } catch (e) { errs.push('예외: ' + (e && e.stack || e)); }
     nCheck++;
@@ -263,6 +284,20 @@
     html += '<div class="case' + (errs.length ? ' bad' : '') + '" data-case="' + ci + '" data-ok="' + (errs.length ? 0 : 1) + '">'
       + '<h3><span class="st ' + (errs.length ? 'ng">✗' : 'ok">✓') + '</span>' + esc(c.name) + '</h3>';
     if (c.input != null) html += '<pre class="in">' + showInput(c.input) + '</pre>';
+    if (c.sb != null) {
+      html += '<pre class="in">' + showInput(c.sb) + '</pre>';
+      if (sbr) {
+        var nInn = Math.max(9, ...sbr.teams.map(function (t) { return t.innings.length; })), cols = [];
+        for (var q = 1; q <= nInn; q++) cols.push(q);
+        html += '<div class="scroll"><table><thead><tr><th>팀</th>' + cols.map(function (q) { return '<th class="num">' + q + '</th>'; }).join('')
+          + '<th class="num">R</th><th class="num">H</th><th class="num">E</th><th class="num">B</th></tr></thead><tbody>'
+          + sbr.teams.map(function (t) {
+            return '<tr><td>' + esc(t.name) + '</td>' + cols.map(function (q) { return '<td class="num">' + f(t.innings[q - 1]) + '</td>'; }).join('')
+              + '<td class="num">' + f(t.r) + '</td><td class="num">' + f(t.h) + '</td><td class="num">' + f(t.e) + '</td><td class="num">' + f(t.b) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+        if (sbr.warnings.length) html += '<div class="meta">warnings: ' + sbr.warnings.map(esc).join('<br>　') + '</div>';
+      }
+    }
     if (r) {
       html += '<div class="scroll"><table><thead><tr><th>이닝</th><th>원문</th><th>type</th><th>result</th><th>매핑표 각도 · 깊이</th>'
         + '<th>저장 deg</th><th>저장 반지름</th><th>dir</th><th>x, y</th><th>conf</th><th>notes</th><th>판정</th></tr></thead><tbody>';

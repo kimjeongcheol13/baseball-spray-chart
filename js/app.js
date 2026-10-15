@@ -17,14 +17,14 @@ import './features/spray.js?v=5';
 import './features/shell.js?v=16';
 import './features/record.js?v=13';
 import './features/settings.js?v=3';
-import './features/scorebook.js?v=16';
+import './features/scorebook.js?v=17';
 import './features/dashboard.js?v=10';
 import './features/setup.js?v=6';
 import './features/report.js?v=6';
 import './features/anahelp.js?v=3';
 import './features/firstrun.js?v=3';
 import './features/tabloop.js?v=1';
-import './features/gameoneimport.js?v=1';
+import './features/gameoneimport.js?v=2';
 
 import './features/anahelp.js?v=3';
 import './features/anahelp.js?v=3';

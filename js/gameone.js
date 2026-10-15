@@ -203,8 +203,61 @@
     return out;
   }
 
+  // ── 이닝별 점수표(스코어보드) ──
+  // 게임원 박스스코어 위쪽 표: Team · › · 1~9 · R · H · E · B (2026-10-15 화면 캡처로 확인 — 진행 안 한 이닝은 빈칸).
+  // 복사한 텍스트에서 빈 칸 · › 칸이 어떻게 오는지는 아직 확인 못 해서 너그럽게 읽는다:
+  //   · 머리글 줄(… 1 2 3 … R …)이 있으면 이닝 칸 수 N = 1부터 이어진 숫자 개수, 끝 칸 = 그 뒤 이름들(R H E B). 없으면 N = 9, 끝 칸 = R H E B
+  //   · 팀 줄 = 앞 칸이 팀 이름, 끝 칸들이 정수. 그 앞이 이닝 칸
+  //     탭 구분이면 빈 칸도 칸으로 세고 오른쪽 기준으로 N칸을 자른다(› 칸이 끼어도 맞는다). 공백 구분이면 빈 칸이 사라지므로 1회부터 채운다
+  //   · 이닝 값: 숫자 = 득점, X = 공격 안 함(9회말 X 등), 빈칸 · '-' = 진행 안 함 → null. 끝쪽 null 은 잘라 둔다
+  //   · 이닝 득점 합 ≠ R 이면 warnings (예: 10회 이상이 표에서 가려진 경우)
+  // → { teams: [{ name, innings: [득점 | 'X' | null …], r, h, e, b }], warnings }
+  var INT_RE = /^\d+$/, BLANK_RE = /^[xX-]$/, ARROW_RE = /^[›>‹<]$/;
+  function parseGameOneScoreboard(text) {
+    var out = { teams: [], warnings: [] }, N = 9, LABELS = ['R', 'H', 'E', 'B'];
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/).filter(function (l) { return l.trim(); });
+    lines.some(function (line) {
+      var t = line.trim().split(/\s+/), i = t.indexOf('1'), n = 0;
+      if (i < 0) return false;
+      while (t[i + n] === String(n + 1)) n++;
+      if (!n || t[i + n] !== 'R') return false;
+      N = n; LABELS = t.slice(i + n);
+      return true;
+    });
+    var K = LABELS.length;
+    lines.forEach(function (line) {
+      var tabbed = line.indexOf('\t') >= 0;
+      var cells = tabbed ? line.split('\t').map(function (c) { return c.trim(); }) : line.trim().split(/\s+/);
+      var j = 0, name = [];
+      while (j < cells.length && !cells[j]) j++;
+      // 팀 이름: 숫자 · X · - 가 아닌 앞 칸 (탭 구분은 한 칸, 공백 구분은 이어지는 낱말을 붙인다)
+      while (j < cells.length && cells[j] && !INT_RE.test(cells[j]) && !BLANK_RE.test(cells[j])) {
+        if (!ARROW_RE.test(cells[j])) name.push(cells[j]);
+        j++;
+        if (tabbed) break;
+      }
+      var rest = cells.slice(j).filter(function (c) { return !ARROW_RE.test(c); });
+      while (rest.length && !rest[rest.length - 1]) rest.pop();
+      if (!name.length || rest.length < K) return;
+      var sum = rest.slice(rest.length - K), inn = rest.slice(0, rest.length - K);
+      if (!sum.every(function (v) { return INT_RE.test(v); })) return;
+      if (!inn.every(function (v) { return !v || INT_RE.test(v) || BLANK_RE.test(v); })) return;
+      if (tabbed && inn.length > N) inn = inn.slice(inn.length - N);
+      var innings = inn.map(function (v) { return INT_RE.test(v) ? parseInt(v, 10) : /^[xX]$/.test(v) ? 'X' : null; });
+      while (innings.length && innings[innings.length - 1] == null) innings.pop();
+      var team = { name: name.join(' '), innings: innings, r: null, h: null, e: null, b: null };
+      LABELS.forEach(function (l, q) { var key = l.toLowerCase(); if (key in team && key !== 'name' && key !== 'innings') team[key] = parseInt(sum[q], 10); });
+      if (team.r == null) team.r = parseInt(sum[0], 10);
+      var s = innings.reduce(function (a, v) { return a + (typeof v === 'number' ? v : 0); }, 0);
+      if (s !== team.r) out.warnings.push(team.name + ': 이닝 득점 합 ' + s + ' ≠ R ' + team.r + ' — 10회 이상 연장 이닝이 표에서 가려졌을 수 있습니다(게임원 › 버튼)');
+      out.teams.push(team);
+    });
+    if (!out.teams.length) out.warnings.push('팀 줄(팀 이름 · 이닝 점수 · R H E B)을 찾지 못했습니다');
+    return out;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

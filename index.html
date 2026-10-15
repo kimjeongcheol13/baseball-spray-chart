@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=80">
+<link rel="stylesheet" href="css/styles.css?v=81">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -1685,12 +1685,13 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
       <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-sub">게임원 박스스코어의 타자 표를 드래그해 복사한 뒤 붙여넣으세요. 새 경기로 저장되고, 기록 중인 경기는 그대로입니다.</div>
+    <div class="modal-sub">게임원 박스스코어의 이닝별 점수표와 타자 표를 드래그해 복사한 뒤 붙여넣으세요. 새 경기로 저장되고, 기록 중인 경기는 그대로입니다.</div>
     <div class="go-row">
       <label class="go-f"><span>원정팀</span><input id="goTa" class="go-inp" type="text" maxlength="20" placeholder="원정팀" oninput="gameOnePreview()"></label>
       <label class="go-f"><span>홈팀</span><input id="goTh" class="go-inp" type="text" maxlength="20" placeholder="홈팀" oninput="gameOnePreview()"></label>
     </div>
     <label class="go-f"><span>경기 날짜</span><input id="goDate" class="go-inp" type="date" oninput="gameOnePreview()"></label>
+    <label class="go-f"><span>이닝별 점수표 <small>선택 · 위쪽 Team 1 2 3 … R H E B 표</small></span><textarea id="goScore" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="팀에이스&#9;4&#9;5&#9;4&#9;12 … 25&#9;17&#9;0&#9;8&#10;우진스나이퍼&#9;0&#9;0&#9;3&#9;0 … 3&#9;2&#9;3&#9;4" oninput="gameOnePreview()"></textarea></label>
     <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="1&#9;유&#9;김수찬(5)&#9;사구,도루 …" oninput="gameOnePreview()"></textarea></label>
     <label class="go-f"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
     <div id="goPrev" class="go-prev" aria-live="polite"></div>
@@ -2406,8 +2407,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=221"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script defer src="js/gameone.js?v=1"></script>
-<script type="module" src="js/app.js?v=114"></script>
+<script defer src="js/gameone.js?v=2"></script>
+<script type="module" src="js/app.js?v=115"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

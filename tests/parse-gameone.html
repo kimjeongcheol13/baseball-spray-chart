@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게임원 파서 테스트 — SprayLab</title>
+<!-- 빌드 · 서버 없이 이 파일을 브라우저로 바로 연다 (file:// 가능). 파서: ../js/gameone.js (일반 script) -->
+<style>
+  :root {
+    --navy: #0b1020; --panel: #121a30; --line: #24304d; --text: #e6edf7; --muted: #8f9bb3;
+    --blue: #4b8cf5; --red: #f56565; --amber: #f6c23e; --teal: #2dd4a0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 48px; background: var(--navy); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  h1 small { color: var(--blue); font-size: 12px; letter-spacing: .08em; margin-left: 8px; }
+  h2 { margin: 28px 0 8px; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+  .sum { display: inline-block; margin: 10px 0 4px; padding: 8px 14px; border-radius: 8px; font-weight: 700; }
+  .sum.pass { background: rgba(45, 212, 160, .15); color: var(--teal); }
+  .sum.fail { background: rgba(245, 101, 101, .15); color: var(--red); }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  .case { margin: 14px 0; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .case.bad { border-color: var(--red); }
+  .case h3 { margin: 0 0 6px; font-size: 15px; }
+  .case h3 .st { margin-right: 6px; }
+  pre.in { margin: 6px 0 10px; padding: 8px 10px; background: #0a0f1e; border-radius: 6px; overflow-x: auto;
+    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #c7d2e6; }
+  pre.in .tab { color: #3b4a6b; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; white-space: nowrap; }
+  th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.pl td { color: var(--blue); font-weight: 700; padding-top: 9px; }
+  .ok { color: var(--teal); font-weight: 700; }
+  .ng { color: var(--red); font-weight: 700; }
+  .low { color: var(--amber); }
+  .t-batted { color: var(--teal); } .t-nonBatted { color: var(--blue); } .t-unknown { color: var(--red); }
+  .errs { margin: 6px 0 0; padding-left: 18px; color: var(--red); font-size: 12px; white-space: normal; }
+  .meta { margin-top: 6px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>게임원 박스스코어 파서 테스트<small>YOUR SWING, VISUALIZED</small></h1>
+<div id="summary" class="sum">실행 중…</div>
+<p class="note">각 타구는 손으로 계산한 기대값과 비교하고, 저장 좌표(x, y)를 core.js <code>_semiToCone</code> 식으로 되돌려 매핑표 각도·깊이가 복원되는지(왕복)도 검사한다.</p>
+<div id="out"></div>
+
+<script src="../js/gameone.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.SLGameOne;
+  var EPS = 1e-3;
+
+  // ── 입력 만들기 ──
+  // 사용자 예시 3행: 붙여넣은 그대로 (빈 이닝 칸은 '' 또는 ' ')
+  var ROW1 = '5\t二\t배성웅(15)\t좌중3\t우중홈\t우안\t중월2\t \t \t \t \t \t4\t4\t7\t3\t0\t1.000\t0.690';
+  var ROW2 = '8\t중\t이현준(24)\t\t좌월홈\t좌안\t2내안/좌중2\t \t \t \t \t \t4\t4\t3\t4\t0\t1.000\t0.800';
+  var ROW3 = '1\t유\t김수찬(5)\t사구,도루,주자아웃\t\t유땅R\t\t \t \t \t \t \t1\t0\t0\t1\t1\t0.000\t0.538';
+  // 셀 하나짜리 케이스: 9이닝 칸 중 원하는 이닝에만 셀을 넣은 게임원 형식 행
+  function row(cellsByInning) {
+    var cells = [];
+    for (var i = 1; i <= 9; i++) cells.push(cellsByInning[i] != null ? cellsByInning[i] : ' ');
+    return ['9', '포', '테스트(99)'].concat(cells, ['0', '0', '0', '0', '0', '0.000', '0.000']).join('\t');
+  }
+
+  // ── 기대값 (손 계산) ──
+  // 저장 deg = 구간별 선형: 매핑표 −35 → 30 · −30 → 45 · −17 → 67.3333 · −12 → 74 · 0 → 90 · 12 → 106 · 17 → 112.6667 · 35 → 150
+  // 저장 반지름 = 깊이 × 0.97: 0.25 → 0.2425 · 0.30 → 0.291 · 0.55 → 0.5335 · 0.75 → 0.7275 · 0.85 → 0.8245 · 0.92 → 0.8924 · 1.05 → 1.0185
+  function B(inning, raw, result, a, d, deg, dist, dir, conf, notes, more) {
+    var o = { inning: inning, raw: raw, type: 'batted', result: result, src: { angle: a, depth: d },
+      angle: deg, depth: dist, dir: dir, confidence: conf, notes: notes || [] };
+    for (var k in more || {}) o[k] = more[k];
+    return o;
+  }
+  function N(inning, raw, result, notes) {
+    return { inning: inning, raw: raw, type: 'nonBatted', result: result, angle: null, depth: null, x: null, y: null,
+      dir: null, src: null, confidence: 'high', notes: notes || [] };
+  }
+  function U(inning, raw, notes) {
+    return { inning: inning, raw: raw, type: 'unknown', result: null, angle: null, depth: null, x: null, y: null,
+      dir: null, src: null, confidence: 'low', notes: notes || [] };
+  }
+  function one(atBats, unknownTokens) {
+    return { players: [{ order: 9, position: '포', name: '테스트', number: '99', atBats: atBats }], unknownTokens: unknownTokens || [] };
+  }
+
+  var CASES = [
+    { group: '요청 케이스' },
+    { name: '예시 1행 — 배성웅(15)', input: ROW1, expect: {
+      players: [{ order: 5, position: '二', name: '배성웅', number: '15',
+        stats: { ab: 4, h: 4, rbi: 7, r: 3, sb: 0, avg: 1, seasonAvg: 0.69 },
+        atBats: [
+          B(1, '좌중3', '3루타', -17, 0.85, 67.3333, 0.8245, 'LC', 'high'),
+          B(2, '우중홈', '홈런', 17, 1.05, 112.6667, 1.0185, 'RC', 'high'),
+          B(3, '우안', '안타', 35, 0.55, 150, 0.5335, 'RF', 'low'),
+          B(4, '중월2', '2루타', 0, 0.92, 90, 0.8924, 'CF', 'high', [], { x: 0.5, y: 0.1076 })
+        ] }],
+      unknownTokens: [], warnings: [] } },
+    { name: '예시 2행 — 이현준(24) · 1회 빈 칸, 4회 두 타석', input: ROW2, expect: {
+      players: [{ order: 8, position: '중', name: '이현준', number: '24',
+        stats: { ab: 4, h: 4, rbi: 3, r: 4, sb: 0, avg: 1, seasonAvg: 0.8 },
+        atBats: [
+          B(2, '좌월홈', '홈런', -35, 1.05, 30, 1.0185, 'LF', 'high', [], { x: -0.3820, y: 0.4908 }),
+          B(3, '좌안', '안타', -35, 0.55, 30, 0.5335, 'LF', 'low'),
+          B(4, '2내안', '내야안타', 12, 0.30, 106, 0.291, 'RC', 'high'),
+          B(4, '좌중2', '2루타', -17, 0.75, 67.3333, 0.7275, 'LC', 'high')
+        ] }],
+      unknownTokens: [] } },
+    { name: '예시 3행 — 김수찬(5) · 사구+주루 사건, 땅R', input: ROW3, expect: {
+      players: [{ order: 1, position: '유', name: '김수찬', number: '5',
+        stats: { ab: 1, h: 0, rbi: 0, r: 1, sb: 1, avg: 0, seasonAvg: 0.538 },
+        atBats: [
+          N(1, '사구,도루,주자아웃', '사구', ['도루', '주자아웃']),
+          B(3, '유땅R', '땅볼 아웃', -12, 0.25, 74, 0.2425, 'LC', 'low', ['R'])
+        ] }],
+      unknownTokens: [] } },
+    { name: '삼진/3실 (2회) — 한 이닝 두 타석, 3루수 실책', input: row({ 2: '삼진/3실' }), expect: one([
+      N(2, '삼진', '삼진'),
+      B(2, '3실', '실책', -30, 0.25, 45, 0.2425, 'LF', 'high')
+    ]) },
+    { name: '4구,주자아웃 (3회)', input: row({ 3: '4구,주자아웃' }), expect: one([
+      N(3, '4구,주자아웃', '볼넷', ['주자아웃'])
+    ]) },
+    { name: '우월2,대수비 (6회)', input: row({ 6: '우월2,대수비' }), expect: one([
+      B(6, '우월2,대수비', '2루타', 35, 0.92, 150, 0.8924, 'RF', 'high', ['대수비'])
+    ]) },
+    { name: '유내안/4구 (7회)', input: row({ 7: '유내안/4구' }), expect: one([
+      B(7, '유내안', '내야안타', -12, 0.30, 74, 0.291, 'LC', 'high'),
+      N(7, '4구', '볼넷')
+    ]) },
+    { name: '모르는 토큰 번트 (9회) — unknown 으로 보존', input: row({ 9: '번트' }), expect: one([
+      U(9, '번트')
+    ], ['번트']) },
+
+    { group: '추가 검사' },
+    { name: '3행 한 번에 붙여넣기 (머리글 · 합계 줄 포함, CRLF 줄바꿈)',
+      input: ['타순\t위치\t선수명\t1\t2\t3\t4\t5\t6\t7\t8\t9\t타수\t안타\t타점\t득점\t도루\t타율\t시즌', ROW1, ROW2, ROW3,
+        '합계\t\t\t\t\t\t\t\t\t\t\t\t9\t8\t10\t8\t1\t\t'].join('\r\n'),
+      expect: { players: [{ name: '배성웅' }, { name: '이현준' }, { name: '김수찬' }], unknownTokens: [] },
+      extra: function (r) {
+        var e = [];
+        var n = r.players.map(function (p) { return p.atBats.length; }).join(',');
+        if (n !== '4,4,2') e.push('선수별 타석 수 — 기대 4,4,2, 실제 ' + n);
+        if (r.warnings.length !== 2) e.push('건너뛴 줄(머리글 · 합계) 경고 — 기대 2, 실제 ' + r.warnings.length);
+        return e;
+      } },
+    { name: '셀 문법 예시 — 폭투,3땅 (1회) · 우중안,포구실책 (5회)', input: row({ 1: '폭투,3땅', 5: '우중안,포구실책' }), expect: one([
+      B(1, '폭투,3땅', '땅볼 아웃', -30, 0.25, 45, 0.2425, 'LF', 'low', ['폭투']),
+      B(5, '우중안,포구실책', '안타', 17, 0.55, 112.6667, 0.5335, 'RC', 'low', ['포구실책'])
+    ]) },
+    { name: '공백 구분 붙여넣기 — 빈 이닝 칸이 사라져 inning = null', input: '8 중 이현준(24)  좌월홈 좌안 2내안/좌중2           4 4 3 4 0 1.000 0.800',
+      expect: { players: [{ order: 8, name: '이현준', stats: { ab: 4, h: 4, rbi: 3, r: 4, sb: 0, avg: 1, seasonAvg: 0.8 }, atBats: [
+        B(null, '좌월홈', '홈런', -35, 1.05, 30, 1.0185, 'LF', 'high'),
+        B(null, '좌안', '안타', -35, 0.55, 30, 0.5335, 'LF', 'low'),
+        B(null, '2내안', '내야안타', 12, 0.30, 106, 0.291, 'RC', 'high'),
+        B(null, '좌중2', '2루타', -17, 0.75, 67.3333, 0.7275, 'LC', 'high')
+      ] }], unknownTokens: [] },
+      extra: function (r) { return r.warnings.length === 1 ? [] : ['공백 구분 경고 — 기대 1, 실제 ' + r.warnings.length]; } },
+    { name: '좌월3 · 미확인 토큰이 섞인 타석 · 같은 미확인 토큰 반복', input: row({ 1: '좌월3', 2: '번트,3땅', 3: '좌직', 4: '번트' }), expect: one([
+      B(1, '좌월3', '3루타', -35, 0.92, 30, 0.8924, 'LF', 'high'),
+      B(2, '번트,3땅', '땅볼 아웃', -30, 0.25, 45, 0.2425, 'LF', 'low', ['번트']),
+      U(3, '좌직'),
+      U(4, '번트')
+    ], ['번트', '좌직']) },
+    { name: '좌표 변환 기준점 — toStoredCoords(매핑표 각도, 깊이)', input: null,
+      extra: function () {
+        var e = [], pts = [
+          [-45, 1, { deg: 0, dist: 0.97, x: -0.47, y: 1, dir: 'LF' }],
+          [45, 1, { deg: 180, dist: 0.97, x: 1.47, y: 1, dir: 'RF' }],
+          [0, 1, { deg: 90, dist: 0.97, x: 0.5, y: 0.03, dir: 'CF' }],
+          [0, 0, { deg: 90, dist: 0, x: 0.5, y: 1, dir: 'CF' }],
+          [-27, 0.5, { deg: 54, dir: 'LC' }],     // 구간 경계: 화면 63° = 저장 54 (LF|LC)
+          [-9, 0.5, { deg: 78, dir: 'CF' }],      // 81° = 78 (LC|CF)
+          [9, 0.5, { deg: 102, dir: 'RC' }],      // 99° = 102 (CF|RC)
+          [27, 0.5, { deg: 126, dir: 'RF' }]      // 117° = 126 (RC|RF)
+        ];
+        pts.forEach(function (p) { diff(G.toStoredCoords(p[0], p[1]), p[2], 'toStoredCoords(' + p[0] + ', ' + p[1] + ')', e); });
+        return e;
+      } }
+  ];
+
+  // ── 비교 ──
+  // 기대값에 적은 키만 비교(숫자는 오차 1e-3). 배열은 길이까지 같아야 한다
+  function diff(act, exp, path, errs) {
+    if (exp === null || typeof exp !== 'object') {
+      var same = typeof exp === 'number' && typeof act === 'number' ? Math.abs(act - exp) < EPS : act === exp;
+      if (!same) errs.push(path + ' — 기대 ' + JSON.stringify(exp) + ', 실제 ' + JSON.stringify(act));
+      return;
+    }
+    if (act === null || typeof act !== 'object') { errs.push(path + ' — 기대 ' + JSON.stringify(exp) + ', 실제 ' + JSON.stringify(act)); return; }
+    if (Array.isArray(exp)) {
+      if (!Array.isArray(act) || act.length !== exp.length) {
+        errs.push(path + ' 길이 — 기대 ' + exp.length + ', 실제 ' + (Array.isArray(act) ? act.length : JSON.stringify(act)));
+        if (!Array.isArray(act)) return;
+      }
+      exp.forEach(function (v, i) { diff(act[i], v, path + '[' + i + ']', errs); });
+      return;
+    }
+    Object.keys(exp).forEach(function (k) { diff(act[k], exp[k], path + '.' + k, errs); });
+  }
+
+  // 왕복: 저장 x, y → core.js _semiToCone 과 같은 식(각도 · 펜스 비율 → _degToPhi) → 매핑표 각도(phi − 90) · 깊이
+  var FZ_DEG = [0, 54, 78, 102, 126, 180], FZ_PHI = [45, 63, 81, 99, 117, 135];
+  function backToTable(x, y) {
+    var dx = x - 0.5, dy = Math.min(y - 1, 0);
+    var deg = Math.max(0, Math.min(180, (Math.atan2(dy, dx) + Math.PI) * 180 / Math.PI));
+    var frac = Math.min(Math.sqrt(dx * dx + dy * dy) / 0.97, 1.06), i = 0;
+    while (i < 4 && deg > FZ_DEG[i + 1]) i++;
+    var phi = FZ_PHI[i] + (deg - FZ_DEG[i]) / (FZ_DEG[i + 1] - FZ_DEG[i]) * 18;
+    return { angle: phi - 90, depth: frac };
+  }
+
+  // ── 실행 · 표 ──
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function f(v, d) { return v == null ? '–' : typeof v === 'number' ? (+v.toFixed(d)).toString() : esc(v); }
+  function showInput(s) { return esc(s).replace(/\t/g, '<span class="tab">⇥</span>').replace(/\r\n/g, '\n'); }
+
+  var out = document.getElementById('out'), html = '', nCase = 0, nCaseFail = 0, nCheck = 0, nFail = 0;
+  CASES.forEach(function (c, ci) {
+    if (c.group) { html += '<h2>' + esc(c.group) + '</h2>'; return; }
+    nCase++;
+    var errs = [], rt = [], r = null;   // errs = 기대값 · 추가 검사, rt = 타구 왕복 검사
+    try {
+      if (c.input != null) {
+        r = G.parseGameOne(c.input);
+        if (c.expect) diff(r, c.expect, 'result', errs);
+        r.players.forEach(function (p, pi) {
+          p.atBats.forEach(function (a, ai) {
+            if (a.type !== 'batted') return;
+            nCheck++;
+            var back = backToTable(a.x, a.y), path = 'result.players[' + pi + '].atBats[' + ai + ']';
+            if (Math.abs(back.angle - a.src.angle) > EPS || Math.abs(back.depth - a.src.depth) > EPS) {
+              rt.push(path + ' 왕복 — 매핑표 ' + JSON.stringify(a.src) + ' → 복원 ' + JSON.stringify(back)); nFail++;
+            }
+          });
+        });
+      }
+      if (c.extra) errs = errs.concat(c.extra(r));
+    } catch (e) { errs.push('예외: ' + (e && e.stack || e)); }
+    nCheck++;
+    if (errs.length) nFail++;
+    errs = errs.concat(rt);
+    if (errs.length) nCaseFail++;
+
+    html += '<div class="case' + (errs.length ? ' bad' : '') + '" data-case="' + ci + '" data-ok="' + (errs.length ? 0 : 1) + '">'
+      + '<h3><span class="st ' + (errs.length ? 'ng">✗' : 'ok">✓') + '</span>' + esc(c.name) + '</h3>';
+    if (c.input != null) html += '<pre class="in">' + showInput(c.input) + '</pre>';
+    if (r) {
+      html += '<div class="scroll"><table><thead><tr><th>이닝</th><th>원문</th><th>type</th><th>result</th><th>매핑표 각도 · 깊이</th>'
+        + '<th>저장 deg</th><th>저장 반지름</th><th>dir</th><th>x, y</th><th>conf</th><th>notes</th><th>판정</th></tr></thead><tbody>';
+      r.players.forEach(function (p, pi) {
+        html += '<tr class="pl"><td colspan="12">' + esc((p.order == null ? '–' : p.order) + '번 · ' + p.position + ' · ' + p.name + ' #' + p.number)
+          + ' <span style="color:var(--muted);font-weight:400">— 타수 ' + f(p.stats.ab) + ' · 안타 ' + f(p.stats.h) + ' · 타점 ' + f(p.stats.rbi)
+          + ' · 득점 ' + f(p.stats.r) + ' · 도루 ' + f(p.stats.sb) + ' · 타율 ' + f(p.stats.avg, 3) + ' · 시즌 ' + f(p.stats.seasonAvg, 3) + '</span></td></tr>';
+        p.atBats.forEach(function (a, ai) {
+          var pre = 'result.players[' + pi + '].atBats[' + ai + ']';
+          var mine = errs.filter(function (m) { return m.indexOf(pre + '.') === 0 || m.indexOf(pre + ' ') === 0; });
+          html += '<tr><td class="num">' + f(a.inning) + '</td><td>' + esc(a.raw) + '</td><td class="t-' + a.type + '">' + a.type + '</td>'
+            + '<td>' + f(a.result) + '</td><td>' + (a.src ? f(a.src.angle) + '° · ' + f(a.src.depth, 2) : '–') + '</td>'
+            + '<td class="num">' + f(a.angle, 2) + '</td><td class="num">' + f(a.depth, 4) + '</td><td>' + f(a.dir) + '</td>'
+            + '<td class="num">' + (a.x == null ? '–' : f(a.x, 3) + ', ' + f(a.y, 3)) + '</td>'
+            + '<td class="' + (a.confidence === 'low' ? 'low' : '') + '">' + a.confidence + '</td>'
+            + '<td>' + (a.notes.length ? esc(a.notes.join(', ')) : '–') + '</td>'
+            + '<td class="' + (mine.length ? 'ng">✗' : 'ok">✓') + '</td></tr>';
+        });
+      });
+      html += '</tbody></table></div>';
+      html += '<div class="meta">unknownTokens: ' + esc(JSON.stringify(r.unknownTokens))
+        + (r.warnings.length ? '<br>warnings: ' + r.warnings.map(esc).join('<br>　') : '') + '</div>';
+    }
+    if (errs.length) html += '<ul class="errs"><li>' + errs.map(esc).join('</li><li>') + '</li></ul>';
+    html += '</div>';
+  });
+  out.innerHTML = html;
+
+  var sum = document.getElementById('summary'), pass = nFail === 0;
+  sum.className = 'sum ' + (pass ? 'pass' : 'fail');
+  sum.textContent = (pass ? '✓ 전부 통과' : '✗ 실패 있음') + ' — 케이스 ' + (nCase - nCaseFail) + '/' + nCase
+    + ' · 검사 ' + (nCheck - nFail) + '/' + nCheck + ' (타구 왕복 포함)';
+  document.body.setAttribute('data-status', pass ? 'pass' : 'fail');
+})();
+</script>
+</body>
+</html>

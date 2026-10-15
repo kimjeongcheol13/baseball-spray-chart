@@ -147,6 +147,7 @@
       var m = _modMap() || {};
       m[key] = ms || Date.now();
       localStorage.setItem(MOD_KEY, JSON.stringify(m));
+      if (_delMap()[key]) _unmarkDel([key]);   // 지웠던 키가 로컬에 다시 쓰였다(저장 · 가져오기 · 복구) → 서버에서 지우지 않는다
     } catch (e) { /* 저장 공간 부족 등 — 기록하지 못해도 경기 저장은 막지 않는다 */ }
   }
   function _localMod(gd, entry, key) {   // → { ms, reliable }  (reliable=false: 수정 시각을 알 수 없음)
@@ -172,13 +173,29 @@
   }
   function _markDel(keys) { var m = _delMap(); keys.forEach(function (k) { m[k] = Date.now(); }); _setDelMap(m); }
   function _unmarkDel(keys) { var m = _delMap(); keys.forEach(function (k) { delete m[k]; }); _setDelMap(m); }
-  // 내 user_games 행을 지운다(RLS: user_id = auth.uid()). 성공하면 대기 목록에서 뺀다
+  // 내 user_games 행을 지운다(RLS: user_id = auth.uid()). 지워진 것이 확인된 키만 대기 목록에서 뺀다 → { ok, n, failed? }
+  //   RLS 는 권한이 없으면 에러 없이 0행 삭제로 끝날 수 있다 → 서버에 있는 키부터 읽고, 삭제가 돌려준 행과 비교한다.
+  //   서버에 없는 키(올라간 적 없는 사본)는 지울 것이 없으니 대기 목록에서 뺀다.
   function _deleteRows(db, user, keys) {
-    if (!keys.length) return Promise.resolve();
-    return db.from('user_games').delete().eq('user_id', user.id).in('game_key', keys).then(function (r) {
+    if (!keys.length) return Promise.resolve({ ok: true, n: 0 });
+    return db.from('user_games').select('game_key').eq('user_id', user.id).in('game_key', keys).then(function (r) {
       if (r && r.error) throw r.error;
-      _unmarkDel(keys);
+      var onServer = (r.data || []).map(function (x) { return x.game_key; });
+      var absent = keys.filter(function (k) { return onServer.indexOf(k) < 0; });
+      if (!onServer.length) { _unmarkDel(keys); return { ok: true, n: 0 }; }
+      return db.from('user_games').delete().eq('user_id', user.id).in('game_key', onServer).select('game_key').then(function (d) {
+        if (d && d.error) throw d.error;
+        var gone = (d.data || []).map(function (x) { return x.game_key; });
+        var failed = onServer.filter(function (k) { return gone.indexOf(k) < 0; });
+        _unmarkDel(absent.concat(gone));
+        return failed.length ? { ok: false, n: gone.length, failed: failed } : { ok: true, n: gone.length };
+      });
     });
+  }
+  function _notifyDeleteFail() {
+    _setStatus('error');
+    setTimeout(function () { _setStatus('clear'); }, 4000);
+    if (typeof showToast === 'function') showToast('⚠️ 클라우드에서 경기를 지우지 못했어요 · 이 기기에서는 지워짐 · 다음 동기화 때 다시 시도해요', false);
   }
 
   /* ── 같은 경기 중복 한 번 정리 ──────────────────────────
@@ -188,7 +205,7 @@
      → v2 는 타석 id 로 같은 경기를 가린다. v3: 묶음 대표 하나가 아니라 "남긴 것들 가운데 어느 하나"의 부분집합이면 지운다.
      계정마다 · 기기마다 한 번 정리한다(FIXED_KEY = 마친 "계정 id + FIXED_VER" 목록, 공백으로 구분).
      예전에는 마지막 계정 하나만 기억해, 한 기기에서 계정을 바꾸면 돌아온 계정에서 정리가 다시 돌았다(숨은 스냅샷이 목록 항목으로 되살아남):
-       · 같은 경기 = 타석 id 가 하나라도 겹치는 항목들(타석이 없으면 홈|원정|날짜). 스냅샷(sl_auto_*)·정식 저장 모두 후보
+       · 같은 경기 = 저장 경기 읽기와 같은 규칙(js/features/games.js groupGames): 실제 기록 시각 타석 id 가 충분히 겹치고 타자가 같은 항목들. 스냅샷(sl_auto_*)·정식 저장 모두 후보
        · 순위: 타석 많은 것 → 투구 많은 것 → 정식 저장 → 이름 붙은 키(sl_홈vs원정_…) → 먼저 만든 것(키 에폭·ts 작은 것)
        · 순위 순으로 보며, 이미 남긴 것 가운데 어느 하나의 부분집합(타석 id ⊆ · 타석 수 ≤ · 투구 수 ≤)이면 지우고 아니면 남긴다
          — 갈라진 기록(서로 부분집합 아님)은 둘 다 두고, 그 아래 똑같은 행들은 각자 가까운 쪽으로 합친다.
@@ -239,18 +256,16 @@
         if (d) add(k, d);
         else if (_isAuto(k) && !seen[k]) { seen[k] = true; plan.del.push(k); plan.skip[k] = true; }
       });
-      // 같은 경기 묶기: 타석 id 가 하나라도 겹치면 같은 묶음(union-find). 타석 id 가 없으면 홈|원정|날짜
-      var parent = {};
-      var find = function (x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
-      var union = function (a, b) { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
-      cand.forEach(function (c) {
-        var tags = c.idN ? Object.keys(c.ids).map(function (i) { return 'i:' + i; }) : ['g:' + c.fb];
-        tags.forEach(function (t) { if (!(t in parent)) parent[t] = t; });
-        for (var i = 1; i < tags.length; i++) union(tags[0], tags[i]);
-        c.root = tags[0];
-      });
+      // 같은 경기 묶기 = 저장 경기를 읽을 때와 같은 규칙 하나 (js/features/games.js groupGames — 불러오기 목록 · 분석 탭 · 팀 승패가 쓰는 함수):
+      //   실제 기록 시각 타석 id(1e11 이상)가 min(3, 작은 쪽 타석 수)개 이상 겹치고 겹친 타석의 타자가 80% 이상 같으면 같은 경기.
+      //   진짜 id 가 없는 항목(공유 링크 저장 등)은 타석 내용이 정확히 같을 때만, 타석이 없는 항목끼리는 투구 id 로. 팀 이름 · 날짜는 쓰지 않는다.
+      //   그 함수가 아직 없으면(모듈을 못 읽음) 이번에는 정리하지 않고 마침 표시도 남기지 않는다 → 다음 시작 때 다시 센다
+      var G = window.SLGames;
+      if (!G || typeof G.groupGames !== 'function') { plan.deferred = true; return plan; }
       var groups = {};
-      cand.forEach(function (c) { var r = find(c.root); (groups[r] = groups[r] || []).push(c); });
+      G.groupGames(cand.map(function (c) { return { key: c.key, g: c.data, ms: 0, cand: c }; })).forEach(function (gr, gi) {
+        groups[gi] = gr.members.map(function (m) { return m.cand; });
+      });
       // 남길 것 고르기 · 부분집합만 지우기
       var rank = function (a, b) {
         return (b.n - a.n) || (b.pitches - a.pitches) || ((a.auto ? 1 : 0) - (b.auto ? 1 : 0)) || ((b.named ? 1 : 0) - (a.named ? 1 : 0)) || (a.born - b.born) || (b.ts - a.ts);
@@ -332,7 +347,7 @@
     var p = rows.length
       ? db.from('user_games').upsert(rows, { onConflict: 'user_id,game_key' }).then(function (ur) { if (ur && ur.error) throw ur.error; })
       : Promise.resolve();
-    return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () { _markFixed(user.id); });
+    return p.then(function () { return _deleteRows(db, user, plan.del); }).then(function () { if (!plan.deferred) _markFixed(user.id); });   // 같은 경기 판단 함수를 못 읽어 미룬 판은 표시하지 않는다 → 다음 시작 때 다시 센다
   }
 
   /* ── 인증 UI 업데이트 ────────────────────────────── */
@@ -489,7 +504,7 @@
       var db    = _client();
       var saves = JSON.parse(localStorage.getItem('sl_saves') || '[]');
 
-      var upErr = null, sentKeys = {}, entryOf = {};
+      var upErr = null, delFail = false, sentKeys = {}, entryOf = {};
       saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
 
       // 0. 서버의 현재 updated_at 만 먼저 읽는다. 못 읽으면(네트워크·권한·5xx) 업로드하지 않고 아래 catch 가 실패로 알린다.
@@ -497,7 +512,8 @@
       //    그 앞에서 팀을 먼저 확인한다(실패해도 이어서 진행) — 올리는 행에 현재 team_id 를 싣기 위해서다. 예전에는 끝에서 했다.
       var pend = _delMap();   // 이 기기에서 지웠지만 아직 서버에서 못 지운 경기 — 먼저 지우고, 못 지우면 이번에는 내려받지 않는다
       return _loadMyTeam().then(function () {
-        return _deleteRows(db, user, Object.keys(pend)).catch(function (e) { console.warn('[Cloud] 삭제 대기 처리 실패:', e && e.message); });
+        return _deleteRows(db, user, Object.keys(pend)).then(function (res) { if (res && res.ok === false) delFail = true; },
+          function (e) { delFail = true; console.warn('[Cloud] 삭제 대기 처리 실패:', e && e.message); });
       }).then(function () {
         return db.from('user_games').select('game_key,updated_at').eq('user_id', user.id);
       }).then(function (r0) {
@@ -576,7 +592,7 @@
           if (lo && lo.classList.contains('show') && typeof openLoad === 'function') openLoad();   // 열려 있는 목록을 다시 그린다
         }
         return _pushAutoCleanup(db, user, plan).then(function () {
-          if (upErr) _notifySyncFail(); else _syncSaved(3000);
+          if (upErr || delFail) _notifySyncFail(); else _syncSaved(3000);
         });
       });
     }).catch(function (e) {
@@ -664,6 +680,7 @@
     // localStorage 업데이트 — 내 행(다른 기기에서 올린 것)만. 팀원의 경기는 내 저장 목록에 없는 채로 쌓이기만 하므로 쓰지 않는다
     // (user_id 를 모르면 쓰지 않는다). 저장이 실패해도(용량 초과·깨진 값) 콜백은 throw 하지 않고 내 저장은 그대로 둔다.
     if (!_user || row.user_id !== _user.id) return;
+    if (_delMap()[row.game_key]) return;   // 이 기기에서 지운 경기 — 서버에서 아직 못 지웠어도 되살리지 않는다
     try {
       var loc = JSON.parse(localStorage.getItem(row.game_key) || 'null');
       var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
@@ -757,15 +774,22 @@
      그 경기를 열어 둔 동안 cloudAutoSyncRecord 가 올린 실시간 스냅샷 행(sl_auto_<뒷부분>, core.js restoreGame 의 AS.curGame 규칙)도 함께 지운다 —
      목록에는 안 보이지만 서버에 남아 쌓였다. 지운 경기가 아직 화면에 열려 있으면 다음 타석 기록 때 같은 키가 다시 생기는데 이는 정상이다 */
   window.cloudDeleteGame = function (key) {
-    if (typeof key !== 'string' || !key) return;
-    var keys = [key, AUTO + key.replace(/^sl_(?:auto_)?/, '')];
+    if (typeof key !== 'string' || !key) return Promise.resolve({ ok: true, n: 0 });
+    var keys = [key, AUTO + key.replace(/^sl_(?:auto_)?/, '')];   // 그 경기의 실시간 스냅샷 행도 (main)
     if (keys[1] === key) keys.pop();
     _markDel(keys);
-    if (!_online) { _pendSync = true; return; }
-    _ensureAuth().then(function (user) {
-      if (!user) return;   // 로그인 전: 서버에 없다(로그인하면 시작 동기화가 대기 목록을 처리한다)
-      return _deleteRows(_client(), user, keys);
-    }).catch(function (e) { console.warn('[Cloud] delete:', e && e.message); });
+    if (!_online) { _pendSync = true; return Promise.resolve({ ok: true, n: 0, queued: true }); }
+    return _ensureAuth().then(function (user) {
+      if (!user) return { ok: true, n: 0, skipped: true };   // 로그인 전: 서버에 없다(로그인하면 시작 동기화가 대기 목록을 처리한다)
+      return _deleteRows(_client(), user, keys);   // 서버에 있는 것만 지우고, 있는데 못 지운 것만 실패로 센다
+    }).then(function (res) {
+      if (res && res.ok === false) _notifyDeleteFail();   // 0행 삭제(권한) — 대기 목록에 남아 다음 동기화 때 다시 지운다
+      return res;
+    }, function (e) {
+      console.warn('[Cloud] delete:', e && e.message);
+      _notifyDeleteFail();
+      return { ok: false, n: 0, failed: keys, error: e };
+    });
   };
 
   /* updateAll() → 타구 기록 시 디바운스 3초 자동 동기화 */

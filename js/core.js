@@ -5199,6 +5199,10 @@ function _shareGameBuild(withNames){
     };})
   };
 
+  /* 경기 정보 중 이닝별 득점(info.ls — 게임원 가져오기)만 싣는다. 없으면 키를 만들지 않는다(예전 링크와 같은 모양). 받는 쪽은 _restoreInfoFromPayload 가 걸러 받는다 */
+  var _ls=AS.info&&AS.info.ls;
+  if(_ls&&typeof _ls==='object'){fullPayload.info={ls:_ls};compactPayload.info={ls:_ls};}
+
   /* 기본: 선수 실명을 치환해서 내보낸다 (체크박스 "선수 실명 포함" 을 켠 경우만 실명 그대로) */
   if(!withNames){fullPayload=_anonSharePayload(fullPayload);compactPayload=_anonSharePayload(compactPayload);}
 
@@ -5382,7 +5386,21 @@ function _restoreInfoFromPayload(i){
   if(typeof i.venue==='string'&&i.venue.trim())o.venue=i.venue.trim().slice(0,20);
   if(i.side==='home'||i.side==='away')o.side=i.side;
   if([5,7,9].indexOf(n)>=0)o.innings=n;
+  var ls=_restoreLsFromPayload(i.ls);if(ls)o.ls=ls;
   return Object.keys(o).length?o:null;
+}
+// 이닝별 득점(info.ls = { away: [...], home: [...] }, 게임원 가져오기 · scorebook.js 라인스코어): 칸 값은 0~99 정수 · 'X'(공격 안 함)만, 나머지는 null(빈칸).
+// 30이닝까지, 끝쪽 빈칸은 자르고, 두 팀 다 비면 버린다
+function _restoreLsFromPayload(ls){
+  if(!ls||typeof ls!=='object'||Array.isArray(ls))return null;
+  var o={},any=false;
+  ['away','home'].forEach(function(t){
+    var a=Array.isArray(ls[t])?ls[t].slice(0,30).map(function(v){return typeof v==='number'&&v>=0&&v<100&&Math.floor(v)===v?v:v==='X'?'X':null;}):[];
+    while(a.length&&a[a.length-1]===null)a.pop();
+    if(a.length)any=true;
+    o[t]=a;
+  });
+  return any?o:null;
 }
 // 다른 경기로 AS 를 덮어쓰기 전에(공유 경기 열기 · 저장 목록에서 경기 열기 · 복구), 작업 중인 경기(타구 1개 이상)에 저장 안 한 기록이 있으면
 // 내 저장 목록에 먼저 저장한다(지금 경기의 저장 항목(_curSaveKey)이 있으면 그 항목에 덮어쓰고, 새 경기면 새 항목 — _archQuietSave).

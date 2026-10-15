@@ -10,6 +10,7 @@ import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
 import './features/team.js?v=10';
+import './features/teamgames.js?v=1';
 import './features/pitcher.js?v=44';
 import './features/batter.js?v=32';
 import './features/spray.js?v=5';

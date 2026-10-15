@@ -44,10 +44,13 @@
   };
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
 
-  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; }
+  function Q(table, op, payload, opts) { this.t = table; this.op = op; this.p = payload; this.o = opts; this.cols = '*'; this.f = {}; this.n = {}; }
   Q.prototype.select = function (c) { this.cols = c || '*'; if (this.op !== 'select') this.ret = true; return this; };   // delete().select() = 지운 행을 돌려받는다
   Q.prototype.eq = function (k, v) { this.f[k] = v; return this; };
+  Q.prototype.neq = function (k, v) { this.n[k] = v; return this; };
   Q.prototype.in = function (k, vs) { (this.fi = this.fi || {})[k] = vs.slice(); return this; };   // .in('col', [...]) — select/delete 필터
+  Q.prototype.order = function (c, o) { this.ord = { col: c, asc: !(o && o.ascending === false) }; return this; };
+  Q.prototype.limit = function (n) { this.lim = n; return this; };
   Q.prototype.maybeSingle = Q.prototype.single = function () { this.one = true; return this; };
   Q.prototype.then = function (ok, bad) { return run(this).then(ok, bad); };
 
@@ -55,10 +58,11 @@
     return Promise.resolve().then(function () {
       var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
       var fi = q.fi || {};
-      function match(r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(fi).every(function (k) { return fi[k].indexOf(r[k]) >= 0; }); }
-      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), fi: clone(fi) });
+      function match(r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(q.n).every(function (k) { return r[k] !== q.n[k]; }) && Object.keys(fi).every(function (k) { return fi[k].indexOf(r[k]) >= 0; }); }
+      srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), fi: clone(fi),
+        query: q.op === 'select' ? clone({ eq: q.f, neq: q.n, order: q.ord || null, limit: q.lim == null ? null : q.lim }) : null });
       var f = q.op === 'select' ? srv.failRead : srv.failWrite;
-      if (typeof f === 'function') f = f(rows, q.t);
+      if (typeof f === 'function') f = f(rows, q.t, q);   // q = 이 요청(f 에 eq 조건 q.f 등), 같은 테이블의 요청을 구분해 실패시킬 때 쓴다
       if (f === 'reject') throw new TypeError('Failed to fetch');
       if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
@@ -76,7 +80,15 @@
       if (q.op === 'select') {
         var cols = q.cols === '*' ? null : q.cols.split(',').map(function (s) { return s.trim(); });
         var out = tbl.filter(match);
-        var data = clone(out).map(function (r) { if (!cols) return r; var o = {}; cols.forEach(function (c) { o[c] = r[c]; }); return o; });
+        if (q.ord) out = out.slice().sort(function (a, b) { var x = a[q.ord.col], y = b[q.ord.col]; return (x < y ? -1 : x > y ? 1 : 0) * (q.ord.asc ? 1 : -1); });
+        if (q.lim != null) out = out.slice(0, q.lim);
+        // 'teams(*)' = 부모 행 끼워 넣기(team_members → teams, team_id 로 연결). 이것만 흉내 낸다
+        var data = clone(out).map(function (r) {
+          if (!cols) return r;
+          var o = {};
+          cols.forEach(function (c) { if (c === 'teams(*)') o.teams = clone(srv.teams.filter(function (t) { return t.id === r.team_id; })[0] || null); else o[c] = r[c]; });   // supabase-js 는 끼워 넣은 부모 행을 테이블 이름 키(teams)로 돌려준다
+          return o;
+        });
         return { data: q.one ? (data[0] || null) : data, error: null, status: 200 };
       }
       if (q.op === 'insert') { rows.forEach(function (r) { tbl.push(clone(r)); }); return { data: null, error: null, status: 201 }; }
@@ -99,13 +111,18 @@
   var rpcs = {
     get_shared_link: function (a) { var r = srv.shared_links.filter(function (x) { return x.id === a.p_id; })[0]; return r ? clone(r.payload) : null; },   // 실제 SQL 은 sql/05: id 정확 일치 1건의 payload, 없으면 null
     find_team_by_code: function (a) { return teamsByCode(a.p_code); },
-    join_team_by_code: function (a) {   // 실제 SQL 은 sql/10: 내 팀이면 is_owner 만 · 이미 이 팀이면 같은 행 · 다른 팀 소속이면 예외 · 아니면 team_members 에 넣는다
+    // 1인자 = sql/10, 2인자(p_name) = sql/13: 이름을 trim 해 검사(빈 값 · 20자 초과는 P0001)한 뒤 같은 규칙으로 가입하고 display_name 을 저장한다.
+    // 이미 이 팀의 팀원이면 같은 행을 돌려주되 2인자 호출은 이름을 입력값으로 바꾼다. 내 팀의 코드 · 없는 코드는 이름을 저장하지 않는다
+    join_team_by_code: function (a) {
+      var two = 'p_name' in a, name = two ? String(a.p_name == null ? '' : a.p_name).replace(/^\s+|\s+$/g, '') : null;
+      if (two && !name) return { error: { code: 'P0001', message: '팀에서 쓸 이름을 입력해 주세요' } };
+      if (two && name.length > 20) return { error: { code: 'P0001', message: '이름은 20자 이하로 입력해 주세요' } };
       var rows = teamsByCode(a.p_code), uid = (srv.user || {}).id;
       if (!rows.length || rows[0].is_owner) return rows;
       var mine = srv.team_members.filter(function (m) { return m.user_id === uid; })[0];
-      if (mine && mine.team_id === rows[0].id) return rows;
+      if (mine && mine.team_id === rows[0].id) { if (two) mine.display_name = name; return rows; }
       if (mine || srv.teams.some(function (t) { return t.owner_id === uid; })) return { error: { code: 'P0001', message: '이미 다른 팀에 속해 있어요. 탈퇴 후 다시 시도해 주세요' } };
-      srv.team_members.push({ team_id: rows[0].id, user_id: uid });
+      srv.team_members.push(two ? { team_id: rows[0].id, user_id: uid, display_name: name } : { team_id: rows[0].id, user_id: uid });
       return rows;
     }
   };

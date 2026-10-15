@@ -45,13 +45,14 @@
     srv.teams = [].concat(teams);
     srv.log.length = 0;                      // 이후 기록은 가입 흐름 것만
   }
-  // 가입 폼 안의 입력칸에 코드를 넣고 폼의 실제 "참가하기" 버튼을 누른다.
+  // 가입 폼 안의 입력칸(첫째 = 코드, 둘째 = 팀에서 쓸 이름)에 값을 넣고 폼의 실제 "참가하기" 버튼을 누른다. name 을 생략하면 '#7 김OO'.
   // (id 로 찾으면 index.html 의 정적 입력칸 teamCodeInput(games 용)과 겹쳐 버그를 가린다 — 폼 안에서 찾는다)
-  async function join(code) {
+  async function join(code, name) {
     openJoinTeam();
-    var area = T.$('teamFormArea'), input = area && area.querySelector('input');
-    ok(input, '가입 폼이 그려지지 않음');
-    input.value = code;
+    var area = T.$('teamFormArea'), inputs = area && area.querySelectorAll('input');
+    ok(inputs && inputs.length >= 2, '가입 폼이 그려지지 않음(코드 · 이름 입력칸)');
+    inputs[0].value = code;
+    inputs[1].value = name === undefined ? '#7 김OO' : name;
     area.querySelector('button').click();
     await sleep(500);
   }
@@ -73,13 +74,44 @@
     eq(directInserts().length, 0, 'team_members 직접 insert');
     eq(srv.team_members, [], '서버 team_members');
   });
+  test('가입: 이름 없이(빈칸 · 공백만) 참가하면 안내 문구만 보이고 서버 요청은 0건이다', async function () {
+    await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
+    for (var n of ['', '   ']) {
+      await join('ABC234', n);
+      eq(msg(), '팀에서 쓸 이름을 입력해 주세요', '안내 문구(이름 ' + JSON.stringify(n) + ')');
+      eq(srv.log.length, 0, '서버 요청 수');
+    }
+    eq(srv.team_members, [], '서버 team_members');
+    eq(T.$('teamBadge').style.display, 'none', '팀 배지가 보이면 안 됨');
+  });
+  test('가입: 이름이 20자를 넘으면 안내 문구만 보이고 서버 요청은 0건이다(20자는 통과)', async function () {
+    await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
+    await join('ABC234', '가'.repeat(21));
+    eq(msg(), '이름은 20자 이하로 입력해 주세요', '안내 문구');
+    eq(srv.log.length, 0, '서버 요청 수');
+    await join('ABC234', '가'.repeat(20));
+    eq(rpcs().length, 1, '20자는 RPC 호출');
+    eq(srv.team_members.map(function (m) { return m.display_name; }), ['가'.repeat(20)], '저장된 이름');
+  });
+  test('가입 폼: 이름 입력칸은 placeholder · 최대 20자, 구글 계정 이름을 채우지도 보내지도 않는다 · 보낸 이름은 앞뒤 공백이 없다', async function () {
+    await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
+    srv.user.user_metadata = { full_name: '실명 홍길동' };   // cloud.js 가 쥔 사용자 객체와 같다
+    openJoinTeam();
+    var el = T.$('cloudTeamNameInput');
+    ok(el && T.$('teamFormArea').contains(el), '이름 입력칸이 가입 폼에 없음');
+    eq([el.placeholder, el.maxLength, el.value], ['예: #7 김OO', 20, ''], '입력칸 속성 · 미리 채운 값');
+    await join('ABC234', '  #7 김OO  ');
+    eq(rpcs()[0].args, { p_code: 'ABC234', p_name: '#7 김OO' }, 'RPC 인자');
+    ok(JSON.stringify(srv.log).indexOf('홍길동') < 0, '계정 이름이 서버로 나감');
+  });
   test('가입 시 team_members 직접 insert 없이 RPC(join_team_by_code)를 호출한다', async function () {
     await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
     await join('ABC234');
     eq(directInserts().length, 0, 'team_members 직접 insert');
     eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
-    eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
+    eq(rpcs()[0].args, { p_code: 'ABC234', p_name: '#7 김OO' }, 'RPC 인자');
     eq(T.$('teamBadge').textContent, '팀원 · 테스트팀', '가입 후 팀 배지');
+    eq(srv.team_members, [{ team_id: 'T1', user_id: 'TEST-USER', display_name: '#7 김OO' }], '서버 team_members(이름 저장)');
   });
   test('가입: index.html 에 정적 teamCodeInput(games 용)이 있어도 가입 폼에 넣은 코드로 RPC 가 호출된다', async function () {
     await loginWithTeam({ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'OTHER-USER' });
@@ -89,7 +121,7 @@
     await join('ABC234');
     eq(msg() === '6자리 코드를 입력해 주세요', false, '엉뚱한 빈 입력칸을 읽었음');
     eq(rpcs().map(function (x) { return x.fn; }), ['join_team_by_code'], '호출한 RPC');
-    eq(rpcs()[0].args, { p_code: 'ABC234' }, 'RPC 인자');
+    eq(rpcs()[0].args, { p_code: 'ABC234', p_name: '#7 김OO' }, 'RPC 인자');
     eq(stat.value, '', '정적 입력칸은 건드리지 않음');
   });
   test('가입·팀 만들기 폼의 id 는 문서 전체에서 유일하다(index.html 과 겹치면 getElementById 가 엉뚱한 요소를 돌려준다)', async function () {
@@ -179,7 +211,7 @@
     srv.reset(); localStorage.clear();
     srv.teams = [{ id: 'T1', name: '테스트팀', code: 'ABC234', owner_id: 'TEST-USER' }];
     srv.signIn(); await sleep(1500);
-    var ch = srv.channels.filter(function (c) { return c.filter && c.filter.table === 'user_games'; }).pop();
+    var ch = srv.channels.filter(function (c) { return c.filter && c.filter.table === 'user_games' && c.filter.event === 'UPDATE'; }).pop();   // 팀장은 INSERT 구독도 건다(user-team-games.test.js) — UPDATE 콜백만 고른다
     ok(ch, 'user_games 구독이 걸리지 않음');
     return ch.cb;
   }

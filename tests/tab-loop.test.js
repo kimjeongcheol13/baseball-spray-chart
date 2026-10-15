@@ -9,7 +9,7 @@
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep, $ = T.$;
   // 닫혀 있을 때 Tab 이 들르면 안 되는 창 · 시트
-  var HIDDEN = ['hitOverlay', 'editRecOverlay', 'loadOverlay', 'dataSettingsOverlay', 'cloudOverlay', 'loginModal', 'profileModal',
+  var HIDDEN = ['hitOverlay', 'editRecOverlay', 'loadOverlay', 'dataSettingsOverlay', 'goOverlay', 'cloudOverlay', 'loginModal', 'profileModal',
     'toast', 'cardCtxSheet', 'sfPanel', 'saveMethodSheet', 'helpModeTooltip', 'scoutIntroSheet'];
 
   function name(el) { return el === document.body ? 'body' : el.tagName + (el.id ? '#' + el.id : '') + ' [' + (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 20) + ']'; }

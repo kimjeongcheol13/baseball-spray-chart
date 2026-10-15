@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=79">
+<link rel="stylesheet" href="css/styles.css?v=80">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -1657,6 +1657,7 @@ var _kakaoSdkLoaded = false;
         <input type="file" accept=".json,.spray,text/plain" style="display:none" onchange="importGames(this)"></label>
       <label class="dm-tile"><span class="dm-ico">📊</span><b>엑셀</b><small>.xlsx</small>
         <input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
+      <button type="button" class="dm-tile go-tile" onclick="openGameOneImport()"><span class="dm-ico">⚾</span><b>게임원 박스스코어</b><small>타자 표 붙여넣기 → 새 경기</small></button>
     </div>
 
     <div class="dm-lbl">내보내기 <span>전체 경기</span></div>
@@ -1673,6 +1674,29 @@ var _kakaoSdkLoaded = false;
     <div id="paste-area" style="display:none;margin-top:8px">
       <textarea id="paste-json" placeholder="SprayLab 데이터를 여기에 붙여넣으세요..." style="width:100%;height:72px;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;padding:8px;color:var(--text);font-size:10px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
       <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="importFromPaste()">가져오기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ⚾ 게임원 박스스코어 가져오기 (js/features/gameoneimport.js) -->
+<div class="overlay" id="goOverlay">
+  <div class="modal dm-modal go-modal" role="dialog" aria-labelledby="goTitle">
+    <div class="dm-hdr">
+      <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
+      <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
+    </div>
+    <div class="modal-sub">게임원 박스스코어의 타자 표를 드래그해 복사한 뒤 붙여넣으세요. 새 경기로 저장되고, 기록 중인 경기는 그대로입니다.</div>
+    <div class="go-row">
+      <label class="go-f"><span>원정팀</span><input id="goTa" class="go-inp" type="text" maxlength="20" placeholder="원정팀" oninput="gameOnePreview()"></label>
+      <label class="go-f"><span>홈팀</span><input id="goTh" class="go-inp" type="text" maxlength="20" placeholder="홈팀" oninput="gameOnePreview()"></label>
+    </div>
+    <label class="go-f"><span>경기 날짜</span><input id="goDate" class="go-inp" type="date" oninput="gameOnePreview()"></label>
+    <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="1&#9;유&#9;김수찬(5)&#9;사구,도루 …" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
+    <div id="goPrev" class="go-prev" aria-live="polite"></div>
+    <div class="go-btns">
+      <button type="button" class="btn btn-ghost" onclick="closeOverlay('goOverlay')">닫기</button>
+      <button type="button" class="btn btn-primary" id="goSave" onclick="saveGameOneImport()" disabled>새 경기로 저장</button>
     </div>
   </div>
 </div>
@@ -2382,7 +2406,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=221"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script type="module" src="js/app.js?v=113"></script>
+<script defer src="js/gameone.js?v=1"></script>
+<script type="module" src="js/app.js?v=114"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

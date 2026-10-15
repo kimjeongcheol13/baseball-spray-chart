@@ -519,6 +519,32 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .dm-links{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--text3);padding-top:12px;border-top:1px solid var(--border2)}
 .dm-link{background:none;border:none;padding:4px 2px;color:var(--text2);font-size:11px;font-family:var(--font);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .dm-link:hover{color:var(--blue)}
+/* 게임원 박스스코어 가져오기 (js/features/gameoneimport.js) — 데이터 관리 › 가져오기 */
+.dm-tile.go-tile{grid-column:1/-1}
+.go-modal{width:min(440px,94vw);max-height:92vh;overflow-y:auto;box-sizing:border-box}
+.go-x{min-width:44px;min-height:44px}
+.go-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.go-f{display:block;margin-bottom:8px}
+.go-f>span{display:block;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.4px;margin-bottom:4px}
+.go-f>span small{font-weight:500;opacity:.8;margin-left:4px}
+.go-inp,.go-ta{width:100%;box-sizing:border-box;background:var(--bg-raised);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:var(--font);font-size:12px;outline:none}
+.go-inp{min-height:44px;padding:0 10px}
+.go-ta{display:block;min-height:76px;padding:8px;font-family:monospace;font-size:11px;resize:vertical;tab-size:2}
+.go-inp:focus,.go-ta:focus{border-color:var(--blue)}
+.go-prev{margin:4px 0 12px;padding:10px;border-radius:8px;background:var(--bg-raised);border:1px solid var(--border2);font-size:11px;line-height:1.55;color:var(--text2)}
+.go-empty{color:var(--text3)}
+.go-score{margin-bottom:6px;font-size:13px;color:var(--text)}
+.go-side{margin-bottom:6px}
+.go-side-h{font-weight:700;color:var(--text)}
+.go-low{color:var(--yellow)}
+.go-warn{margin-top:2px;color:var(--red)}
+.go-note{margin-top:6px;color:var(--text3)}
+.go-btns{display:flex;gap:8px}
+.go-btns .btn{flex:1;justify-content:center;min-height:44px}
+.go-btns .btn:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:720px){
+  .go-inp,.go-ta{font-size:16px}   /* iOS: 16px 미만 입력칸은 포커스 때 화면이 확대된다 */
+}
 .hit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
 .hit-btn{padding:12px 8px;border-radius:9px;border:1px solid var(--border2);background:var(--bg-raised);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;text-align:center}
 .hit-btn:active{transform:scale(.95)}

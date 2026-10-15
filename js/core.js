@@ -5199,11 +5199,13 @@ function _shareGameBuild(withNames){
     };})
   };
 
-  /* 경기 정보 중 날짜 · 구장(이름) · 이닝별 득점(info.ls — 게임원 가져오기)을 싣는다. 하나도 없으면 키를 만들지 않는다(예전 링크와 같은 모양).
-     홈/원정 · 이닝 수 · 구장 크기(stadium)는 싣지 않는다. 받는 쪽은 _restoreInfoFromPayload 가 걸러 받는다 */
+  /* 경기 정보 중 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 이닝별 득점(info.ls — 게임원 가져오기)을 싣는다. 하나도 없으면 키를 만들지 않는다(예전 링크와 같은 모양).
+     구장 크기(stadium)는 싣지 않는다. 값은 경기설정 탭 입력 제약대로만 — 받는 쪽은 _restoreInfoFromPayload 가 다시 걸러 받는다 */
   var _si=AS.info||{},_info={};
   if(typeof _si.date==='string'&&_si.date)_info.date=_si.date;
   if(typeof _si.venue==='string'&&_si.venue.trim())_info.venue=_si.venue.trim().slice(0,20);
+  if(_si.side==='home'||_si.side==='away')_info.side=_si.side;
+  if([5,7,9].indexOf(+_si.innings)>=0)_info.innings=+_si.innings;
   if(_si.ls&&typeof _si.ls==='object')_info.ls=_si.ls;
   if(Object.keys(_info).length){fullPayload.info=_info;compactPayload.info=_info;}
 

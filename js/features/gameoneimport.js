@@ -9,7 +9,7 @@
 //   · unknown 타석(결과를 모름)과 교체·주루 사건뿐인 칸은 저장하지 않고 미리보기에 보여 준다
 //   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
-//     공유 링크도 info.ls 를 싣는다(core.js _shareGameBuild — 경기 정보 중 날짜 · 구장과 함께) · 받는 쪽은 _restoreLsFromPayload 가 걸러 받는다
+//     공유 링크도 info.ls 를 싣는다(core.js _shareGameBuild — 다른 경기 정보와 함께) · 받는 쪽은 _restoreLsFromPayload 가 걸러 받는다
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 예시에서 확인한 건 二 · 유 · 중 — 나머지는 같은 표기 관례로 맞춘 값, 모르면 빈 칸
 const POS = {

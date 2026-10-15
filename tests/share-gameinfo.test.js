@@ -1,8 +1,9 @@
-// 공유 링크의 경기 정보 — 날짜 · 구장(이름) · 이닝별 득점(info.ls, 게임원 가져오기 · 기록 화면 라인스코어)
-//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 이 셋만 싣는다(홈/원정 · 이닝 수 · 구장 크기는 싣지 않음) — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
-//  · 셋 다 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
+// 공유 링크의 경기 정보 — 날짜 · 구장(이름) · 홈/원정 · 이닝 수 · 이닝별 득점(info.ls, 게임원 가져오기 · 기록 화면 라인스코어)
+//  · 보내는 쪽(core.js _shareGameBuild)은 경기 정보 중 이 다섯만 싣는다(구장 크기는 싣지 않음) — 서버 링크(?gid=) · 서버 저장이 안 될 때의 URL 링크(?game=) 둘 다
+//  · 다섯 다 없는 경기는 예전과 같은 모양(payload 에 info 키 없음)
 //  · 받는 쪽(_restoreInfoFromPayload · _restoreLsFromPayload)은 걸러 받는다 — 이닝 칸은 0~99 정수 · 'X' 만 (링크는 누가 만들었는지 모른다)
-//  · 받은 경기를 열면 분석 탭 경기 요약에 그 날짜 · 구장이(예전엔 연 날의 날짜), 기록 화면 라인스코어 이닝 칸에 이닝별 득점이 보인다
+//  · 받은 경기를 열면 분석 탭 경기 요약에 그 날짜 · 구장이(예전엔 연 날의 날짜), 기록 화면 라인스코어 이닝 칸에 이닝별 득점이 보이고,
+//    라인스코어 줄 순서(내 팀이 원정이면 내 팀이 위) · 칸 수(5 · 7 · 9회)가 보낸 쪽과 같다
 // 서버는 tests/stub-supabase.js 의 메모리 shared_links 표
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, sleep = T.sleep, $ = T.$;
@@ -62,8 +63,8 @@
     eq(_restoreInfoFromPayload({ innings: 7, ls: { away: [1], home: [] } }), { innings: 7, ls: { away: [1], home: [] } }, '다른 경기 정보와 함께');
   });
 
-  test('서버 링크(?gid=): 날짜 · 구장 · 이닝별 득점이 실려 가고, 받아서 열면 분석 탭 요약 · 라인스코어에 보인다', async function () {
-    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', ls: LS };
+  test('서버 링크(?gid=): 날짜 · 구장 · 홈/원정 · 이닝 수 · 이닝별 득점이 실려 가고, 받아서 열면 분석 탭 요약 · 라인스코어에 보인다', async function () {
+    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', side: 'home', innings: 9, ls: LS };
     setUp(INFO);
     try {
       await share();
@@ -76,7 +77,7 @@
       loadSharedGame();
       await waitFor(function () { return AS.info && AS.info.ls; }, 2000, '공유 경기 열기');
       eq(AS.info, INFO, '연 경기의 경기 정보');
-      eq([gameInfo().date, gameInfo().venue], ['2026-10-07', '안성맞춤야구장'], '경기설정 탭에 보이는 날짜 · 구장');
+      eq([gameInfo().date, gameInfo().venue, gameInfo().side, gameInfo().innings], ['2026-10-07', '안성맞춤야구장', 'home', 9], '경기설정 탭에 보이는 날짜 · 구장 · 홈/원정 · 이닝 수');
       window.openAnaDash();
       var meta = document.querySelector('.ad-meta');
       ok(meta && meta.textContent.indexOf('2026. 10. 7. · 안성맞춤야구장 · 우리팀 vs 상대팀') === 0, '분석 탭 경기 요약: ' + (meta && meta.textContent));
@@ -86,8 +87,8 @@
     } finally { tearDown(); }
   });
 
-  test('서버 저장이 안 될 때의 URL 링크(?game=)에도 날짜 · 구장 · 이닝별 득점이 실린다', async function () {
-    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', ls: LS };
+  test('서버 저장이 안 될 때의 URL 링크(?game=)에도 날짜 · 구장 · 홈/원정 · 이닝 수 · 이닝별 득점이 실린다', async function () {
+    var INFO = { date: '2026-10-07', venue: '안성맞춤야구장', side: 'away', innings: 7, ls: LS };
     setUp(INFO);
     var push = window.pushSharedLink;
     try {
@@ -99,24 +100,40 @@
     } finally { window.pushSharedLink = push; tearDown(); }
   });
 
-  test('경기 정보 중 날짜 · 구장 · 이닝별 득점만 싣는다 — 홈/원정 · 이닝 수 · 구장 크기는 빼고, 구장 이름은 다듬어서', async function () {
-    setUp({ date: '2026-10-07', venue: '  안성맞춤야구장  ', side: 'away', innings: 7, stadium: 'jamsil' });
+  test('내 팀이 원정 · 7회 경기: 받은 경기의 라인스코어도 내 팀이 위 · 7칸 (예전엔 상대가 위 · 9칸)', async function () {
+    setUp({ side: 'away', innings: 7 });
     try {
       await share();
-      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', venue: '안성맞춤야구장' }, '날짜 · 구장만(앞뒤 공백 정리)');
-    } finally { tearDown(); }
-    setUp({ venue: new Array(31).join('가') });
-    try {
-      await share();
-      eq(srv.shared_links[0].payload.info, { venue: new Array(21).join('가') }, '구장 이름은 20자까지(경기설정 탭 입력 제한과 같음)');
+      eq(srv.shared_links[0].payload.info, { side: 'away', innings: 7 }, '서버에 저장된 경기 정보');
+      await openLink($('shareQRUrl').textContent);
+      loadSharedGame();
+      await waitFor(function () { return AS.info && AS.info.side === 'away'; }, 2000, '공유 경기 열기');
+      eq([gameInfo().side, gameInfo().innings], ['away', 7], '경기설정 탭에 보이는 홈/원정 · 이닝 수');
+      window.sbRenderNow();
+      var top = lsCells(0), bottom = lsCells(1);
+      eq([top[0], top[top.length - 1], bottom[0], bottom[bottom.length - 1]], ['우리팀', '1', '상대팀', '8'], '라인스코어 줄 순서: 내 팀(원정)이 위');
+      eq(top.length - 2, 7, '라인스코어 이닝 칸 7개');
     } finally { tearDown(); }
   });
 
-  test('날짜 · 구장 · 이닝별 득점이 다 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
-    setUp({ side: 'home', innings: 7, venue: '   ' });
+  test('경기 정보 중 다섯 가지만 싣는다 — 구장 크기는 빼고, 구장 이름은 다듬고, 쓸 수 없는 홈/원정 · 이닝 수는 빼고', async function () {
+    setUp({ date: '2026-10-07', venue: '  안성맞춤야구장  ', side: 'away', innings: 7, stadium: 'jamsil' });
     try {
       await share();
-      ok(!('info' in srv.shared_links[0].payload), '홈/원정 · 이닝 수 · 빈 구장만 있으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
+      eq(srv.shared_links[0].payload.info, { date: '2026-10-07', venue: '안성맞춤야구장', side: 'away', innings: 7 }, '구장 크기 제외 · 구장 이름 앞뒤 공백 정리');
+    } finally { tearDown(); }
+    setUp({ venue: new Array(31).join('가'), side: 'zzz', innings: 8 });
+    try {
+      await share();
+      eq(srv.shared_links[0].payload.info, { venue: new Array(21).join('가') }, '구장 이름 20자까지 · 홈/원정은 home/away 만 · 이닝 수는 5 · 7 · 9 만 (경기설정 탭 입력 제약과 같음)');
+    } finally { tearDown(); }
+  });
+
+  test('다섯 다 없는 경기는 예전과 같은 모양 — payload 에 info 키가 없다', async function () {
+    setUp({ venue: '   ', side: 'zzz', innings: 8, stadium: 'jamsil' });
+    try {
+      await share();
+      ok(!('info' in srv.shared_links[0].payload), '빈 구장 · 쓸 수 없는 값 · 구장 크기만 있으면 싣지 않음: ' + JSON.stringify(srv.shared_links[0].payload.info));
     } finally { tearDown(); }
     setUp(null);
     try {

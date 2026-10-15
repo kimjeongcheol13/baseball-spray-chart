@@ -811,6 +811,11 @@ body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-ball, body.sb #anaSecPitcher.p
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-strike, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-foul { border-left-color: var(--highlight); background: rgba(217, 164, 65, .14); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-hit, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-2b, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-3b, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-hr { border-left-color: var(--pen-red); background: rgba(200, 50, 43, .08); color: var(--pen-red); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-k, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-out, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-dp, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-tp { border-left-color: var(--ink); background: var(--paper); }
+/* P0: 타석 결과 버튼은 core.js renderPitchButtons 가 .ptr-end-<종류> 로 그린다 — 위와 같은 색 규칙 (출루 · 희생 = 앰버) */
+body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-hit { border-left-color: var(--pen-red); background: rgba(200, 50, 43, .08); color: var(--pen-red); }
+body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-out, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-k { border-left-color: var(--ink); background: var(--paper); }
+body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-bb { border-left-color: var(--grass); background: rgba(62, 122, 91, .10); }
+body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-on, body.sb #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-sac { border-left-color: var(--highlight); background: rgba(217, 164, 65, .14); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn { font-family: var(--f-body); border: 1.5px solid var(--ink); border-left-width: 6px; background: var(--paper-2); color: var(--ink); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn-strike { border-left-color: var(--highlight); background: rgba(217, 164, 65, .14); }
 body.sb #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn-ball { border-left-color: var(--grass); background: rgba(62, 122, 91, .10); }

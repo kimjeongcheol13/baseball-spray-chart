@@ -1,7 +1,7 @@
 // 볼카운트 자동 기록 · 투수 탭 ↔ 기록 탭 연동 검증 (core.js chCount / recordPitch / _pitchToRecord / _recordToPitch)
 //  · 기록 탭 COUNT: 4볼 → 볼넷, 3스트라이크 → 삼진이 타석 기록(AS.abs)에 들어가고 카운트는 0-0 · 3아웃 → 다음 이닝
 //  · 투수 탭(recordPitch): 공 하나하나가 볼카운트·이번 타석 투구(currentPitches)로 이어지고, 4번째 볼/3번째 스트라이크는 볼넷/삼진으로 양쪽에 기록
-//  · 기록 탭에서 끝난 타석: 투수 탭에 그 타석의 공이 있을 때만 마지막 공을 보태 투수 쪽 타석을 닫는다
+//  · 기록 탭에서 끝난 타석: 투수 탭에 같은 타자의 열린 타석이 있을 때만 마지막으로 기록된 공에 결과를 달아 닫는다 (공을 보태지 않는다)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
 
@@ -16,7 +16,7 @@
     clearTimeout(window._autoTimer);
     AS.abs = S.abs; AS.home_lineup = S.hl; AS.away_lineup = S.al; AS.curTeam = S.team; AS.batter = S.batter; AS.batterFilter = S.bf;
     AS.balls = S.b; AS.strikes = S.s; AS.outs = S.o; AS.pitchers = S.pitchers; AS.currentPitcher = S.cp; AS.pitchLog = S.pl; AS.currentPitches = S.cps;
-    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS.pending = null; AS.curGame = S.curGame; window._autoKey = S.autoKey; window._gameSaved = S.saved;
+    AS.pitcherPt = S.pt; AS.pitcherZone = S.pz; AS.pendingQuickRes = null; AS._pitchEndInn = null; AS._pitchEndOuts = null; AS._pitchInnAuto = null; AS.pending = null; AS.curGame = S.curGame; window._autoKey = S.autoKey; window._gameSaved = S.saved;
     var s = $('innSel'); if (s) s.selectedIndex = S.inn;
     Object.keys(snapKeys()).forEach(function (k) { if (!S.keys[k]) localStorage.removeItem(k); });   // 자동저장·GA 표식 등 테스트가 남긴 키 제거
     try { _clearFieldTapPrompt(); renderLP(); renderRecs(); renderCount(); renderPitcherRoster(); renderPitchLog(); } catch (e) {}
@@ -35,6 +35,7 @@
     if (withPitcher) {
       AS.pitchers = [{ id: 'cp1', name: '테스트투수', num: '11', role: null, pitches: [] }];
       selectPitcher('cp1');
+      window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
       AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
       eq(AS.currentPitcher && AS.currentPitcher.id, 'cp1', '투수 선택');
     }
@@ -85,7 +86,7 @@
     chCount('b'); chCount('o'); chCount('o');
     eq(AS.outs, 2, '2아웃');
     chCount('o');
-    eq([AS.balls, AS.strikes, AS.outs], [0, 0, 0], '카운트 초기화'); eq(s.value, '1회말', '다음 이닝'); eq(AS.abs.length, 0, '타석 기록은 생기지 않음');
+    eq([AS.balls, AS.strikes, AS.outs], [0, 0, 0], '카운트 초기화'); eq(s.value, '2회초', '다음 회의 같은 초 (투구 기록과 같은 규칙 · 한 팀만 기록하면 그 팀이 다시 치는 이닝)'); eq(AS.abs.length, 0, '타석 기록은 생기지 않음');
   });
 
   run('투수 탭: 볼·스트라이크·파울이 기록 탭 볼카운트와 이번 타석 투구로 이어진다', true, function () {
@@ -122,6 +123,7 @@
     shellNav('analysis', 'pitcher');
     eq($('app-page').style.display, 'none', '분석 탭에서 시작');
     recordPitch('볼'); recordPitch('안타');
+    $('pitchLinkSheet').querySelector('[data-act="field"]').click();   // P2: 인플레이는 연결 시트에서 '필드에서 위치 찍기'
     eq(AS.pendingQuickRes, '안타', '필드 탭 대기'); eq($('app-page').style.display, 'flex', '기록 탭으로 전환'); eq(AS.abs.length, 0, '위치를 찍기 전엔 기록 없음');
     eq(P().length, 2, '투수 쪽 2구'); eq(AS.currentPitches.length, 2, '이번 타석 투구 유지');
     // 필드 탭 흉내 (onFClick 의 즉시 기록 경로)
@@ -130,12 +132,38 @@
     eq(P().length, 2, '투수 쪽 중복 없음'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화');
   });
 
-  run('기록 탭에서 타석이 끝나면 투수 탭의 열린 타석을 마지막 공으로 닫는다', true, function () {
+  run('기록 탭에서 타석이 끝나면 투수 탭의 열린 타석을 마지막으로 기록된 공으로 닫는다 (공을 지어내지 않는다)', true, function () {
     recordPitch('볼'); recordPitch('스트라이크');
     recOther('병살');
-    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '병살', '병살');
-    eq(P().length, 3, '투수 쪽에 마지막 공 추가'); eq(P()[2].result, '병살', '결과'); eq(P()[2].batter, '첫타자', '타자'); eq(P()[2].pt, null, '구종은 모름');
-    eq(AS.pitchLog[0].result, '병살', '투구 로그 맨 앞');
+    eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '병살', '병살'); eq(AS.abs[0].count, { b: 1, s: 1, o: 0 }, '기록 시점 카운트 = 투구 기록의 카운트');
+    eq(P().length, 2, '투수 쪽 공 수 그대로'); eq(P()[1].end, '병살', '마지막 공에 타석 결과'); eq(P()[1].result, '병살', '옛 클라이언트용 결과'); eq(P()[1].pt, '직구', '그 공의 구종 그대로');
+    eq(PitchCalc.openPA(P()), null, '투수 쪽 타석 닫힘'); eq(AS.pitchLog[0], P()[1], '투구 로그 맨 앞 = 그 공');
+  });
+
+  run('타자를 모르는 투수 탭 타석은 기록 탭 타석이 끝나도 닫지 않는다 (누구 타석인지 모르면 건드리지 않는다)', true, function () {
+    AS.batter = null; renderLP();
+    recordPitch('볼');
+    selBatter('cl1'); recOther('삼진');
+    eq(AS.abs.length, 1, '타석 기록'); eq(P().length, 1, '투수 쪽 1구'); eq(P()[0].end == null, true, '결과 없음');
+    ok(PitchCalc.openPA(P()) != null, '투수 쪽 타석은 열린 채');
+  });
+
+  run('투수 탭: 볼넷을 만든 공을 되돌리면 자동으로 만든 타석도 지워지고 그 타자 · 3볼로 돌아온다', true, async function () {
+    recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
+    eq(AS.abs.length, 1, '볼넷 기록'); eq(AS.batter && AS.batter.id, 'cl2', '다음 타자');
+    undoPitch();
+    eq(AS.abs.length, 0, '자동 타석 지움'); eq(P().length, 3, '투수 쪽 3구'); eq([AS.balls, AS.strikes], [3, 0], '3-0');
+    eq(AS.currentPitches.length, 3, '이번 타석 투구 3구'); eq(AS.batter && AS.batter.id, 'cl1', '그 타자로 복귀');
+    await T.sleep(750);   // 연타 방지 가드(0.7초)
+    recordPitch('볼');
+    eq(AS.abs.length, 1, '다시 볼넷'); eq(AS.abs[0].bname, '첫타자', '같은 타자'); eq(AS.abs[0].pitches.length, 4, '4구 첨부');
+  });
+
+  run('투수 탭: 투구 기록의 카운트가 기록 탭 볼카운트 (헛갈리지 않게 하나)', true, function () {
+    recordPitch('볼'); recordPitch('볼');
+    eq([AS.balls, AS.strikes], [2, 0], '2-0');
+    undoPitch();
+    eq([AS.balls, AS.strikes], [1, 0], '되돌리면 1-0'); eq(AS.currentPitches.length, 1, '이번 타석 투구 1구');
   });
 
   run('투수 탭을 안 쓴 타석에는 투구를 지어내지 않는다', true, function () {
@@ -147,6 +175,37 @@
     AS.batter = null; renderLP();
     recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     eq(P()[3].result, '볼넷', '투수 쪽은 볼넷'); eq(AS.abs.length, 0, '타석 기록 없음'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화'); eq(AS.currentPitches.length, 0, '이번 타석 투구 비움');
+  });
+
+  // ── 투수 탭을 쓰는 이닝: 아웃은 투구 기록 하나 · 3아웃 → 다음 회의 같은 초/말 (사용자 결정 2026-10-11) ──
+  function pick(id) { if (!(AS.batter && String(AS.batter.id) === id)) selBatter(id); }   // 타석 기록 뒤 다음 타자로 넘어가 있으면 같은 타자를 또 눌러 선택이 풀리지 않게
+  function strikeout() { recordPitch('스트라이크'); recordPitch('스트라이크'); recordPitch('스트라이크'); }
+
+  run('투수 탭을 쓰는 이닝: 기록 탭 O 점 = 투구 기록의 아웃 · O 버튼은 따로 세지 않는다 · 3아웃이면 다음 회의 같은 초로', true, async function () {
+    var s = $('innSel');
+    strikeout();
+    eq(AS.abs.length, 1, '삼진 타석 자동 기록'); eq(AS.abs[0].count.o, 0, '그 타석은 0아웃에서'); eq(AS.outs, 1, 'O 점 = 투구 기록 1아웃');
+    chCount('o'); eq(AS.outs, 1, 'O 버튼은 따로 세지 않음 (두 곳에서 세면 이닝이 두 번 넘어간다)');
+    var msg = (document.querySelector('.toast') || {}).textContent || ''; msg = msg.trim().split('\n')[0].trim();
+    ok(/투수 탭/.test(msg) && msg.length <= 20, '안내는 폰 한 줄에 들어갈 길이 (알림은 줄바꿈 없음): ' + msg + ' (' + msg.length + '자)');
+    await T.sleep(750); pick('cl2'); strikeout();
+    eq(AS.abs.length, 2, '두 번째 삼진'); eq(AS.abs[1].count.o, 1, '1아웃에서'); eq(AS.outs, 2, '2아웃');
+    await T.sleep(750); pick('cl1'); strikeout();
+    eq(AS.abs.length, 3, '세 번째 삼진'); eq([AS.abs[2].inn, AS.abs[2].count.o], ['1회초', 2], '세 번째 타석은 1회초 2아웃에서 (이닝을 넘기기 전에 기록)');
+    eq(s.value, '2회초', '다음 회의 같은 초'); eq(AS.outs, 0, '새 이닝 0아웃');
+    chCount('o'); eq(AS.outs, 1, '투구 기록이 없는 이닝에서는 O 버튼이 그대로 센다');
+  });
+
+  run('투수 탭 인플레이 아웃으로 3아웃: 이닝은 넘어가도 필드에서 찍은 타구는 그 타석의 이닝 · 아웃으로 기록된다', true, async function () {
+    var s = $('innSel');
+    strikeout(); await T.sleep(750); pick('cl2'); strikeout(); await T.sleep(750); pick('cl1');
+    recordPitch('볼'); recordPitch('땅볼 아웃');
+    $('pitchLinkSheet').querySelector('[data-act="field"]').click();   // P2: 인플레이는 연결 시트에서 '필드에서 위치 찍기'
+    eq(s.value, '2회초', '3아웃 → 다음 회'); eq(AS.pendingQuickRes, '땅볼 아웃', '필드 탭 대기'); eq(AS.abs.length, 2, '위치를 찍기 전엔 기록 없음');
+    AS.pending = { x: 0.45, y: 0.55, deg: 100, dir: 'SS', ft: 120 }; var res = AS.pendingQuickRes, lk = AS._pendLink; _clearFieldTapPrompt(); AS._pendLink = lk; AS.rbi = 0; recHit(res);   // onFClick 의 즉시 기록 경로와 같이 (연결 대기는 살린다)
+    var a = AS.abs[AS.abs.length - 1];
+    eq([a.res, a.bname, a.inn, a.count.o, a.count.b], ['땅볼 아웃', '첫타자', '1회초', 2, 1], '타구는 1회초 2아웃 1볼에서');
+    eq(AS.outs, 0, '새 이닝 0아웃'); eq([AS._pitchEndInn, AS._pitchEndOuts], [null, null], '보정 값은 한 번만 쓴다'); eq(a.pa, P()[P().length - 1].pa, '투구 기록과 연결');
   });
 
   // 투구의 outs · runners: 경기 운영 모드일 때만 '던지기 직전' 값을 저장하고, 아니면 null
@@ -161,9 +220,9 @@
       GF.bases[0] = true;
       eq(P()[1].runners, [false, true, false], '저장값은 복사본 (나중에 주자가 바뀌어도 그대로)');
       GF.bases[0] = false;
-      // 기록 탭에서 끝난 타석(볼넷 → 1·2루)도 마지막 공에는 타석 전 상황이 남는다
+      // 기록 탭에서 끝난 타석(볼넷 → 1·2루)은 마지막으로 기록된 공에 결과가 붙는다(공을 보태지 않음) — 그 공의 아웃·주자는 던질 때 값 = 타석 전 상황
       recOther('볼넷');
-      eq(P()[2].result, '볼넷', '마지막 공'); eq([P()[2].outs, P()[2].runners], [1, [false, true, false]], '타석 전 아웃·주자');
+      eq(P().length, 2, '공 수 그대로'); eq([P()[1].end, P()[1].result], ['볼넷', '볼넷'], '마지막 공에 결과'); eq([P()[1].outs, P()[1].runners], [1, [false, true, false]], '타석 전 아웃·주자');
       eq(GF.bases, [true, true, false], '운영 모드 진루는 그대로');
     } finally {
       Object.keys(g0).forEach(function (k) { GF[k] = g0[k]; });

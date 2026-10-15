@@ -36,6 +36,7 @@
     var s = $('innSel'); if (s) s.selectedIndex = 0;
     selBatter('pu1');
     AS.pitchers = [{ id: 'pp1', name: '되돌리기투수', num: '21', role: null, pitches: [] }];
+    window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
     selectPitcher('pp1');
     AS.pitcherPt = '직구'; AS.pitcherZone = '중앙 중간';
     eq(AS.batter && AS.batter.id, 'pu1', '타자 선택');
@@ -99,17 +100,19 @@
     eq([AS.balls, AS.strikes], [1, 2], '1-2 로 복귀'); eq(AS.currentPitches.length, 3, '이번 타석 투구 3구'); eq(AS.batter && AS.batter.id, 'pu1', '그 타자로 복귀');
   });
 
-  run('기록 탭에서 끝낸 타석(투수 쪽에 마지막 공 추가)을 되돌리면 그 공도 취소', function () {
+  // P0: 기록 탭에서 먼저 끝내면 공을 지어내지 않고 열린 타석의 마지막 공에 결과를 붙인다 → 되돌리면 공은 두고 붙인 결과만 뗀다
+  run('기록 탭에서 끝낸 타석(투수 쪽 마지막 공에 결과를 붙임)을 되돌리면 붙인 결과만 뗀다', function () {
     recordPitch('볼'); recordPitch('스트라이크');
     recOther('병살');
-    eq(res(), ['볼', '스트라이크', '병살'], '투수 쪽 마지막 공 추가');
+    eq(P().length, 2, '공을 더하지 않는다'); eq([P()[1].pr, P()[1].end, P()[1].result], ['스트라이크', '병살', '병살'], '마지막 공에 타석 결과');
     undoLast();
-    eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '추가됐던 공도 취소'); eq([AS.balls, AS.strikes], [1, 1], '1-1');
+    eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '공은 그대로'); ok(P()[1].end == null, '붙인 결과는 뗐다'); eq([AS.balls, AS.strikes], [1, 1], '1-1');
     eq(AS.currentPitches.length, 2, '앞 공 2구 되살림');
   });
 
   run('안타 → 필드 탭 대기 중에 되돌리면 대기도 취소', function () {
     recordPitch('볼'); recordPitch('안타');
+    var fb = document.querySelector('#pitchLinkSheet [data-act="field"]'); ok(fb, 'P2: 타구 위치 연결 창'); if (fb) fb.click();   // P2: 인플레이는 먼저 '필드에서 위치 찍기'
     eq(AS.pendingQuickRes, '안타', '필드 탭 대기');
     undoPitch();
     eq(AS.pendingQuickRes, null, '대기 취소'); eq(res(), ['볼'], '투수 쪽 1구'); eq(AS.currentPitches.length, 1, '이번 타석 1구'); eq([AS.balls, AS.strikes], [1, 0], '1-0');
@@ -153,15 +156,15 @@
     eq(AS.pitchLog.length, 4, '전체 투구 로그도 4구'); ok(/\(4구\)/.test($('pitcherRoster').textContent), '투수 버튼 4구');
   });
 
-  run('기록 탭 ✕: 기록 탭에서 끝낸 타석(투수 쪽에 덧붙인 마지막 공)도 전부 지운다 · 투수 탭을 안 쓴 타석은 투수 쪽 변화 없음', async function () {
+  run('기록 탭 ✕: 기록 탭에서 끝낸 타석(투수 쪽 마지막 공에 결과를 붙임)도 전부 지운다 · 투수 탭을 안 쓴 타석은 투수 쪽 변화 없음', async function () {
     recordPitch('볼'); recordPitch('스트라이크');
     recOther('병살');
-    eq(res(), ['볼', '스트라이크', '병살'], '투수 쪽 3구');
+    eq(res(), ['볼', '병살'], '투수 쪽 2구 (P0: 마지막 공에 결과)');
     await T.sleep(750);
     recOther('삼진');   // 둘째 타자: 투수 탭을 안 쓴 타석
-    eq(AS.abs.length, 2, '두 타석'); eq(P().length, 3, '투구를 지어내지 않음');
+    eq(AS.abs.length, 2, '두 타석'); eq(P().length, 2, '투구를 지어내지 않음');
     delRec(AS.abs[1].id);
-    eq(P().length, 3, '투수 탭을 안 쓴 타석을 지워도 투수 쪽 그대로');
+    eq(P().length, 2, '투수 탭을 안 쓴 타석을 지워도 투수 쪽 그대로');
     delRec(AS.abs[0].id);
     eq(P().length, 0, '병살 타석 공 전부 삭제'); eq(AS.abs.length, 0, '타석 없음');
   });
@@ -177,43 +180,40 @@
     eq(P()[2].result, '홈런', '다시 홈런으로'); eq(P().length, 3, '공 수 그대로');
   });
 
-  run('수정: 사구로 바꾸면 투수 쪽 끝낸 공도 사구 · 다시 볼넷으로 고치면 볼넷', function () {
-    recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
-    var id = AS.abs[0].id;
-    eq(P()[3].result, '볼넷', '4번째 공 볼넷');
-    edit(id, '사구');
-    eq(res(), ['볼', '볼', '볼', '사구'], '끝낸 공 = 사구'); eq(AS.abs[0].pitches[3].result, '사구', '타석 투구 목록도 사구');
-    edit(id, '볼넷');
-    eq(res(), ['볼', '볼', '볼', '볼넷'], '다시 볼넷'); eq(P().length, 4, '공 수 그대로');
-  });
-
-  run('수정: 예전 버전에서 사구로 고치며 지웠던 끝낸 공은 다른 결과로 고치면 같은 공으로 되살린다', function () {
+  // P0: 사구도 투수 탭 결과(END_CHOICES)라 끝낸 공을 지우거나 되살리지 않는다 — 그 공의 타석 결과(end)만 바뀐다
+  run('수정: 사구로 바꿨다가 볼넷으로 되돌려도 끝낸 공(id · 구종 · 코스)은 그대로, 타석 결과만 바뀐다', function () {
     AS.pitcherPt = '커브'; recordPitch('볼'); recordPitch('볼'); recordPitch('볼');
     AS.pitcherPt = '슬라이더'; AS.pitcherZone = '내각 낮음'; recordPitch('볼');
-    var id = AS.abs[0].id, end = P()[3], endId = end.id;
-    // 2026-10-13 #151 버전이 남긴 상태: 투수 쪽 끝낸 공은 지워지고, 타석 투구 목록의 그 공은 결과만 사구
-    _dropPitch(AS.pitchers[0], end); AS.abs[0].res = '사구'; AS.abs[0].pitches[3].result = '사구';
-    eq(res(), ['볼', '볼', '볼'], '예전 상태');
+    var id = AS.abs[0].id, endId = P()[3].id;
+    eq(P()[3].end, '볼넷', '4번째 공 볼넷');
+    edit(id, '사구');
+    eq(AS.abs[0].res, '사구', '타석은 사구'); eq(P().length, 4, '공 4구 그대로'); eq(P()[3].end, '사구', '끝낸 공 = 사구');
     edit(id, '볼넷');
-    eq(res(), ['볼', '볼', '볼', '볼넷'], '끝낸 공 되살림'); eq(P()[3].id, endId, '같은 공(id)');
-    eq([P()[3].pt, P()[3].zone, P()[3].abId], ['슬라이더', '내각 낮음', id], '구종 · 코스 · 타석 짝 그대로');
+    eq([P()[3].id, P()[3].end, P()[3].pt, P()[3].zone], [endId, '볼넷', '슬라이더', '내각 낮음'], '같은 공 · 볼넷 · 구종 · 코스 그대로');
     eq(AS.abs[0].pitches[3].result, '볼넷', '타석 투구 목록도 볼넷');
   });
 
-  run('수정: 끝낸 공이 없는 타석(예전에 기록 탭에서 사구로 끝낸 타석)을 고치면 투수 쪽에 끝낸 공을 보탠다 (뒤 타석 공보다 앞에)', async function () {
+  run('수정: 기록 탭에서 사구로 끝낸 타석을 볼넷으로 고치면 붙인 결과만 바뀌고, 지우면 그 타석 공만 빠진다', async function () {
     recordPitch('볼'); recordPitch('스트라이크');
     recOther('사구');
-    eq(res(), ['볼', '스트라이크', '사구'], '이제는 기록 탭 사구도 투수 쪽 타석을 사구로 닫는다');
+    eq(P().length, 2, '공을 보태지 않음'); eq(P()[1].end, '사구', '마지막 공에 사구');
     var id = AS.abs[0].id;
-    _dropPitch(AS.pitchers[0], P()[2]);   // 사구가 투수 탭에 들어오기 전에 기록한 타석 (끝낸 공 없음)
     await T.sleep(750);
     recordPitch('스트라이크');   // 다음 타자 첫 공
     edit(id, '볼넷');
-    eq(res(), ['볼', '스트라이크', '볼넷', '스트라이크'], '그 타석 마지막 공 다음 자리에 볼넷');
-    eq(P()[2].abId, id, '타석 짝'); eq(P()[2].batter, '첫타자', '타자'); eq(P()[2].pt, null, '구종은 모름');
-    ok(P()[2].id > P()[1].id && P()[2].id < P()[3].id, 'id 도 던진 순서');
+    eq(P().map(function (e) { return e.end || null; }), [null, '볼넷', null], '그 타석 마지막 공의 결과만 볼넷');
     delRec(id);
-    eq(res(), ['스트라이크'], '그 타석을 지우면 보탠 공까지 전부 삭제');
+    eq(res(), ['스트라이크'], '그 타석을 지우면 그 타석 공만 삭제');
+  });
+  // P0: 기록 탭이 붙인 결과인지는 공의 recRes 로 안다 — 타석을 「수정」해 결과가 바뀐 뒤에도 지우개는 공을 두고 결과만 뗀다
+  run('기록 탭에서 끝낸 타석을 수정한 뒤 지우개: 공은 그대로, 붙인 결과만 떼고 원래 값으로', function () {
+    recordPitch('볼'); recordPitch('스트라이크');
+    recOther('병살');
+    edit(AS.abs[0].id, '삼진');
+    eq([P()[1].end, P()[1].result], ['삼진', '삼진'], '수정한 결과가 끝낸 공에');
+    undoLast();
+    eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '공은 그대로 · 원래 값'); ok(P()[1].end == null && P()[1].recRes == null, '붙인 결과 · 표시를 뗐다');
+    eq([AS.balls, AS.strikes], [1, 1], '1-1'); eq(AS.currentPitches.length, 2, '이번 타석 투구 2구');
   });
 
   // ── 사구: 투수 탭 버튼 · 투수 분석 ──
@@ -222,7 +222,7 @@
     eq(btns.length, 2, '사구 버튼 (모바일 패널 · 데스크톱)');
     recordPitch('볼'); recordPitch('스트라이크');
     btns[1].click();
-    eq(res(), ['볼', '스트라이크', '사구'], '투수 쪽 3구'); eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '사구', '사구');
+    eq([P().length, P()[2].pr, P()[2].end], [3, '사구', '사구'], '투수 쪽 3구 · 사구 (P0: 옛 호환 result 는 볼넷)'); eq(AS.abs.length, 1, '타석 기록'); eq(AS.abs[0].res, '사구', '사구');
     eq(AS.abs[0].pitches.length, 3, '3구 첨부'); eq([AS.balls, AS.strikes], [0, 0], '카운트 초기화'); eq(AS.batter && AS.batter.id, 'pu2', '다음 타자');
     undoPitch();
     eq(AS.abs.length, 0, '타석 취소'); eq(res(), ['볼', '스트라이크'], '사구 공 취소'); eq([AS.balls, AS.strikes], [1, 1], '1-1');
@@ -241,7 +241,7 @@
     eq(kpi['피안타율'], ['.250', '1/4'], '타수 4 (6타석 − 볼넷 − 사구)');
     eq(kpi['FIP'][0], '16.10', 'FIP = (13×1 + 3×(1+1) − 2×3) ÷ 1 + 3.10');
     eq(kpi['볼넷%'][1], '1개 · 사구 1', '볼넷% 는 볼넷만, 사구 수는 따로');
-    ok(/상대 6타자/.test(document.querySelector('#pitcherView .pc-meta').textContent), '사구도 상대 타자(타석)에 들어감');
+    ok(/상대 6타석/.test(document.querySelector('#pitcherView .pc-meta').textContent), '사구도 상대 타석에 들어감 (P0 문구: 타석)');
     ok(/사구 1/.test(document.querySelector('#pitcherView .pc-bat-who small').textContent), '상대 타자 카드에 사구');
     ok(Array.prototype.some.call(document.querySelectorAll('#pitcherView .pc-bat-res i'), function (i) { return i.textContent === '사구' && i.className === 'r-bb'; }), '결과 칩 사구');
     setPitcherView('mode', 'input');
@@ -253,6 +253,9 @@
     recordPitch('볼'); recordPitch('스트라이크');
     AS.pitchers.push({ id: 'pp2', name: '바꾼투수', num: '33', role: null, pitches: [] });
     selectPitcher('pp2');
+    // P0: 결과 없는 타석이 열려 있으면 투수를 바꾸기 전에 그 타석 결과를 묻는다(_pitchGuardChange) → '모름'
+    var unk = document.querySelector('#pitchEndSheet .pes-unk'); ok(unk, '앞 타석 결과 시트'); if (unk) unk.click();
+    eq(AS.currentPitcher && AS.currentPitcher.id, 'pp2', '투수 바뀜');
     eq($('pitchLog').querySelectorAll('.pitch-entry').length, 0, '새 투수: 로그 비움');
     ok(/투구를 기록하면/.test($('pitchLog').textContent), '안내 문구');
     ok($('pitchUndoBtn').disabled, '되돌릴 공 없음');
@@ -276,11 +279,13 @@
   });
 
   // ── 타자 바꾸기 · 투구 로그의 상대 타자 ──
+  // P0: 투수 탭 타석이 열린 채 다른 타자를 고르면 그 타석 결과를 먼저 묻는다(_pitchGuardChange) — 여기서는 '모름'
+  function answerUnknown() { var b = document.querySelector('#pitchEndSheet .pes-unk'); ok(b, '앞 타석 결과 시트'); if (b) b.click(); }
   run('카운트 중간에 다른 타자(원정팀)로 바꾸면 0-0 부터 — 다음 스트라이크에 그 타자가 삼진이 되지 않는다', function () {
     AS.away_lineup = [{ id: 'pa1', name: '원정타자', num: '11', pos: '', bh: '', isStarter: true }];
     recordPitch('스트라이크'); recordPitch('스트라이크');
     eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 2, 2], '첫타자 0-2 (전제)');
-    swLineupTab('away'); selBatter('pa1');
+    swLineupTab('away'); selBatter('pa1'); answerUnknown();
     eq(AS.batter && AS.batter.name, '원정타자', '원정 타자');
     eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 0, 0], '새 타석 0-0 · 0구째');
     ok(/0-0/.test($('toastTxt').textContent), '안내 — ' + $('toastTxt').textContent);
@@ -295,6 +300,7 @@
     selBatter('pu1'); eq(AS.batter, null, '해제(토글)');
     selBatter('pu1');
     eq([AS.balls, AS.strikes, AS.currentPitches.length], [1, 1, 2], '같은 타자: 그대로');
+    _endOpenPitchPA('미상');   // P0: 열린 타석에는 타자 없이 던진 공도 이어 붙으므로 먼저 닫는다
     AS.batter = null; AS.balls = 0; AS.strikes = 0; AS.currentPitches = []; _cntBid = null; renderLP();   // 타자를 아직 안 고른 상태
     recordPitch('볼'); recordPitch('볼');
     selBatter('pu2');
@@ -306,7 +312,7 @@
     eq(AS.batter && AS.batter.id, 'pu2', '다음 타자(전제)');
     undoLast();
     eq(AS.batter && AS.batter.id, 'pu1', '그 타자로'); eq([AS.balls, AS.strikes, AS.currentPitches.length], [1, 2, 3], '1-2 · 3구째');
-    selBatter('pu2');
+    selBatter('pu2'); answerUnknown();
     eq([AS.balls, AS.strikes, AS.currentPitches.length], [0, 0, 0], '다른 타자 = 새 타석');
   });
 

@@ -1,0 +1,28 @@
+name: Tests
+
+# PR 에서 deploy.yml 의 check 잡과 같은 검사를 돌린다 (배포는 하지 않는다 — 배포는 main 에 push 될 때만)
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pre-deploy checks (JS syntax, HTML, asset refs, ?v= warning)
+        run: python3 .github/scripts/predeploy_check.py "${{ github.event.pull_request.base.sha }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Browser tests (tests/run.mjs)
+        run: node tests/run.mjs

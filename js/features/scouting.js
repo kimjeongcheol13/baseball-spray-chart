@@ -1,7 +1,8 @@
 // 스카우팅 리포트 — 상대 타자를 어떻게 잡을지: 공략 포인트 · 코스 · 구종 · 카운트 · 수비 위치
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=7';
-import { buildColumn, columnText, renderColumnFigure } from './column.js?v=4';
+import { pitchInfo } from './pitchcalc.js?v=9';
+import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
+import { buildColumn, columnText, renderColumnFigure } from './column.js?v=5';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -508,13 +509,12 @@ function _recentCard(P) {
 function _pitchLogCard(P) {
   const log = ((window.AS && window.AS.pitchLog) || []).filter(p => p.batter === P.name);
   if (!log.length) return '';
-  const HIT_RES = ['안타', '2루타', '3루타', '홈런', '타격됨'];
   const ptCnt = Object.create(null);
   log.forEach(p => { if (p.pt) ptCnt[p.pt] = (ptCnt[p.pt] || 0) + 1; });
   const mix = Object.entries(ptCnt).sort((a, b) => b[1] - a[1]);
   const top = mix.length ? mix[0][1] : 1;
-  const k = log.filter(p => p.result === '삼진').length;
-  const hits = log.filter(p => HIT_RES.includes(p.result)).length;
+  const k = log.filter(p => pitchInfo(p).k).length;   // 삼진 · 피안타 판정은 투수 탭 · 엑셀과 같은 함수
+  const hits = log.filter(p => pitchInfo(p).hit).length;
   return `
     <section class="an-card">
       <header class="an-hd"><h3>이번 경기 투구 기록</h3><span class="an-hd-note">투수 탭 기록 · ${log.length}구 · 삼진 ${k} · 피안타 ${hits}</span></header>

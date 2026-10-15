@@ -3,9 +3,9 @@
 //   타석 결과 구성 · 상황별 · 경기별 누적 흐름 · 경기 로그 · 구종별 · 누적 기록 — 카드는 profile.js 함수를 그대로 부른다
 //   히어로에 wOBA+ · 유형 태그, 분석 요약(프로필)과 '이런 타자예요'(타자 메모)는 한 카드로
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=7';
-import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=10';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=18';
+import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=8';
+import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=26';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=22';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -17,7 +17,7 @@ let _plot = 'today';
 const SHORT = { __proto__: null,
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
   '볼넷': ['볼넷', 'bb'], '사구': ['사구', 'bb'], '삼진': ['삼진', 'k'], '희타': ['희타', 'out'], '희비': ['희비', 'out'],
-  '땅볼 아웃': ['땅볼', 'out'], '플라이 아웃': ['뜬공', 'out'], '병살': ['병살', 'out'],
+  '땅볼 아웃': ['땅볼', 'out'], '플라이 아웃': ['뜬공', 'out'], '병살': ['병살', 'out'], '라인드라이브 아웃': ['라인', 'out'], '삼중살': ['삼중살', 'out'], '실책': ['실책', 'out'], '야수선택': ['야선', 'out'],
 };
 const PT_SHORT = { __proto__: null, '직구': '직', '슬라이더': '슬', '커브': '커', '체인지업': '체', '포크볼': '포', '커터': '컷', '싱커': '싱', '스플리터': '스플', '스위퍼': '스위' };
 const Z_SHORT = z => String(z || '').replace('내각', '몸쪽').replace('외각', '바깥쪽').replace('중앙 중간', '한가운데').replace('중앙', '가운데');

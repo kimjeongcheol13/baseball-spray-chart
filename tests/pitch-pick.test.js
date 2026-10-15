@@ -56,7 +56,7 @@
       drag(65, 78, 80, 95);
       var c = card();
       eq(c.title, '고른 공 2개', '고른 공 수'); eq(c.on, 2, '차트에서 강조된 점');
-      eq(c.rows, ['슬라이더 → 삼진 | 던지기 직전 1볼 2스트라이크', '직구 → 파울 | 던지기 직전 1볼 1스트라이크'], '최근 공부터 · 던지기 직전 카운트');
+      eq(c.rows, ['슬라이더 → 삼진 | 던지기 직전 1볼 2스트라이크 · 0아웃(투구 기록)', '직구 → 파울 | 던지기 직전 1볼 1스트라이크 · 0아웃(투구 기록)'], '최근 공부터 · 던지기 직전 카운트 · 아웃은 투구 기록으로');
       eq(c.facts, {}, '3구 이하는 요약 없음');
       eq(all('#pcPick .pc-pc:first-child .pc-flow-p', function (el) { return el.textContent; }),
         ['직구 볼', '커브 스트라이크', '직구 파울', '슬라이더 삼진'], '이 타석 흐름 (줄임말 없이)');
@@ -70,7 +70,7 @@
       // 점 하나 탭 → 그 공만
       drag(30, 36, 30, 36);
       c = card();
-      eq([c.title, c.sub], ['고른 공 1개', '스트라이크존 안'], '탭한 공'); eq(c.rows, ['직구 → 볼 | 던지기 직전 0볼 0스트라이크'], '초구 볼');
+      eq([c.title, c.sub], ['고른 공 1개', '스트라이크존 안'], '탭한 공'); eq(c.rows, ['직구 → 볼 | 던지기 직전 0볼 0스트라이크 · 0아웃(투구 기록)'], '초구 볼');
 
       // 빈 곳 탭 → 해제
       drag(95, 5, 95, 5);
@@ -114,14 +114,15 @@
       var c = card();
       eq(c.title, '고른 공 5개', '전체');
       eq(c.rows, [
-        '슬라이더 → 볼 | 던지기 직전 2볼 2스트라이크',
-        '직구 → 볼 | 던지기 직전 1볼 2스트라이크',
+        '슬라이더 → 볼 | 던지기 직전 2볼 2스트라이크 · 0아웃(투구 기록)',
+        '직구 → 볼 | 던지기 직전 1볼 2스트라이크 · 0아웃(투구 기록)',
         '커브 → 파울 | 던지기 직전 1볼 1스트라이크 · 1아웃 · 1·3루',
         '직구 → 스트라이크 | 던지기 직전 1볼 0스트라이크 · 1아웃 · 1·3루',
         '직구 → 볼 | 던지기 직전 0볼 0스트라이크 · 0아웃 · 주자 없음'
-      ], '전광판: 기록된 공만 아웃 · 주자');
+      ], '전광판: 경기 운영 모드 기록은 그대로, 없으면 아웃만 투구 기록으로 · 주자는 기록된 공만');
       eq(c.facts['아웃·주자'], '주자 있을 때 2구 · 득점권 2구 (기록된 3구 중)', '요약: 아웃·주자');
-      eq(document.querySelectorAll('#pcPick .pc-sb .sb-o').length, 3, 'O 점은 기록된 3장만');
+      eq(document.querySelectorAll('#pcPick .pc-sb .sb-o').length, 5, 'O 점은 5장 (기록 3 + 투구 기록 2)');
+      eq(all('#pcPick .pc-sb .sb-o b', function (b) { return b.textContent; }), ['O*', 'O*', 'O', 'O', 'O'], '투구 기록으로 센 아웃은 O*');
       eq(document.querySelectorAll('#pcPick .pc-dia rect.on').length, 4, '1·3루 두 장 = 주자 4칸');
       ok(document.querySelector('#pcPick .pc-pick-foot'), '기록 없는 공이 있으면 안내');
 
@@ -129,7 +130,7 @@
       drag(55, 66, 90, 100);
       c = card();
       eq(c.title, '고른 공 2개', '기록 없는 두 공');
-      eq([document.querySelectorAll('#pcPick .pc-sb .sb-o').length, document.querySelectorAll('#pcPick .pc-dia').length], [0, 0], 'O · 주자 그림 없음');
+      eq([document.querySelectorAll('#pcPick .pc-sb .sb-o').length, document.querySelectorAll('#pcPick .pc-dia').length], [2, 0], 'O 는 투구 기록으로 · 주자 그림 없음');
       ok(document.querySelector('#pcPick .pc-pick-foot'), '안내');
     } finally {
       AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
@@ -168,6 +169,71 @@
       URL.createObjectURL = cou; HTMLAnchorElement.prototype.click = clk;
       AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
       setPitcherView('scope', 'season');
+    }
+  });
+  // P0 투구 기록(v2): 타석은 pa 로 묶고, 공의 정체(pr)와 타석 결과(end)를 따로 본다 — 옛 클라이언트용 result(볼넷 · 아웃)로 세지 않는다
+  test('투수 코스(v2 기록): 사구는 사구 · 볼 쪽 · 인플레이 아웃은 땅볼 아웃 · 타석은 pa 로 묶고 끝난 타석에 "결과 없음"을 달지 않는다', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    var v2 = function (id, pa, batter, pt, pr, result, end, x, y) { var p = { id: id, v: 2, pa: pa, bid: 'v2' + batter, batter: batter, inning: '1회초', zone: null, zoneX: x, zoneY: y, pt: pt, pr: pr, result: result, ts: '' }; if (end) p.end = end; return p; };
+    try {
+      AS.pitchers = [{ id: 'pk4', name: '브이투투수', num: '6', role: null, pitches: [
+        v2(1781000000001, 1781000000001, '가타자', '직구', '볼', '볼', null, 0.30, 0.30),
+        v2(1781000000002, 1781000000001, '가타자', '커브', '파울', '파울', null, 0.32, 0.32),
+        v2(1781000000003, 1781000000001, '가타자', '커브', '사구', '볼넷', '사구', 0.70, 0.70),
+        v2(1781000000004, 1781000000004, '나타자', '직구', '타격됨', '아웃', '땅볼 아웃', 0.72, 0.72)
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      shellNav('analysis', 'pitcher');
+      setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '브이투투수'); setPitcherView('zone', 'plot');
+      drag(65, 78, 80, 95);
+      var c = card();
+      eq(c.title, '고른 공 2개', '고른 공 수');
+      eq(c.rows, ['직구 → 땅볼 아웃 | 던지기 직전 0볼 0스트라이크 · 0아웃(투구 기록)', '커브 → 사구 | 던지기 직전 1볼 1스트라이크 · 0아웃(투구 기록)'], '타석 결과 · 던지기 직전 카운트 (옛 result 의 아웃 · 볼넷이 아니라)');
+      eq(document.querySelectorAll('#pcPick .pc-pc:first-child .pc-flow').length, 0, '한 공으로 끝난 타석은 흐름 없음 (결과 없음을 달지 않는다)');
+      eq(all('#pcPick .pc-pc:nth-child(2) .pc-flow-p', function (el) { return el.textContent; }), ['직구 볼', '커브 파울', '커브 사구'], '가타자 타석 흐름 (pa 로 묶음)');
+      drag(0, 0, 100, 120);
+      eq(all('#pcPick .pc-pick-lg span', function (el) { return el.textContent; }), ['스트라이크·파울1', '볼2', '인플레이 아웃1'], '결과 막대: 사구는 볼 쪽, 땅볼 아웃은 인플레이 아웃');
+      document.querySelector('#pcPick .pc-pick-x').click();
+    } finally {
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+      try { shellNav('record'); } catch (e) {}
+      $('app-page').style.display = S.ap;
+    }
+  });
+
+  // 경기 운영 모드 기록이 없는 공의 아웃: 같은 경기 · 같은 이닝에서 이 공보다 먼저 끝난 타석의 아웃 합 (모든 투수 — 계투도 이어서 센다)
+  test('투수 코스: 아웃을 투구 기록으로 — 계투의 첫 공도 앞 투수 아웃을 이어서 · 이닝이 바뀌면 0 · 낫아웃은 0 · 경기 운영 모드 값이 있으면 그 값', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    var t = 1781500000000;
+    var q = function (pa, batter, pt, pr, result, end, inning, x, y, extra) { var p = { id: ++t, v: 2, pa: pa, bid: 'o' + batter, batter: batter, inning: inning, zone: null, zoneX: x, zoneY: y, pt: pt, pr: pr, result: result, ts: '' }; if (end) p.end = end; return Object.assign(p, extra || {}); };
+    try {
+      var A = [], B = [];
+      A.push(q(t + 1, '가', '직구', '스트라이크', '스트라이크', null, '1회초', 0.9, 0.1));
+      A.push(q(A[0].pa, '가', '직구', '스트라이크', '스트라이크', null, '1회초', 0.9, 0.1));
+      A.push(q(A[0].pa, '가', '직구', '스트라이크', '삼진', '삼진', '1회초', 0.9, 0.1, { nk: 1 }));   // 낫아웃 출루 = 0아웃
+      A.push(q(t + 1, '나', '커브', '타격됨', '아웃', '땅볼 아웃', '1회초', 0.9, 0.1)); A[3].pa = A[3].id;            // 1아웃
+      A.push(q(t + 1, '다', '직구', '스트라이크', '삼진', '삼진', '1회초', 0.9, 0.1)); A[4].pa = A[4].id;           // 2아웃 (한 공 삼진은 기록상 편의)
+      B.push(q(t + 1, '라', '슬라이더', '볼', '볼', null, '1회초', 0.30, 0.30)); B[0].pa = B[0].id;                  // 계투 첫 공: 2아웃
+      B.push(q(B[0].pa, '라', '슬라이더', '볼', '볼', null, '1회초', 0.32, 0.32, { outs: 1, runners: [true, false, false] }));   // 경기 운영 모드 값이 있으면 그 값
+      B.push(q(t + 1, '마', '직구', '볼', '볼', null, '2회초', 0.34, 0.34)); B[2].pa = B[2].id;                      // 다음 이닝: 0아웃
+      AS.pitchers = [{ id: 'oA', name: '선발투수', num: '1', role: null, pitches: A }, { id: 'oB', name: '계투투수', num: '2', role: null, pitches: B }];
+      AS.currentPitcher = AS.pitchers[1];
+      shellNav('analysis', 'pitcher');
+      setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '계투투수'); setPitcherView('zone', 'plot');
+      drag(25, 30, 45, 45);
+      eq(card().rows, [
+        '직구 → 볼 | 던지기 직전 0볼 0스트라이크 · 0아웃(투구 기록)',
+        '슬라이더 → 볼 | 던지기 직전 1볼 0스트라이크 · 1아웃 · 1루',
+        '슬라이더 → 볼 | 던지기 직전 0볼 0스트라이크 · 2아웃(투구 기록)'
+      ], '2회초 첫 공 0 · 경기 운영 모드 값 1 · 계투 첫 공 2 (낫아웃은 아웃 아님)');
+      ok(/투구 기록\(끝난 타석\)으로 셌어요/.test(document.querySelector('#pcPick .pc-pick-foot').textContent), '안내');
+      document.querySelector('#pcPick .pc-pick-x').click();
+    } finally {
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+      try { shellNav('record'); } catch (e) {}
+      $('app-page').style.display = S.ap;
     }
   });
 })();

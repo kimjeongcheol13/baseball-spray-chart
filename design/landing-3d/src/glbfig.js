@@ -73,7 +73,14 @@ function prepBody(THREE, gltf, SU) {
   // rest pose is a T-pose; the mannequin's zero pose has arms and legs hanging straight down
   const down = new THREE.Vector3(0, -1, 0);
   const drop = (a, b) => new THREE.Quaternion().setFromUnitVectors(bind(b).sub(bind(a)).normalize(), down);
+  const gloveFrame = (S) => {
+    const h = bind(S + 'Hand'), Y = bind(S + 'HandMiddle1').sub(h).normalize(), X = bind(S + 'HandIndex1').sub(bind(S + 'HandPinky1'));
+    X.addScaledVector(Y, -X.dot(Y)).normalize(); const Z = new THREE.Vector3().crossVectors(X, Y);
+    const mid = bind(S + 'HandIndex1').add(bind(S + 'HandPinky1')).multiplyScalar(.5).sub(h);
+    return { q: new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z)), at: h.addScaledVector(X, mid.dot(X)), p: Math.sign(bind(S + 'HandThumb3').sub(bind(S + 'Hand')).dot(Z)) || 1 };
+  };
   const side = (S) => ({
+    glove: gloveFrame(S),
     palm: bind(S + 'HandMiddle1').sub(bind(S + 'Hand')).multiplyScalar(.35),
     knuckle: bind(S + 'HandPinky1').sub(bind(S + 'HandIndex1')).normalize(),
     drop: drop(S + 'Arm', S + 'ForeArm'), rest: restQ(S + 'Hand')
@@ -160,29 +167,34 @@ vec4 slDecal(sampler2D t, vec4 r, vec2 p, float flip) {
   return mat;
 }
 
-// Fielder's glove (palm pocket, four fingers, thumb, laced web, cuff) or, when `mitt`, the catcher's round padded mitt.
-// In the mannequin's hand frame: the hand hangs along -y, the palm faces +z, the thumb is on +x.
-// The parts are merged into one leather and one lace mesh per glove size (2 draw calls per glove).
-const GLOVE = {};
-function makeGlove(THREE, r, mitt) {
-  const L = GLOVE.leather || (GLOVE.leather = new THREE.MeshStandardMaterial({ color: 0x8A5428, roughness: .62 }));
-  const D = GLOVE.lace || (GLOVE.lace = new THREE.MeshStandardMaterial({ color: 0x4A2A14, roughness: .7 }));
-  const key = r + (mitt ? 'm' : 'g');
-  if (!GLOVE[key]) {
+// Fielder's glove or catcher's mitt, in metres, in the glove's own frame: X toward the thumb, Y along the fingers (0 at the
+// wrist bone), the pocket on the palm side (z sign p, which depends on the hand). Built to swallow the player's real hand:
+// stalls run past the fingertips and the shell is thicker than the hand. Parts are merged into one leather and one lace
+// mesh per kind (2 draw calls per glove).
+const GEAR = {};
+function makeGlove(THREE, mitt, p) {
+  const L = GEAR.leather || (GEAR.leather = new THREE.MeshStandardMaterial({ color: 0x8A5428, roughness: .6 }));
+  const D = GEAR.lace || (GEAR.lace = new THREE.MeshStandardMaterial({ color: 0x3E2414, roughness: .72 }));
+  const key = (mitt ? 'mitt' : 'glove') + p;
+  if (!GEAR[key]) {
     const parts = { L: [], D: [] }, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
     const add = (geo, k, x, y, z, rz = 0, sx = 1, sy = 1, sz = 1) =>
-      parts[k].push(geo.toNonIndexed().applyMatrix4(m4.compose(new THREE.Vector3(x, y, z), q.setFromEuler(e.set(0, 0, rz)), new THREE.Vector3(sx, sy, sz))));
-    add(new THREE.CylinderGeometry(r * .42, r * .46, r * .32, 16), 'D', 0, -r * .05, 0);                 // cuff round the wrist
+      parts[k].push(geo.toNonIndexed().applyMatrix4(m4.compose(new THREE.Vector3(x, y, z * p), q.setFromEuler(e.set(0, 0, rz)), new THREE.Vector3(sx, sy, sz))));
+    const ball = () => new THREE.SphereGeometry(1, 18, 12);
+    add(new THREE.CylinderGeometry(.045, .047, .035, 16), 'D', 0, -.005, 0, 0, 1.25, 1, .78);            // wrist band round the opening
     if (mitt) {
-      add(new THREE.SphereGeometry(r, 20, 14), 'L', 0, -r * .85, 0, 0, 1, 1.05, .42);                     // padded disc
-      add(new THREE.TorusGeometry(r * .92, r * .14, 8, 28), 'D', 0, -r * .85, 0, 0, 1, 1.05, 1);          // laced rim
-      add(new THREE.SphereGeometry(r * .32, 12, 9), 'L', r * .85, -r * .55, 0, 0, 1, 1.3, .8);            // thumb pad
+      add(ball(), 'L', 0, .12, 0, 0, .13, .14, .065);                                                     // thick padded round body
+      add(new THREE.TorusGeometry(.122, .032, 8, 32), 'D', 0, .12, .01, 0, 1, 1.08, 1);                  // laced rim
+      add(ball(), 'D', 0, .125, .05, 0, .085, .09, .022);                                                 // darker pocket
+      add(new THREE.CapsuleGeometry(.03, .06, 4, 10), 'L', .11, .065, .01, -.6);                          // thumb pad
     } else {
-      add(new THREE.SphereGeometry(r * .62, 16, 12), 'L', 0, -r * .65, 0, 0, 1, 1.05, .5);                 // palm / pocket
-      [[-.42, -.06], [-.14, -.02], [.14, .02], [.4, .07]].forEach(([x, a], i) =>                          // four fingers, fanned
-        add(new THREE.CapsuleGeometry(r * .16, r * (i === 1 || i === 2 ? .95 : .8), 4, 10), 'L', r * x, -r * 1.45, 0, a, 1, 1, .8));
-      add(new THREE.CapsuleGeometry(r * .17, r * .75, 4, 10), 'L', r * .82, -r * .95, 0, -.55, 1, 1, .8);  // thumb
-      add(new THREE.BoxGeometry(r * .42, r * .7, r * .06), 'D', r * .6, -r * 1.55, 0, -.25);                // laced web between thumb and index
+      add(ball(), 'L', 0, .095, 0, 0, .078, .11, .038);                                                   // back and heel of the hand
+      add(ball(), 'L', .045, .06, .012, 0, .042, .055, .032);                                             // heel pad over the thumb's root
+      add(ball(), 'L', 0, .11, .022, 0, .062, .075, .02);                                                 // pocket
+      [[.04, .095, -.06], [.013, .105, -.02], [-.014, .095, .02], [-.04, .08, .07]].forEach(([x, len, rz]) =>   // finger stalls, fanned
+        add(new THREE.CapsuleGeometry(.021, len, 4, 10), 'L', x, .17 + len / 2, 0, rz));
+      add(new THREE.CapsuleGeometry(.027, .075, 4, 10), 'L', .072, .11, .014, -.45);                     // thumb stall
+      add(new THREE.BoxGeometry(.045, .075, .008), 'D', .058, .2, .012, -.3);                             // laced web between thumb and index
     }
     const merge = (list) => {
       const g = new THREE.BufferGeometry();
@@ -193,10 +205,28 @@ function makeGlove(THREE, r, mitt) {
       }
       return g;
     };
-    GLOVE[key] = { L: merge(parts.L), D: merge(parts.D) };
+    GEAR[key] = { L: merge(parts.L), D: merge(parts.D) };
   }
-  const g = new THREE.Group(); g.position.y = -.1;
-  for (const [k, mat] of [['L', L], ['D', D]]) { const m = new THREE.Mesh(GLOVE[key][k], mat); m.castShadow = true; g.add(m); }
+  const g = new THREE.Group();
+  for (const [k, mat] of [['L', L], ['D', D]]) { const m = new THREE.Mesh(GEAR[key][k], mat); m.castShadow = true; g.add(m); }
+  return g;
+}
+
+// A wood bat at real size (84 cm, 6.6 cm barrel, 2.7 cm handle) in scene units, for the mannequin's hand frame:
+// the knob sits 12 cm past the top hand on +y, the barrel runs down -y. Turned from a profile; grip tape on the handle.
+function makeBat(THREE) {
+  if (!GEAR.bat) {
+    const M = 5.9 / 1.75, top = .119;                         // scene units per metre; knob end above the hand (m)
+    const prof = [[0, .84], [.024, .835], [.031, .825], [.0335, .80], [.033, .62], [.028, .54], [.019, .45], [.0145, .38], [.0135, .30],
+      [.0135, .03], [.0145, .018], [.03, .012], [.03, .004], [.02, 0], [0, 0]];   // [radius, distance from the knob end] in m
+    const pts = prof.map(([r, d]) => new THREE.Vector2(r * M, (top - d) * M));   // barrel end first, so the faces point outward
+    GEAR.bat = {
+      wood: new THREE.LatheGeometry(pts, 24), tape: new THREE.CylinderGeometry(.0152 * M, .015 * M, .23 * M, 16).translate(0, (top - .025 - .115) * M, 0),
+      woodM: new THREE.MeshStandardMaterial({ color: 0xC9A06A, roughness: .42 }), tapeM: new THREE.MeshStandardMaterial({ color: 0x17171C, roughness: .9 })
+    };
+  }
+  const B = GEAR.bat, g = new THREE.Group();
+  for (const [geo, mat] of [[B.wood, B.woodM], [B.tape, B.tapeM]]) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; g.add(m); }
   return g;
 }
 
@@ -389,6 +419,7 @@ function makeFigureGLB(THREE, o, BD) {
   }
 
   const fig = { root, hips, torso, head, shR: aR.sh, elR: aR.el, handR: hand('R'), shL: aL.sh, elL: aL.el, handL: hand('L'), hipR: lR.hip, kneeR: lR.knee, hipL: lL.hip, kneeL: lL.knee, mats, phase: Math.random() * 6.28 };
+  fig.addGlove = (mitt) => { const G = BD.hand.L.glove, g = makeGlove(THREE, mitt, G.p); g.scale.setScalar(u); inBone('LeftHand', g, G.at, G.q); };   // on the left hand, around the real hand
   const play = clipPlayer(BD, bones, o.role || 'coach', fig);
   const neck = bones.Neck, headB = bones.Head, want = new THREE.Vector3(), seen = new THREE.Vector3(), hp = new THREE.Vector3(), hq = new THREE.Quaternion(), pq = new THREE.Quaternion(), dq = new THREE.Quaternion(), I = new THREE.Quaternion(), fw = new THREE.Vector3();
   let looked = false;

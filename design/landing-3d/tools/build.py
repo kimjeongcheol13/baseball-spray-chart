@@ -36,9 +36,16 @@ tpl = sub(tpl, "this.ball.castShadow = true; scene.add(this.ball);", "this.ball.
 for who, role in (('pitcher', 'pitcher'), ('batter', 'batter'), ('catcher', 'catcher'), ('ump', 'ump'), ('coach', 'coach')):
     tpl = sub(tpl, "this.%s = makeFigure(THREE, { " % who, "this.%s = makeFigure(THREE, { role: '%s', " % (who, role))
 tpl = sub(tpl, "const F = makeFigure(THREE, { kit: AWAY,", "const F = makeFigure(THREE, { role: 'fielder', kit: AWAY,")
-# gloves: a shaped glove / catcher's mitt (makeGlove in glbfig.js) instead of the mannequin's leather ball
+# gloves: a shaped glove / catcher's mitt round the real hand (fig.addGlove in glbfig.js); the mannequin fallback keeps a leather ball
+# bat: real size, turned from a profile (makeBat in glbfig.js)
+tpl = sub(tpl, "      const bat = new THREE.Group(); bat.position.y = -1.3; B.handR.add(bat);\n"
+               "      const wood = new THREE.MeshStandardMaterial({ color: 0xB8894F, roughness: .45 });\n"
+               "      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(.17, .1, 2.3, 16), wood); barrel.position.y = -.35; barrel.castShadow = true; bat.add(barrel);\n"
+               "      const grip = new THREE.Mesh(new THREE.CylinderGeometry(.1, .11, .95, 12), new THREE.MeshStandardMaterial({ color: 0x15151A, roughness: .95 })); grip.position.y = 1.25; grip.castShadow = true; bat.add(grip);\n"
+               "      const knob = new THREE.Mesh(new THREE.CylinderGeometry(.16, .13, .1, 12), wood); knob.position.y = 1.75; bat.add(knob);\n",
+               "      B.handR.add(makeBat(THREE));\n")
 tpl = sub(tpl, "const glove = (fig, r) => { const g = new THREE.Group(); g.position.y = -.1; fig.handL.add(g); const a = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), fig.mats.leather); a.scale.set(1, 1.15, .55); a.castShadow = true; g.add(a); const th = new THREE.Mesh(new THREE.SphereGeometry(r * .45, 10, 8), fig.mats.leather); th.position.set(r * .8, -r * .2, 0); th.castShadow = true; g.add(th); };",
-               "const glove = (fig, r) => fig.handL.add(makeGlove(THREE, r, r > .5));")
+               "const glove = (fig, r) => { if (fig.addGlove) return fig.addGlove(r > .5); const g = new THREE.Group(); g.position.y = -.1; fig.handL.add(g); const a = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), fig.mats.leather); a.scale.set(1, 1.15, .55); a.castShadow = true; g.add(a); };")
 # heads: the GLB bodies turn toward the point the page has everyone watching (pitcher: once the ball is released)
 tpl = sub(tpl, "      const watch = tau < 2.1 ? P.head.getWorldPosition(this.tmp) : this.tmp.copy(ballOrLanding);",
                "      const watch = tau < 2.1 ? P.head.getWorldPosition(this.tmp) : this.tmp.copy(ballOrLanding);\n"

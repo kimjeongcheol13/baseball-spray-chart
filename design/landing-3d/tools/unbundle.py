@@ -21,7 +21,7 @@ EXT = {
     './SprayChart.dc.html': 'js/landing/SprayChart.dc.html',
     'GLTFLoader': 'js/landing/vendor/GLTFLoader.js', 'BufferGeometryUtils': 'js/landing/vendor/BufferGeometryUtils.js',
     'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
-    **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'glove', 'mitt', 'mask')},
+    **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump', 'glove', 'mitt', 'mask')},
     'clips_shared.json': 'assets/landing/clips_shared.json',
 }
 SCRIPTS = {'text/javascript', 'application/javascript'}

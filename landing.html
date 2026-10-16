@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <script>
 // resource names the runtime asks for -> files next to this page (absolute, so blob modules can import them)
-(function () { var m = {"https://unpkg.com/react@18.3.1/umd/react.production.min.js": "js/landing/vendor/react.production.min.js", "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "js/landing/vendor/react-dom.production.min.js", "three.module": "js/landing/vendor/three.module.js", "three.core": "js/landing/vendor/three.core.js", "./SprayChart.dc.html": "js/landing/SprayChart.dc.html", "GLTFLoader": "js/landing/vendor/GLTFLoader.js", "BufferGeometryUtils": "js/landing/vendor/BufferGeometryUtils.js", "SkeletonUtils": "js/landing/vendor/SkeletonUtils.js", "player.glb": "assets/landing/player.glb", "player_helmet2.glb": "assets/landing/player_helmet2.glb", "player_cap.glb": "assets/landing/player_cap.glb", "player_cap2.glb": "assets/landing/player_cap2.glb", "player_cap3.glb": "assets/landing/player_cap3.glb", "glove.glb": "assets/landing/glove.glb", "mitt.glb": "assets/landing/mitt.glb", "mask.glb": "assets/landing/mask.glb", "clips_shared.json": "assets/landing/clips_shared.json"}, r = {}; for (var k in m) r[k] = new URL(m[k], location.href).href; window.__resources = r; })();
+(function () { var m = {"https://unpkg.com/react@18.3.1/umd/react.production.min.js": "js/landing/vendor/react.production.min.js", "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "js/landing/vendor/react-dom.production.min.js", "three.module": "js/landing/vendor/three.module.js", "three.core": "js/landing/vendor/three.core.js", "./SprayChart.dc.html": "js/landing/SprayChart.dc.html", "GLTFLoader": "js/landing/vendor/GLTFLoader.js", "BufferGeometryUtils": "js/landing/vendor/BufferGeometryUtils.js", "SkeletonUtils": "js/landing/vendor/SkeletonUtils.js", "player.glb": "assets/landing/player.glb", "player_helmet2.glb": "assets/landing/player_helmet2.glb", "player_cap.glb": "assets/landing/player_cap.glb", "player_cap2.glb": "assets/landing/player_cap2.glb", "player_cap3.glb": "assets/landing/player_cap3.glb", "player_ump.glb": "assets/landing/player_ump.glb", "glove.glb": "assets/landing/glove.glb", "mitt.glb": "assets/landing/mitt.glb", "mask.glb": "assets/landing/mask.glb", "clips_shared.json": "assets/landing/clips_shared.json"}, r = {}; for (var k in m) r[k] = new URL(m[k], location.href).href; window.__resources = r; })();
 window.slFrame = function () { return matchMedia('(max-width: 1023px)').matches ? 'mobile' : 'desktop'; };
 </script>
 <title>SprayLab — 타석 하나 찍으면 차트가 그려진다</title>
@@ -554,27 +554,29 @@ textarea.input { min-height: 90px; resize: vertical; }
   }
 
   // ---- realistic player ----
-  // Five Tripo-generated players (T-pose, auto-rigged with Tripo's Mixamo skeleton preset), packed by tools/pack_player.py:
-  // HELMETS (batter, catcher) and CAPS (alternating over pitcher, umpire, coach and fielders). The Mixamo motion is baked
+  // Six Tripo-generated players (T-pose, auto-rigged with Tripo's Mixamo skeleton preset), packed by tools/pack_player.py:
+  // HELMETS (batter, catcher), CAPS (alternating over pitcher, coach and fielders) and UMPIRE (navy polo, chest protector,
+  // grey slacks; worn as generated, no recolour or lettering). The Mixamo motion is baked
   // once, rig-independent, in `clips_shared.json` (harness/bake.html), and rigClips() turns it into local poses for each
   // rig at load time. The page's animation code still writes the mannequin's joint names (shR, elR, hipL, ...): here they
   // are invisible proxies, and fig.sync(tau) plays the motion on the real bones, then turns the head toward what the
   // page has everyone watching.
   // If the body or its motion fails to load, makeFigure() falls back to the procedural mannequin.
   let BODY = null, bodyP = null;
-  const HELMETS = ['player', 'player_helmet2'], CAPS = ['player_cap', 'player_cap2', 'player_cap3'];
-  // Tripo-generated gear (tools/pack_player.py ... .5). Each was generated from a front product shot; Tripo puts that front
-  // on -z with the top at +y (the image's left is then +x). `rot` turns it into the frame it is fitted in, `size` is its real height (m).
-  //   glove / mitt: fitted in the left hand's glove frame (X thumb, Y fingers, pocket on the palm side = -Z for the left hand);
-  //                 the shot shows the pocket with the thumb on the image's left, so it already fits
-  //   mask: fitted on the face (bind pose: the face looks along +z): a half turn about y
-  const PROPS = { glove: { size: .33, rot: [0, 0, 0] }, mitt: { size: .34, rot: [0, 0, 0] }, mask: { size: .30, rot: [0, Math.PI, 0] } };
-  // a prop clone, turned and scaled to `size` metres x u, placed so its box sits on (cx, y0, cz) measured from the bottom centre
+  const HELMETS = ['player', 'player_helmet2'], CAPS = ['player_cap', 'player_cap2', 'player_cap3'], UMPIRE = 'player_ump';
+  // Tripo-generated gear (tools/pack_player.py ... .5), top at +y. Which side is which was checked by rendering each from +z / -z
+  // (Tripo does not keep one convention). `rot` turns it into the frame it is fitted in, `mirror` flips x, `size` is its real height (m).
+  //   glove / mitt: fitted in the left hand's glove frame (X thumb, Y fingers, pocket on the palm side = -Z for the left hand)
+  //     glove: pocket on -z but thumb on -x, i.e. a right-hand glove: mirrored in x
+  //     mitt:  pocket on +z, thumb on -x (a left-hand mitt): a half turn about y
+  //   mask: fitted on the face (bind pose: the face looks along +z); the cage is on +z, so it is not turned
+  const PROPS = { glove: { size: .33, rot: [0, 0, 0], mirror: true }, mitt: { size: .34, rot: [0, Math.PI, 0] }, mask: { size: .30, rot: [0, 0, 0] } };
+  // a prop clone, turned (and mirrored) and scaled to `size` metres x u, its box's bottom centre on the origin
   function fitProp(THREE, P, u) {
-    const inner = P.scene.clone(true); inner.rotation.set(...P.rot);
+    const m = P.mirror ? -1 : 1, inner = P.scene.clone(true); inner.rotation.set(...P.rot); inner.scale.set(m, 1, 1);
     const holder = new THREE.Group(); holder.add(inner); holder.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(inner), k = P.size * u / (box.max.y - box.min.y);
-    inner.scale.setScalar(k); inner.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
+    inner.scale.set(m * k, k, k); inner.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
     holder.traverse(o => { if (o.isMesh) o.castShadow = true; });
     return { holder, depth: (box.max.z - box.min.z) * k };
   }
@@ -600,9 +602,9 @@ textarea.input { min-height: 90px; resize: vertical; }
       const prop = async (name) => {                         // optional: without it the procedural gear is used
         try { return (await new GLTFLoader().parseAsync(await resBlob(name + '.glb').then(b => b.arrayBuffer()), '')).scene; } catch (e) { return null; }
       };
-      const [all, props] = await Promise.all([Promise.all([...HELMETS, ...CAPS].map(one)), Promise.all(Object.keys(PROPS).map(prop))]);
+      const [all, props] = await Promise.all([Promise.all([...HELMETS, ...CAPS, UMPIRE].map(one)), Promise.all(Object.keys(PROPS).map(prop))]);
       Object.keys(PROPS).forEach((k, i) => { PROPS[k].scene = props[i]; });
-      return { helmets: all.slice(0, HELMETS.length), caps: all.slice(HELMETS.length) };
+      return { helmets: all.slice(0, HELMETS.length), caps: all.slice(HELMETS.length, -1), ump: all[all.length - 1] };
     })());
   }
 
@@ -882,6 +884,7 @@ textarea.input { min-height: 90px; resize: vertical; }
           sample('fidle', tt % ((C.fidle.n - 1) / C.fidle.fps), out);
           out[B * 4] += ox - C.fidle.h[0] / 1000; out[B * 4 + 2] += oz - C.fidle.h[2] / 1000;   // hips (h is in mm)
         };
+        fig.readyW = t < END ? 0 : t < HOLD ? smooth01((t - END - .2) / .6) : t < COME ? 1 - smooth01((t - HOLD) / .4) : 0;
         if (t < SET) sample('pitch', SET, O);
         else if (t < END) sample('pitch', t, O);
         else if (t < HOLD) { ready(t - END, O); sample('pitch', END, A); mix(A, O, smooth01((t - END) / .6), O); }
@@ -923,6 +926,7 @@ textarea.input { min-height: 90px; resize: vertical; }
         wRun += ((run > .5 ? 1 : 0) - wRun) * Math.min(1, dt * 8);
         if (catchT !== null) catchT += dt;
         const wT = catchT !== null ? 1 : 0; wC += (wT - wC) * Math.min(1, dt * (wT ? 10 : 5));
+        fig.readyW = (1 - wRun) * (1 - wC);
         sample('fidle', ph.fidle % dur('fidle'), A);
         if (wC > .002) { sample('fcatch', Math.min(catchT ?? dur('fcatch'), dur('fcatch')), Bp); mix(A, Bp, wC, A); }
         if (wRun > .002) { sample(rid, (back ? ph.jog : ph.run) % dur(rid), Bp); mix(A, Bp, wRun, O); } else O.set(A);
@@ -949,10 +953,10 @@ textarea.input { min-height: 90px; resize: vertical; }
     const root = G(), body = BD.SU.clone(BD.scene); body.scale.setScalar(k * s); root.add(body);
     let mesh = null; body.traverse(n => { if (n.isSkinnedMesh && !mesh) mesh = n; });
     const bones = {}; mesh.skeleton.bones.forEach(b => { bones[b.name.replace(/^mixamorig:?/, '')] = b; });
-    // the away side (SEOUL) wears the generated navy uniform as is; home, coach and umpire are recoloured
+    // the away side (SEOUL) and the umpire model wear their generated clothes as is; home and coach are recoloured
     const tone = new THREE.Color(o.skin ?? 0xC98C68), ref = new THREE.Color(0xC98C68);   // the page's skin palette, relative to its first tone
     const skin = new THREE.Vector3(...['r', 'g', 'b'].map(c => Math.min(1.15, Math.max(.45, 1 + (tone[c] / ref[c] - 1) * .6))));
-    mesh.material = playerMaterial(THREE, BD.mesh.material, { ...kit, keep: kit.name === 'SEOUL' }, n, BD, skin);
+    mesh.material = playerMaterial(THREE, BD.mesh.material, { ...kit, keep: kit.keep || kit.name === 'SEOUL' }, n, BD, skin);
     const far = o.role === 'fielder' || o.role === 'coach' || !o.role;   // small on screen: skip the costly skinned shadow pass
     mesh.castShadow = !far; mesh.receiveShadow = true; mesh.frustumCulled = false;   // skinned poses leave the bind bounds
     if (far) {
@@ -992,9 +996,9 @@ textarea.input { min-height: 90px; resize: vertical; }
     const mats = { leather: M(0x7A4A23), dark: M(0x15151A, { roughness: .5 }), gear: M(0x1C1E24, { roughness: .32, metalness: .1 }) };
     const put = (bone, geo, mat, worldPos, worldQ) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; return inBone(bone, m, worldPos, worldQ); };
     const sc = BD.skull, V = (x, y, z) => new THREE.Vector3(x, y, z);
-    if (kit.mask && PROPS.mask.scene) {                       // catcher / umpire mask: top on the forehead (12 cm above the eyes), pads resting on the face
+    if (kit.mask && PROPS.mask.scene) {                       // catcher / umpire mask: top on the forehead (12 cm above the eyes), cage 4.5 cm in front of the nose
       const { holder, depth } = fitProp(THREE, PROPS.mask, u), g = new THREE.Group(); g.add(holder);
-      inBone('Head', g, V(0, sc.eyeY + .12 * u - PROPS.mask.size * u, sc.face - .015 * u - depth / 2));
+      inBone('Head', g, V(0, sc.eyeY + .12 * u - PROPS.mask.size * u, sc.face + .045 * u - depth / 2));
     } else if (kit.mask) {                                   // fallback: bars curving round the face + two uprights
       const R = sc.face - sc.zc + .025 * u, ey = sc.eyeY;
       [[.03, .007], [-.012, .005], [-.05, .005], [-.088, .006]].forEach(([dy, r]) => {
@@ -1033,10 +1037,42 @@ textarea.input { min-height: 90px; resize: vertical; }
       dq.slerpQuaternions(I, dq, w * lim);
       bone.parent.getWorldQuaternion(pq); bone.quaternion.premultiply(pq).premultiply(dq).premultiply(pq.invert());
     };
+    const upArm = bones.LeftArm, fore = bones.LeftForeArm, handB = bones.LeftHand, Gq = BD.hand.L.glove.q;
+    const Lg = BD.restQ('LeftHand').invert().multiply(Gq.clone());                     // glove frame in the hand bone's own frame
+    const LgInv = Lg.clone().invert(), MS = 5.9 / 1.75 * s, sp = new THREE.Vector3(), ep = new THREE.Vector3(), wp = new THREE.Vector3(), tp = new THREE.Vector3();
+    const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), q1 = new THREE.Quaternion(), qd = new THREE.Quaternion(), mb = new THREE.Matrix4();
+    const X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+    const rotWorld = (bone, q) => { bone.parent.getWorldQuaternion(pq); bone.getWorldQuaternion(hq); bone.quaternion.copy(pq.invert().multiply(q.multiply(hq))); bone.updateWorldMatrix(false, true); };
+    const reach = (target, w) => {                           // two-bone IK, keeping the elbow on its side
+      upArm.updateWorldMatrix(true, true); upArm.getWorldPosition(sp); fore.getWorldPosition(ep); handB.getWorldPosition(wp);
+      const a = sp.distanceTo(ep), b = ep.distanceTo(wp); tp.copy(wp).lerp(target, w);
+      const d = Math.min(sp.distanceTo(tp), (a + b) * .999), dir = v1.subVectors(tp, sp).normalize();
+      const along = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - along * along));
+      const pole = v2.subVectors(ep, sp); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
+      const e2 = new THREE.Vector3().copy(sp).addScaledVector(dir, along).addScaledVector(pole, h);
+      rotWorld(upArm, q1.setFromUnitVectors(v2.subVectors(ep, sp).normalize(), e2.clone().sub(sp).normalize()));
+      fore.getWorldPosition(ep); handB.getWorldPosition(wp);
+      rotWorld(fore, q1.setFromUnitVectors(v2.subVectors(wp, ep).normalize(), tp.copy(sp).addScaledVector(dir, d).sub(ep).normalize()));
+    };
+    const aim = (point, w) => {                              // turn the glove so its pocket opens toward `point`, fingers up
+      handB.updateWorldMatrix(true, false); handB.getWorldPosition(wp);
+      Z.subVectors(point, wp); Z.y = Math.max(Z.y, 0) * .3 + .15 * Z.length(); Z.normalize().multiplyScalar(BD.hand.L.glove.p);   // pocket = p * Z
+      Y.copy(UP).addScaledVector(Z, -UP.dot(Z)).normalize(); X.crossVectors(Y, Z);
+      qd.setFromRotationMatrix(mb.makeBasis(X, Y, Z)).multiply(LgInv);                // the hand's world turn that gives that glove frame
+      handB.getWorldQuaternion(hq); hq.slerp(qd, w); handB.parent.getWorldQuaternion(pq);
+      handB.quaternion.copy(pq.invert().multiply(hq));
+    };
+    const gloved = o.role === 'fielder' || o.role === 'pitcher' || o.role === 'catcher';
     fig.sync = (tau) => {                                    // first call comes from the page's frame, after it has placed the figure
       if (!play || tau === undefined) return;
       play(tau);
       const at = fig.watch && fig.watch();
+      if (gloved) {
+        const rw = o.role === 'catcher' ? 0 : fig.readyW || 0;
+        if (rw > .01) reach(root.localToWorld(tp.set(.3 * MS, .45 * MS, .42 * MS)).clone(), rw);   // out in front of the left knee
+        const aw = o.role === 'catcher' ? 1 : rw;
+        if (aw > .01 && at) aim(at, aw);
+      }
       if (!at) { looked = false; return; }
       if (!looked) seen.copy(at); else seen.lerp(at, .25); looked = true;
       turnTo(neck, .4); turnTo(headB, .7);
@@ -1047,6 +1083,7 @@ textarea.input { min-height: 90px; resize: vertical; }
   let capTurn = 0;   // capped players take the cap models in turn, in the order the page creates them
   function makeFigure(THREE, o) {
     if (!BODY) return makeMannequin(THREE, o);
+    if (o.role === 'ump') return makeFigureGLB(THREE, { ...o, kit: { ...o.kit, keep: true } }, BODY.ump);   // its own protector, under the mask
     return makeFigureGLB(THREE, o, o.role === 'batter' ? BODY.helmets[0] : o.role === 'catcher' ? BODY.helmets[1] : BODY.caps[capTurn++ % BODY.caps.length]);
   }
 

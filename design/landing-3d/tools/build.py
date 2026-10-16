@@ -55,7 +55,7 @@ tpl = sub(tpl, "        const sw = Math.sin(t * 11 + i) * run;", "        const 
 # resources: body + three.js addons, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))
-PLAYERS = ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3')   # must match HELMETS + CAPS in src/glbfig.js
+PLAYERS = ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump')   # must match HELMETS + CAPS + UMPIRE in src/glbfig.js
 PROPS = ('glove', 'mitt', 'mask')   # must match PROPS in src/glbfig.js
 add = [(n + '.glb', os.path.join(ASSETS, n + '.glb'), 'model/gltf-binary') for n in PLAYERS + tuple(p for p in PROPS if os.path.exists(os.path.join(ASSETS, p + '.glb')))] + [('clips_shared.json', os.path.join(CLIPDIR, 'clips_shared.json'), 'application/json'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),
        ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')]

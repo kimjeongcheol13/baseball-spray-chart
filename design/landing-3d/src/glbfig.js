@@ -482,30 +482,49 @@ function makeFigureGLB(THREE, o, BD) {
     dq.slerpQuaternions(I, dq, w * lim);
     bone.parent.getWorldQuaternion(pq); bone.quaternion.premultiply(pq).premultiply(dq).premultiply(pq.invert());
   };
-  const upArm = bones.LeftArm, fore = bones.LeftForeArm, handB = bones.LeftHand, Gq = BD.hand.L.glove.q;
-  const Lg = BD.restQ('LeftHand').invert().multiply(Gq.clone());                     // glove frame in the hand bone's own frame
-  const LgInv = Lg.clone().invert(), MS = 5.9 / 1.75 * s, sp = new THREE.Vector3(), ep = new THREE.Vector3(), wp = new THREE.Vector3(), tp = new THREE.Vector3();
+  // Ready stance (fielders; the pitcher after his follow-through). The clip's crouch is shallow (hips 0.84 m, hands by the
+  // hips, arms only ~0.44 m long), so the hips sink 13 cm with the feet kept planted (leg IK), the back leans 20 deg more and
+  // both hands go out in front of the knees (arm IK). Every glove then turns so its pocket opens toward what the player is
+  // watching, its fingers following the forearm (down for a fielder, up for the catcher).
+  const B = bones, MS = 5.9 / 1.75 * s, UP = new THREE.Vector3(0, 1, 0);
+  const LgInv = BD.restQ('LeftHand').invert().multiply(BD.hand.L.glove.q.clone()).invert();   // hand bone frame from the glove frame
+  const sp = new THREE.Vector3(), ep = new THREE.Vector3(), wp = new THREE.Vector3(), tp = new THREE.Vector3(), e2 = new THREE.Vector3(), tg = new THREE.Vector3();
   const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), q1 = new THREE.Quaternion(), qd = new THREE.Quaternion(), mb = new THREE.Matrix4();
-  const X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+  const X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3();
+  const feet = ['Left', 'Right'].map(S => ({ up: B[S + 'UpLeg'], mid: B[S + 'Leg'], end: B[S + 'Foot'], p: new THREE.Vector3(), q: new THREE.Quaternion() }));
   const rotWorld = (bone, q) => { bone.parent.getWorldQuaternion(pq); bone.getWorldQuaternion(hq); bone.quaternion.copy(pq.invert().multiply(q.multiply(hq))); bone.updateWorldMatrix(false, true); };
-  const reach = (target, w) => {                           // two-bone IK, keeping the elbow on its side
-    upArm.updateWorldMatrix(true, true); upArm.getWorldPosition(sp); fore.getWorldPosition(ep); handB.getWorldPosition(wp);
+  const setWorldQ = (bone, q) => { bone.parent.getWorldQuaternion(pq); bone.quaternion.copy(pq.invert().multiply(q)); bone.updateWorldMatrix(false, true); };
+  const reach = (up, mid, end, target, w) => {             // two-bone IK toward `target` (by w), the middle joint kept on its side
+    up.updateWorldMatrix(true, true); up.getWorldPosition(sp); mid.getWorldPosition(ep); end.getWorldPosition(wp);
     const a = sp.distanceTo(ep), b = ep.distanceTo(wp); tp.copy(wp).lerp(target, w);
-    const d = Math.min(sp.distanceTo(tp), (a + b) * .999), dir = v1.subVectors(tp, sp).normalize();
+    const d = Math.max(1e-4, Math.min(sp.distanceTo(tp), (a + b) * .999)), dir = v1.subVectors(tp, sp).normalize();
     const along = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - along * along));
     const pole = v2.subVectors(ep, sp); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
-    const e2 = new THREE.Vector3().copy(sp).addScaledVector(dir, along).addScaledVector(pole, h);
-    rotWorld(upArm, q1.setFromUnitVectors(v2.subVectors(ep, sp).normalize(), e2.clone().sub(sp).normalize()));
-    fore.getWorldPosition(ep); handB.getWorldPosition(wp);
-    rotWorld(fore, q1.setFromUnitVectors(v2.subVectors(wp, ep).normalize(), tp.copy(sp).addScaledVector(dir, d).sub(ep).normalize()));
+    e2.copy(sp).addScaledVector(dir, along).addScaledVector(pole, h);
+    rotWorld(up, q1.setFromUnitVectors(v2.subVectors(ep, sp).normalize(), e2.sub(sp).normalize()));
+    mid.getWorldPosition(ep); end.getWorldPosition(wp);
+    rotWorld(mid, q1.setFromUnitVectors(v2.subVectors(wp, ep).normalize(), tp.copy(sp).addScaledVector(dir, d).sub(ep).normalize()));
   };
-  const aim = (point, w) => {                              // turn the glove so its pocket opens toward `point`, fingers up
-    handB.updateWorldMatrix(true, false); handB.getWorldPosition(wp);
-    Z.subVectors(point, wp); Z.y = Math.max(Z.y, 0) * .3 + .15 * Z.length(); Z.normalize().multiplyScalar(BD.hand.L.glove.p);   // pocket = p * Z
-    Y.copy(UP).addScaledVector(Z, -UP.dot(Z)).normalize(); X.crossVectors(Y, Z);
-    qd.setFromRotationMatrix(mb.makeBasis(X, Y, Z)).multiply(LgInv);                // the hand's world turn that gives that glove frame
-    handB.getWorldQuaternion(hq); hq.slerp(qd, w); handB.parent.getWorldQuaternion(pq);
-    handB.quaternion.copy(pq.invert().multiply(hq));
+  const hw = new THREE.Vector3(), rq = new THREE.Quaternion();
+  const ahead = (x, y, z) => tg.set(x * MS, y * MS, z * MS).applyQuaternion(rq).add(hw);   // metres from the ground under the hips, root axes
+  const ready = (w) => {
+    feet.forEach(f => { f.end.getWorldPosition(f.p); f.end.getWorldQuaternion(f.q); });
+    root.getWorldQuaternion(rq); B.Hips.getWorldPosition(hw); hw.y = root.getWorldPosition(v1).y;   // the pitcher's stance is a stride off his root
+    B.Hips.getWorldPosition(v1); v1.y -= .13 * MS * w; B.Hips.parent.worldToLocal(v1); B.Hips.position.copy(v1); B.Hips.updateWorldMatrix(false, true);
+    rotWorld(B.Spine, q1.setFromAxisAngle(v2.set(1, 0, 0).applyQuaternion(rq), .35 * w));   // lean forward
+    feet.forEach(f => { reach(f.up, f.mid, f.end, f.p, 1); setWorldQ(f.end, f.q); });
+    reach(B.LeftArm, B.LeftForeArm, B.LeftHand, ahead(.14, .58, .45), w);      // glove hand: in front of the knees, left of centre
+    reach(B.RightArm, B.RightForeArm, B.RightHand, ahead(-.1, .6, .45), w);    // bare hand beside it
+  };
+  const aim = (point, w, tilt) => {                       // pocket toward `point` (tilted up by `tilt`), fingers along the forearm
+    const hand = B.LeftHand; hand.updateWorldMatrix(true, false); hand.getWorldPosition(wp); B.LeftForeArm.getWorldPosition(ep);
+    Z.subVectors(point, wp); Z.y = Math.max(Z.y, 0) * .3 + tilt * Z.length(); Z.normalize();
+    Y.subVectors(wp, ep).normalize(); Y.addScaledVector(Z, -Y.dot(Z));
+    if (Y.lengthSq() < .04) Y.copy(UP).addScaledVector(Z, -UP.dot(Z));    // forearm pointing at the target: fingers up
+    Y.normalize(); Z.multiplyScalar(BD.hand.L.glove.p); X.crossVectors(Y, Z);    // glove frame: X thumb, Y fingers, pocket = p * Z
+    qd.setFromRotationMatrix(mb.makeBasis(X, Y, Z)).multiply(LgInv);           // the hand's world turn that gives that glove frame
+    hand.getWorldQuaternion(hq); hq.slerp(qd, w); hand.parent.getWorldQuaternion(pq);
+    hand.quaternion.copy(pq.invert().multiply(hq));
   };
   const gloved = o.role === 'fielder' || o.role === 'pitcher' || o.role === 'catcher';
   fig.sync = (tau) => {                                    // first call comes from the page's frame, after it has placed the figure
@@ -513,10 +532,9 @@ function makeFigureGLB(THREE, o, BD) {
     play(tau);
     const at = fig.watch && fig.watch();
     if (gloved) {
-      const rw = o.role === 'catcher' ? 0 : fig.readyW || 0;
-      if (rw > .01) reach(root.localToWorld(tp.set(.3 * MS, .45 * MS, .42 * MS)).clone(), rw);   // out in front of the left knee
-      const aw = o.role === 'catcher' ? 1 : rw;
-      if (aw > .01 && at) aim(at, aw);
+      const rw = o.role === 'catcher' ? 0 : fig.readyW || 0, aw = o.role === 'catcher' ? 1 : rw;
+      if (rw > .01) ready(rw);
+      if (aw > .01 && at) aim(at, aw, o.role === 'catcher' ? .15 : .4);
     }
     if (!at) { looked = false; return; }
     if (!looked) seen.copy(at); else seen.lerp(at, .25); looked = true;

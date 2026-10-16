@@ -1,11 +1,10 @@
 # Rebuild the landing bundle: python3 tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_Landing.glb.html
-# harness/clips/clips.json (baked Mixamo motion, not in git) is embedded when present; without it the figures use the mannequin keyframes.
+# Needs the player GLBs in assets/ (tools/pack_player.py) and harness/clips/clips_shared.json (harness/bake.html).
 import sys, re, json, gzip, base64, uuid, os
 src, figjs, out = sys.argv[1:4]
 HERE = os.path.dirname(os.path.abspath(__file__))
 J = os.path.join(HERE, '..', 'vendor', 'three-0.184.0', 'examples', 'jsm') + os.sep
-BODY = os.path.join(HERE, '..', 'assets', 'body.glb')
-CLIPS = os.path.join(HERE, '..', 'harness', 'clips', 'clips.json')
+ASSETS, CLIPDIR = os.path.join(HERE, '..', 'assets'), os.path.join(HERE, '..', 'harness', 'clips')
 html = open(src, encoding='utf-8').read()
 def block(kind):
     m = re.search(r'(<script type="__bundler/%s">)(.*?)(</script>)' % kind, html, re.S); return m
@@ -31,19 +30,27 @@ tpl = sub(tpl, "      if (tau < 2.1) { P.handR.getWorldPosition(ball.position); 
 # (6) copy every figure's proxy pose onto its bones right before drawing
 tpl = sub(tpl, "      this.renderer.render(this.scene, this.camera);",
                "      (this.figs || (this.figs = [this.pitcher, this.batter, this.catcher, this.ump, this.coach, ...this.fielders.map(f => f.F)])).forEach(f => f.sync && f.sync(tau));\n      this.renderer.render(this.scene, this.camera);")
-# ball was sized for the mannequin; next to a real-scale body it reads as a volleyball
-tpl = sub(tpl, "this.ball.castShadow = true; scene.add(this.ball);", "this.ball.castShadow = true; scene.add(this.ball); if (BODY) this.ball.scale.setScalar(.6);")
+# ball was sized for the mannequin; next to a real-scale body it reads as a volleyball (regulation ball ~7.4 cm)
+tpl = sub(tpl, "this.ball.castShadow = true; scene.add(this.ball);", "this.ball.castShadow = true; scene.add(this.ball); if (BODY) this.ball.scale.setScalar(.3);")
 # roles let the GLB figures pick their baked Mixamo motion
-for who, role in (('pitcher', 'pitcher'), ('batter', 'batter'), ('catcher', 'catcher'), ('ump', 'ump')):
+for who, role in (('pitcher', 'pitcher'), ('batter', 'batter'), ('catcher', 'catcher'), ('ump', 'ump'), ('coach', 'coach')):
     tpl = sub(tpl, "this.%s = makeFigure(THREE, { " % who, "this.%s = makeFigure(THREE, { role: '%s', " % (who, role))
 tpl = sub(tpl, "const F = makeFigure(THREE, { kit: AWAY,", "const F = makeFigure(THREE, { role: 'fielder', kit: AWAY,")
+# gloves: a shaped glove / catcher's mitt (makeGlove in glbfig.js) instead of the mannequin's leather ball
+tpl = sub(tpl, "const glove = (fig, r) => { const g = new THREE.Group(); g.position.y = -.1; fig.handL.add(g); const a = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), fig.mats.leather); a.scale.set(1, 1.15, .55); a.castShadow = true; g.add(a); const th = new THREE.Mesh(new THREE.SphereGeometry(r * .45, 10, 8), fig.mats.leather); th.position.set(r * .8, -r * .2, 0); th.castShadow = true; g.add(th); };",
+               "const glove = (fig, r) => fig.handL.add(makeGlove(THREE, r, r > .5));")
+# heads: the GLB bodies turn toward the point the page has everyone watching (pitcher: once the ball is released)
+tpl = sub(tpl, "      const watch = tau < 2.1 ? P.head.getWorldPosition(this.tmp) : this.tmp.copy(ballOrLanding);",
+               "      const watch = tau < 2.1 ? P.head.getWorldPosition(this.tmp) : this.tmp.copy(ballOrLanding);\n"
+               "      const W8 = this.watchAt || (this.watchAt = watch.clone()); W8.copy(watch); if (!this.watchSet) { this.watchSet = true; const all = () => W8, rel = () => this.released ? W8 : null; [B, C, U, K, ...this.fielders.map(f => f.F)].forEach(f => { f.watch = all; }); P.watch = rel; }")
 # fielders: tell the GLB body when the page has this fielder running
 tpl = sub(tpl, "        const sw = Math.sin(t * 11 + i) * run;", "        const sw = Math.sin(t * 11 + i) * run; F.run = run;")
 # resources: body + three.js addons, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))
-add = [('body.glb', BODY, 'model/gltf-binary'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),
-       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')] + ([('clips.json', CLIPS, 'application/json')] if os.path.exists(CLIPS) else [])
+PLAYERS = ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3')   # must match HELMETS + CAPS in src/glbfig.js
+add = [(n + '.glb', os.path.join(ASSETS, n + '.glb'), 'model/gltf-binary') for n in PLAYERS] + [('clips_shared.json', os.path.join(CLIPDIR, 'clips_shared.json'), 'application/json'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),
+       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')]
 for rid, path, mime in add:
     u = str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid)); raw = open(path, 'rb').read()
     manifest[u] = {'mime': mime, 'compressed': True, 'data': base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode()}

@@ -7,6 +7,40 @@ Claude Design으로 내보낸 랜딩 페이지(`source/SprayLab_Landing.orig.htm
 - 결과물: `SprayLab_Landing.glb.html` (6.0MB, 브라우저로 바로 열림). 원본 4.87MB.
 - 미리보기: `previews/compare_glb.png`(마네킹 vs GLB), `previews/jersey_print.png`(등번호·로고), `previews/mocap_preview.png`(Mixamo 동작), `previews/fielder_sheet.png`(야수 대기·달리기·받기·복귀)
 
+## 지금 쓰는 선수: Tripo 생성 모델 (2026-10-16)
+
+아래 "무엇을 바꿨나"의 CC0 몸(정점 색 유니폼)은 마네킹처럼 보여서, 실사 텍스처 선수로 바꿨다.
+
+- 모델 5개, 모두 Tripo Studio(정철님 계정)에서 같은 절차로 만들었다: 이미지 생성(T자 자세·빈손) → 3D 생성(HD) →
+  Retopology 삼각형 2만 → Auto Rig(Humanoid, 스켈레톤 프리셋 Mixamo) → GLB(텍스처 2k, 뼈대 포함). 크레딧 1명당 약 110.
+  - 헬멧: `player`(타자), `player_helmet2`(포수, 넓은 어깨)
+  - 모자: `player_cap`(마른 체형), `player_cap2`(다부진 체형·수염), `player_cap3`(키 크고 마른 체형) — 투수·심판·코치·야수 7명이 만들어지는 순서대로 돌아가며 쓴다.
+  - 목록은 `src/glbfig.js`의 HELMETS·CAPS와 `tools/build.py`의 PLAYERS가 같아야 한다.
+- `tools/pack_player.py 받은.glb assets/<이름>.glb`: 텍스처는 JPEG 1024(색)/512(노멀)/256(금속·거칠기), 정점 데이터는
+  KHR_mesh_quantization(노멀 int8·UV uint16·뼈 번호 uint8·가중치 uint8 합 255·인덱스 uint16, 위치는 float 유지)으로 줄인다.
+  three의 GLTFLoader가 추가 라이브러리 없이 읽는다. 8.2–8.8MB → 1.16–1.24MB.
+- 동작: `harness/bake.html`(인자 없음)이 Mixamo FBX 9개를 리그와 무관한 형태로 한 번 굽는다(`harness/clips/clips_shared.json`, gitignore,
+  배포본 437KB): 뼈마다 기본 자세 대비 월드 회전 변화, 첫 자식 방향, 엉덩이 이동(엉덩이 높이 단위).
+  페이지가 불러올 때 `rigClips()`가 리그마다 로컬 자세로 바꾼다(`harness/retarget.js`와 같은 계산).
+  검증: `bake.html?body=../assets/<이름>.glb`로 그 리그에 직접 구운 결과를 `clips/clips_<이름>.json`으로 저장하고
+  `harness/check_shared.html?rig=<이름>`을 열면 클립별 최대 차이를 보여준다(player·player_cap 모두 뼈 0.007°, 엉덩이 0.5mm — int16 반올림 수준, PASS).
+  `Baseball_Hit_2.fbx`는 Mixamo에서 받은 `Baseball Hit (2).fbx`다.
+- 화면(`src/glbfig.js`): 모델 자체 PBR 재질에 팀 색만 셰이더로 바꾼다. 남색(저지·헬멧, 헬멧·모자는 머리 뼈 가중치로 구분)과 흰색(바지)을 키트 색으로, 명도 비율은 유지한다.
+  원정(SEOUL: 투수·포수·야수)은 생성된 남색 그대로, 홈(타자: 흰 저지+빨간 핀스트라이프·빨간 헬멧, 코치: 빨간 저지)·심판(짙은 셔츠·회색 바지)은 바꾼다.
+  - 등번호·가슴 글자·모자/헬멧 앞 글자(SPRAYLAB은 SL, SEOUL은 S): 캔버스 텍스처를 바인드 자세 좌표로 투영해 원래 남색 천에만 찍는다. 심판은 없음.
+  - 선수마다 키 ±4%(등번호로 고정), 피부톤은 페이지의 SKIN 팔레트를 기준색 대비 비율로 피부 픽셀에만 곱한다.
+  - 시선: 모션 위에 목 40%·머리 70%만큼 페이지가 모두에게 보게 하는 지점(투구 전 투수, 그 뒤 공·낙하 지점)으로 돌린다. 최대 약 60°, 등 뒤는 돌리지 않는다. 투수는 공을 놓은 뒤부터.
+  - 장비: 마스크는 턱에서 11.5cm 위를 눈높이로 잡아 얼굴 반경 9cm로 감싼다. 포수 가슴·정강이 보호대는 유광 검정, 무릎 덮개. 글러브는 `makeGlove`(손가락·끈 웹, 포수는 미트), 가죽·끈 메시 2개로 합친다.
+  - 공은 실제 크기(지름 약 7.4cm). 타자는 팔로스루를 잠깐(4.6초까지) 멈췄다가 1.8초에 걸쳐 대기 자세로 돌아간다.
+  - 야수·코치는 화면에서 작아서 그림자 맵 대신 발밑 부드러운 원 그림자를 쓴다(스키닝 그림자 패스 비용 절약).
+  - 손(방망이·글러브·태블릿)과 마스크·보호대는 바인드 자세 좌표로 놓고 뼈의 기본 회전을 풀어 붙인다. 코치는 야수 대기 동작을 쓴다.
+  - 모델이나 동작 데이터가 없으면 절차적 마네킹으로 대체된다.
+- 빌드는 그대로(`tools/build.py` → `tools/unbundle.py`). 배포 파일은 `assets/landing/`의 GLB 5개와 `clips_shared.json`(합 6.2MB, 원래 몸은 1.5MB).
+- 성능(데스크톱 Chrome, 390px 모바일 아트보드, 매 프레임 GPU 동기화, 같은 실행에서 번갈아 측정): 원래 7.0·16.6ms, 지금 6.8·8.4ms(중앙값), 그리기 호출 233 → 190–264.
+  값이 실행마다 흔들리지만 원래보다 무겁지 않다. 실제 휴대폰에서는 재지 않았다.
+- 한계: 같은 모델을 쓰는 선수끼리는 얼굴이 같다(키·피부톤은 다름). 팀 로고 그림은 없고 글자만 있다.
+- 라이선스: Tripo 무료 플랜 생성물은 공개되며 CC BY 4.0으로 안내된다(상업 사용 범위는 출처마다 다르게 설명 — Tripo 약관 확인 필요). 출처 표기: "3D player model generated with Tripo AI".
+
 ## 무엇을 바꿨나
 
 - 몸: CC0 사람 몸 + Mixamo 이름 뼈대 52개. 유니폼·벨트·양말은 정점 색, 헬멧·모자·마스크·보호대·스파이크는 뼈에 붙인 메시.

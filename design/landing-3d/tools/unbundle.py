@@ -21,7 +21,8 @@ EXT = {
     './SprayChart.dc.html': 'js/landing/SprayChart.dc.html',
     'GLTFLoader': 'js/landing/vendor/GLTFLoader.js', 'BufferGeometryUtils': 'js/landing/vendor/BufferGeometryUtils.js',
     'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
-    'body.glb': 'assets/landing/body.glb', 'clips.json': 'assets/landing/clips.json',
+    **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3')},
+    'clips_shared.json': 'assets/landing/clips_shared.json',
 }
 SCRIPTS = {'text/javascript', 'application/javascript'}
 by_uuid = {e['uuid']: e['id'] for e in ext}

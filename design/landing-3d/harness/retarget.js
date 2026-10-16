@@ -1,5 +1,7 @@
-// Retarget a Mixamo clip (T-pose rest, mixamorig bones) onto the CC0 body (A-pose rest, identity bone rotations).
-// Per bone: world delta from the source rest, applied after aligning the target rest bone direction to the source's.
+// Retarget a Mixamo clip (T-pose rest, mixamorig bones) onto a target body (the CC0 A-pose body with identity bone
+// rotations, or a rig with its own rest rotations such as Tripo's Mixamo preset).
+// Per bone: world delta from the source rest, applied after aligning the target rest bone direction to the source's,
+// on top of the target bone's own rest orientation.
 import * as THREE from 'three';
 const strip = (n) => n.replace(/^mixamorig:?/, '');
 export function makeRetargeter(srcRoot, tgtBones) {
@@ -20,6 +22,8 @@ export function makeRetargeter(srcRoot, tgtBones) {
   }
   // fingers/toes inherit their parent's alignment when they have no child to measure
   for (const n of names) if (C[n].equals(new THREE.Quaternion())) { let p = tgtBones[n].parent; while (p && p.isBone && C[strip(p.name)] && C[strip(p.name)].equals(new THREE.Quaternion())) p = p.parent; if (p && p.isBone && C[strip(p.name)]) C[n].copy(C[strip(p.name)]); }
+  const T0 = {}; for (const n of names) T0[n] = tgtBones[n].getWorldQuaternion(new THREE.Quaternion());   // target rest orientation
+  const P0inv = tgtBones.Hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert();                    // the root's non-bone parent
   const hipsS0 = wp(src.Hips), hipsT0 = tgtBones.Hips.position.clone();
   const ratio = tgtBones.Hips.getWorldPosition(new THREE.Vector3()).y / Math.max(1e-6, hipsS0.y - srcRoot.getWorldPosition(new THREE.Vector3()).y);   // hip height ratio (both rest on y = 0)
   const W = {}, q = new THREE.Quaternion();
@@ -32,11 +36,11 @@ export function makeRetargeter(srcRoot, tgtBones) {
       srcRoot.updateMatrixWorld(true);
       for (const n of ordered) {
         const tb = tgtBones[n];
-        W[n] = src[n].getWorldQuaternion(new THREE.Quaternion()).multiply(S0inv[n]).multiply(C[n]);   // target world rotation
+        W[n] = src[n].getWorldQuaternion(new THREE.Quaternion()).multiply(S0inv[n]).multiply(C[n]).multiply(T0[n]);   // target world rotation
         const pn = tb.parent && tb.parent.isBone ? strip(tb.parent.name) : null;
-        tb.quaternion.copy(pn && W[pn] ? q.copy(W[pn]).invert().multiply(W[n]) : W[n]);
+        tb.quaternion.copy(pn && W[pn] ? q.copy(W[pn]).invert().multiply(W[n]) : q.copy(P0inv).multiply(W[n]));
       }
-      const d = wp(src.Hips).sub(hipsS0).multiplyScalar(ratio / tgtBones.Hips.parent.getWorldScale(new THREE.Vector3()).y);
+      const d = wp(src.Hips).sub(hipsS0).multiplyScalar(ratio / tgtBones.Hips.parent.getWorldScale(new THREE.Vector3()).y).applyQuaternion(P0inv);
       tgtBones.Hips.position.copy(hipsT0).add(d);
     }
   };

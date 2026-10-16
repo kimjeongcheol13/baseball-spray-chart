@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body><pre id="out">running…</pre><script type="module">
+// Regression check for the shared motion: rigClips() (src/glbfig.js) on clips/clips_shared.json must give the same local
+// poses as retargeting straight onto the rig (bake.html?body=<rig>, saved as clips/clips_<rig>.json).
+//   check_shared.html?rig=player   -> prints the worst bone angle (deg) and hips offset (mm) per clip; PASS under 0.2 deg / 1 mm
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
+const rigName = new URLSearchParams(location.search).get('rig') || 'player';
+const src = await (await fetch('../src/glbfig.js')).text();
+const fn = src.slice(src.indexOf('// <rigClips>'), src.indexOf('// </rigClips>'));
+const rigClips = new Function('THREE', fn + '\nreturn rigClips;')(THREE);
+const gltf = await new GLTFLoader().loadAsync(`../assets/${rigName}.glb`);
+let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+const rig = {}; mesh.skeleton.bones.forEach(b => { rig[b.name.replace(/^mixamorig:?/, '')] = b; });
+const S = await (await fetch('./clips/clips_shared.json')).json(), R = await (await fetch(`./clips/clips_${rigName}.json`)).json();
+const got = rigClips(THREE, S, rig);
+const i16 = (b) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return new Int16Array(u.buffer); };
+const lines = []; let ok = true;
+for (const id in R.clips) {
+  const r = R.clips[id], g = got[id], rq = i16(r.q), rh = i16(r.hips), B = r.bones.length;
+  if (!g || g.bones.join() !== r.bones.join() || g.n !== r.n) { lines.push(id + ' bone list / length differs'); ok = false; continue; }
+  let worst = 0, hw = 0;
+  for (let k = 0; k < r.n * B; k++) {
+    const a = new THREE.Quaternion(rq[k * 4], rq[k * 4 + 1], rq[k * 4 + 2], rq[k * 4 + 3]).normalize(), b = new THREE.Quaternion().fromArray(g.q, k * 4).normalize();
+    worst = Math.max(worst, a.angleTo(b) * 180 / Math.PI);
+  }
+  for (let k = 0; k < r.n * 3; k++) hw = Math.max(hw, Math.abs(rh[k] - g.h[k]));
+  ok = ok && worst < .2 && hw < 1;
+  lines.push(`${id.padEnd(8)} max bone angle ${worst.toFixed(3)} deg  max hips ${hw.toFixed(2)} mm`);
+}
+document.getElementById('out').textContent = lines.join('\n') + '\n' + (ok ? 'PASS' : 'FAIL');
+window.__result = { ok, lines };
+</script>

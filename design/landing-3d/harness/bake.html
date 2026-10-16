@@ -1,7 +1,12 @@
 <!doctype html><meta charset="utf-8">
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
 <body><script type="module">
-// Bake retargeted Mixamo windows into compact local-pose tracks for the CC0 body (30 fps, int16).
+// Bake the Mixamo windows (30 fps, int16) used by the landing players.
+//   bake.html               -> shared, rig-independent tracks (clips_shared.json): per bone the world rotation delta from
+//                              the clip's rest pose, the rest direction to its first child, and the hips delta in hip heights.
+//                              rigClips() in src/glbfig.js turns them into local poses for each player rig at load time.
+//   bake.html?body=<glb>    -> the same windows retargeted onto one rig (local poses), as harness/retarget.js does;
+//                              check_shared.html compares this with rigClips() on the shared file.
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
@@ -10,25 +15,53 @@ const JOBS = [  // id, file, window start, end (s; null = whole clip, for loops)
   ['idle', 'Baseball_Idle', 0, 1.5], ['pitch', 'Baseball_Pitching', 0, 5.2], ['swing', 'Baseball_Hit_2', 0, 2.2],
   ['catcher', 'Baseball_Catcher', 0, .9], ['ump', 'Baseball_Umpire', 0, .6],
   ['fidle', 'Goalkeeper_Idle', 0, null], ['run', 'Running', 0, null], ['jog', 'Jogging', 0, null], ['fcatch', 'Goalkeeper_Catch', 0, .9, true]];
-const gltf = await new GLTFLoader().loadAsync('../assets/body.glb');
-let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
-const bones = {}; mesh.skeleton.bones.forEach(b => bones[b.name.replace(/^mixamorig:?/, '')] = b);
-const rest = {}; for (const n in bones) rest[n] = { q: bones[n].quaternion.clone(), p: bones[n].position.clone() };
-const b64 = (i16) => { const u8 = new Uint8Array(i16.buffer); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const strip = (n) => n.replace(/^mixamorig:?/, '');
+const b64 = (ta) => { const u8 = new Uint8Array(ta.buffer); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const q16 = (v, q, at) => { if (v.w < 0) v.set(-v.x, -v.y, -v.z, -v.w); [v.x, v.y, v.z, v.w].forEach((c, k) => q[at + k] = Math.round(c * 32767)); };
+const body = new URLSearchParams(location.search).get('body');
 const out = { fps: 30, clips: {} };
+let bones, rest, scene;
+if (body) {
+  const gltf = await new GLTFLoader().loadAsync(body); scene = gltf.scene;
+  let mesh; scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+  bones = {}; mesh.skeleton.bones.forEach(b => bones[strip(b.name)] = b);
+  rest = {}; for (const n in bones) rest[n] = { q: bones[n].quaternion.clone(), p: bones[n].position.clone() };
+} else out.shared = 1;
 for (const [id, file, t0, t1_, lockXZ] of JOBS) {
-  for (const n in bones) { bones[n].quaternion.copy(rest[n].q); bones[n].position.copy(rest[n].p); } gltf.scene.updateMatrixWorld(true);
   const fbx = await new FBXLoader().loadAsync('./clips/' + file + '.fbx'), clip = fbx.animations[0];
-  const rt = makeRetargeter(fbx, bones), mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
-  const t1 = t1_ === null ? clip.duration : t1_;
-  const names = rt.names, B = names.length, N = Math.round((t1 - t0) * 30) + 1;
-  const q = new Int16Array(N * B * 4), h = new Int16Array(N * 3);
-  for (let f = 0; f < N; f++) {
-    mixer.setTime(Math.min(t0 + f / 30, clip.duration - 1e-4)); rt.apply();
-    names.forEach((n, i) => { const v = bones[n].quaternion; if (v.w < 0) v.set(-v.x, -v.y, -v.z, -v.w); [v.x, v.y, v.z, v.w].forEach((c, k) => q[(f * B + i) * 4 + k] = Math.round(c * 32767)); });
-    const p = bones.Hips.position; if (lockXZ && f > 0) { p.x = h[0] / 1000; p.z = h[2] / 1000; } h[f * 3] = Math.round(p.x * 1000); h[f * 3 + 1] = Math.round(p.y * 1000); h[f * 3 + 2] = Math.round(p.z * 1000);   // mm
+  const mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
+  const t1 = t1_ === null ? clip.duration : t1_, N = Math.round((t1 - t0) * 30) + 1;
+  const at = (f) => mixer.setTime(Math.min(t0 + f / 30, clip.duration - 1e-4));
+  if (body) {
+    for (const n in bones) { bones[n].quaternion.copy(rest[n].q); bones[n].position.copy(rest[n].p); } scene.updateMatrixWorld(true);
+    const rt = makeRetargeter(fbx, bones), names = rt.names, B = names.length;
+    const q = new Int16Array(N * B * 4), h = new Int16Array(N * 3);
+    for (let f = 0; f < N; f++) {
+      at(f); rt.apply();
+      names.forEach((n, i) => q16(bones[n].quaternion, q, (f * B + i) * 4));
+      const p = bones.Hips.position; if (lockXZ && f > 0) { p.x = h[0] / 1000; p.z = h[2] / 1000; } h[f * 3] = Math.round(p.x * 1000); h[f * 3 + 1] = Math.round(p.y * 1000); h[f * 3 + 2] = Math.round(p.z * 1000);   // mm
+    }
+    out.clips[id] = { src: file, from: t0, loop: t1_ === null, n: N, bones: names, q: b64(q), hips: b64(h) };
+    continue;
   }
-  out.clips[id] = { src: file, from: t0, loop: t1_ === null, n: N, bones: names, q: b64(q), hips: b64(h) };
+  // shared: everything measured on the clip's own rest pose (the FBX as loaded, before the mixer runs)
+  fbx.updateMatrixWorld(true);
+  const src = {}, order = []; fbx.traverse(o => { if (o.isBone) { src[strip(o.name)] = o; order.push(strip(o.name)); } });
+  const wp = (b) => b.getWorldPosition(new THREE.Vector3());
+  const S0inv = order.map(n => src[n].getWorldQuaternion(new THREE.Quaternion()).invert());
+  const child = order.map(n => { const c = src[n].children.find(c => c.isBone); return c ? strip(c.name) : null; });
+  const sd = new Float32Array(order.length * 3);
+  order.forEach((n, i) => { if (child[i]) wp(src[child[i]]).sub(wp(src[n])).normalize().toArray(sd, i * 3); });
+  const hips0 = wp(src.Hips), hipH = hips0.y - fbx.getWorldPosition(new THREE.Vector3()).y, B = order.length;
+  const d = new Int16Array(N * B * 4), h = new Int16Array(N * 3), w = new THREE.Quaternion();
+  for (let f = 0; f < N; f++) {
+    at(f); fbx.updateMatrixWorld(true);
+    order.forEach((n, i) => q16(src[n].getWorldQuaternion(w).multiply(S0inv[i]), d, (f * B + i) * 4));
+    const p = wp(src.Hips).sub(hips0).divideScalar(hipH);                       // in hip heights
+    if (lockXZ && f > 0) { p.x = h[0] / 10000; p.z = h[2] / 10000; }
+    h[f * 3] = Math.round(p.x * 10000); h[f * 3 + 1] = Math.round(p.y * 10000); h[f * 3 + 2] = Math.round(p.z * 10000);
+  }
+  out.clips[id] = { src: file, from: t0, loop: t1_ === null, n: N, bones: order, child, sd: b64(sd), d: b64(d), hips: b64(h) };
 }
-console.log('BAKE ' + JSON.stringify(out)); window.__ready = true;
+console.log('BAKE ' + Object.keys(out.clips).join(',')); window.__bake = out; window.__ready = true;
 </script>

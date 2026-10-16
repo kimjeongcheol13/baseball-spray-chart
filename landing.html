@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <script>
 // resource names the runtime asks for -> files next to this page (absolute, so blob modules can import them)
-(function () { var m = {"https://unpkg.com/react@18.3.1/umd/react.production.min.js": "js/landing/vendor/react.production.min.js", "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "js/landing/vendor/react-dom.production.min.js", "three.module": "js/landing/vendor/three.module.js", "three.core": "js/landing/vendor/three.core.js", "./SprayChart.dc.html": "js/landing/SprayChart.dc.html", "GLTFLoader": "js/landing/vendor/GLTFLoader.js", "BufferGeometryUtils": "js/landing/vendor/BufferGeometryUtils.js", "SkeletonUtils": "js/landing/vendor/SkeletonUtils.js", "player.glb": "assets/landing/player.glb", "player_helmet2.glb": "assets/landing/player_helmet2.glb", "player_cap.glb": "assets/landing/player_cap.glb", "player_cap2.glb": "assets/landing/player_cap2.glb", "player_cap3.glb": "assets/landing/player_cap3.glb", "clips_shared.json": "assets/landing/clips_shared.json"}, r = {}; for (var k in m) r[k] = new URL(m[k], location.href).href; window.__resources = r; })();
+(function () { var m = {"https://unpkg.com/react@18.3.1/umd/react.production.min.js": "js/landing/vendor/react.production.min.js", "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "js/landing/vendor/react-dom.production.min.js", "three.module": "js/landing/vendor/three.module.js", "three.core": "js/landing/vendor/three.core.js", "./SprayChart.dc.html": "js/landing/SprayChart.dc.html", "GLTFLoader": "js/landing/vendor/GLTFLoader.js", "BufferGeometryUtils": "js/landing/vendor/BufferGeometryUtils.js", "SkeletonUtils": "js/landing/vendor/SkeletonUtils.js", "player.glb": "assets/landing/player.glb", "player_helmet2.glb": "assets/landing/player_helmet2.glb", "player_cap.glb": "assets/landing/player_cap.glb", "player_cap2.glb": "assets/landing/player_cap2.glb", "player_cap3.glb": "assets/landing/player_cap3.glb", "glove.glb": "assets/landing/glove.glb", "mitt.glb": "assets/landing/mitt.glb", "mask.glb": "assets/landing/mask.glb", "clips_shared.json": "assets/landing/clips_shared.json"}, r = {}; for (var k in m) r[k] = new URL(m[k], location.href).href; window.__resources = r; })();
 window.slFrame = function () { return matchMedia('(max-width: 1023px)').matches ? 'mobile' : 'desktop'; };
 </script>
 <title>SprayLab — 타석 하나 찍으면 차트가 그려진다</title>
@@ -563,6 +563,21 @@ textarea.input { min-height: 90px; resize: vertical; }
   // If the body or its motion fails to load, makeFigure() falls back to the procedural mannequin.
   let BODY = null, bodyP = null;
   const HELMETS = ['player', 'player_helmet2'], CAPS = ['player_cap', 'player_cap2', 'player_cap3'];
+  // Tripo-generated gear (tools/pack_player.py ... .5). Each was generated from a front product shot; Tripo puts that front
+  // on -z with the top at +y (the image's left is then +x). `rot` turns it into the frame it is fitted in, `size` is its real height (m).
+  //   glove / mitt: fitted in the left hand's glove frame (X thumb, Y fingers, pocket on the palm side = -Z for the left hand);
+  //                 the shot shows the pocket with the thumb on the image's left, so it already fits
+  //   mask: fitted on the face (bind pose: the face looks along +z): a half turn about y
+  const PROPS = { glove: { size: .33, rot: [0, 0, 0] }, mitt: { size: .34, rot: [0, 0, 0] }, mask: { size: .30, rot: [0, Math.PI, 0] } };
+  // a prop clone, turned and scaled to `size` metres x u, placed so its box sits on (cx, y0, cz) measured from the bottom centre
+  function fitProp(THREE, P, u) {
+    const inner = P.scene.clone(true); inner.rotation.set(...P.rot);
+    const holder = new THREE.Group(); holder.add(inner); holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(inner), k = P.size * u / (box.max.y - box.min.y);
+    inner.scale.setScalar(k); inner.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
+    holder.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    return { holder, depth: (box.max.z - box.min.z) * k };
+  }
   const resBlob = async (id) => {
     const R = window.__resources || {}, Bl = window.__resourceBlobs || {}, u = R[id];
     if (!u) throw new Error('missing resource ' + id);
@@ -582,7 +597,11 @@ textarea.input { min-height: 90px; resize: vertical; }
         BD.clips = rigClips(THREE, S, BD.rig);
         return BD;
       };
-      const all = await Promise.all([...HELMETS, ...CAPS].map(one));
+      const prop = async (name) => {                         // optional: without it the procedural gear is used
+        try { return (await new GLTFLoader().parseAsync(await resBlob(name + '.glb').then(b => b.arrayBuffer()), '')).scene; } catch (e) { return null; }
+      };
+      const [all, props] = await Promise.all([Promise.all([...HELMETS, ...CAPS].map(one)), Promise.all(Object.keys(PROPS).map(prop))]);
+      Object.keys(PROPS).forEach((k, i) => { PROPS[k].scene = props[i]; });
       return { helmets: all.slice(0, HELMETS.length), caps: all.slice(HELMETS.length) };
     })());
   }
@@ -854,7 +873,21 @@ textarea.input { min-height: 90px; resize: vertical; }
     const IDLE = (t) => (t * .9375) % 1.5;                 // 5 idle loops per cycle
     const SW = 2.55 - 1.33;                               // swing clip starts so its fastest hand frame lands on contact (tau 2.55)
     const TL = {
-      pitcher(t) { if (t <= 5.2) sample('pitch', t, O); else { sample('pitch', 5.2, A); sample('pitch', 0, Bp); mix(A, Bp, smooth01((t - 5.4) / 2.2), O); } },   // release at 2.10 s in both
+      // set (hands together at the chest) -> leg lift, stride, release at 2.10 s in both -> follow-through ->
+      // fielding stance where he landed, watching the play -> the clip's own walk back to the rubber -> come set again
+      pitcher(t) {
+        const SET = .45, END = 2.9, BACK = 3.2, HOLD = 5.8, COME = 7.4;
+        const ready = (tt, out) => {                         // ready crouch, moved to where the follow-through left him
+          sample('pitch', END, Bp); const ox = Bp[B * 4], oz = Bp[B * 4 + 2];
+          sample('fidle', tt % ((C.fidle.n - 1) / C.fidle.fps), out);
+          out[B * 4] += ox - C.fidle.h[0] / 1000; out[B * 4 + 2] += oz - C.fidle.h[2] / 1000;   // hips (h is in mm)
+        };
+        if (t < SET) sample('pitch', SET, O);
+        else if (t < END) sample('pitch', t, O);
+        else if (t < HOLD) { ready(t - END, O); sample('pitch', END, A); mix(A, O, smooth01((t - END) / .6), O); }
+        else if (t < COME) { ready(t - END, A); sample('pitch', BACK + (t - HOLD) / (COME - HOLD) * (5.2 - BACK), Bp); mix(A, Bp, smooth01((t - HOLD) / .5), O); }
+        else { sample('pitch', 5.2, A); sample('pitch', SET, Bp); mix(A, Bp, smooth01((t - COME) / .6), O); }
+      },
       batter(t) {
         if (t < SW - .25 || t >= 7.2) sample('idle', IDLE(t), O);
         else if (t < SW) { sample('idle', IDLE(t), A); sample('swing', 0, Bp); mix(A, Bp, smooth01((t - SW + .25) / .25), O); }
@@ -959,7 +992,10 @@ textarea.input { min-height: 90px; resize: vertical; }
     const mats = { leather: M(0x7A4A23), dark: M(0x15151A, { roughness: .5 }), gear: M(0x1C1E24, { roughness: .32, metalness: .1 }) };
     const put = (bone, geo, mat, worldPos, worldQ) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; return inBone(bone, m, worldPos, worldQ); };
     const sc = BD.skull, V = (x, y, z) => new THREE.Vector3(x, y, z);
-    if (kit.mask) {                                          // catcher / umpire mask: bars curving round the face + two uprights
+    if (kit.mask && PROPS.mask.scene) {                       // catcher / umpire mask: top on the forehead (12 cm above the eyes), pads resting on the face
+      const { holder, depth } = fitProp(THREE, PROPS.mask, u), g = new THREE.Group(); g.add(holder);
+      inBone('Head', g, V(0, sc.eyeY + .12 * u - PROPS.mask.size * u, sc.face - .015 * u - depth / 2));
+    } else if (kit.mask) {                                   // fallback: bars curving round the face + two uprights
       const R = sc.face - sc.zc + .025 * u, ey = sc.eyeY;
       [[.03, .007], [-.012, .005], [-.05, .005], [-.088, .006]].forEach(([dy, r]) => {
         put('Head', new THREE.TorusGeometry(R, r * u, 5, 18, 1.8).rotateZ(Math.PI / 2 - .9).rotateX(Math.PI / 2), mats.dark, V(0, ey + dy * u, sc.zc));
@@ -974,7 +1010,18 @@ textarea.input { min-height: 90px; resize: vertical; }
     }
 
     const fig = { root, hips, torso, head, shR: aR.sh, elR: aR.el, handR: hand('R'), shL: aL.sh, elL: aL.el, handL: hand('L'), hipR: lR.hip, kneeR: lR.knee, hipL: lL.hip, kneeL: lL.knee, mats, phase: Math.random() * 6.28 };
-    fig.addGlove = (mitt) => { const G = BD.hand.L.glove, g = makeGlove(THREE, mitt, G.p); g.scale.setScalar(u); inBone('LeftHand', g, G.at, G.q); };   // on the left hand, around the real hand
+    fig.addGlove = (mitt) => {                               // on the left hand, around the real hand
+      const G = BD.hand.L.glove, P = PROPS[mitt ? 'mitt' : 'glove'];
+      if (P.scene) {
+        // the real hand is shrunk (and its fingers more) so none of it shows through the glove; the glove undoes the hand's scale
+        const HS = .6; bones.LeftHand.scale.setScalar(HS);
+        for (const f of ['Index1', 'Middle1', 'Ring1', 'Pinky1', 'Thumb2']) bones['LeftHand' + f]?.scale.setScalar(.35);
+        const { holder } = fitProp(THREE, P, u); holder.position.set(0, -.03 * u, G.p * (mitt ? .02 : .05) * u);   // hand toward the back of the glove
+        const g = new THREE.Group(); g.add(holder); inBone('LeftHand', g, G.at, G.q); g.scale.setScalar(1 / HS);
+        return;
+      }
+      const g = makeGlove(THREE, mitt, G.p); g.scale.setScalar(u); inBone('LeftHand', g, G.at, G.q);
+    };
     const play = clipPlayer(BD, bones, o.role || 'coach', fig);
     const neck = bones.Neck, headB = bones.Head, want = new THREE.Vector3(), seen = new THREE.Vector3(), hp = new THREE.Vector3(), hq = new THREE.Quaternion(), pq = new THREE.Quaternion(), dq = new THREE.Quaternion(), I = new THREE.Quaternion(), fw = new THREE.Vector3();
     let looked = false;

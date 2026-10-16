@@ -4,10 +4,12 @@
 #    UVs uint16, joints uint8, weights uint8 (summing to exactly 255), indices uint16; positions stay float32 so the
 #    bind pose and every measurement made on it are unchanged
 #   python3 tools/pack_player.py "<downloaded tripo>.glb" assets/player.glb
+#   python3 tools/pack_player.py "<tripo prop>.glb" assets/glove.glb .5     (props: no skin; textures at half size)
 import io, json, struct, sys
 import numpy as np
 from PIL import Image
 src, dst = sys.argv[1:3]
+TS = float(sys.argv[3]) if len(sys.argv) > 3 else 1   # texture size factor
 SIZE = {'baseColorTexture': (1024, 88), 'normalTexture': (512, 92), 'metallicRoughnessTexture': (256, 85)}   # px, JPEG quality
 b = open(src, 'rb').read()
 jl = struct.unpack_from('<I', b, 12)[0]; J = json.loads(b[20:20 + jl]); B0 = 20 + jl + 8
@@ -48,6 +50,9 @@ for p in prims:
     UV = read(A['TEXCOORD_0']).astype(np.float64)
     if UV.min() >= 0 and UV.max() <= 1: new['TEXCOORD_0'] = acc(np.round(UV * 65535).astype(np.uint16), 'VEC2', True, 34962)
     else: new['TEXCOORD_0'] = acc(UV.astype(np.float32), 'VEC2', target=34962)
+    if 'JOINTS_0' not in A:                                                             # a prop: no skin
+        I = read(p['indices']); p['indices'] = acc(I.astype(np.uint16 if len(P) < 65536 else np.uint32), 'SCALAR', target=34963)
+        p['attributes'] = new; continue
     Jn = read(A['JOINTS_0']); assert Jn.max() < 256
     new['JOINTS_0'] = acc(Jn.astype(np.uint8), 'VEC4', target=34962)
     W = read(A['WEIGHTS_0']).astype(np.float64); W /= W.sum(1, keepdims=True)
@@ -62,7 +67,7 @@ for p in prims:
 for s in J.get('skins', []):
     if 'inverseBindMatrices' in s: s['inverseBindMatrices'] = acc(read(s['inverseBindMatrices']).astype(np.float32), 'MAT4')
 for i, im in enumerate(J['images']):
-    bv = J['bufferViews'][im['bufferView']]; px, q = SIZE[role[i]]
+    bv = J['bufferViews'][im['bufferView']]; px, q = SIZE[role[i]]; px = int(px * TS)
     img = Image.open(io.BytesIO(binb[bv.get('byteOffset', 0): bv.get('byteOffset', 0) + bv['byteLength']])).convert('RGB')
     if img.width > px: img = img.resize((px, px), Image.LANCZOS)
     out = io.BytesIO(); img.save(out, 'JPEG', quality=q, optimize=True)

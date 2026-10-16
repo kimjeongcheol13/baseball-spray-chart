@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body style="margin:0"><script type="module">
+// Look at a Mixamo clip as it is (bone sticks, no retargeting), from the side and the front, at given times.
+//   view_clip.html?clip=Baseball_Pitching&t=0.5,1,1.5  -> window.__frames = [dataURL...] (side | front per time)
+import * as THREE from 'three';
+import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
+const qs = new URLSearchParams(location.search), times = (qs.get('t') || '0,1,2').split(',').map(Number);
+const fbx = await new FBXLoader().loadAsync('./clips/' + (qs.get('clip') || 'Baseball_Pitching') + '.fbx');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xE7E3DC); scene.add(fbx);
+const helper = new THREE.SkeletonHelper(fbx); helper.material.linewidth = 3; scene.add(helper);
+const grid = new THREE.GridHelper(600, 12, 0x999999, 0xbbbbbb); scene.add(grid);
+const r = new THREE.WebGLRenderer({ preserveDrawingBuffer: true }); r.setSize(400, 400); document.body.append(r.domElement);
+const cam = new THREE.PerspectiveCamera(40, 1, 1, 5000);
+const mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(fbx.animations[0]).play();
+const hips = fbx.getObjectByName('mixamorig:Hips') || fbx.getObjectByName('mixamorigHips');
+const shots = [];
+for (const t of times) {
+  mixer.setTime(t); fbx.updateMatrixWorld(true);
+  const p = hips.getWorldPosition(new THREE.Vector3()); p.y = 90;
+  for (const off of [[-420, 30, 0], [0, 30, 420]]) { cam.position.copy(p).add(new THREE.Vector3(...off)); cam.lookAt(p); r.render(scene, cam); shots.push(r.domElement.toDataURL('image/png')); }
+}
+window.__frames = shots; window.__dur = fbx.animations[0].duration;
+</script>

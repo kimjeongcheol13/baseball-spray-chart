@@ -60,123 +60,181 @@ tpl = sub(tpl, "      const watch = tau < 2.1 ? P.head.getWorldPosition(this.tmp
                "      const W8 = this.watchAt || (this.watchAt = watch.clone()); W8.copy(watch); if (!this.watchSet) { this.watchSet = true; const all = () => W8, rel = () => this.released ? W8 : null; [B, C, U, K, ...this.fielders.map(f => f.F)].forEach(f => { f.watch = all; }); P.watch = rel; }")
 # fielders: tell the GLB body when the page has this fielder running
 tpl = sub(tpl, "        const sw = Math.sin(t * 11 + i) * run;", "        const sw = Math.sin(t * 11 + i) * run; F.run = run;")
-# ---- page polish (2026-10-17 review) ----
+# ---- scorebook theme (2026-10-17): the landing wears the app's paper / ink / pen look (css/paper.css) ----
+# Content first: the hero's words and button, the 3D caption, one sample player's numbers everywhere, the three
+# features, three steps with real app screens (no fake video); then the colour map and the fonts at the end.
+APP = 'https://kimjeongcheol13.github.io/baseball-spray-chart/'
+PAPER, PAPER2, INKC, SOFT, RULE, PEN = '#F3EDDF', '#FBF7EE', '#1F2A23', '#55605A', '#C9BFA9', '#C8322B'
+BOX = 'box-sizing:border-box;background:%s;border:1.5px solid %s;border-radius:0' % (PAPER2, INKC)   # the app's card: a ruled box, no shadow
+NUM = "font-family:'Oswald','Noto Sans KR',sans-serif;font-variant-numeric:tabular-nums"
+BTN = "font-family:'Noto Sans KR',sans-serif;font-weight:700"
+SCREENS = ('app_record.jpg', 'app_team.jpg', 'export_report.jpg')   # assets/screens/: the app in its sample-data mode (375 px at 2x) and the player report it exports
+rid_uuid = lambda rid: str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid))
+def region(s, start, end, new):           # replace from `start` through the first `end` after it (`start` exactly once)
+    assert s.count(start) == 1, (s.count(start), start[:60]); i = s.index(start); j = s.index(end, i) + len(end); return s[:i] + new + s[j:]
+# every number on the page belongs to one sample player: 김민준 (#8, 좌타, js/sample.js), 3 games, 15 PA, as the app computes him
+KM = dict(avg='.333', obp='.467', slg='.583', ops='1.050', woba='.451', iso='.250', pull=36, ctr=36, oppo=27, bip=11)
+
+# text: body 15px light -> 17px regular, the small spaced labels 11px light -> 13px, compare table 15 -> 17px (before anything moves)
+tpl = sub(tpl, 'font-size:15px;line-height:1.7;font-weight:300', 'font-size:17px;line-height:1.7;font-weight:400', 10)
+tpl = sub(tpl, 'font-size:15px;font-weight:300;line-height:1"', 'font-size:16px;font-weight:500;line-height:1"', 16)
+tpl = sub(tpl, 'display:flex;flex-direction:column;font-size:15px;line-height:1.5', 'display:flex;flex-direction:column;font-size:17px;line-height:1.5', 2)
+tpl = sub(tpl, '<div style="font-weight:300">', '<div style="font-weight:400">', 21)
+small = lambda m: m.group(0).replace('font-size:11px;letter-spacing:.12em', 'font-size:13px;letter-spacing:.06em').replace('font-weight:300', 'font-weight:400')
+tpl, n = re.subn(r'style="[^"]*font-size:11px;letter-spacing:\.12em[^"]*"(?!>(?:Desktop|Mobile) · )', small, tpl); assert n >= 20, n   # not the design-canvas labels unbundle.py drops
+tpl = sub(tpl, "fontSize: '11px', letterSpacing: '.12em', fontWeight: 300, color: INK", "fontSize: '13px', letterSpacing: '.04em', fontWeight: 400, color: INK, fontFamily: \"'Oswald','Noto Sans KR',sans-serif\"")
+
+# 1) first screen on paper: one line that adds information + the button (the only button used to be at the very bottom)
+for lab, h in (('D1', 900), ('M1', 844)):
+    tpl = sub(tpl, 'data-screen-label="%s Hero" style="position:relative;height:%dpx;background:#0E0F14;color:#E7E3DC;overflow:hidden"' % (lab, h),
+                   'data-screen-label="%s Hero" style="position:relative;height:%dpx;background:%s;color:%s;overflow:hidden"' % (lab, h, PAPER, INKC))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 2.5 }}"', '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ false }}" dot="{{ 2.5 }}"')
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 7 }}"', '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ false }}" dot="{{ 7 }}"')
+tpl = sub(tpl, 'style="position:absolute;left:260px;top:-40px;width:1500px;height:1125px"></dc-import>',   # off the words, and paper fades in under them
+               'style="position:absolute;left:400px;top:0;width:1400px;height:1050px"></dc-import>\n'
+               '      <div style="position:absolute;inset:0;background:linear-gradient(90deg,%s 0%%,%s 34%%,rgba(243,237,223,0) 60%%);pointer-events:none"></div>' % (PAPER, PAPER))
+tpl = sub(tpl, 'style="position:absolute;left:-40px;top:330px;width:680px;height:510px"', 'style="position:absolute;left:-40px;top:380px;width:680px;height:510px"')
+tpl = sub(tpl, 'border:1px solid #E7E3DC"></div>장타', 'border:1px solid %s"></div>장타' % INKC, 2)
+tpl = sub(tpl, 'border:1px solid rgba(231,227,220,.45)"></div>아웃', 'border:1px solid %s"></div>아웃' % INKC, 2)
+SUB = '사회인야구 코치가 더그아웃에서 탭 한 번. 타구 위치부터 타율·OPS·방향 분포까지 자동으로 남는다.'
+cta = lambda h, px: '<a href="#" data-cta="hero" style="display:inline-flex;align-items:center;height:%dpx;padding:0 %dpx;background:%s;color:%s;font-size:16px;%s">차트 열기</a>' % (h, px, INKC, PAPER, BTN)
+tpl = sub(tpl, '        <div>차트가 그려진다.</div>\n      </div>\n      <div style="position:absolute;left:0;right:0;bottom:32px;',
+               '        <div>차트가 그려진다.</div>\n      </div>\n'
+               '      <div style="position:absolute;left:40px;top:432px;max-width:600px;display:flex;flex-direction:column;align-items:flex-start;gap:28px">\n'
+               '        <div style="font-size:20px;line-height:1.7;word-break:keep-all">' + SUB + '</div>\n'
+               '        <div style="display:flex;align-items:center;gap:20px">' + cta(56, 40) + '<div style="font-size:14px;letter-spacing:.04em;color:%s">무료 · 가입 없음 · 설치 없음</div></div>\n' % SOFT +
+               '      </div>\n      <div style="position:absolute;left:0;right:0;bottom:32px;')
+tpl = sub(tpl, '        <div>차트가 그려진다.</div>\n      </div>\n      <div style="position:absolute;left:0;right:0;bottom:24px;',
+               '        <div>차트가 그려진다.</div>\n      </div>\n'
+               '      <div style="position:absolute;left:20px;right:20px;top:262px;display:flex;flex-direction:column;align-items:flex-start;gap:18px">\n'
+               '        <div style="font-size:16px;line-height:1.7;word-break:keep-all">' + SUB + '</div>\n'
+               '        <div style="display:flex;align-items:center;gap:14px">' + cta(52, 30) + '<div style="font-size:13px;letter-spacing:.04em;color:%s">무료 · 가입 없음</div></div>\n' % SOFT +
+               '      </div>\n      <div style="position:absolute;left:0;right:0;bottom:24px;')
+tpl, n = re.subn(r'      <div style="position:absolute;left:0;right:0;bottom:\d+px;text-align:center;[^"]*">Scroll ↓</div>\n', '', tpl); assert n == 2, n   # the button invites now
+PILL = '<a href="#" data-cta="nav"><span style="display:inline-flex;align-items:center;height:36px;padding:0 16px;border:1.5px solid currentColor;letter-spacing:.02em;%s">차트 열기</span></a>' % BTN
+tpl = sub(tpl, '<a href="#d-cta">차트 열기</a>', PILL)
+tpl = sub(tpl, '<a href="#m-cta">차트 열기</a>', PILL)
+
+# 2) the 3D play: one sentence, and its live counter says it counts this game (not the sample player)
+tpl = sub(tpl, '투수가 던지고 타자가 친다. 공이 떨어진 자리를 더그아웃의 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.',
+               '공이 떨어진 자리를 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.', 2)
+tpl = sub(tpl, "this.statEl.textContent = `타석 ${pa} · 안타 ${hits} · 타율", "this.statEl.textContent = `이번 경기 · 타석 ${pa} · 안타 ${hits} · 타율")
 # phones: the 3D box was 342x256 (players a few px tall); a 4:5 box keeps the camera's vertical view, so the close-up gets
 # ~1.7x bigger; the wide shot backs off and looks down more so the whole field still fits the narrower box
-tpl = sub(tpl, 'hint-size="342px,256px" style="width:342px;height:256px"></x-import>', 'hint-size="342px,428px" style="width:342px;height:428px"></x-import>')
+tpl = sub(tpl, 'hint-size="342px,256px" style="width:342px;height:428px"></x-import>' if False else 'hint-size="342px,256px" style="width:342px;height:256px"></x-import>', 'hint-size="342px,428px" style="width:342px;height:428px"></x-import>')
 tpl = sub(tpl, "      this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28, -140, wide));\n"
                "      const rho = lerp(72, 500, wide), phi = clamp(lerp(15, 42, wide) + R.pitch, 5, 85) * D2R,",
                "      const nar = Math.max(0, 4 / 3 / this.camera.aspect - 1);   // 0 for a 4:3 box, ~.67 for the phone's 4:5: frame a little nearer home, look down more when wide\n"
                "      this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28 + 9 * nar, -140, wide));\n"
                "      const rho = lerp(72, 500 * (1 + .9 * nar), wide), phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R,")
-# first screen: one line on what it is + the button (before, the only button was at the very bottom of the page);
-# the nav's "차트 열기" opens the app too (it used to scroll to that bottom button). unbundle.py / pagebundle.py point data-cta at the app.
-CTA = '<a href="#" data-cta="hero" style="display:inline-flex;align-items:center;height:%dpx;padding:0 %dpx;border-radius:%dpx;background:#E7E3DC;color:#0B0B0E;font-size:16px;font-weight:700">차트 열기</a>'
-tpl = sub(tpl, '        <div>차트가 그려진다.</div>\n      </div>\n      <div style="position:absolute;left:0;right:0;bottom:32px;',
-               '        <div>차트가 그려진다.</div>\n      </div>\n'
-               '      <div style="position:absolute;left:40px;top:432px;display:flex;flex-direction:column;align-items:flex-start;gap:28px">\n'
-               '        <div style="font-size:20px;line-height:1.6;font-weight:400;text-shadow:0 0 18px #0E0F14">사회인야구 타석을 기록하면 스프레이차트가 그려집니다.</div>\n'
-               '        <div style="display:flex;align-items:center;gap:20px">' + CTA % (56, 40, 28) + '<div style="font-size:13px;letter-spacing:.06em;font-weight:400">무료 · 가입 없음 · 설치 없음</div></div>\n'
-               '      </div>\n      <div style="position:absolute;left:0;right:0;bottom:32px;')
-tpl = sub(tpl, '        <div>차트가 그려진다.</div>\n      </div>\n      <div style="position:absolute;left:0;right:0;bottom:24px;',
-               '        <div>차트가 그려진다.</div>\n      </div>\n'
-               '      <div style="position:absolute;left:20px;right:20px;top:268px;display:flex;flex-direction:column;align-items:flex-start;gap:18px">\n'
-               '        <div style="font-size:16px;line-height:1.6;font-weight:400;word-break:keep-all">사회인야구 타석을 기록하면 스프레이차트가 그려집니다.</div>\n'
-               '        <div style="display:flex;align-items:center;gap:14px">' + CTA % (52, 30, 26) + '<div style="font-size:13px;letter-spacing:.04em;font-weight:400">무료 · 가입 없음</div></div>\n'
-               '      </div>\n      <div style="position:absolute;left:0;right:0;bottom:24px;')
-PILL = '<a href="#" data-cta="nav"><span style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(231,227,220,.55);letter-spacing:.04em;font-weight:500">차트 열기</span></a>'
-tpl = sub(tpl, '<a href="#d-cta">차트 열기</a>', PILL)
-tpl = sub(tpl, '<a href="#m-cta">차트 열기</a>', PILL)
-# text: body copy 15px light -> 17px regular, the small spaced labels 11px light -> 13px regular, compare table 15 -> 17px
-tpl = sub(tpl, 'font-size:15px;line-height:1.7;font-weight:300', 'font-size:17px;line-height:1.7;font-weight:400', 10)
-tpl = sub(tpl, 'font-size:15px;font-weight:300;line-height:1.7', 'font-size:17px;font-weight:400;line-height:1.7', 10)
-tpl = sub(tpl, 'font-size:15px;font-weight:300;line-height:1"', 'font-size:16px;font-weight:500;line-height:1"', 16)
-tpl = sub(tpl, 'display:flex;flex-direction:column;font-size:15px;line-height:1.5', 'display:flex;flex-direction:column;font-size:17px;line-height:1.5', 2)
-tpl = sub(tpl, '<div style="font-weight:300">', '<div style="font-weight:400">', 21)
-small = lambda m: m.group(0).replace('font-size:11px;letter-spacing:.12em', 'font-size:13px;letter-spacing:.06em').replace('font-weight:300', 'font-weight:400')
-tpl, n = re.subn(r'style="[^"]*font-size:11px;letter-spacing:\.12em[^"]*"(?!>(?:Desktop|Mobile) · )', small, tpl); assert n == 25, n   # not the design-canvas labels unbundle.py drops
-tpl = sub(tpl, "fontSize: '11px', letterSpacing: '.12em', fontWeight: 300, color: INK", "fontSize: '13px', letterSpacing: '.06em', fontWeight: 400, color: INK")
-# taps: every nav / footer link at least 44x44 on screen (they were 21x16 .. 69x16; 48 because the phone board is drawn
-# at ~0.96); the nav's "·" separators make way for it, and its side columns size to their content so the logo isn't crowded
-tpl = sub(tpl, 'body{margin:0;background:#C6C1B8}',
-          'body{margin:0;background:#C6C1B8}\n'
-          'nav a,footer a{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px}\n'
-          'nav{grid-template-columns:auto 1fr auto!important}nav>div:nth-child(2){justify-self:center}\n'
-          'nav>div:first-child{gap:0!important}nav>div:first-child>span{display:none}')
 
-# ---- page polish 2 (2026-10-17): features show what they do, the numbers say what they count, real app screens, links ----
-APP = 'https://kimjeongcheol13.github.io/baseball-spray-chart/'
-SCREENS = ('app_record.jpg', 'app_brief.jpg', 'app_scout.jpg')   # assets/screens/: the app in its sample-data mode at 375px, the "샘플 데이터" bar cropped off
-rid_uuid = lambda rid: str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid))
-def region(s, start, end, new):           # replace from `start` through the first `end` after it (`start` exactly once)
-    assert s.count(start) == 1, (s.count(start), start[:60]); i = s.index(start); j = s.index(end, i) + len(end); return s[:i] + new + s[j:]
-CARD = 'box-sizing:border-box;background:#F6F3EE;border:1px solid rgba(11,11,14,.12);border-radius:20px;box-shadow:0 24px 48px rgba(11,11,14,.08)'
-# 자동 계산: an example stat line (OPS = OBP + SLG, ISO = SLG - AVG, as batdata.js computes them) instead of a third copy of the spray chart
-def stats(big):
-    cells = ''.join('<div><div style="font-size:13px;letter-spacing:.06em;opacity:.6">%s</div><div style="font-size:%dpx;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums">%s</div></div>' % (k, 44 if big else 30, v)
-                    for k, v in (('AVG', '.312'), ('OBP', '.398'), ('SLG', '.487'), ('OPS', '.885'), ('wOBA', '.381'), ('ISO', '.175')))
-    return ('<div style="%s;%swidth:%dpx;padding:%s;display:flex;flex-direction:column;gap:%dpx">' % (CARD, 'justify-self:center;' if big else '', 560 if big else 342, '36px 40px' if big else '24px', 28 if big else 20)
-            + '<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:%dpx;font-weight:800">7번 타자</div><div style="font-size:13px;letter-spacing:.06em;opacity:.6">예시 · 52타석</div></div>' % (22 if big else 18)
-            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);row-gap:%dpx;column-gap:16px">%s</div>' % (28 if big else 20, cells)
-            + '<div style="font-size:14px;line-height:1.6;opacity:.7">OPS = 출루율 + 장타율, ISO = 장타율 − 타율. 타석을 기록할 때마다 다시 계산된다.</div></div>')
-# 방향 분포: the spray chart stays (it is the right picture here) with the pull / centre / opposite split under it
+# 3) the scrolling numbers are the sample player's season (they were .500 / .341 / 56% from nowhere)
+tpl = sub(tpl, 'tabular-nums">.500</div>', 'tabular-nums">%s</div>' % KM['avg'], 2)
+tpl = sub(tpl, 'tabular-nums">.341</div>', 'tabular-nums">%s</div>' % KM['ops'], 2)
+tpl = sub(tpl, 'line-height:1">wOBA</div>', 'line-height:1">OPS</div>', 2)
+tpl = sub(tpl, 'tabular-nums">56%</div>', 'tabular-nums">%d%%</div>' % KM['pull'], 2)
+tpl = sub(tpl, '{{ sceneLabelD }}', '김민준 · 시즌 15타석 · {{ sceneLabelD }}')
+tpl = sub(tpl, '{{ sceneLabelM }}', '김민준 · 시즌 15타석 · {{ sceneLabelM }}')
+
+# 4) features: 자동 계산 -> his season line in a ruled box (OPS = OBP + SLG, ISO = SLG - AVG as batdata.js computes them);
+#    방향 분포 -> the chart plus his pull / centre / opposite split; 공유 QR -> a real QR that opens the app
+def statbox(big):
+    pad, px = ('18px 20px', 44) if big else ('12px 14px', 30)
+    cell = lambda i, k, v: ('<div style="padding:%s;border-top:1.5px solid %s;%s"><div style="font-size:12px;letter-spacing:.14em;color:%s;font-family:\'Oswald\',sans-serif;font-weight:600">%s</div>'
+                            '<div style="font-size:%dpx;line-height:1.1;font-weight:500;%s">%s</div></div>') % (pad, INKC, 'border-left:1.5px solid %s' % INKC if i % 3 else '', SOFT, k, px, NUM, v)
+    cells = ''.join(cell(i, k, v) for i, (k, v) in enumerate((('AVG', KM['avg']), ('OBP', KM['obp']), ('SLG', KM['slg']), ('OPS', KM['ops']), ('wOBA', KM['woba']), ('ISO', KM['iso']))))
+    return ('<div style="%s;%swidth:%dpx">' % (BOX, 'justify-self:center;' if big else '', 560 if big else 342)
+            + '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:%s"><div style="font-size:%dpx;font-weight:700">김민준 <span style="font-weight:400;color:%s">#8 · 좌타</span></div>'
+              '<div style="font-size:12px;letter-spacing:.14em;color:%s;font-family:\'Oswald\',\'Noto Sans KR\',sans-serif;font-weight:600">시즌 · 15타석</div></div>' % ('16px 20px' if big else '12px 14px', 20 if big else 17, SOFT, SOFT)
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr)">%s</div>' % cells
+            + '<div style="padding:%s;border-top:1.5px solid %s;font-size:14px;line-height:1.6;color:%s">OPS = 출루율 + 장타율, ISO = 장타율 − 타율. 타석을 기록할 때마다 다시 계산된다.</div></div>' % ('14px 20px' if big else '12px 14px', INKC, SOFT))
 def dirbar(w):
-    seg = lambda p, c: '<div style="width:%d%%;background:%s"></div>' % (p, c)
-    lab = lambda p, t: '<span><b style="font-weight:700;font-variant-numeric:tabular-nums">%d%%</b> %s</span>' % (p, t)
+    lab = lambda p, t: '<span><b style="font-weight:500;font-size:17px;%s">%d%%</b> %s</span>' % (NUM, p, t)
     return ('<div style="display:flex;flex-direction:column;gap:12px;width:%dpx">' % w
-            + '<div style="display:flex;height:12px;border-radius:6px;overflow:hidden">' + seg(56, '#E0343F') + seg(27, '#0B0B0E') + seg(17, '#A9A49B') + '</div>'
-            + '<div style="display:flex;justify-content:space-between;font-size:15px">' + lab(56, '당겨치기') + lab(27, '센터') + lab(17, '밀어치기') + '<span style="opacity:.55">예시</span></div></div>')
-# 공유 QR: a real QR (it opens the app) instead of the spray chart
+            + '<div style="display:flex;height:14px;border:1.5px solid %s;background:%s"><div style="width:%d%%;background:%s"></div><div style="width:%d%%;background:%s"></div><div style="flex:1;background:%s"></div></div>' % (INKC, PAPER2, KM['pull'], PEN, KM['ctr'], INKC, RULE)
+            + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:15px;gap:12px;white-space:nowrap">' + lab(KM['pull'], '당겨치기') + lab(KM['ctr'], '센터') + lab(KM['oppo'], '밀어치기') + '</div>'
+            + '<div style="font-size:13px;color:%s;text-align:right">김민준 · 인플레이 타구 %d개 기준</div></div>' % (SOFT, KM['bip']))
 import qrcode, qrcode.image.svg
 qr = qrcode.make(APP, image_factory=qrcode.image.svg.SvgPathImage, border=0).to_string(encoding='unicode')
-qr = re.sub(r'width="[^"]*" height="[^"]*"', 'width="100%" height="100%" shape-rendering="crispEdges"', qr, count=1)
-def qrcard(big):
+qr = re.sub(r'width="[^"]*" height="[^"]*"', 'width="100%" height="100%" shape-rendering="crispEdges"', qr, count=1).replace('<path ', '<path fill="%s" ' % INKC, 1)
+def qrbox(big):
     side = 200 if big else 160
-    return ('<div style="%s;%swidth:%dpx;padding:%s;display:flex;%sgap:%dpx">' % (CARD, 'justify-self:center;' if big else '', 560 if big else 342, '36px 40px' if big else '24px', 'align-items:center;' if big else 'flex-direction:column;', 36 if big else 20)
-            + '<div style="flex:none;box-sizing:border-box;width:%dpx;height:%dpx;background:#fff;border-radius:12px;padding:14px">%s</div>' % (side, side, qr)
-            + '<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:%dpx;font-weight:800;line-height:1.35">휴대폰 카메라로<br>찍어 보세요</div>' % (22 if big else 18)
-            + '<div style="font-size:15px;line-height:1.6;opacity:.7">이 QR은 실제로 SprayLab을 연다. 팀원에게 기록을 넘길 때도 QR 하나면 된다.</div></div></div>')
-tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 20 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', stats(True))
-tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 14 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', stats(False))
+    return ('<div style="%s;%swidth:%dpx;padding:%s;display:flex;%sgap:%dpx">' % (BOX, 'justify-self:center;' if big else '', 560 if big else 342, '28px' if big else '20px', 'align-items:center;' if big else 'flex-direction:column;', 32 if big else 20)
+            + '<div style="flex:none;box-sizing:border-box;width:%dpx;height:%dpx;background:#fff;border:1.5px solid %s;padding:12px">%s</div>' % (side, side, INKC, qr)
+            + '<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:%dpx;font-weight:700;line-height:1.4">휴대폰 카메라로<br>찍어 보세요</div>' % (20 if big else 17)
+            + '<div style="font-size:15px;line-height:1.7;color:%s">이 QR은 실제로 SprayLab을 연다. 팀원에게 기록을 넘길 때도 QR 하나면 된다.</div></div></div>' % SOFT)
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 20 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', statbox(True))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 14 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', statbox(False))
 tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 4 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>',
                '<div style="justify-self:center;display:flex;flex-direction:column;align-items:center;gap:8px"><dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 4 }}" hint-size="560px,420px" style="width:560px;height:420px"></dc-import>' + dirbar(480) + '</div>')
 tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>',
-               '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>' + dirbar(342))
-tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 11 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', qrcard(True))
-tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 5 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', qrcard(False))
-# the number strip: each number says what it counts (the old 5 / 3 / 25 / 1 had no unit, and the app has no 25 anywhere);
-# desktop: five columns that fit, instead of a sideways scroll that cut the third card at the screen edge
-tpl = sub(tpl, '<div style="display:flex;gap:64px;overflow-x:auto;scrollbar-width:none;padding:0 120px;scroll-snap-type:x mandatory;scroll-padding-left:120px">',
-               '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:40px;padding:0 120px">')
-tpl = sub(tpl, '<div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">', '<div style="display:flex;flex-direction:column;gap:20px">', 5)
-for old, new in (('1장', '1장'), ('5', '7개'), ('3', '3방향'), ('25', '전원'), ('1', '1번')):
-    tpl = sub(tpl, 'font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % old,
-                   'font-size:72px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % new)
-    tpl = sub(tpl, 'font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % old,
-                   'font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % new)
-tpl = sub(tpl, 'AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.', '타율·출루율·장타율·OPS·wOBA·삼진%·볼넷%, 선수마다 한 장.', 2)   # what report.js draws
-tpl = sub(tpl, '당겨치기·센터·밀어치기, 세 구간으로 읽는다.', '당겨치기·센터·밀어치기 비율로 수비 위치까지 정한다.', 2)
-tpl = sub(tpl, '로스터 전원의 지표를 한 화면에서 비교한다.', '선수 전원의 성적·순위·경기 흐름을 한 화면에서 본다.', 2)   # team.js
-# demo: the fake video (a spray chart over a "0:24 / 1:24" bar) becomes three real screens of the app
-SHOTS = (('app_record.jpg', '기록', '필드를 탭하면 타구가 그대로 찍힌다'), ('app_brief.jpg', '분석', '타자마다 오늘·최근·시즌 성적을 한 장에'), ('app_scout.jpg', '스카우트', '상대 타자 공략 포인트를 자동으로 뽑는다'))
-fig = lambda f, t, c, w: ('<figure style="margin:0;%sdisplay:flex;flex-direction:column;gap:16px">' % ('flex:none;width:%dpx;scroll-snap-align:start;' % w if w else '')
-                          + '<img src="%s" alt="SprayLab %s 화면" loading="lazy" style="width:100%%;height:auto;display:block;border-radius:24px;border:5px solid #2A2B33">' % (rid_uuid(f), t)
-                          + '<figcaption style="font-size:17px;line-height:1.5"><b style="font-weight:700">%s</b> — %s</figcaption></figure>' % (t, c))
-head = lambda px: '<div style="font-size:%dpx;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">실제 앱</div><div>화면.</div></div>' % px
-note = '<div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty%s">가상 선수 9명 · 3경기 샘플로 찍은 실제 화면이다. 앱에서 &quot;샘플 데이터로 둘러보기&quot;를 누르면 똑같이 볼 수 있다.</div>'
-tpl = region(tpl, '<div style="position:relative;width:1200px;aspect-ratio:16/9;', '<div>0:24 / 1:24</div>\n        </div>\n      </div>',
-             '<div style="display:flex;flex-direction:column;gap:80px">'
-             '<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:end">' + head(64) + note % ';justify-self:end' + '</div>'
-             '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:48px">' + ''.join(fig(f, t, c, 0) for f, t, c in SHOTS) + '</div></div>')
-tpl = region(tpl, '<div style="position:relative;width:342px;aspect-ratio:16/9;', '<div>0:24 / 1:24</div>\n        </div>\n      </div>',
-             '<div style="display:flex;flex-direction:column;gap:40px">' + head(40) + note % ''
-             + '<div style="display:flex;gap:20px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x mandatory;margin:0 -24px;padding:0 24px;scroll-padding-left:24px">'
-             + ''.join(fig(f, t, c, 240) for f, t, c in SHOTS) + '</div></div>')
+               '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" zoom="{{ 1 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>' + dirbar(342))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 11 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', qrbox(True))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 5 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', qrbox(False))
+# phones: the other 342 px charts drew wider than their box (the fan's left edge fell off the screen): zoom 1.3 -> 1
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ sceneCountM }}" dot="{{ 7 }}"', '<dc-import name="SprayChart" count="{{ sceneCountM }}" dot="{{ 7 }}" zoom="{{ 1 }}"')
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 9 }}" glow', '<dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 9 }}" zoom="{{ 1 }}" glow')
+
+# 5) the number strip (5 / 3 / 25 / 1 with no units) and the fake video become one section: three steps, each with a real
+#    screen of the app (sample-data mode, 375 px at 2x) and, for 공유, the player report the app exports
+STEPS = (('01', '기록', '공이 떨어진 자리를 탭한다. 타순표에서 타자를 고르면 끝.', 'app_record.jpg', '기록 화면'),
+         ('02', '분석', '타율·OPS·wOBA, 선수 순위, 경기 흐름이 바로 계산된다.', 'app_team.jpg', '팀 대시보드'),
+         ('03', '공유', '선수 리포트 PNG, 차트 이미지, QR 링크로 팀원에게.', 'export_report.jpg', '앱이 내보낸 선수 리포트'))
+def step(n, t, c, f, alt, w):
+    return ('<div style="%sdisplay:flex;flex-direction:column;gap:20px">' % ('flex:none;width:%dpx;scroll-snap-align:start;' % w if w else '')
+            + '<div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:40px;line-height:1;font-weight:500;color:%s;%s">%s</span><span style="font-size:26px;line-height:1;font-family:\'Black Han Sans\',sans-serif">%s</span></div>' % (PEN, NUM, n, t)
+            + '<div style="font-size:16px;line-height:1.7;color:%s;min-height:3.4em">%s</div>' % (SOFT, c)
+            + '<img src="%s" alt="SprayLab %s" loading="lazy" style="width:100%%;height:auto;display:block;border:1.5px solid %s;background:%s">' % (rid_uuid(f), alt, INKC, PAPER2) + '</div>')
+head2 = lambda px: '<div style="font-size:%dpx;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">세 단계면</div><div>끝난다.</div></div>' % px
+note2 = '가상 선수 9명 · 3경기 샘플로 찍은 실제 화면이다. 앱에서 &quot;샘플 데이터로 둘러보기&quot;를 누르면 똑같이 볼 수 있다.'
+tpl = region(tpl, '<section id="d-demo" data-screen-label="D7 Video"', '</section>\n', '')
+tpl = region(tpl, '<section id="m-demo" data-screen-label="M7 Video"', '</section>\n', '')
+tpl = region(tpl, '<section data-screen-label="D5 Carousel"', '</section>',
+             '<section id="d-demo" data-screen-label="D5 Steps" style="background:%s;padding:160px 120px;display:flex;flex-direction:column;gap:80px">' % PAPER2
+             + '<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:end">' + head2(64) + '<div style="justify-self:end;font-size:17px;line-height:1.7;max-width:36em;color:%s">%s</div></div>' % (SOFT, note2)
+             + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:48px">' + ''.join(step(*s, 0) for s in STEPS) + '</div></section>')
+tpl = region(tpl, '<section data-screen-label="M5 Carousel"', '</section>',
+             '<section id="m-demo" data-screen-label="M5 Steps" style="background:%s;padding:96px 24px;display:flex;flex-direction:column;gap:40px">' % PAPER2
+             + head2(40) + '<div style="font-size:16px;line-height:1.7;color:%s">%s</div>' % (SOFT, note2)
+             + '<div style="display:flex;gap:20px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x mandatory;margin:0 -24px;padding:0 24px;scroll-padding-left:24px">' + ''.join(step(*s, 260) for s in STEPS) + '</div></section>')
+
+# 6) the bottom button in the same ink; footer Instagram
+tpl = sub(tpl, 'border-radius:28px;background:#0B0B0E;color:#E7E3DC;font-size:15px;font-weight:700">차트 열기</a>', 'border-radius:0;background:%s;color:%s;font-size:16px;%s">차트 열기</a>' % (INKC, PAPER, BTN), 2)
 tpl = sub(tpl, '<a href="#">Instagram</a>', '<a href="https://www.instagram.com/spraylab2026/" target="_blank" rel="noopener">Instagram</a>', 2)
+
+# 7) fonts and taps. The app's three families (Gowun Batang text, Black Han Sans display lines, Oswald numbers and small
+#    caps) come from Google Fonts (unbundle.py / pagebundle.py add the <link>); the bundled Pretendard CSS goes.
+tpl, n = re.subn(r"@font-face\{[^}]*'Pretendard Variable'[^}]*\}", '', tpl); assert n >= 90, n
+tpl = re.sub(r'/\*\*\n \* Minified by jsDelivr.*?\*/\n', '', tpl, count=1, flags=re.S)
+tpl = tpl.replace("'Pretendard Variable',Pretendard,sans-serif", "'Gowun Batang','Nanum Myeongjo',serif").replace("'Pretendard Variable'", "'Gowun Batang','Nanum Myeongjo',serif")
+tpl = sub(tpl, 'body{margin:0;background:#C6C1B8}',
+          'body{margin:0;background:#C6C1B8}\n'
+          "#desktop,#mobile{font-family:'Gowun Batang','Nanum Myeongjo',serif;background-image:radial-gradient(#D9CFB8 1px,transparent 1px);background-size:18px 18px}\n"
+          # the runtime re-serialises inline styles with a space after the colon, so both spellings are matched
+          "#sl-page [style*=\"font-weight:800\"],#sl-page [style*=\"font-weight: 800\"]{font-family:'Black Han Sans',sans-serif;font-weight:400!important;letter-spacing:0!important}\n"
+          "#sl-page [style*=\"tabular-nums\"]{font-family:'Oswald','Noto Sans KR',sans-serif;font-weight:500}\n"
+          "#sl-page [style*=\"text-transform:uppercase\"],#sl-page [style*=\"text-transform: uppercase\"]{font-family:'Oswald','Noto Sans KR',sans-serif;font-weight:500;letter-spacing:.14em}\n"
+          'nav a,footer a{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px}\n'   # 44 on screen: the phone board is drawn at ~0.96
+          'nav{grid-template-columns:auto 1fr auto!important}nav>div:nth-child(2){justify-self:center}\n'
+          'nav>div:first-child{gap:0!important}nav>div:first-child>span{display:none}')
+
+# 8) colours: beige -> paper, near-black -> ink, red -> pen red, hairlines -> rule; the 3D field slab, mound and screen too
+for a, b in (('#E7E3DC', PAPER), ('#0E0F14', INKC), ('#0B0B0E', INKC), ('#E0343F', PEN), ('#DAD5CC', PAPER2), ('#15161C', INKC),
+             ('rgba(11,11,14,.12)', RULE), ('rgba(231,227,220,.55)', 'rgba(243,237,223,.55)'), ('rgba(231,227,220,.45)', 'rgba(243,237,223,.45)'), ('rgba(231,227,220,.25)', 'rgba(243,237,223,.25)'),
+             ('RED = 0xE0343F', 'RED = 0xC8322B'), ('color: 0xDAD5CC', 'color: 0xEAE2CF'), ('color: 0xBDB8AF', 'color: 0xC9BFA9'), ('color: 0xD0CBC2', 'color: 0xD3A670'), ('color: 0xE7E3DC', 'color: 0xF3EDDF')):
+    tpl = tpl.replace(a, b)
 
 # resources: body + three.js addons + the app screens, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))
+# the chart component is a bundled resource: give it the same paper / ink / pen palette (its light mode is the page's default now)
+_sc = next(e['uuid'] for e in ext if e['id'] == './SprayChart.dc.html'); _m = manifest[_sc]
+_raw = base64.b64decode(_m['data']); _raw = gzip.decompress(_raw) if _m.get('compressed') else _raw; _txt = _raw.decode('utf-8')
+for a, b in (('#E7E3DC', PAPER), ('#0B0B0E', INKC), ('#0E0F14', INKC), ('#E0343F', PEN), ('#DAD5CC', PAPER2), ('#15161C', INKC),
+             ('rgba(231,227,220,.32)', 'rgba(243,237,223,.32)'), ('rgba(11,11,14,.3)', 'rgba(31,42,35,.3)'), ('rgba(11,11,14,.6)', 'rgba(31,42,35,.6)'),
+             ("'Pretendard Variable',Pretendard,sans-serif", "'Oswald','Noto Sans KR',sans-serif")):   # its distance labels
+    _txt = _txt.replace(a, b)
+_m['data'] = base64.b64encode(gzip.compress(_txt.encode('utf-8'), 9, mtime=0) if _m.get('compressed') else _txt.encode('utf-8')).decode()
 PLAYERS = ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump')   # must match HELMETS + CAPS + UMPIRE in src/glbfig.js
 PROPS = ('glove', 'mitt', 'mask')   # must match PROPS in src/glbfig.js
 add = [(n + '.glb', os.path.join(ASSETS, n + '.glb'), 'model/gltf-binary') for n in PLAYERS + tuple(p for p in PROPS if os.path.exists(os.path.join(ASSETS, p + '.glb')))] + [('clips_shared.json', os.path.join(CLIPDIR, 'clips_shared.json'), 'application/json'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),

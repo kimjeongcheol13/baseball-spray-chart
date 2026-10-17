@@ -63,7 +63,7 @@
 
 | | **A. 응답 뒤에 다시 읽기 (추천)** | B. 쓰기 직전에 차이만 합치기 | C. 동기화 중 변경 막기 · 감지하면 다시 |
 |---|---|---|---|
-| 방법 | 3단계 첫 줄에서 `sl_saves` 를 다시 읽어 `saves` · `entryOf` 를 바꾼다. 0단계 목록에는 있었는데 지금 없는 키(동기화 도중 지운 경기)와 지금 삭제 대기(`_delMap()`)에 있는 키는 내려받지 않는다. 나머지는 지금과 같다 | 3단계는 그대로 둔다. 4단계에서 `sl_saves` 를 다시 읽고 "동기화가 넣은 항목 · 뺀 항목"만 그 위에 적용한다 | 동기화 중에는 저장 버튼 등을 막는다. 또는 4단계에서 `sl_saves` 가 0단계와 다르면 쓰지 않고 동기화를 다시 돌린다 |
+| 방법 | 3단계 첫 줄에서 `sl_saves` 를 다시 읽어 `saves` · `entryOf` 를 바꾼다. 0단계 목록에는 있었는데 지금 없는 키(동기화 도중 지운 경기)는 내려받지 않는다. 나머지는 지금과 같다 | 3단계는 그대로 둔다. 4단계에서 `sl_saves` 를 다시 읽고 "동기화가 넣은 항목 · 뺀 항목"만 그 위에 적용한다 | 동기화 중에는 저장 버튼 등을 막는다. 또는 4단계에서 `sl_saves` 가 0단계와 다르면 쓰지 않고 동기화를 다시 돌린다 |
 | 사용자에게 보이는 변화 | 평소에는 없다. 겹칠 때만 저장한 경기가 목록에 남고, 바꾼 이름이 유지되고, 지운 경기는 지워진 채로 있다 | 저장 · 이름은 A 와 같다. **지운 경기는 목록에선 빠지지만 데이터가 되살아날 수 있다**(내려받기 판단이 여전히 0단계 목록 기준이라서) | 막기: 로그인 직후 몇 초 동안 저장이 안 된다(동작 변화). 다시 돌리기: 아래 위험 |
 | 정리 규칙(`_planAutoCleanup` · `_applyAutoCleanup`)과의 관계 | 지금 목록으로 계획한다. 동기화 도중 저장한 경기도 후보가 되지만, 정리가 지우는 것은 스냅샷(`sl_auto_*`)뿐이고 저장 버튼이 만드는 키는 `sl_<홈>vs<원정>_…` 이라 지워지지 않는다. 동기화 전에 저장했을 때와 같은 결과다. 정리 함수는 고치지 않는다 | 0단계 목록으로 계획한다. 도중에 생긴 항목은 정리 대상에서 빠진다. 정리 함수는 고치지 않는다 | 고치지 않는다 |
 | 같은 키가 두 번 들어갈 위험 | 없다. `existMap` 이 지금 목록으로 만들어지고, 변환 키(`conv`)는 `localStorage` 에 없는 키만 고른다(`cloud.js:295`) | 합칠 때 키가 겹치는지 따로 확인해야 한다(빠뜨리면 두 번 들어간다) | 없다 |
@@ -85,20 +85,19 @@
         if (r.error) throw r.error;
         // 후속 13번: 위의 네트워크 왕복 동안 저장 · 이름 바꾸기 · 삭제가 sl_saves 를 바꿨을 수 있다 → 지금 목록을 다시 읽는다.
         // 이 아래부터 쓰기까지는 동기 실행이라 다시 끼어들 수 없다. 처음 목록에는 있었는데 지금 없는 키 = 동기화 도중 지운 경기 → 내려받지 않는다
-        var now = JSON.parse(localStorage.getItem('sl_saves') || '[]'), nowHas = {}, gone = {}, pendNow = _delMap();
+        var now = JSON.parse(localStorage.getItem('sl_saves') || '[]'), nowHas = {}, gone = {};
         now.forEach(function (s) { if (s && typeof s.key === 'string') nowHas[s.key] = true; });
         saves.forEach(function (s) { if (s && typeof s.key === 'string' && !nowHas[s.key]) gone[s.key] = true; });
         saves = now; entryOf = {};
         saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
         var existMap = {};
         ...
-        var rows = (r.data || []).filter(function (row) {
-          return !!row && typeof row.game_key === 'string' && !pend[row.game_key] && !pendNow[row.game_key] && !gone[row.game_key]; });
+        var rows = (r.data || []).filter(function (row) { return !!row && typeof row.game_key === 'string' && !pend[row.game_key] && !gone[row.game_key]; });
 ```
 
 - `pend` 는 그대로 둔다. 0단계 삭제 대기의 서버 삭제가 실패한 경기는 지금처럼 내려받지 않는다.
-- `pendNow`: 동기화 도중 지웠고 서버 삭제가 아직 안 끝난 경기를 거른다.
-- `gone`: 동기화 도중 지웠고 서버 삭제까지 끝나 삭제 대기에서도 빠진 경기를 거른다. 2단계 응답에 그 행이 실려 와도 내려받지 않는다.
+- (구현 PR #172 에서 바꿈) 처음 스케치에는 `pendNow = _delMap()`(동기화 도중의 삭제 대기)도 있었다. 하지만 동기화 도중 지운 경기는 0단계 목록에 있었으므로 `gone` 이 이미 거른다. 어떤 테스트로도 지킬 수 없는 중복 조건이라 뺐다.
+- `gone`: 동기화 도중 지운 경기를 거른다. 서버 삭제가 아직 안 끝났든, 이미 끝나 삭제 대기에서 빠졌든 같다. 2단계 응답에 그 행이 실려 와도 내려받지 않는다.
 - `saves` · `entryOf` 는 클로저 변수라 다시 대입하면 된다. 1단계(업로드 고르기)는 0단계 목록을 그대로 쓴다. 도중에 저장한 경기는 자기 `cloudSave` 타이머가 올리므로 영향이 없다(#169 4절 3번).
 - `JSON.parse` 가 실패하는 경우(깨진 `sl_saves`)는 0단계와 같아서, 바깥 `catch` 가 동기화 실패로 알린다.
 

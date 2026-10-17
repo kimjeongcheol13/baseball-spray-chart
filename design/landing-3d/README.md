@@ -11,16 +11,19 @@ Blast·Hudl 같은 스포츠테크 랜딩 문법으로 — 검은 바탕에 화�
 
 ```bash
 cd design/landing-3d
-python tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_Landing.glb.html   # 3D 요소 스크립트(glbfig 포함)를 담은 번들
-python tools/unbundle.py SprayLab_Landing.glb.html ../..     # 3D 자원만 풀기: js/landing/vendor/(three·addons), assets/landing/(GLB·동작). 옛 캔버스 페이지는 legacy/로
-python tools/build_landing.py                                 # next/landing.src.html + 번들에서 꺼낸 <spray-play> 스크립트 → ../../landing.html, js/landing/spray-play.js, assets/landing/img/
-python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인라인한 한 파일(바탕화면 복사본용, 16.2MB)
+python tools/build_landing.py                                 # next/landing.src.html + src/spray-play.js(+src/glbfig.js) → ../../landing.html, js/landing/spray-play.js, assets/landing/img/
+python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인라인한 한 파일(바탕화면 복사본용, 약 16MB)
 ```
 
+- 3D 요소 `<spray-play>`의 진짜 소스는 `src/spray-play.js`(장면·필드·카메라·공·마커)와 `src/glbfig.js`(선수)다. 빌드가 `src/spray-play.js`의 `//@glbfig` 줄 자리에 `glbfig.js`를 끼워 `js/landing/spray-play.js`를 만든다 — 생성물은 직접 고치지 말 것. 둘 중 하나를 바꾸면 `build_landing.py`의 `V`(`?v=`)를 올린다.
+  (2026-10-17 전까지는 디자인 도구 번들 `SprayLab_Landing.glb.html`에서 스크립트를 꺼내 썼다. `tools/build.py`·`tools/unbundle.py`는 이제 그 번들 미리보기와 3D 자원(`js/landing/vendor/`, `assets/landing/*.glb`·`clips_shared.json`)을 다시 풀 때만 쓴다.)
 - 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다.
 - 숫자는 전부 샘플 선수 김민준(#8, 15타석)의 것이다(.333 / .467 / .583 · OPS 1.050 · wOBA .451 · ISO .250 · 당김 36 / 센터 36 / 밀어 27%). 3D의 카운터만 "이번 경기".
 - 3D 요소는 인라인 스타일로 자기 크기를 정하므로 페이지 CSS가 `!important`로 absolute·inset을 덮어쓴다. 첫 화면에서는 요소의 자체 라벨(투구·타격·기록, 카운터)을 숨기고, "필드" 칸에서는 흰색으로 보여 준다.
-- 공유 미리보기: head의 `og:`·`twitter:` 메타와 `img/og.jpg`(1200×630, 첫 화면을 그대로 찍은 것), 파비콘 `img/icon-32/192.png`(앱의 player-logo). 상단 바는 fixed이고 40px 넘게 내리면 `.nav.scrolled`(반투명+블러, 60px)로 바뀐다. `hero_close.jpg`는 3D의 첫 프레임(tau 0.05)을 2400×1280으로 찍은 것이라 페이드 때 장면이 이어진다.
+- 공유 미리보기: head의 `og:`·`twitter:` 메타와 `img/og.jpg`(1200×630, 첫 화면을 그대로 찍은 것), 파비콘 `img/icon-32/192.png`(앱의 player-logo). 상단 바는 fixed이고 40px 넘게 내리면 `.nav.scrolled`(반투명+블러, 60px)로 바뀐다.
+- 정지 그림 4장(`hero_close.jpg` 2732×1536 데스크톱 첫 화면, `hero_close_m.jpg` 750×1400 폰 첫 화면, `cta_bg.jpg` 2400×1350, `og.jpg` 1200×630 글 포함)은 `tools/shoot_stills.py`가 헤드리스 Chromium(Playwright)으로 3D의 첫 프레임(tau 0.05, 카메라 흔들림 0)을 찍어 `#0B0D12` 위에 합성한 것이라 페이드 때 장면이 이어진다. 필드나 카메라를 바꾸면 다시 돌린다(`--check`를 붙이면 정지 그림과 3D 첫 프레임의 평균 픽셀차를 찍어 준다 — 2026-10-17 기준 데스크톱 0.7, 폰 1.0).
+- 필드(2026-10-17): 종이 모형 같던 회색 판 대신 야간 중계 화면 느낌 — 잔디(깎은 줄무늬, 펜스 쪽으로 어두워짐)·흙 내야(투수판 중심 95ft 스킨, 4ft 안쪽 잔디 다이아몬드, 베이스·마운드·홈 주변 흙, 파울선 바깥 3ft 주로)·분필선(파울선·타석·포수석)·경고 트랙·노란 띠를 두른 외야 펜스·홈 뒤 45ft까지의 파울 지역. 전부 `src/spray-play.js`의 `paint()`가 캔버스에 한 번 그려 바닥 판의 텍스처(4px/ft)로 쓰고, 홈 주변 88ft는 같은 그림을 17px/ft로 그린 데칼을 덧씌워 근접 샷에서도 선이 또렷하다. 3D 마커·거리 원호·아웃 고리는 잉크색 대신 분필색.
+- 카메라 역할(2026-10-17): 첫 화면의 `<spray-play cam="close">`는 홈 뒤 근접 샷에 머물러 타자·포수·투수가 계속 크게 보이고(드래그 회전은 그대로), "필드" 칸(`cam` 없음 = `cycle`)만 투구 뒤 넓은 샷으로 빠져 차트가 쌓이는 걸 보여 준다.
 - 글꼴은 Pretendard(jsDelivr 동적 서브셋 `<link>`). 외부 의존은 그것뿐이다.
 - 검토 과정의 다른 시안: `next/index.html`(A안 흰 배경 제품 랜딩), `next/hero-b.html`(B안 다크 테크), `next/index-c.html`(C안 정지 그림 버전). 레퍼런스 보드와 전후 비교는 `harness/clips/report/`(gitignore).
 - 아래 내용(3D 선수 제작, 동작, 장비, 옛 캔버스 변환 `unbundle.py`의 페이지 편집)은 그대로 유효한 기록이다. `unbundle.py`의 페이지 변환 부분은 이제 `legacy/landing.html`에만 쓰인다.

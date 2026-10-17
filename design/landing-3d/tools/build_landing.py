@@ -1,12 +1,12 @@
 # Assemble the deployed landing page: the hand-written page (next/landing.src.html) + the <spray-play> 3D element
-# (its script is lifted out of the design bundle, where tools/build.py put glbfig.js into it).
+# (src/spray-play.js -- the scene -- with src/glbfig.js -- the players -- spliced in at its `//@glbfig` line).
 #   python3 tools/build_landing.py                     -> ../../landing.html, js/landing/spray-play.js, assets/landing/img/*
 #   python3 tools/build_landing.py --single out.html   -> one file with everything inline (the desktop copy / strict hosts)
-# Needs SprayLab_Landing.glb.html (tools/build.py) and the 3D resources that tools/unbundle.py wrote to assets/landing + js/landing/vendor.
-import sys, os, re, json, base64, shutil
+# Needs the 3D resources in assets/landing (GLB, clips) + js/landing/vendor (three, addons); tools/unbundle.py wrote them once.
+import sys, os, json, base64, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 D3 = os.path.join(HERE, '..'); ROOT = os.path.normpath(os.path.join(D3, '..', '..')); NEXT = os.path.join(D3, 'next')
-V = '1'   # ?v= of spray-play.js (bump when glbfig.js or the element changes)
+V = '2'   # ?v= of spray-play.js (bump when src/spray-play.js or src/glbfig.js changes)
 RES = {'three.module': 'js/landing/vendor/three.module.js', 'three.core': 'js/landing/vendor/three.core.js',
        'GLTFLoader': 'js/landing/vendor/GLTFLoader.js', 'BufferGeometryUtils': 'js/landing/vendor/BufferGeometryUtils.js', 'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
        **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump', 'glove', 'mitt', 'mask')},
@@ -15,10 +15,10 @@ MIME = {'.js': 'text/javascript', '.json': 'application/json', '.glb': 'model/gl
 single = '--single' in sys.argv
 
 # 1) the element script
-html = open(os.path.join(D3, 'SprayLab_Landing.glb.html'), encoding='utf-8').read()
-tpl = json.loads(re.search(r'<script type="__bundler/template">(.*?)</script>', html, re.S).group(1))
-i = tpl.index("(() => {\n  const THREE_URL"); s0 = tpl.rindex('<script>', 0, i); e = tpl.index('</script>', i)
-js = tpl[s0 + len('<script>'):e].strip() + '\n'
+js = open(os.path.join(D3, 'src', 'spray-play.js'), encoding='utf-8').read()
+fig = open(os.path.join(D3, 'src', 'glbfig.js'), encoding='utf-8').read().rstrip('\n')
+fig = '\n'.join(('  ' + l if l.strip() else l) for l in fig.split('\n'))
+assert js.count('  //@glbfig\n') == 1; js = js.replace('  //@glbfig\n', fig + '\n')
 assert "customElements.define('spray-play'" in js and '</script' not in js
 
 # 2) the page

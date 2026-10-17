@@ -12,7 +12,7 @@
     return import(THREE_URL);
   })());
   const U2FT = 330 / 540, D2R = Math.PI / 180;
-  const INK = '#0B0B0E', RED = 0xE0343F;
+  const INK = '#0B0B0E', RED = 0xE0343F, CHALK = 0xF4F1EA;   // INK: the element's own DOM labels (the page recolours them); CHALK: everything drawn on the turf
   const track = (t, keys) => {
     if (t <= keys[0][0]) return keys[0][1];
     for (let i = 1; i < keys.length; i++) {
@@ -734,6 +734,7 @@
     get hand() { return this.getAttribute('hand') || 'right'; } set hand(v) { if (v != null) this.setAttribute('hand', String(v)); }
     get count() { return Number(this.getAttribute('count') ?? 60); } set count(v) { if (v != null) this.setAttribute('count', String(v)); }
     get motion() { return this.getAttribute('motion') !== 'false'; } set motion(v) { this.setAttribute('motion', String(v)); }
+    get cam() { return this.getAttribute('cam') || 'cycle'; }   // 'cycle': close for the pitch, wide for the flight and the record · 'close': stays at the plate
     attributeChangedCallback() { if (this.T) this.rebuildDots(); }
     connectedCallback() {
       if (this.mounted) return; this.mounted = true;
@@ -795,28 +796,71 @@
       sun.shadow.bias = -0.0003; sun.target.position.set(0, 0, -30); scene.add(sun, sun.target);
       const fill = new THREE.DirectionalLight(0xDCE6FF, .5); fill.position.set(150, 80, -60); scene.add(fill);
 
-      const ink = new THREE.Color(INK);
-      const ps = 330 * Math.SQRT1_2;
-      const shape = new THREE.Shape(); shape.moveTo(0, 0); shape.lineTo(-ps, -ps); shape.absarc(0, 0, 330, 225 * D2R, 315 * D2R, false); shape.lineTo(0, 0);
-      const slab = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 2.2, bevelEnabled: false }), [new THREE.MeshBasicMaterial({ color: 0xDAD5CC }), new THREE.MeshBasicMaterial({ color: 0xBDB8AF })]);
+      // ---- the field: night-game turf, skinned infield, chalk -- painted once into a texture on the ground slab (ft: home at the
+      //      origin, the outfield toward -z, fence at 330), plus a sharper decal round home for the close shot and a low outfield wall
+      const chalk = new THREE.Color(CHALK), flat = { toneMapped: false };   // painted colours stay as painted
+      const R = 330, FOUL = 12, BACK = 45, ps = R * Math.SQRT1_2;         // fence · foul ground outside the lines at the poles · beside and behind home
+      const tFence = Math.sqrt(R * R - FOUL * FOUL);                        // along the foul line, where FOUL ft outside it meets the fence
+      const pt = (t, w, side) => [side * (t + w) / Math.SQRT2, (w - t) / Math.SQRT2];   // t ft along a foul line, w ft outside it
+      const ground = (moveTo, lineTo, arc) => {                             // the slab outline, for THREE.Shape and the canvas alike
+        const [x0, z0] = pt(tFence, FOUL, -1), [x1, z1] = pt(tFence, FOUL, 1), [x2, z2] = pt(0, BACK, 1), [x3, z3] = pt(0, BACK, -1);
+        moveTo(x0, z0); arc(R, Math.atan2(z0, x0), Math.atan2(z1, x1)); lineTo(x2, z2); arc(BACK, Math.atan2(z2, x2), Math.atan2(z3, x3));   // foul ground tapers from the backstop to the poles
+      };
+      const GRASS = '#27612F', GRASS2 = '#2D6E3A', DIRT = '#80533A', LINE = '#F4F1EA';
+      const paint = (ctx, s) => {                                           // field coordinates in ft; the caller's transform maps them to pixels
+        ctx.save();
+        const circle = (x, z, r) => { ctx.beginPath(); ctx.arc(x, z, r, 0, 7); ctx.fill(); };
+        const ring = (r0, r1) => { ctx.beginPath(); ctx.arc(0, 0, r1, 0, 7); ctx.moveTo(r0, 0); ctx.arc(0, 0, r0, 7, 0, true); ctx.fill(); };
+        ctx.beginPath(); ground((x, z) => ctx.moveTo(x, z), (x, z) => ctx.lineTo(x, z), (r, a0, a1) => ctx.arc(0, 0, r, a0, a1, false)); ctx.closePath(); ctx.clip();
+        ctx.fillStyle = GRASS; ctx.fillRect(-R, -R, 2 * R, 2 * R);
+        ctx.fillStyle = GRASS2; for (let r = 20; r < R; r += 40) ring(r, r + 20);   // mowing arcs
+        ctx.fillStyle = DIRT; ring(R - 14, R);                                         // warning track
+        ctx.save(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-ps, -ps); ctx.arc(0, 0, R, 225 * D2R, 315 * D2R); ctx.closePath(); ctx.clip();   // fair ground only:
+        circle(0, -60.5, 95); ctx.restore();                                           // the skin, 95 ft round the rubber
+        ctx.strokeStyle = DIRT; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(63.6, -63.6); ctx.lineTo(0, 0); ctx.lineTo(-63.6, -63.6); ctx.stroke();   // running lanes
+        const d = 4 * Math.SQRT2; ctx.fillStyle = GRASS;                              // infield grass, 4 ft inside the base lines
+        ctx.beginPath(); ctx.moveTo(0, -d); ctx.lineTo(63.6 - d, -63.6); ctx.lineTo(0, -127.3 + d); ctx.lineTo(-63.6 + d, -63.6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = DIRT; [[63.6, -63.6], [0, -127.3], [-63.6, -63.6]].forEach(([x, z]) => circle(x, z, 8)); circle(0, -59, 9.6); circle(0, 0, 13);   // bases, mound, home
+        const tile = document.createElement('canvas'); tile.width = tile.height = 128; const tc = tile.getContext('2d'), id = tc.createImageData(128, 128);   // grain: a 16 ft noise tile
+        let seed = 7; for (let i = 3; i < id.data.length; i += 4) { seed = (seed * 1664525 + 1013904223) % 4294967296; id.data[i] = seed / 4294967296 * 40; }   // seeded, so the stills match the live frame
+        tc.putImageData(id, 0, 0); const grain = ctx.createPattern(tile, 'repeat'); grain.setTransform(new DOMMatrix().scale(16 / 128));
+        ctx.fillStyle = grain; ctx.fillRect(-R, -R, 2 * R, R + BACK);
+        ctx.strokeStyle = LINE; ctx.lineWidth = Math.max(.34, 2.5 / s);               // chalk: 4 in, or 2.5 px when the texture is coarser
+        ctx.beginPath(); ctx.moveTo(ps, -ps); ctx.lineTo(0, 0); ctx.lineTo(-ps, -ps); ctx.stroke();   // foul lines
+        ctx.strokeRect(1.2, -3, 4, 6); ctx.strokeRect(-5.2, -3, 4, 6); ctx.strokeRect(-1.8, 3, 3.6, 8);   // batter's boxes, catcher's box
+        const v = ctx.createRadialGradient(0, -60, 95, 0, -60, R); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.58)');
+        ctx.fillStyle = v; ctx.fillRect(-R, -R, 2 * R, 2 * R);                           // the lights fall off toward the fence
+        ctx.restore();
+      };
+      const tex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
+      const S = 4, turf = tex(2048, 1600, ctx => { ctx.setTransform(S, 0, 0, -S, 256 * S, 64 * S); paint(ctx, S); });   // x -256..256, z 64..-336 at 4 px/ft
+      turf.repeat.set(1 / 512, 1 / 400); turf.offset.set(.5, 336 / 400);          // the slab's top-face UVs are the shape's own (x, z)
+      const shape = new THREE.Shape(); ground((x, z) => shape.moveTo(x, z), (x, z) => shape.lineTo(x, z), (r, a0, a1) => shape.absarc(0, 0, r, a0, a1, false));
+      const slab = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 2.2, bevelEnabled: false }), [new THREE.MeshBasicMaterial({ map: turf, ...flat }), new THREE.MeshBasicMaterial({ color: 0x12171C, ...flat })]);
       slab.rotation.x = Math.PI / 2; scene.add(slab);
-      const baseMat = new THREE.MeshBasicMaterial({ color: 0xF4F1EA });
+      const DW = 88, DS = 1536 / DW, decal = tex(1536, 1536, ctx => {           // 88 ft round (0, -8) at 17 px/ft, fading out toward its edge
+        ctx.setTransform(DS, 0, 0, DS, DW / 2 * DS, (DW / 2 + 8) * DS); paint(ctx, DS);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'destination-in';
+        const g = ctx.createRadialGradient(768, 768, 540, 768, 768, 768); g.addColorStop(0, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 1536, 1536);
+      });
+      const home = new THREE.Mesh(new THREE.PlaneGeometry(DW, DW), new THREE.MeshBasicMaterial({ map: decal, transparent: true, depthWrite: false, ...flat }));
+      home.rotation.x = -Math.PI / 2; home.position.set(0, .05, -8); home.renderOrder = -1; scene.add(home);   // under the shadows and markers
+      const [fx, fz] = pt(tFence, FOUL, 1), fa = Math.atan2(fz, fx);                    // the outfield wall along the fence arc, with its yellow cap
+      const wallGeo = (h) => new THREE.CylinderGeometry(R, R, h, 96, 1, true, Math.PI / 2 - fa, 2 * fa + Math.PI);
+      const wall = new THREE.Mesh(wallGeo(8), new THREE.MeshBasicMaterial({ color: 0x1C2E25, side: THREE.DoubleSide, ...flat })); wall.position.y = 4; scene.add(wall);
+      const cap = new THREE.Mesh(wallGeo(.4), new THREE.MeshBasicMaterial({ color: 0xE9C94C, side: THREE.DoubleSide, ...flat })); cap.position.y = 8.2; scene.add(cap);
+      const baseMat = new THREE.MeshBasicMaterial({ color: CHALK });
       [[63.6, -63.6], [0, -127.3], [-63.6, -63.6]].forEach(([x, z]) => { const b = new THREE.Mesh(new THREE.BoxGeometry(1.3, .18, 1.3), baseMat); b.position.set(x, .1, z); b.rotation.y = Math.PI / 4; scene.add(b); });
       const plate = new THREE.Mesh(new THREE.BoxGeometry(1.4, .1, 1.4), baseMat); plate.position.set(0, .06, 0); plate.rotation.y = Math.PI / 4; scene.add(plate);
       const rubber = new THREE.Mesh(new THREE.BoxGeometry(2, .12, .5), baseMat); rubber.position.set(0, .2, -60.5); scene.add(rubber);
-      const mound = new THREE.Mesh(new THREE.CylinderGeometry(9, 9.6, .14, 32), new THREE.MeshBasicMaterial({ color: 0xD0CBC2 })); mound.position.set(0, .07, -59); scene.add(mound);
-      const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: .3 }));
+      const mound = new THREE.Mesh(new THREE.CylinderGeometry(9, 9.6, .14, 32), new THREE.MeshBasicMaterial({ color: DIRT, ...flat })); mound.position.set(0, .07, -59); scene.add(mound);
+      const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: .4 }));
       shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = .16; shadowPlane.receiveShadow = true; scene.add(shadowPlane);
 
-      const lineMat = new THREE.LineBasicMaterial({ color: ink });
-      const faintMat = new THREE.LineBasicMaterial({ color: ink, transparent: true, opacity: .25 });
+      const faintMat = new THREE.LineBasicMaterial({ color: chalk, transparent: true, opacity: .18 });   // distance rings: a chart overlay, not paint
       const Y = .2;
-      const line = (pts, mat = lineMat, loop = false) => { const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], Y, p[1]))); scene.add(loop ? new THREE.LineLoop(g, mat) : new THREE.Line(g, mat)); };
+      const line = (pts, mat) => { const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], Y, p[1]))); scene.add(new THREE.Line(g, mat)); };
       const arc = (r, a0, a1, n = 64, cx = 0, cz = 0) => Array.from({ length: n + 1 }, (_, i) => { const a = (a0 + (a1 - a0) * i / n) * D2R; return [cx + r * Math.sin(a), cz - r * Math.cos(a)]; });
-      line([[-ps, -ps], [0, 0], [ps, -ps]]);
-      line(arc(330, -45, 45, 96));
-      line(arc(131, -45, 45, 48), new THREE.LineBasicMaterial({ color: ink, transparent: true, opacity: .55 }));
-      line([[0, 0], [63.6, -63.6], [0, -127.3], [-63.6, -63.6]], lineMat, true);
       [100, 200, 300].forEach(r => line(arc(r, -45, 45, 64), faintMat));
 
       const glove = (fig, r) => { if (fig.addGlove) return fig.addGlove(r > .5); const g = new THREE.Group(); g.position.y = -.1; fig.handL.add(g); const a = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), fig.mats.leather); a.scale.set(1, 1.15, .55); a.castShadow = true; g.add(a); };
@@ -847,7 +891,7 @@
       const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(65 * 3), 3));
       this.trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ color: RED, transparent: true, opacity: .9 })); this.trail.visible = false; scene.add(this.trail);
       const ring = (ri, ro, color, op) => { const m = new THREE.Mesh(new THREE.RingGeometry(ri, ro, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.y = .22; m.visible = false; scene.add(m); return m; };
-      this.contact = ring(.9, 1.0, ink, 1); this.ripple = ring(.9, 1.0, RED, .8); this.tap = ring(3.6, 3.9, ink, 1);
+      this.contact = ring(.9, 1.0, chalk, 1); this.ripple = ring(.9, 1.0, RED, .8); this.tap = ring(3.6, 3.9, chalk, 1);
       this.pool = Array.from({ length: 8 }, () => {
         const disc = new THREE.Mesh(new THREE.CircleGeometry(1.6, 24), new THREE.MeshBasicMaterial({ color: RED })); disc.rotation.x = -Math.PI / 2; disc.position.y = .24; disc.visible = false;
         const halo = new THREE.Mesh(new THREE.CircleGeometry(4.5, 24), new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: .14 })); halo.rotation.x = -Math.PI / 2; halo.position.y = .21; halo.visible = false;
@@ -865,13 +909,13 @@
     }
 
     rebuildDots() {
-      const THREE = this.T, g = this.dotsGroup, ink = new THREE.Color(INK);
+      const THREE = this.T, g = this.dotsGroup, ink = new THREE.Color(CHALK);
       while (g.children.length) g.remove(g.children[0]);
       const pullLeft = this.hand !== 'left', count = clamp(this.count, 0, 120);
       const dots = this.dots = genDots(pullLeft, count);
       const red = new THREE.MeshBasicMaterial({ color: RED });
       const halo = new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: .14 });
-      const outM = new THREE.MeshBasicMaterial({ color: ink, transparent: true, opacity: .3, side: THREE.DoubleSide });
+      const outM = new THREE.MeshBasicMaterial({ color: ink, transparent: true, opacity: .4, side: THREE.DoubleSide });
       const xbhM = new THREE.MeshBasicMaterial({ color: ink, side: THREE.DoubleSide });
       const trailM = new THREE.LineBasicMaterial({ color: RED, transparent: true, opacity: .12 });
       const disc = new THREE.CircleGeometry(1.6, 24), haloG = new THREE.CircleGeometry(4.5, 24), outG = new THREE.RingGeometry(1.25, 1.6, 24), xbhG = new THREE.RingGeometry(1.6, 2.0, 24);
@@ -1025,8 +1069,8 @@
         if (Math.abs(R.vy) < .003) R.vy = 0; if (Math.abs(R.vp) < .003) R.vp = 0;
       }
       const idle = clamp((now - R.lastDrag - 900) / 2400, 0, 1);
-      const sway = this.motion ? idle * 5 * Math.sin(t * .2) : 0;
-      const wide = track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]);
+      const sway = this.motion ? idle * 5 * Math.sin(el * .2) : 0;   // from the element's own start, so the first frame matches the still
+      const wide = this.cam === 'close' ? 0 : track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]);
       const nar = Math.max(0, 4 / 3 / this.camera.aspect - 1);   // 0 for a 4:3 box, ~.67 for the phone's 4:5: frame a little nearer home, look down more when wide
       this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28 + 9 * nar, -140, wide));
       const rho = lerp(72, 500 * (1 + .9 * nar), wide), phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;

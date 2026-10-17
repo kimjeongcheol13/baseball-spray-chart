@@ -23,6 +23,7 @@ EXT = {
     'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
     **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump', 'glove', 'mitt', 'mask')},
     'clips_shared.json': 'assets/landing/clips_shared.json',
+    **{n: 'assets/landing/' + n for n in ('app_record.jpg', 'app_brief.jpg', 'app_scout.jpg')},   # SCREENS in tools/build.py
 }
 SCRIPTS = {'text/javascript', 'application/javascript'}
 by_uuid = {e['uuid']: e['id'] for e in ext}
@@ -66,7 +67,7 @@ window.slFrame = function () { return matchMedia('(max-width: 1023px)').matches 
 <link rel="icon" href="player-logo.png" type="image/png">
 <link rel="apple-touch-icon" href="player-logo.png">
 <link rel="canonical" href="https://kimjeongcheol13.github.io/baseball-spray-chart/landing.html">
-<meta property="og:title" content="SprayLab — Your Swing, Visualized">
+<meta property="og:title" content="SprayLab — 타석 하나 찍으면 차트가 그려진다">
 <meta property="og:description" content="사회인야구 타석을 기록하면 스프레이차트가 그려집니다. 무료 · 가입 없음 · 설치 없음.">
 <meta property="og:image" content="https://kimjeongcheol13.github.io/baseball-spray-chart/player-logo.png">
 <meta property="og:url" content="https://kimjeongcheol13.github.io/baseball-spray-chart/landing.html">

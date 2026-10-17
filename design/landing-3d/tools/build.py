@@ -104,15 +104,86 @@ tpl = sub(tpl, 'body{margin:0;background:#C6C1B8}',
           'nav{grid-template-columns:auto 1fr auto!important}nav>div:nth-child(2){justify-self:center}\n'
           'nav>div:first-child{gap:0!important}nav>div:first-child>span{display:none}')
 
-# resources: body + three.js addons, gzip+base64 like the rest of the manifest
+# ---- page polish 2 (2026-10-17): features show what they do, the numbers say what they count, real app screens, links ----
+APP = 'https://kimjeongcheol13.github.io/baseball-spray-chart/'
+SCREENS = ('app_record.jpg', 'app_brief.jpg', 'app_scout.jpg')   # assets/screens/: the app in its sample-data mode at 375px, the "샘플 데이터" bar cropped off
+rid_uuid = lambda rid: str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid))
+def region(s, start, end, new):           # replace from `start` through the first `end` after it (`start` exactly once)
+    assert s.count(start) == 1, (s.count(start), start[:60]); i = s.index(start); j = s.index(end, i) + len(end); return s[:i] + new + s[j:]
+CARD = 'box-sizing:border-box;background:#F6F3EE;border:1px solid rgba(11,11,14,.12);border-radius:20px;box-shadow:0 24px 48px rgba(11,11,14,.08)'
+# 자동 계산: an example stat line (OPS = OBP + SLG, ISO = SLG - AVG, as batdata.js computes them) instead of a third copy of the spray chart
+def stats(big):
+    cells = ''.join('<div><div style="font-size:13px;letter-spacing:.06em;opacity:.6">%s</div><div style="font-size:%dpx;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums">%s</div></div>' % (k, 44 if big else 30, v)
+                    for k, v in (('AVG', '.312'), ('OBP', '.398'), ('SLG', '.487'), ('OPS', '.885'), ('wOBA', '.381'), ('ISO', '.175')))
+    return ('<div style="%s;%swidth:%dpx;padding:%s;display:flex;flex-direction:column;gap:%dpx">' % (CARD, 'justify-self:center;' if big else '', 560 if big else 342, '36px 40px' if big else '24px', 28 if big else 20)
+            + '<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:%dpx;font-weight:800">7번 타자</div><div style="font-size:13px;letter-spacing:.06em;opacity:.6">예시 · 52타석</div></div>' % (22 if big else 18)
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);row-gap:%dpx;column-gap:16px">%s</div>' % (28 if big else 20, cells)
+            + '<div style="font-size:14px;line-height:1.6;opacity:.7">OPS = 출루율 + 장타율, ISO = 장타율 − 타율. 타석을 기록할 때마다 다시 계산된다.</div></div>')
+# 방향 분포: the spray chart stays (it is the right picture here) with the pull / centre / opposite split under it
+def dirbar(w):
+    seg = lambda p, c: '<div style="width:%d%%;background:%s"></div>' % (p, c)
+    lab = lambda p, t: '<span><b style="font-weight:700;font-variant-numeric:tabular-nums">%d%%</b> %s</span>' % (p, t)
+    return ('<div style="display:flex;flex-direction:column;gap:12px;width:%dpx">' % w
+            + '<div style="display:flex;height:12px;border-radius:6px;overflow:hidden">' + seg(56, '#E0343F') + seg(27, '#0B0B0E') + seg(17, '#A9A49B') + '</div>'
+            + '<div style="display:flex;justify-content:space-between;font-size:15px">' + lab(56, '당겨치기') + lab(27, '센터') + lab(17, '밀어치기') + '<span style="opacity:.55">예시</span></div></div>')
+# 공유 QR: a real QR (it opens the app) instead of the spray chart
+import qrcode, qrcode.image.svg
+qr = qrcode.make(APP, image_factory=qrcode.image.svg.SvgPathImage, border=0).to_string(encoding='unicode')
+qr = re.sub(r'width="[^"]*" height="[^"]*"', 'width="100%" height="100%" shape-rendering="crispEdges"', qr, count=1)
+def qrcard(big):
+    side = 200 if big else 160
+    return ('<div style="%s;%swidth:%dpx;padding:%s;display:flex;%sgap:%dpx">' % (CARD, 'justify-self:center;' if big else '', 560 if big else 342, '36px 40px' if big else '24px', 'align-items:center;' if big else 'flex-direction:column;', 36 if big else 20)
+            + '<div style="flex:none;box-sizing:border-box;width:%dpx;height:%dpx;background:#fff;border-radius:12px;padding:14px">%s</div>' % (side, side, qr)
+            + '<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:%dpx;font-weight:800;line-height:1.35">휴대폰 카메라로<br>찍어 보세요</div>' % (22 if big else 18)
+            + '<div style="font-size:15px;line-height:1.6;opacity:.7">이 QR은 실제로 SprayLab을 연다. 팀원에게 기록을 넘길 때도 QR 하나면 된다.</div></div></div>')
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 20 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', stats(True))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 14 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', stats(False))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 4 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>',
+               '<div style="justify-self:center;display:flex;flex-direction:column;align-items:center;gap:8px"><dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 4 }}" hint-size="560px,420px" style="width:560px;height:420px"></dc-import>' + dirbar(480) + '</div>')
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>',
+               '<dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>' + dirbar(342))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 11 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>', qrcard(True))
+tpl = sub(tpl, '<dc-import name="SprayChart" count="{{ 60 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 5 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>', qrcard(False))
+# the number strip: each number says what it counts (the old 5 / 3 / 25 / 1 had no unit, and the app has no 25 anywhere);
+# desktop: five columns that fit, instead of a sideways scroll that cut the third card at the screen edge
+tpl = sub(tpl, '<div style="display:flex;gap:64px;overflow-x:auto;scrollbar-width:none;padding:0 120px;scroll-snap-type:x mandatory;scroll-padding-left:120px">',
+               '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:40px;padding:0 120px">')
+tpl = sub(tpl, '<div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">', '<div style="display:flex;flex-direction:column;gap:20px">', 5)
+for old, new in (('1장', '1장'), ('5', '7개'), ('3', '3방향'), ('25', '전원'), ('1', '1번')):
+    tpl = sub(tpl, 'font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % old,
+                   'font-size:72px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % new)
+    tpl = sub(tpl, 'font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % old,
+                   'font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">%s</div>' % new)
+tpl = sub(tpl, 'AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.', '타율·출루율·장타율·OPS·wOBA·삼진%·볼넷%, 선수마다 한 장.', 2)   # what report.js draws
+tpl = sub(tpl, '당겨치기·센터·밀어치기, 세 구간으로 읽는다.', '당겨치기·센터·밀어치기 비율로 수비 위치까지 정한다.', 2)
+tpl = sub(tpl, '로스터 전원의 지표를 한 화면에서 비교한다.', '선수 전원의 성적·순위·경기 흐름을 한 화면에서 본다.', 2)   # team.js
+# demo: the fake video (a spray chart over a "0:24 / 1:24" bar) becomes three real screens of the app
+SHOTS = (('app_record.jpg', '기록', '필드를 탭하면 타구가 그대로 찍힌다'), ('app_brief.jpg', '분석', '타자마다 오늘·최근·시즌 성적을 한 장에'), ('app_scout.jpg', '스카우트', '상대 타자 공략 포인트를 자동으로 뽑는다'))
+fig = lambda f, t, c, w: ('<figure style="margin:0;%sdisplay:flex;flex-direction:column;gap:16px">' % ('flex:none;width:%dpx;scroll-snap-align:start;' % w if w else '')
+                          + '<img src="%s" alt="SprayLab %s 화면" loading="lazy" style="width:100%%;height:auto;display:block;border-radius:24px;border:5px solid #2A2B33">' % (rid_uuid(f), t)
+                          + '<figcaption style="font-size:17px;line-height:1.5"><b style="font-weight:700">%s</b> — %s</figcaption></figure>' % (t, c))
+head = lambda px: '<div style="font-size:%dpx;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">실제 앱</div><div>화면.</div></div>' % px
+note = '<div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty%s">가상 선수 9명 · 3경기 샘플로 찍은 실제 화면이다. 앱에서 &quot;샘플 데이터로 둘러보기&quot;를 누르면 똑같이 볼 수 있다.</div>'
+tpl = region(tpl, '<div style="position:relative;width:1200px;aspect-ratio:16/9;', '<div>0:24 / 1:24</div>\n        </div>\n      </div>',
+             '<div style="display:flex;flex-direction:column;gap:80px">'
+             '<div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:end">' + head(64) + note % ';justify-self:end' + '</div>'
+             '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:48px">' + ''.join(fig(f, t, c, 0) for f, t, c in SHOTS) + '</div></div>')
+tpl = region(tpl, '<div style="position:relative;width:342px;aspect-ratio:16/9;', '<div>0:24 / 1:24</div>\n        </div>\n      </div>',
+             '<div style="display:flex;flex-direction:column;gap:40px">' + head(40) + note % ''
+             + '<div style="display:flex;gap:20px;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x mandatory;margin:0 -24px;padding:0 24px;scroll-padding-left:24px">'
+             + ''.join(fig(f, t, c, 240) for f, t, c in SHOTS) + '</div></div>')
+tpl = sub(tpl, '<a href="#">Instagram</a>', '<a href="https://www.instagram.com/spraylab2026/" target="_blank" rel="noopener">Instagram</a>', 2)
+
+# resources: body + three.js addons + the app screens, gzip+base64 like the rest of the manifest
 mm = block('manifest'); manifest = json.loads(mm.group(2))
 me = block('ext_resources'); ext = json.loads(me.group(2))
 PLAYERS = ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump')   # must match HELMETS + CAPS + UMPIRE in src/glbfig.js
 PROPS = ('glove', 'mitt', 'mask')   # must match PROPS in src/glbfig.js
 add = [(n + '.glb', os.path.join(ASSETS, n + '.glb'), 'model/gltf-binary') for n in PLAYERS + tuple(p for p in PROPS if os.path.exists(os.path.join(ASSETS, p + '.glb')))] + [('clips_shared.json', os.path.join(CLIPDIR, 'clips_shared.json'), 'application/json'), ('GLTFLoader', J + 'loaders/GLTFLoader.js', 'text/javascript'),
-       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')]
+       ('BufferGeometryUtils', J + 'utils/BufferGeometryUtils.js', 'text/javascript'), ('SkeletonUtils', J + 'utils/SkeletonUtils.js', 'text/javascript')] + \
+      [(n, os.path.join(ASSETS, 'screens', n), 'image/jpeg') for n in SCREENS]
 for rid, path, mime in add:
-    u = str(uuid.uuid5(uuid.NAMESPACE_URL, 'spraylab-landing-3d/' + rid)); raw = open(path, 'rb').read()
+    u = rid_uuid(rid); raw = open(path, 'rb').read()
     manifest[u] = {'mime': mime, 'compressed': True, 'data': base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode()}
     ext.append({'id': rid, 'uuid': u}); print(f'+ {rid:20s} {len(raw)/1e3:8.1f} KB raw')
 enc = lambda o: json.dumps(o, ensure_ascii=False, separators=(',', ':')).replace('</script', '<\\/script')

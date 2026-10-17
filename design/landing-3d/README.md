@@ -1,8 +1,36 @@
-# 랜딩 3D 선수 (GLB) 작업 백업
+# 랜딩 페이지 + 3D 선수 작업 폴더
+
+## 지금 배포되는 랜딩 (2026-10-17, "C안 · 시네마틱 스포츠테크")
+
+`landing.html`은 더 이상 디자인 도구 캔버스를 변환한 것이 아니라 **손으로 쓴 페이지**다(`next/landing.src.html`).
+Blast·Hudl 같은 스포츠테크 랜딩 문법으로 — 검은 바탕에 화면 가득한 3D 장면, 굵은 Pretendard 제목, 데이터 칩, 폰 프레임 안의 실제 앱 화면 —
+흰 "사용법"·"비교" 섹션이 사이에 들어간다. 첫 화면과 "필드" 칸 두 군데에 움직이는 `<spray-play>` 3D가 들어 있고(모델은 한 번만 받아 둘이 나눠 씀,
+화면 밖에 있는 쪽은 그리지 않음), 첫 화면은 3D가 그려지기 전까지 같은 장면의 정지 그림(`img/hero_close.jpg`)을 보여 주다가 사라진다.
+
+빌드 순서:
+
+```bash
+cd design/landing-3d
+python tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_Landing.glb.html   # 3D 요소 스크립트(glbfig 포함)를 담은 번들
+python tools/unbundle.py SprayLab_Landing.glb.html ../..     # 3D 자원만 풀기: js/landing/vendor/(three·addons), assets/landing/(GLB·동작). 옛 캔버스 페이지는 legacy/로
+python tools/build_landing.py                                 # next/landing.src.html + 번들에서 꺼낸 <spray-play> 스크립트 → ../../landing.html, js/landing/spray-play.js, assets/landing/img/
+python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인라인한 한 파일(바탕화면 복사본용, 15.7MB)
+```
+
+- 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다.
+- 숫자는 전부 샘플 선수 김민준(#8, 15타석)의 것이다(.333 / .467 / .583 · OPS 1.050 · wOBA .451 · ISO .250 · 당김 36 / 센터 36 / 밀어 27%). 3D의 카운터만 "이번 경기".
+- 3D 요소는 인라인 스타일로 자기 크기를 정하므로 페이지 CSS가 `!important`로 absolute·inset을 덮어쓴다. 첫 화면에서는 요소의 자체 라벨(투구·타격·기록, 카운터)을 숨기고, "필드" 칸에서는 흰색으로 보여 준다.
+- 글꼴은 Pretendard(jsDelivr 동적 서브셋 `<link>`). 외부 의존은 그것뿐이다.
+- 검토 과정의 다른 시안: `next/index.html`(A안 흰 배경 제품 랜딩), `next/hero-b.html`(B안 다크 테크), `next/index-c.html`(C안 정지 그림 버전). 레퍼런스 보드와 전후 비교는 `harness/clips/report/`(gitignore).
+- 아래 내용(3D 선수 제작, 동작, 장비, 옛 캔버스 변환 `unbundle.py`의 페이지 편집)은 그대로 유효한 기록이다. `unbundle.py`의 페이지 변환 부분은 이제 `legacy/landing.html`에만 쓰인다.
+
+---
+
+## 3D 선수 (GLB) 작업 기록
 
 Claude Design으로 내보낸 랜딩 페이지(`source/SprayLab_Landing.orig.html`)에 들어 있는 `<spray-play>` 3D 장면의
 절차적 마네킹 12명(투수·타자·포수·심판·코치 + 야수 7명)을 사실적인 사람 GLB 몸으로 바꾼 작업이다.
-앱(`index.html`, `js/`, `css/`)과는 무관한 디자인 작업 폴더이고, 배포 대상이 아니다.
+앱(`index.html`, `js/`, `css/`)과는 무관한 디자인 작업 폴더다.
 
 - 결과물: `SprayLab_Landing.glb.html` (6.0MB, 브라우저로 바로 열림). 원본 4.87MB.
 - 미리보기: `previews/compare_glb.png`(마네킹 vs GLB), `previews/jersey_print.png`(등번호·로고), `previews/mocap_preview.png`(Mixamo 동작), `previews/fielder_sheet.png`(야수 대기·달리기·받기·복귀)

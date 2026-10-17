@@ -110,11 +110,17 @@ sub('</body>', fit)
 
 # 3) write files
 os.makedirs(root, exist_ok=True)
-open(os.path.join(root, 'landing.html'), 'w', encoding='utf-8').write(tpl)
+# The deployed landing.html is now written by tools/build_landing.py; this design-canvas page only goes to legacy/ for reference,
+# and only the 3D resources (three + addons, GLBs, motion) are written next to the page.
+LEGACY = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'legacy'); os.makedirs(LEGACY, exist_ok=True)
+open(os.path.join(LEGACY, 'landing.html'), 'w', encoding='utf-8').write(tpl)
+KEEP = ('js/landing/vendor/three', 'js/landing/vendor/GLTFLoader', 'js/landing/vendor/BufferGeometryUtils', 'js/landing/vendor/SkeletonUtils', 'assets/landing/')
 total = len(tpl.encode())
 for u, p in paths.items():
-    e = manifest[u]; raw = base64.b64decode(e['data'])
+    e = manifest[u]
+    if not p.startswith(KEEP) or p.startswith('assets/landing/fonts') or p.startswith('assets/landing/app_'): continue
+    raw = base64.b64decode(e['data'])
     if e.get('compressed'): raw = gzip.decompress(raw)
     f = os.path.join(root, p); os.makedirs(os.path.dirname(f), exist_ok=True)
     open(f, 'wb').write(raw); total += len(raw)
-print('landing.html %.0f KB + %d files, %.2f MB total' % (len(tpl.encode()) / 1e3, len(paths), total / 1e6))
+print('legacy/landing.html %.0f KB; 3D resources %.2f MB' % (len(tpl.encode()) / 1e3, (total - len(tpl.encode())) / 1e6))

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SprayLab — 시안 C (시네마틱)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root { --ink: #0B0D12; --fg: #fff; --fg-2: rgba(255,255,255,.78); --fg-3: rgba(255,255,255,.55); --line: rgba(255,255,255,.16); --red: #E0343F; --max: 1240px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Noto Sans KR', sans-serif; background: var(--ink); color: var(--fg); line-height: 1.6; letter-spacing: -.01em; word-break: keep-all; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; } img { display: block; max-width: 100%; height: auto; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 32px; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .nav { position: absolute; left: 0; right: 0; top: 0; z-index: 10; }
+  .nav .wrap { height: 72px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-weight: 800; font-size: 17px; letter-spacing: .1em; } .brand i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin-right: 9px; vertical-align: 1px; }
+  .menu { display: flex; gap: 28px; font-size: 14px; font-weight: 600; color: var(--fg-2); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 52px; padding: 0 26px; border-radius: 4px; font-size: 15px; font-weight: 800; letter-spacing: .01em; white-space: nowrap; }
+  .btn-red { background: var(--red); color: #fff; } .btn-white { background: #fff; color: var(--ink); } .btn-ghost { border: 1px solid var(--line); color: #fff; } .btn-sm { height: 40px; padding: 0 16px; font-size: 14px; }
+  .hero { position: relative; height: 100vh; min-height: 760px; max-height: 960px; overflow: hidden; display: flex; align-items: flex-end; }
+  .hero .bg { position: absolute; inset: 0; background: #1C1F27 url(img/hero_close.jpg) center / cover no-repeat; }
+  .hero .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.72) 38%, rgba(11,13,18,.15) 70%, rgba(11,13,18,.05) 100%), linear-gradient(180deg, rgba(11,13,18,.25) 0%, transparent 30%, rgba(11,13,18,.85) 100%); }
+  .hero .wrap { position: relative; width: 100%; padding-bottom: 72px; display: grid; grid-template-columns: minmax(0, 640px) 1fr; align-items: end; gap: 40px; }
+  .kicker { font-size: 13px; font-weight: 800; letter-spacing: .18em; color: var(--red); }
+  h1 { margin-top: 14px; font-size: 72px; line-height: 1.04; letter-spacing: -.04em; font-weight: 800; }
+  .lead { margin-top: 20px; font-size: 18px; color: var(--fg-2); max-width: 30em; }
+  .cta { margin-top: 30px; display: flex; gap: 12px; align-items: center; } .cta small { margin-left: 8px; font-size: 13px; color: var(--fg-3); }
+  .chips { position: relative; display: flex; flex-direction: column; gap: 12px; align-items: flex-end; }
+  .chip { padding: 14px 18px; border-radius: 12px; background: rgba(255,255,255,.1); border: 1px solid var(--line); backdrop-filter: blur(16px); min-width: 180px; }
+  .chip span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--fg-3); } .chip b { display: block; margin-top: 2px; font-size: 34px; font-weight: 800; line-height: 1; } .chip b em { font-style: normal; color: #FF6B74; }
+  .chip .bar { margin-top: 8px; height: 6px; border-radius: 3px; display: flex; overflow: hidden; background: rgba(255,255,255,.14); } .bar i { display: block; height: 100%; }
+  .ticker { border-top: 1px solid var(--line); background: var(--ink); }
+  .ticker .wrap { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .ticker div { padding: 26px 0; border-right: 1px solid var(--line); padding-right: 24px; }
+  .ticker div:last-child { border-right: 0; } .ticker div + div { padding-left: 24px; }
+  .ticker b { display: block; font-size: 26px; font-weight: 800; } .ticker span { display: block; margin-top: 4px; font-size: 13px; color: var(--fg-3); }
+  @media (max-width: 1023px) { .menu { display: none; } .hero { min-height: 680px; } .hero .wrap { grid-template-columns: 1fr; padding-bottom: 40px; } h1 { font-size: 42px; } .lead { font-size: 16px; } .chips { flex-direction: row; flex-wrap: wrap; align-items: stretch; } .chip { min-width: 0; flex: 1 1 40%; } .chip b { font-size: 24px; } .ticker .wrap { grid-template-columns: repeat(2, 1fr); } .ticker div { border-right: 0; padding-left: 0 !important; } }
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="#"><i></i>SPRAYLAB</a><nav class="menu"><a href="#">사용법</a><a href="#">필드</a><a href="#">기능</a><a href="#">비교</a></nav><a class="btn btn-white btn-sm" href="#">차트 열기</a></div></header>
+<section class="hero">
+  <div class="bg"></div><div class="shade"></div>
+  <div class="wrap">
+    <div>
+      <div class="kicker">AMATEUR BASEBALL · SPRAY CHART</div>
+      <h1>타석 하나 찍으면,<br>차트가 그려집니다</h1>
+      <p class="lead">더그아웃에서 공이 떨어진 자리를 탭하세요. 스프레이차트와 타율·OPS·방향 분포가 그 자리에서 계산됩니다.</p>
+      <div class="cta"><a class="btn btn-red" href="#">무료로 시작하기</a><a class="btn btn-ghost" href="#">어떻게 쓰나요</a><small>가입 없음 · 설치 없음</small></div>
+    </div>
+    <div class="chips">
+      <div class="chip"><span>SEASON AVG</span><b class="num">.333</b></div>
+      <div class="chip"><span>OPS</span><b class="num">1.050</b></div>
+      <div class="chip"><span>PULL · CENTER · OPPO</span><b class="num"><em>36</em> · 36 · 27%</b><div class="bar"><i style="width:36%;background:var(--red)"></i><i style="width:36%;background:#fff"></i><i style="flex:1;background:rgba(255,255,255,.3)"></i></div></div>
+    </div>
+  </div>
+</section>
+<section class="ticker"><div class="wrap">
+  <div><b class="num">.333 / .467 / .583</b><span>타율 · 출루율 · 장타율, 타석마다 갱신</span></div>
+  <div><b class="num">OPS · wOBA · ISO</b><span>세이버메트릭스 지표 자동 계산</span></div>
+  <div><b>당김 · 센터 · 밀어</b><span>타구 방향 분포와 코스별 핫존</span></div>
+  <div><b>PNG · 엑셀 · QR</b><span>리포트와 데이터 내보내기</span></div>
+</div></section>
+</body>
+</html>

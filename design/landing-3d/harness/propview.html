@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.184.0/examples/jsm/"}}</script>
+<body style="margin:0"><script type="module">
+// each gear prop (assets/glove|mitt|mask.glb) seen from +z and from -z (and +x), to tell which side the pocket / cage is on
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const r = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true }); r.setSize(300, 300); document.body.append(r.domElement);
+const shots = [];
+for (const n of ['glove', 'mitt', 'mask']) {
+  const g = await new GLTFLoader().loadAsync('../assets/' + n + '.glb');
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd); scene.add(g.scene);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.5));
+  const box = new THREE.Box3().setFromObject(g.scene), c = box.getCenter(new THREE.Vector3()), R = box.getSize(new THREE.Vector3()).length();
+  const cam = new THREE.PerspectiveCamera(35, 1, .01, 100);
+  for (const d of [[0, 0, 1], [0, 0, -1], [1, 0, 0]]) { cam.position.copy(c).addScaledVector(new THREE.Vector3(...d), R * 1.6); cam.lookAt(c); r.render(scene, cam); shots.push(r.domElement.toDataURL('image/png')); }
+}
+window.__frames = shots;
+</script>

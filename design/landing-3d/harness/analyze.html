@@ -1,0 +1,49 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.184.0/build/three.module.js"}}</script>
+<body style="margin:0;background:#E7E3DC"><canvas id="c" width="1440" height="1920" style="width:1440px;height:1920px;display:block"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from '../vendor/three-0.184.0/examples/jsm/loaders/FBXLoader.js';
+import { makeRetargeter } from './retarget.js';
+const CLIPS = (new URLSearchParams(location.search).get('clips') || 'Baseball_Idle,Baseball_Pitching,Baseball_Hit,Baseball_Hit_1,Baseball_Hit_2,Baseball_Strike,Baseball_Catcher,Baseball_Umpire').split(',');
+const COLS = 6, CW = 1440 / COLS, CH = 1920 / CLIPS.length;
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(1440, 1920, false); renderer.setClearColor(0xE7E3DC, 1); renderer.setScissorTest(true);
+const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight(0xffffff, 0x8a857c, 1.2)); const sun = new THREE.DirectionalLight(0xfff3e6, 2.2); sun.position.set(-2, 4, 3); scene.add(sun);
+const grid = new THREE.GridHelper(6, 12, 0x999999, 0xbbbbbb); scene.add(grid);
+const gltf = await new GLTFLoader().loadAsync('../assets/body.glb'); scene.add(gltf.scene);
+let mesh; gltf.scene.traverse(o => { if (o.isSkinnedMesh) mesh = o; });
+mesh.material = new THREE.MeshStandardMaterial({ color: 0xbfb8ad, roughness: .7 }); mesh.frustumCulled = false;
+const bones = {}; mesh.skeleton.bones.forEach(b => bones[b.name.replace(/^mixamorig:?/, '')] = b);
+const rest = {}; for (const n in bones) rest[n] = { q: bones[n].quaternion.clone(), p: bones[n].position.clone() };
+const cam = new THREE.PerspectiveCamera(32, CW / CH, .1, 50);
+const report = {}; const wp = (n) => bones[n].getWorldPosition(new THREE.Vector3());
+const loader = new FBXLoader();
+for (let r = 0; r < CLIPS.length; r++) {
+  for (const n in bones) { bones[n].quaternion.copy(rest[n].q); bones[n].position.copy(rest[n].p); }
+  gltf.scene.updateMatrixWorld(true);
+  const fbx = await loader.loadAsync('./clips/' + CLIPS[r] + '.fbx'); const clip = fbx.animations[0];
+  const rt = makeRetargeter(fbx, bones); const mixer = new THREE.AnimationMixer(fbx); mixer.clipAction(clip).play();
+  const N = Math.round(clip.duration * 30), rows = [];
+  for (let i = 0; i <= N; i++) {
+    mixer.setTime(Math.min(i / 30, clip.duration - 1e-4)); rt.apply(); gltf.scene.updateMatrixWorld(true);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(bones.Hips.getWorldQuaternion(new THREE.Quaternion()));
+    rows.push({ t: i / 30, hips: wp('Hips'), rh: wp('RightHand'), lh: wp('LeftHand'), head: wp('Head'), yaw: Math.atan2(fwd.x, fwd.z) * 180 / Math.PI });
+  }
+  const sp = (k) => rows.map((x, i) => i ? x[k].distanceTo(rows[i - 1][k]) * 30 : 0);
+  const peak = (a) => { let m = 0, j = 0; a.forEach((v, i) => { if (v > m) { m = v; j = i; } }); return [+(j / 30).toFixed(2), +m.toFixed(2)]; };
+  const f3 = (v) => [v.x, v.y, v.z].map(x => +x.toFixed(2));
+  let seam = 0; { mixer.setTime(0); rt.apply(); const q0 = Object.values(bones).map(b => b.quaternion.clone()); mixer.setTime(clip.duration - 1e-4); rt.apply();
+    Object.values(bones).forEach((b, j) => { seam = Math.max(seam, b.quaternion.angleTo(q0[j])); }); seam = +(seam * 180 / Math.PI).toFixed(1); }
+  report[CLIPS[r]] = { seamMaxDeg: seam, dur: +clip.duration.toFixed(2), frames: N, hips0: f3(rows[0].hips), hipsEnd: f3(rows[N].hips), hipsMinY: +Math.min(...rows.map(x => x.hips.y)).toFixed(2), headMinY: +Math.min(...rows.map(x => x.head.y)).toFixed(2),
+    yaw0: +rows[0].yaw.toFixed(0), yawEnd: +rows[N].yaw.toFixed(0), rHandPeak: peak(sp('rh')), lHandPeak: peak(sp('lh')), rh0: f3(rows[0].rh), lh0: f3(rows[0].lh) };
+  for (let c = 0; c < COLS; c++) {
+    const t = clip.duration * c / (COLS - 1) * .999; mixer.setTime(t); rt.apply(); gltf.scene.updateMatrixWorld(true);
+    const h = wp('Hips'); cam.position.set(h.x + 2.0, 1.25, h.z + 3.4); cam.lookAt(h.x, .85, h.z);
+    const x = c * CW, y = 1920 - (r + 1) * CH; renderer.setViewport(x, y, CW, CH); renderer.setScissor(x, y, CW, CH); renderer.render(scene, cam);
+  }
+}
+console.log('REPORT ' + JSON.stringify(report));
+window.__ready = true;
+</script>

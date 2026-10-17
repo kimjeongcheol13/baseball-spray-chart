@@ -14,12 +14,13 @@ cd design/landing-3d
 python tools/build.py source/SprayLab_Landing.orig.html src/glbfig.js SprayLab_Landing.glb.html   # 3D 요소 스크립트(glbfig 포함)를 담은 번들
 python tools/unbundle.py SprayLab_Landing.glb.html ../..     # 3D 자원만 풀기: js/landing/vendor/(three·addons), assets/landing/(GLB·동작). 옛 캔버스 페이지는 legacy/로
 python tools/build_landing.py                                 # next/landing.src.html + 번들에서 꺼낸 <spray-play> 스크립트 → ../../landing.html, js/landing/spray-play.js, assets/landing/img/
-python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인라인한 한 파일(바탕화면 복사본용, 15.7MB)
+python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인라인한 한 파일(바탕화면 복사본용, 16.2MB)
 ```
 
 - 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다.
 - 숫자는 전부 샘플 선수 김민준(#8, 15타석)의 것이다(.333 / .467 / .583 · OPS 1.050 · wOBA .451 · ISO .250 · 당김 36 / 센터 36 / 밀어 27%). 3D의 카운터만 "이번 경기".
 - 3D 요소는 인라인 스타일로 자기 크기를 정하므로 페이지 CSS가 `!important`로 absolute·inset을 덮어쓴다. 첫 화면에서는 요소의 자체 라벨(투구·타격·기록, 카운터)을 숨기고, "필드" 칸에서는 흰색으로 보여 준다.
+- 공유 미리보기: head의 `og:`·`twitter:` 메타와 `img/og.jpg`(1200×630, 첫 화면을 그대로 찍은 것), 파비콘 `img/icon-32/192.png`(앱의 player-logo). 상단 바는 fixed이고 40px 넘게 내리면 `.nav.scrolled`(반투명+블러, 60px)로 바뀐다. `hero_close.jpg`는 3D의 첫 프레임(tau 0.05)을 2400×1280으로 찍은 것이라 페이드 때 장면이 이어진다.
 - 글꼴은 Pretendard(jsDelivr 동적 서브셋 `<link>`). 외부 의존은 그것뿐이다.
 - 검토 과정의 다른 시안: `next/index.html`(A안 흰 배경 제품 랜딩), `next/hero-b.html`(B안 다크 테크), `next/index-c.html`(C안 정지 그림 버전). 레퍼런스 보드와 전후 비교는 `harness/clips/report/`(gitignore).
 - 아래 내용(3D 선수 제작, 동작, 장비, 옛 캔버스 변환 `unbundle.py`의 페이지 편집)은 그대로 유효한 기록이다. `unbundle.py`의 페이지 변환 부분은 이제 `legacy/landing.html`에만 쓰인다.

@@ -559,9 +559,17 @@
         return db.from('user_games').select('game_key,data,updated_at').eq('user_id', user.id);
       }).then(function (r) {
         if (r.error) throw r.error;
+        // 위의 네트워크 왕복 동안 저장 · 이름 바꾸기 · 삭제가 sl_saves 를 바꿨을 수 있다 → 지금 목록을 다시 읽는다(이 아래 쓰기까지는 동기 실행).
+        // 예전에는 처음 읽은 목록을 끝에서 그대로 써서 그 사이 저장한 경기가 빠지고, 바꾼 이름이 돌아가고, 지운 경기가 되살아났다(후속 13번).
+        // 처음 목록에 있었는데 지금 없는 키 = 동기화 도중 지운 경기 → 서버 삭제가 이미 끝나 삭제 대기에 없어도 내려받지 않는다
+        var now = JSON.parse(localStorage.getItem('sl_saves') || '[]'), nowHas = {}, gone = {};
+        now.forEach(function (s) { if (s && typeof s.key === 'string') nowHas[s.key] = true; });
+        saves.forEach(function (s) { if (s && typeof s.key === 'string' && !nowHas[s.key]) gone[s.key] = true; });
+        saves = now; entryOf = {};
+        saves.forEach(function (s) { if (s && typeof s.key === 'string') entryOf[s.key] = s; });
         var existMap = {};
         saves.forEach(function (s) { if (s && typeof s.key === 'string') existMap[s.key] = true; });
-        var rows = (r.data || []).filter(function (row) { return !!row && typeof row.game_key === 'string' && !pend[row.game_key]; });
+        var rows = (r.data || []).filter(function (row) { return !!row && typeof row.game_key === 'string' && !pend[row.game_key] && !gone[row.game_key]; });
         var plan = _planAutoCleanup(user, rows, saves);   // 같은 경기 중복(스냅샷·정식 저장) 정리 — 계정·기기마다 한 번
         var added = 0;
         rows.forEach(function (row) {

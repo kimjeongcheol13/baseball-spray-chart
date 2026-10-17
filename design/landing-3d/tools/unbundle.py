@@ -23,7 +23,7 @@ EXT = {
     'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
     **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump', 'glove', 'mitt', 'mask')},
     'clips_shared.json': 'assets/landing/clips_shared.json',
-    **{n: 'assets/landing/' + n for n in ('app_record.jpg', 'app_team.jpg', 'export_report.jpg')},   # SCREENS in tools/build.py
+    **{n: 'assets/landing/' + n for n in ('app_record.jpg', 'app_brief.jpg', 'app_scout.jpg')},   # SCREENS in tools/build.py
 }
 SCRIPTS = {'text/javascript', 'application/javascript'}
 by_uuid = {e['uuid']: e['id'] for e in ext}
@@ -62,11 +62,8 @@ head = '''<html lang="ko"><head>
 window.slFrame = function () { return matchMedia('(max-width: 1023px)').matches ? 'mobile' : 'desktop'; };
 </script>
 <title>SprayLab — 타석 하나 찍으면 차트가 그려진다</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Batang:wght@400;700&family=Oswald:wght@500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="description" content="사회인야구 타석을 기록하면 스프레이차트가 그려집니다. 무료 · 가입 없음 · 설치 없음.">
-<meta name="theme-color" content="#F3EDDF">
+<meta name="theme-color" content="#0E0F14">
 <link rel="icon" href="player-logo.png" type="image/png">
 <link rel="apple-touch-icon" href="player-logo.png">
 <link rel="canonical" href="https://kimjeongcheol13.github.io/baseball-spray-chart/landing.html">
@@ -78,9 +75,9 @@ window.slFrame = function () { return matchMedia('(max-width: 1023px)').matches 
 <meta name="twitter:card" content="summary_large_image">''' % json.dumps(res, ensure_ascii=False)
 sub('<html lang="ko"><head>', head)
 sub('  <meta name="design_doc_mode" content="canvas">\n', '')
-sub('body{margin:0;background:#C6C1B8}', 'body{margin:0;background:#F3EDDF}')
+sub('body{margin:0;background:#C6C1B8}', 'body{margin:0;background:#E7E3DC}')
 sub('<div style="min-height:100vh;background:#C6C1B8;padding:80px;display:flex;gap:120px;align-items:flex-start;font-family:',
-    '<div id="sl-page" style="min-height:100vh;background:#F3EDDF;display:flex;justify-content:center;align-items:flex-start;font-family:')
+    '<div id="sl-page" style="min-height:100vh;background:#E7E3DC;display:flex;justify-content:center;align-items:flex-start;font-family:')
 sub('  <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">Desktop · 1440</div>\n', '')
 sub('  <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">Mobile · 390</div>\n', '')
 sub('<div style="flex:none;display:flex;flex-direction:column;gap:20px">', '<div style="flex:none">', 2)
@@ -116,9 +113,7 @@ os.makedirs(root, exist_ok=True)
 open(os.path.join(root, 'landing.html'), 'w', encoding='utf-8').write(tpl)
 total = len(tpl.encode())
 for u, p in paths.items():
-    e = manifest[u]
-    if e['mime'] == 'font/woff2' and u not in tpl: continue   # the Pretendard subsets the page no longer uses
-    raw = base64.b64decode(e['data'])
+    e = manifest[u]; raw = base64.b64decode(e['data'])
     if e.get('compressed'): raw = gzip.decompress(raw)
     f = os.path.join(root, p); os.makedirs(os.path.dirname(f), exist_ok=True)
     open(f, 'wb').write(raw); total += len(raw)

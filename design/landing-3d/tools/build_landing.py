@@ -28,6 +28,7 @@ data_url = lambda p: 'data:%s;base64,%s' % (MIME[os.path.splitext(p)[1]], base64
 imgs = sorted(f for f in os.listdir(os.path.join(NEXT, 'img')) if f.endswith(('.jpg', '.png')))
 if single:
     out = sys.argv[sys.argv.index('--single') + 1]
+    src = '\n'.join(l for l in src.split('\n') if 'rel="preload"' not in l)   # images are inline here; a preload would only inline them twice
     for f in imgs: src = src.replace('assets/landing/img/' + f, data_url(os.path.join(NEXT, 'img', f)))
     res = 'window.__resources = %s;' % json.dumps({k: data_url(os.path.join(ROOT, v)) for k, v in RES.items()})
     play = '<script>%s</script>' % js

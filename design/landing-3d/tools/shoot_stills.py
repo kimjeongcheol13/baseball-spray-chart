@@ -39,7 +39,7 @@ def shoot(browser):
             out = Image.new('RGB', im.size, BG); out.paste(im, mask=im.split()[3])
         else:
             out = Image.open(io.BytesIO(page.locator('.hero').screenshot())).convert('RGB')
-        out.save(os.path.join(IMG, name), quality=86, optimize=True)
+        out.save(os.path.join(IMG, name), quality=66, optimize=True, progressive=True)   # 66: about half of 86, no visible loss on the players
         shutil.copyfile(os.path.join(IMG, name), os.path.join(ROOT, 'assets', 'landing', 'img', name))   # what the built page shows (build_landing.py copies the same)
         print('%-16s %dx%d' % (name, *out.size)); ctx.close()
 

@@ -65,6 +65,33 @@
     window.dispatchEvent(new Event('online')); await sleep(3000);
     eq(srv.user_games.filter(function (r) { return r.game_key === K; }).map(function (r) { return r.data.hs; }), [7], '연결 뒤 올라감');
   });
+  // 후속 13번(알려진 문제 · 아직 안 고침): 시작 동기화(cloud.js _startupSync)는 시작할 때 읽은 sl_saves 를, 서버 경기를 내려받아 목록에 넣을 때 끝에서
+  // 그대로 다시 쓴다 → 그 사이(네트워크 왕복 동안) 새로 저장한 경기의 목록 항목이 빠진다(경기 데이터 키는 남는다).
+  // 내려받기 응답(두 번째 user_games select)만 늦춰 그 사이에 실제 saveGame() 을 부른다. 늦추지 않으면(저장이 동기화 뒤) 항목은 남는다.
+  // 지금 동작을 단언한다 — 13번을 고치면 마지막 단언을 "남는다"(keys.indexOf(NK) >= 0)로 뒤집는다
+  test('(알려진 문제 · 후속 13번) 시작 동기화가 서버 경기를 내려받는 도중에 새 경기를 저장하면, 지금은 그 경기가 목록(sl_saves)에서 빠진다', async function () {
+    await start(); seed([]);
+    var RK = 'sl_' + (BASE + 31);   // 서버에만 있는 경기 → 시작 동기화가 내려받아 목록에 넣는다(sl_saves 를 다시 쓰는 경로)
+    srv.user_games.push({ user_id: 'TEST-USER', game_key: RK, team_name: '홈31 vs 원정', date: null, data: game(31, 4), updated_at: new Date(Date.now() - 60000).toISOString() });
+    var held = false;
+    srv.delayRead = function (t, q) { if (t === 'user_games' && q.cols === 'game_key,data,updated_at') { held = true; return 2000; } return 0; };
+    var abs0 = AS.abs;
+    try {
+      srv.signIn();
+      for (var i = 0; i < 400 && !held; i++) await sleep(10);   // 시작 동기화가 내려받기 요청을 보낼 때까지
+      ok(held, '시작 동기화가 내려받기 요청을 보내지 않음(이 테스트의 전제)');
+      window._curSaveKey = null;
+      AS.abs = [{ id: BASE + 9301, bid: 'c', bname: '다', bnum: 3, res: '안타', inn: '1회초', team: 'home' }];
+      saveGame(); await sleep(500);
+      var NK = window._curSaveKey;
+      ok(NK && T.ls('sl_saves').some(function (s) { return s.key === NK; }), '저장 직후 목록에 있음(전제)');
+      await sleep(2500);   // 내려받기 응답 → 시작 동기화가 끝난다
+      var keys = T.ls('sl_saves').map(function (s) { return s.key; });
+      ok(keys.indexOf(RK) >= 0, '서버 경기가 내려와 목록에 추가됨(sl_saves 를 다시 쓰는 경로를 탔다는 전제)');
+      ok(localStorage.getItem(NK) !== null, '저장한 경기의 데이터 키는 남음');
+      ok(keys.indexOf(NK) < 0, '동기화 도중 저장한 경기가 목록에 남음 — 13번이 고쳐졌다면 이 단언을 뒤집는다: ' + JSON.stringify(keys));
+    } finally { AS.abs = abs0; srv.delayRead = null; }
+  });
   test('(정리) 로그아웃하고 이 파일이 만든 상태를 비운다', async function () {
     srv.signOut(); await sleep(1000); srv.reset(); localStorage.clear(); eq(srv.user, null, '로그아웃');
   });

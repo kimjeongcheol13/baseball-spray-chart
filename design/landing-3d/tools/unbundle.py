@@ -89,6 +89,7 @@ sub("    const f = this.props.frames ?? 'both';", '    const f = this.state.fram
 # links
 sub('<a href="#" style="display:inline-flex;align-items:center;height:56px;padding:0 40px;', '<a href="./" style="display:inline-flex;align-items:center;height:56px;padding:0 40px;')
 sub('<a href="#" style="display:inline-flex;align-items:center;height:56px;padding:0 36px;', '<a href="./" style="display:inline-flex;align-items:center;height:56px;padding:0 36px;')
+sub('<a href="#" data-cta=', '<a href="./" data-cta=', 4)   # first-screen + nav buttons (tools/build.py)
 sub('<a href="#">GitHub</a>', '<a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" rel="noopener">GitHub</a>', 2)
 # fit the fixed-width artboard to the screen (zoom keeps layout height and anchors correct)
 fit = '''<script>

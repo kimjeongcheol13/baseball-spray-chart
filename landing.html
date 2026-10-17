@@ -1120,7 +1120,7 @@ textarea.input { min-height: 90px; resize: vertical; }
       if (this.mounted) return; this.mounted = true;
       Object.assign(this.style, { display: 'block', position: 'relative', width: '100%', height: '100%', minHeight: '240px', aspectRatio: '4 / 3', touchAction: 'pan-y', cursor: 'grab', userSelect: 'none', webkitUserSelect: 'none' });
       const ui = document.createElement('div');
-      Object.assign(ui.style, { position: 'absolute', inset: 0, pointerEvents: 'none', fontSize: '11px', letterSpacing: '.12em', fontWeight: 300, color: INK, lineHeight: 1 });
+      Object.assign(ui.style, { position: 'absolute', inset: 0, pointerEvents: 'none', fontSize: '13px', letterSpacing: '.06em', fontWeight: 400, color: INK, lineHeight: 1 });
       const ph = document.createElement('div');
       Object.assign(ph.style, { position: 'absolute', left: 0, bottom: 0, display: 'flex', gap: '16px' });
       this.phEls = ['투구', '타격', '기록'].map(s => { const e = document.createElement('span'); e.textContent = s; e.style.transition = 'font-weight .25s'; ph.appendChild(e); return e; });
@@ -1142,13 +1142,18 @@ textarea.input { min-height: 90px; resize: vertical; }
       });
       const up = () => { const R = this.rot; if (!R.drag) return; R.drag = false; R.lastDrag = performance.now(); this.style.cursor = 'grab'; };
       this.addEventListener('pointerup', up); this.addEventListener('pointercancel', up);
-      three().then(T => loadBody(T).then(b => { BODY = b; }, err => console.warn('spray-play: realistic body unavailable, using mannequin', err)).then(() => this.init(T)))
+      const wait = document.createElement('div'); wait.textContent = '선수들 불러오는 중…';
+      Object.assign(wait.style, { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: INK, opacity: .55 });
+      this.append(wait); this.waitEl = wait;
+      const start = () => three().then(T => loadBody(T).then(b => { BODY = b; }, err => console.warn('spray-play: realistic body unavailable, using mannequin', err)).then(() => this.init(T)))
         .catch(err => console.error('spray-play: three.js failed to load', err));
+      if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '25% 0px' }); io.observe(this); }
+      else start();
     }
     disconnectedCallback() { cancelAnimationFrame(this.raf); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); }
 
     init(THREE) {
-      this.T = THREE;
+      this.T = THREE; if (this.waitEl) this.waitEl.remove();
       const renderer = this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearColor(0x000000, 0);
@@ -1403,8 +1408,9 @@ textarea.input { min-height: 90px; resize: vertical; }
       const idle = clamp((now - R.lastDrag - 900) / 2400, 0, 1);
       const sway = this.motion ? idle * 5 * Math.sin(t * .2) : 0;
       const wide = track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]);
-      this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28, -140, wide));
-      const rho = lerp(72, 500, wide), phi = clamp(lerp(15, 42, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
+      const nar = Math.max(0, 4 / 3 / this.camera.aspect - 1);   // 0 for a 4:3 box, ~.67 for the phone's 4:5: frame a little nearer home, look down more when wide
+      this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28 + 9 * nar, -140, wide));
+      const rho = lerp(72, 500 * (1 + .9 * nar), wide), phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
       this.camera.position.set(this.camTarget.x + rho * Math.sin(theta) * Math.cos(phi), this.camTarget.y + rho * Math.sin(phi), this.camTarget.z + rho * Math.cos(theta) * Math.cos(phi));
       this.camera.lookAt(this.camTarget);
 
@@ -1430,6 +1436,9 @@ textarea.input { min-height: 90px; resize: vertical; }
 <helmet>
   <style>
     body{margin:0;background:#E7E3DC}
+nav a,footer a{display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px}
+nav{grid-template-columns:auto 1fr auto!important}nav>div:nth-child(2){justify-self:center}
+nav>div:first-child{gap:0!important}nav>div:first-child>span{display:none}
     a{color:inherit;text-decoration:none}
     a:hover{opacity:.55}
     a:focus-visible{outline:1px solid #0B0B0E;outline-offset:4px}
@@ -1443,28 +1452,32 @@ textarea.input { min-height: 90px; resize: vertical; }
 
     <section data-screen-label="D1 Hero" style="position:relative;height:900px;background:#0E0F14;color:#E7E3DC;overflow:hidden">
       <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 2.5 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 8 }}" tilt="{{ 58 }}" yaw="{{ -16 }}" zoom="{{ 1.45 }}" hint-size="1500px,1125px" style="position:absolute;left:260px;top:-40px;width:1500px;height:1125px"></dc-import>
-      <nav style="position:absolute;left:0;right:0;top:0;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 40px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+      <nav style="position:absolute;left:0;right:0;top:0;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 40px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
         <div style="display:flex;gap:12px"><a href="#d-features">기능</a><span>·</span><a href="#d-compare">비교</a><span>·</span><a href="#d-demo">데모</a></div>
         <div style="font-size:13px;font-weight:800;letter-spacing:.2em">SPRAYLAB</div>
-        <div style="display:flex;justify-content:flex-end"><a href="#d-cta">차트 열기</a></div>
+        <div style="display:flex;justify-content:flex-end"><a href="./" data-cta="nav"><span style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(231,227,220,.55);letter-spacing:.04em;font-weight:500">차트 열기</span></a></div>
       </nav>
       <div style="position:absolute;left:40px;top:168px;font-size:112px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all">
         <div style="font-weight:800">타석 하나 찍으면</div>
         <div>차트가 그려진다.</div>
       </div>
-      <div style="position:absolute;left:0;right:0;bottom:32px;text-align:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">Scroll ↓</div>
-      <div style="position:absolute;left:40px;bottom:32px;display:flex;gap:20px;align-items:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+      <div style="position:absolute;left:40px;top:432px;display:flex;flex-direction:column;align-items:flex-start;gap:28px">
+        <div style="font-size:20px;line-height:1.6;font-weight:400;text-shadow:0 0 18px #0E0F14">사회인야구 타석을 기록하면 스프레이차트가 그려집니다.</div>
+        <div style="display:flex;align-items:center;gap:20px"><a href="./" data-cta="hero" style="display:inline-flex;align-items:center;height:56px;padding:0 40px;border-radius:28px;background:#E7E3DC;color:#0B0B0E;font-size:16px;font-weight:700">차트 열기</a><div style="font-size:13px;letter-spacing:.06em;font-weight:400">무료 · 가입 없음 · 설치 없음</div></div>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:32px;text-align:center;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">Scroll ↓</div>
+      <div style="position:absolute;left:40px;bottom:32px;display:flex;gap:20px;align-items:center;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#E0343F"></div>안타</div>
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#E0343F;border:1px solid #E7E3DC"></div>장타</div>
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;border:1px solid rgba(231,227,220,.45)"></div>아웃</div>
       </div>
-      <div style="position:absolute;right:40px;bottom:32px;font-size:11px;letter-spacing:.12em;font-weight:300">드래그해서 돌려보기</div>
+      <div style="position:absolute;right:40px;bottom:32px;font-size:13px;letter-spacing:.06em;font-weight:400">드래그해서 돌려보기</div>
     </section>
 
     <section data-screen-label="D1b Play" style="padding:160px 120px;display:flex;flex-direction:column;gap:96px">
       <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:end">
         <div style="font-size:64px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">치는 순간</div><div>기록된다.</div></div>
-        <div style="justify-self:end;font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">투수가 던지고 타자가 친다. 공이 떨어진 자리를 더그아웃의 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.</div>
+        <div style="justify-self:end;font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">투수가 던지고 타자가 친다. 공이 떨어진 자리를 더그아웃의 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.</div>
       </div>
       <x-import component-from-global-scope="spray-play" hand="{{ hand }}" count="60" motion="{{ motionStr }}" hint-size="1200px,900px" style="width:1200px;height:900px"></x-import>
     </section>
@@ -1472,23 +1485,23 @@ textarea.input { min-height: 90px; resize: vertical; }
     <section data-screen-label="D2 Sequence" sc-camel-on-scroll="{{ onScrollD }}" style="position:relative;height:900px;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none">
       <div style="position:sticky;top:0;height:0;z-index:1">
         <dc-import name="SprayChart" count="{{ sceneCountD }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 15 }}" hint-size="680px,510px" style="position:absolute;left:380px;top:195px;width:680px;height:510px"></dc-import>
-        <div style="position:absolute;left:0;right:0;top:852px;text-align:center;font-size:11px;letter-spacing:.12em;font-weight:300;font-variant-numeric:tabular-nums">{{ sceneLabelD }}</div>
+        <div style="position:absolute;left:0;right:0;top:852px;text-align:center;font-size:13px;letter-spacing:.06em;font-weight:400;font-variant-numeric:tabular-nums">{{ sceneLabelD }}</div>
       </div>
       <div style="position:relative;height:900px;scroll-snap-align:start">
         <div style="position:absolute;left:120px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">타율</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">타율</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">.500</div>
         </div>
       </div>
       <div style="position:relative;height:900px;scroll-snap-align:start">
         <div style="position:absolute;right:120px;text-align:right;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">wOBA</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">wOBA</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">.341</div>
         </div>
       </div>
       <div style="position:relative;height:900px;scroll-snap-align:start">
         <div style="position:absolute;left:120px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">당겨치기</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">당겨치기</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">56%</div>
         </div>
       </div>
@@ -1502,14 +1515,14 @@ textarea.input { min-height: 90px; resize: vertical; }
         </div>
         <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" glow="{{ glow }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 13 }}" hint-size="600px,450px" style="width:600px;height:450px"></dc-import>
       </div>
-      <div style="align-self:end;justify-self:end;font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">타율은 결과만 말한다. 어디로 쳤는지, 어느 코스에서 땅볼이 나오는지는 기록지에 적을 칸이 없다.</div>
+      <div style="align-self:end;justify-self:end;font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">타율은 결과만 말한다. 어디로 쳤는지, 어느 코스에서 땅볼이 나오는지는 기록지에 적을 칸이 없다.</div>
     </section>
 
     <section id="d-features" data-screen-label="D4 Features" style="padding:160px 120px;display:flex;flex-direction:column;gap:160px">
       <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:center">
         <div style="display:flex;flex-direction:column;gap:40px">
           <div style="font-size:64px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">자동</div><div>계산</div></div>
-          <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">AVG·OBP·SLG·wOBA·ISO. 타석을 기록하면 개인과 팀 지표가 같이 계산된다.</div>
+          <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">AVG·OBP·SLG·wOBA·ISO. 타석을 기록하면 개인과 팀 지표가 같이 계산된다.</div>
         </div>
         <dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 20 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>
       </div>
@@ -1517,13 +1530,13 @@ textarea.input { min-height: 90px; resize: vertical; }
         <dc-import name="SprayChart" count="{{ 120 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 4 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>
         <div style="display:flex;flex-direction:column;gap:40px;justify-self:end">
           <div style="font-size:64px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">방향</div><div>분포</div></div>
-          <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">당겨치기·센터·밀어치기 비율과 핫존. 어디로 치는 타자인지 숫자로 본다.</div>
+          <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">당겨치기·센터·밀어치기 비율과 핫존. 어디로 치는 타자인지 숫자로 본다.</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:80px;align-items:center">
         <div style="display:flex;flex-direction:column;gap:40px">
           <div style="font-size:64px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">공유</div><div>QR</div></div>
-          <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">QR 하나로 팀원에게. 선수 실명은 자동으로 가려진다.</div>
+          <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">QR 하나로 팀원에게. 선수 실명은 자동으로 가려진다.</div>
         </div>
         <dc-import name="SprayChart" count="{{ 60 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 11 }}" hint-size="560px,420px" style="width:560px;height:420px;justify-self:center"></dc-import>
       </div>
@@ -1532,29 +1545,29 @@ textarea.input { min-height: 90px; resize: vertical; }
     <section data-screen-label="D5 Carousel" style="background:#DAD5CC;padding:160px 0">
       <div style="display:flex;gap:64px;overflow-x:auto;scrollbar-width:none;padding:0 120px;scroll-snap-type:x mandatory;scroll-padding-left:120px">
         <div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">차트 PNG</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">차트 PNG</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">1장</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:20px">타구 전부가 이미지 한 장에 담긴다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:20px">타구 전부가 이미지 한 장에 담긴다.</div>
         </div>
         <div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">선수 리포트</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">선수 리포트</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">5</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:20px">AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:20px">AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.</div>
         </div>
         <div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">스카우팅 리포트</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">스카우팅 리포트</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">3</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:20px">당겨치기·센터·밀어치기, 세 구간으로 읽는다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:20px">당겨치기·센터·밀어치기, 세 구간으로 읽는다.</div>
         </div>
         <div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">팀 대시보드</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">팀 대시보드</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">25</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:20px">로스터 전원의 지표를 한 화면에서 비교한다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:20px">로스터 전원의 지표를 한 화면에서 비교한다.</div>
         </div>
         <div style="flex:none;width:560px;scroll-snap-align:start;display:flex;flex-direction:column;gap:20px">
-          <div style="font-size:15px;font-weight:300;line-height:1">QR 공유</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">QR 공유</div>
           <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">1</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:20px">스캔 한 번이면 팀원 폰에서 바로 열린다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:20px">스캔 한 번이면 팀원 폰에서 바로 열린다.</div>
         </div>
       </div>
     </section>
@@ -1564,22 +1577,22 @@ textarea.input { min-height: 90px; resize: vertical; }
         <div style="font-weight:800">리그 기록은 결과를 남기고,</div>
         <div>SprayLab은 타구를 남긴다.</div>
       </div>
-      <div style="display:flex;flex-direction:column;font-size:15px;line-height:1.5">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:0 0 20px;border-bottom:1px solid rgba(11,11,14,.12);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300"><div></div><div>일반 리그 기록 앱</div><div>SprayLab</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">남는 것</div><div style="font-weight:300">결과</div><div style="font-weight:700">타구 위치·방향·코스</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">볼 수 있는 때</div><div style="font-weight:300">경기 후</div><div style="font-weight:700">타석 직후</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">기록하는 사람</div><div style="font-weight:300">리그 기록원</div><div style="font-weight:700">더그아웃의 코치</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">시작</div><div style="font-weight:300">앱 설치·가입</div><div style="font-weight:700">주소 하나</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">비용</div><div style="font-weight:300">앱마다 다름</div><div style="font-weight:700">무료</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">공유</div><div style="font-weight:300">앱 안에서</div><div style="font-weight:700">QR·링크·PNG·엑셀</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:300">보관</div><div style="font-weight:300">서버</div><div style="font-weight:700">내 기기</div></div>
+      <div style="display:flex;flex-direction:column;font-size:17px;line-height:1.5">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:0 0 20px;border-bottom:1px solid rgba(11,11,14,.12);font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400"><div></div><div>일반 리그 기록 앱</div><div>SprayLab</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">남는 것</div><div style="font-weight:400">결과</div><div style="font-weight:700">타구 위치·방향·코스</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">볼 수 있는 때</div><div style="font-weight:400">경기 후</div><div style="font-weight:700">타석 직후</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">기록하는 사람</div><div style="font-weight:400">리그 기록원</div><div style="font-weight:700">더그아웃의 코치</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">시작</div><div style="font-weight:400">앱 설치·가입</div><div style="font-weight:700">주소 하나</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">비용</div><div style="font-weight:400">앱마다 다름</div><div style="font-weight:700">무료</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">공유</div><div style="font-weight:400">앱 안에서</div><div style="font-weight:700">QR·링크·PNG·엑셀</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:40px;padding:24px 0;border-bottom:1px solid rgba(11,11,14,.12)"><div style="font-weight:400">보관</div><div style="font-weight:400">서버</div><div style="font-weight:700">내 기기</div></div>
       </div>
     </section>
 
     <section id="d-demo" data-screen-label="D7 Video" style="background:#0E0F14;color:#E7E3DC;padding:160px 120px">
       <div style="position:relative;width:1200px;aspect-ratio:16/9;background:#15161C;display:flex;align-items:center;justify-content:center">
         <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" bg="#15161C" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 18 }}" hint-size="520px,390px" style="width:520px;height:390px"></dc-import>
-        <div style="position:absolute;left:40px;right:40px;bottom:40px;display:flex;flex-direction:column;gap:12px;font-size:11px;letter-spacing:.12em;font-weight:300">
+        <div style="position:absolute;left:40px;right:40px;bottom:40px;display:flex;flex-direction:column;gap:12px;font-size:13px;letter-spacing:.06em;font-weight:400">
           <div style="height:1px;background:rgba(231,227,220,.25)"><div style="height:1px;width:28%;background:#E7E3DC"></div></div>
           <div>0:24 / 1:24</div>
         </div>
@@ -1593,11 +1606,11 @@ textarea.input { min-height: 90px; resize: vertical; }
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:20px">
         <a href="./" style="display:inline-flex;align-items:center;height:56px;padding:0 40px;border-radius:28px;background:#0B0B0E;color:#E7E3DC;font-size:15px;font-weight:700">차트 열기</a>
-        <div style="font-size:11px;letter-spacing:.12em;font-weight:300">무료 · 가입 없음 · 설치 없음</div>
+        <div style="font-size:13px;letter-spacing:.06em;font-weight:400">무료 · 가입 없음 · 설치 없음</div>
       </div>
     </section>
 
-    <footer data-screen-label="D9 Footer" style="background:#0E0F14;color:#E7E3DC;height:56px;padding:0 40px;display:flex;align-items:center;justify-content:space-between;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+    <footer data-screen-label="D9 Footer" style="background:#0E0F14;color:#E7E3DC;height:56px;padding:0 40px;display:flex;align-items:center;justify-content:space-between;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
       <div style="font-weight:800;letter-spacing:.2em">SPRAYLAB</div>
       <div>Your Swing, Visualized</div>
       <a href="#">Instagram</a>
@@ -1614,50 +1627,54 @@ textarea.input { min-height: 90px; resize: vertical; }
 
     <section data-screen-label="M1 Hero" style="position:relative;height:844px;background:#0E0F14;color:#E7E3DC;overflow:hidden">
       <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 7 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 2 }}" tilt="{{ 58 }}" yaw="{{ -16 }}" zoom="{{ 1.45 }}" hint-size="680px,510px" style="position:absolute;left:-40px;top:330px;width:680px;height:510px"></dc-import>
-      <nav style="position:absolute;left:0;right:0;top:0;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 20px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+      <nav style="position:absolute;left:0;right:0;top:0;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 20px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
         <div style="display:flex;gap:8px"><a href="#m-features">기능</a><span>·</span><a href="#m-compare">비교</a><span>·</span><a href="#m-demo">데모</a></div>
         <div style="font-size:12px;font-weight:800;letter-spacing:.2em">SPRAYLAB</div>
-        <div style="display:flex;justify-content:flex-end"><a href="#m-cta">차트 열기</a></div>
+        <div style="display:flex;justify-content:flex-end"><a href="./" data-cta="nav"><span style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;border:1px solid rgba(231,227,220,.55);letter-spacing:.04em;font-weight:500">차트 열기</span></a></div>
       </nav>
       <div style="position:absolute;left:20px;top:140px;font-size:52px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all">
         <div style="font-weight:800">타석 하나 찍으면</div>
         <div>차트가 그려진다.</div>
       </div>
-      <div style="position:absolute;left:0;right:0;bottom:24px;text-align:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">Scroll ↓</div>
-      <div style="position:absolute;left:20px;bottom:64px;display:flex;gap:16px;align-items:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+      <div style="position:absolute;left:20px;right:20px;top:268px;display:flex;flex-direction:column;align-items:flex-start;gap:18px">
+        <div style="font-size:16px;line-height:1.6;font-weight:400;word-break:keep-all">사회인야구 타석을 기록하면 스프레이차트가 그려집니다.</div>
+        <div style="display:flex;align-items:center;gap:14px"><a href="./" data-cta="hero" style="display:inline-flex;align-items:center;height:52px;padding:0 30px;border-radius:26px;background:#E7E3DC;color:#0B0B0E;font-size:16px;font-weight:700">차트 열기</a><div style="font-size:13px;letter-spacing:.04em;font-weight:400">무료 · 가입 없음</div></div>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:24px;text-align:center;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">Scroll ↓</div>
+      <div style="position:absolute;left:20px;bottom:64px;display:flex;gap:16px;align-items:center;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#E0343F"></div>안타</div>
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:#E0343F;border:1px solid #E7E3DC"></div>장타</div>
         <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;border:1px solid rgba(231,227,220,.45)"></div>아웃</div>
       </div>
-      <div style="position:absolute;right:20px;bottom:64px;font-size:11px;letter-spacing:.12em;font-weight:300">드래그해서 돌려보기</div>
+      <div style="position:absolute;right:20px;bottom:64px;font-size:13px;letter-spacing:.06em;font-weight:400">드래그해서 돌려보기</div>
     </section>
 
     <section data-screen-label="M1b Play" style="padding:96px 24px;display:flex;flex-direction:column;gap:48px">
       <div style="font-size:40px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">치는 순간</div><div>기록된다.</div></div>
-      <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">투수가 던지고 타자가 친다. 공이 떨어진 자리를 더그아웃의 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.</div>
-      <x-import component-from-global-scope="spray-play" hand="{{ hand }}" count="60" motion="{{ motionStr }}" hint-size="342px,256px" style="width:342px;height:256px"></x-import>
+      <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">투수가 던지고 타자가 친다. 공이 떨어진 자리를 더그아웃의 코치가 한 번 탭하면 그 타석이 그대로 차트에 남는다. 필드를 잡고 돌려볼 수 있다.</div>
+      <x-import component-from-global-scope="spray-play" hand="{{ hand }}" count="60" motion="{{ motionStr }}" hint-size="342px,428px" style="width:342px;height:428px"></x-import>
     </section>
 
     <section data-screen-label="M2 Sequence" sc-camel-on-scroll="{{ onScrollM }}" style="position:relative;height:640px;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none">
       <div style="position:sticky;top:0;height:0;z-index:1">
         <dc-import name="SprayChart" count="{{ sceneCountM }}" dot="{{ 7 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 10 }}" hint-size="342px,256px" style="position:absolute;left:24px;top:300px;width:342px;height:256px"></dc-import>
-        <div style="position:absolute;left:0;right:0;top:600px;text-align:center;font-size:11px;letter-spacing:.12em;font-weight:300;font-variant-numeric:tabular-nums">{{ sceneLabelM }}</div>
+        <div style="position:absolute;left:0;right:0;top:600px;text-align:center;font-size:13px;letter-spacing:.06em;font-weight:400;font-variant-numeric:tabular-nums">{{ sceneLabelM }}</div>
       </div>
       <div style="position:relative;height:640px;scroll-snap-align:start">
         <div style="position:absolute;left:24px;top:120px;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">타율</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">타율</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">.500</div>
         </div>
       </div>
       <div style="position:relative;height:640px;scroll-snap-align:start">
         <div style="position:absolute;right:24px;text-align:right;top:120px;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">wOBA</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">wOBA</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">.341</div>
         </div>
       </div>
       <div style="position:relative;height:640px;scroll-snap-align:start">
         <div style="position:absolute;left:24px;top:120px;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">당겨치기</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">당겨치기</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">56%</div>
         </div>
       </div>
@@ -1669,23 +1686,23 @@ textarea.input { min-height: 90px; resize: vertical; }
         <div>없던 것.</div>
       </div>
       <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 9 }}" glow="{{ glow }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 7 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>
-      <div style="align-self:flex-end;font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">타율은 결과만 말한다. 어디로 쳤는지, 어느 코스에서 땅볼이 나오는지는 기록지에 적을 칸이 없다.</div>
+      <div style="align-self:flex-end;font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">타율은 결과만 말한다. 어디로 쳤는지, 어느 코스에서 땅볼이 나오는지는 기록지에 적을 칸이 없다.</div>
     </section>
 
     <section id="m-features" data-screen-label="M4 Features" style="padding:96px 24px;display:flex;flex-direction:column;gap:96px">
       <div style="display:flex;flex-direction:column;gap:40px">
         <div style="font-size:40px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">자동</div><div>계산</div></div>
-        <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">AVG·OBP·SLG·wOBA·ISO. 타석을 기록하면 개인과 팀 지표가 같이 계산된다.</div>
+        <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">AVG·OBP·SLG·wOBA·ISO. 타석을 기록하면 개인과 팀 지표가 같이 계산된다.</div>
         <dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 14 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>
       </div>
       <div style="display:flex;flex-direction:column;gap:40px;align-items:flex-end">
         <div style="font-size:40px;line-height:1;letter-spacing:-.03em;font-weight:300;text-align:right;word-break:keep-all"><div style="font-weight:800">방향</div><div>분포</div></div>
-        <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty;text-align:right">당겨치기·센터·밀어치기 비율과 핫존. 어디로 치는 타자인지 숫자로 본다.</div>
+        <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty;text-align:right">당겨치기·센터·밀어치기 비율과 핫존. 어디로 치는 타자인지 숫자로 본다.</div>
         <dc-import name="SprayChart" count="{{ 120 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 21 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>
       </div>
       <div style="display:flex;flex-direction:column;gap:40px">
         <div style="font-size:40px;line-height:1;letter-spacing:-.03em;font-weight:300;word-break:keep-all"><div style="font-weight:800">공유</div><div>QR</div></div>
-        <div style="font-size:15px;line-height:1.7;font-weight:300;max-width:36em;text-wrap:pretty">QR 하나로 팀원에게. 선수 실명은 자동으로 가려진다.</div>
+        <div style="font-size:17px;line-height:1.7;font-weight:400;max-width:36em;text-wrap:pretty">QR 하나로 팀원에게. 선수 실명은 자동으로 가려진다.</div>
         <dc-import name="SprayChart" count="{{ 60 }}" dot="{{ 9 }}" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 5 }}" hint-size="342px,256px" style="width:342px;height:256px"></dc-import>
       </div>
     </section>
@@ -1693,29 +1710,29 @@ textarea.input { min-height: 90px; resize: vertical; }
     <section data-screen-label="M5 Carousel" style="background:#DAD5CC;padding:96px 0">
       <div style="display:flex;gap:64px;overflow-x:auto;scrollbar-width:none;padding:0 24px;scroll-snap-type:x mandatory;scroll-padding-left:24px">
         <div style="flex:none;width:260px;scroll-snap-align:start;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">차트 PNG</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">차트 PNG</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">1장</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:12px">타구 전부가 이미지 한 장에 담긴다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:12px">타구 전부가 이미지 한 장에 담긴다.</div>
         </div>
         <div style="flex:none;width:260px;scroll-snap-align:start;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">선수 리포트</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">선수 리포트</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">5</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:12px">AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:12px">AVG·OBP·SLG·wOBA·ISO, 선수마다 한 장.</div>
         </div>
         <div style="flex:none;width:260px;scroll-snap-align:start;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">스카우팅 리포트</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">스카우팅 리포트</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">3</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:12px">당겨치기·센터·밀어치기, 세 구간으로 읽는다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:12px">당겨치기·센터·밀어치기, 세 구간으로 읽는다.</div>
         </div>
         <div style="flex:none;width:260px;scroll-snap-align:start;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">팀 대시보드</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">팀 대시보드</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">25</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:12px">로스터 전원의 지표를 한 화면에서 비교한다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:12px">로스터 전원의 지표를 한 화면에서 비교한다.</div>
         </div>
         <div style="flex:none;width:260px;scroll-snap-align:start;display:flex;flex-direction:column;gap:16px">
-          <div style="font-size:15px;font-weight:300;line-height:1">QR 공유</div>
+          <div style="font-size:16px;font-weight:500;line-height:1">QR 공유</div>
           <div style="font-size:56px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums">1</div>
-          <div style="font-size:15px;font-weight:300;line-height:1.7;margin-top:12px">스캔 한 번이면 팀원 폰에서 바로 열린다.</div>
+          <div style="font-size:17px;font-weight:400;line-height:1.7;margin-top:12px">스캔 한 번이면 팀원 폰에서 바로 열린다.</div>
         </div>
       </div>
     </section>
@@ -1725,22 +1742,22 @@ textarea.input { min-height: 90px; resize: vertical; }
         <div style="font-weight:800">리그 기록은 결과를 남기고,</div>
         <div>SprayLab은 타구를 남긴다.</div>
       </div>
-      <div style="display:flex;flex-direction:column;font-size:15px;line-height:1.5">
-        <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px;padding:0 0 16px;border-bottom:1px solid rgba(11,11,14,.12);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300"><div>일반 리그 기록 앱</div><div>SprayLab</div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">남는 것</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">결과</div><div style="font-weight:700">타구 위치·방향·코스</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">볼 수 있는 때</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">경기 후</div><div style="font-weight:700">타석 직후</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">기록하는 사람</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">리그 기록원</div><div style="font-weight:700">더그아웃의 코치</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">시작</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">앱 설치·가입</div><div style="font-weight:700">주소 하나</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">비용</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">앱마다 다름</div><div style="font-weight:700">무료</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">공유</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">앱 안에서</div><div style="font-weight:700">QR·링크·PNG·엑셀</div></div></div>
-        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:11px;letter-spacing:.12em;font-weight:300">보관</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:300">서버</div><div style="font-weight:700">내 기기</div></div></div>
+      <div style="display:flex;flex-direction:column;font-size:17px;line-height:1.5">
+        <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px;padding:0 0 16px;border-bottom:1px solid rgba(11,11,14,.12);font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400"><div>일반 리그 기록 앱</div><div>SprayLab</div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">남는 것</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">결과</div><div style="font-weight:700">타구 위치·방향·코스</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">볼 수 있는 때</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">경기 후</div><div style="font-weight:700">타석 직후</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">기록하는 사람</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">리그 기록원</div><div style="font-weight:700">더그아웃의 코치</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">시작</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">앱 설치·가입</div><div style="font-weight:700">주소 하나</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">비용</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">앱마다 다름</div><div style="font-weight:700">무료</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">공유</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">앱 안에서</div><div style="font-weight:700">QR·링크·PNG·엑셀</div></div></div>
+        <div style="padding:20px 0;border-bottom:1px solid rgba(11,11,14,.12);display:flex;flex-direction:column;gap:10px"><div style="font-size:13px;letter-spacing:.06em;font-weight:400">보관</div><div style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px"><div style="font-weight:400">서버</div><div style="font-weight:700">내 기기</div></div></div>
       </div>
     </section>
 
     <section id="m-demo" data-screen-label="M7 Video" style="background:#0E0F14;color:#E7E3DC;padding:96px 24px">
       <div style="position:relative;width:342px;aspect-ratio:16/9;background:#15161C;display:flex;align-items:center;justify-content:center">
         <dc-import name="SprayChart" count="{{ 120 }}" dark="{{ true }}" dot="{{ 9 }}" bg="#15161C" hand="{{ hand }}" motion="{{ motion }}" phase="{{ 12 }}" hint-size="180px,135px" style="width:180px;height:135px"></dc-import>
-        <div style="position:absolute;left:16px;right:16px;bottom:14px;display:flex;flex-direction:column;gap:8px;font-size:11px;letter-spacing:.12em;font-weight:300">
+        <div style="position:absolute;left:16px;right:16px;bottom:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;letter-spacing:.06em;font-weight:400">
           <div style="height:1px;background:rgba(231,227,220,.25)"><div style="height:1px;width:28%;background:#E7E3DC"></div></div>
           <div>0:24 / 1:24</div>
         </div>
@@ -1754,11 +1771,11 @@ textarea.input { min-height: 90px; resize: vertical; }
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:16px">
         <a href="./" style="display:inline-flex;align-items:center;height:56px;padding:0 36px;border-radius:28px;background:#0B0B0E;color:#E7E3DC;font-size:15px;font-weight:700">차트 열기</a>
-        <div style="font-size:11px;letter-spacing:.12em;font-weight:300">무료 · 가입 없음 · 설치 없음</div>
+        <div style="font-size:13px;letter-spacing:.06em;font-weight:400">무료 · 가입 없음 · 설치 없음</div>
       </div>
     </section>
 
-    <footer data-screen-label="M9 Footer" style="background:#0E0F14;color:#E7E3DC;padding:32px 24px;display:flex;flex-wrap:wrap;gap:14px 24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:300">
+    <footer data-screen-label="M9 Footer" style="background:#0E0F14;color:#E7E3DC;padding:32px 24px;display:flex;flex-wrap:wrap;gap:14px 24px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:400">
       <div style="font-weight:800;letter-spacing:.2em">SPRAYLAB</div>
       <div>Your Swing, Visualized</div>
       <a href="#">Instagram</a>

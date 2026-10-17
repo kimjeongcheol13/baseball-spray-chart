@@ -28,6 +28,7 @@ sub("    const f = this.props.frames ?? 'both';", '    const f = this.state.fram
 tgt = '' if app == './' else ' target="_blank" rel="noopener"'
 sub('<a href="#" style="display:inline-flex;align-items:center;height:56px;padding:0 40px;', '<a href="%s"%s style="display:inline-flex;align-items:center;height:56px;padding:0 40px;' % (app, tgt))
 sub('<a href="#" style="display:inline-flex;align-items:center;height:56px;padding:0 36px;', '<a href="%s"%s style="display:inline-flex;align-items:center;height:56px;padding:0 36px;' % (app, tgt))
+sub('<a href="#" data-cta=', '<a href="%s"%s data-cta=' % (app, tgt), 4)   # first-screen + nav buttons (tools/build.py)
 sub('<a href="#">GitHub</a>', '<a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" rel="noopener">GitHub</a>', 2)
 # strict hosts refuse fetch() of blob: URLs; read the bundled Blob directly (falls back to fetch elsewhere)
 sub("      const txt = await (await fetch(R['three.module'])).text();",

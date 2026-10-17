@@ -351,7 +351,14 @@
       this.rebuildDots();
       this.relPos = new THREE.Vector3(); this.tmp = new THREE.Vector3(); this.tmp2 = new THREE.Vector3(); this.camTarget = new THREE.Vector3();
 
-      const resize = () => { const w = this.clientWidth || 4, h = this.clientHeight || 3; renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); };
+      const resize = () => {
+        const w = this.clientWidth || 4, h = this.clientHeight || 3; renderer.setSize(w, h, false); this.camera.aspect = w / h;
+        // framing from the page's CSS, per layout: `--zoom` (lens zoom) and `--shift: x y` (lens shift, fractions of the view; + moves the scene right / up)
+        const cs = getComputedStyle(this), [sx = 0, sy = 0] = cs.getPropertyValue('--shift').trim().split(/\s+/).map(Number);
+        this.camera.zoom = parseFloat(cs.getPropertyValue('--zoom')) || 1;
+        if (sx || sy) this.camera.setViewOffset(w, h, -sx * w, sy * h, w, h); else this.camera.clearViewOffset();
+        this.camera.updateProjectionMatrix();
+      };
       this.ro = new ResizeObserver(resize); this.ro.observe(this); resize();
       if ('IntersectionObserver' in window) { this.io = new IntersectionObserver(es => { this.visible = es[0].isIntersecting; }, { rootMargin: '200px' }); this.io.observe(this); }
       const loop = (t) => { this.raf = requestAnimationFrame(loop); if (this.visible) this.frame(t); };

@@ -10,6 +10,7 @@
 //   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
 //     공유 링크도 info.ls 를 싣는다(core.js _shareGameBuild — 다른 경기 정보와 함께) · 받는 쪽은 _restoreLsFromPayload 가 걸러 받는다
+//   · 같은 경기 다시 가져오기 (2026-10-18): 날짜 · 팀 · 점수가 같은 저장 경기가 있으면 미리보기에 알리고 저장 전에 한 번 묻는다(막지는 않는다) — findSameGames
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 예시에서 확인한 건 二 · 유 · 중 — 나머지는 같은 표기 관례로 맞춘 값, 모르면 빈 칸
 const POS = {
@@ -140,10 +141,50 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
   return { game, report };
 }
 
+// 같은 경기 찾기: 날짜 · 홈 팀 · 원정 팀 · 점수가 모두 같은 저장 경기 → [{ key, label, g }]
+// 게임원 가져오기는 저장할 때마다 타석 id 를 새로 만들어, 저장 경기 읽기(games.js groupGames)가 같은 경기로 묶지 못한다
+// → 같은 표를 다시 저장하면 시즌 기록에 두 번 들어간다. 직접 기록한 경기와 겹쳐도 마찬가지라 같이 찾는다. 막지는 않고 알린다
+// 날짜 = 경기 정보 날짜(info.date), 없으면 저장일(d, 'YYYY. M. D.'). 홈 · 원정이 바뀐 것(점수도 같이 바뀜)도 같은 경기로 본다 — 직접 기록할 때 우리 팀을 늘 홈에 두는 경우
+const _ymd = g => {
+  const i = g && g.info;
+  if (i && typeof i.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.date)) return i.date;
+  const m = /^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/.exec(String((g && g.d) || ''));
+  return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : '';
+};
+const _tn = s => String(s == null ? '' : s).trim();
+export function findSameGames(game, saved) {
+  const day = _ymd(game);
+  if (!day) return [];
+  const th = _tn(game.th), ta = _tn(game.ta), hs = +game.hs, as = +game.as;
+  const is = (g, h, a, x, y) => _tn(g.th) === h && _tn(g.ta) === a && +g.hs === x && +g.as === y;
+  return saved.filter(({ g }) => g && _ymd(g) === day && (is(g, th, ta, hs, as) || is(g, ta, th, as, hs)));
+}
+
 // ── 화면 ──────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 let _timer = null;
+
+// 저장 경기 목록 — 미리보기는 글자를 칠 때마다 돌아서, 목록(sl_saves)이 그대로면 읽어 둔 것을 쓴다. 입력창을 열 때 새로 읽는다
+let _saved = { raw: null, list: [] };
+function _savedGames() {
+  let raw = null;
+  try { raw = localStorage.getItem('sl_saves'); } catch (e) { return []; }
+  if (raw === _saved.raw) return _saved.list;
+  let saves = [];
+  try { saves = JSON.parse(raw || '[]'); } catch (e) {}
+  const list = (Array.isArray(saves) ? saves : []).map(s => {
+    if (!s || typeof s.key !== 'string') return null;
+    let g = null;
+    try { g = JSON.parse(localStorage.getItem(s.key) || 'null'); } catch (e) {}
+    return g && typeof g === 'object' ? { key: s.key, label: typeof s.label === 'string' && s.label ? s.label : `${g.th} ${g.hs}:${g.as} ${g.ta}`, g } : null;
+  }).filter(Boolean);
+  _saved = { raw, list };
+  return list;
+}
+function _sameText(dup) {
+  return `이미 저장된 경기와 날짜 · 팀 · 점수가 같습니다: ${dup[0].label}${dup.length > 1 ? ` 외 ${dup.length - 1}개` : ''}`;
+}
 
 function _inputs() {
   return {
@@ -189,18 +230,20 @@ function _preview() {
   const { report: R, game: g } = out;
   const lsH = (R.ls ? _lsTable(R.ls, g) : '') + R.lsWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('');
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
+  const dup = R.pa ? findSameGames(g, _savedGames()) : [];
   if (!R.away.players && !R.home.players) {
     h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요</div>'
       : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
   } else {
-    h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>` + lsH + h;
+    h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`
+      + (dup.length ? `<div class="go-warn go-dup">${_esc(_sameText(dup))} — 같은 경기를 또 저장하면 시즌 기록에 두 번 들어갑니다</div>` : '') + lsH + h;
     const rbi = R.away.rbi + R.home.rbi;
     h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 0으로 저장됩니다${rbi ? ` (표의 타점 합계 ${rbi})` : ''}.`
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
   }
   box.innerHTML = h;
   btn.disabled = !R.pa;
-  btn.textContent = R.pa ? `새 경기로 저장 (${R.pa}타석)` : '새 경기로 저장';
+  btn.textContent = R.pa ? `${dup.length ? '그래도 ' : ''}새 경기로 저장 (${R.pa}타석)` : '새 경기로 저장';
 }
 
 function _schedule() { clearTimeout(_timer); _timer = setTimeout(_preview, 150); }
@@ -210,6 +253,7 @@ export function openGameOneImport() {
   if (window.closeOverlay) window.closeOverlay('dataSettingsOverlay');
   const dt = $('goDate');
   if (dt && !dt.value) { const n = new Date(), p = v => String(v).padStart(2, '0'); dt.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; }
+  _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
   _preview();
   if (window.openOverlay) window.openOverlay('goOverlay');
   setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
@@ -222,6 +266,9 @@ export function saveGameOneImport() {
   const { game: g, report: R } = out;
   if (!g.abs.length) { toast('저장할 타석이 없습니다'); return; }
   if (typeof _gameDataOk === 'function' && !_gameDataOk(g)) { toast('경기 데이터 형식이 올바르지 않아 저장하지 않았습니다'); return; }   // 다른 가져오기 경로와 같은 검증
+  _saved.raw = null;
+  const dup = findSameGames(g, _savedGames());
+  if (dup.length && !confirm(_sameText(dup) + '\n\n같은 경기를 또 저장하면 시즌 기록에 두 번 들어갑니다. 그래도 새 경기로 저장할까요?')) return;
   const label = g.th + ' ' + g.hs + ':' + g.as + ' ' + g.ta + ' (' + g.d + ')';
   let saves;
   try { saves = JSON.parse(localStorage.getItem('sl_saves') || '[]'); } catch (e) { saves = []; }
@@ -241,7 +288,7 @@ export function saveGameOneImport() {
 }
 
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames };
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
   window.gameOnePreview = _schedule;

@@ -187,4 +187,61 @@
     eq([g.abs[3].res, g.abs[12].res], ['안타', '플라이 아웃'], "4번의 '/' 첫 타석 · 두 번째 타석");
     eq(new Set(g.abs.map(function (a) { return a.id; })).size, g.abs.length, '타석 id 중복 없음');
   });
+
+  // 같은 경기 다시 가져오기: 게임원 가져오기는 저장할 때마다 타석 id 를 새로 만들어 저장 경기 읽기가 같은 경기로 묶지 못한다(시즌 기록에 두 번 들어간다)
+  test('같은 경기 판단(findSameGames): 경기 정보 날짜 → 없으면 저장일 · 팀 이름 앞뒤 공백 무시 · 홈/원정이 바뀐 것도 · 점수까지 같아야', function () {
+    var F = window.SLGameOneImport.findSameGames;
+    var game = { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.', info: { date: '2026-10-11' } };
+    var S = [
+      { key: 'a', g: { th: ' 우리 ', ta: '상대', hs: 1, as: 8, d: '2026. 10. 20.', info: { date: '2026-10-11' } } },   // 저장일은 다르고 경기 날짜가 같다
+      { key: 'b', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' } },                                 // 경기 정보 없음 → 저장일
+      { key: 'c', g: { th: '상대', ta: '우리', hs: 8, as: 1, d: '2026. 10. 11.' } },                                 // 홈/원정 · 점수가 같이 바뀜
+      { key: 'x1', g: { th: '우리', ta: '상대', hs: 2, as: 8, d: '2026. 10. 11.' } },                                // 점수 다름
+      { key: 'x2', g: { th: '상대', ta: '우리', hs: 1, as: 8, d: '2026. 10. 11.' } },                                // 팀만 바뀌고 점수는 그대로 = 다른 결과
+      { key: 'x3', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 12.' } },                                // 날짜 다름
+      { key: 'x4', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.', info: { date: '2026-10-12' } } },   // 저장일은 같지만 경기 날짜가 다름
+      { key: 'x5', g: { th: '우리팀', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' } }                               // 팀 이름 다름
+    ];
+    eq(F(game, S).map(function (x) { return x.key; }), ['a', 'b', 'c'], '같은 경기');
+    eq(F({ th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' }, S).map(function (x) { return x.key; }), ['a', 'b', 'c'], '가져올 경기도 저장일로');
+    eq(F({ th: '우리', ta: '상대', hs: 1, as: 8, d: '' }, S), [], '날짜를 모르면 찾지 않음');
+  });
+
+  test('같은 경기를 다시 붙여넣으면 미리보기 경고 · 버튼 "그래도" · 저장 전 확인(취소하면 그대로, 확인하면 저장)', async function () {
+    var first = saves().filter(function (e) { var d = JSON.parse(localStorage.getItem(e.key) || 'null'); return d && d.th === '우리' && d.ta === '상대'; })[0];
+    ok(first, '앞에서 저장한 경기(우리 1:8 상대 · 2026-10-11)');
+    openGameOneImport();
+    type('goScore', ''); type('goTa', '상대'); type('goTh', '우리'); type('goDate', '2026-10-11');
+    type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    var w = $('goPrev').querySelector('.go-dup');
+    ok(w && w.textContent.indexOf(first.label) >= 0 && w.textContent.indexOf('두 번') >= 0, '미리보기 경고 — ' + (w ? w.textContent : $('goPrev').textContent));
+    eq($('goSave').textContent, '그래도 새 경기로 저장 (13타석)', '버튼 글자');
+    var msgs = [], c0 = window.confirm, before = saves().length;
+    try {
+      window.confirm = function (m) { msgs.push(m); return false; };
+      $('goSave').click();
+      eq(saves().length, before, '취소하면 저장 안 함');
+      ok($('goOverlay').classList.contains('show'), '입력창 그대로');
+      eq($('goAway').value, AWAY, '붙여넣은 글 그대로');
+      ok(msgs.length === 1 && msgs[0].indexOf(first.label) >= 0 && msgs[0].indexOf('그래도 새 경기로 저장할까요?') >= 0, '확인창 — ' + JSON.stringify(msgs));
+      window.confirm = function (m) { msgs.push(m); return true; };
+      $('goSave').click();
+      eq(saves().length, before + 1, '확인하면 저장');
+    } finally { window.confirm = c0; }
+    closeOverlay('loadOverlay');
+  });
+
+  test('날짜가 다르면 같은 경기로 보지 않는다 — 경고 · 확인창 없이 저장', async function () {
+    openGameOneImport();
+    type('goTa', '상대'); type('goTh', '우리'); type('goDate', '2026-10-13');
+    type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    ok(!$('goPrev').querySelector('.go-dup'), '경고 없음 — ' + $('goPrev').textContent);
+    eq($('goSave').textContent, '새 경기로 저장 (13타석)', '버튼 글자');
+    var n = 0, c0 = window.confirm, before = saves().length;
+    try { window.confirm = function () { n++; return false; }; $('goSave').click(); } finally { window.confirm = c0; }
+    eq([n, saves().length], [0, before + 1], '확인창 없이 저장');
+    closeOverlay('loadOverlay');
+  });
 })();

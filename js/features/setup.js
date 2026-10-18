@@ -56,6 +56,20 @@ function _applyInfoStadium() {
   const A = _AS(), id = A.info && A.info.stadium;
   if (_stadiumOk(id) && id !== A.stadium && window.setStadium) window.setStadium(id);
 }
+// 공유 링크로 받은 직접 입력 구장(info.stadium 'custom' + info.dist { lf, cf, rf } — core.js 가 30~200 정수로 걸러 둠):
+// 이 기기의 직접 입력 거리를 그 값으로 바꾸고 알린다(정한 것 2026-10-18 — 기기마다 하나뿐이라 받는 쪽 값은 덮어쓴다).
+// 알림은 공유 경기를 연 안내(core.js loadSharedGame 이 500ms 뒤에 띄움) 다음에, 그 안내를 지우지 않고 뒤에 이어 붙인다. 이미 같은 거리면 아무것도 안 한다
+function _applySharedDist() {
+  const A = _AS(), i = A.info || {}, d = i.dist, cur = _customDist();
+  if (i.stadium !== 'custom' || !d || (cur.lf === d.lf && cur.cf === d.cf && cur.rf === d.rf)) return;
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify({ lf: d.lf, cf: d.cf, rf: d.rf })); } catch (e) {}
+  _extendStadiums();
+  if (A.stadium === 'custom' && window.setStadium) window.setStadium('custom');   // 이미 직접 입력이면 _applyInfoStadium 이 건너뛰므로 여기서 다시 그림
+  setTimeout(() => {
+    const t = $('toast'), prev = t && t.classList.contains('show') ? (($('toastTxt') || {}).textContent || '') : '';
+    if (window.showToast) window.showToast((prev ? prev + ' · ' : '') + `직접 입력 구장 거리를 좌 ${d.lf} · 중 ${d.cf} · 우 ${d.rf}m로 바꿨어요`, false, 8000);
+  }, 600);
+}
 
 function stPickStadium(id) {
   if (window.setStadium) window.setStadium(id);
@@ -493,11 +507,11 @@ function _hook() {
     w._stStad = true;
     window.saveGame = w;
   }
-  // loadSharedGame: 공유 링크로 받은 경기도 내 경기를 열 때와 같게 그 경기 구장으로(공유 데이터의 info.stadium — 직접 입력은 오지 않는다)
+  // loadSharedGame: 공유 링크로 받은 경기도 내 경기를 열 때와 같게 그 경기 구장으로(공유 데이터의 info.stadium) — 직접 입력이면 거리부터(_applySharedDist)
   ['restoreGame', 'archRecoverAutosave', 'loadSharedGame'].forEach(fn => {
     const o = window[fn];
     if (typeof o !== 'function' || o._stStad) return;
-    const w = function () { const r = o.apply(this, arguments); _applyInfoStadium(); return r; };
+    const w = function () { const r = o.apply(this, arguments); if (fn === 'loadSharedGame') _applySharedDist(); _applyInfoStadium(); return r; };
     w._stStad = true;
     window[fn] = w;
   });

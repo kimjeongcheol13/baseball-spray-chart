@@ -9127,8 +9127,18 @@ function archRecoverAutosave(){
   // updateAll의 _patchAutosave가 sl_autosave를 다시 스케줄링 → 루프 방지
   storageManager.cancelPendingAutosave();
   // 복구된 데이터를 영구 저장소에 저장해 브라우저 재시작 후에도 안전하게 보호
-  _archQuietSave(d.saveKey);
+  if(_archQuietSave(d.saveKey))_cloudSaveCur();
   showToast('✓ 마지막 기록을 복구했습니다',false);
+}
+
+// 복구 저장(_archQuietSave)한 경기를 평소 「경기 저장」처럼 클라우드에도 올린다 — 로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함.
+// 예전에는 복구한 경기가 다음 시작 동기화 때(다음에 앱을 열거나 다시 로그인할 때)야 올라갔다(후속 12번)
+function _cloudSaveCur(){
+  try{
+    var d=JSON.parse(localStorage.getItem(_curSaveKey)||'null');
+    var e=JSON.parse(localStorage.getItem('sl_saves')||'[]').find(function(s){return s.key===_curSaveKey;});
+    if(d&&window.cloudSave)cloudSave(_curSaveKey,d,e&&e.label||_curSaveKey,d.ts);
+  }catch(err){console.warn('[Recovery] 복구한 경기를 클라우드에 올리지 못함',err);}
 }
 
 // saveKey = 복구한 기록이 원래 속한 저장 항목 (자동저장에 함께 적힘)
@@ -9264,7 +9274,7 @@ function recoverHiddenAutosave(key){
     if(ap)ap.style.display='flex';
     updateAll();
     storageManager.cancelPendingAutosave();
-    _archQuietSave(d.saveKey);
+    if(_archQuietSave(d.saveKey))_cloudSaveCur();
     showToast('✓ 자동저장에서 복구 완료 ('+AS.abs.length+'타석 · 투수 '+AS.pitchers.length+'명)'+(savedMine?' · 이전 경기는 저장됨':''),false,savedMine?8000:true);
   }catch(e){showToast('복구 실패: '+e.message,false);}
 }

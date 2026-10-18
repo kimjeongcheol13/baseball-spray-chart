@@ -151,6 +151,84 @@
       ok(k.indexOf(NK) >= 0, '정리 도중 저장한 경기가 목록에서 빠짐: ' + JSON.stringify(k));
     } finally { AS.abs = abs0; srv.delayRead = null; }
   });
+  // 후속 11번 테스트 계획 T1~T5 (design/sync-11-cloudsave.md 5.2절) — 호출부(saveGame 등) → core.js 래퍼 → cloud.js 업로드까지 지금 동작을 지킨다.
+  // 실제 saveGame() 으로 새 경기를 저장한다: 300ms 뒤 저장되고 그 자리에서 cloudSave 를 부른다(업로드 타이머는 그때부터 3초). 새 경기 키를 돌려준다
+  async function saveNew(n) {
+    var abs0 = AS.abs;
+    window._curSaveKey = null;
+    AS.abs = [{ id: BASE + 9500 + n, bid: 'e', bname: '마', bnum: 5, res: '안타', inn: '1회초', team: 'home' }];
+    try { saveGame(); await sleep(500); } finally { AS.abs = abs0; }
+    return window._curSaveKey;
+  }
+  function inList(k) { return !!k && T.ls('sl_saves').some(function (s) { return s.key === k; }); }
+  function modOf(k) { return (T.ls('sl_cloud_mod') || {})[k]; }
+  function serverMod(k) { return srv.user_games.filter(function (r) { return r.game_key === k; }).map(function (r) { return r.updated_at; }); }
+  test('(11번 T1) 실제 saveGame · _doImportText · renameGame → 3.5초 뒤 그 경기의 user_games 업로드가 1 · 1 · 0건', async function () {
+    var R = 'sl_' + (BASE + 81), I = 'sl_' + (BASE + 82), im = game(82, 2), p0 = window.prompt;
+    try {
+      await start(); seed([{ key: R, data: game(81, 1) }]); await loginAndSettle(); srv.log.length = 0;   // R: 이름을 바꿀 경기(시작 동기화가 이미 올렸다)
+      var S = await saveNew(1);
+      var data = {}; data[I] = im;
+      _doImportText(JSON.stringify({ saves: [{ key: I, label: '가져온 경기', ts: im.ts }], data: data }));
+      window.prompt = function () { return '바꾼 이름'; };
+      renameGame(R);
+      ok(inList(S) && inList(I), '저장 · 가져오기가 목록에 있음(전제)');
+      eq(T.ls('sl_saves').filter(function (s) { return s.key === R; }).map(function (s) { return s.label; }), ['바꾼 이름'], '이름이 바뀜(전제)');
+      await sleep(3500);
+      eq([upserts(S).length, upserts(I).length, upserts(R).length], [1, 1, 0], '저장 · 가져오기 · 이름 바꾸기의 user_games 업로드');
+    } finally { window.prompt = p0; }
+  });
+  test('(11번 T2) 로그인 전에 저장하면 저장은 끝까지 되고 user_games 요청은 없다 → 로그인하면 시작 동기화가 올린다(updated_at = 수정 시각)', async function () {
+    await start(); seed([]);
+    window._gameSaved = false;
+    var S = await saveNew(2);
+    eq(window._gameSaved, true, '저장이 끝까지 됨(cloudSave 뒤의 저장 완료 처리까지)');
+    ok(inList(S) && localStorage.getItem(S) !== null, '목록 · 데이터에 있음');
+    await sleep(3500);
+    eq(srv.log.filter(function (x) { return x.table === 'user_games'; }).length, 0, '로그인 전 user_games 요청');
+    await loginAndSettle();
+    eq(upserts(S).length, 1, '로그인 뒤 시작 동기화가 올림');
+    ok(modOf(S) > 0, 'sl_cloud_mod 에 수정 시각이 있음');
+    eq(serverMod(S), [new Date(modOf(S)).toISOString()], '서버 updated_at = sl_cloud_mod');
+  });
+  // 업로드 타이머가 도는 때 로그아웃돼 있으면 막는 장치가 두 겹이다: 타이머의 `_user.id !== uid` 확인, _upsertGame 의 _ensureAuth(세션 없음 → 안 보냄).
+  // 하나만 빼면 다른 하나가 막아 이 테스트는 통과한다 — 둘 다 빠져야 실패한다
+  test('(11번 T3) 저장하고 업로드 전에 로그아웃하면 그동안 올라가지 않고, 다시 로그인하면 시작 동기화가 올린다', async function () {
+    await start(); seed([]); await loginAndSettle(); srv.log.length = 0;
+    var S = await saveNew(3);
+    await sleep(500);   // 저장 1초 뒤(업로드 타이머가 돌기 전)
+    srv.signOut(); await sleep(3000);
+    eq(upserts(S).length, 0, '로그아웃 동안 user_games 업로드');
+    ok(localStorage.getItem(S) !== null, '로컬 경기는 남음');
+    await loginAndSettle();
+    eq(upserts(S).length, 1, '다시 로그인하면 올라감');
+    eq(serverMod(S).length, 1, '서버에 그 경기');
+  });
+  test('(11번 T4) 팀 코드를 설정하고 로그인한 상태에서 한 번 저장하면 games · user_games 에 한 번씩 올라간다', async function () {
+    await start(); seed([]); await loginAndSettle(); srv.log.length = 0;
+    localStorage.setItem('sl_team_code', 'TEST-ONLY-TEAM');   // 가짜 팀 코드 — 운영 데이터와 무관
+    try {
+      var S = await saveNew(4);
+      await sleep(3500);
+      var g = srv.log.filter(function (x) { return x.table === 'games' && x.op === 'upsert' && (x.rows || []).some(function (r) { return r.game_key === S; }); });
+      eq([g.length, upserts(S).length], [1, 1], 'games · user_games 업로드');
+    } finally { localStorage.removeItem('sl_team_code'); }
+  });
+  test('(11번 T5) 저장해서 올라간 경기는 다음 시작 동기화에서 올리지도 내려받지도 않는다', async function () {
+    await start(); seed([]); await loginAndSettle(); srv.log.length = 0;
+    var S = await saveNew(5);
+    await sleep(3500);
+    eq(upserts(S).length, 1, '저장한 경기가 올라감(전제)');
+    var mod = modOf(S), data = localStorage.getItem(S);
+    ok(mod > 0, 'sl_cloud_mod 에 수정 시각이 찍힘');
+    srv.log.length = 0; srv.signOut(); await sleep(1000);
+    await loginAndSettle();   // 시작 동기화 한 번 더
+    ok(srv.log.some(function (x) { return x.table === 'user_games' && x.op === 'select' && x.cols === 'game_key,data,updated_at'; }), '두 번째 시작 동기화가 내려받기 단계까지 돎(전제)');
+    eq(upserts(S).length, 0, '다시 올리지 않음');
+    eq(modOf(S), mod, 'sl_cloud_mod 그대로(내려받지 않음)');
+    eq(localStorage.getItem(S), data, '로컬 데이터 그대로');
+    eq(serverMod(S), [new Date(mod).toISOString()], '서버 updated_at = sl_cloud_mod');
+  });
   test('(정리) 로그아웃하고 이 파일이 만든 상태를 비운다', async function () {
     srv.signOut(); await sleep(1000); srv.reset(); localStorage.clear(); eq(srv.user, null, '로그아웃');
   });

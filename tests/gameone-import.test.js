@@ -187,4 +187,116 @@
     eq([g.abs[3].res, g.abs[12].res], ['안타', '플라이 아웃'], "4번의 '/' 첫 타석 · 두 번째 타석");
     eq(new Set(g.abs.map(function (a) { return a.id; })).size, g.abs.length, '타석 id 중복 없음');
   });
+
+  // 같은 경기 다시 가져오기: 게임원 가져오기는 저장할 때마다 타석 id 를 새로 만들어 저장 경기 읽기가 같은 경기로 묶지 못한다(시즌 기록에 두 번 들어간다)
+  test('같은 경기 판단(findSameGames): 경기 정보 날짜 → 없으면 저장일 · 팀 이름 앞뒤 공백 무시 · 홈/원정이 바뀐 것도 · 점수까지 같아야', function () {
+    var F = window.SLGameOneImport.findSameGames;
+    var game = { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.', info: { date: '2026-10-11' } };
+    var S = [
+      { key: 'a', g: { th: ' 우리 ', ta: '상대', hs: 1, as: 8, d: '2026. 10. 20.', info: { date: '2026-10-11' } } },   // 저장일은 다르고 경기 날짜가 같다
+      { key: 'b', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' } },                                 // 경기 정보 없음 → 저장일
+      { key: 'c', g: { th: '상대', ta: '우리', hs: 8, as: 1, d: '2026. 10. 11.' } },                                 // 홈/원정 · 점수가 같이 바뀜
+      { key: 'x1', g: { th: '우리', ta: '상대', hs: 2, as: 8, d: '2026. 10. 11.' } },                                // 점수 다름
+      { key: 'x2', g: { th: '상대', ta: '우리', hs: 1, as: 8, d: '2026. 10. 11.' } },                                // 팀만 바뀌고 점수는 그대로 = 다른 결과
+      { key: 'x3', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 12.' } },                                // 날짜 다름
+      { key: 'x4', g: { th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.', info: { date: '2026-10-12' } } },   // 저장일은 같지만 경기 날짜가 다름
+      { key: 'x5', g: { th: '우리팀', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' } }                               // 팀 이름 다름
+    ];
+    eq(F(game, S).map(function (x) { return x.key; }), ['a', 'b', 'c'], '같은 경기');
+    eq(F({ th: '우리', ta: '상대', hs: 1, as: 8, d: '2026. 10. 11.' }, S).map(function (x) { return x.key; }), ['a', 'b', 'c'], '가져올 경기도 저장일로');
+    eq(F({ th: '우리', ta: '상대', hs: 1, as: 8, d: '' }, S), [], '날짜를 모르면 찾지 않음');
+  });
+
+  test('같은 경기를 다시 붙여넣으면 미리보기 경고 · 버튼 "그래도" · 저장 전 확인(취소하면 그대로, 확인하면 저장)', async function () {
+    var first = saves().filter(function (e) { var d = JSON.parse(localStorage.getItem(e.key) || 'null'); return d && d.th === '우리' && d.ta === '상대'; })[0];
+    ok(first, '앞에서 저장한 경기(우리 1:8 상대 · 2026-10-11)');
+    openGameOneImport();
+    type('goScore', ''); type('goTa', '상대'); type('goTh', '우리'); type('goDate', '2026-10-11');
+    type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    var w = $('goPrev').querySelector('.go-dup');
+    ok(w && w.textContent.indexOf(first.label) >= 0 && w.textContent.indexOf('두 번') >= 0, '미리보기 경고 — ' + (w ? w.textContent : $('goPrev').textContent));
+    eq($('goSave').textContent, '그래도 새 경기로 저장 (13타석)', '버튼 글자');
+    var msgs = [], c0 = window.confirm, before = saves().length;
+    try {
+      window.confirm = function (m) { msgs.push(m); return false; };
+      $('goSave').click();
+      eq(saves().length, before, '취소하면 저장 안 함');
+      ok($('goOverlay').classList.contains('show'), '입력창 그대로');
+      eq($('goAway').value, AWAY, '붙여넣은 글 그대로');
+      ok(msgs.length === 1 && msgs[0].indexOf(first.label) >= 0 && msgs[0].indexOf('그래도 새 경기로 저장할까요?') >= 0, '확인창 — ' + JSON.stringify(msgs));
+      window.confirm = function (m) { msgs.push(m); return true; };
+      $('goSave').click();
+      eq(saves().length, before + 1, '확인하면 저장');
+    } finally { window.confirm = c0; }
+    closeOverlay('loadOverlay');
+  });
+
+  test('날짜가 다르면 같은 경기로 보지 않는다 — 경고 · 확인창 없이 저장', async function () {
+    openGameOneImport();
+    type('goTa', '상대'); type('goTh', '우리'); type('goDate', '2026-10-13');
+    type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    ok(!$('goPrev').querySelector('.go-dup'), '경고 없음 — ' + $('goPrev').textContent);
+    eq($('goSave').textContent, '새 경기로 저장 (13타석)', '버튼 글자');
+    var n = 0, c0 = window.confirm, before = saves().length;
+    try { window.confirm = function () { n++; return false; }; $('goSave').click(); } finally { window.confirm = c0; }
+    eq([n, saves().length], [0, before + 1], '확인창 없이 저장');
+    closeOverlay('loadOverlay');
+  });
+
+  // 붙여넣기 실수: 한 칸에 표 두 개 · 두 칸에 같은 표. 게임원이 교체 선수를 어디에 두는지(제 타순 아래 · 표 맨 아래) 몰라도 맞는 신호만 쓴다
+  function bat(order, name, num, cell) {
+    var c = ['', '', '', '', '', '', '', '', ''];
+    c[0] = cell || '삼진';
+    return [order, '좌', name + '(' + num + ')'].concat(c, ['1', '0', '0', '0', '0', '.000', '.000']).join('\t');
+  }
+  function team(prefix, orders) { return orders.map(function (o, i) { return bat(o, prefix + (i + 1), 10 + i); }); }
+  var NINE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  var HDR = '타순\t위치\t선수명\t1\t2\t3\t4\t5\t6\t7\t8\t9\t타수\t안타\t타점\t득점\t도루\t타율\t시즌';
+  var SUM = '합계\t\t\t\t\t\t\t\t\t\t\t\t9\t0\t0\t0\t0\t\t';
+  function split(text) { return window.SLGameOneImport.buildGameOneGame({ awayText: text, now: 1790000200000 }).report.away.split; }
+
+  test('한 칸에 표 두 개: 합계 · 머리글 줄 다음에 선수 행이 또 오면(sep) · 타순이 1번부터 통째로 다시 돌면(restart)', function () {
+    var A = team('가', NINE), B = team('나', NINE);
+    eq(split([HDR].concat(A, [SUM, '', HDR], B, [SUM]).join('\n')), { name: '나1', number: '10', line: 14, why: 'sep' }, '합계 · 머리글 줄 다음 표');
+    eq(split(A.concat(B).join('\n')), { name: '나1', number: '10', line: 10, why: 'restart' }, '줄 없이 바로 이어 붙인 두 표');
+    eq(split(team('가', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]).concat(team('나', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])).join('\n')).why, 'restart', '11번 타순까지 치는 리그');
+  });
+
+  test('한 칸에 표 두 개 — 잘못 잡지 않는다: 교체 선수가 제 타순 아래 · 표 맨 아래(6자리까지) · 일부 행만 · 표 하나', function () {
+    eq(split([HDR].concat(team('가', NINE), [SUM]).join('\n')), null, '표 하나(머리글 · 합계 포함)');
+    eq(split(team('가', [1, 2, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 9]).join('\n')), null, '교체 선수가 제 타순 바로 아래');
+    eq(split(team('가', NINE.concat([3, 5, 7])).join('\n')), null, '교체 선수 3명이 표 맨 아래');
+    eq(split(team('가', NINE.concat([1, 2, 3, 4, 5, 6])).join('\n')), null, '교체 선수 6명이 표 맨 아래');
+    eq(split(AWAY), null, '일부 행만(5 · 8 · 1번)');
+  });
+
+  test('원정 · 홈 칸에 같은 표: 같은 선수(이름 + 등번호) 2명 이상이면 알림 · 동명이인 1명은 넘어감', function () {
+    var B = window.SLGameOneImport.buildGameOneGame;
+    eq(B({ awayText: AWAY, homeText: AWAY, now: 1790000300000 }).report.shared, ['배성웅(15)', '이현준(24)', '김수찬(5)'], '같은 표');
+    eq(B({ awayText: AWAY, homeText: HOME, now: 1790000300001 }).report.shared, [], '다른 표');
+    var one = bat(1, '배성웅', 15) + '\n' + bat(2, '다른사람', 99);
+    eq(B({ awayText: AWAY, homeText: one, now: 1790000300002 }).report.shared, [], '같은 이름 · 등번호 1명뿐(홈 2명)');
+  });
+
+  test('붙여넣기 실수 → 미리보기 경고 · 버튼 "그래도" · 저장 전 확인(취소하면 저장 안 함)', async function () {
+    openGameOneImport();
+    type('goScore', ''); type('goTa', '가팀'); type('goTh', '나팀'); type('goDate', '2026-10-14');
+    type('goAway', team('가', NINE).concat(team('나', NINE)).join('\n')); type('goHome', HOME);
+    await T.sleep(300);
+    var w = Array.prototype.map.call($('goPrev').querySelectorAll('.go-two'), function (e) { return e.textContent; });
+    eq(w.length, 1, '경고 1개 — ' + JSON.stringify(w));
+    ok(w[0].indexOf('원정 칸에 표가 두 개') >= 0 && w[0].indexOf('10번째 줄 나1(10)부터 타순이 처음부터 다시 돕니다') >= 0, '한 칸에 표 두 개 — ' + w[0]);
+    eq($('goSave').textContent, '그래도 새 경기로 저장 (21타석)', '버튼 글자');
+    var msgs = [], c0 = window.confirm, before = saves().length;
+    try { window.confirm = function (m) { msgs.push(m); return false; }; $('goSave').click(); } finally { window.confirm = c0; }
+    eq(saves().length, before, '취소하면 저장 안 함');
+    ok(msgs.length === 1 && msgs[0].indexOf('원정 칸에 표가 두 개') >= 0 && msgs[0].indexOf('그래도 새 경기로 저장할까요?') >= 0, '확인창 — ' + JSON.stringify(msgs));
+    type('goHome', AWAY); type('goAway', AWAY);
+    await T.sleep(300);
+    w = Array.prototype.map.call($('goPrev').querySelectorAll('.go-two'), function (e) { return e.textContent; });
+    ok(w.length === 1 && w[0].indexOf('원정 · 홈 칸에 같은 선수가 있습니다: 배성웅(15) · 이현준(24) · 김수찬(5)') >= 0, '두 칸에 같은 표 — ' + JSON.stringify(w));
+    closeOverlay('goOverlay');
+  });
 })();

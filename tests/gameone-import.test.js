@@ -244,4 +244,59 @@
     eq([n, saves().length], [0, before + 1], '확인창 없이 저장');
     closeOverlay('loadOverlay');
   });
+
+  // 붙여넣기 실수: 한 칸에 표 두 개 · 두 칸에 같은 표. 게임원이 교체 선수를 어디에 두는지(제 타순 아래 · 표 맨 아래) 몰라도 맞는 신호만 쓴다
+  function bat(order, name, num, cell) {
+    var c = ['', '', '', '', '', '', '', '', ''];
+    c[0] = cell || '삼진';
+    return [order, '좌', name + '(' + num + ')'].concat(c, ['1', '0', '0', '0', '0', '.000', '.000']).join('\t');
+  }
+  function team(prefix, orders) { return orders.map(function (o, i) { return bat(o, prefix + (i + 1), 10 + i); }); }
+  var NINE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  var HDR = '타순\t위치\t선수명\t1\t2\t3\t4\t5\t6\t7\t8\t9\t타수\t안타\t타점\t득점\t도루\t타율\t시즌';
+  var SUM = '합계\t\t\t\t\t\t\t\t\t\t\t\t9\t0\t0\t0\t0\t\t';
+  function split(text) { return window.SLGameOneImport.buildGameOneGame({ awayText: text, now: 1790000200000 }).report.away.split; }
+
+  test('한 칸에 표 두 개: 합계 · 머리글 줄 다음에 선수 행이 또 오면(sep) · 타순이 1번부터 통째로 다시 돌면(restart)', function () {
+    var A = team('가', NINE), B = team('나', NINE);
+    eq(split([HDR].concat(A, [SUM, '', HDR], B, [SUM]).join('\n')), { name: '나1', number: '10', line: 14, why: 'sep' }, '합계 · 머리글 줄 다음 표');
+    eq(split(A.concat(B).join('\n')), { name: '나1', number: '10', line: 10, why: 'restart' }, '줄 없이 바로 이어 붙인 두 표');
+    eq(split(team('가', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]).concat(team('나', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])).join('\n')).why, 'restart', '11번 타순까지 치는 리그');
+  });
+
+  test('한 칸에 표 두 개 — 잘못 잡지 않는다: 교체 선수가 제 타순 아래 · 표 맨 아래(6자리까지) · 일부 행만 · 표 하나', function () {
+    eq(split([HDR].concat(team('가', NINE), [SUM]).join('\n')), null, '표 하나(머리글 · 합계 포함)');
+    eq(split(team('가', [1, 2, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 9]).join('\n')), null, '교체 선수가 제 타순 바로 아래');
+    eq(split(team('가', NINE.concat([3, 5, 7])).join('\n')), null, '교체 선수 3명이 표 맨 아래');
+    eq(split(team('가', NINE.concat([1, 2, 3, 4, 5, 6])).join('\n')), null, '교체 선수 6명이 표 맨 아래');
+    eq(split(AWAY), null, '일부 행만(5 · 8 · 1번)');
+  });
+
+  test('원정 · 홈 칸에 같은 표: 같은 선수(이름 + 등번호) 2명 이상이면 알림 · 동명이인 1명은 넘어감', function () {
+    var B = window.SLGameOneImport.buildGameOneGame;
+    eq(B({ awayText: AWAY, homeText: AWAY, now: 1790000300000 }).report.shared, ['배성웅(15)', '이현준(24)', '김수찬(5)'], '같은 표');
+    eq(B({ awayText: AWAY, homeText: HOME, now: 1790000300001 }).report.shared, [], '다른 표');
+    var one = bat(1, '배성웅', 15) + '\n' + bat(2, '다른사람', 99);
+    eq(B({ awayText: AWAY, homeText: one, now: 1790000300002 }).report.shared, [], '같은 이름 · 등번호 1명뿐(홈 2명)');
+  });
+
+  test('붙여넣기 실수 → 미리보기 경고 · 버튼 "그래도" · 저장 전 확인(취소하면 저장 안 함)', async function () {
+    openGameOneImport();
+    type('goScore', ''); type('goTa', '가팀'); type('goTh', '나팀'); type('goDate', '2026-10-14');
+    type('goAway', team('가', NINE).concat(team('나', NINE)).join('\n')); type('goHome', HOME);
+    await T.sleep(300);
+    var w = Array.prototype.map.call($('goPrev').querySelectorAll('.go-two'), function (e) { return e.textContent; });
+    eq(w.length, 1, '경고 1개 — ' + JSON.stringify(w));
+    ok(w[0].indexOf('원정 칸에 표가 두 개') >= 0 && w[0].indexOf('10번째 줄 나1(10)부터 타순이 처음부터 다시 돕니다') >= 0, '한 칸에 표 두 개 — ' + w[0]);
+    eq($('goSave').textContent, '그래도 새 경기로 저장 (21타석)', '버튼 글자');
+    var msgs = [], c0 = window.confirm, before = saves().length;
+    try { window.confirm = function (m) { msgs.push(m); return false; }; $('goSave').click(); } finally { window.confirm = c0; }
+    eq(saves().length, before, '취소하면 저장 안 함');
+    ok(msgs.length === 1 && msgs[0].indexOf('원정 칸에 표가 두 개') >= 0 && msgs[0].indexOf('그래도 새 경기로 저장할까요?') >= 0, '확인창 — ' + JSON.stringify(msgs));
+    type('goHome', AWAY); type('goAway', AWAY);
+    await T.sleep(300);
+    w = Array.prototype.map.call($('goPrev').querySelectorAll('.go-two'), function (e) { return e.textContent; });
+    ok(w.length === 1 && w[0].indexOf('원정 · 홈 칸에 같은 선수가 있습니다: 배성웅(15) · 이현준(24) · 김수찬(5)') >= 0, '두 칸에 같은 표 — ' + JSON.stringify(w));
+    closeOverlay('goOverlay');
+  });
 })();

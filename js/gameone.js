@@ -146,7 +146,8 @@
 
   /**
    * parseGameOne(text) → {
-   *   players: [{ order, position, name, number, atBats: [atBat…], stats: { ab, h, rbi, r, sb, avg, seasonAvg } }],
+   *   players: [{ order, position, name, number, atBats: [atBat…], stats: { ab, h, rbi, r, sb, avg, seasonAvg }, line }],
+   *            line = 붙여넣은 글에서 몇 번째 줄인지(1~) — 한 칸에 표 두 개가 들어갔는지 볼 때 쓴다
    *   unknownTokens: ['…'],   // 매핑표에 없는 토큰 전부 (중복 없이, 처음 나온 순서)
    *   warnings: ['…']         // 선수 행으로 읽지 않은 줄 · 공백 구분이라 이닝을 모르는 행
    * }
@@ -187,7 +188,7 @@
       var player = {
         order: ni >= 2 && /^\d+$/.test(cells[ni - 2]) ? parseInt(cells[ni - 2], 10) : null,
         position: ni >= 1 ? cells[ni - 1] : '',
-        name: m[1], number: m[2], atBats: [], stats: stats
+        name: m[1], number: m[2], atBats: [], stats: stats, line: k + 1
       };
       if (!tabbed) out.warnings.push((k + 1) + '행 ' + player.name + ': 탭 없이 공백으로 구분돼 빈 이닝 칸을 알 수 없음 → inning = null');
 

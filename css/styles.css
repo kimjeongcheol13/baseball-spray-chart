@@ -556,6 +556,18 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-how ol{margin:0;padding:0 12px 6px 28px}
 .go-how li{margin-bottom:4px}
 .go-how p{margin:0;padding:0 12px 10px;color:var(--text3)}
+/* 게임원 앱 스크린샷으로 채우기 (js/features/gameoneocr.js) */
+.go-shot{margin:0 0 12px;padding:10px;border:1px dashed var(--border2);border-radius:8px;font-size:11px;line-height:1.55;color:var(--text2)}
+.go-shot-h{margin-bottom:8px;font-weight:700;color:var(--text)}
+.go-shot-h small{font-weight:500;color:var(--text3)}
+.go-shot-btns{display:flex;gap:8px}
+.go-shot-btns .go-shot-b{flex:1;justify-content:center;min-height:44px}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 */
+.go-shot-btns .go-shot-b:disabled{opacity:.45;cursor:progress}
+.go-shot .go-shot-how{margin:8px 0 0;background:transparent}
+.go-shot-msg{margin-top:8px}
+.go-shot-msg:empty{display:none}
+.go-shot-msg.bad{color:var(--red)}
+.go-ok{margin-top:2px;color:var(--green)}
 /* 첫 화면(기록 0) 필드 아래 — 샘플 버튼(.sl-sample-start) 아래에 같은 크기 · 테두리만 */
 .go-start{display:block;box-sizing:border-box;min-height:44px;margin:8px auto 0;padding:0 20px;border:1.5px solid var(--blue);border-radius:2px;background:transparent;color:var(--blue);font:700 15px var(--font);cursor:pointer}
 .go-start[hidden]{display:none}

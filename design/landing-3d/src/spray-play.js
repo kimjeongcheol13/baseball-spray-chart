@@ -178,7 +178,7 @@
     static get observedAttributes() { return ['hand', 'count', 'motion']; }
     constructor() {
       super();
-      this.rot = { yaw: 0, pitch: 0, vy: 0, vp: 0, drag: false, lastDrag: -1e9, zoom: 1 };
+      this.rot = { yaw: 0, pitch: 0, vy: 0, vp: 0, drag: false, lastDrag: -1e9, zoom: 1, panX: 0, panZ: 0 };
       this.live = []; this.cycle = -1; this.landed = false; this.released = false; this.visible = true; this.t0 = null;
     }
     get hand() { return this.getAttribute('hand') || 'right'; } set hand(v) { if (v != null) this.setAttribute('hand', String(v)); }
@@ -201,24 +201,30 @@
       ui.append(ph, stat, tag); this.append(ui);
       this.statEl = stat; this.tagEl = tag;
       // one pointer drags: turn (and tilt, with a mouse). On touch, `touch-action: pan-y` leaves vertical swipes to the page, so one
-      // finger turns the field and scrolling still works. Two fingers: spread / pinch = zoom, move up / down together = tilt.
-      const pts = new Map(), two = () => { const [a, b] = pts.values(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, y: (a.y + b.y) / 2 }; };
+      // finger turns the field and scrolling still works; two fingers zoom. The free mode (setFree, the "3D 조작" button on touch
+      // devices) takes every touch instead: one finger turns and tilts, two fingers zoom and move the view, the camera holds still.
+      const pts = new Map(), two = () => { const [a, b] = pts.values(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
       this.addEventListener('pointerdown', e => {
+        if (e.target.closest && e.target.closest('.sp-ctl')) return;   // the mode button
         const R = this.rot; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
         try { this.setPointerCapture(e.pointerId); } catch (_) {}
-        if (pts.size === 2) { const g = two(); R.drag = false; R.pinch = { d: g.d, y: g.y, z: R.zoom }; return; }
-        R.drag = true; R.px = e.clientX; R.py = e.clientY; R.vy = 0; R.vp = 0; R.touch = e.pointerType === 'touch';
+        if (pts.size === 2) { const g = two(); R.drag = false; R.vy = R.vp = 0; R.pinch = { d: g.d, x: g.x, y: g.y, z: R.zoom }; return; }
+        R.drag = true; R.px = e.clientX; R.py = e.clientY; R.vy = 0; R.vp = 0; R.touch = e.pointerType === 'touch'; R.home = false;
         this.style.cursor = 'grabbing';
       });
       this.addEventListener('pointermove', e => {
         const R = this.rot, p = pts.get(e.pointerId); if (!p) return; p.x = e.clientX; p.y = e.clientY;
         if (R.pinch && pts.size >= 2) {
-          const g = two(); R.zoom = clamp(R.pinch.z * g.d / R.pinch.d, .6, 3); R.pitch = clamp(R.pitch + (g.y - R.pinch.y) * .25, -30, 45); R.pinch.y = g.y;
-          R.lastDrag = performance.now(); return;
+          const g = two(); R.zoom = clamp(R.pinch.z * g.d / R.pinch.d, .5, 4);
+          if (this.free) {   // the two fingers' middle drags the view: the field follows the fingers
+            const k = this.panK || .2, dx = g.x - R.pinch.x, dy = g.y - R.pinch.y, th = R.yaw * D2R, c = Math.cos(th), s = Math.sin(th);
+            R.panX = clamp(R.panX - (c * dx + s * dy) * k, -250, 250); R.panZ = clamp(R.panZ + (s * dx - c * dy) * k, -320, 80);
+          }
+          R.pinch.x = g.x; R.pinch.y = g.y; R.lastDrag = performance.now(); return;
         }
         if (!R.drag) return;
-        const dx = e.clientX - R.px, dy = R.touch ? 0 : e.clientY - R.py; R.px = e.clientX; R.py = e.clientY;   // a finger's up / down is the page's scroll, not a tilt
-        R.vy = -dx * 0.4; R.vp = dy * 0.25; R.yaw += R.vy; R.pitch = clamp(R.pitch + R.vp, -30, 45);
+        const dx = e.clientX - R.px, dy = R.touch && !this.free ? 0 : e.clientY - R.py; R.px = e.clientX; R.py = e.clientY;   // outside the free mode a finger's up / down is the page's scroll
+        R.vy = -dx * 0.4; R.vp = dy * 0.25; R.yaw += R.vy; R.pitch = clamp(R.pitch + R.vp, -30, this.free ? 70 : 45);   // the free mode can look down from above
       });
       const up = e => {
         const R = this.rot; pts.delete(e.pointerId); if (pts.size < 2) R.pinch = null;
@@ -226,8 +232,9 @@
         if (!R.drag) return; R.drag = false; R.lastDrag = performance.now(); this.style.cursor = 'grab';
       };
       this.addEventListener('pointerup', up); this.addEventListener('pointercancel', up);
-      // pan-y would let the browser scroll the page with a two-finger vertical move (and cancel the pinch): keep two-finger moves here
-      this.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+      // pan-y would let the browser scroll the page with a two-finger move (and cancel the pinch): keep two-finger touches here
+      const two2 = e => { if (e.touches.length > 1) e.preventDefault(); };
+      this.addEventListener('touchstart', two2, { passive: false }); this.addEventListener('touchmove', two2, { passive: false });
       const wait = document.createElement('div'); wait.textContent = '선수들 불러오는 중…';
       Object.assign(wait.style, { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: INK, opacity: .55 });
       this.append(wait); this.waitEl = wait;
@@ -235,6 +242,13 @@
         .catch(err => console.error('spray-play: three.js failed to load', err));
       if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '25% 0px' }); io.observe(this); }
       else start();
+    }
+    // free mode (touch devices): the 3D takes every touch until "완료", or until it scrolls out of view; leaving glides back to the framing
+    setFree(on) {
+      const R = this.rot; this.free = on; R.home = !on; R.vy = R.vp = 0; R.lastDrag = performance.now();
+      Object.assign(this.style, { touchAction: on ? 'none' : 'pan-y', outline: on ? '2px solid rgba(224,52,63,.9)' : '', outlineOffset: on ? '-2px' : '' });
+      if (this.ctl) Object.assign(this.ctl.style, { background: on ? '#E0343F' : 'rgba(11,13,18,.62)', borderColor: on ? '#E0343F' : 'rgba(255,255,255,.28)' }), this.ctl.textContent = on ? '완료' : '3D 조작';
+      if (this.tip) { clearTimeout(this.tipT); this.tip.style.opacity = on ? 1 : 0; if (on) this.tipT = setTimeout(() => { this.tip.style.opacity = 0; }, 2600); }
     }
     disconnectedCallback() { cancelAnimationFrame(this.raf); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); }
 
@@ -376,7 +390,17 @@
         this.camera.updateProjectionMatrix();
       };
       this.ro = new ResizeObserver(resize); this.ro.observe(this); resize();
-      if ('IntersectionObserver' in window) { this.io = new IntersectionObserver(es => { this.visible = es[0].isIntersecting; }, { rootMargin: '200px' }); this.io.observe(this); }
+      if ('IntersectionObserver' in window) { this.io = new IntersectionObserver(es => { this.visible = es[0].isIntersecting; if (!this.visible && this.free) this.setFree(false); }, { rootMargin: '200px' }); this.io.observe(this); }
+      if (matchMedia('(pointer: coarse)').matches) {   // touch devices: a button for the free mode, and a one-line hint when it starts
+        const pill = { position: 'absolute', zIndex: 5, padding: '0 16px', minHeight: '44px', minWidth: '44px', borderRadius: '999px', border: '1px solid rgba(255,255,255,.28)',
+          background: 'rgba(11,13,18,.62)', color: '#fff', font: "700 13px/1 " + FONT, letterSpacing: '.01em', backdropFilter: 'blur(10px)', webkitBackdropFilter: 'blur(10px)' };
+        const btn = this.ctl = document.createElement('button'); btn.type = 'button'; btn.className = 'sp-ctl'; btn.textContent = '3D 조작';
+        Object.assign(btn.style, pill, { top: '10px', right: '10px', cursor: 'pointer' });
+        btn.addEventListener('click', () => this.setFree(!this.free));
+        const tip = this.tip = document.createElement('span'); tip.className = 'sp-tip'; tip.textContent = '한 손가락: 돌리기·기울이기 · 두 손가락: 확대·이동';
+        Object.assign(tip.style, pill, { display: 'flex', alignItems: 'center', left: '50%', top: '62px', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontWeight: 600, pointerEvents: 'none', opacity: 0, transition: 'opacity .3s' });
+        this.append(btn, tip);
+      }
       const loop = (t) => { this.raf = requestAnimationFrame(loop); if (this.visible) this.frame(t); };
       this.raf = requestAnimationFrame(loop);
     }
@@ -538,16 +562,22 @@
       // camera: high-home close-up for the pitch, pulls back to the whole field for the flight and the record
       const R = this.rot;
       if (!R.drag) {
-        R.yaw += R.vy; R.pitch = clamp(R.pitch + R.vp, -30, 45); R.vy *= .94; R.vp *= .88;
+        R.yaw += R.vy; R.pitch = clamp(R.pitch + R.vp, -30, this.free ? 70 : 45); R.vy *= .94; R.vp *= .88;
         if (Math.abs(R.vy) < .003) R.vy = 0; if (Math.abs(R.vp) < .003) R.vp = 0;
       }
-      const idle = clamp((now - R.lastDrag - 900) / 2400, 0, 1);
+      if (R.home) {   // leaving the free mode: glide back to the page's framing
+        R.zoom += (1 - R.zoom) * .12; R.pitch *= .88; R.panX *= .88; R.panZ *= .88;
+        if (Math.abs(R.zoom - 1) < .005 && Math.abs(R.pitch) < .05 && Math.abs(R.panX) + Math.abs(R.panZ) < .05) { R.zoom = 1; R.pitch = R.panX = R.panZ = 0; R.home = false; }
+      }
+      const idle = this.free ? 0 : clamp((now - R.lastDrag - 900) / 2400, 0, 1);
       const sway = this.motion ? idle * 5 * Math.sin(el * .2) : 0;   // from the element's own start, so the first frame matches the still
-      const wide = this.cam === 'close' ? 0 : track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]);
+      const wide = this.cam === 'close' ? 0 : this.free ? this.wideHeld : (this.wideHeld = track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]));   // the free mode holds the shot
       const nar = Math.max(0, 4 / 3 / this.camera.aspect - 1);   // 0 for a 4:3 box, ~.67 for the phone's 4:5: frame a little nearer home, look down more when wide
       this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28 + 9 * nar, -140, wide));
       if (R.zoom > 1) this.camTarget.lerp(this.tmp.set(lerp(-1, 0, wide), lerp(3, 0, wide), lerp(3, -140, wide)), Math.min(1, R.zoom - 1));   // a zoom closes in on (and turns round) the players at the plate; the field's middle when wide
-      const rho = lerp(72, 500 * (1 + .9 * nar), wide) / R.zoom, phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
+      this.camTarget.x += R.panX; this.camTarget.z += R.panZ;
+      const rho = lerp(72, 500 * (1 + .9 * nar), wide) / R.zoom; this.panK = 2 * rho * Math.tan(this.camera.fov * D2R / 2) / this.camera.zoom / (this.clientHeight || 1);   // world units per px at the target
+      const phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
       this.camera.position.set(this.camTarget.x + rho * Math.sin(theta) * Math.cos(phi), this.camTarget.y + rho * Math.sin(phi), this.camTarget.z + rho * Math.cos(theta) * Math.cos(phi));
       this.camera.lookAt(this.camTarget);
 

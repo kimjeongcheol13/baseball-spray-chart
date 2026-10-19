@@ -149,6 +149,8 @@
   // confidence 'low' = 안·플·땅처럼 폭이 넓은 결과 · unknown · 'R' 포함 · 미확인 토큰이 섞임 · 결과 토큰이 2개 이상
   // 토큰 끝 [..] = 게임원 부가 기록(홈런 [3R 100M] · 수비 [6-4-3] · 교체 [부상X]) → 떼어 notes 에 남기고, 첫 수비 번호는 방향 없는 토큰의 방향으로 쓴다
   var BRACKET_RE = /^(.*?)\[([^\]]*)\]$/;
+  // 홈런 부가 기록 [2R 97M] = 2타점 · 비거리 97m (실제 기록에서 선수 타점 칸과 맞춰 확인, 2026-10-19). 공백은 토큰에서 이미 지웠다
+  var HR_NOTE_RE = /^\[(?:(\d)R)?(?:(\d{2,3})M)?\]$/;
   function parsePlateAppearance(raw, inning, onUnknown) {
     var extra = [], toks = [], fld = [];
     raw.split(',').forEach(function (t) {
@@ -177,6 +179,8 @@
       if (main.memo) ab.notes.push(main.memo);
     }
     ab.notes = ab.notes.concat(extra);
+    ab.rbi = null; ab.distance = null;   // 아는 경우만(홈런 [2R 97M]) — 게임원 표에는 타석별 타점이 없다
+    if (ab.result === '홈런') extra.forEach(function (x) { var h = HR_NOTE_RE.exec(x); if (h && h[1]) ab.rbi = +h[1]; if (h && h[2]) ab.distance = +h[2]; });
     if (main.kind === 'unknown' || (main.kind === 'batted' && main.wide) || toks.join('').indexOf('R') >= 0
       || cls.some(function (c) { return c.kind === 'unknown'; }) || cls.filter(isResult).length > 1) ab.confidence = 'low';
     return ab;
@@ -197,7 +201,7 @@
    *   warnings: ['…']         // 선수 행으로 읽지 않은 줄 · 공백 구분이라 이닝을 모르는 행
    * }
    * atBat = { inning, raw, type: 'batted'|'nonBatted'|'unknown', result, angle, depth, confidence: 'high'|'low', notes,
-   *           x, y, dir, src }
+   *           x, y, dir, src, rbi, distance }   // rbi · distance(m) = 홈런 [2R 97M] 처럼 기록에 있을 때만, 아니면 null
    *   result      기존 결과 코드(안타·2루타·땅볼 아웃·희비·볼넷 …). unknown 이거나 사건·교체뿐이면 null
    *   angle·depth 기존 저장 좌표: angle = 저장 deg(0 좌측 파울라인 ~ 90 중견 ~ 180 우측), depth = 저장 반지름(펜스 0.97). 타구가 아니면 null
    *   x·y·dir     기존 기록과 같은 저장 필드(그대로 abs 에 넣을 수 있는 값). src = 변환 전 매핑표 값 { angle, depth }
@@ -304,8 +308,30 @@
     return out;
   }
 
+  // ── 박스스코어 페이지 통째 복사 → 점수표 · 타자 표 나누기 ──
+  // 휴대폰에서는 표를 골라 긁기 어려워 '전체 선택 → 복사'를 쓰기 쉽다. 그러면 메뉴 · 요약 · 투수 표까지 한 덩어리로 온다(2026-10-19 확인).
+  //   점수표 = 'Team 1 2 … R …' 머리글 줄 + 아래 팀 줄 2개
+  //   타자 표 = '선수 1 2 … 타수 …' 머리글 줄부터 '합 계' 줄까지 (위쪽 줄 = 팀 이름). 투수 표('선수 결과 이닝 …')는 쓰지 않는다
+  // → 타자 표가 2개 이상일 때만 { score: 점수표 글 | '', tables: [{ name, text }…] } (페이지 위 → 아래 순서), 아니면 null
+  var BAT_HEAD_RE = /^\s*선수\s+1\s+2\s/, PIT_HEAD_RE = /^\s*선수\s+결과\s/, TOTAL_RE = /^\s*합\s*계/, SCORE_HEAD_RE = /^\s*Team\s+(?:\S+\s+)?1\s+2\s.*\sR\s/;
+  function splitGameOnePage(text) {
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/), tables = [], score = '';
+    for (var i = 0; i < lines.length; i++) {
+      if (!score && SCORE_HEAD_RE.test(lines[i])) score = lines.slice(i, i + 3).join('\n');
+      if (!BAT_HEAD_RE.test(lines[i])) continue;
+      var name = '', j = i - 1, end = i + 1;
+      while (j >= 0 && !lines[j].trim()) j--;
+      if (j >= 0 && !TOTAL_RE.test(lines[j])) name = lines[j].trim();
+      while (end < lines.length && !TOTAL_RE.test(lines[end]) && !BAT_HEAD_RE.test(lines[end]) && !PIT_HEAD_RE.test(lines[end])) end++;
+      if (end < lines.length && TOTAL_RE.test(lines[end])) end++;
+      tables.push({ name: name, text: lines.slice(i, end).join('\n') });
+      i = end - 1;
+    }
+    return tables.length >= 2 ? { score: score, tables: tables } : null;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

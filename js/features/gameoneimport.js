@@ -6,12 +6,14 @@
 //   · 원정 표 · 홈 표 칸 2개 — 원정 = 'N회초', 홈 = 'N회말' (10회 이상은 '연장'), 점수 = 각 표의 득점 합계
 //   · 홈런 위치는 펜스 밖 그대로 (파서 값 그대로 — 그리는 쪽이 펜스 1.06배까지 표시, 핫존 집계는 가장 깊은 칸)
 //   · 타석 타점은 0 — 게임원 표에는 타석별 타점이 없다(선수별 합계만). 미리보기에 안내한다
+//     예외(2026-10-19): 홈런 [2R 97M] 표기가 있으면 그 홈런 타석은 타점 2 · 비거리 97m(ft 로 저장)
 //   · unknown 타석(결과를 모름)과 교체·주루 사건뿐인 칸은 저장하지 않고 미리보기에 보여 준다
 //   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
 //     공유 링크도 info.ls 를 싣는다(core.js _shareGameBuild — 다른 경기 정보와 함께) · 받는 쪽은 _restoreLsFromPayload 가 걸러 받는다
 //   · 같은 경기 다시 가져오기 (2026-10-18): 날짜 · 팀 · 점수가 같은 저장 경기가 있으면 미리보기에 알리고 저장 전에 한 번 묻는다(막지는 않는다) — findSameGames
 //   · 붙여넣기 실수 (2026-10-18): 한 칸에 표 두 개(_secondTable) · 원정 · 홈 칸에 같은 표(report.shared)도 같은 방식으로 알리고 묻는다
+//   · 페이지 통째 붙여넣기 (2026-10-19): 휴대폰 '전체 선택 → 복사' 덩어리를 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채운다(_autoSplit)
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -90,7 +92,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
 
   ['away', 'home'].forEach(team => {
     const text = team === 'away' ? awayText : homeText;
-    const r = { players: 0, pa: 0, batted: 0, low: 0, nonBatted: 0, skipped: [], noPA: 0, noInning: 0, runs: 0, rbi: 0, split: null, keys: [] };
+    const r = { players: 0, pa: 0, batted: 0, low: 0, nonBatted: 0, skipped: [], noPA: 0, noInning: 0, runs: 0, rbi: 0, hrRbi: 0, split: null, keys: [] };
     report[team] = r;
     if (!String(text).trim()) return;
     const res = _P().parseGameOne(text);
@@ -123,6 +125,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
       r.pa++;
       if (a.type === 'batted') { r.batted++; if (a.confidence === 'low') r.low++; } else r.nonBatted++;
       if (a.inning == null) r.noInning++;
+      if (a.rbi != null) r.hrRbi += a.rbi;
       all.push(e);
     });
   });
@@ -134,9 +137,9 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
     const inn = a.inning == null ? '' : a.inning > 9 ? '연장' : a.inning + '회' + (team === 'away' ? '초' : '말');
     const loc = a.type === 'batted';
     return {
-      id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: 0,
+      id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: a.rbi != null ? a.rbi : 0,
       x: loc ? a.x : null, y: loc ? a.y : null, deg: loc ? a.angle : null, dir: loc ? a.dir : null,
-      ft: loc ? Math.round(a.depth * (wallFt[a.dir] || 370)) : null, inn, ts: '', pitches: [],
+      ft: loc ? (a.distance ? Math.round(a.distance * 3.281) : Math.round(a.depth * (wallFt[a.dir] || 370))) : null, inn, ts: '', pitches: [],
     };
   });
   report.pa = abs.length;
@@ -265,9 +268,26 @@ function _lsTable(ls, g) {
     + `<tbody>${row(g.ta, ls.away)}${row(g.th, ls.home)}</tbody></table></div>`;
 }
 
+// 박스스코어 페이지를 통째로 붙여넣었으면(휴대폰 '전체 선택 → 복사') 이닝별 점수표 · 원정 · 홈 칸으로 나눠 채운다 (splitGameOnePage).
+// 페이지 위 타자 표 = 점수표 윗줄 팀 = 원정(초) — 따로 붙여넣을 때와 같은 규칙. 나눈 결과가 칸에 보여서 사용자가 확인 · 고칠 수 있다
+let _splitNote = '';
+function _autoSplit() {
+  for (const id of ['goScore', 'goAway', 'goHome']) {
+    const el = $(id), sp = el && el.value ? _P().splitGameOnePage(el.value) : null;
+    if (!sp) continue;
+    if (sp.score) $('goScore').value = sp.score; else if (id === 'goScore') $('goScore').value = '';
+    $('goAway').value = sp.tables[0].text; $('goHome').value = sp.tables[1].text;
+    const nm = (t, d) => (t.name ? `${d}(${t.name})` : d);
+    _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표로 나눴습니다`
+      + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 투수 표 · 메뉴 글자는 쓰지 않습니다';
+    return;
+  }
+}
+
 function _preview() {
   const box = $('goPrev'), btn = $('goSave');
   if (!box || !btn) return;
+  _autoSplit();
   const inp = _inputs(), hasBat = !!(inp.awayText.trim() || inp.homeText.trim());
   if (!hasBat && !inp.scoreText.trim()) {
     box.innerHTML = '<div class="go-empty">표를 붙여넣으면 여기에 가져올 내용이 나옵니다</div>';
@@ -282,21 +302,23 @@ function _preview() {
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
   const iss = R.pa ? _issues(R, findSameGames(g, _savedGames())) : [];
   if (!R.away.players && !R.home.players) {
-    h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요</div>'
+    h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요.'
+      + ' 전체 선택으로 복사했다면 <b>표를 한 번 누른 뒤</b> 다시 전체 선택해 보세요(리그 페이지는 박스스코어가 안쪽 화면에 따로 있습니다)</div>'
       : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
   } else {
     h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`
       + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('') + lsH + h;
-    const rbi = R.away.rbi + R.home.rbi;
-    h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 0으로 저장됩니다${rbi ? ` (표의 타점 합계 ${rbi})` : ''}.`
+    const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi;
+    h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hr ? `홈런 [2R 97M] 같은 기록이 있는 홈런만 그 타점으로, 나머지 타석은 ` : ''}0으로 저장됩니다`
+      + (rbi ? ` (표의 타점 합계 ${rbi}${hr ? ` · 홈런으로 넣은 타점 ${hr}` : ''})` : '') + '.'
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
   }
-  box.innerHTML = h;
+  box.innerHTML = (_splitNote ? `<div class="go-note go-split">${_esc(_splitNote)}</div>` : '') + h;
   btn.disabled = !R.pa;
   btn.textContent = R.pa ? `${iss.length ? '그래도 ' : ''}새 경기로 저장 (${R.pa}타석)` : '새 경기로 저장';
 }
 
-function _schedule() { clearTimeout(_timer); _timer = setTimeout(_preview, 150); }
+function _schedule() { clearTimeout(_timer); _splitNote = ''; _timer = setTimeout(_preview, 150); }
 
 export function openGameOneImport() {
   if (!_P()) { if (window.showToast) window.showToast('게임원 파서를 불러오지 못했습니다 — 새로고침 후 다시 시도해 주세요', false); return; }
@@ -311,6 +333,7 @@ export function openGameOneImport() {
 
 export function saveGameOneImport() {
   const toast = m => { if (window.showToast) window.showToast(m, false); };
+  _autoSplit();   // 미리보기(150ms 뒤)보다 먼저 눌러도 나눈 칸으로 저장
   let out;
   try { out = buildGameOneGame(Object.assign(_inputs(), { now: Date.now() })); } catch (e) { toast('읽지 못했습니다: ' + (e && e.message || e)); return; }
   const { game: g, report: R } = out;

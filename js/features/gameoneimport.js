@@ -302,7 +302,8 @@ function _preview() {
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
   const iss = R.pa ? _issues(R, findSameGames(g, _savedGames())) : [];
   if (!R.away.players && !R.home.players) {
-    h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요</div>'
+    h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요.'
+      + ' 전체 선택으로 복사했다면 <b>표를 한 번 누른 뒤</b> 다시 전체 선택해 보세요(리그 페이지는 박스스코어가 안쪽 화면에 따로 있습니다)</div>'
       : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
   } else {
     h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`

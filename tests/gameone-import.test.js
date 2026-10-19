@@ -348,6 +348,19 @@
     closeOverlay('loadOverlay');
   });
 
+  test('복사 방법 안내: 접힌 채 시작 · 표를 한 번 누른 뒤 전체 선택 · 표를 못 찾으면 같은 힌트', async function () {
+    openGameOneImport();
+    var how = document.querySelector('#goOverlay details.go-how');
+    ok(how && !how.open, '접힌 안내');
+    ok(how.textContent.indexOf('표를 한 번 누른 뒤') >= 0 && how.textContent.indexOf('아무 칸에나') >= 0, '안내 내용 — ' + how.textContent);
+    ['goScore', 'goHome'].forEach(function (id) { type(id, ''); });
+    type('goAway', '게임결과\n플레이원\n게임영상\n이전\n다음');   // 리그 페이지에서 표를 누르지 않고 전체 선택한 글(바깥 페이지 메뉴뿐)
+    await T.sleep(300);
+    ok($('goPrev').textContent.indexOf('표를 한 번 누른 뒤') >= 0, '표 못 찾음 힌트 — ' + $('goPrev').textContent);
+    type('goAway', '');
+    closeOverlay('goOverlay');
+  });
+
   test('원정 · 홈 칸에 같은 표: 같은 선수(이름 + 등번호) 2명 이상이면 알림 · 동명이인 1명은 넘어감', function () {
     var B = window.SLGameOneImport.buildGameOneGame;
     eq(B({ awayText: AWAY, homeText: AWAY, now: 1790000300000 }).report.shared, ['배성웅(15)', '이현준(24)', '김수찬(5)'], '같은 표');

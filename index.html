@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=82">
+<link rel="stylesheet" href="css/styles.css?v=83">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -1685,7 +1685,16 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
       <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-sub">게임원 박스스코어의 이닝별 점수표와 타자 표를 드래그해 복사한 뒤 붙여넣으세요. 휴대폰은 페이지를 <b>전체 선택 → 복사</b>해 아무 칸에 붙여넣으면 알아서 나눠 넣습니다. 새 경기로 저장되고, 기록 중인 경기는 그대로입니다.</div>
+    <div class="modal-sub">게임원 박스스코어를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다.</div>
+    <details class="go-how">
+      <summary>복사하는 방법</summary>
+      <ol>
+        <li>게임원에서 경기 <b>박스스코어</b>를 엽니다 — 팀 페이지의 경기 일정, 또는 리그 › 게임결과 › 박스스코어</li>
+        <li><b>표를 한 번 누른 뒤</b> 전체 선택 → 복사합니다. PC는 <b>Ctrl+A → Ctrl+C</b>, 휴대폰은 표를 길게 눌러 <b>전체 선택 → 복사</b></li>
+        <li>아래 <b>아무 칸에나</b> 붙여넣으면 이닝별 점수표 · 원정 · 홈 표로 나눠 넣습니다</li>
+      </ol>
+      <p>표를 하나씩 드래그해 각 칸에 붙여넣어도 됩니다. 머리글 · 합계 줄이 같이 들어가도 괜찮습니다. 리그 페이지는 박스스코어가 안쪽 화면에 따로 있어서, 표를 누르지 않고 전체 선택하면 표가 복사되지 않습니다.</p>
+    </details>
     <div class="go-row">
       <label class="go-f"><span>원정팀</span><input id="goTa" class="go-inp" type="text" maxlength="20" placeholder="원정팀" oninput="gameOnePreview()"></label>
       <label class="go-f"><span>홈팀</span><input id="goTh" class="go-inp" type="text" maxlength="20" placeholder="홈팀" oninput="gameOnePreview()"></label>
@@ -2408,7 +2417,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=227"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script defer src="js/gameone.js?v=6"></script>
-<script type="module" src="js/app.js?v=125"></script>
+<script type="module" src="js/app.js?v=126"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

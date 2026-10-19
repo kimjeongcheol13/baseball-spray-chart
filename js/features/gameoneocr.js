@@ -6,6 +6,9 @@
 //        → 같이 고르면 타수 · 타점 · 득점 · 도루 · 타율을 줄 끝에 붙이고(웹 복사와 같은 꼴), 타수 · 안타 · 사사구 · 삼진으로 읽은 칸을 맞춰 본다
 //      점수판   = 맨 위 1 2 3 … R H E B · 선공 / 후공 줄 → 「이닝별 점수표」 칸(선공 = 원정, 후공 = 홈). R H E B · 영문 팀 이름은 한국어 모델이 못 읽어
 //                 머리글은 1 2 3 … 숫자 위치로, 팀 이름은 '원정팀' · '홈팀'으로 둔다(이름 칸에 적은 팀 이름이 그대로 쓰인다)
+//      투수     = 투수명 · 이닝 · 피안타 … 방어율 → 알아보고 건너뛴다(타자 표로 잘못 읽지 않게)
+//  · 사진에서 자주 헷갈리는 글자(낫 → 낮 · 웃 → 우 · 쉼표 → 마침표)는 매핑표에 없는 기록일 때만 바꿔 보고, 매핑표에 있는 기록이 되면 쓴다(fixCell)
+//    겹쳐 찍힌 줄(아래가 잘린 줄 포함)은 칸마다 매핑표에 있는 쪽을 고른다. 회 칸 간격은 표마다 다르다(긴 기록이 있으면 넓어짐 — 2026-10-19 두 번째 팀 캡처)
 //  · 칸 나누기: 어두운 점으로 글줄(가로 띠) → 글 덩어리(세로 틈) → 머리글 글자 위치에 붙인다. 덩어리마다 한 줄 OCR(PSM 7)
 //    머리글이 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글 위치를 쓴다. 그래서 첫 장에는 머리글이 보여야 한다
 //  · Tesseract.js 5.1.1(jsdelivr) 는 처음 누를 때만 불러온다. 한국어 글자 모델은 assets/ocr/kor.traineddata(tessdata_fast, Apache-2.0) 를 직접 둔다
@@ -18,6 +21,9 @@ const POS_APP = { __proto__: null, P: '투', C: '포', '1B': '1', '2B': '2', '3B
 const STAT_HEAD = { __proto__: null, '타수': 'ab', '안타': 'h', '타점': 'rbi', '홈런': 'hr', '사사구': 'bb', '도루': 'sb', '득점': 'r', '삼진': 'so', '타율': 'avg' };
 const NAME_RE = /^(.*?)\(?(\d{1,3})\)$/;
 const HITS = ['안타', '내야안타', '2루타', '3루타', '홈런'], NOT_AB = ['볼넷', '사구', '희비'];
+const PITCH_HEAD = /^(투수명|피안타|자책|탈삼진|방어율)$/;
+// 사진 OCR 이 실제로 헷갈린 글자(2026-10-19 실제 앱 캡처) — 왼쪽으로 읽혔으면 오른쪽 후보
+const CONFUSE = { __proto__: null, '낮': '낫', '낯': '낫', '우': '웃', '망': '땅', '랑': '땅', '즈': '중', '프': '플' };
 
 const $ = id => document.getElementById(id);
 const _norm = s => String(s || '').replace(/\s+/g, '');
@@ -64,20 +70,22 @@ function readHeader(cells) {
     const t = _norm(c.text);
     let m;
     if (/^타순$/.test(t)) cols.push({ key: 'order', cx: c.cx });
-    else if (/^타자명?$|^자명$/.test(t)) cols.push({ key: 'name', cx: c.cx });
+    else if (/^타자명?$|^자명$|^투수명$/.test(t)) cols.push({ key: 'name', cx: c.cx });
+    else if (PITCH_HEAD.test(t)) cols.push({ key: 'pitch', cx: c.cx });
     else if (/^포지?션$/.test(t)) cols.push({ key: 'pos', cx: c.cx });
     else if ((m = /^(\d{1,2})[회외희호최]$/.exec(t))) innX.push({ n: +m[1], cx: c.cx });
     else if (STAT_HEAD[t]) cols.push({ key: STAT_HEAD[t], cx: c.cx });
   });
-  // 회 칸은 같은 간격 — 못 읽은 회는 읽은 회들로 직선을 맞춰 채운다(1회 ~ 읽은 마지막 회)
+  // 못 읽은 회만 읽은 회들로 직선을 맞춰 채운다(1회 ~ 읽은 마지막 회). 읽은 회는 제자리
   if (innX.length >= 2) {
     const n = innX.length, sx = innX.reduce((s, p) => s + p.n, 0), sy = innX.reduce((s, p) => s + p.cx, 0);
     const sxx = innX.reduce((s, p) => s + p.n * p.n, 0), sxy = innX.reduce((s, p) => s + p.n * p.cx, 0);
     const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n, last = Math.max(...innX.map(p => p.n));
     if (b > 0) for (let k = 1; k <= last; k++) cols.push({ key: 'inn' + k, cx: (innX.find(p => p.n === k) || { cx: a + b * k }).cx });
   } else innX.forEach(p => cols.push({ key: 'inn' + p.n, cx: p.cx }));
-  const kind = cols.some(c => c.key.startsWith('inn')) ? 'inning' : cols.some(c => c.key === 'ab' || c.key === 'h') ? 'stats' : null;
-  return kind && cols.some(c => c.key === 'name') ? { kind, cols: cols.sort((p, q) => p.cx - q.cx) } : null;
+  const kind = cols.some(c => c.key.startsWith('inn')) ? 'inning' : cols.some(c => c.key === 'pitch') ? 'pitch' : cols.some(c => c.key === 'ab' || c.key === 'h') ? 'stats' : null;
+  // all = 머리글 글 덩어리 자리 전부(이닝 · 실점처럼 칸 이름을 안 붙인 것도) — 머리글 없는 장이 어느 표인지 견줄 때 쓴다
+  return kind && cols.some(c => c.key === 'name') ? { kind, cols: cols.sort((p, q) => p.cx - q.cx), all: cells.map(c => c.cx) } : null;
 }
 
 // 한 줄의 덩어리들을 칸 이름에 붙인다 — 가장 가까운 칸, 칸 간격의 60% 안쪽만. 같은 칸 덩어리는 이어 붙임
@@ -102,7 +110,7 @@ function toRows(kind, lines) {
     if (!nm || !nm[2]) return;
     const name = nm[1].replace(/[^가-힣A-Za-z]/g, '');
     const row = { order: /^\d{1,2}$/.test(r.order || '') ? +r.order : null, name, number: nm[2], pos: r.pos || '', inn: {}, stats: null };
-    if (kind === 'inning') Object.keys(r).forEach(k => { if (k.startsWith('inn')) row.inn[+k.slice(3)] = r[k]; });
+    if (kind === 'inning') Object.keys(r).forEach(k => { if (k.startsWith('inn')) row.inn[+k.slice(3)] = fixCell(r[k]); });
     else {
       row.stats = {};
       Object.keys(STAT_HEAD).forEach(h => { const k = STAT_HEAD[h], v = r[k]; row.stats[k] = v != null && /^\.?\d+(\.\d+)?$/.test(v) ? (k === 'avg' ? v : +v) : null; });
@@ -117,7 +125,13 @@ function mergeShots(shots) {
   const inn = [], st = [], seen = { inning: {}, stats: {} };
   shots.forEach(s => s.rows.forEach(r => {
     const key = (r.order == null ? '' : r.order) + '|' + r.number;
-    if (seen[s.kind][key]) { const o = seen[s.kind][key]; if (s.kind === 'inning') Object.keys(r.inn).forEach(k => { if (!o.inn[k]) o.inn[k] = r.inn[k]; }); return; }
+    if (!seen[s.kind]) return;   // 투수 표 줄은 쓰지 않는다
+    if (seen[s.kind][key]) {
+      // 겹쳐 찍힌 줄: 빈 칸은 채우고, 먼저 읽은 칸이 매핑표에 없는 기록이면 새로 읽은 쪽(매핑표에 있는 기록)으로
+      const o = seen[s.kind][key];
+      if (s.kind === 'inning') Object.keys(r.inn).forEach(k => { if (!o.inn[k] || (!cellKnown(o.inn[k]) && cellKnown(r.inn[k]))) o.inn[k] = r.inn[k]; });
+      return;
+    }
     seen[s.kind][key] = r; (s.kind === 'inning' ? inn : st).push(r);
   }));
   const byOrder = (a, b) => (a.order == null ? 99 : a.order) - (b.order == null ? 99 : b.order);
@@ -153,6 +167,26 @@ function checkStats(merged) {
     if (diff.length) out.push({ order: r.order, name: r.name, number: r.number, diff: diff.map(k => ({ key: k, read: got[k], table: r.stats[k] })) });
   });
   return out;
+}
+
+// ── 읽은 칸 보정 ──
+// 칸 = 쉼표로 이은 토큰들(4구,도루). 토큰이 매핑표(gameone.js classifyToken)에 있는지 — 끝의 [..] 부가 기록은 빼고 본다
+function _known(tok) {
+  const P = window.SLGameOne, t = tok.replace(/\[[^\]]*\]$/, '');
+  return !t || !P || P.classifyToken(t, null).kind !== 'unknown';
+}
+function cellKnown(cell) { return String(cell || '').split(',').every(_known); }
+// 마침표 → 쉼표(칸에는 마침표가 없다), 매핑표에 없는 토큰은 헷갈리는 글자를 한 자씩 바꿔 매핑표에 있게 되면 그걸로 (낮아웃- → 낫아웃- · 주자아우 → 주자아웃)
+function fixCell(cell) {
+  if (!cell) return cell;
+  return String(cell).replace(/\./g, ',').split(',').map(tok => {
+    if (_known(tok)) return tok;
+    for (let i = 0; i < tok.length; i++) {
+      const alt = CONFUSE[tok[i]];
+      if (alt) { const cand = tok.slice(0, i) + alt + tok.slice(i + 1); if (_known(cand)) return cand; }
+    }
+    return tok;
+  }).join(',');
 }
 
 // ── 점수판 (1 2 3 … R H E B · 선공 / 후공) ──
@@ -218,10 +252,14 @@ function placeShot(shot, heads) {
   let head = shot.head;
   if (!head) {
     const numeric = shot.lines.some(cells => cells.filter(c => /^[\d.]+$/.test(_norm(c.text))).length >= 6);
-    const same = heads.filter(h => h.width === shot.width && h.head.kind === (numeric ? 'stats' : 'inning'));
+    const same = heads.filter(h => h.width === shot.width && (numeric ? h.head.kind === 'stats' || h.head.kind === 'pitch' : h.head.kind === 'inning'));
+    // 숫자 줄이면 타자 표 · 투수 표 가운데 덩어리가 머리글 자리에 더 가깝게 놓이는 쪽
+    const cost = h => { let d = 0, n = 0; shot.lines.forEach(cells => cells.forEach(c => { d += Math.min(...h.all.map(x => Math.abs(x - c.cx))); n++; })); return n ? d / n : Infinity; };
+    same.sort((a, b) => cost(a.head) - cost(b.head));
     head = same.length ? same[0].head : null;
   }
   if (!head) return { kind: null, rows: [] };
+  if (head.kind === 'pitch') return { kind: 'pitch', rows: [] };
   return { kind: head.kind, rows: toRows(head.kind, shot.lines.map(cells => assignRow(cells, head.cols))) };
 }
 
@@ -315,7 +353,7 @@ async function gameOneShotFiles(input) {
     const scoreNote = r.scoreText ? '<div class="go-note">점수판도 읽어 「이닝별 점수표」 칸에 넣었습니다(선공 = 원정 · 후공 = 홈). 팀 이름은 위 칸에 적어 주세요.</div>' : '';
     if (!r.rows.length && r.scoreText) {
       if (typeof window.gameOnePreview === 'function') window.gameOnePreview();
-      _msg('점수판만 읽었습니다 — 타자 기록은 「경기기록」(1회 2회 …) 표 사진을 골라야 들어옵니다.' + scoreNote, 'warn');
+      _msg('점수판만 읽어 「이닝별 점수표」 칸에 넣었습니다(선공 = 원정 · 후공 = 홈). 타자 기록은 「경기기록」(1회 2회 …) 표 사진을 골라야 들어옵니다.', 'warn');
       _track('gameone_shot', { side: _side, files: r.files, rows: 0, why: 'score_only', score: 1, ms: Date.now() - t0 });
       return;
     }
@@ -355,4 +393,4 @@ async function gameOneShotFiles(input) {
 window.gameOneShotPick = gameOneShotPick;
 window.gameOneShotFiles = gameOneShotFiles;
 // 테스트는 api.readFiles 를 바꿔 끼워 화면만 확인한다(실제 Tesseract 는 CI 에서 못 받음)
-const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, readScoreHeader, readScoreRow, toScoreText, readShot, placeShot, readFiles, POS_APP };
+const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, fixCell, cellKnown, readScoreHeader, readScoreRow, toScoreText, readShot, placeShot, readFiles, POS_APP };

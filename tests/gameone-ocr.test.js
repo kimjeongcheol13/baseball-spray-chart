@@ -114,6 +114,24 @@
     ok(big.lh >= 16 && t.lh > 0 && t.lh < 16, '글줄 높이 — 보통 ' + big.lh + 'px · 모아 찍은 화면처럼 작은 글 ' + t.lh + 'px(안내용)');
   });
 
+  test('글자 보정: 매핑표에 없는 기록만 헷갈리는 글자(낮 → 낫 · 우 → 웃)를 바꿔 매핑표에 있게 되면 · 마침표 → 쉼표 · 맞는 기록은 그대로', function () {
+    eq(['낮아웃-', '4구.도루.주자아우', '우안,도루', '좌중홈[3R100M]', '3땅', '알수없음'].map(O().fixCell),
+      ['낫아웃-', '4구,도루,주자아웃', '우안,도루', '좌중홈[3R100M]', '3땅', '알수없음'], '보정');
+    eq(['4구,도루', '4구.도루', '낮아웃-', ''].map(O().cellKnown), [true, false, false, true], '매핑표에 있는 칸인지');
+  });
+
+  test('겹쳐 찍힌 줄: 먼저 읽은 칸이 매핑표에 없고(아래가 잘린 줄) 나중 칸이 맞으면 나중 칸 · 투수 표는 알아보고 건너뜀(머리글 없는 장도)', async function () {
+    var cut = { kind: 'inning', rows: [{ order: 8, name: '가', number: '23', pos: '', inn: { 2: '4구.도루.주자아우', 3: '우안' }, stats: null }] };
+    var full = { kind: 'inning', rows: [{ order: 8, name: '가', number: '23', pos: '', inn: { 2: '4구,도루,주자아웃', 3: '우잉', 4: '투땅' }, stats: null }] };
+    eq(O().mergeShots([cut, full]).rows[0].inn, { 2: '4구,도루,주자아웃', 3: '우안', 4: '투땅' }, '잘린 줄의 틀린 칸만 바꾸고, 맞는 칸(우안)은 그대로 · 빈 칸은 채움');
+    var PH = [[170, '투수명'], [345, '이닝'], [455, '피안타'], [560, '실점'], [650, '자책'], [760, '사사구'], [880, '탈삼진'], [1005, '방어율']];
+    function prow(name, v) { return [[170, name]].concat(v.map(function (x, i) { return [PH[i + 1][0], String(x)]; })); }
+    var p1 = draw([PH, prow('가투수(16)', [3, 7, 6, 5, 2, 2, '11.67'])]), p2 = draw([prow('나투수(11)', [2, 3, 2, 1, 3, 1, '3.50'])]);
+    var r = await pipeline([A(), S(), p1, p2]);
+    eq(r.read.filter(function (x) { return x.head; }).map(function (x) { return x.head.kind; }), ['inning', 'stats', 'pitch'], '머리글 3종');
+    eq([r.rows.length, r.statsOnly.map(function (x) { return x.name; })], [2, ['다선수', '라선수']], '투수는 못 찾은 선수로 안 셈(다 · 라선수는 이 묶음에 경기기록이 없어서)');
+  });
+
   test('점수판: 1 2 3 … 숫자 머리글 자리 + 뒤 4칸(R H E B) · 선공 = 원정 / 후공 = 홈 · 빈 회는 - · 이닝별 점수표 글 → 기존 점수표 파서로 그대로', async function () {
     var b = board(), s = await O().readShot(b.img, b.rec);
     eq([s.head, s.score && s.score.inn.length], [null, 7], '타자 표 머리글 아님 · 회 7개');
@@ -178,7 +196,7 @@
       var ev = [], g0 = window.gtag; window.gtag = function (k, n, p) { if (k === 'event' && n === 'gameone_shot') ev.push(p); };
       O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], scoreText: SCORE, shots: 0, files: 1 }); };
       try { await gameOneShotFiles({ files: [new File(['x'], 'a.png')] }); } finally { window.gtag = g0; }
-      ok($('goShotMsg').classList.contains('warn') && /점수판만 읽었습니다.*「경기기록」/.test($('goShotMsg').textContent), '점수판만 — ' + $('goShotMsg').textContent);
+      ok($('goShotMsg').classList.contains('warn') && /점수판만 읽어 「이닝별 점수표」.*「경기기록」/.test($('goShotMsg').textContent), '점수판만 — ' + $('goShotMsg').textContent);
       eq([$('goScore').value, ev.length && ev[0].why, $('goAway').value], [SCORE, 'score_only', 'X'], '점수판 칸만 채움 · 타자 칸 그대로');
       $('goScore').value = '';
       O().readFiles = function () { return Promise.reject(new Error('글자 읽기 도구를 불러오지 못했습니다 — 인터넷 연결을 확인해 주세요')); };

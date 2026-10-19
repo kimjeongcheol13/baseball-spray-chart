@@ -304,8 +304,30 @@
     return out;
   }
 
+  // ── 박스스코어 페이지 통째 복사 → 점수표 · 타자 표 나누기 ──
+  // 휴대폰에서는 표를 골라 긁기 어려워 '전체 선택 → 복사'를 쓰기 쉽다. 그러면 메뉴 · 요약 · 투수 표까지 한 덩어리로 온다(2026-10-19 확인).
+  //   점수표 = 'Team 1 2 … R …' 머리글 줄 + 아래 팀 줄 2개
+  //   타자 표 = '선수 1 2 … 타수 …' 머리글 줄부터 '합 계' 줄까지 (위쪽 줄 = 팀 이름). 투수 표('선수 결과 이닝 …')는 쓰지 않는다
+  // → 타자 표가 2개 이상일 때만 { score: 점수표 글 | '', tables: [{ name, text }…] } (페이지 위 → 아래 순서), 아니면 null
+  var BAT_HEAD_RE = /^\s*선수\s+1\s+2\s/, PIT_HEAD_RE = /^\s*선수\s+결과\s/, TOTAL_RE = /^\s*합\s*계/, SCORE_HEAD_RE = /^\s*Team\s+(?:\S+\s+)?1\s+2\s.*\sR\s/;
+  function splitGameOnePage(text) {
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/), tables = [], score = '';
+    for (var i = 0; i < lines.length; i++) {
+      if (!score && SCORE_HEAD_RE.test(lines[i])) score = lines.slice(i, i + 3).join('\n');
+      if (!BAT_HEAD_RE.test(lines[i])) continue;
+      var name = '', j = i - 1, end = i + 1;
+      while (j >= 0 && !lines[j].trim()) j--;
+      if (j >= 0 && !TOTAL_RE.test(lines[j])) name = lines[j].trim();
+      while (end < lines.length && !TOTAL_RE.test(lines[end]) && !BAT_HEAD_RE.test(lines[end]) && !PIT_HEAD_RE.test(lines[end])) end++;
+      if (end < lines.length && TOTAL_RE.test(lines[end])) end++;
+      tables.push({ name: name, text: lines.slice(i, end).join('\n') });
+      i = end - 1;
+    }
+    return tables.length >= 2 ? { score: score, tables: tables } : null;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -246,6 +246,29 @@
     { name: '이닝별 점수표 — 실제 복사(위에 리그 / 날짜 / 구장 줄, Team › 버튼 칸은 복사되지 않음, 진행 안 한 이닝은 빈 칸)',
       sb: '\n(후)일요리그 / 10.18(10:20) / 가상구장\nTeam\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB\n가팀\t0\t8\t1\t6\t0\t\t\t\t\t15\t21\t4\t2\n나팀\t6\t5\t0\t0\t1\t\t\t\t\t12\t14\t2\t4\n',
       expectSb: { teams: [{ name: '가팀', innings: [0, 8, 1, 6, 0], r: 15, h: 21, e: 4, b: 2 }, { name: '나팀', innings: [6, 5, 0, 0, 1], r: 12, h: 14, e: 2, b: 4 }], warnings: [] } },
+    { name: '페이지 통째 복사(휴대폰 "전체 선택") → splitGameOnePage: 점수표 · 타자 표 2개만, 투수 표 · 메뉴 · 요약 글은 버림',
+      input: null,
+      extra: function () {
+        var e = [], A1 = '1지가일(1)\t유플\t\t\t\t\t\t\t\t\t1\t0\t0\t0\t0\t0.000\t0.000', B1 = '1중나일(2)\t좌안\t\t\t\t\t\t\t\t\t1\t1\t0\t0\t0\t1.000\t1.000';
+        var BH = '선수\t1\t2\t3\t4\t5\t6\t7\t8\t9\t타수\t안타\t타점\t득점\t도루\t타율\t시즌';
+        var PH = '선수\t결과\t이닝\t타자\t타수\t피안타\t피홈런\t희타\t희비\t볼넷\t사구\t삼진\t폭투\t보크\t실점\t자책점\t투구수\t방어율\t시즌';
+        var page = ['', '다른팀 2 vs 15 또다른팀 (10.18)', '이전', '다음', '가팀', '', '승', '1', '나팀', '', '패', '0',
+          '(후)일요리그 / 10.18(10:20) / 가상구장', 'Team\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB',
+          '가팀\t1\t0\t\t\t\t\t\t\t\t1\t2\t0\t1', '나팀\t0\t0\t\t\t\t\t\t\t\t0\t1\t1\t0', '게임결과', '게임요약', '가팀', '안타', '2',
+          '[홈런]가일(1회)', '', ' 가팀', BH, A1, '합 계\t1\t0\t0\t0\t0\t0.000\t0.000', ' 나팀', BH, B1, '합 계\t1\t1\t0\t0\t0\t1.000\t1.000',
+          ' 가팀', PH, '가투수(9)\t승\t2\t6\t6\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00',
+          ' 나팀', PH, '나투수(8)\t패\t2\t7\t7\t2\t0\t0\t0\t0\t0\t0\t0\t0\t1\t1\t0\t3.50\t3.50', '등록된 사진 및 코멘트는', '답글입력'].join('\n');
+        var r = G.splitGameOnePage(page);
+        if (!r) return ['나누지 못함(null)'];
+        diff(r.tables.map(function (t) { return t.name; }), ['가팀', '나팀'], 'tables[].name', e);
+        diff(r.tables.map(function (t) { return t.text; }), [[BH, A1, '합 계\t1\t0\t0\t0\t0\t0.000\t0.000'].join('\n'), [BH, B1, '합 계\t1\t1\t0\t0\t0\t1.000\t1.000'].join('\n')], 'tables[].text', e);
+        diff(G.parseGameOneScoreboard(r.score), { teams: [{ name: '가팀', innings: [1, 0], r: 1, h: 2, e: 0, b: 1 }, { name: '나팀', innings: [0, 0], r: 0 }], warnings: [] }, 'score', e);
+        diff(G.splitGameOnePage([BH, A1, '합 계\t1\t0\t0\t0\t0\t0.000\t0.000'].join('\n')), null, '타자 표 하나뿐이면 null', e);
+        // 합 계 줄 없이 복사돼도 투수 표 머리글에서 끊는다
+        var noSum = G.splitGameOnePage([BH, A1, ' 나팀', BH, B1, ' 가팀', PH, '가투수(9)\t승\t2\t6\t6\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00'].join('\n'));
+        diff(noSum && noSum.tables.map(function (t) { return t.text; }), [[BH, A1, ' 나팀'].join('\n'), [BH, B1, ' 가팀'].join('\n')], '합 계 없음 → 투수 표 앞에서 끊음', e);
+        return e;
+      } },
     { group: '좌표 변환' },
     { name: '좌표 변환 기준점 — toStoredCoords(매핑표 각도, 깊이)', input: null,
       extra: function () {

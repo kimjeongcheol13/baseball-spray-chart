@@ -307,6 +307,40 @@
     eq([r && r.why, r && r.name, r && r.line], ['restart', '나1', 10], '이어 붙인 두 표: ' + JSON.stringify(r));
   });
 
+  // 휴대폰 '전체 선택 → 복사': 메뉴 · 점수표 · 요약 · 타자 표 2개 · 투수 표 2개가 한 덩어리로 온다(실제 페이지 구조, 이름은 가명)
+  var PH = '선수\t결과\t이닝\t타자\t타수\t피안타\t피홈런\t희타\t희비\t볼넷\t사구\t삼진\t폭투\t보크\t실점\t자책점\t투구수\t방어율\t시즌';
+  var REAL_B = realTable([real('1우나일(11)', { 1: '삼진', 2: '좌선2' }), real('2좌나이(12)', { 1: '중직' }), real('3중나삼(13)', { 1: '유땅' })]);
+  var PAGE = ['', '다른팀 2 vs 15 또다른팀 (10.18)', '이전', '다음', '가팀', '', '승', '1', '나팀', '', '패', '0',
+    '(후)일요리그 / 10.18(10:20) / 가상구장', 'Team\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB',
+    '가팀\t0\t0\t1\t\t\t\t\t\t\t1\t4\t0\t1', '나팀\t0\t0\t\t\t\t\t\t\t\t0\t1\t0\t0', '게임결과', '게임요약', '[2루타]가오(3회)', '',
+    ' 가팀', REAL_A.trim(), ' 나팀', REAL_B.trim(),
+    ' 가팀', PH, '가투수(9)\t승\t3\t10\t9\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00',
+    ' 나팀', PH, '나투수(8)\t패\t3\t12\t11\t4\t0\t0\t0\t1\t0\t1\t0\t0\t1\t1\t0\t3.00\t3.00', '등록된 사진 및 코멘트는', '답글입력'].join('\n');
+
+  test('페이지 통째 붙여넣기(휴대폰 전체 선택): 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채우고, 투수 표는 쓰지 않는다', async function () {
+    var ids = ['goScore', 'goAway'];
+    for (var i = 0; i < ids.length; i++) {
+      openGameOneImport();
+      ['goScore', 'goAway', 'goHome', 'goTa', 'goTh'].forEach(function (id) { type(id, ''); });
+      type('goDate', '2026-10-15');
+      type(ids[i], PAGE);
+      await T.sleep(300);
+      ok($('goScore').value.indexOf('Team\t1\t2') === 0 && $('goScore').value.split('\n').length === 3, ids[i] + ': 점수표 칸 — ' + JSON.stringify($('goScore').value));
+      eq([$('goAway').value.split('\n')[1], $('goHome').value.split('\n')[1]], ['1지가일(1)\t유플\t좌안\t\t\t\t\t\t\t\t2\t1\t0\t0\t0\t0.500\t0.500', real('1우나일(11)', { 1: '삼진', 2: '좌선2' })], ids[i] + ': 원정 · 홈 칸 첫 선수');
+      ok($('goHome').value.indexOf('나투수') < 0 && $('goAway').value.indexOf('가투수') < 0, ids[i] + ': 투수 표는 빠짐');
+      var note = $('goPrev').querySelector('.go-split');
+      ok(note && note.textContent.indexOf('이닝별 점수표 · 원정(가팀) · 홈(나팀) 타자 표로 나눴습니다') >= 0, ids[i] + ': 안내 — ' + (note ? note.textContent : $('goPrev').textContent));
+      ok($('goPrev').textContent.indexOf('가팀 1 : 0 나팀') >= 0 && !$('goPrev').querySelector('.go-two'), ids[i] + ': 점수 · 표 두 개 경고 없음 — ' + $('goPrev').textContent);
+      eq($('goSave').textContent, '새 경기로 저장 (11타석)', ids[i] + ': 버튼 (가팀 7 + 나팀 4타석)');
+    }
+    var before = saves().length;
+    $('goSave').click();
+    var s = saves(), g = JSON.parse(localStorage.getItem(s[s.length - 1].key));
+    eq([s.length, g.ta, g.th, g.as, g.hs, g.abs.length], [before + 1, '가팀', '나팀', 1, 0, 11], '저장: 팀 · 점수 · 타석');
+    eq(g.info.ls, { away: [0, 0, 1], home: [0, 0] }, '이닝 점수');
+    closeOverlay('loadOverlay');
+  });
+
   test('원정 · 홈 칸에 같은 표: 같은 선수(이름 + 등번호) 2명 이상이면 알림 · 동명이인 1명은 넘어감', function () {
     var B = window.SLGameOneImport.buildGameOneGame;
     eq(B({ awayText: AWAY, homeText: AWAY, now: 1790000300000 }).report.shared, ['배성웅(15)', '이현준(24)', '김수찬(5)'], '같은 표');

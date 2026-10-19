@@ -4,7 +4,7 @@
 //   계산은 batdata.js calcStats 그대로 (wOBA · BABIP · K% · BB% = CLAUDE.md 공식, WOBA_W 공유)
 //   필드는 기록 탭과 같은 그리기(scorebook.js sbPaint) · 방향 구간은 기록 탭과 같은 경계(LF <54 · LC <78 · CF <102 · RC <126 · RF)
 import { HITS, esc } from '../constants.js';
-import { buildData, calcStats, f3, pct } from './batdata.js?v=8';
+import { buildData, calcStats, f3, pct } from './batdata.js?v=9';
 
 const $ = id => document.getElementById(id);
 
@@ -97,7 +97,14 @@ function drawDashField(ctx, S, list) {
   list.filter(a => a.x != null && a.y != null)
     .map(a => ({ a, k: P.kindOf(a.res) }))
     .sort((x, y) => (rank[x.k] || 0) - (rank[y.k] || 0))
-    .forEach(({ a, k }) => { const q = _semiToCone(g, a.x, a.y); P.mark(ctx, k, q[0], q[1], R, T); });
+    .forEach(({ a, k }) => {
+      const q = _semiToCone(g, a.x, a.y);
+      P.mark(ctx, k, q[0], q[1], R, T);
+      if (a.estimated === true) {   // 게임원에서 가져와 대략 찍은 위치(gameonefix.js) = 점선 테두리. 구역 수 · 통계는 그대로
+        ctx.save(); ctx.setLineDash([3, 2.5]); ctx.lineWidth = Math.max(1.2, 1.6 * u); ctx.strokeStyle = T.ink;
+        ctx.beginPath(); ctx.arc(q[0], q[1], R + 3, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      }
+    });
   // 구역별 타구 수 (Oswald 26px, --paper)
   const cnt = _zoneCounts(list);
   ctx.save();
@@ -108,6 +115,13 @@ function drawDashField(ctx, S, list) {
     ctx.fillText(String(cnt[i]), p[0], p[1]);
   });
   ctx.restore();
+}
+
+// 범례: 대략 위치 개수 + '위치 확인'(gameonefix.js 보정 화면을 다시 연다). 없으면 빈 글 — 팀 탭 방향도(team.js)가 slDash.estKey 로 쓴다
+const _EST_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2"/></svg>';
+function _estKey(list, scope) {
+  const n = list.filter(a => a && a.estimated === true && a.x != null && a.y != null).length;
+  return n ? `<li class="ad-legend-est">${_EST_SVG}대략 위치 ${n}<button type="button" class="ad-est-btn" onclick="gameOneFixFrom('${scope === 'game' ? 'game' : 'auto'}')">위치 확인</button></li>` : '';
 }
 
 function _zoneCounts(list) {
@@ -367,4 +381,4 @@ if (typeof window !== 'undefined') {
 
 // 팀 탭(team.js)도 같은 5구역 방향도 · 구역 경계 · 타석 결과 막대를 쓴다 (분석 서브탭 7→5: 종합 → 팀)
 //   import로 가져오면 모듈 실행 순서가 바뀌어(spray.js보다 먼저) openSprayView 덮어쓰기 순서가 달라지므로 window로 넘긴다
-if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, resultBar: _bar };
+if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, resultBar: _bar, estKey: _estKey };

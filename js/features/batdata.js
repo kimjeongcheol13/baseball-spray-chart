@@ -150,7 +150,7 @@ export function emptyState(title, sub) {
 }
 
 // 스프레이 필드: 기록 탭과 같은 좌표 변환(window._fieldPos, 1×1 박스)으로 부채꼴 위에 찍는다
-export function sprayFigure(P, mark = '') {
+export function sprayFigure(P, mark = '', fixBtn = true) {   // fixBtn = 대략 위치 안내 옆 '위치 확인' 버튼(칼럼 글에는 뺀다)
   const s = P.st;
   const fp = window._fieldPos;
   const pts = P.abs.filter(a => a.x != null && a.y != null);
@@ -176,18 +176,21 @@ export function sprayFigure(P, mark = '') {
     }).sort((x, y) => order[x.t] - order[y.t]).map(({ a, t }) => {
       const p = fp(a);
       const x = (p[0] * 100).toFixed(1), y = (p[1] * 100).toFixed(1);
-      const tip = `<title>${_esc(a.res)}${a.inn ? ' · ' + _esc(a.inn) : ''}</title>`;
-      if (t === 'hr') return `<path class="d-hr" d="M${x} ${+y - 3.4}l3.4 3.4-3.4 3.4-3.4-3.4z">${tip}</path>`;
-      if (t === 'xbh') return `<rect class="d-xbh" x="${+x - 2.3}" y="${+y - 2.3}" width="4.6" height="4.6" rx="0.8">${tip}</rect>`;
-      return `<circle class="d-${t}" cx="${x}" cy="${y}" r="${t === 'out' ? 2 : 2.4}">${tip}</circle>`;
+      // 게임원에서 가져와 대략 찍은 위치(estimated, gameonefix.js) = 점선 · 연하게. 통계 · 방향 비율은 그대로
+      const est = a.estimated === true ? ' d-est' : '';
+      const tip = `<title>${_esc(a.res)}${a.inn ? ' · ' + _esc(a.inn) : ''}${est ? ' · 대략 위치' : ''}</title>`;
+      if (t === 'hr') return `<path class="d-hr${est}" d="M${x} ${+y - 3.4}l3.4 3.4-3.4 3.4-3.4-3.4z">${tip}</path>`;
+      if (t === 'xbh') return `<rect class="d-xbh${est}" x="${+x - 2.3}" y="${+y - 2.3}" width="4.6" height="4.6" rx="0.8">${tip}</rect>`;
+      return `<circle class="d-${t}${est}" cx="${x}" cy="${y}" r="${t === 'out' ? 2 : 2.4}">${tip}</circle>`;
     }).join('');
   }
-  const dn = s.dn || 0;
+  const dn = s.dn || 0, nEst = pts.filter(a => a.estimated === true).length;
   const seg = (n, c, l) => (n ? `<i class="${c}" style="flex:${n}" title="${l} ${n}개">${Math.round(n / dn * 100)}%</i>` : '');
   return `
     <figure class="an-spray">
       <figcaption>${mark}${_esc(P.name)}<span>타구 ${pts.length}개</span></figcaption>
       <svg viewBox="-3 3 106 96" role="img" aria-label="${_esc(P.name)} 스프레이 차트">${field}${dots}</svg>
+      ${nEst && fp ? `<p class="an-est-note"><i aria-hidden="true"></i>점선 = 게임원에서 가져와 대략 찍은 위치 ${nEst}개${fixBtn ? '<button type="button" class="an-est-btn" onclick="gameOneFixFrom(\'auto\')">위치 확인</button>' : ''}</p>` : ''}
       ${dn ? `
         <div class="an-dir" aria-label="당김 ${s.pull}, 센터 ${s.center}, 밀어 ${s.oppo}">${seg(s.pull, 'pull', '당김')}${seg(s.center, 'ctr', '센터')}${seg(s.oppo, 'oppo', '밀어')}</div>
         <div class="an-dir-lbl"><span>당김 ${s.pull}</span><span>센터 ${s.center}</span><span>밀어 ${s.oppo}</span></div>`

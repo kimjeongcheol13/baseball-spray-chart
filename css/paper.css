@@ -672,6 +672,10 @@ body.sb #analysisView .ad-who-b.on { background: var(--highlight-soft); box-shad
 .ad-field-box canvas { display: block; max-width: 100%; }
 .ad-legend { padding: 6px 12px 8px; border-top: 1px solid var(--rule); }
 .ad-legend-n { margin-left: auto; font-size: 11px !important; color: var(--ink-soft); }
+/* 게임원에서 가져와 대략 찍은 위치(gameonefix.js) — 범례 점선 원 + 위치 확인 (새 요소) */
+.ad-legend-est { color: var(--ink-soft); }
+.ad-est-btn { min-height: 44px; margin-left: 6px; padding: 0 10px; border: 1.5px solid var(--ink); border-radius: 2px; background: var(--paper-2); color: var(--ink); font: 700 12px var(--f-body); cursor: pointer; }
+.ad-est-btn:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
 .ad-band { display: flex; margin: 0 12px 12px; border: 1.5px solid var(--ink); min-height: 44px; }
 .ad-band-c { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 2px; border-right: 1px solid var(--ink); background: var(--paper-2); }
 .ad-band-c:last-child { border-right: 0; }

@@ -3,7 +3,7 @@
 // 규칙: 표본 기준(MIN_ZONE_AB · MIN_SPLIT)에 못 미치는 코스·구종·카운트는 문장에 넣지 않는다.
 //       기록으로 확인되지 않는 해석은 쓰지 않고, 추정은 마지막 주석에 추정이라고 밝힌다.
 import { HITS, NOAB, ZONES_9 } from '../constants.js';
-import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=8';
+import { calcStats, f3, pct, josa as _josaPick, sprayFigure } from './batdata.js?v=9';
 
 const MIN_ZONE_AB = 3;   // 코스·구종 판단 최소 타수 (scouting.js 와 동일)
 const MIN_SPLIT = 5;     // 카운트 판단 최소 타석 (scouting.js 와 동일)
@@ -371,7 +371,7 @@ function _trendSvg(f) {
 
 function _sprayFig(f) {
   const s = f.P.st;
-  return _fig('spray', sprayFigure(f.P), `<b>타구 방향</b> · 방향이 기록된 타구 ${s.dn}개 · 당김 ${s.pull} · 센터 ${s.center} · 밀어 ${s.oppo}`);
+  return _fig('spray', sprayFigure(f.P, '', false), `<b>타구 방향</b> · 방향이 기록된 타구 ${s.dn}개 · 당김 ${s.pull} · 센터 ${s.center} · 밀어 ${s.oppo}`);
 }
 
 export function renderColumnFigure(f) {

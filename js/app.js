@@ -2,29 +2,30 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=22';
-import './features/compare.js?v=12';
-import './features/scouting.js?v=25';
+import './features/profile.js?v=23';
+import './features/compare.js?v=13';
+import './features/scouting.js?v=26';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
-import './features/team.js?v=10';
-import './features/teamgames.js?v=1';
-import './features/pitcher.js?v=44';
-import './features/batter.js?v=32';
-import './features/spray.js?v=5';
+import './features/team.js?v=11';
+import './features/teamgames.js?v=2';
+import './features/pitcher.js?v=45';
+import './features/batter.js?v=33';
+import './features/spray.js?v=6';
 import './features/shell.js?v=16';
-import './features/record.js?v=13';
+import './features/record.js?v=14';
 import './features/settings.js?v=3';
 import './features/scorebook.js?v=17';
-import './features/dashboard.js?v=10';
+import './features/dashboard.js?v=11';
 import './features/setup.js?v=8';
-import './features/report.js?v=6';
+import './features/report.js?v=7';
 import './features/anahelp.js?v=4';
 import './features/firstrun.js?v=3';
 import './features/tabloop.js?v=1';
-import './features/gameoneimport.js?v=16';
+import './features/gameoneimport.js?v=17';
+import './features/gameonefix.js?v=1';     // 게임원 가져오기 보정 — 저장 직후 「타구 위치 확인」
 import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPitcherView 를 감싼다
 
 import './features/anahelp.js?v=4';

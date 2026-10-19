@@ -1,7 +1,7 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
 //   예전 '종합' 서브탭 내용도 여기로: 5구역 타구 방향도 + 상세 필터 · BABIP · 타석 결과 막대 · 표본 경고
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=8';
+import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -205,7 +205,7 @@ function _dirCard(T) {
         <button type="button" class="sb-mini${nF ? ' on' : ''}" onclick="_sfOpen && _sfOpen()" aria-label="상세 필터${nF ? ' ' + nF + '개 켜짐' : ''}">${FILTER_ICON}상세 필터${nF ? `<b class="ad-fn">${nF}</b>` : ''}</button>
       </header>
       <div class="ad-field-box"><canvas id="tmField" role="img" aria-label="팀 타구 방향도: ${K.ZONES.map((z, i) => z.full + ' ' + zc[i]).join(', ')}"></canvas></div>
-      <ul class="sb-legend ad-legend" aria-label="기호">${[['hit', '안타'], ['xbh', '장타'], ['hr', '홈런'], ['out', '아웃']].map(([k, l]) => `<li>${window.sbPaint ? window.sbPaint.markSvg(k, 16) : ''}${l}</li>`).join('')}</ul>
+      <ul class="sb-legend ad-legend" aria-label="기호">${[['hit', '안타'], ['xbh', '장타'], ['hr', '홈런'], ['out', '아웃']].map(([k, l]) => `<li>${window.sbPaint ? window.sbPaint.markSvg(k, 16) : ''}${l}</li>`).join('')}${K.estKey ? K.estKey(list, 'auto') : ''}</ul>
       <div class="ad-band" aria-label="방향 비율">${band}</div>
     </section>`;
 }

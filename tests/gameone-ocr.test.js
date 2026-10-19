@@ -10,11 +10,11 @@
   function O() { return window.SLGameOneOcr; }
 
   // 앱 화면을 닮은 그림: 줄마다 [x 가운데, 글] — 회색 구분선 · 위쪽 상태 표시줄도 그린다
-  function draw(lines) {
+  function draw(lines, px) {
     var c = document.createElement('canvas'); c.width = W; c.height = 80 + lines.length * 90;
     var g = c.getContext('2d'), items = [];
     g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-    g.font = '24px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.font = (px || 24) + 'px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillStyle = '#222'; g.fillText('9:35', 60, 24);
     items.push({ x0: 60 - g.measureText('9:35').width / 2, x1: 60 + g.measureText('9:35').width / 2, y: 24, text: '9:35' });
     lines.forEach(function (ln, i) {
@@ -100,6 +100,9 @@
     eq(g.gaps, [3], '1 · 2 · 4 → 3번 줄 빠짐');
     var none = await pipeline([B()]);
     eq([none.shots, none.rows.length], [0, 0], '머리글 있는 장이 하나도 없으면 읽지 않는다');
+    var big = await O().readShot(A().img, A().rec), tiny = draw([innHead(), innRow(1, '가선수(11)', 'P', { 1: '중플' })], 8);
+    var t = await O().readShot(tiny.img, tiny.rec);
+    ok(big.lh >= 16 && t.lh > 0 && t.lh < 16, '글줄 높이 — 보통 ' + big.lh + 'px · 모아 찍은 화면처럼 작은 글 ' + t.lh + 'px(안내용)');
   });
 
   test('화면: 홈팀 사진 → 고르기 → 홈 칸에 채우고 미리보기 · 안내(틀릴 수 있음 · 타자 표와 다름 · 못 찾은 선수) · GA4 · 저장', async function () {
@@ -131,7 +134,7 @@
     } finally { O().readFiles = r0; window.gtag = g0; ['goFixOverlay', 'loadOverlay', 'goOverlay'].forEach(function (id) { if ($(id)) closeOverlay(id); }); }
   });
 
-  test('화면: 표를 못 찾음 · 읽기 실패 → 빨간 안내, 칸은 그대로 · 버튼 다시 켜짐', async function () {
+  test('화면: 표를 못 찾음(머리글 없음 · 타자 표만 · 글자가 너무 작음) · 읽기 실패 → 빨간 안내, 칸은 그대로 · 버튼 다시 켜짐', async function () {
     var r0 = O().readFiles;
     try {
       openGameOneImport();
@@ -140,6 +143,12 @@
       O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], shots: 0, files: 1 }); };
       await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
       ok($('goShotMsg').classList.contains('bad') && /머리글/.test($('goShotMsg').textContent), '표 못 찾음 — ' + $('goShotMsg').textContent);
+      O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [{ name: '가', number: '1' }], checks: [], gaps: [], shots: 1, files: 1 }); };
+      await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
+      ok(/「타자」 표.*만 찾았습니다.*「경기기록」/.test($('goShotMsg').textContent), '타자 표만 고름 — ' + $('goShotMsg').textContent);
+      O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], small: true, shots: 0, files: 1 }); };
+      await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
+      ok(/너무 작게.*원본 스크린샷/.test($('goShotMsg').textContent), '글자가 작은 사진 — ' + $('goShotMsg').textContent);
       O().readFiles = function () { return Promise.reject(new Error('글자 읽기 도구를 불러오지 못했습니다 — 인터넷 연결을 확인해 주세요')); };
       await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
       ok($('goShotMsg').classList.contains('bad') && /인터넷 연결/.test($('goShotMsg').textContent), '읽기 실패');

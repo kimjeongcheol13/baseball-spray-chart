@@ -21,13 +21,14 @@ import './features/scorebook.js?v=17';
 import './features/dashboard.js?v=10';
 import './features/setup.js?v=8';
 import './features/report.js?v=6';
-import './features/anahelp.js?v=3';
+import './features/anahelp.js?v=4';
 import './features/firstrun.js?v=3';
 import './features/tabloop.js?v=1';
-import './features/gameoneimport.js?v=13';
+import './features/gameoneimport.js?v=14';
+import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPitcherView 를 감싼다
 
-import './features/anahelp.js?v=3';
-import './features/anahelp.js?v=3';
+import './features/anahelp.js?v=4';
+import './features/anahelp.js?v=4';
 // ── Bottom Navigation ──
 function initSavantNav() {
   const nav = document.getElementById('savantNav');

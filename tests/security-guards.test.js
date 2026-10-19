@@ -100,13 +100,17 @@
   });
 
   test('보안: 엑셀/CSV 가져오기 3경로 — 선수 이름 · 구종 · 결과 · 날짜가 프로토타입 이름인 행만 건너뛴다', async function () {
-    var S = saveAS(), X = window.XLSX;
+    var S = saveAS(), X = window.XLSX, FR = window.FileReader;
+    // 파일 읽기(FileReader)는 실제 시간이 걸리는데 이 하네스는 가상 시간이라 sleep 동안 실제 시간이 거의 흐르지 않는다
+    // → 느린 CI 에서 읽기가 끝나기 전에 기다림이 끝났다(PR #182 CI). 파일 내용은 run 안의 XLSX 가짜가 정하므로 읽기도 가짜로 바꿔 가상 시간 안에서 끝낸다
+    function FakeReader() {}
+    FakeReader.prototype.readAsArrayBuffer = function () { var r = this; setTimeout(function () { r.onload({ target: { result: new ArrayBuffer(1) } }); }, 0); };
     async function run(rows, call) {
       window.XLSX = { read: function () { return { SheetNames: ['타석기록'], Sheets: { '타석기록': {} } }; }, utils: { sheet_to_json: function () { return rows; } } };
+      window.FileReader = FakeReader;
       var input = { files: [new Blob(['x'])], value: 'f' };
       $('toastTxt').textContent = '';
       if (call === 'single') importSingleTableGames(rows, 0, input); else window[call](input);
-      // 파일 읽기(FileReader)는 실제 시간이 걸린다 — 가상 시간 sleep 한 번으로는 끝나기 전에 지나갈 수 있어, 결과 안내가 뜰 때까지 기다린다
       for (var i = 0; i < 400 && !toast(); i++) await sleep(25);
       ok(toast(), call + ': 가져오기 결과 안내가 뜨지 않음');
     }
@@ -129,6 +133,7 @@
       eq(AS.home_lineup.map(function (p) { return p.name; }), ['김타자'], '라인업에도 정상 선수만');
     } finally {
       if (X === undefined) delete window.XLSX; else window.XLSX = X;
+      window.FileReader = FR;
       loadAS(S); try { closeOverlay('loadOverlay'); } catch (e) {}
     }
   });

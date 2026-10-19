@@ -354,6 +354,8 @@
       ['가일:나투수', '가이:나투수', '가삼:나투수', '가사:나투수', '가일:나계투', '가이:나계투', '가오:나계투'], '원정 타석의 투수(나투수 4 → 나계투 3)');
     ok(g.abs.filter(function (a) { return a.team === 'home'; }).every(function (a) { return a.pitcher === '가투수'; }), '홈 타석의 투수 = 가투수');
     eq($('goPitch').value, '', '저장 뒤 투수 표 칸 비움');
+    eq({ away: g.pitchLines.away.map(function (p) { return p.name + ':' + p.result + ':' + p.outs + ':' + p.tbf; }), home: g.pitchLines.home.map(function (p) { return p.name + ':' + p.result + ':' + p.outs + ':' + p.tbf; }) },
+      { away: ['가투수:승:6:4'], home: ['나투수:-:4:4', '나계투:패:5:3'] }, '투수 성적 저장(pitchLines) — 분석 탭 투수 시즌 기록이 모은다');
     closeOverlay('loadOverlay');
   });
 

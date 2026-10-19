@@ -47,7 +47,7 @@
     var t = $('goPrev').textContent;
     ok(t.indexOf('상대 8 : 1 우리') >= 0, '점수 — ' + t);
     ok(t.indexOf("저장 안 함 1타석") >= 0 && t.indexOf("마동석 4회 '번트'") >= 0, '모르는 기록 — ' + t);
-    ok(t.indexOf('0으로 저장') >= 0 && t.indexOf('타점 합계 11') >= 0, '타점 안내 — ' + t);
+    ok(t.indexOf('0으로 저장') >= 0 && t.indexOf('타점 합계 11') >= 0 && t.indexOf('기록 없는 홈런은 최소 1타점') >= 0 && t.indexOf('홈런으로 넣은 타점 3') >= 0, '타점 안내 — ' + t);
     ok(!$('goSave').disabled, '저장 버튼 켜짐');
     eq($('goSave').textContent, '새 경기로 저장 (13타석)', '버튼 글자');
   });
@@ -66,7 +66,7 @@
     eq(g.away_lineup.map(function (p) { return p.name + '#' + p.num + '/' + p.pos; }), ['배성웅#15/2루', '이현준#24/중견', '김수찬#5/유격'], '원정 라인업');
     eq(g.home_lineup.map(function (p) { return p.name + '/' + p.pos; }), ['마동석/포수'], '홈 라인업');
     eq(g.abs.length, 13, '타석 13개 (번트 제외)');
-    ok(g.abs.every(function (a) { return a.rbi === 0 && a.pt === null && Array.isArray(a.pitches); }), '타석 타점 0 · 구종 없음');
+    ok(g.abs.every(function (a) { return a.rbi === (a.res === '홈런' ? 1 : 0) && a.pt === null && Array.isArray(a.pitches); }), '타석 타점: 홈런 1(최소) · 나머지 0 · 구종 없음');
     ok(g.abs.every(function (a) { return a.team === (a.bname === '마동석' ? 'home' : 'away'); }), '팀');
     eq(JSON.stringify(AS.abs), cur, '기록 중인 경기는 그대로');
     ok($('loadOverlay').classList.contains('show') && !$('goOverlay').classList.contains('show'), '입력창 닫고 불러오기 목록 열림');
@@ -297,9 +297,9 @@
     eq([out.report.away.split, out.report.away.skipped.length], [null, 0], '머리글 · 합 계 줄은 표 두 개로 보지 않음 · 모르는 기록 없음');
   });
 
-  test('홈런 [2R 97M] → 그 타석 타점 2 · 비거리 97m(318ft) · 괄호 없는 홈런과 다른 타석은 타점 0', function () {
+  test('홈런 [2R 97M] → 그 타석 타점 2 · 비거리 97m(318ft) · 괄호 없는 홈런은 최소 1타점 · 다른 타석은 0', function () {
     var out = window.SLGameOneImport.buildGameOneGame({ awayText: realTable([real('1지가일(1)', { 1: '좌월홈[2R 97M]', 2: '좌중홈', 3: '좌안' })]), now: 1790000500000 });
-    eq(out.game.abs.map(function (a) { return a.res + ':' + a.rbi + ':' + a.ft; }).slice(0, 2), ['홈런:2:318', '홈런:0:' + out.game.abs[1].ft], '홈런 타점 · 비거리');
+    eq(out.game.abs.map(function (a) { return a.res + ':' + a.rbi + ':' + a.ft; }).slice(0, 2), ['홈런:2:318', '홈런:1:' + out.game.abs[1].ft], '홈런 타점 · 비거리');
     ok(out.game.abs[1].ft > 0 && out.game.abs[1].ft !== 318, '괄호 없는 홈런은 펜스 거리로 추정한 ft');
     eq([out.game.abs[2].rbi, out.report.away.hrRbi], [0, 2], '다른 타석 타점 0 · 홈런으로 넣은 타점 합');
   });

@@ -6,7 +6,8 @@
 //   · 원정 표 · 홈 표 칸 2개 — 원정 = 'N회초', 홈 = 'N회말' (10회 이상은 '연장'), 점수 = 각 표의 득점 합계
 //   · 홈런 위치는 펜스 밖 그대로 (파서 값 그대로 — 그리는 쪽이 펜스 1.06배까지 표시, 핫존 집계는 가장 깊은 칸)
 //   · 타석 타점은 0 — 게임원 표에는 타석별 타점이 없다(선수별 합계만). 미리보기에 안내한다
-//     예외(2026-10-19): 홈런 [2R 97M] 표기가 있으면 그 홈런 타석은 타점 2 · 비거리 97m(ft 로 저장)
+//     예외(2026-10-19): 홈런 [2R 97M] 표기가 있으면 그 홈런 타석은 타점 2 · 비거리 97m(ft 로 저장).
+//     괄호 없는 홈런은 1타점 — 홈런은 타자 본인이 반드시 홈인하므로 최소 1타점은 확실하다(몇 점 홈런인지는 표에 없다)
 //   · unknown 타석(결과를 모름)과 교체·주루 사건뿐인 칸은 저장하지 않고 미리보기에 보여 준다
 //   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
@@ -92,7 +93,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
 
   ['away', 'home'].forEach(team => {
     const text = team === 'away' ? awayText : homeText;
-    const r = { players: 0, pa: 0, batted: 0, low: 0, nonBatted: 0, skipped: [], noPA: 0, noInning: 0, runs: 0, rbi: 0, hrRbi: 0, split: null, keys: [] };
+    const r = { players: 0, pa: 0, batted: 0, low: 0, nonBatted: 0, skipped: [], noPA: 0, noInning: 0, runs: 0, rbi: 0, hrRbi: 0, hrMin: 0, split: null, keys: [] };
     report[team] = r;
     if (!String(text).trim()) return;
     const res = _P().parseGameOne(text);
@@ -126,6 +127,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
       if (a.type === 'batted') { r.batted++; if (a.confidence === 'low') r.low++; } else r.nonBatted++;
       if (a.inning == null) r.noInning++;
       if (a.rbi != null) r.hrRbi += a.rbi;
+      else if (a.result === '홈런') r.hrMin++;
       all.push(e);
     });
   });
@@ -137,7 +139,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
     const inn = a.inning == null ? '' : a.inning > 9 ? '연장' : a.inning + '회' + (team === 'away' ? '초' : '말');
     const loc = a.type === 'batted';
     return {
-      id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: a.rbi != null ? a.rbi : 0,
+      id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: a.rbi != null ? a.rbi : a.result === '홈런' ? 1 : 0,
       x: loc ? a.x : null, y: loc ? a.y : null, deg: loc ? a.angle : null, dir: loc ? a.dir : null,
       ft: loc ? (a.distance ? Math.round(a.distance * 3.281) : Math.round(a.depth * (wallFt[a.dir] || 370))) : null, inn, ts: '', pitches: [],
     };
@@ -308,9 +310,10 @@ function _preview() {
   } else {
     h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`
       + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('') + lsH + h;
-    const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi;
-    h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hr ? `홈런 [2R 97M] 같은 기록이 있는 홈런만 그 타점으로, 나머지 타석은 ` : ''}0으로 저장됩니다`
-      + (rbi ? ` (표의 타점 합계 ${rbi}${hr ? ` · 홈런으로 넣은 타점 ${hr}` : ''})` : '') + '.'
+    const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi, hrMin = R.away.hrMin + R.home.hrMin;
+    const hrTxt = [hr ? '홈런 [2R 97M] 같은 기록이 있으면 그 타점' : '', hrMin ? '기록 없는 홈런은 최소 1타점(타자 본인 득점)' : ''].filter(Boolean).join(', ');
+    h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hrTxt ? hrTxt + ', 나머지 타석은 ' : ''}0으로 저장됩니다`
+      + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''})` : '') + '.'
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
   }
   box.innerHTML = (_splitNote ? `<div class="go-note go-split">${_esc(_splitNote)}</div>` : '') + h;

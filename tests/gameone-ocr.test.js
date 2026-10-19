@@ -51,8 +51,17 @@
     for (var i = 0; i < shots.length; i++) read.push(await O().readShot(shots[i].img, shots[i].rec));
     var heads = read.filter(function (s) { return s.head; }), placed = read.map(function (s) { return O().placeShot(s, heads); }).filter(function (s) { return s.kind; });
     var m = O().mergeShots(placed);
-    return { text: O().toText(m), rows: m.rows, statsOnly: m.statsOnly, checks: O().checkStats(m), gaps: O().orderGaps(m.rows), shots: placed.length, files: shots.length, read: read };
+    var sc = read.map(function (s) { return s.score; }).filter(Boolean)[0];
+    return { text: O().toText(m), rows: m.rows, statsOnly: m.statsOnly, checks: O().checkStats(m), gaps: O().orderGaps(m.rows), scoreText: sc ? O().toScoreText(sc) : '', shots: placed.length, files: shots.length, read: read };
   }
+  // 앱 맨 위 점수판: 1 … 7 · R H E B · 선공 / 후공 줄 · 진행 안 한 회는 '-' (위아래로 제목 · 게임 요약 줄)
+  var BX = [200, 265, 330, 395, 460, 525, 590], BS = [675, 732, 789, 846];
+  function board() {
+    function row(lab, inn, sum) { return [[128, lab]].concat(BX.map(function (x, i) { return [x, inn[i] == null ? '-' : String(inn[i])]; }), BS.map(function (x, i) { return [x, String(sum[i])]; })); }
+    return draw([[[180, '박스 스코어']], BX.map(function (x, i) { return [x, String(i + 1)]; }).concat(BS.map(function (x, i) { return [x, 'RHEB'[i]]; })),
+      row('선공', [1, 1, 4, 0, 2], [8, 10, 0, 5]), row('후공', [2, 3, 1, 5], [11, 8, 0, 8]), [[300, '게임 요약']]]);
+  }
+  var SCORE = 'Team\t1\t2\t3\t4\t5\t6\t7\tR\tH\tE\tB\n원정팀\t1\t1\t4\t0\t2\t-\t-\t8\t10\t0\t5\n홈팀\t2\t3\t1\t5\t-\t-\t-\t11\t8\t0\t8';
 
   test('(준비) 앱 시작 처리가 끝날 때까지 기다린다 · Tesseract 는 아직 안 불러옴', async function () {
     await T.sleep(2500);
@@ -105,8 +114,22 @@
     ok(big.lh >= 16 && t.lh > 0 && t.lh < 16, '글줄 높이 — 보통 ' + big.lh + 'px · 모아 찍은 화면처럼 작은 글 ' + t.lh + 'px(안내용)');
   });
 
+  test('점수판: 1 2 3 … 숫자 머리글 자리 + 뒤 4칸(R H E B) · 선공 = 원정 / 후공 = 홈 · 빈 회는 - · 이닝별 점수표 글 → 기존 점수표 파서로 그대로', async function () {
+    var b = board(), s = await O().readShot(b.img, b.rec);
+    eq([s.head, s.score && s.score.inn.length], [null, 7], '타자 표 머리글 아님 · 회 7개');
+    eq([s.score.away, s.score.home], [{ inn: ['1', '1', '4', '0', '2', '-', '-'], sum: ['8', '10', '0', '5'] }, { inn: ['2', '3', '1', '5', '-', '-', '-'], sum: ['11', '8', '0', '8'] }], '선공 · 후공 줄');
+    eq(O().toScoreText(s.score), SCORE, '이닝별 점수표 칸 글');
+    var sb = window.SLGameOne.parseGameOneScoreboard(SCORE);
+    eq(sb.teams.map(function (t) { return [t.name, t.innings.join(''), t.r, t.h, t.e, t.b]; }), [['원정팀', '11402', 8, 10, 0, 5], ['홈팀', '2315', 11, 8, 0, 8]], '파서: 이닝 합 = R');
+    eq(sb.warnings, [], '경고 없음');
+    eq(O().readScoreRow([{ cx: 200, text: '1' }, { cx: 265, text: '뼈' }, { cx: 675, text: '8' }, { cx: 732, text: '1O' }], { inn: BX, sums: BS }),
+      { inn: ['1', '-', '-', '-', '-', '-', '-'], sum: ['8', null, null, null] }, '숫자가 아니면 회는 - · 합계는 비움(파서가 그 줄을 안 씀)');
+    var r = await pipeline([A(), board(), B(), S()]);
+    eq([r.scoreText, r.rows.length], [SCORE, 3], '경기기록 · 타자 표와 같이 골라도');
+  });
+
   test('화면: 홈팀 사진 → 고르기 → 홈 칸에 채우고 미리보기 · 안내(틀릴 수 있음 · 타자 표와 다름 · 못 찾은 선수) · GA4 · 저장', async function () {
-    var r = await pipeline([A(), B(), S()]), r0 = O().readFiles, ev = [], g0 = window.gtag, clicked = 0;
+    var r = await pipeline([A(), B(), S(), board()]), r0 = O().readFiles, ev = [], g0 = window.gtag, clicked = 0;
     O().readFiles = function (files, prog) { prog(0, files.length, 1, 2); return Promise.resolve(Object.assign({}, r, { files: files.length })); };
     window.gtag = function (k, n, p) { if (k === 'event' && n === 'gameone_shot') ev.push(p); };
     try {
@@ -121,7 +144,9 @@
       var msg = $('goShotMsg').textContent;
       ok(/3장에서 3명 · 6칸/.test(msg) && /사진에서 읽은 글자는 틀릴 수 있어요/.test(msg), '읽은 양 · 확인 안내 — ' + msg);
       ok(/나선수\(22\): 타수 읽음 1 · 표 2/.test(msg) && /라선수\(44\)/.test(msg), '타자 표와 다름 · 못 찾은 선수');
-      eq(ev, [{ side: 'home', files: 3, rows: 3, pa: 6, stats: 3, mismatch: 2, gaps: 0, ms: ev[0] && ev[0].ms }], 'GA4 gameone_shot');
+      eq(ev, [{ side: 'home', files: 3, rows: 3, pa: 6, stats: 3, mismatch: 2, gaps: 0, score: 1, ms: ev[0] && ev[0].ms }], 'GA4 gameone_shot');
+      eq($('goScore').value, SCORE, '점수판 → 이닝별 점수표 칸');
+      ok(/점수판도 읽어/.test(msg), '점수판 안내');
       ok(Array.prototype.every.call(document.querySelectorAll('.go-shot-b'), function (b) { return !b.disabled; }), '다 읽으면 버튼 다시 켜짐');
       await T.sleep(400);
       ok(/홈 · 선수 3명/.test($('goPrev').textContent), '미리보기 — ' + $('goPrev').textContent.slice(0, 80));
@@ -131,7 +156,8 @@
       var s = JSON.parse(localStorage.getItem('sl_saves')), g = JSON.parse(localStorage.getItem(s[s.length - 1].key));
       eq(g.abs.filter(function (a) { return a.team === 'home'; }).map(function (a) { return a.inn + ' ' + a.bname + ' ' + a.res; }).sort(),
         ['1회말 가선수 플라이 아웃', '1회말 다선수 삼진', '2회말 나선수 볼넷', '3회말 가선수 안타', '4회말 나선수 땅볼 아웃', '4회말 다선수 3루타'], '저장 — 홈 타석 6개(회말 · 선수 · 결과)');
-    } finally { O().readFiles = r0; window.gtag = g0; ['goFixOverlay', 'loadOverlay', 'goOverlay'].forEach(function (id) { if ($(id)) closeOverlay(id); }); }
+      eq([g.as, g.hs], [8, 11], '점수는 점수판(선공 8 · 후공 11) — 한 팀만 가져와도 맞는 점수');
+    } finally { O().readFiles = r0; window.gtag = g0; $('goScore').value = ''; ['goFixOverlay', 'loadOverlay', 'goOverlay'].forEach(function (id) { if ($(id)) closeOverlay(id); }); }
   });
 
   test('화면: 표를 못 찾음(머리글 없음 · 타자 표만 · 글자가 너무 작음) · 읽기 실패 → 빨간 안내, 칸은 그대로 · 버튼 다시 켜짐', async function () {
@@ -149,6 +175,12 @@
       O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], small: true, shots: 0, files: 1 }); };
       await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
       ok(/너무 작게.*원본 스크린샷/.test($('goShotMsg').textContent), '글자가 작은 사진 — ' + $('goShotMsg').textContent);
+      var ev = [], g0 = window.gtag; window.gtag = function (k, n, p) { if (k === 'event' && n === 'gameone_shot') ev.push(p); };
+      O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], scoreText: SCORE, shots: 0, files: 1 }); };
+      try { await gameOneShotFiles({ files: [new File(['x'], 'a.png')] }); } finally { window.gtag = g0; }
+      ok($('goShotMsg').classList.contains('warn') && /점수판만 읽었습니다.*「경기기록」/.test($('goShotMsg').textContent), '점수판만 — ' + $('goShotMsg').textContent);
+      eq([$('goScore').value, ev.length && ev[0].why, $('goAway').value], [SCORE, 'score_only', 'X'], '점수판 칸만 채움 · 타자 칸 그대로');
+      $('goScore').value = '';
       O().readFiles = function () { return Promise.reject(new Error('글자 읽기 도구를 불러오지 못했습니다 — 인터넷 연결을 확인해 주세요')); };
       await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
       ok($('goShotMsg').classList.contains('bad') && /인터넷 연결/.test($('goShotMsg').textContent), '읽기 실패');

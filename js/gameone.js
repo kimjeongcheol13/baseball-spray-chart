@@ -312,11 +312,24 @@
   // 휴대폰에서는 표를 골라 긁기 어려워 '전체 선택 → 복사'를 쓰기 쉽다. 그러면 메뉴 · 요약 · 투수 표까지 한 덩어리로 온다(2026-10-19 확인).
   //   점수표 = 'Team 1 2 … R …' 머리글 줄 + 아래 팀 줄 2개
   //   타자 표 = '선수 1 2 … 타수 …' 머리글 줄부터 '합 계' 줄까지 (위쪽 줄 = 팀 이름). 투수 표('선수 결과 이닝 …')는 쓰지 않는다
-  // → 타자 표가 2개 이상일 때만 { score: 점수표 글 | '', tables: [{ name, text }…] } (페이지 위 → 아래 순서), 아니면 null
+  //   투수 표 = '선수 결과 이닝 …' 머리글 줄과 그 아래 투수 줄 (위쪽 줄 = 팀 이름) → pitch 에 모아 둔다(parseGameOnePitchers 로 읽는다)
+  // → 타자 표가 2개 이상일 때만 { score: 점수표 글 | '', tables: [{ name, text }…], pitch: 투수 표 글 | '' } (페이지 위 → 아래 순서), 아니면 null
   var BAT_HEAD_RE = /^\s*선수\s+1\s+2\s/, PIT_HEAD_RE = /^\s*선수\s+결과\s/, TOTAL_RE = /^\s*합\s*계/, SCORE_HEAD_RE = /^\s*Team\s+(?:\S+\s+)?1\s+2\s.*\sR\s/;
+  var PIT_ROW_RE = /^\s*\S.*\(\d*\)\s/;   // 투수 줄: 이름(번호) 다음 칸
+  function _teamLine(lines, i) {   // 머리글 i 바로 위의 팀 이름 줄(탭 없는 줄) → 줄 번호 | -1
+    var j = i - 1;
+    while (j >= 0 && !lines[j].trim()) j--;
+    return j >= 0 && lines[j].indexOf('\t') < 0 && !TOTAL_RE.test(lines[j]) ? j : -1;
+  }
   function splitGameOnePage(text) {
-    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/), tables = [], score = '';
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/), tables = [], score = '', pitch = [];
     for (var i = 0; i < lines.length; i++) {
+      if (PIT_HEAD_RE.test(lines[i])) {
+        var t = _teamLine(lines, i), e = i + 1;
+        while (e < lines.length && PIT_ROW_RE.test(lines[e])) e++;
+        pitch.push(lines.slice(t >= 0 ? t : i, e).join('\n'));
+        continue;
+      }
       if (!score && SCORE_HEAD_RE.test(lines[i])) score = lines.slice(i, i + 3).join('\n');
       if (!BAT_HEAD_RE.test(lines[i])) continue;
       var name = '', j = i - 1, end = i + 1;
@@ -327,11 +340,42 @@
       tables.push({ name: name, text: lines.slice(i, end).join('\n') });
       i = end - 1;
     }
-    return tables.length >= 2 ? { score: score, tables: tables } : null;
+    return tables.length >= 2 ? { score: score, tables: tables, pitch: pitch.join('\n') } : null;
+  }
+
+  // ── 투수 표(투수기록) ──
+  // 실제 PC 웹 복사(2026-10-19): 머리글 '선수 결과 이닝 타자 타수 피안타 피홈런 희타 희비 볼넷 사구 삼진 폭투 보크 실점 자책점 투구수 방어율 시즌',
+  //   줄 = '이름(번호) 결과(승 · 패 · 세 · 홀 · -) 이닝(3 · 2 ⅔ · 0 ⅓) 타자 …'. 표마다 바로 위 줄 = 팀 이름. 머리글이 있어야 표로 본다
+  //   이닝은 아웃 수(outs)로 바꾼다(2 ⅔ → 8). 실제 24경기 투수 103명: 투수 표 순서대로 '타자'(상대 타자) 수만큼 상대 팀 타석을 잘라 붙이면
+  //   피안타 · 피홈런 · 볼넷 · 사구 · 삼진이 103명 모두 투수 표와 같았다 — 가져오기가 이 순서로 타석에 투수를 붙인다
+  // → { tables: [{ name, pitchers: [{ name, number, result, outs, tbf, ab, h, hr, sh, sf, bb, hbp, k, wp, bk, r, er, np }] }], warnings }
+  var PIT_KEYS = ['tbf', 'ab', 'h', 'hr', 'sh', 'sf', 'bb', 'hbp', 'k', 'wp', 'bk', 'r', 'er', 'np'];
+  function _outs(v) {
+    var m = /^(\d+)?\s*(⅓|⅔|1\/3|2\/3)?$/.exec(String(v == null ? '' : v).trim());
+    if (!m || (m[1] == null && !m[2])) return null;
+    return (+m[1] || 0) * 3 + (m[2] === '⅓' || m[2] === '1/3' ? 1 : m[2] ? 2 : 0);
+  }
+  function parseGameOnePitchers(text) {
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/), out = { tables: [], warnings: [] }, cur = null;
+    lines.forEach(function (line, k) {
+      if (PIT_HEAD_RE.test(line)) { var t = _teamLine(lines, k); cur = { name: t >= 0 ? lines[t].trim() : '', pitchers: [] }; out.tables.push(cur); return; }
+      if (!cur || !line.trim()) return;
+      if (BAT_HEAD_RE.test(line) || TOTAL_RE.test(line)) { cur = null; return; }
+      var cells = line.indexOf('\t') >= 0 ? line.split('\t').map(function (c) { return c.trim(); }) : line.trim().split(/\s+/);
+      if (line.indexOf('\t') < 0 && /^[⅓⅔]$/.test(cells[3] || '')) cells.splice(2, 2, cells[2] + ' ' + cells[3]);   // 공백 구분: '2 ⅔' 가 두 칸으로 갈라진 것
+      var m = NAME_RE.exec(cells[0] || '');
+      if (!m) return;
+      var outs = _outs(cells[2]), nums = cells.slice(3, 3 + PIT_KEYS.length).map(function (v) { return /^\d+$/.test(v) ? parseInt(v, 10) : NaN; });
+      if (outs == null || nums.length < PIT_KEYS.length || nums.some(isNaN)) { out.warnings.push((k + 1) + '행 ' + m[1] + ': 투수 줄로 읽지 못함 — ' + line.trim().slice(0, 40)); return; }
+      var p = { name: m[1], number: m[2], result: cells[1], outs: outs };
+      PIT_KEYS.forEach(function (key, j) { p[key] = nums[j]; });
+      cur.pitchers.push(p);
+    });
+    return out;
   }
 
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

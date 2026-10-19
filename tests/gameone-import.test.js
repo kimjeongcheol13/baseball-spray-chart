@@ -382,6 +382,9 @@
     var how = document.querySelector('#goOverlay details.go-how');
     ok(how && !how.open, '접힌 안내');
     ok(how.textContent.indexOf('표를 한 번 누른 뒤') >= 0 && how.textContent.indexOf('아무 칸에나') >= 0, '안내 내용 — ' + how.textContent);
+    // 게임원 앱은 글자 복사가 막혀 있다 — 휴대폰은 브라우저(크롬 · 사파리)로 열라는 안내가 접힌 안내 안 · 늘 보이는 첫 줄 둘 다에 있다
+    ok(/크롬 · 사파리/.test(how.textContent) && /앱/.test(how.textContent), '브라우저 안내 — ' + how.textContent);
+    ok(/앱.*크롬 · 사파리/.test(document.querySelector('#goOverlay .modal-sub').textContent), '첫 줄 브라우저 안내');
     ['goScore', 'goHome'].forEach(function (id) { type(id, ''); });
     type('goAway', '게임결과\n플레이원\n게임영상\n이전\n다음');   // 리그 페이지에서 표를 누르지 않고 전체 선택한 글(바깥 페이지 메뉴뿐)
     await T.sleep(300);

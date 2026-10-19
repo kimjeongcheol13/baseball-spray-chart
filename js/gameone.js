@@ -3,6 +3,9 @@
  *
  * 입력: 게임원 박스스코어 타자 테이블을 드래그 복사해 붙여넣은 평문.
  *       행 = 타순 · 수비위치 · 선수명(등번호) · 1~N회 셀 · 타수 · 안타 · 타점 · 득점 · 도루 · 타율 · 시즌타율
+ *       실제 PC 웹 복사(2026-10-19, 게임원 박스스코어 30경기를 Chromium 으로 그려 표를 선택한 텍스트로 확인):
+ *         첫 칸이 '1지홍길동(5)' 처럼 타순 · 수비위치 · 이름이 붙어 온다(한 칸 안의 span 3개). 처음 받은 예시처럼 탭 3칸으로 와도 읽는다
+ *         교체 선수는 같은 타순 번호로 선발 바로 아래 줄 · 머리글 '선수 1 2 … 타수 …' · 합계 '합 계 …' · 10회 이상 칸은 숨김이라 복사되지 않는다
  *       탭 구분이면 빈 이닝 칸이 살아 있어 이닝을 정확히 안다. 공백 구분이면 빈 칸이 사라지므로 inning = null (warnings 에 남김)
  * 셀 문법: '/' = 같은 이닝의 타석 2개(순서대로) · ',' = 한 타석 안의 사건 묶음(타구 토큰은 보통 마지막)
  *          타구 토큰 = 방향 접두어 + 결과 접미어. 둘 중 하나라도 모르면 'unknown' 으로 남긴다(버리지 않는다)
@@ -23,8 +26,13 @@
     '우중': { angle: 17, pos: 'OF' }, '우': { angle: 35, pos: 'OF' },
     '좌월': { angle: -35, pos: 'OF', fence: true }, '중월': { angle: 0, pos: 'OF', fence: true }, '우월': { angle: 35, pos: 'OF', fence: true },
     '3': { angle: -30, pos: 'CI' }, '유': { angle: -12, pos: 'MI' }, '2': { angle: 12, pos: 'MI' }, '1': { angle: 30, pos: 'CI' },
-    '투': { angle: 0, pos: 'P' }, '포': { angle: 0, pos: 'C' }
+    '투': { angle: 0, pos: 'P' }, '포': { angle: 0, pos: 'C' },
+    // 실제 기록에서 본 것(2026-10-19): 좌선 · 우선 = 파울라인 선상(매핑표에 없어 ±40° 근사), 좌전 · 중전 · 우전 = 좌 · 중 · 우 앞(같은 각도 — 깊이는 결과가 정한다)
+    '좌선': { angle: -40, pos: 'OF' }, '우선': { angle: 40, pos: 'OF' },
+    '좌전': { angle: -35, pos: 'OF' }, '중전': { angle: 0, pos: 'OF' }, '우전': { angle: 35, pos: 'OF' }
   };
+  // 수비 번호(기록 [6-4-3] 의 첫 숫자) → 방향 접두어. 방향 없이 온 '병살[6-4-3]' 의 방향을 여기서 정한다
+  var FIELDER_PREFIX = { __proto__: null, '1': '투', '2': '포', '3': '1', '4': '2', '5': '3', '6': '유', '7': '좌', '8': '중', '9': '우' };
 
   // ── 결과 접미어 → 기존 결과 코드(res) · 매핑표 깊이 (0 = 홈플레이트, 1 = 그 방향 펜스) ──
   // wide: 안·플·땅처럼 떨어진 자리 폭이 넓은 결과 → confidence 'low' · memo: 의미 미확인 표시(notes 에 그대로 보존)
@@ -44,7 +52,20 @@
     '홈': { res: '홈런', depth: 1.05 },
     '플': { res: '플라이 아웃', depth: 0.65, wide: true, fielded: true },
     '희플': { res: '희비', depth: 0.80 },
-    '실': { res: '실책', depth: null }
+    '실': { res: '실책', depth: null },
+    // 실제 기록에서 본 것(2026-10-19). 뜻은 게임원 표의 타수 · 안타 칸과 맞춰 확인(우안2 · 중안3 = 안타, 희플출 = 타수 아님 · 타점 1)
+    '직': { res: '라인드라이브 아웃', depth: 0.65, wide: true, fielded: true },
+    '인플': { res: '플라이 아웃', depth: 0.65, wide: true, fielded: true },           // 인필드 플라이
+    '플R': { res: '플라이 아웃', depth: 0.65, wide: true, fielded: true, memo: 'R' },
+    '땅실': { res: '실책', depth: 0.25, wide: true, fielded: true },                  // 땅볼 실책
+    '플실': { res: '실책', depth: 0.65, wide: true, fielded: true },                  // 뜬공 실책
+    '야선': { res: '야수선택', depth: null },
+    '병살': { res: '병살', depth: 0.25, wide: true, fielded: true },
+    '땅병살': { res: '병살', depth: 0.25, wide: true, fielded: true },
+    '안2': { res: '안타', depth: 0.55, wide: true, memo: '2루까지' },                // 안타 + 송구 사이 진루
+    '안3': { res: '안타', depth: 0.55, wide: true, memo: '3루까지' },
+    '희플출': { res: '희비', depth: 0.80, memo: '출루' },
+    '파플': { res: '플라이 아웃', foul: true }                                        // 파울 플라이 — 파울 지역이라 위치 없이 결과만
   };
 
   // 실책 · 내야 뜬공/땅볼 깊이 = 해당 야수의 평소 수비 위치. 매핑표에 수치가 없어 정한 근사값(표준 구장 중앙 펜스 120m 기준):
@@ -60,7 +81,11 @@
   var NON_BATTED = {
     __proto__: null,
     '4구': '볼넷', '사구': '사구', '삼진': '삼진',
-    '폭투': null, '도루': null, '주자아웃': null, '포구실책': null, '대타': null, '대수비': null, '대주자': null
+    '폭투': null, '도루': null, '주자아웃': null, '포구실책': null, '대타': null, '대수비': null, '대주자': null,
+    // 실제 기록에서 본 것(2026-10-19). 낫아웃 +(출루) · -(아웃) 모두 타자는 삼진. 타격방해는 타수 · 출루율 분모에 들지 않아 결과 없이 둔다
+    '낫아웃+': '삼진', '낫아웃-': '삼진', '고의4구': '볼넷',
+    '포일': null, '송구실책': null, '도루자': null, '견제사': null, '런다운': null, '보크': null, '리터치': null,
+    '주루방해': null, '타격방해': null, '타구맞음': null
   };
 
   // ── 매핑표 좌표 → 기존 저장 좌표 ──
@@ -91,12 +116,20 @@
 
   // ── 토큰 하나 판정 ──
   // → { kind: 'nonBatted', res } | { kind: 'batted', res, angle, depth, wide, memo } | { kind: 'unknown' }
-  function classifyToken(tok) {
+  // fielder = 기록 [6-4-3] 의 첫 수비 번호(없으면 null) — 방향 없이 온 토큰('병살')의 방향
+  function classifyToken(tok, fielder) {
     if (tok in NON_BATTED) return { kind: 'nonBatted', res: NON_BATTED[tok] };
+    // 인정 2루타: '인' + 2루타 토큰 (인좌선2 · 인우중2 · 인좌월2)
+    if (tok.charAt(0) === '인' && tok.length > 2) {
+      var g = classifyToken(tok.slice(1));
+      if (g.kind === 'batted' && g.res === '2루타') { g.memo = '인정'; return g; }
+    }
+    if (fielder && FIELDER_PREFIX[fielder] && tok in SUFFIX) return classifyToken(FIELDER_PREFIX[fielder] + tok);   // 병살[6-4-3] → 유 + 병살
     // 방향 접두어 + 결과 접미어: 긴 접두어부터 맞춰 본다 (좌중2 = 좌중 + 2)
     for (var i = Math.min(2, tok.length - 1); i >= 1; i--) {
       var p = PREFIX[tok.slice(0, i)], s = SUFFIX[tok.slice(i)];
       if (!p || !s) continue;
+      if (s.foul) return { kind: 'nonBatted', res: s.res };
       // 실, 또는 내야 방향 뜬공·땅볼 → 해당 야수 위치
       var depth = s.depth == null || (s.fielded && p.pos !== 'OF') ? FIELDER_DEPTH[p.pos] : s.depth;
       if (p.fence) depth = Math.max(depth, FENCE_DEPTH);
@@ -114,9 +147,17 @@
   // 결과 토큰 = 마지막 타구 토큰 > 마지막 타석 결과(4구·사구·삼진) > 마지막 미확인 토큰. 셋 다 없으면 사건·교체뿐(type nonBatted, result null)
   // notes = 결과 토큰을 뺀 나머지 토큰(원래 순서) + 메모('R')
   // confidence 'low' = 안·플·땅처럼 폭이 넓은 결과 · unknown · 'R' 포함 · 미확인 토큰이 섞임 · 결과 토큰이 2개 이상
+  // 토큰 끝 [..] = 게임원 부가 기록(홈런 [3R 100M] · 수비 [6-4-3] · 교체 [부상X]) → 떼어 notes 에 남기고, 첫 수비 번호는 방향 없는 토큰의 방향으로 쓴다
+  var BRACKET_RE = /^(.*?)\[([^\]]*)\]$/;
   function parsePlateAppearance(raw, inning, onUnknown) {
-    var toks = raw.split(',').map(function (t) { return t.replace(/\s+/g, ''); }).filter(Boolean);
-    var cls = toks.map(classifyToken);
+    var extra = [], toks = [], fld = [];
+    raw.split(',').forEach(function (t) {
+      t = t.replace(/\s+/g, '');
+      var m = BRACKET_RE.exec(t), f = null;
+      if (m) { t = m[1]; extra.push('[' + m[2] + ']'); f = (/^(\d)/.exec(m[2]) || [])[1] || null; }
+      if (t) { toks.push(t); fld.push(f); }
+    });
+    var cls = toks.map(function (t, i) { return classifyToken(t, fld[i]); });
     cls.forEach(function (c, i) { if (c.kind === 'unknown') onUnknown(toks[i]); });
     var isResult = function (c) { return c.kind === 'batted' || (c.kind === 'nonBatted' && c.res != null); };
     var pi = lastIndex(cls, function (c) { return c.kind === 'batted'; });
@@ -135,12 +176,16 @@
       ab.src = { angle: main.angle, depth: main.depth };
       if (main.memo) ab.notes.push(main.memo);
     }
-    if (main.kind === 'unknown' || (main.kind === 'batted' && main.wide) || raw.indexOf('R') >= 0
+    ab.notes = ab.notes.concat(extra);
+    if (main.kind === 'unknown' || (main.kind === 'batted' && main.wide) || toks.join('').indexOf('R') >= 0
       || cls.some(function (c) { return c.kind === 'unknown'; }) || cls.filter(isResult).length > 1) ab.confidence = 'low';
     return ab;
   }
 
   var NAME_RE = /^(.*\S)\s*\((\d*)\)$/;          // 선수명(등번호)
+  // PC 웹 복사의 붙은 첫 칸: 타순 + 수비위치 한 글자 + 이름 ('1지홍길동' · '6중안황기' · '10우김용현'). 위치 글자는 게임원 표기
+  //   (一 二 三 = 1 · 2 · 3루수, 유 · 좌 · 중 · 우 · 포 · 투, 지 = 지명타자, 미 = 수비 안 한 대타 — 실제 30경기에서 이 11개만 나왔다)
+  var JOINED_RE = /^(\d+)\s*([一二三유좌중우포투지미])\s*(\S.*)$/;
   var STAT_RE = /^(?:\d+|\d*\.\d+|-)$/;           // 타수 · 안타 · 타점 · 득점 · 도루 · 타율 · 시즌타율 칸
   var STAT_KEYS = ['ab', 'h', 'rbi', 'r', 'sb', 'avg', 'seasonAvg'];
 
@@ -190,6 +235,8 @@
         position: ni >= 1 ? cells[ni - 1] : '',
         name: m[1], number: m[2], atBats: [], stats: stats, line: k + 1
       };
+      var jm = player.order == null && !player.position ? JOINED_RE.exec(m[1]) : null;
+      if (jm) { player.order = parseInt(jm[1], 10); player.position = jm[2]; player.name = jm[3]; }
       if (!tabbed) out.warnings.push((k + 1) + '행 ' + player.name + ': 탭 없이 공백으로 구분돼 빈 이닝 칸을 알 수 없음 → inning = null');
 
       cells.slice(ni + 1, st).forEach(function (cell, j) {

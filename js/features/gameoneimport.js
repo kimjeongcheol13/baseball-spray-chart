@@ -13,11 +13,12 @@
 //   · 같은 경기 다시 가져오기 (2026-10-18): 날짜 · 팀 · 점수가 같은 저장 경기가 있으면 미리보기에 알리고 저장 전에 한 번 묻는다(막지는 않는다) — findSameGames
 //   · 붙여넣기 실수 (2026-10-18): 한 칸에 표 두 개(_secondTable) · 원정 · 홈 칸에 같은 표(report.shared)도 같은 방식으로 알리고 묻는다
 
-// 게임원 수비위치 → 앱 포지션 (lineup pos). 예시에서 확인한 건 二 · 유 · 중 — 나머지는 같은 표기 관례로 맞춘 값, 모르면 빈 칸
+// 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
+// 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
 const POS = {
   __proto__: null,
   '一': '1루', '二': '2루', '三': '3루', '1': '1루', '2': '2루', '3': '3루',
-  '유': '유격', '좌': '좌익', '중': '중견', '우': '우익', '포': '포수', '투': '투수', '지': 'DH', '지명': 'DH', 'DH': 'DH',
+  '유': '유격', '좌': '좌익', '중': '중견', '우': '우익', '포': '포수', '투': '투수', '지': 'DH', '지명': 'DH', 'DH': 'DH', '미': '',
 };
 const _P = () => window.SLGameOne;
 const _num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
@@ -43,7 +44,8 @@ function _orderSide(entries) {
 }
 
 // 한 칸에 표 두 개(두 팀)를 붙여넣었는지. 게임원 표에서 교체 선수가 어디에 오는지(제 타순 아래 · 표 맨 아래) 몰라도 맞는 신호만 쓴다:
-//   sep     — 선수 행 사이에 합계 · 머리글(선수명 · 타순) 줄이 있다 = 표가 끝나고 새 표가 시작됐다
+//   sep     — 선수 행 사이에 합계 · 머리글 줄이 있다 = 표가 끝나고 새 표가 시작됐다
+//             (실제 PC 웹 복사는 '합 계 …' · '선수 1 2 … 타수 …', 처음 받은 예시는 '합계' · '타순 위치 선수명 …')
 //   restart — 타순이 처음부터 다시 도는 묶음이 2개 이상: 타순이 줄어드는 곳에서 끊은 묶음 가운데 서로 다른 타순이
 //             max(5, 마지막 타순 − 2)개 이상인 묶음. 교체 선수가 제 타순 아래에 오면 타순이 줄지 않고,
 //             표 맨 아래에 모여도 7자리 이상(9번 타순 기준) 바뀌지 않는 한 그런 묶음이 되지 않는다
@@ -52,7 +54,7 @@ function _secondTable(text, players) {
   const lines = String(text).split(/\r\n|\r|\n/);
   for (let i = 1; i < players.length; i++) {
     for (let k = players[i - 1].line; k < players[i].line - 1; k++) {
-      if (/합계|선수명|타순/.test(lines[k] || '')) return { name: players[i].name, number: players[i].number, line: players[i].line, why: 'sep' };
+      if (/합\s*계|선수|타순/.test(lines[k] || '')) return { name: players[i].name, number: players[i].number, line: players[i].line, why: 'sep' };
     }
   }
   const N = Math.max(0, ...players.map(p => p.order || 0)), need = Math.max(5, N - 2), full = [];

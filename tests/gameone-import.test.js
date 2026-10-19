@@ -437,9 +437,9 @@
       closeOverlay('loadOverlay');
     } finally { window.gtag = g0; }
     eq(ev, [
-      ['gameone_import_open', {}],
+      ['gameone_import_open', { from: 'tile' }],
       ['gameone_import', { pa: 11, paste: 'page', scoreboard: 1, pitch: 'linked', skipped: 0, warned: 0 }],
-      ['gameone_import_open', {}],
+      ['gameone_import_open', { from: 'tile' }],
       ['gameone_import', { pa: 13, paste: 'tables', scoreboard: 0, pitch: 'none', skipped: 1, warned: 0 }]
     ], '이벤트');
     ok(!/[가-힣]/.test(JSON.stringify(ev.map(function (e) { return e[1]; }))), '값에 한글(선수 · 팀 이름 · 기록) 없음 — ' + JSON.stringify(ev));

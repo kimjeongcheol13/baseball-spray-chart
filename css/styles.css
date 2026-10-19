@@ -556,6 +556,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-how ol{margin:0;padding:0 12px 6px 28px}
 .go-how li{margin-bottom:4px}
 .go-how p{margin:0;padding:0 12px 10px;color:var(--text3)}
+/* 첫 화면(기록 0) 필드 아래 — 샘플 버튼(.sl-sample-start) 아래에 같은 크기 · 테두리만 */
+.go-start{display:block;box-sizing:border-box;min-height:44px;margin:8px auto 0;padding:0 20px;border:1.5px solid var(--blue);border-radius:2px;background:transparent;color:var(--blue);font:700 15px var(--font);cursor:pointer}
+.go-start[hidden]{display:none}
+.go-start:hover{background:var(--blue-dim)}
+.go-start:focus-visible{outline:3px solid var(--sl-amber,#f6c23e);outline-offset:2px}
 .go-btns{display:flex;gap:8px}
 .go-btns .btn{flex:1;justify-content:center;min-height:44px}
 .go-btns .btn:disabled{opacity:.45;cursor:not-allowed}

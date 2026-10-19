@@ -17,7 +17,9 @@
 //   · 페이지 통째 붙여넣기 (2026-10-19): 휴대폰 '전체 선택 → 복사' 덩어리를 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채운다(_autoSplit)
 //   · 투수 표(선택 칸, 2026-10-19): 위 표 = 원정 투수, 아래 표 = 홈 투수. 투수 표 순서대로 '상대 타자' 수만큼 상대 팀 타석을 잘라
 //     타석마다 a.pitcher(투수 이름)를 넣는다 — 기존 필드(기록 탭 타자 상세 「투수별 요약」 · 엑셀 투수 칸이 '직접 적힌 투수'로 읽는다).
-//     상대 타자 수 합이 상대 팀 타석 수와 다르면 붙이지 않고 알린다. 투수 성적 합계는 미리보기에만 보여 주고 저장하지 않는다
+//     상대 타자 수 합이 상대 팀 타석 수와 다르면 붙이지 않고 알린다.
+//     투수 성적은 경기 데이터에 pitchLines = { away: [...], home: [...] } 로 새로 둔다(기존 필드는 그대로, 2026-10-19 A안) —
+//     분석 탭 › 투수의 '게임원 투수 시즌 기록'(gopitchseason.js)이 저장 경기 전체에서 모은다. 다시 저장해도 saveGame 이 이전 필드를 이어 쓴다
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -207,6 +209,10 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
     th: tTh || (ls && ls.home.name.slice(0, 20)) || '홈팀', ta: tTa || (ls && ls.away.name.slice(0, 20)) || '원정팀',
     home_lineup: lineups.home, away_lineup: lineups.away, abs, zoneHistory: {}, d, ts: now,
   };
+  if (report.pitch) {
+    const keep = x => ({ name: x.name, number: x.number, result: x.result, outs: x.outs, tbf: x.tbf, ab: x.ab, h: x.h, hr: x.hr, sh: x.sh, sf: x.sf, bb: x.bb, hbp: x.hbp, k: x.k, wp: x.wp, bk: x.bk, r: x.r, er: x.er, np: x.np });
+    game.pitchLines = { away: report.pitch.away.pitchers.map(keep), home: report.pitch.home.pitchers.map(keep) };
+  }
   const info = {};
   if (dm) info.date = date;
   if (ls) info.ls = { away: ls.away.innings, home: ls.home.innings };
@@ -356,7 +362,8 @@ function _preview() {
     h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hrTxt ? hrTxt + ', 나머지 타석은 ' : ''}0으로 저장됩니다`
       + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''})` : '') + '.'
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
-    if (R.pitch && (R.pitch.linked.away || R.pitch.linked.home)) h += '<div class="go-note">투수: 투수 표 순서대로 상대 타석에 투수를 붙였습니다 — 기록 탭 타자 상세 「투수별 요약」과 엑셀 투수 칸에 나옵니다. 투수 성적 합계는 저장하지 않습니다.</div>';
+    if (R.pitch) h += '<div class="go-note">투수: 투수 성적은 이 경기에 함께 저장되어 분석 탭 › 투수의 「게임원 투수 시즌 기록」에 모입니다.'
+      + (R.pitch.linked.away || R.pitch.linked.home ? ' 투수 표 순서대로 상대 타석에 투수를 붙여, 기록 탭 타자 상세 「투수별 요약」과 엑셀 투수 칸에도 나옵니다.' : '') + '</div>';
   }
   box.innerHTML = (_splitNote ? `<div class="go-note go-split">${_esc(_splitNote)}</div>` : '') + h;
   btn.disabled = !R.pa;

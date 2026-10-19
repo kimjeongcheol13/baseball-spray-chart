@@ -65,7 +65,7 @@
   .live spray-play { left: max(32px, calc((100% - var(--max)) / 2 + 32px)); right: max(32px, calc((100% - var(--max)) / 2 + 32px)); top: 200px; bottom: 48px; }   /* under the heading, in the content column */
   .live spray-play > div { color: #fff !important; font-size: 14px !important; }   /* phase · live counter · landing tag, in white */
   .hero .shade, .live .shade { pointer-events: none; }
-  .hero .wrap > div, .live .wrap > * { pointer-events: none; } .hero .wrap a, .live .wrap a { pointer-events: auto; }
+  .hero .wrap, .live .wrap, .hero .wrap > div, .live .wrap > * { pointer-events: none; } .hero .wrap a, .live .wrap a { pointer-events: auto; }   /* the text boxes lie over the 3D: let touches and drags through to it */
   .hero spray-play { --shift: .2 .1; }                                          /* lens shift: home plate to the right of the text, feet above the fold */
   .hero .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.7) 36%, rgba(11,13,18,.1) 58%, transparent 72%), linear-gradient(180deg, rgba(11,13,18,.3) 0%, transparent 28%, transparent 62%, rgba(11,13,18,.85) 100%); }
   .hero .wrap { position: relative; width: 100%; padding-bottom: 64px; }
@@ -122,6 +122,7 @@
   .feat ul { margin-top: 20px; display: grid; gap: 10px; list-style: none; font-size: 15px; color: var(--fg-2); }
   .feat li::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--red); margin-right: 12px; vertical-align: 2px; }
   .feat.rev > :first-child { order: 2; }
+  .feat .go-cta { margin-top: 28px; }
   .panel { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .panel .hd { display: flex; justify-content: space-between; align-items: baseline; padding: 20px 24px; border-bottom: 1px solid var(--line); }
   .panel .hd b { font-size: 18px; font-weight: 800; } .panel .hd b span { font-weight: 500; color: var(--fg-3); margin-left: 8px; } .panel .hd small { font-size: 12px; letter-spacing: .12em; font-weight: 700; color: var(--fg-3); }
@@ -140,6 +141,7 @@
   .share { display: grid; grid-template-columns: 200px 1fr; gap: 28px; align-items: center; padding: 28px; }
   .share .qr { padding: 14px; background: #fff; border-radius: 6px; }
   .share h4 { font-size: 22px; font-weight: 800; line-height: 1.3; } .share p { margin-top: 8px; font-size: 14px; color: var(--fg-2); }
+  .paste pre { margin: 0; padding: 20px 24px; border-bottom: 1px solid var(--line); overflow-x: auto; font: 13px/1.7 ui-monospace, Menlo, Consolas, monospace; color: var(--fg-2); white-space: pre; }
   .share .tags { margin-top: 14px; display: grid; grid-template-columns: repeat(2, max-content); justify-items: start; gap: 8px; } .share .tags span { padding: 6px 10px; border-radius: 4px; border: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--fg-2); }
 
   /* compare (light) */
@@ -182,11 +184,15 @@
     .live .wrap { min-height: 660px; padding-top: 72px; } .live spray-play { --shift: 0 .14; left: 20px; right: 20px; top: 270px; bottom: 32px; }
     .feat { grid-template-columns: 1fr; gap: 28px; padding: 44px 0; } .feat.rev > :first-child { order: 0; } .feat h3 { font-size: 28px; } .grid6 b { font-size: 26px; }
     .share { grid-template-columns: 1fr; } .share .qr { width: 180px; }
+    .paste pre { padding: 16px 18px; font-size: 11px; }
     .row { grid-template-columns: 1fr 1fr; } .row > div:first-child { grid-column: 1 / -1; padding-bottom: 0; font-size: 12px; }
     .row > div:nth-child(2), .row > div:nth-child(3) { border-top: 0; padding-top: 8px; } .row.hd > div:first-child { display: none; }
     .cta-band { min-height: 640px; align-items: flex-start; padding-top: 64px; } .cta-band h2 { font-size: 34px; }
     .cta-band .bg { background-position: 70% 100%; }   /* the players below the buttons */
     .cta-band .shade { background: linear-gradient(180deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.72) 50%, rgba(11,13,18,.2) 100%); }
+  }
+  @media (max-width: 339px) {
+    .paste pre { padding: 16px 14px; font-size: 10.5px; }   /* 320px 폭(1세대 iPhone SE)에서 샘플 줄 끝(3내안)이 가로 스크롤로 잘리던 것 */
   }
 </style>
 </head>
@@ -242,7 +248,7 @@
   <div class="wrap">
     <div class="head">
       <div><div class="kicker">Live field</div><h2>기록이 쌓이는 모습을<br>필드 위에서 봅니다</h2></div>
-      <p class="sub right">투수가 던지고 타자가 칩니다. 공이 떨어진 자리에 마커가 남고 차트가 쌓입니다. 필드를 잡고 돌려볼 수 있습니다.</p>
+      <p class="sub right">투수가 던지고 타자가 칩니다. 공이 떨어진 자리에 마커가 남고 차트가 쌓입니다. 필드를 잡고 돌려볼 수 있고, 휴대폰에서는 두 손가락으로 확대됩니다.</p>
     </div>
   </div>
 </section>
@@ -286,6 +292,20 @@
         <div class="tags"><span>선수 리포트 PNG</span><span>차트 PNG</span><span>엑셀</span><span>QR · 링크</span></div></div>
     </div>
   </div>
+
+  <div class="feat rev">
+    <div><div class="kicker">Import</div><h3>게임원에 쌓인 기록도,<br>붙여넣으면 차트로</h3><p>게임원 박스스코어를 복사해 붙여넣으면, 타석 기록에 적힌 방향과 결과(좌중2 · 유땅 …)를 읽어 스프레이 차트와 지표로 바꿉니다. 지난 경기를 다시 칠 필요가 없습니다.</p>
+      <ul><li>휴대폰은 전체 선택 → 복사 한 번, 점수표와 두 팀 표는 알아서 나눔</li><li>이닝별 점수 · 라인업 · 타순까지 함께, 새 경기로 저장</li><li>안타 · 뜬공 · 땅볼처럼 방향만 적힌 타구는 대략 위치에 점선으로 찍고, 저장 뒤 점을 끌어 실제 자리로 고침</li></ul>
+      <div class="go-cta"><a class="btn btn-red" href="https://kimjeongcheol13.github.io/baseball-spray-chart/?go=1">게임원 기록 가져오기</a></div></div>
+    <div class="panel paste">
+      <div class="hd"><b>붙여넣기<span>게임원 박스스코어</span></b><small>IMPORT</small></div>
+      <pre>1지가선수(5)   유플   좌중홈[3R 100M]  3내안
+2三나선수(16)  유땅   4구,도루  삼진  좌선2
+3一다선수(36)  좌중2  좌월홈[2R 97M]   3땅</pre>
+      <div class="grid6"><div><span>타석</span><b class="num">10</b></div><div><span>타구 위치</span><b class="num">8</b></div><div><span>홈런 타점</span><b class="num">5</b></div></div>
+      <div class="ft">샘플 데이터 · 앱이 읽은 값 그대로 · 대략 위치 3개(유플 · 유땅 · 3땅)는 저장 뒤 끌어서 고침</div>
+    </div>
+  </div>
 </div></section>
 
 <section class="sec light" id="compare"><div class="wrap">
@@ -299,6 +319,7 @@
     <div class="row"><div>비용</div><div>앱마다 다름</div><div>무료</div></div>
     <div class="row"><div>공유</div><div>앱 안에서</div><div>QR · 링크 · PNG · 엑셀</div></div>
     <div class="row"><div>보관</div><div>서버</div><div>내 기기</div></div>
+    <div class="row"><div>지난 기록</div><div>그 앱 안에</div><div>게임원 박스스코어 붙여넣기로 가져오기</div></div>
   </div>
 </div></section>
 

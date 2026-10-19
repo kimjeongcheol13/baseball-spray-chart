@@ -20,6 +20,9 @@
 //     상대 타자 수 합이 상대 팀 타석 수와 다르면 붙이지 않고 알린다.
 //     투수 성적은 경기 데이터에 pitchLines = { away: [...], home: [...] } 로 새로 둔다(기존 필드는 그대로, 2026-10-19 A안) —
 //     분석 탭 › 투수의 '게임원 투수 시즌 기록'(gopitchseason.js)이 저장 경기 전체에서 모은다. 다시 저장해도 saveGame 이 이전 필드를 이어 쓴다
+//   · 사용 기록(GA4, 2026-10-19): 입력창 열기 gameone_import_open · 저장 gameone_import — 숫자 · 방식만 싣는다(선수 · 팀 이름 · 기록 글자는 싣지 않는다).
+//     pa 타석 수 · paste 'page'(통째 붙여넣기를 나눔) | 'tables' · scoreboard 이닝별 점수표 0/1 · pitch 'none' | 'saved' | 'partial' | 'linked'
+//     · skipped 모르는 기록 타석 수 · warned 경고를 보고도 저장 0/1
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -29,6 +32,7 @@ const POS = {
   '유': '유격', '좌': '좌익', '중': '중견', '우': '우익', '포': '포수', '투': '투수', '지': 'DH', '지명': 'DH', 'DH': 'DH', '미': '',
 };
 const _P = () => window.SLGameOne;
+const _track = (name, params) => { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (e) {} };
 const _num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
 
 // 타석 순서 복원: 표는 타순별 행이라, 이닝 안에서는 앞 이닝 마지막 타자 다음 타순부터 돌아가며 친다.
@@ -308,7 +312,7 @@ function _lsTable(ls, g) {
 
 // 박스스코어 페이지를 통째로 붙여넣었으면(휴대폰 '전체 선택 → 복사') 이닝별 점수표 · 원정 · 홈 칸으로 나눠 채운다 (splitGameOnePage).
 // 페이지 위 타자 표 = 점수표 윗줄 팀 = 원정(초) — 따로 붙여넣을 때와 같은 규칙. 나눈 결과가 칸에 보여서 사용자가 확인 · 고칠 수 있다
-let _splitNote = '';
+let _splitNote = '', _usedSplit = false;   // _usedSplit = 지난 저장 뒤 통째 붙여넣기를 나눈 적이 있다(사용 기록용)
 function _autoSplit() {
   for (const id of ['goScore', 'goAway', 'goHome', 'goPitch']) {
     const el = $(id), sp = el && el.value ? _P().splitGameOnePage(el.value) : null;
@@ -316,6 +320,7 @@ function _autoSplit() {
     if (sp.score) $('goScore').value = sp.score; else if (id === 'goScore') $('goScore').value = '';
     if ($('goPitch') && (sp.pitch || id === 'goPitch')) $('goPitch').value = sp.pitch;
     $('goAway').value = sp.tables[0].text; $('goHome').value = sp.tables[1].text;
+    _usedSplit = true;
     const nm = (t, d) => (t.name ? `${d}(${t.name})` : d);
     _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표${sp.pitch ? ' · 투수 표' : ''}로 나눴습니다`
       + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 메뉴 · 요약 글자는 쓰지 않습니다';
@@ -380,6 +385,7 @@ export function openGameOneImport() {
   _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
   _preview();
   if (window.openOverlay) window.openOverlay('goOverlay');
+  _track('gameone_import_open');
   setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
 }
 
@@ -408,7 +414,12 @@ export function saveGameOneImport() {
   _preview();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();
-  const skipped = R.away.skipped.length + R.home.skipped.length;
+  const skipped = R.away.skipped.length + R.home.skipped.length, L = R.pitch && R.pitch.linked;
+  _track('gameone_import', {
+    pa: g.abs.length, paste: _usedSplit ? 'page' : 'tables', scoreboard: R.ls ? 1 : 0,
+    pitch: !L ? 'none' : L.away && L.home ? 'linked' : L.away || L.home ? 'partial' : 'saved', skipped, warned: iss.length ? 1 : 0,
+  });
+  _usedSplit = false;
   toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
 }
 

@@ -417,4 +417,31 @@
     ok(w.length === 1 && w[0].indexOf('원정 · 홈 칸에 같은 선수가 있습니다: 배성웅(15) · 이현준(24) · 김수찬(5)') >= 0, '두 칸에 같은 표 — ' + JSON.stringify(w));
     closeOverlay('goOverlay');
   });
+
+  test('사용 기록(GA4): 입력창 열기 · 저장마다 이벤트 1개 — 타석 수 · 붙여넣기 방식 · 점수표 · 투수 연결 · 모르는 기록 수만, 이름은 싣지 않는다', async function () {
+    var ev = [], g0 = window.gtag;
+    window.gtag = function (k, n, p) { if (k === 'event' && /^gameone_/.test(n)) ev.push([n, p]); };
+    try {
+      openGameOneImport();   // ① 통째 붙여넣기(점수표 · 타자 표 2 · 투수 표 2)
+      ['goScore', 'goAway', 'goHome', 'goPitch', 'goTa', 'goTh'].forEach(function (id) { type(id, ''); });
+      type('goDate', '2026-10-16');
+      type('goAway', PAGE);
+      await T.sleep(300);
+      $('goSave').click();
+      closeOverlay('loadOverlay');
+      openGameOneImport();   // ② 표 따로 붙여넣기(점수표 · 투수 표 없음, 모르는 기록 1타석) — ①의 '통째' 표시가 남지 않는다
+      type('goTa', '다팀'); type('goTh', '라팀'); type('goDate', '2026-10-17');
+      type('goAway', AWAY); type('goHome', HOME);
+      await T.sleep(300);
+      $('goSave').click();
+      closeOverlay('loadOverlay');
+    } finally { window.gtag = g0; }
+    eq(ev, [
+      ['gameone_import_open', {}],
+      ['gameone_import', { pa: 11, paste: 'page', scoreboard: 1, pitch: 'linked', skipped: 0, warned: 0 }],
+      ['gameone_import_open', {}],
+      ['gameone_import', { pa: 13, paste: 'tables', scoreboard: 0, pitch: 'none', skipped: 1, warned: 0 }]
+    ], '이벤트');
+    ok(!/[가-힣]/.test(JSON.stringify(ev.map(function (e) { return e[1]; }))), '값에 한글(선수 · 팀 이름 · 기록) 없음 — ' + JSON.stringify(ev));
+  });
 })();

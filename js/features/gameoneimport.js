@@ -15,6 +15,9 @@
 //   · 같은 경기 다시 가져오기 (2026-10-18): 날짜 · 팀 · 점수가 같은 저장 경기가 있으면 미리보기에 알리고 저장 전에 한 번 묻는다(막지는 않는다) — findSameGames
 //   · 붙여넣기 실수 (2026-10-18): 한 칸에 표 두 개(_secondTable) · 원정 · 홈 칸에 같은 표(report.shared)도 같은 방식으로 알리고 묻는다
 //   · 페이지 통째 붙여넣기 (2026-10-19): 휴대폰 '전체 선택 → 복사' 덩어리를 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채운다(_autoSplit)
+//   · 투수 표(선택 칸, 2026-10-19): 위 표 = 원정 투수, 아래 표 = 홈 투수. 투수 표 순서대로 '상대 타자' 수만큼 상대 팀 타석을 잘라
+//     타석마다 a.pitcher(투수 이름)를 넣는다 — 기존 필드(기록 탭 타자 상세 「투수별 요약」 · 엑셀 투수 칸이 '직접 적힌 투수'로 읽는다).
+//     상대 타자 수 합이 상대 팀 타석 수와 다르면 붙이지 않고 알린다. 투수 성적 합계는 미리보기에만 보여 주고 저장하지 않는다
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -83,7 +86,7 @@ function _secondTable(text, players) {
  *            ls = 이닝별 점수표를 썼으면 { away, home } (parseGameOneScoreboard 의 팀 줄), 아니면 null
  * now · stadiums · stadium 을 받아 순수하게 만든다 (테스트용)
  */
-export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '', th = '', ta = '', date = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
+export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '', pitchText = '', th = '', ta = '', date = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
   const st = stadiums[stadium] || stadiums.standard || { lfDist: 90, cfDist: 120, rfDist: 90 };
   const lf = Math.round(st.lfDist * 3.281), cf = Math.round(st.cfDist * 3.281), rf = Math.round(st.rfDist * 3.281);
   const wallFt = { LF: lf, LC: Math.round((lf + cf) / 2), CF: cf, RC: Math.round((cf + rf) / 2), RF: rf };   // core.js onFClick 과 같은 담장 거리
@@ -114,15 +117,18 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
       p.atBats.forEach(a => {
         round = a.inning != null && a.inning === lastInn ? round + 1 : 0;
         lastInn = a.inning;
-        if (a.type === 'unknown') { r.skipped.push({ name: p.name, inning: a.inning, raw: a.raw }); return; }
-        if (a.result == null) { r.noPA++; return; }   // 교체 · 주루 사건뿐 — 타석이 아니다
-        entries.push({ a, lp, slot: p.order, round, row, inning: a.inning == null ? Infinity : a.inning, team });
+        const e = { a, lp, slot: p.order, round, row, inning: a.inning == null ? Infinity : a.inning, team };
+        // 모르는 기록 · 타격방해는 저장하지 않지만 타석이라 순서에는 넣는다(drop) — 투수의 '상대 타자' 수에 들어간다
+        if (a.type === 'unknown') { r.skipped.push({ name: p.name, inning: a.inning, raw: a.raw }); e.drop = true; entries.push(e); return; }
+        if (a.result == null) { r.noPA++; if (/타격방해/.test(a.raw)) { e.drop = true; entries.push(e); } return; }   // 교체 · 주루 사건뿐 — 타석이 아니다
+        entries.push(e);
       });
     });
     r.players = lineups[team].length;
     r.keys = Object.keys(seen);
     _orderSide(entries).forEach(e => {
       const a = e.a;
+      if (e.drop) { all.push(e); return; }
       r.pa++;
       if (a.type === 'batted') { r.batted++; if (a.confidence === 'low') r.low++; } else r.nonBatted++;
       if (a.inning == null) r.noInning++;
@@ -135,13 +141,37 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
   // 원정(초) → 홈(말) 순으로 이닝마다 섞는다. 이닝을 모르는 타석은 맨 뒤
   const half = { away: 0, home: 1 };
   const sorted = all.map((e, i) => ({ e, i })).sort((p, q) => p.e.inning - q.e.inning || half[p.e.team] - half[q.e.team] || p.i - q.i).map(x => x.e);
-  const abs = sorted.map(({ a, lp, team }) => {
+  // 투수 표 → 타석마다 투수 이름 (위 표 = 원정 투수 → 홈 타석, 아래 표 = 홈 투수 → 원정 타석, 둘 다 경기 순서)
+  report.pitch = null; report.pitchWarnings = [];
+  if (String(pitchText).trim()) {
+    const P = _P().parseGameOnePitchers(pitchText);
+    report.pitchWarnings = P.warnings.slice();
+    if (P.tables.length >= 2) {
+      report.pitch = { away: P.tables[0], home: P.tables[1], linked: { away: false, home: false } };
+      if (P.tables.length > 2) report.pitchWarnings.push(`투수 표가 ${P.tables.length}개 있어 앞의 2개만 씁니다`);
+      ['away', 'home'].forEach(pt => {
+        const list = report.pitch[pt].pitchers, opp = sorted.filter(e => e.team === (pt === 'away' ? 'home' : 'away'));
+        const tbf = list.reduce((n, x) => n + x.tbf, 0);
+        if (!opp.length) return;
+        if (tbf !== opp.length) {
+          report.pitchWarnings.push(`${pt === 'away' ? '원정' : '홈'} 투수 표의 상대 타자 합 ${tbf} ≠ ${pt === 'away' ? '홈' : '원정'} 타석 ${opp.length} — 이 팀 타석에는 투수를 붙이지 않았습니다`);
+          return;
+        }
+        let k = 0;
+        list.forEach(x => { for (let i = 0; i < x.tbf; i++) opp[k++].pitcher = x.name; });
+        report.pitch.linked[pt] = true;
+      });
+    } else report.pitchWarnings.push(P.tables.length ? '투수 표를 1개만 찾았습니다 — 원정 · 홈 두 표가 다 있어야 씁니다' : '투수 표 머리글(선수 결과 이닝 …)을 찾지 못했습니다');
+  }
+
+  const abs = sorted.filter(e => !e.drop).map(({ a, lp, team, pitcher }) => {
     const inn = a.inning == null ? '' : a.inning > 9 ? '연장' : a.inning + '회' + (team === 'away' ? '초' : '말');
     const loc = a.type === 'batted';
     return {
       id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: a.rbi != null ? a.rbi : a.result === '홈런' ? 1 : 0,
       x: loc ? a.x : null, y: loc ? a.y : null, deg: loc ? a.angle : null, dir: loc ? a.dir : null,
       ft: loc ? (a.distance ? Math.round(a.distance * 3.281) : Math.round(a.depth * (wallFt[a.dir] || 370))) : null, inn, ts: '', pitches: [],
+      ...(pitcher ? { pitcher } : {}),
     };
   });
   report.pa = abs.length;
@@ -243,7 +273,7 @@ function _issues(R, dup) {
 
 function _inputs() {
   return {
-    awayText: ($('goAway') || {}).value || '', homeText: ($('goHome') || {}).value || '', scoreText: ($('goScore') || {}).value || '',
+    awayText: ($('goAway') || {}).value || '', homeText: ($('goHome') || {}).value || '', scoreText: ($('goScore') || {}).value || '', pitchText: ($('goPitch') || {}).value || '',
     ta: ($('goTa') || {}).value || '', th: ($('goTh') || {}).value || '', date: ($('goDate') || {}).value || '',
     stadium: (window.AS || {}).stadium || '',
   };
@@ -274,16 +304,26 @@ function _lsTable(ls, g) {
 // 페이지 위 타자 표 = 점수표 윗줄 팀 = 원정(초) — 따로 붙여넣을 때와 같은 규칙. 나눈 결과가 칸에 보여서 사용자가 확인 · 고칠 수 있다
 let _splitNote = '';
 function _autoSplit() {
-  for (const id of ['goScore', 'goAway', 'goHome']) {
+  for (const id of ['goScore', 'goAway', 'goHome', 'goPitch']) {
     const el = $(id), sp = el && el.value ? _P().splitGameOnePage(el.value) : null;
     if (!sp) continue;
     if (sp.score) $('goScore').value = sp.score; else if (id === 'goScore') $('goScore').value = '';
+    if ($('goPitch') && (sp.pitch || id === 'goPitch')) $('goPitch').value = sp.pitch;
     $('goAway').value = sp.tables[0].text; $('goHome').value = sp.tables[1].text;
     const nm = (t, d) => (t.name ? `${d}(${t.name})` : d);
-    _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표로 나눴습니다`
-      + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 투수 표 · 메뉴 글자는 쓰지 않습니다';
+    _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표${sp.pitch ? ' · 투수 표' : ''}로 나눴습니다`
+      + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 메뉴 · 요약 글자는 쓰지 않습니다';
     return;
   }
+}
+
+// 투수 기록 미니 표 (미리보기만 — 투수 성적 합계는 저장하지 않는다). 이닝 = 아웃 수 → '2 ⅔'
+const _ip = o => Math.floor(o / 3) + (o % 3 ? (o % 3 === 1 ? ' ⅓' : ' ⅔') : '');
+function _pitchTable(P, g) {
+  const rows = t => t.pitchers.map(x => `<tr><th scope="row">${_esc(x.name)}</th><td>${x.result === '-' ? '' : _esc(x.result)}</td><td>${_ip(x.outs)}</td><td>${x.tbf}</td><td>${x.h}</td><td>${x.bb + x.hbp}</td><td>${x.k}</td><td>${x.r}/${x.er}</td></tr>`).join('');
+  const sec = (pt, label) => `<tbody><tr class="go-pt-team"><th colspan="8">${_esc(label)}${P.linked[pt] ? ' · 상대 타석에 연결' : ''}</th></tr>${rows(P[pt])}</tbody>`;
+  return `<div class="go-ls-wrap"><table class="go-ls go-pt"><caption>투수 기록</caption><thead><tr><th scope="col"><span class="go-sr">투수</span></th>`
+    + ['결과', '이닝', '상대', '피안타', '사사구', '삼진', '실점/자책'].map(c => `<th scope="col">${c}</th>`).join('') + `</tr></thead>${sec('away', '원정 ' + g.ta)}${sec('home', '홈 ' + g.th)}</table></div>`;
 }
 
 function _preview() {
@@ -300,7 +340,8 @@ function _preview() {
   try { out = buildGameOneGame(Object.assign(inp, { now: Date.now() })); }
   catch (e) { box.innerHTML = '<div class="go-warn">읽지 못했습니다: ' + _esc(e && e.message || e) + '</div>'; btn.disabled = true; return; }
   const { report: R, game: g } = out;
-  const lsH = (R.ls ? _lsTable(R.ls, g) : '') + R.lsWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('');
+  const lsH = (R.ls ? _lsTable(R.ls, g) : '') + R.lsWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('')
+    + (R.pitch ? _pitchTable(R.pitch, g) : '') + R.pitchWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('');
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
   const iss = R.pa ? _issues(R, findSameGames(g, _savedGames())) : [];
   if (!R.away.players && !R.home.players) {
@@ -315,6 +356,7 @@ function _preview() {
     h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hrTxt ? hrTxt + ', 나머지 타석은 ' : ''}0으로 저장됩니다`
       + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''})` : '') + '.'
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
+    if (R.pitch && (R.pitch.linked.away || R.pitch.linked.home)) h += '<div class="go-note">투수: 투수 표 순서대로 상대 타석에 투수를 붙였습니다 — 기록 탭 타자 상세 「투수별 요약」과 엑셀 투수 칸에 나옵니다. 투수 성적 합계는 저장하지 않습니다.</div>';
   }
   box.innerHTML = (_splitNote ? `<div class="go-note go-split">${_esc(_splitNote)}</div>` : '') + h;
   btn.disabled = !R.pa;
@@ -355,7 +397,7 @@ export function saveGameOneImport() {
     localStorage.setItem('sl_saves', JSON.stringify(saves));
   } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
   if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
-  ['goScore', 'goAway', 'goHome'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
   _preview();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();

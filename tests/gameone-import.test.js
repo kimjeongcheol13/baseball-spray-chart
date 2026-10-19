@@ -321,22 +321,27 @@
     '(후)일요리그 / 10.18(10:20) / 가상구장', 'Team\t1\t2\t3\t4\t5\t6\t7\t8\t9\tR\tH\tE\tB',
     '가팀\t0\t0\t1\t\t\t\t\t\t\t1\t4\t0\t1', '나팀\t0\t0\t\t\t\t\t\t\t\t0\t1\t0\t0', '게임결과', '게임요약', '[2루타]가오(3회)', '',
     ' 가팀', REAL_A.trim(), ' 나팀', REAL_B.trim(),
-    ' 가팀', PH, '가투수(9)\t승\t3\t10\t9\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00',
-    ' 나팀', PH, '나투수(8)\t패\t3\t12\t11\t4\t0\t0\t0\t1\t0\t1\t0\t0\t1\t1\t0\t3.00\t3.00', '등록된 사진 및 코멘트는', '답글입력'].join('\n');
+    // 투수 표: 가투수가 나팀 4타석 전부 · 나팀은 나투수(가팀 앞 4타석) → 나계투(뒤 3타석). 상대 타자 수 합 = 상대 팀 타석 수
+    ' 가팀', PH, '가투수(9)\t승\t2\t4\t4\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00',
+    ' 나팀', PH, '나투수(8)\t-\t1 ⅓\t4\t4\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00',
+    '나계투(7)\t패\t1 ⅔\t3\t2\t2\t0\t0\t0\t1\t0\t0\t0\t0\t1\t1\t0\t5.40\t5.40', '등록된 사진 및 코멘트는', '답글입력'].join('\n');
 
-  test('페이지 통째 붙여넣기(휴대폰 전체 선택): 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채우고, 투수 표는 쓰지 않는다', async function () {
+  test('페이지 통째 붙여넣기(휴대폰 전체 선택): 어느 칸에 넣어도 점수표 · 원정 · 홈 · 투수 표 칸으로 나눠 채우고, 상대 타석에 투수를 붙인다', async function () {
     var ids = ['goScore', 'goAway'];
     for (var i = 0; i < ids.length; i++) {
       openGameOneImport();
-      ['goScore', 'goAway', 'goHome', 'goTa', 'goTh'].forEach(function (id) { type(id, ''); });
+      ['goScore', 'goAway', 'goHome', 'goPitch', 'goTa', 'goTh'].forEach(function (id) { type(id, ''); });
       type('goDate', '2026-10-15');
       type(ids[i], PAGE);
       await T.sleep(300);
       ok($('goScore').value.indexOf('Team\t1\t2') === 0 && $('goScore').value.split('\n').length === 3, ids[i] + ': 점수표 칸 — ' + JSON.stringify($('goScore').value));
       eq([$('goAway').value.split('\n')[1], $('goHome').value.split('\n')[1]], ['1지가일(1)\t유플\t좌안\t\t\t\t\t\t\t\t2\t1\t0\t0\t0\t0.500\t0.500', real('1우나일(11)', { 1: '삼진', 2: '좌선2' })], ids[i] + ': 원정 · 홈 칸 첫 선수');
-      ok($('goHome').value.indexOf('나투수') < 0 && $('goAway').value.indexOf('가투수') < 0, ids[i] + ': 투수 표는 빠짐');
+      ok($('goHome').value.indexOf('나투수') < 0 && $('goAway').value.indexOf('가투수') < 0, ids[i] + ': 타자 칸에 투수 표는 없음');
+      ok($('goPitch').value.indexOf('가투수(9)') >= 0 && $('goPitch').value.indexOf('나계투(7)') >= 0 && $('goPitch').value.indexOf('등록된') < 0, ids[i] + ': 투수 표 칸 — ' + JSON.stringify($('goPitch').value));
       var note = $('goPrev').querySelector('.go-split');
-      ok(note && note.textContent.indexOf('이닝별 점수표 · 원정(가팀) · 홈(나팀) 타자 표로 나눴습니다') >= 0, ids[i] + ': 안내 — ' + (note ? note.textContent : $('goPrev').textContent));
+      ok(note && note.textContent.indexOf('이닝별 점수표 · 원정(가팀) · 홈(나팀) 타자 표 · 투수 표로 나눴습니다') >= 0, ids[i] + ': 안내 — ' + (note ? note.textContent : $('goPrev').textContent));
+      var pt = $('goPrev').querySelector('.go-pt');
+      ok(pt && pt.textContent.indexOf('원정 가팀 · 상대 타석에 연결') >= 0 && pt.textContent.indexOf('홈 나팀 · 상대 타석에 연결') >= 0 && pt.textContent.indexOf('1 ⅔') >= 0, ids[i] + ': 투수 기록 표 — ' + (pt ? pt.textContent : '없음'));
       ok($('goPrev').textContent.indexOf('가팀 1 : 0 나팀') >= 0 && !$('goPrev').querySelector('.go-two'), ids[i] + ': 점수 · 표 두 개 경고 없음 — ' + $('goPrev').textContent);
       eq($('goSave').textContent, '새 경기로 저장 (11타석)', ids[i] + ': 버튼 (가팀 7 + 나팀 4타석)');
     }
@@ -345,7 +350,29 @@
     var s = saves(), g = JSON.parse(localStorage.getItem(s[s.length - 1].key));
     eq([s.length, g.ta, g.th, g.as, g.hs, g.abs.length], [before + 1, '가팀', '나팀', 1, 0, 11], '저장: 팀 · 점수 · 타석');
     eq(g.info.ls, { away: [0, 0, 1], home: [0, 0] }, '이닝 점수');
+    eq(g.abs.filter(function (a) { return a.team === 'away'; }).map(function (a) { return a.bname + ':' + a.pitcher; }),
+      ['가일:나투수', '가이:나투수', '가삼:나투수', '가사:나투수', '가일:나계투', '가이:나계투', '가오:나계투'], '원정 타석의 투수(나투수 4 → 나계투 3)');
+    ok(g.abs.filter(function (a) { return a.team === 'home'; }).every(function (a) { return a.pitcher === '가투수'; }), '홈 타석의 투수 = 가투수');
+    eq($('goPitch').value, '', '저장 뒤 투수 표 칸 비움');
     closeOverlay('loadOverlay');
+  });
+
+  test('타격방해 타석은 저장하지 않아도 투수의 상대 타자 수에는 든다 — 그 뒤 타석이 다음 투수에게 맞게 붙는다', function () {
+    var away = realTable([real('1지가일(1)', { 1: '삼진' }), real('2三가이(2)', { 1: '타격방해' }), real('3一가삼(3)', { 1: '좌안' })]);
+    var pitch = [' 가팀', PH, ' 나팀', PH, '나일투(1)\t-\t0 ⅓\t2\t1\t0\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00', '나이투(2)\t-\t0\t1\t1\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0.00\t0.00'].join('\n');
+    var out = window.SLGameOneImport.buildGameOneGame({ awayText: away, pitchText: pitch, now: 1790000700000 });
+    eq(out.game.abs.map(function (a) { return a.bname + ':' + a.res + ':' + a.pitcher; }), ['가일:삼진:나일투', '가삼:안타:나이투'], '타격방해는 저장 안 함 · 가삼은 두 번째 투수');
+    eq(out.report.pitch.linked.home, true, '홈 투수 연결');
+  });
+
+  test('투수 표의 상대 타자 수 합이 상대 팀 타석 수와 다르면 그 팀 타석에는 투수를 붙이지 않고 알린다', function () {
+    var bad = PAGE.replace('가투수(9)\t승\t2\t4', '가투수(9)\t승\t2\t5');
+    var sp = window.SLGameOne.splitGameOnePage(bad);
+    var out = window.SLGameOneImport.buildGameOneGame({ awayText: sp.tables[0].text, homeText: sp.tables[1].text, pitchText: sp.pitch, now: 1790000600000 });
+    ok(out.report.pitchWarnings.some(function (w) { return w.indexOf('원정 투수 표의 상대 타자 합 5 ≠ 홈 타석 4') === 0; }), '경고 — ' + JSON.stringify(out.report.pitchWarnings));
+    eq([out.report.pitch.linked.away, out.report.pitch.linked.home], [false, true], '원정 투수만 연결 안 함');
+    ok(out.game.abs.filter(function (a) { return a.team === 'home'; }).every(function (a) { return !('pitcher' in a); }), '홈 타석에 pitcher 없음');
+    ok(out.game.abs.filter(function (a) { return a.team === 'away'; }).every(function (a) { return a.pitcher; }), '원정 타석은 그대로 연결');
   });
 
   test('복사 방법 안내: 접힌 채 시작 · 표를 한 번 누른 뒤 전체 선택 · 표를 못 찾으면 같은 힌트', async function () {

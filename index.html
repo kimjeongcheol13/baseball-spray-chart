@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=83">
+<link rel="stylesheet" href="css/styles.css?v=84">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=9">
@@ -1703,6 +1703,7 @@ var _kakaoSdkLoaded = false;
     <label class="go-f"><span>이닝별 점수표 <small>선택 · 위쪽 Team 1 2 3 … R H E B 표</small></span><textarea id="goScore" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="팀에이스&#9;4&#9;5&#9;4&#9;12 … 25&#9;17&#9;0&#9;8&#10;우진스나이퍼&#9;0&#9;0&#9;3&#9;0 … 3&#9;2&#9;3&#9;4" oninput="gameOnePreview()"></textarea></label>
     <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="선수&#9;1&#9;2&#9;3 … 타수 …&#10;1중홍길동(27)&#9;유플&#9;좌중2 …" oninput="gameOnePreview()"></textarea></label>
     <label class="go-f"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f"><span>투수 표 <small>선택 · 아래쪽 투수 기록 표 2개</small></span><textarea id="goPitch" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="전체 선택으로 붙여넣으면 자동으로 채워집니다" oninput="gameOnePreview()"></textarea></label>
     <div id="goPrev" class="go-prev" aria-live="polite"></div>
     <div class="go-btns">
       <button type="button" class="btn btn-ghost" onclick="closeOverlay('goOverlay')">닫기</button>
@@ -2413,8 +2414,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=227"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script defer src="js/gameone.js?v=6"></script>
-<script type="module" src="js/app.js?v=127"></script>
+<script defer src="js/gameone.js?v=7"></script>
+<script type="module" src="js/app.js?v=128"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

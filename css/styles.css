@@ -546,6 +546,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-ls th,.go-ls td{padding:2px 6px;text-align:center;border-bottom:1px solid var(--border2);white-space:nowrap}
 .go-ls tbody th{text-align:left;font-weight:600;color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis}
 .go-ls .r{font-weight:700;color:var(--text)}
+.go-ls .go-pt-team th{max-width:none;padding-top:6px;text-align:left;font-weight:700;color:var(--text3)}
 .go-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .go-how{margin:-6px 0 12px;border:1px solid var(--border2);border-radius:8px;background:var(--bg-raised);font-size:11px;line-height:1.6;color:var(--text2)}
 .go-how summary{min-height:44px;display:flex;align-items:center;padding:0 10px;cursor:pointer;font-weight:700;color:var(--text)}

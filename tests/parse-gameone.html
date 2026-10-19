@@ -264,6 +264,11 @@
         diff(r.tables.map(function (t) { return t.text; }), [[BH, A1, '합 계\t1\t0\t0\t0\t0\t0.000\t0.000'].join('\n'), [BH, B1, '합 계\t1\t1\t0\t0\t0\t1.000\t1.000'].join('\n')], 'tables[].text', e);
         diff(G.parseGameOneScoreboard(r.score), { teams: [{ name: '가팀', innings: [1, 0], r: 1, h: 2, e: 0, b: 1 }, { name: '나팀', innings: [0, 0], r: 0 }], warnings: [] }, 'score', e);
         diff(G.splitGameOnePage([BH, A1, '합 계\t1\t0\t0\t0\t0\t0.000\t0.000'].join('\n')), null, '타자 표 하나뿐이면 null', e);
+        // 투수 표: 페이지에서 떼어 두고(pitch), 이름 · 결과 · 이닝(아웃 수) · 상대 타자 … 를 읽는다
+        diff(G.parseGameOnePitchers(r.pitch), { tables: [
+          { name: '가팀', pitchers: [{ name: '가투수', number: '9', result: '승', outs: 6, tbf: 6, ab: 6, h: 1, hr: 0, bb: 0, hbp: 0, k: 1, r: 0, er: 0, np: 0 }] },
+          { name: '나팀', pitchers: [{ name: '나투수', number: '8', result: '패', outs: 6, tbf: 7, h: 2, k: 0, r: 1, er: 1 }] }], warnings: [] }, 'parseGameOnePitchers(pitch)', e);
+        diff(G.parseGameOnePitchers([' 가팀', PH, '가투수(9)\t-\t2 ⅔\t9\t8\t2\t0\t0\t0\t1\t0\t3\t0\t0\t1\t1\t0\t3.38\t3.38', '나투수(8)\t승\t0 ⅓\t2\t2\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0.00\t0.00'].join('\n')).tables[0].pitchers.map(function (p) { return p.outs; }), [8, 1], '이닝 2 ⅔ → 8아웃 · 0 ⅓ → 1아웃', e);
         // 합 계 줄 없이 복사돼도 투수 표 머리글에서 끊는다
         var noSum = G.splitGameOnePage([BH, A1, ' 나팀', BH, B1, ' 가팀', PH, '가투수(9)\t승\t2\t6\t6\t1\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00'].join('\n'));
         diff(noSum && noSum.tables.map(function (t) { return t.text; }), [[BH, A1, ' 나팀'].join('\n'), [BH, B1, ' 가팀'].join('\n')], '합 계 없음 → 투수 표 앞에서 끊음', e);

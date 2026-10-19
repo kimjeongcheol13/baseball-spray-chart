@@ -149,6 +149,8 @@
   // confidence 'low' = 안·플·땅처럼 폭이 넓은 결과 · unknown · 'R' 포함 · 미확인 토큰이 섞임 · 결과 토큰이 2개 이상
   // 토큰 끝 [..] = 게임원 부가 기록(홈런 [3R 100M] · 수비 [6-4-3] · 교체 [부상X]) → 떼어 notes 에 남기고, 첫 수비 번호는 방향 없는 토큰의 방향으로 쓴다
   var BRACKET_RE = /^(.*?)\[([^\]]*)\]$/;
+  // 홈런 부가 기록 [2R 97M] = 2타점 · 비거리 97m (실제 기록에서 선수 타점 칸과 맞춰 확인, 2026-10-19). 공백은 토큰에서 이미 지웠다
+  var HR_NOTE_RE = /^\[(?:(\d)R)?(?:(\d{2,3})M)?\]$/;
   function parsePlateAppearance(raw, inning, onUnknown) {
     var extra = [], toks = [], fld = [];
     raw.split(',').forEach(function (t) {
@@ -177,6 +179,8 @@
       if (main.memo) ab.notes.push(main.memo);
     }
     ab.notes = ab.notes.concat(extra);
+    ab.rbi = null; ab.distance = null;   // 아는 경우만(홈런 [2R 97M]) — 게임원 표에는 타석별 타점이 없다
+    if (ab.result === '홈런') extra.forEach(function (x) { var h = HR_NOTE_RE.exec(x); if (h && h[1]) ab.rbi = +h[1]; if (h && h[2]) ab.distance = +h[2]; });
     if (main.kind === 'unknown' || (main.kind === 'batted' && main.wide) || toks.join('').indexOf('R') >= 0
       || cls.some(function (c) { return c.kind === 'unknown'; }) || cls.filter(isResult).length > 1) ab.confidence = 'low';
     return ab;
@@ -197,7 +201,7 @@
    *   warnings: ['…']         // 선수 행으로 읽지 않은 줄 · 공백 구분이라 이닝을 모르는 행
    * }
    * atBat = { inning, raw, type: 'batted'|'nonBatted'|'unknown', result, angle, depth, confidence: 'high'|'low', notes,
-   *           x, y, dir, src }
+   *           x, y, dir, src, rbi, distance }   // rbi · distance(m) = 홈런 [2R 97M] 처럼 기록에 있을 때만, 아니면 null
    *   result      기존 결과 코드(안타·2루타·땅볼 아웃·희비·볼넷 …). unknown 이거나 사건·교체뿐이면 null
    *   angle·depth 기존 저장 좌표: angle = 저장 deg(0 좌측 파울라인 ~ 90 중견 ~ 180 우측), depth = 저장 반지름(펜스 0.97). 타구가 아니면 null
    *   x·y·dir     기존 기록과 같은 저장 필드(그대로 abs 에 넣을 수 있는 값). src = 변환 전 매핑표 값 { angle, depth }

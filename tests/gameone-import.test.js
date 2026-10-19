@@ -297,6 +297,13 @@
     eq([out.report.away.split, out.report.away.skipped.length], [null, 0], '머리글 · 합 계 줄은 표 두 개로 보지 않음 · 모르는 기록 없음');
   });
 
+  test('홈런 [2R 97M] → 그 타석 타점 2 · 비거리 97m(318ft) · 괄호 없는 홈런과 다른 타석은 타점 0', function () {
+    var out = window.SLGameOneImport.buildGameOneGame({ awayText: realTable([real('1지가일(1)', { 1: '좌월홈[2R 97M]', 2: '좌중홈', 3: '좌안' })]), now: 1790000500000 });
+    eq(out.game.abs.map(function (a) { return a.res + ':' + a.rbi + ':' + a.ft; }).slice(0, 2), ['홈런:2:318', '홈런:0:' + out.game.abs[1].ft], '홈런 타점 · 비거리');
+    ok(out.game.abs[1].ft > 0 && out.game.abs[1].ft !== 318, '괄호 없는 홈런은 펜스 거리로 추정한 ft');
+    eq([out.game.abs[2].rbi, out.report.away.hrRbi], [0, 2], '다른 타석 타점 0 · 홈런으로 넣은 타점 합');
+  });
+
   test('실제 형식에서 한 칸에 표 두 개: 합 계 · 팀 이름 · 선수 머리글 줄 다음 표(sep) · 줄 없이 이어 붙인 두 표(restart)', function () {
     var B = realTable(['1우나일(11)\t삼진', '2좌나이(12)\t삼진', '3중나삼(13)\t삼진'].map(function (r) { return r + '\t\t\t\t\t\t\t\t\t1\t0\t0\t0\t0\t0.000\t0.000'; }));
     var both = REAL_A + '\n나팀\n' + B;

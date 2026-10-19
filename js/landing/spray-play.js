@@ -728,7 +728,7 @@
     static get observedAttributes() { return ['hand', 'count', 'motion']; }
     constructor() {
       super();
-      this.rot = { yaw: 0, pitch: 0, vy: 0, vp: 0, drag: false, lastDrag: -1e9 };
+      this.rot = { yaw: 0, pitch: 0, vy: 0, vp: 0, drag: false, lastDrag: -1e9, zoom: 1 };
       this.live = []; this.cycle = -1; this.landed = false; this.released = false; this.visible = true; this.t0 = null;
     }
     get hand() { return this.getAttribute('hand') || 'right'; } set hand(v) { if (v != null) this.setAttribute('hand', String(v)); }
@@ -750,18 +750,34 @@
       Object.assign(tag.style, { position: 'absolute', left: 0, top: 0, whiteSpace: 'nowrap', transform: 'translate(14px,-50%)', opacity: 0, transition: 'opacity .35s', letterSpacing: '.04em' });
       ui.append(ph, stat, tag); this.append(ui);
       this.statEl = stat; this.tagEl = tag;
+      // one pointer drags: turn (and tilt, with a mouse). On touch, `touch-action: pan-y` leaves vertical swipes to the page, so one
+      // finger turns the field and scrolling still works. Two fingers: spread / pinch = zoom, move up / down together = tilt.
+      const pts = new Map(), two = () => { const [a, b] = pts.values(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, y: (a.y + b.y) / 2 }; };
       this.addEventListener('pointerdown', e => {
-        const R = this.rot; R.drag = true; R.px = e.clientX; R.py = e.clientY; R.vy = 0; R.vp = 0;
+        const R = this.rot; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
         try { this.setPointerCapture(e.pointerId); } catch (_) {}
+        if (pts.size === 2) { const g = two(); R.drag = false; R.pinch = { d: g.d, y: g.y, z: R.zoom }; return; }
+        R.drag = true; R.px = e.clientX; R.py = e.clientY; R.vy = 0; R.vp = 0; R.touch = e.pointerType === 'touch';
         this.style.cursor = 'grabbing';
       });
       this.addEventListener('pointermove', e => {
-        const R = this.rot; if (!R.drag) return;
-        const dx = e.clientX - R.px, dy = e.clientY - R.py; R.px = e.clientX; R.py = e.clientY;
+        const R = this.rot, p = pts.get(e.pointerId); if (!p) return; p.x = e.clientX; p.y = e.clientY;
+        if (R.pinch && pts.size >= 2) {
+          const g = two(); R.zoom = clamp(R.pinch.z * g.d / R.pinch.d, .6, 3); R.pitch = clamp(R.pitch + (g.y - R.pinch.y) * .25, -30, 45); R.pinch.y = g.y;
+          R.lastDrag = performance.now(); return;
+        }
+        if (!R.drag) return;
+        const dx = e.clientX - R.px, dy = R.touch ? 0 : e.clientY - R.py; R.px = e.clientX; R.py = e.clientY;   // a finger's up / down is the page's scroll, not a tilt
         R.vy = -dx * 0.4; R.vp = dy * 0.25; R.yaw += R.vy; R.pitch = clamp(R.pitch + R.vp, -30, 45);
       });
-      const up = () => { const R = this.rot; if (!R.drag) return; R.drag = false; R.lastDrag = performance.now(); this.style.cursor = 'grab'; };
+      const up = e => {
+        const R = this.rot; pts.delete(e.pointerId); if (pts.size < 2) R.pinch = null;
+        if (pts.size === 1) { const [q] = pts.values(); R.drag = true; R.px = q.x; R.py = q.y; R.vy = R.vp = 0; return; }   // one finger left after a pinch: turn from here
+        if (!R.drag) return; R.drag = false; R.lastDrag = performance.now(); this.style.cursor = 'grab';
+      };
       this.addEventListener('pointerup', up); this.addEventListener('pointercancel', up);
+      // pan-y would let the browser scroll the page with a two-finger vertical move (and cancel the pinch): keep two-finger moves here
+      this.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
       const wait = document.createElement('div'); wait.textContent = '선수들 불러오는 중…';
       Object.assign(wait.style, { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: INK, opacity: .55 });
       this.append(wait); this.waitEl = wait;
@@ -1080,7 +1096,8 @@
       const wide = this.cam === 'close' ? 0 : track(tau, [[2.55, 0], [3.9, 1], [7.1, 1], [7.95, 0]]);
       const nar = Math.max(0, 4 / 3 / this.camera.aspect - 1);   // 0 for a 4:3 box, ~.67 for the phone's 4:5: frame a little nearer home, look down more when wide
       this.camTarget.set(lerp(-1, 0, wide), lerp(3.5, 0, wide), lerp(-28 + 9 * nar, -140, wide));
-      const rho = lerp(72, 500 * (1 + .9 * nar), wide), phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
+      if (R.zoom > 1) this.camTarget.lerp(this.tmp.set(lerp(-1, 0, wide), lerp(3, 0, wide), lerp(3, -140, wide)), Math.min(1, R.zoom - 1));   // a zoom closes in on (and turns round) the players at the plate; the field's middle when wide
+      const rho = lerp(72, 500 * (1 + .9 * nar), wide) / R.zoom, phi = clamp(lerp(15, 42 + 30 * nar, wide) + R.pitch, 5, 85) * D2R, theta = (R.yaw + sway) * D2R;
       this.camera.position.set(this.camTarget.x + rho * Math.sin(theta) * Math.cos(phi), this.camTarget.y + rho * Math.sin(phi), this.camTarget.z + rho * Math.cos(theta) * Math.cos(phi));
       this.camera.lookAt(this.camTarget);
 

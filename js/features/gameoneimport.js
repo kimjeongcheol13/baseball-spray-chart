@@ -23,6 +23,12 @@
 //   · 사용 기록(GA4, 2026-10-19): 입력창 열기 gameone_import_open · 저장 gameone_import — 숫자 · 방식만 싣는다(선수 · 팀 이름 · 기록 글자는 싣지 않는다).
 //     pa 타석 수 · paste 'page'(통째 붙여넣기를 나눔) | 'tables' · scoreboard 이닝별 점수표 0/1 · pitch 'none' | 'saved' | 'partial' | 'linked'
 //     · skipped 모르는 기록 타석 수 · warned 경고를 보고도 저장 0/1
+//   · 바로가기 (2026-10-19): 데이터 관리 타일만으로는 처음 온 사람이 못 찾는다
+//     - 링크 index.html?go=1 (랜딩 · 소개 글) → 앱을 열고 입력창을 바로 연다. go 는 주소에서 지운다(새로 고쳐도 다시 열리지 않게).
+//       공유 링크 · 가져오기 링크 · 로그인 돌아오기(game · gid · team · import · code · #share=)와 같이 오면 열지 않는다(그쪽이 먼저)
+//     - 기록이 하나도 없는 첫 화면(저장 경기 0 · 기록 중 타석 0) 필드 아래 「게임원 기록 가져오기」(#goStart). 샘플 버튼과 같은 방식으로
+//       첫 사용 말풍선(updateFieldTapHint)이 갱신될 때 다시 판단한다(core.js 는 고치지 않는다)
+//     - 링크 · 첫 화면 버튼으로 열면 '복사하는 방법'을 펼쳐 둔다(처음 쓰는 사람). 열기 이벤트에 from = 'tile'(데이터 관리) | 'link'(?go=1) | 'empty'(첫 화면 버튼)
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -377,15 +383,18 @@ function _preview() {
 
 function _schedule() { clearTimeout(_timer); _splitNote = ''; _timer = setTimeout(_preview, 150); }
 
-export function openGameOneImport() {
+export function openGameOneImport(from) {
   if (!_P()) { if (window.showToast) window.showToast('게임원 파서를 불러오지 못했습니다 — 새로고침 후 다시 시도해 주세요', false); return; }
   if (window.closeOverlay) window.closeOverlay('dataSettingsOverlay');
   const dt = $('goDate');
   if (dt && !dt.value) { const n = new Date(), p = v => String(v).padStart(2, '0'); dt.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; }
   _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
   _preview();
+  const fresh = from === 'link' || from === 'empty';
+  const how = fresh && document.querySelector('#goOverlay details.go-how');
+  if (how) how.open = true;   // 링크 · 첫 화면으로 온 사람은 처음 쓰는 사람 — 복사 방법을 펼쳐 둔다
   if (window.openOverlay) window.openOverlay('goOverlay');
-  _track('gameone_import_open');
+  _track('gameone_import_open', { from: fresh ? from : 'tile' });
   setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
 }
 
@@ -420,12 +429,48 @@ export function saveGameOneImport() {
     pitch: !L ? 'none' : L.away && L.home ? 'linked' : L.away || L.home ? 'partial' : 'saved', skipped, warned: iss.length ? 1 : 0,
   });
   _usedSplit = false;
+  _syncStart();
   toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
 }
 
+// 첫 화면 버튼: 저장 경기도 기록 중인 타석도 없을 때만 (샘플 모드면 샘플 경기가 보여서 숨는다)
+function _syncStart() {
+  const b = $('goStart');
+  if (!b) return;
+  let n;
+  try { const s = JSON.parse(localStorage.getItem('sl_saves') || '[]'); n = Array.isArray(s) ? s.length : 1; } catch (e) { n = 1; }
+  const S = window.AS;
+  b.hidden = !!(n || (S && S.abs && S.abs.length));
+}
+
+// 링크 ?go=1 → 앱을 열고 입력창을 연다
+const _LINK_SKIP = ['game', 'gid', 'team', 'import', 'code'];
+function _openFromLink() {
+  let sp;
+  try { sp = new URLSearchParams(location.search); } catch (e) { return false; }
+  if (sp.get('go') !== '1') return false;
+  sp.delete('go');
+  const q = sp.toString();
+  try { history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) {}
+  if (_LINK_SKIP.some(k => sp.has(k)) || /#share=/.test(location.hash)) return false;
+  const lp = $('landing-page');
+  if (lp && lp.offsetParent !== null && typeof window.showApp === 'function') window.showApp();   // 데스크톱 랜딩이 떠 있으면 (모바일은 core.js 가 이미 건너뜀)
+  openGameOneImport('link');
+  return true;
+}
+
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame, findSameGames };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames, _openFromLink, _syncStart };
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
   window.gameOnePreview = _schedule;
+  const orig = window.updateFieldTapHint;   // core.js(defer)가 먼저 정한다
+  if (typeof orig === 'function' && !orig._go) {
+    const wrapped = function () { const r = orig.apply(this, arguments); try { _syncStart(); } catch (e) {} return r; };
+    wrapped._go = true;
+    window.updateFieldTapHint = wrapped;
+  }
+  _syncStart();
+  const run = () => setTimeout(_openFromLink, 0);   // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 }

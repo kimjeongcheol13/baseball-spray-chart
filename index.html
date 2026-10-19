@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=86">
+<link rel="stylesheet" href="css/styles.css?v=87">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=10">
@@ -1686,16 +1686,36 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
       <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-sub">게임원 박스스코어를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 됩니다.</div>
+    <div class="modal-sub">게임원 박스스코어를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 돼서, 앱 화면은 아래 「스크린샷으로 채우기」를 쓰세요.</div>
     <details class="go-how">
       <summary>복사하는 방법</summary>
       <ol>
-        <li><b>크롬 · 사파리 같은 브라우저</b>로 게임원(gameone.kr)에 들어가 경기 <b>박스스코어</b>를 엽니다 — 팀 페이지의 경기 일정, 또는 리그 › 게임결과 › 박스스코어. 게임원 <b>앱</b>은 글자 복사가 안 돼 가져올 수 없습니다</li>
+        <li><b>크롬 · 사파리 같은 브라우저</b>로 게임원(gameone.kr)에 들어가 경기 <b>박스스코어</b>를 엽니다 — 팀 페이지의 경기 일정, 또는 리그 › 게임결과 › 박스스코어. 게임원 <b>앱</b>은 글자 복사가 안 됩니다 — 앱 화면은 아래 「스크린샷으로 채우기」</li>
         <li><b>표를 한 번 누른 뒤</b> 전체 선택 → 복사합니다. PC는 <b>Ctrl+A → Ctrl+C</b>, 휴대폰은 표를 길게 눌러 <b>전체 선택 → 복사</b></li>
         <li>아래 <b>아무 칸에나</b> 붙여넣으면 이닝별 점수표 · 원정 · 홈 표로 나눠 넣습니다</li>
       </ol>
       <p>전체 선택이 안 보이면 표를 하나씩 드래그해 각 칸에 붙여넣어도 됩니다. 머리글 · 합계 줄이 같이 들어가도 괜찮습니다. 리그 페이지는 박스스코어가 안쪽 화면에 따로 있어서, 표를 누르지 않고 전체 선택하면 표가 복사되지 않습니다.</p>
     </details>
+    <!-- 📷 게임원 앱 스크린샷으로 채우기 (js/features/gameoneocr.js) — 휴대폰 안에서 글자를 읽어 아래 원정 · 홈 타자 표 칸에 넣는다 -->
+    <div class="go-shot">
+      <div class="go-shot-h">게임원 <b>앱</b> 화면이라면 스크린샷으로 채우기 <small>· 휴대폰 안에서 읽어요(사진은 밖으로 나가지 않음)</small></div>
+      <div class="go-shot-btns">
+        <button type="button" class="btn btn-ghost go-shot-b" onclick="gameOneShotPick('away')">원정팀 사진 고르기</button>
+        <button type="button" class="btn btn-ghost go-shot-b" onclick="gameOneShotPick('home')">홈팀 사진 고르기</button>
+      </div>
+      <details class="go-how go-shot-how">
+        <summary>어떻게 찍나요?</summary>
+        <ol>
+          <li>앱 › 박스 스코어 › <b>기록</b>에서 팀 탭(원정 · 홈)을 고릅니다</li>
+          <li>휴대폰을 <b>가로</b>로 돌려 「경기기록」(1회 2회 …) 표를 찍고, 아래로 내리며 마지막 타자까지 나눠 찍습니다. <b>첫 장에는 머리글</b>(타순 · 타자명 · 1회 …)이 보이게</li>
+          <li>「타자」 표(타수 · 안타 …)도 찍어 같이 고르면, 읽은 칸이 맞는지 숫자로 맞춰 봅니다</li>
+          <li>한 팀 사진을 <b>한 번에 모두</b> 고르세요</li>
+        </ol>
+        <p>사진에서 읽은 글자는 틀릴 수 있어요 — 미리보기를 앱 화면과 비교한 뒤 저장하세요. 포지션(P · RF …)은 사진에서 읽지 않습니다. 처음 한 번은 글자 읽기 도구(약 6MB)를 받습니다.</p>
+      </details>
+      <input type="file" id="goShotFile" accept="image/*" multiple hidden onchange="gameOneShotFiles(this)">
+      <div id="goShotMsg" class="go-shot-msg" aria-live="polite"></div>
+    </div>
     <div class="go-row">
       <label class="go-f"><span>원정팀</span><input id="goTa" class="go-inp" type="text" maxlength="20" placeholder="원정팀" oninput="gameOnePreview()"></label>
       <label class="go-f"><span>홈팀</span><input id="goTh" class="go-inp" type="text" maxlength="20" placeholder="홈팀" oninput="gameOnePreview()"></label>
@@ -2442,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=227"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script defer src="js/gameone.js?v=7"></script>
-<script type="module" src="js/app.js?v=132"></script>
+<script type="module" src="js/app.js?v=133"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

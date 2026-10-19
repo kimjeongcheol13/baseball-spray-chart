@@ -1692,7 +1692,7 @@ var _kakaoSdkLoaded = false;
     </div>
     <label class="go-f"><span>경기 날짜</span><input id="goDate" class="go-inp" type="date" oninput="gameOnePreview()"></label>
     <label class="go-f"><span>이닝별 점수표 <small>선택 · 위쪽 Team 1 2 3 … R H E B 표</small></span><textarea id="goScore" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="팀에이스&#9;4&#9;5&#9;4&#9;12 … 25&#9;17&#9;0&#9;8&#10;우진스나이퍼&#9;0&#9;0&#9;3&#9;0 … 3&#9;2&#9;3&#9;4" oninput="gameOnePreview()"></textarea></label>
-    <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="1&#9;유&#9;김수찬(5)&#9;사구,도루 …" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="선수&#9;1&#9;2&#9;3 … 타수 …&#10;1중홍길동(27)&#9;유플&#9;좌중2 …" oninput="gameOnePreview()"></textarea></label>
     <label class="go-f"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
     <div id="goPrev" class="go-prev" aria-live="polite"></div>
     <div class="go-btns">
@@ -2407,8 +2407,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script defer src="js/core.js?v=227"></script>
 <script defer src="js/ocr.js?v=19"></script>
-<script defer src="js/gameone.js?v=3"></script>
-<script type="module" src="js/app.js?v=122"></script>
+<script defer src="js/gameone.js?v=4"></script>
+<script type="module" src="js/app.js?v=123"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

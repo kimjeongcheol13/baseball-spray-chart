@@ -272,6 +272,41 @@
     eq(split(AWAY), null, '일부 행만(5 · 8 · 1번)');
   });
 
+  // 실제 PC 웹 복사 형식(2026-10-19 확인, 이름은 가명): 첫 칸 = 타순 + 위치 + 이름(번호) · 머리글 '선수 …' · 합계 '합 계 …' · 교체 선수는 같은 타순으로 아래 줄
+  var RH = '선수\t1\t2\t3\t4\t5\t6\t7\t8\t9\t타수\t안타\t타점\t득점\t도루\t타율\t시즌';
+  function real(head, cells) {
+    var c = ['', '', '', '', '', '', '', '', ''];
+    Object.keys(cells).forEach(function (k) { c[k - 1] = cells[k]; });
+    return [head].concat(c, ['2', '1', '0', '0', '0', '0.500', '0.500']).join('\t');
+  }
+  function realTable(rows) { return ['', RH].concat(rows, ['합 계\t9\t4\t0\t0\t0\t0.444\t0.444', '']).join('\n'); }
+  var REAL_A = realTable([
+    real('1지가일(1)', { 1: '유플', 2: '좌안' }),
+    real('2三가이(2)', { 1: '삼진', 2: '4구' }),
+    real('3一가삼(3)', { 1: '3땅' }),
+    real('4유가사(4)', { 2: '중안' }),
+    real('4미가오(5)', { 3: '대타,좌중2' })
+  ]);
+
+  test('실제 PC 웹 복사 형식: 붙은 첫 칸 → 타순 · 위치 · 이름 · 미 = 위치 없음 · 교체 선수 · 타석 순서 복원', function () {
+    var out = window.SLGameOneImport.buildGameOneGame({ awayText: REAL_A, now: 1790000400000 }), g = out.game;
+    eq(g.away_lineup.map(function (p) { return p.name + '#' + p.num + '/' + p.pos + (p.isStarter ? '' : '(교체)'); }),
+      ['가일#1/DH', '가이#2/3루', '가삼#3/1루', '가사#4/유격', '가오#5/(교체)'], '라인업');
+    eq(seq(g), ['1회초 가일 플라이 아웃', '1회초 가이 삼진', '1회초 가삼 땅볼 아웃',
+      '2회초 가사 안타', '2회초 가일 안타', '2회초 가이 볼넷', '3회초 가오 2루타'], '타석 순서(2회는 4번부터)');
+    eq([out.report.away.split, out.report.away.skipped.length], [null, 0], '머리글 · 합 계 줄은 표 두 개로 보지 않음 · 모르는 기록 없음');
+  });
+
+  test('실제 형식에서 한 칸에 표 두 개: 합 계 · 팀 이름 · 선수 머리글 줄 다음 표(sep) · 줄 없이 이어 붙인 두 표(restart)', function () {
+    var B = realTable(['1우나일(11)\t삼진', '2좌나이(12)\t삼진', '3중나삼(13)\t삼진'].map(function (r) { return r + '\t\t\t\t\t\t\t\t\t1\t0\t0\t0\t0\t0.000\t0.000'; }));
+    var both = REAL_A + '\n나팀\n' + B;
+    var s = split(both);
+    eq([s && s.why, s && s.name], ['sep', '나일'], '합 계 · 선수 머리글 다음 표: ' + JSON.stringify(s));
+    var nine = function (pre, n) { return NINE.map(function (o) { return real(o + '중' + pre + o + '(' + (n + o) + ')', { 1: '삼진' }); }); };
+    var r = split(nine('가', 10).concat(nine('나', 30)).join('\n'));
+    eq([r && r.why, r && r.name, r && r.line], ['restart', '나1', 10], '이어 붙인 두 표: ' + JSON.stringify(r));
+  });
+
   test('원정 · 홈 칸에 같은 표: 같은 선수(이름 + 등번호) 2명 이상이면 알림 · 동명이인 1명은 넘어감', function () {
     var B = window.SLGameOneImport.buildGameOneGame;
     eq(B({ awayText: AWAY, homeText: AWAY, now: 1790000300000 }).report.shared, ['배성웅(15)', '이현준(24)', '김수찬(5)'], '같은 표');

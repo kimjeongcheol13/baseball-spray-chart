@@ -31,18 +31,18 @@
     <tr><td>구글 로그인 (선택)</td><td>이메일 주소, 이름, 구글 계정 식별자</td><td>로그인 및 기기 간 기록 동기화</td><td>Supabase</td></tr>
     <tr><td>클라우드 동기화·팀 기능 (선택)</td><td>경기 기록, 팀 이름·팀 코드·팀 소속</td><td>로그인 또는 팀 코드 입력 시 기기 간 동기화, 팀원 간 기록 공유</td><td>Supabase</td></tr>
     <tr><td>경기 공유 링크 (선택)</td><td>경기 기록(선수 이름·등번호·타석 상세)</td><td>공유 버튼을 누른 경기를 링크로 전달. 링크를 아는 사람은 누구나 열람 가능</td><td>Supabase</td></tr>
-    <tr><td>라인업 사진 입력 (선택)</td><td>고른 사진 이미지 (사진에 찍힌 선수 이름·등번호·포지션 등)</td><td>글자 인식 (선수 목록 자동 채우기)</td><td>OCR.space</td></tr>
+    <tr><td>라인업 사진 입력 (선택)</td><td>고른 사진 이미지 (사진에 찍힌 선수 이름·등번호·포지션 등)</td><td>글자 인식 (선수 목록 자동 채우기)</td><td>Supabase(전달만) → OCR.space</td></tr>
     <tr><td>의견 보내기 (선택)</td><td>작성한 의견 내용, 선택한 태그, 기록한 타석 수, 앱 버전, 브라우저 정보</td><td>버그 수정·기능 개선</td><td>Supabase, Formspree</td></tr>
     <tr><td>방문 통계</td><td>방문 페이지, 기기·브라우저 종류, 대략적 지역 등 (Google Analytics 4)</td><td>이용 현황 파악·서비스 개선</td><td>Google</td></tr>
   </table>
   <p>구글 로그인으로는 위 기본 프로필 정보만 받으며, Gmail·드라이브 등 다른 구글 데이터에는 접근하지 않습니다.</p>
-  <p>라인업 사진 입력에서 사진을 고르면, 글자 인식용으로 변환한 사진 이미지가 OCR.space 서버로 전송됩니다. SprayLab은 사진을 저장하지 않고 읽어 낸 선수 목록만 라인업에 넣으며, OCR.space에서의 처리·보관은 <a href="https://ocr.space/privacypolicy" target="_blank" rel="noopener">OCR.space 개인정보처리방침</a>을 따릅니다.</p>
+  <p>라인업 사진 입력에서 사진을 고르면, 글자 인식용으로 변환한 사진 이미지가 SprayLab의 Supabase 서버를 거쳐 OCR.space 서버로 전송됩니다. Supabase는 사진을 저장하지 않고 OCR.space에 전달만 합니다. SprayLab은 사진을 저장하지 않고 읽어 낸 선수 목록만 라인업에 넣으며, OCR.space에서의 처리·보관은 <a href="https://ocr.space/privacypolicy" target="_blank" rel="noopener">OCR.space 개인정보처리방침</a>을 따릅니다.</p>
   <p>라인업 입력 창에서 외부로 전송되는 것은 <b>사진</b>뿐입니다. 같은 창의 문서 파일(txt·csv·xlsx)과 「게임원 기록 가져오기」에 붙여넣은 글은 기기 안에서만 읽으며, 읽는 과정에서 서버로 보내지 않습니다. (가져와 저장한 경기는 다른 기록과 같이 위 동기화 규칙을 따릅니다.)</p>
 
   <h2>2. 제3자 제공 및 처리 위탁</h2>
   <p>수집한 정보를 판매하거나 광고 목적으로 제3자에게 제공하지 않습니다. 서비스 운영을 위해 아래 서비스를 이용합니다.</p>
   <ul>
-    <li><b>Supabase</b> — 로그인·동기화·의견 데이터 저장</li>
+    <li><b>Supabase</b> — 로그인·동기화·의견 데이터 저장, 라인업 사진을 OCR.space로 전달(저장하지 않음)</li>
     <li><b>Google</b> — 구글 로그인, Google Analytics 방문 통계</li>
     <li><b>Formspree</b> — 의견 보내기 전달</li>
     <li><b>OCR.space</b> — 사용자가 라인업 사진 입력에서 사진을 고를 때 사진 속 글자 인식</li>

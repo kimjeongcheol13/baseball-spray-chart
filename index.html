@@ -80,10 +80,10 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=85">
+<link rel="stylesheet" href="css/styles.css?v=86">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
-<link rel="stylesheet" href="css/analysis.css?v=9">
+<link rel="stylesheet" href="css/analysis.css?v=10">
 <link rel="stylesheet" href="css/compare.css?v=6">
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
@@ -93,7 +93,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=10">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=21">
+<link rel="stylesheet" href="css/paper.css?v=22">
 <link rel="stylesheet" href="css/report.css?v=2">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -1713,6 +1713,32 @@ var _kakaoSdkLoaded = false;
   </div>
 </div>
 
+<!-- 📍 게임원 가져오기 보정: 타구 위치 확인 (js/features/gameonefix.js) — 저장 직후 불러오기 목록 위에 한 번 열린다 -->
+<div class="overlay" id="goFixOverlay">
+  <div class="modal dm-modal go-modal gf-modal" role="dialog" aria-labelledby="gfTitle" aria-describedby="gfSub">
+    <div class="dm-hdr">
+      <div class="modal-title" id="gfTitle" style="margin-bottom:0">타구 위치 확인</div>
+      <button type="button" class="dm-x" onclick="gameOneFixClose('later')" aria-label="닫기 (나중에 할게)">✕</button>
+    </div>
+    <div class="modal-sub" id="gfSub">게임원 기록은 방향만 있어서 타구를 대표 자리에 찍었어요. 실제 자리를 기억하면 점을 끌어 옮겨 주세요. <b>점선 테두리</b> = 대략 찍은 위치</div>
+    <div class="gf-nav">
+      <button type="button" class="btn btn-ghost gf-step" id="gfPrev" onclick="gameOneFixStep(-1)" aria-label="이전 타자">◀ 이전</button>
+      <div class="gf-who" id="gfWho" aria-live="polite"></div>
+      <button type="button" class="btn btn-ghost gf-step" id="gfNext" onclick="gameOneFixStep(1)" aria-label="다음 타자">다음 ▶</button>
+    </div>
+    <div class="gf-mode" role="group" aria-label="보기">
+      <button type="button" id="gfModeOne" aria-pressed="true" onclick="gameOneFixAll(false)">타자별</button>
+      <button type="button" id="gfModeAll" aria-pressed="false" onclick="gameOneFixAll(true)">전체 보기</button>
+    </div>
+    <div class="gf-cv"><canvas id="gfCanvas" role="img" aria-label="필드 위 타구 점 — 점을 끌어 옮기면 위치가 바뀝니다"></canvas></div>
+    <ol class="gf-list" id="gfList"></ol>
+    <div class="go-btns">
+      <button type="button" class="btn btn-ghost" id="gfLater" onclick="gameOneFixClose('later')">나중에 할게</button>
+      <button type="button" class="btn btn-primary" id="gfDone" onclick="gameOneFixClose('done')">다 봤어요</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ☁️ CLOUD OVERLAY -->
 <div class="overlay" id="cloudOverlay">
@@ -2416,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=227"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script defer src="js/gameone.js?v=7"></script>
-<script type="module" src="js/app.js?v=131"></script>
+<script type="module" src="js/app.js?v=132"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

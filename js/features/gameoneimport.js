@@ -28,6 +28,9 @@
 //       공유 링크 · 가져오기 링크 · 로그인 돌아오기(game · gid · team · import · code · #share=)와 같이 오면 열지 않는다(그쪽이 먼저)
 //     - 기록이 하나도 없는 첫 화면(저장 경기 0 · 기록 중 타석 0) 필드 아래 「게임원 기록 가져오기」(#goStart). 샘플 버튼과 같은 방식으로
 //       첫 사용 말풍선(updateFieldTapHint)이 갱신될 때 다시 판단한다(core.js 는 고치지 않는다)
+//   · 보정 (2026-10-19): 타구 점마다 estimated = 파서 confidence 'low'(안 · 플 · 땅처럼 폭이 넓은 결과 · R · 미확인 토큰 섞임 등).
+//     저장 직후 「타구 위치 확인」(gameonefix.js)을 한 번 연다 — 점을 끌어 옮기면 좌표 · 방향 · 거리가 바뀌고 estimated = false.
+//     estimated 가 없는 예전 기록 · 직접 찍은 기록 = 직접 입력으로 본다. 통계 계산은 estimated 와 무관
 //     - 링크 · 첫 화면 버튼으로 열면 '복사하는 방법'을 펼쳐 둔다(처음 쓰는 사람). 열기 이벤트에 from = 'tile'(데이터 관리) | 'link'(?go=1) | 'empty'(첫 화면 버튼)
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
@@ -184,6 +187,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
       x: loc ? a.x : null, y: loc ? a.y : null, deg: loc ? a.angle : null, dir: loc ? a.dir : null,
       ft: loc ? (a.distance ? Math.round(a.distance * 3.281) : Math.round(a.depth * (wallFt[a.dir] || 370))) : null, inn, ts: '', pitches: [],
       ...(pitcher ? { pitcher } : {}),
+      ...(loc ? { estimated: a.confidence === 'low' } : {}),   // 위치 추정(대략) — 「타구 위치 확인」(gameonefix.js)에서 옮기면 false
     };
   });
   report.pa = abs.length;
@@ -372,7 +376,7 @@ function _preview() {
     const hrTxt = [hr ? '홈런 [2R 97M] 같은 기록이 있으면 그 타점' : '', hrMin ? '기록 없는 홈런은 최소 1타점(타자 본인 득점)' : ''].filter(Boolean).join(', ');
     h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hrTxt ? hrTxt + ', 나머지 타석은 ' : ''}0으로 저장됩니다`
       + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''})` : '') + '.'
-      + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다.' : '') + '</div>';
+      + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다. 저장한 뒤 「타구 위치 확인」에서 실제 자리로 옮길 수 있습니다.' : '') + '</div>';
     if (R.pitch) h += '<div class="go-note">투수: 투수 성적은 이 경기에 함께 저장되어 분석 탭 › 투수의 「게임원 투수 시즌 기록」에 모입니다.'
       + (R.pitch.linked.away || R.pitch.linked.home ? ' 투수 표 순서대로 상대 타석에 투수를 붙여, 기록 탭 타자 상세 「투수별 요약」과 엑셀 투수 칸에도 나옵니다.' : '') + '</div>';
   }
@@ -423,6 +427,7 @@ export function saveGameOneImport() {
   _preview();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();
+  if (window.openGameOneFix) window.openGameOneFix(g.key);   // 타구 점이 있으면 「타구 위치 확인」을 불러오기 목록 위에 한 번 연다(나중에 할게로 넘길 수 있음)
   const skipped = R.away.skipped.length + R.home.skipped.length, L = R.pitch && R.pitch.linked;
   _track('gameone_import', {
     pa: g.abs.length, paste: _usedSplit ? 'page' : 'tables', scoreboard: R.ls ? 1 : 0,

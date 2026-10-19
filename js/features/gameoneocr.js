@@ -4,6 +4,8 @@
 //      경기기록 = 타순 · 타자명 · 포지션 · 1회 … 7회     칸 표기는 웹과 같다(중플 · 우안,도루 · 4구)
 //      타자     = 타순 · 타자명 · 포지션 · 타수 · 안타 · 타점 · 홈런 · 사사구 · 도루 · 득점 · 삼진 · 타율
 //        → 같이 고르면 타수 · 타점 · 득점 · 도루 · 타율을 줄 끝에 붙이고(웹 복사와 같은 꼴), 타수 · 안타 · 사사구 · 삼진으로 읽은 칸을 맞춰 본다
+//      점수판   = 맨 위 1 2 3 … R H E B · 선공 / 후공 줄 → 「이닝별 점수표」 칸(선공 = 원정, 후공 = 홈). R H E B · 영문 팀 이름은 한국어 모델이 못 읽어
+//                 머리글은 1 2 3 … 숫자 위치로, 팀 이름은 '원정팀' · '홈팀'으로 둔다(이름 칸에 적은 팀 이름이 그대로 쓰인다)
 //  · 칸 나누기: 어두운 점으로 글줄(가로 띠) → 글 덩어리(세로 틈) → 머리글 글자 위치에 붙인다. 덩어리마다 한 줄 OCR(PSM 7)
 //    머리글이 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글 위치를 쓴다. 그래서 첫 장에는 머리글이 보여야 한다
 //  · Tesseract.js 5.1.1(jsdelivr) 는 처음 누를 때만 불러온다. 한국어 글자 모델은 assets/ocr/kor.traineddata(tessdata_fast, Apache-2.0) 를 직접 둔다
@@ -153,6 +155,35 @@ function checkStats(merged) {
   return out;
 }
 
+// ── 점수판 (1 2 3 … R H E B · 선공 / 후공) ──
+// 머리글 = 앞에서부터 1 · 2 · 3 … 으로 읽힌 덩어리(3개 이상) + 바로 뒤 4개(R H E B, 글자는 못 읽어도 자리만 쓴다)
+function readScoreHeader(cells) {
+  let k = 0;
+  while (k < cells.length && _norm(cells[k].text) === String(k + 1)) k++;
+  if (k < 3 || cells.length < k + 4) return null;
+  return { inn: cells.slice(0, k).map(c => c.cx), sums: cells.slice(k, k + 4).map(c => c.cx) };
+}
+// 선공 · 후공 줄 → { inn: ['1' | '-' …], sum: [R, H, E, B] } — 칸마다 가장 가까운 머리글 자리. 숫자가 아니면 이닝은 '-'(진행 안 함), 합계는 null
+function readScoreRow(cells, sh) {
+  const cols = sh.inn.map((cx, i) => ({ k: 'i' + i, cx })).concat(sh.sums.map((cx, i) => ({ k: 's' + i, cx })));
+  const gaps = sh.inn.slice(1).map((x, i) => x - sh.inn[i]).sort((a, b) => a - b), tol = (gaps.length ? gaps[gaps.length >> 1] : 60) * 0.6;
+  const row = { inn: sh.inn.map(() => '-'), sum: sh.sums.map(() => null) };
+  cells.forEach(c => {
+    let best = null;
+    cols.forEach(k => { const d = Math.abs(k.cx - c.cx); if (d <= tol && (!best || d < best.d)) best = { k: k.k, d }; });
+    if (!best) return;
+    const t = _norm(c.text), n = /^\d{1,2}$/.test(t) ? t : null;
+    if (best.k[0] === 'i') row.inn[+best.k.slice(1)] = n || '-'; else row.sum[+best.k.slice(1)] = n;
+  });
+  return row;
+}
+// 점수판 → 「이닝별 점수표」 칸 글 (parseGameOneScoreboard 가 읽는 꼴: Team 1 … R H E B / 팀 이름 · 이닝 · 합계)
+function toScoreText(sc) {
+  const head = ['Team'].concat(sc.inn.map((_, i) => String(i + 1)), ['R', 'H', 'E', 'B']);
+  const line = (name, r) => [name].concat(r.inn, r.sum.map(v => v == null ? '' : v)).join('\t');
+  return [head.join('\t'), line('원정팀', sc.away), line('홈팀', sc.home)].join('\n');
+}
+
 // 타순이 1부터 이어지지 않으면 그 줄이 찍힌 장이 빠진 것 — 빠진 타순들
 function orderGaps(rows) {
   const have = new Set(rows.map(r => r.order).filter(o => o != null)), max = Math.max(0, ...have), out = [];
@@ -162,8 +193,8 @@ function orderGaps(rows) {
 
 // ── 한 장 읽기 (recognize = 덩어리 위치 → 글자) → { width, head, lines } ──
 async function readShot(img, recognize, onLine) {
-  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [], hs = [];
-  let head = null;
+  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [], hs = [], side = {};
+  let head = null, sh = null;
   for (let i = 0; i < lines.length; i++) {
     const L = lines[i], cl = findClusters(m, img.width, L);
     if (onLine) onLine(i + 1, lines.length);
@@ -171,12 +202,16 @@ async function readShot(img, recognize, onLine) {
     if (cl.length >= 2) hs.push(L.y1 - L.y0);
     const cells = [];
     for (const c of cl) cells.push({ cx: c.cx, text: await recognize(c.x0, L.y0, c.x1, L.y1) });
-    const h = readHeader(cells);
-    if (h) head = h; else read.push(cells);
+    const h = readHeader(cells), s0 = _norm(cells[0].text);
+    if (h) head = h;
+    else if (!sh && (sh = readScoreHeader(cells))) continue;
+    else if (sh && /^(선공|후공)$/.test(s0)) side[s0] = readScoreRow(cells.slice(1), sh);
+    else read.push(cells);
   }
   // lh = 글줄 높이(가운데 값). 여러 장을 모아 찍은 화면 · 줄인 사진은 10px 안팎이라 못 읽는다 → 안내용
   hs.sort((a, b) => a - b);
-  return { width: img.width, head, lines: read, lh: hs.length ? hs[hs.length >> 1] : 0 };
+  const score = sh && side['선공'] && side['후공'] ? { inn: sh.inn, away: side['선공'], home: side['후공'] } : null;
+  return { width: img.width, head, lines: read, lh: hs.length ? hs[hs.length >> 1] : 0, score };
 }
 // 읽은 장 → { kind, rows }. 머리글 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글을 쓴다 — 숫자 칸이 6개 이상인 줄이 있으면 타자 표
 function placeShot(shot, heads) {
@@ -252,8 +287,9 @@ async function readFiles(files, onProgress) {
   }
   const heads = read.filter(s => s.head), shots = read.map(s => placeShot(s, heads)).filter(s => s.kind);
   const merged = mergeShots(shots);
-  const small = read.length > 0 && read.every(s => !s.head && s.lh > 0 && s.lh < 16);
-  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), small, shots: shots.length, files: list.length };
+  const small = read.length > 0 && read.every(s => !s.head && !s.score && s.lh > 0 && s.lh < 16), sc = read.map(s => s.score).find(Boolean);
+  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), small,
+    scoreText: sc ? toScoreText(sc) : '', shots: shots.length, files: list.length };
 }
 
 // ── 화면 ──
@@ -275,6 +311,14 @@ async function gameOneShotFiles(input) {
   _msg(`${label}팀 사진 ${files.length}장 읽는 중… 처음 한 번은 글자 읽기 도구(약 6MB)를 받느라 더 걸립니다`);
   try {
     const r = await api.readFiles(files, (i, n, k, m) => _msg(`${label}팀 사진 읽는 중… ${i + 1}/${n}장 · ${Math.round(100 * k / m)}%`));
+    if (r.scoreText && $('goScore')) $('goScore').value = r.scoreText;   // 점수판은 어느 팀 버튼으로 골라도 이닝별 점수표 칸에
+    const scoreNote = r.scoreText ? '<div class="go-note">점수판도 읽어 「이닝별 점수표」 칸에 넣었습니다(선공 = 원정 · 후공 = 홈). 팀 이름은 위 칸에 적어 주세요.</div>' : '';
+    if (!r.rows.length && r.scoreText) {
+      if (typeof window.gameOnePreview === 'function') window.gameOnePreview();
+      _msg('점수판만 읽었습니다 — 타자 기록은 「경기기록」(1회 2회 …) 표 사진을 골라야 들어옵니다.' + scoreNote, 'warn');
+      _track('gameone_shot', { side: _side, files: r.files, rows: 0, why: 'score_only', score: 1, ms: Date.now() - t0 });
+      return;
+    }
     if (!r.rows.length) {
       // 왜 못 읽었는지: 타자 표만 골랐다 · 글자가 너무 작다(모아 찍은 화면 · 줄인 사진) · 머리글 있는 장이 없다
       const why = r.statsOnly.length ? 'stats_only' : r.small ? 'small' : 'no_header';
@@ -296,9 +340,10 @@ async function gameOneShotFiles(input) {
       : `<div class="go-ok">타자 표의 타수 · 안타 · 사사구 · 삼진과 ${withStats}명 모두 맞습니다.</div>`;
     else h += '<div class="go-note">「타자」 표(타수 · 안타 …)도 같이 고르면 읽은 칸이 맞는지 숫자로 맞춰 봅니다.</div>';
     if (r.gaps.length) h += `<div class="go-warn">타순 ${r.gaps.join(' · ')}번 줄이 사진에 없습니다 — 그 줄이 찍힌 사진을 같이 골라 주세요</div>`;
+    h += scoreNote;
     if (r.statsOnly.length) h += `<div class="go-warn">타자 표에는 있는데 경기기록에서 못 찾은 선수: ${r.statsOnly.map(s => _esc(s.name) + '(' + s.number + ')').join(' · ')} — 그 줄이 찍힌 사진을 더 골라 주세요</div>`;
     _msg(h, r.checks.length || r.statsOnly.length || r.gaps.length ? 'warn' : 'ok');
-    _track('gameone_shot', { side: _side, files: r.files, rows: r.rows.length, pa, stats: withStats, mismatch: r.checks.length + r.statsOnly.length, gaps: r.gaps.length, ms: Date.now() - t0 });
+    _track('gameone_shot', { side: _side, files: r.files, rows: r.rows.length, pa, stats: withStats, mismatch: r.checks.length + r.statsOnly.length, gaps: r.gaps.length, score: r.scoreText ? 1 : 0, ms: Date.now() - t0 });
   } catch (e) {
     _msg('읽지 못했습니다: ' + _esc(e && e.message || e) + ' — 다시 골라 주세요', 'bad');
     _track('gameone_shot', { side: _side, files: files.length, rows: -1, ms: Date.now() - t0 });
@@ -310,4 +355,4 @@ async function gameOneShotFiles(input) {
 window.gameOneShotPick = gameOneShotPick;
 window.gameOneShotFiles = gameOneShotFiles;
 // 테스트는 api.readFiles 를 바꿔 끼워 화면만 확인한다(실제 Tesseract 는 CI 에서 못 받음)
-const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, readShot, placeShot, readFiles, POS_APP };
+const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, readScoreHeader, readScoreRow, toScoreText, readShot, placeShot, readFiles, POS_APP };

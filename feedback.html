@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게임원 가져오기 피드백 — SprayLab</title>
+<meta name="description" content="SprayLab 게임원 가져오기를 써 보셨다면 1분만 알려 주세요.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/landing/img/icon-32.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!-- 파일럿 피드백 (2026-10-19): 게임원 가져오기를 써 본 팀에게 받는 1분 설문. 정적 페이지 — 답은 앱 「의견 보내기」와 같은 Formspree 로 개발자 메일에 간다.
+     이름 · 연락처는 묻지 않는다. 동작은 js/pilotfeedback.js -->
+<style>
+  :root {
+    --ink: #0B0D12; --ink-2: #12151C; --ink-3: #1B1F28; --line: rgba(255,255,255,.14); --line-2: rgba(255,255,255,.08);
+    --fg: #FFFFFF; --fg-2: rgba(255,255,255,.78); --fg-3: rgba(255,255,255,.55);
+    --red: #E0343F; --blue: #4B8CF5; --amber: #F6C23E; --teal: #2DD4A0; --r: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: var(--ink); color: var(--fg); line-height: 1.6; letter-spacing: -.01em; word-break: keep-all; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); }
+  main { max-width: 640px; margin: 0 auto; padding: 28px 16px 64px; }
+  .brand { font-weight: 800; font-size: 15px; letter-spacing: .1em; color: var(--fg); text-decoration: none; }
+  .brand i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin-right: 9px; vertical-align: 1px; }
+  .kicker { margin-top: 28px; font-size: 12px; font-weight: 800; letter-spacing: .2em; color: var(--red); }
+  h1 { margin-top: 8px; font-size: 28px; line-height: 1.25; letter-spacing: -.03em; font-weight: 800; }
+  .sub { margin-top: 10px; font-size: 15px; color: var(--fg-2); }
+  form { margin-top: 24px; display: grid; gap: 14px; }
+  fieldset { border: 1px solid var(--line); border-radius: var(--r); background: var(--ink-2); padding: 14px 14px 16px; min-width: 0; }
+  fieldset.bad { border-color: var(--red); }
+  legend { float: left; width: 100%; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  legend small, label small { font-weight: 500; color: var(--fg-3); margin-left: 4px; }
+  .req { color: var(--red); margin-left: 2px; }
+  .opts { clear: both; display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt { position: relative; }
+  .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .opt span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; font-size: 15px; color: var(--fg-2); cursor: pointer; user-select: none; }
+  .opt input:checked + span { border-color: var(--blue); background: rgba(75,140,245,.16); color: var(--fg); font-weight: 700; }
+  .opt input:focus-visible + span { outline: 3px solid var(--amber); outline-offset: 2px; }
+  .nps { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; }
+  .nps .opt span { justify-content: center; width: 100%; padding: 0; border-radius: var(--r); font-variant-numeric: tabular-nums; }
+  .nps-ends { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--fg-3); }
+  textarea, input[type=text] { clear: both; display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ink-3); color: var(--fg); font: inherit; font-size: 16px; }
+  textarea { min-height: 76px; resize: vertical; }
+  textarea:focus, input[type=text]:focus { outline: 3px solid var(--amber); outline-offset: 1px; }
+  .more { margin-top: 10px; }
+  .more label { display: block; font-size: 14px; color: var(--fg-2); margin-bottom: 6px; }
+  .err { display: none; margin-top: 8px; font-size: 13px; color: var(--red-2, #FF6B74); }
+  fieldset.bad .err { display: block; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .send { margin-top: 6px; display: flex; align-items: center; justify-content: center; width: 100%; height: 52px; border: 0; border-radius: var(--r); background: var(--red); color: #fff; font: inherit; font-size: 16px; font-weight: 800; cursor: pointer; }
+  .send:disabled { opacity: .6; cursor: default; }
+  .send:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+  .note { font-size: 13px; color: var(--fg-3); }
+  #status { min-height: 1em; font-size: 14px; color: var(--fg-2); }
+  #status.fail { color: #FF6B74; }
+  #status a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; }
+  .done { margin-top: 28px; padding: 24px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ink-2); text-align: center; }
+  .done h2 { font-size: 22px; letter-spacing: -.02em; }
+  .done p { margin-top: 8px; color: var(--fg-2); font-size: 15px; }
+  .done a { display: inline-flex; align-items: center; justify-content: center; margin-top: 18px; min-height: 52px; padding: 0 24px; border-radius: var(--r); background: #fff; color: var(--ink); font-weight: 800; text-decoration: none; }
+  .tag { margin-top: 36px; font-size: 12px; font-weight: 600; letter-spacing: .22em; color: var(--fg-3); text-align: center; }
+  @media (max-width: 600px) {
+    .nps { grid-template-columns: repeat(6, 1fr); }   /* 11칸이 한 줄이면 칸 폭이 44px 아래로 */
+  }
+  @media (max-width: 420px) {
+    h1 { font-size: 24px; }
+  }
+  @media (max-width: 360px) {
+    .nps { grid-template-columns: repeat(4, 1fr); }   /* 320px 폭에서 6칸이면 38px */
+  }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><i></i>SPRAYLAB</a>
+  <p class="kicker">PILOT · 게임원 가져오기</p>
+  <h1>써 보셨다면,<br>1분만 알려 주세요</h1>
+  <p class="sub">별표(<span class="req">*</span>) 3개만 답하면 됩니다. 이름 · 연락처는 묻지 않아요.</p>
+
+  <form id="pf" novalidate>
+    <fieldset data-name="role" data-req>
+      <legend>어떤 입장에서 써 보셨나요?<span class="req">*</span></legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="role" value="선수"><span>선수</span></label>
+        <label class="opt"><input type="radio" name="role" value="감독·코치"><span>감독·코치</span></label>
+        <label class="opt"><input type="radio" name="role" value="기록원·매니저"><span>기록원·매니저</span></label>
+        <label class="opt"><input type="radio" name="role" value="학부모"><span>학부모</span></label>
+        <label class="opt"><input type="radio" name="role" value="기타"><span>기타</span></label>
+      </div>
+      <p class="err">하나 골라 주세요</p>
+    </fieldset>
+
+    <fieldset data-name="device">
+      <legend>어디서 가져오셨나요?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="device" value="휴대폰"><span>휴대폰</span></label>
+        <label class="opt"><input type="radio" name="device" value="PC"><span>PC</span></label>
+        <label class="opt"><input type="radio" name="device" value="둘 다"><span>둘 다</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset data-name="result" data-req>
+      <legend>게임원 기록 가져오기, 됐나요?<span class="req">*</span></legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="result" value="한 번에 됐다"><span>한 번에 됐다</span></label>
+        <label class="opt"><input type="radio" name="result" value="몇 번 해 보고 됐다"><span>몇 번 해 보고 됐다</span></label>
+        <label class="opt"><input type="radio" name="result" value="안 됐다"><span>안 됐다</span></label>
+      </div>
+      <div class="more"><label for="stuck">막힌 곳이나 헷갈린 점 <small>선택</small></label><textarea id="stuck" name="stuck" maxlength="1000" placeholder="예: 휴대폰에서 전체 선택이 안 됐어요"></textarea></div>
+      <p class="err">하나 골라 주세요</p>
+    </fieldset>
+
+    <fieldset data-name="games">
+      <legend>몇 경기를 가져오셨나요?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="games" value="0"><span>못 가져옴</span></label>
+        <label class="opt"><input type="radio" name="games" value="1"><span>1경기</span></label>
+        <label class="opt"><input type="radio" name="games" value="2-5"><span>2~5경기</span></label>
+        <label class="opt"><input type="radio" name="games" value="6+"><span>6경기 이상</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset data-name="match">
+      <legend>차트 · 기록이 게임원 표와 맞았나요?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="match" value="다 맞았다"><span>다 맞았다</span></label>
+        <label class="opt"><input type="radio" name="match" value="일부 달랐다"><span>일부 달랐다</span></label>
+        <label class="opt"><input type="radio" name="match" value="많이 달랐다"><span>많이 달랐다</span></label>
+        <label class="opt"><input type="radio" name="match" value="확인 안 함"><span>확인 안 함</span></label>
+      </div>
+      <div class="more"><label for="diff">달랐던 점 <small>선택</small></label><textarea id="diff" name="diff" maxlength="1000" placeholder="예: 3회 타석 순서가 달라요"></textarea></div>
+    </fieldset>
+
+    <fieldset data-name="useful">
+      <legend>쓸모 있던 것 <small>여러 개 골라도 돼요</small></legend>
+      <div class="opts">
+        <label class="opt"><input type="checkbox" name="useful" value="스프레이차트"><span>스프레이차트</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="타석 기록·순서"><span>타석 기록·순서</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="이닝별 점수"><span>이닝별 점수</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="투수별 상대 기록"><span>투수별 상대 기록</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="투수 시즌 기록"><span>투수 시즌 기록</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="선수 리포트 이미지"><span>선수 리포트 이미지</span></label>
+        <label class="opt"><input type="checkbox" name="useful" value="아직 모르겠다"><span>아직 모르겠다</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset data-name="nps" data-req>
+      <legend>팀 동료에게 추천할 가능성은?<span class="req">*</span></legend>
+      <div class="opts nps">
+        <label class="opt"><input type="radio" name="nps" value="0"><span>0</span></label>
+        <label class="opt"><input type="radio" name="nps" value="1"><span>1</span></label>
+        <label class="opt"><input type="radio" name="nps" value="2"><span>2</span></label>
+        <label class="opt"><input type="radio" name="nps" value="3"><span>3</span></label>
+        <label class="opt"><input type="radio" name="nps" value="4"><span>4</span></label>
+        <label class="opt"><input type="radio" name="nps" value="5"><span>5</span></label>
+        <label class="opt"><input type="radio" name="nps" value="6"><span>6</span></label>
+        <label class="opt"><input type="radio" name="nps" value="7"><span>7</span></label>
+        <label class="opt"><input type="radio" name="nps" value="8"><span>8</span></label>
+        <label class="opt"><input type="radio" name="nps" value="9"><span>9</span></label>
+        <label class="opt"><input type="radio" name="nps" value="10"><span>10</span></label>
+      </div>
+      <div class="nps-ends"><span>0 · 전혀 아니다</span><span>10 · 꼭 추천</span></div>
+      <p class="err">0~10 중 하나 골라 주세요</p>
+    </fieldset>
+
+    <fieldset data-name="again">
+      <legend>앞으로도 쓸 것 같나요?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="again" value="매 경기"><span>매 경기</span></label>
+        <label class="opt"><input type="radio" name="again" value="가끔"><span>가끔</span></label>
+        <label class="opt"><input type="radio" name="again" value="안 쓸 것 같다"><span>안 쓸 것 같다</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset data-name="wish">
+      <legend><label for="wish">하나만 바꾼다면? <small>선택</small></label></legend>
+      <textarea id="wish" name="wish" maxlength="1000" placeholder="있으면 좋겠는 기능, 불편했던 점"></textarea>
+    </fieldset>
+
+    <fieldset data-name="team">
+      <legend><label for="team">팀 이름 <small>선택 · 같은 팀 답을 묶어 보려고요</small></label></legend>
+      <input type="text" id="team" name="team" maxlength="40" autocomplete="off">
+    </fieldset>
+
+    <div class="hp" aria-hidden="true"><label>비워 두세요 <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></div>
+
+    <button type="submit" class="send" id="pfSend">보내기</button>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p class="note">보내기를 누르면 위 답이 Formspree(메일 전달 서비스)를 거쳐 개발자 메일로 갑니다. 앱 「의견 보내기」와 같은 경로입니다 · <a href="privacy.html">개인정보처리방침</a></p>
+  </form>
+
+  <section class="done" id="pfDone" hidden>
+    <h2>고맙습니다!</h2>
+    <p>보내 주신 답은 다음 업데이트 순서를 정하는 데 바로 씁니다.</p>
+    <a href="./">SprayLab 열기</a>
+  </section>
+
+  <p class="tag">YOUR SWING, VISUALIZED</p>
+</main>
+<script src="js/pilotfeedback.js?v=1"></script>
+</body>
+</html>

@@ -65,7 +65,8 @@
   .live spray-play { left: max(32px, calc((100% - var(--max)) / 2 + 32px)); right: max(32px, calc((100% - var(--max)) / 2 + 32px)); top: 200px; bottom: 48px; }   /* under the heading, in the content column */
   .live spray-play > div { color: #fff !important; font-size: 14px !important; }   /* phase · live counter · landing tag, in white */
   .hero .shade, .live .shade { pointer-events: none; }
-  .hero .wrap, .live .wrap, .hero .wrap > div, .live .wrap > * { pointer-events: none; } .hero .wrap a, .live .wrap a { pointer-events: auto; }   /* the text boxes lie over the 3D: let touches and drags through to it */
+  .hero .wrap > div, .live .wrap > * { pointer-events: none; } .hero .wrap a, .live .wrap a { pointer-events: auto; }
+  @media (pointer: coarse) { .hero .wrap, .live .wrap { pointer-events: none; } }   /* touch devices: the text boxes lie over the 3D -- let fingers through to it (desktop left as it was) */
   .hero spray-play { --shift: .2 .1; }                                          /* lens shift: home plate to the right of the text, feet above the fold */
   .hero .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.7) 36%, rgba(11,13,18,.1) 58%, transparent 72%), linear-gradient(180deg, rgba(11,13,18,.3) 0%, transparent 28%, transparent 62%, rgba(11,13,18,.85) 100%); }
   .hero .wrap { position: relative; width: 100%; padding-bottom: 64px; }
@@ -248,7 +249,7 @@
   <div class="wrap">
     <div class="head">
       <div><div class="kicker">Live field</div><h2>기록이 쌓이는 모습을<br>필드 위에서 봅니다</h2></div>
-      <p class="sub right">투수가 던지고 타자가 칩니다. 공이 떨어진 자리에 마커가 남고 차트가 쌓입니다. 필드를 잡고 돌려볼 수 있고, 휴대폰에서는 두 손가락으로 확대됩니다.</p>
+      <p class="sub right">투수가 던지고 타자가 칩니다. 공이 떨어진 자리에 마커가 남고 차트가 쌓입니다. 필드를 잡고 돌려볼 수 있습니다.</p>
     </div>
   </div>
 </section>

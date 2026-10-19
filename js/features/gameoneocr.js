@@ -162,18 +162,21 @@ function orderGaps(rows) {
 
 // ── 한 장 읽기 (recognize = 덩어리 위치 → 글자) → { width, head, lines } ──
 async function readShot(img, recognize, onLine) {
-  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [];
+  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [], hs = [];
   let head = null;
   for (let i = 0; i < lines.length; i++) {
     const L = lines[i], cl = findClusters(m, img.width, L);
     if (onLine) onLine(i + 1, lines.length);
     if (!cl.length || cl.length > 24) continue;   // 글이 아닌 띠(사진 · 그래프)
+    if (cl.length >= 2) hs.push(L.y1 - L.y0);
     const cells = [];
     for (const c of cl) cells.push({ cx: c.cx, text: await recognize(c.x0, L.y0, c.x1, L.y1) });
     const h = readHeader(cells);
     if (h) head = h; else read.push(cells);
   }
-  return { width: img.width, head, lines: read };
+  // lh = 글줄 높이(가운데 값). 여러 장을 모아 찍은 화면 · 줄인 사진은 10px 안팎이라 못 읽는다 → 안내용
+  hs.sort((a, b) => a - b);
+  return { width: img.width, head, lines: read, lh: hs.length ? hs[hs.length >> 1] : 0 };
 }
 // 읽은 장 → { kind, rows }. 머리글 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글을 쓴다 — 숫자 칸이 6개 이상인 줄이 있으면 타자 표
 function placeShot(shot, heads) {
@@ -249,7 +252,8 @@ async function readFiles(files, onProgress) {
   }
   const heads = read.filter(s => s.head), shots = read.map(s => placeShot(s, heads)).filter(s => s.kind);
   const merged = mergeShots(shots);
-  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), shots: shots.length, files: list.length };
+  const small = read.length > 0 && read.every(s => !s.head && s.lh > 0 && s.lh < 16);
+  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), small, shots: shots.length, files: list.length };
 }
 
 // ── 화면 ──
@@ -272,8 +276,14 @@ async function gameOneShotFiles(input) {
   try {
     const r = await api.readFiles(files, (i, n, k, m) => _msg(`${label}팀 사진 읽는 중… ${i + 1}/${n}장 · ${Math.round(100 * k / m)}%`));
     if (!r.rows.length) {
-      _msg('표를 찾지 못했습니다 — 게임원 앱 › 박스 스코어 › 기록에서 「경기기록」(1회 2회 …) 표를 찍어 주세요. 첫 장에는 머리글(타순 · 타자명 · 1회 …)이 보여야 합니다', 'bad');
-      _track('gameone_shot', { side: _side, files: files.length, rows: 0, ms: Date.now() - t0 });
+      // 왜 못 읽었는지: 타자 표만 골랐다 · 글자가 너무 작다(모아 찍은 화면 · 줄인 사진) · 머리글 있는 장이 없다
+      const why = r.statsOnly.length ? 'stats_only' : r.small ? 'small' : 'no_header';
+      _msg({
+        stats_only: '「타자」 표(타수 · 안타 …)만 찾았습니다 — 회별 기록은 「경기기록」(1회 2회 …) 표에만 있어요. 그 표 사진도 같이 골라 주세요',
+        small: '글자가 너무 작게 찍힌 사진입니다 — 여러 장을 모아 찍은 화면이나 줄인 사진 말고, 앱에서 가로로 찍은 원본 스크린샷을 골라 주세요',
+        no_header: '표를 찾지 못했습니다 — 게임원 앱 › 박스 스코어 › 기록에서 「경기기록」(1회 2회 …) 표를 찍어 주세요. 첫 장에는 머리글(타순 · 타자명 · 1회 …)이 보여야 합니다',
+      }[why], 'bad');
+      _track('gameone_shot', { side: _side, files: files.length, rows: 0, why, ms: Date.now() - t0 });
       return;
     }
     const ta = $(_side === 'home' ? 'goHome' : 'goAway');

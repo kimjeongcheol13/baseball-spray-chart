@@ -29,7 +29,12 @@
       }
     } finally { window.fetch = real; }
     var names = [].map.call(document.querySelectorAll('#ocrPlayerList input[data-field="name"]'), function (el) { return el.value; }).filter(Boolean);
-    var out = { calls: calls, names: names, status: $('ocrStatusText').textContent, list: $('ocrPlayerList').textContent, apply: $('ocrApplyBtn').style.display };
+    // 이름이 있는 줄의 타순 · 이름 · 배번 · 포지션 ('1 타자1 1 1루')
+    var rows = [].map.call(document.querySelectorAll('#ocrPlayerList > div'), function (r) {
+      function v(f) { var el = r.querySelector('[data-field="' + f + '"]'); return el ? el.value : ''; }
+      return v('name') ? [(r.querySelector('span') || {}).textContent, v('name'), v('num'), v('pos')].join(' ') : '';
+    }).filter(Boolean);
+    var out = { calls: calls, names: names, rows: rows, status: $('ocrStatusText').textContent, list: $('ocrPlayerList').textContent, apply: $('ocrApplyBtn').style.display };
     window.ocrModalClose();
     return out;
   }
@@ -69,5 +74,27 @@
   test('OCR: 서버는 정상인데 글자가 없는 사진이면 예전처럼 빈 슬롯 목록(오류 아님)', async function () {
     var r = await run(function () { return json({ IsErroredOnProcessing: false, ParsedResults: [{ ParsedText: '' }] }); });
     ok(!/OCR 오류/.test(r.status), '글자 없는 사진을 서버 오류로 봄: ' + r.status);
+  });
+
+  // OCR.space 표 모드 글자 모양: 칸 사이 탭, 줄 끝 탭 + \r\n. 엑셀 화면을 찍으면 맨 앞 칸이 엑셀 행 번호다
+  function table(lines) { return lines.map(function (l) { return l.join('\t') + '\t'; }).join('\r\n'); }
+  var GIBA_SHOT = table([
+    ['1', 'BATTING C', 'www.giba.kr'], ['2', '리그명'], ['3', '팀명'], ['4', '경기일'], ['5', '타순', '수비', '이름', '배번', '비고']
+  ].concat(['1루수', '2루수', '3루수', '유격수', '좌익수', '우익수', '중견수', '포수', '투수'].map(function (p, i) {
+    return [String(i + 6), String(i + 1), p, '타자' + (i + 1), String(i + 1)];
+  }), [
+    ['15', '투수'], ['16', '1. 선수출신', '1. 선수출신 규정:루수'], ['19', '3) 타자: 포', '3) 타자: 포수외 전 포지션 가능루수'],
+    ['20', '2. 콜드게임', '2. 콜드게임: 4,5,6회 10점차 이상루수']
+  ]));
+
+  test('OCR: 엑셀 화면 사진(GIBA 양식 · 왼쪽 행 번호)은 머리줄대로 — 행 번호가 타순으로, 타자1이 타자로 바뀌지 않는다', async function () {
+    var r = await run(function (engine) { return json({ IsErroredOnProcessing: false, ParsedResults: [{ ParsedText: engine === '2' ? GIBA_SHOT : '' }] }); });
+    eq(r.rows, ['1 타자1 1 1루', '2 타자2 2 2루', '3 타자3 3 3루', '4 타자4 4 유격', '5 타자5 5 좌익', '6 타자6 6 우익', '7 타자7 7 중견', '8 타자8 8 포수', '9 타자9 9 투수'], '선수 목록');
+  });
+
+  test('OCR: 머리줄은 있지만 칸이 어긋난 사진은 예전 읽기(줄마다 추측)를 그대로 쓴다', async function () {
+    var shot = table([['타순', '위치', '성명', '배번'], ['1', '가나다', '7'], ['2', '라마바', '12']]);   // 위치 칸이 비어 이름이 배번 자리로 밀림
+    var r = await run(function (engine) { return json({ IsErroredOnProcessing: false, ParsedResults: [{ ParsedText: engine === '2' ? shot : '' }] }); });
+    eq(r.names, ['가나다', '라마바'], '이름');
   });
 })();

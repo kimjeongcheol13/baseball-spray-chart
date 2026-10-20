@@ -137,7 +137,7 @@
           if (!texts[0] && !texts[1] && _ocrErr) { doneCb(new Error(OCR_FAIL_MSG), null, null); return; }
           setStatus('결과 합산 중...', 88);
           var tableText = texts[0], plainText = texts[1];
-          var players = parseOcrText(tableText);
+          var players = _parsePhoto(tableText);
 
           // 포지션 없는 선수 → 평문 텍스트에서 이름 앞 단어로 포지션 추출
           players = players.map(function(p) {
@@ -323,6 +323,16 @@
     }
     return players;
   }
+  // 사진(표 모드 OCR) 글자 → 타순 1~9 칸. 머리줄(이름 칸)이 보이면 칸대로도 읽어 보고, 이름이 더 많이 맞는 쪽을 쓴다.
+  // 엑셀 화면을 찍으면 줄마다 추측하는 읽기(parseOcrText)는 왼쪽 행 번호를 타순으로, '타자1'을 '타자'로 읽었다 — 칸대로 읽으면 생기지 않는다.
+  // 머리줄이 없거나 칸이 어긋나 이름이 덜 맞으면 예전 읽기를 그대로 쓴다(같으면 예전 쪽)
+  function _parsePhoto(text){
+    var guess=parseOcrText(text), slots={}, byCol=[];
+    parseCsv(text).forEach(function(p){ var o=p.order; if(o>=1&&o<=9&&!slots[o]) slots[o]=p; });
+    for(var i=1;i<=9;i++) byCol.push(slots[i]||{ order:i, name:'', pos:'', num:'', bh:'' });
+    function score(ps){ return ps.filter(function(p){ var n=(p.name||'').replace(/\s/g,''); return /[가-힣]{2}|[A-Za-z]{2}/.test(n)&&!BLOCKED[n]&&!POS_MAP[n]; }).length; }
+    return score(byCol)>score(guess)?byCol:guess;
+  }
   function parseXlsx(buf){
     try{ var wb=XLSX.read(buf,{type:'array'}); var ws=wb.Sheets[wb.SheetNames[0]]; return parseCsv(XLSX.utils.sheet_to_csv(ws,{FS:','})); }catch(e){ return []; }
   }
@@ -464,7 +474,7 @@
 
   window.ocrReparse = function(){
     var ra=document.getElementById('ocrRawText'); if(!ra) return;
-    _parsedPlayers=parseOcrText(ra.value); renderPlayerList(_parsedPlayers);
+    _parsedPlayers=_parsePhoto(ra.value); renderPlayerList(_parsedPlayers);
   };
 
   window._ocrUp = function(el){

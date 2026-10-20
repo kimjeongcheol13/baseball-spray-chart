@@ -2,7 +2,9 @@
 // 배경: ① 시작 동기화는 앱을 열 때 · 로그인할 때만 돌아, 켜 둔 PC 탭에는 휴대폰에서 저장한 경기가 들어오지 않았다
 //       ② 경기 이름(sl_saves label)은 클라우드에 올라가지 않아, 같은 경기가 기기마다 다른 이름(내려받은 쪽은 "홈 vs 원정 날짜")으로 보였다
 //   → 「경기 불러오기」를 열면 다시 맞추고(cloudSyncNow, 20초에 한 번), 이름은 user_games data.saveLabel 로 함께 오간다(로컬 경기 데이터에는 남기지 않는다).
-// 파일 이름순으로 뒤쪽에 돈다(로그인 상태를 쓰고, 끝에서 비운다).
+//       ③ 이름 바꾸기(renameGame)는 경기 내용을 올리지 않아(오래된 기기가 서버를 덮지 않게) 바꾼 이름이 그 기기에만 남았다
+//   → 이름과 바꾼 시각만 user_games.label · label_at(sql/14)에 update 하고, 다시 맞출 때 label_at 이 더 새로운 쪽 이름을 쓴다.
+// 기기 전환 = localStorage 를 그 기기의 것으로 바꾼다(서버 srv.user_games 는 공유). 파일 이름순으로 뒤쪽에 돈다(로그인 상태를 쓰고, 끝에서 비운다).
 (function () {
   var T = window.__T, srv = window.__srv, ok = T.ok, eq = T.eq, ls = T.ls, test = T.test, sleep = T.sleep;
   var BASE = 1780800000000, K1 = 'sl_' + (BASE + 1), K2 = 'sl_' + (BASE + 2), TS = BASE + 1;
@@ -23,16 +25,19 @@
     });
   }
   var booted = null;
-  // 로그인한 상태에서 시작: K1 이 로컬 · 서버에 같은 내용(같은 수정 시각)으로 있다 → 시작 동기화는 아무것도 안 올린다
-  async function loggedIn() {
+  // 로그인한 상태에서 시작: K1 이 로컬 · 서버에 같은 내용(같은 수정 시각)으로 있다 → 시작 동기화는 아무것도 안 올린다.
+  // prep = 로그인 전에 서버 · 로컬을 더 꾸민다. noWait = 20초를 기다리지 않는다(그동안 「경기 불러오기」는 다시 맞추지 않는다)
+  async function loggedIn(noWait, prep) {
     if (!booted) booted = sleep(2000);
     await booted; srv.signOut(); await sleep(1000); srv.reset(); localStorage.clear();
     localStorage.setItem(K1, JSON.stringify(game(K1, 1)));
     localStorage.setItem('sl_saves', JSON.stringify([{ key: K1, label: 'PC 이름', ts: TS }]));
     srv.user_games.push(row(K1, game(K1, 1), TS));
+    if (prep) prep();
     srv.signIn(); await settle(); srv.log.length = 0;
-    await sleep(21000);   // 방금 돈 시작 동기화 뒤 20초 안에는 「경기 불러오기」가 다시 맞추지 않는다
+    if (!noWait) await sleep(21000);   // 방금 돈 시작 동기화 뒤 20초 안에는 「경기 불러오기」가 다시 맞추지 않는다
   }
+  function srvRow(key) { return srv.user_games.filter(function (x) { return x.game_key === key; })[0]; }
   // 토스트 · 이름 입력창 · 열린 경기 키를 되돌린다
   async function isolated(fn) {
     var st = window.showToast, pr = window.prompt, ck = window._curSaveKey, toasts = [];
@@ -97,6 +102,67 @@
       openLoad(); await sleep(1500);
       ok(document.querySelector('#saveList .load-sync-hint'), '안내 없음');
       eq(reqs('select').length + reqs('upsert').length, 0, 'user_games 요청');
+    });
+  });
+  test('휴대폰(내용이 오래된 기기)에서 이름을 바꾸면 이름만 올라가고, PC 가 「경기 불러오기」를 열면 그 이름이 된다 — 서버 · PC 의 기록과 수정 시각은 그대로', async function () {
+    await isolated(async function () {
+      await loggedIn(true);   // 지금 기기 = 휴대폰: K1 1타석
+      var later = TS + 60000;
+      srv.user_games[0] = row(K1, Object.assign(game(K1, 3), { saveLabel: 'PC 이름' }), later);   // PC 가 K1 을 3타석까지 기록해 올렸다
+      var pc = {}; pc[K1] = JSON.stringify(game(K1, 3)); pc.sl_saves = JSON.stringify([{ key: K1, label: 'PC 이름', ts: TS }]); pc.sl_cloud_mod = JSON.stringify({ [K1]: later });
+      window.prompt = function () { return '휴대폰 이름'; };
+      renameGame(K1); await settle();
+      eq(reqs('upsert').length, 0, '이름 바꾸기가 경기 내용을 올림');
+      eq(reqs('update').map(function (x) { return [x.f.game_key, Object.keys(x.rows[0]).sort()]; }), [[K1, ['label', 'label_at']]], '이름 바꾸기가 고친 열');
+      var r = srvRow(K1);
+      eq([r.data.abs.length, r.updated_at, r.label], [3, iso(later), '휴대폰 이름'], '서버 K1: PC 기록 · 수정 시각 그대로, 이름만');
+      localStorage.clear(); Object.keys(pc).forEach(function (k) { localStorage.setItem(k, pc[k]); });   // PC 로 바꾼다
+      srv.log.length = 0;
+      await sleep(21000);
+      openLoad(); await settle();
+      ok(reqs('select').length > 0, '「경기 불러오기」가 다시 맞추지 않음(전제)');
+      eq(label(K1), '휴대폰 이름', 'PC 의 K1 이름');
+      eq(ls(K1).abs.length, 3, 'PC 의 K1 기록');
+      eq(reqs('upsert').length + reqs('update').length, 0, 'PC 가 다시 올림');
+      eq([srvRow(K1).data.abs.length, srvRow(K1).updated_at], [3, iso(later)], '서버 K1');
+      ok(T.$('saveList').textContent.indexOf('휴대폰 이름') >= 0, '열린 목록을 다시 그리지 않음');
+    });
+  });
+  test('오프라인에서 바꾼 이름은 연결되면 올라간다(경기 내용은 안 올림)', async function () {
+    await isolated(async function () {
+      await loggedIn(true);
+      window.dispatchEvent(new Event('offline'));
+      window.prompt = function () { return '오프라인 이름'; };
+      renameGame(K1); await sleep(500);
+      eq(reqs('update').length, 0, '오프라인 동안 요청');
+      window.dispatchEvent(new Event('online')); await settle();
+      eq(reqs('upsert').length, 0, '경기 내용을 올림');
+      eq([srvRow(K1).label, srvRow(K1).updated_at, srvRow(K1).data.abs.length], ['오프라인 이름', iso(TS), 1], '서버 K1');
+    });
+  });
+  test('바꾼 이름이 있는 경기는, 내용만 더 새로 고친 기기가 실어 온 예전 이름(saveLabel)으로 돌아가지 않는다', async function () {
+    await isolated(async function () {
+      var at = TS + 30000;
+      await loggedIn(false, function () {
+        localStorage.setItem('sl_saves', JSON.stringify([{ key: K1, label: '바꾼 이름', ts: TS, labelAt: at }]));
+        srv.user_games[0].label = '바꾼 이름'; srv.user_games[0].label_at = iso(at);
+      });
+      srv.user_games[0] = Object.assign(row(K1, Object.assign(game(K1, 2), { saveLabel: '예전 이름' }), TS + 60000), { label: '바꾼 이름', label_at: iso(at) });   // 이름을 못 받은 기기가 더 기록해 올렸다
+      openLoad(); await settle();
+      eq(ls(K1).abs.length, 2, 'K1 을 서버본으로');
+      eq(label(K1), '바꾼 이름', 'K1 이름');
+    });
+  });
+  test('sql/14 적용 전(열 없음): 경기 동기화는 그대로 되고, 바꾼 이름은 이 기기에 남고 클라우드 실패로 알린다', async function () {
+    await isolated(async function (toasts) {
+      await loggedIn(true, function () { srv.noLabelCols = true; srv.user_games.push(row(K2, game(K2, 2), TS + 60000)); });
+      eq(ls(K2) && ls(K2).abs.length, 2, '서버에만 있던 K2 를 내려받음');
+      ok(!toasts.some(function (m) { return m.indexOf('클라우드 저장 실패') >= 0; }), '시작 동기화가 실패로 알림: ' + JSON.stringify(toasts));
+      window.prompt = function () { return '바꾼 이름'; };
+      renameGame(K1); await settle();
+      eq(label(K1), '바꾼 이름', '이 기기의 이름');
+      eq(reqs('upsert').length, 0, '경기 내용을 올림');
+      ok(toasts.some(function (m) { return m.indexOf('클라우드 저장 실패') >= 0; }), '이름을 못 올렸다고 알리지 않음: ' + JSON.stringify(toasts));
     });
   });
   test('(정리) 로그아웃하고 이 파일이 만든 상태를 비운다', async function () {

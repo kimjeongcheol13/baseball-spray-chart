@@ -163,10 +163,13 @@
   function inList(k) { return !!k && T.ls('sl_saves').some(function (s) { return s.key === k; }); }
   function modOf(k) { return (T.ls('sl_cloud_mod') || {})[k]; }
   function serverMod(k) { return srv.user_games.filter(function (r) { return r.game_key === k; }).map(function (r) { return r.updated_at; }); }
-  test('(11번 T1) 실제 saveGame · _doImportText · renameGame → 3.5초 뒤 그 경기의 user_games 업로드가 1 · 1 · 0건', async function () {
+  // 이름 바꾸기는 경기 내용(upsert)을 올리지 않고 이름만 update 한다(sql/14 label · label_at) — 서버의 data · updated_at 은 그대로
+  test('(11번 T1) 실제 saveGame · _doImportText · renameGame → 3.5초 뒤 그 경기의 user_games 업로드가 1 · 1 · 0건, 이름 바꾸기는 이름만 고친다', async function () {
     var R = 'sl_' + (BASE + 81), I = 'sl_' + (BASE + 82), im = game(82, 2), p0 = window.prompt;
     try {
       await start(); seed([{ key: R, data: game(81, 1) }]); await loginAndSettle(); srv.log.length = 0;   // R: 이름을 바꿀 경기(시작 동기화가 이미 올렸다)
+      var before = JSON.parse(JSON.stringify(srv.user_games.filter(function (r) { return r.game_key === R; })[0] || null));
+      ok(before, '시작 동기화가 R 을 올림(전제)');
       var S = await saveNew(1);
       var data = {}; data[I] = im;
       _doImportText(JSON.stringify({ saves: [{ key: I, label: '가져온 경기', ts: im.ts }], data: data }));
@@ -176,6 +179,10 @@
       eq(T.ls('sl_saves').filter(function (s) { return s.key === R; }).map(function (s) { return s.label; }), ['바꾼 이름'], '이름이 바뀜(전제)');
       await sleep(3500);
       eq([upserts(S).length, upserts(I).length, upserts(R).length], [1, 1, 0], '저장 · 가져오기 · 이름 바꾸기의 user_games 업로드');
+      var up = srv.log.filter(function (x) { return x.table === 'user_games' && x.op === 'update'; });
+      eq(up.map(function (x) { return [x.f.game_key, Object.keys(x.rows[0]).sort()]; }), [[R, ['label', 'label_at']]], '이름 바꾸기의 update(그 경기 · 이름 열만)');
+      var after = srv.user_games.filter(function (r) { return r.game_key === R; })[0];
+      eq([after.data, after.updated_at, after.label], [before.data, before.updated_at, '바꾼 이름'], '서버의 R: 내용 · 수정 시각 그대로, 이름만');
     } finally { window.prompt = p0; }
   });
   test('(11번 T2) 로그인 전에 저장하면 저장은 끝까지 되고 user_games 요청은 없다 → 로그인하면 시작 동기화가 올린다(updated_at = 수정 시각)', async function () {

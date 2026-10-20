@@ -85,9 +85,10 @@ function _sideOf(a) { return a.team === 'away' ? 'away' : 'home'; }
 // 이 화면이 다룰 경기 목록과 범위 설명
 function _scopeGames(data, team) {
   if (_scope === 'game') {
+    // 저장하거나 불러온 경기는 buildData 에서 저장 경기로 합쳐져 current 가 꺼진다(games.js live) → 점수 · 팀 이름도 지금 화면(AS · 입력칸)에서 읽는다
     const AS = window.AS || {};
-    const cur = data.games.find(g => g.current) || {};
-    return { games: [{ ...cur, abs: AS.abs || [], label: '현재 경기' }], note: '진행 중인 현재 경기', live: true };
+    const val = id => ((document.getElementById(id) || {}).value || '').trim();
+    return { games: [{ current: true, th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0, abs: AS.abs || [], label: '현재 경기' }], note: '진행 중인 현재 경기', live: true };
   }
   const saved = data.games.filter(g => !g.current);
   const keys = team && Array.isArray(team.games) ? new Set(team.games.map(g => g.key).filter(Boolean)) : null;

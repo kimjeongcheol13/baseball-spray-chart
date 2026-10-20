@@ -146,7 +146,45 @@
     eq([r.scoreText, r.rows.length], [SCORE, 3], '경기기록 · 타자 표와 같이 골라도');
   });
 
-  test('화면: 홈팀 사진 → 고르기 → 홈 칸에 채우고 미리보기 · 안내(틀릴 수 있음 · 타자 표와 다름 · 못 찾은 선수) · GA4 · 저장', async function () {
+  // 점수판 위 초록 판(흰 글자): 대회 이름 · 선공 / 경기 종료 / 후공 · 왼쪽 두 줄 영문 이름 · 가운데 큰 점수 · 오른쪽 한글 이름 + 아래 보통 글줄 몇 개
+  function panel() {
+    var c = document.createElement('canvas'); c.width = W; c.height = 900;
+    var g = c.getContext('2d'), items = [];
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, 900); g.fillStyle = '#0b5a3c'; g.fillRect(40, 80, W - 80, 520);
+    g.textBaseline = 'middle'; g.textAlign = 'center';
+    function put(x, y, t, px, col) { g.font = (px || 26) + 'px sans-serif'; g.fillStyle = col || '#fff'; g.fillText(t, x, y); var w = g.measureText(t).width; items.push({ x0: x - w / 2, x1: x + w / 2, y: y, text: t }); }
+    put(W / 2, 140, '일요C'); put(140, 250, '선공'); put(W / 2, 250, '경기 종료'); put(W - 140, 250, '후공');
+    put(170, 360, 'ACE'); put(200, 400, 'FALCONS'); put(W / 2, 380, '8', 70); put(W - 190, 380, '가나피닉스');
+    [680, 760, 840].forEach(function (y, i) { put(200, y, '게임 요약 ' + i, 24, '#222'); });
+    var d = g.getImageData(0, 0, W, 900);
+    // 가짜 글자 읽기(판): 한글이면 한국어가 높은 확신, 영문이면 영어가 높은 확신 — 반대쪽은 엉뚱한 글자
+    function read(x0, y0, x1, y1) {
+      var t = items.filter(function (it) { var cx = (it.x0 + it.x1) / 2; return cx >= x0 - 2 && cx <= x1 + 2 && it.y >= y0 - 6 && it.y <= y1 + 6; })
+        .sort(function (a, b) { return a.y - b.y || a.x0 - b.x0; }).map(function (it) { return it.text; }).join('\n');
+      var ko = /[가-힣]/.test(t), en = /^[A-Za-z\s]+$/.test(t);
+      return Promise.resolve([{ lang: 'kor', text: ko ? t : 'ㅁ1카0', conf: ko ? 90 : 30 }, { lang: 'eng', text: en ? t : 'Sxy', conf: en ? 92 : 5 }]);
+    }
+    return { img: { width: W, height: 900, data: d.data }, read: read };
+  }
+
+  test('영문: 포지션은 이름(번호) 바로 오른쪽 덩어리를 영어 모델로(투수 표 이닝 숫자는 그대로) · 초록 판 팀 이름(색 뒤집어 한국어 · 영어 중 그럴듯한 쪽) · 점수표 팀 이름', async function () {
+    var a = A(), korPos = function (x0, y0, x1, y1) { return a.rec(x0, y0, x1, y1).then(function (t) { return O().POS_APP[t] ? '따' : t; }); };   // 한국어 모델은 P · RF 를 못 읽는다
+    var s0 = await O().readShot(a.img, korPos);
+    eq(O().placeShot(s0, []).rows.map(function (r) { return r.pos; }), ['따', '따'], '영어 모델 없이 = 엉뚱한 글자');
+    var s1 = await O().readShot(a.img, korPos, null, { pos: a.rec });
+    eq(O().placeShot(s1, []).rows.map(function (r) { return r.pos; }), ['P', 'RF'], '영어 모델로 다시 읽음');
+    var PH = [[170, '투수명'], [345, '이닝'], [455, '피안타']], p = draw([PH, [[170, '가투수(16)'], [345, '3'], [455, '7']]]);
+    var sp = await O().readShot(p.img, p.rec, null, { pos: function () { return Promise.resolve('3B'); } });
+    var prow = sp.lines.filter(function (cells) { return /\(16\)/.test(cells[0].text); })[0];
+    eq([sp.head.kind, prow[1].text, O().placeShot(sp, []).rows.length], ['pitch', '3', 0], '투수 표: 이름 오른쪽 이닝 숫자 3 은 그대로(영어 모델이 3B 로 읽어도) · 투수 줄은 안 씀');
+    var pn = panel(), sh = await O().readShot(pn.img, function () { return Promise.resolve(''); }, null, { panel: pn.read });
+    eq(sh.teams, { away: 'ACE FALCONS', home: '가나피닉스' }, '팀 이름: 왼쪽 두 줄 영문 · 오른쪽 한글 · 가운데 점수 뺌');
+    var sc = { inn: [1, 2], away: { inn: ['1', '0'], sum: ['1', '2', '0', '0'] }, home: { inn: ['0', '2'], sum: ['2', '3', '0', '1'] } };
+    eq(O().toScoreText(sc, sh.teams).split('\n').slice(1).map(function (l) { return l.split('\t')[0]; }), ['ACE FALCONS', '가나피닉스'], '점수표 팀 이름');
+    eq(O().toScoreText(sc, { away: '8', home: '' }).split('\n').slice(1).map(function (l) { return l.split('\t')[0]; }), ['원정팀', '홈팀'], '숫자뿐이거나 비면 원정팀 · 홈팀');
+  });
+
+  test('화면: 홈팀 사진 → 홈 칸에 채우고 미리보기 · 안내(틀릴 수 있음 · 타자 표와 다름 · 못 찾은 선수) · GA4 · 저장', async function () {
     var r = await pipeline([A(), B(), S(), board()]), r0 = O().readFiles, ev = [], g0 = window.gtag, clicked = 0;
     O().readFiles = function (files, prog) { prog(0, files.length, 1, 2); return Promise.resolve(Object.assign({}, r, { files: files.length })); };
     window.gtag = function (k, n, p) { if (k === 'event' && n === 'gameone_shot') ev.push(p); };
@@ -162,7 +200,7 @@
       var msg = $('goShotMsg').textContent;
       ok(/3장에서 3명 · 6칸/.test(msg) && /사진에서 읽은 글자는 틀릴 수 있어요/.test(msg), '읽은 양 · 확인 안내 — ' + msg);
       ok(/나선수\(22\): 타수 읽음 1 · 표 2/.test(msg) && /라선수\(44\)/.test(msg), '타자 표와 다름 · 못 찾은 선수');
-      eq(ev, [{ side: 'home', files: 3, rows: 3, pa: 6, stats: 3, mismatch: 2, gaps: 0, score: 1, ms: ev[0] && ev[0].ms }], 'GA4 gameone_shot');
+      eq(ev, [{ side: 'home', files: 3, rows: 3, pa: 6, stats: 3, mismatch: 2, gaps: 0, score: 1, teams: 0, pos: 3, ms: ev[0] && ev[0].ms }], 'GA4 gameone_shot');
       eq($('goScore').value, SCORE, '점수판 → 이닝별 점수표 칸');
       ok(/점수판도 읽어/.test(msg), '점수판 안내');
       ok(Array.prototype.every.call(document.querySelectorAll('.go-shot-b'), function (b) { return !b.disabled; }), '다 읽으면 버튼 다시 켜짐');
@@ -198,6 +236,12 @@
       try { await gameOneShotFiles({ files: [new File(['x'], 'a.png')] }); } finally { window.gtag = g0; }
       ok($('goShotMsg').classList.contains('warn') && /점수판만 읽어 「이닝별 점수표」.*「경기기록」/.test($('goShotMsg').textContent), '점수판만 — ' + $('goShotMsg').textContent);
       eq([$('goScore').value, ev.length && ev[0].why, $('goAway').value], [SCORE, 'score_only', 'X'], '점수판 칸만 채움 · 타자 칸 그대로');
+      $('goTa').value = ''; $('goTh').value = '이미적은홈';
+      O().readFiles = function () { return Promise.resolve({ text: '', rows: [], statsOnly: [], checks: [], gaps: [], scoreText: SCORE, teams: { away: 'ACE FALCONS', home: '가나피닉스' }, shots: 0, files: 1 }); };
+      await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });
+      eq([$('goTa').value, $('goTh').value], ['ACE FALCONS', '이미적은홈'], '팀 이름: 빈 칸만 채우고 적은 이름은 그대로');
+      ok(/팀 이름: 원정 ACE FALCONS · 홈 가나피닉스/.test($('goShotMsg').textContent), '팀 이름 안내 — ' + $('goShotMsg').textContent);
+      $('goTa').value = ''; $('goTh').value = '';
       $('goScore').value = '';
       O().readFiles = function () { return Promise.reject(new Error('글자 읽기 도구를 불러오지 못했습니다 — 인터넷 연결을 확인해 주세요')); };
       await gameOneShotFiles({ files: [new File(['x'], 'a.png')] });

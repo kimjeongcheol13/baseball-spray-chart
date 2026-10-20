@@ -80,7 +80,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=87">
+<link rel="stylesheet" href="css/styles.css?v=88">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
 <link rel="stylesheet" href="css/analysis.css?v=10">
@@ -1709,10 +1709,10 @@ var _kakaoSdkLoaded = false;
           <li>앱 › 박스 스코어 › <b>기록</b>에서 팀 탭(원정 · 홈)을 고릅니다</li>
           <li>휴대폰을 <b>가로</b>로 돌려 「경기기록」(1회 2회 …) 표를 찍고, 아래로 내리며 마지막 타자까지 나눠 찍습니다. <b>첫 장에는 머리글</b>(타순 · 타자명 · 1회 …)이 보이게</li>
           <li>「타자」 표(타수 · 안타 …)도 찍어 같이 고르면, 읽은 칸이 맞는지 숫자로 맞춰 봅니다</li>
-          <li>맨 위 점수판(선공 · 후공 · 1 2 3 …)도 찍어 같이 고르면 「이닝별 점수표」까지 채웁니다</li>
+          <li>맨 위 점수판(팀 이름 · 선공 · 후공 · 1 2 3 …)도 찍어 같이 고르면 「이닝별 점수표」와 비어 있는 팀 이름까지 채웁니다</li>
           <li>한 팀 사진을 <b>한 번에 모두</b> 고르세요</li>
         </ol>
-        <p>사진에서 읽은 글자는 틀릴 수 있어요 — 미리보기를 앱 화면과 비교한 뒤 저장하세요. 포지션(P · RF …)은 사진에서 읽지 않습니다. 처음 한 번은 글자 읽기 도구(약 6MB)를 받습니다.</p>
+        <p>사진에서 읽은 글자는 틀릴 수 있어요 — 미리보기를 앱 화면과 비교한 뒤 저장하세요. 처음 한 번은 글자 읽기 도구(한글 · 영문, 약 10MB)를 받습니다.</p>
       </details>
       <input type="file" id="goShotFile" accept="image/*" multiple hidden onchange="gameOneShotFiles(this)">
       <div id="goShotMsg" class="go-shot-msg" aria-live="polite"></div>
@@ -1741,7 +1741,7 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="gfTitle" style="margin-bottom:0">타구 위치 확인</div>
       <button type="button" class="dm-x" onclick="gameOneFixClose('later')" aria-label="닫기 (나중에 할게)">✕</button>
     </div>
-    <div class="modal-sub" id="gfSub">게임원 기록은 방향만 있어서 타구를 대표 자리에 찍었어요. 실제 자리를 기억하면 점을 끌어 옮겨 주세요. <b>점선 테두리</b> = 대략 찍은 위치</div>
+    <div class="modal-sub" id="gfSub">게임원 기록은 방향만 있어서 타구를 대표 자리에 찍었어요. <b>필드를 탭</b>하면 지금 찍을 공(노란 테두리)이 그 자리로 옮겨지고 다음 공으로 넘어가요. 점을 끌어도 됩니다. <b>점선 테두리</b> = 대략 찍은 위치</div>
     <div class="gf-nav">
       <button type="button" class="btn btn-ghost gf-step" id="gfPrev" onclick="gameOneFixStep(-1)" aria-label="이전 타자">◀ 이전</button>
       <div class="gf-who" id="gfWho" aria-live="polite"></div>
@@ -1751,7 +1751,8 @@ var _kakaoSdkLoaded = false;
       <button type="button" id="gfModeOne" aria-pressed="true" onclick="gameOneFixAll(false)">타자별</button>
       <button type="button" id="gfModeAll" aria-pressed="false" onclick="gameOneFixAll(true)">전체 보기</button>
     </div>
-    <div class="gf-cv"><canvas id="gfCanvas" role="img" aria-label="필드 위 타구 점 — 점을 끌어 옮기면 위치가 바뀝니다"></canvas></div>
+    <div class="gf-target"><div class="gf-tg" id="gfTarget" aria-live="polite"></div><button type="button" class="btn btn-ghost gf-skip" id="gfSkip" onclick="gameOneFixSkip()">건너뛰기 ▶</button></div>
+    <div class="gf-cv"><canvas id="gfCanvas" role="img" aria-label="필드 위 타구 점 — 필드를 탭하면 지금 찍을 공이 그 자리로 옮겨지고, 점을 끌어도 옮겨집니다"></canvas></div>
     <ol class="gf-list" id="gfList"></ol>
     <div class="go-btns">
       <button type="button" class="btn btn-ghost" id="gfLater" onclick="gameOneFixClose('later')">나중에 할게</button>
@@ -2463,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=228"></script>
 <script defer src="js/ocr.js?v=19"></script>
 <script defer src="js/gameone.js?v=7"></script>
-<script type="module" src="js/app.js?v=136"></script>
+<script type="module" src="js/app.js?v=138"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -112,7 +112,7 @@
     var r = spy(function () { $('gfLater').click(); });
     ok(!shown(), '닫힘');
     eq(r.cs, [KEY], 'cloudSave');
-    eq(r.ev, [{ action: 'later', pts: 4, est: 3, moved: 2, left: 1 }], 'GA4');
+    eq(r.ev, [{ action: 'later', pts: 4, est: 3, moved: 2, left: 1, tap: 0 }], 'GA4');
     eq(saved().abs.filter(function (a) { return a.estimated === true; }).map(function (a) { return a.bname + ':' + a.res; }), ['다선수:안타'], '남은 대략 = 안 건드린 점');
     closeOverlay('loadOverlay');
   });
@@ -194,5 +194,46 @@
     ok(openGameOneFix(k) === false && !shown(), '타구 점이 없으면 안 엶');
     ok(openGameOneFix('sl_없음') === false && openGameOneFix(null) === false, '없는 키');
     localStorage.removeItem(k);
+  });
+
+  // 탭으로 찍기(2026-10-20): 게임원 기록에는 떨어진 자리가 없어 정확한 위치는 사람이 찍어야 한다 — 끌기보다 탭 한 번
+  function tapAt(x, y) { var c = client(x, y); fire('pointerdown', c); fire('pointerup', c); }
+  function far(W) {   // 어느 점에서도 HIT(24px) 넘게 떨어진 페어 지역 자리
+    var g = _fieldGeo(W), cand = [[0.5, 0.25], [0.35, 0.4], [0.65, 0.4], [0.5, 0.5], [0.42, 0.62], [0.58, 0.62]].map(function (q) { return [W * q[0], W * q[1]]; });
+    return cand.filter(function (q) { return _coneToSemi(g, q[0], q[1]) && F().view().every(function (v) { return Math.hypot(v.x - q[0], v.y - q[1]) > 30; }); })[0];
+  }
+  test('탭으로 찍기: 지금 찍을 공(노란 테두리 · 안내) → 필드 탭 = 그 자리로 + 다음 대략 공(다음 타자로) · 파울 지역은 그대로 · 건너뛰기 · 점 탭 = 고르기 · 다 찍으면 안내 · GA4 tap', async function () {
+    openGameOneImport();
+    type('goTa', '다팀'); type('goTh', '라팀'); type('goDate', '2026-10-16'); type('goAway', AWAY);
+    await T.sleep(300);
+    $('goSave').click();
+    var s = JSON.parse(localStorage.getItem('sl_saves')), K2 = s[s.length - 1].key, st = F().state();
+    function sv() { return JSON.parse(localStorage.getItem(K2)); }
+    ok(shown() && st.key === K2, '새 경기 위치 확인');
+    eq([st.target.bname, st.target.res, st.i], ['가선수', '안타', 0], '처음 = 경기 순서로 첫 대략 공');
+    ok(/지금 찍을 공 가선수 · 1회초 · 안타 · 좌익 쪽/.test($('gfTarget').textContent) && /남은 대략 3개/.test($('gfTarget').textContent), '안내 — ' + $('gfTarget').textContent);
+    ok($('gfList').children[0].classList.contains('gf-now') && !$('gfSkip').disabled, '목록에 지금 공 · 건너뛰기 켜짐');
+    ok($('gfSkip').getBoundingClientRect().height >= 44, '건너뛰기 44px');
+    var W = st.geo.W, q = far(W), want = _coneToSemi(_fieldGeo(W), q[0], q[1]);
+    tapAt(q[0], q[1]);
+    var a = ab(sv(), '가선수', '안타');
+    eq([a.estimated, +a.x.toFixed(4), +a.y.toFixed(4)], [false, +want.x.toFixed(4), +want.y.toFixed(4)], '탭한 자리로 · estimated false · 바로 저장');
+    eq([F().state().target.bname, F().state().i, $('gfWho').textContent.indexOf('나선수') === 0], ['나선수', 1, true], '다음 대략 공 = 다음 타자(나선수 3땅)');
+    tapAt(2, 2);
+    eq(ab(sv(), '나선수', '땅볼 아웃').estimated, true, '파울 지역 탭 → 그대로');
+    ok(/파울 지역이에요/.test($('gfTarget').textContent), '파울 안내');
+    gameOneFixSkip();
+    eq([F().state().target.bname, F().state().i], ['다선수', 2], '건너뛰기 → 다음 대략 공(다선수)');
+    var v = vOf('다선수', '안타');
+    tapAt(v.x, v.y);
+    eq([F().state().target.bname, ab(sv(), '다선수', '안타').estimated], ['다선수', true], '점 탭 = 고르기만(옮기지 않음)');
+    q = far(W); tapAt(q[0], q[1]);
+    eq([ab(sv(), '다선수', '안타').estimated, F().state().target && F().state().target.bname], [false, '나선수'], '다선수 찍고 → 남은 나선수로(처음으로 돌아감)');
+    q = far(W); tapAt(q[0], q[1]);
+    eq([ab(sv(), '나선수', '땅볼 아웃').estimated, F().state().target], [false, null], '다 찍음');
+    ok(/대략 위치를 모두 찍었어요/.test($('gfTarget').textContent) && $('gfSkip').disabled, '다 찍은 안내 · 건너뛰기 꺼짐');
+    var r = spy(function () { $('gfDone').click(); });
+    eq(r.ev, [{ action: 'done', pts: 4, est: 3, moved: 3, left: 0, tap: 3 }], 'GA4 tap 3');
+    closeOverlay('loadOverlay');
   });
 })();

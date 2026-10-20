@@ -24,6 +24,8 @@
                            // 저장 직후 3초 안에 타구가 기록되면 그 경기 업로드가 취소됐다(다음 시작 동기화 때까지 서버에 안 올라감)
   var _pendSync  = false;
   var _startDone = false;
+  var _syncBusy  = false;  // 시작 동기화가 도는 중 — 「경기 불러오기」가 다시 부를 때(cloudSyncNow) 겹쳐 돌지 않게
+  var _syncAt    = 0;      // 마지막 시작 동기화를 시작한 시각(ms)
   var _team      = null;   // { id, code, name, owner_id, role: 'owner'|'member' }
   var _teamKnown = false;  // 팀 조회(_loadMyTeam)가 오류 없이 끝났거나 탈퇴·해산으로 확정됨. 모르면 upsert 에 team_id 를 싣지 않는다
   var _rtChannel = null;   // Realtime 채널
@@ -482,7 +484,7 @@
         game_key:   key,
         team_name:  (gameData.th || '') + ' vs ' + (gameData.ta || ''),
         date:       gameData.d || null,
-        data:       gameData,
+        data:       _withLabel(gameData, _labelOf(key)),
         updated_at: new Date(_localMod(gameData, null, key).ms || Date.now()).toISOString()   // 업로드 시각이 아니라 수정한 시각
       };
       return _client().from('user_games').upsert(_withTeam(row), { onConflict: 'user_id,game_key' }).then(function (r) {
@@ -498,6 +500,7 @@
     _startDone = true;
     if (!_online) { _setStatus('offline'); return; }
     _setStatus('syncing');
+    _syncBusy = true; _syncAt = Date.now();
 
     _ensureAuth().then(function (user) {
       if (!user) { _setStatus('clear'); return; }
@@ -545,7 +548,7 @@
           sentKeys[k] = true;
           rows.push(_withTeam({ user_id: user.id, game_key: k,
             team_name: (c.gd.th||'') + ' vs ' + (c.gd.ta||''), date: c.gd.d||null,
-            data: c.gd, updated_at: new Date(c.lm.reliable ? c.lm.ms : Date.now()).toISOString() }));
+            data: _withLabel(c.gd, entryOf[k] && entryOf[k].label), updated_at: new Date(c.lm.reliable ? c.lm.ms : Date.now()).toISOString() }));
         });
         if (unsent) console.warn('[Cloud] startup upload: 읽을 수 없어 올리지 못한 경기 ' + unsent + '개');
         if (held) console.warn('[Cloud] startup upload: 로컬 수정 시각을 읽지 못해 서버에 있는 경기 ' + held + '개는 올리지도 덮지도 않음');
@@ -571,7 +574,7 @@
         saves.forEach(function (s) { if (s && typeof s.key === 'string') existMap[s.key] = true; });
         var rows = (r.data || []).filter(function (row) { return !!row && typeof row.game_key === 'string' && !pend[row.game_key] && !gone[row.game_key]; });
         var plan = _planAutoCleanup(user, rows, saves);   // 같은 경기 중복(스냅샷·정식 저장) 정리 — 계정·기기마다 한 번
-        var added = 0;
+        var added = 0, updated = 0, relabeled = 0, openChanged = false;
         rows.forEach(function (row) {
           var k = row.game_key;
           if (plan.skip[k]) return;   // 정리 대상 스냅샷: 내려받지도 목록에 넣지도 않는다(아래에서 변환·삭제)
@@ -582,21 +585,28 @@
           var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
           var lm = _localMod(loc, entryOf[k], k);   // 로컬 수정 시각을 못 읽으면(예전 형식·없음) 서버본으로 덮어쓰지 않는다
           if (!loc || (lm.reliable && remoteTs > lm.ms)) {
-            localStorage.setItem(k, JSON.stringify(row.data));
+            localStorage.setItem(k, JSON.stringify(_noLabel(row.data)));   // 경기 이름(saveLabel)은 목록에만 쓰고 경기 데이터에는 남기지 않는다
             if (remoteTs) _markMod(k, remoteTs);   // 서버본을 받았다 → 로컬 수정 시각 = 서버 시각(같은 시계)
             if (!existMap[k] && k.indexOf(AUTO) !== 0) {   // 자동저장 스냅샷은 복구용(⏱ 임시저장 복구)으로 로컬에만 두고 목록에는 넣지 않는다
               saves.push(clean);
               added++;
+            } else if (existMap[k]) {
+              updated++;
+              if (k === window._curSaveKey) openChanged = true;
+              // 다른 기기에서 고친(이름을 바꾼) 경기 → 그 이름으로. 이름을 싣지 않은 예전 행은 이 기기의 이름을 그대로 둔다
+              if (_rowLabel(row.data) && entryOf[k] && entryOf[k].label !== clean.label) { entryOf[k].label = clean.label; relabeled++; }
             }
           } else if (!lm.reliable) {
             console.warn('[Cloud] 로컬 경기 시각을 읽지 못해 병합에서 제외:', k);
           }
         });
         var cleaned = _applyAutoCleanup(plan, saves);   // 로컬 먼저 반영 (서버가 실패하면 다음 시작 때 다시 센다)
-        if (added || cleaned) localStorage.setItem('sl_saves', JSON.stringify(saves));
+        if (added || relabeled || cleaned) localStorage.setItem('sl_saves', JSON.stringify(saves));
         if (added && typeof showToast === 'function') showToast('☁️ 클라우드에서 ' + added + '개 경기 복원됨', false);
-        if (cleaned) {
-          if (typeof showToast === 'function') showToast('🧹 같은 경기 중복 ' + cleaned + '개 정리됨', false);
+        if (cleaned && typeof showToast === 'function') showToast('🧹 같은 경기 중복 ' + cleaned + '개 정리됨', false);
+        // 지금 화면에 열린 경기가 다른 기기에서 더 새로 저장됐다 — 화면은 예전 기록이라, 이대로 저장하면 그 기기의 기록을 덮는다
+        if (openChanged && typeof showToast === 'function') showToast('📲 지금 열린 경기가 다른 기기에서 바뀌었어요 · 경기 불러오기에서 다시 열어 주세요', false);
+        if (added || updated || cleaned) {
           var lo = document.getElementById('loadOverlay');
           if (lo && lo.classList.contains('show') && typeof openLoad === 'function') openLoad();   // 열려 있는 목록을 다시 그린다
         }
@@ -607,8 +617,16 @@
     }).catch(function (e) {
       console.warn('[Cloud] startup sync error:', e);
       _notifySyncFail();
-    });
+    }).then(function () { _syncBusy = false; });
   }
+
+  // 「경기 불러오기」를 열 때 다시 맞춘다(core.js openLoad). 시작 동기화는 앱을 열 때 · 로그인할 때만 돌아,
+  // 켜 둔 PC 탭에는 휴대폰에서 저장한 경기가 안 보였다. 도는 중이거나 20초 안에 돌았으면 건너뛴다(목록을 열 때마다 전체를 받지 않게)
+  window.cloudSyncNow = function () {
+    if (!_user || _user.is_anonymous || !_online || _syncBusy || Date.now() - _syncAt < 20000) return;
+    _startDone = false;
+    _startupSync();
+  };
 
   function _gameLabel(d) {
     return (d&&d.th?d.th:'홈') + ' vs ' + (d&&d.ta?d.ta:'원정') + ' ' + (d&&d.d?d.d:'');
@@ -618,7 +636,21 @@
   // 설정 키(sl_cloud_session 등)는 통과하지 못하고, 검증 함수가 아직 없으면 안전하게 건너뛴다
   function _cleanRow(key, data) {
     return typeof window._cleanSaveEntry === 'function'
-      ? window._cleanSaveEntry({ key: key, label: _gameLabel(data), ts: (data && data.ts) || 0 }, data) : null;
+      ? window._cleanSaveEntry({ key: key, label: _rowLabel(data) || _gameLabel(data), ts: (data && data.ts) || 0 }, _noLabel(data)) : null;
+  }
+
+  // 경기 이름(sl_saves 의 label)은 기기마다 따로였다 — 같은 경기가 휴대폰과 PC 에서 다른 이름으로 보였다.
+  // 올릴 때 data.saveLabel 로 함께 싣고(user_games 열은 그대로), 내려받을 때 목록 이름으로 쓴다. 로컬 경기 데이터에는 남기지 않는다
+  function _labelOf(key) {
+    var l = '';
+    try { JSON.parse(localStorage.getItem('sl_saves') || '[]').forEach(function (s) { if (s && s.key === key && typeof s.label === 'string') l = s.label; }); } catch (e) { /* 깨진 목록 */ }
+    return l;
+  }
+  function _withLabel(gd, label) { return typeof label === 'string' && label ? Object.assign({}, gd, { saveLabel: label }) : gd; }
+  function _rowLabel(d) { var l = d && d.saveLabel; return typeof l === 'string' ? l.trim() : ''; }
+  function _noLabel(d) {
+    if (!d || typeof d !== 'object' || !('saveLabel' in d)) return d;
+    var c = Object.assign({}, d); delete c.saveLabel; return c;
   }
 
   /* ── 팀 정보 로드 ──────────────────────────────── */
@@ -775,7 +807,7 @@
       var remoteTs = row.updated_at ? new Date(row.updated_at).getTime() || 0 : 0;
       var lm = _localMod(loc, null, row.game_key);   // 로컬 수정 시각을 못 읽으면 덮어쓰지 않는다
       if (!loc || (lm.reliable && remoteTs > lm.ms)) {
-        localStorage.setItem(row.game_key, JSON.stringify(row.data));
+        localStorage.setItem(row.game_key, JSON.stringify(_noLabel(row.data)));
         if (remoteTs) _markMod(row.game_key, remoteTs);
       }
     } catch (e) { console.warn('[Cloud] team game local save:', e && e.message); }

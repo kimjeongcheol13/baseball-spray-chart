@@ -4,18 +4,29 @@
 //      경기기록 = 타순 · 타자명 · 포지션 · 1회 … 7회     칸 표기는 웹과 같다(중플 · 우안,도루 · 4구)
 //      타자     = 타순 · 타자명 · 포지션 · 타수 · 안타 · 타점 · 홈런 · 사사구 · 도루 · 득점 · 삼진 · 타율
 //        → 같이 고르면 타수 · 타점 · 득점 · 도루 · 타율을 줄 끝에 붙이고(웹 복사와 같은 꼴), 타수 · 안타 · 사사구 · 삼진으로 읽은 칸을 맞춰 본다
+//      점수판   = 맨 위 1 2 3 … R H E B · 선공 / 후공 줄 → 「이닝별 점수표」 칸(선공 = 원정, 후공 = 홈). R H E B 는 글자 대신 자리로
+//      팀 이름  = 점수판 위 초록 판(흰 글자) — 색을 뒤집어 선공 · 후공 아래 왼쪽 / 오른쪽 글을 읽는다 → 이름 칸이 비어 있으면 채움
+//      투수     = 투수명 · 이닝 · 피안타 … 방어율 → 알아보고 건너뛴다(타자 표로 잘못 읽지 않게)
+//  · 사진에서 자주 헷갈리는 글자(낫 → 낮 · 웃 → 우 · 쉼표 → 마침표)는 매핑표에 없는 기록일 때만 바꿔 보고, 매핑표에 있는 기록이 되면 쓴다(fixCell)
+//    겹쳐 찍힌 줄(아래가 잘린 줄 포함)은 칸마다 매핑표에 있는 쪽을 고른다. 회 칸 간격은 표마다 다르다(긴 기록이 있으면 넓어짐 — 2026-10-19 두 번째 팀 캡처)
 //  · 칸 나누기: 어두운 점으로 글줄(가로 띠) → 글 덩어리(세로 틈) → 머리글 글자 위치에 붙인다. 덩어리마다 한 줄 OCR(PSM 7)
 //    머리글이 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글 위치를 쓴다. 그래서 첫 장에는 머리글이 보여야 한다
-//  · Tesseract.js 5.1.1(jsdelivr) 는 처음 누를 때만 불러온다. 한국어 글자 모델은 assets/ocr/kor.traineddata(tessdata_fast, Apache-2.0) 를 직접 둔다
+//  · Tesseract.js 5.1.1(jsdelivr) 는 처음 누를 때만 불러온다. 글자 모델은 assets/ocr/ 의 kor · eng.traineddata(tessdata_fast, Apache-2.0)
+//    한국어 모델에는 영문 글자가 없다 → 영문 자리(포지션 P · RF · 1B …, 영문 팀 이름)만 영어 모델로 따로 읽는다.
+//    둘을 섞은 모델(kor+eng)은 한글 칸까지 흐려져(실제 캡처 26칸 중 25 → 24) 쓰지 않는다. 칸 안 영문 R(유땅R)은 둘 다 못 읽는다 — 결과는 같다
 const TESS = {
   src: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
-  lang: 'assets/ocr/', cache: 'sl_ocr_kor_fast_v1', workerPath: null, corePath: null, psm: '7',
+  lang: 'assets/ocr/', langs: 'kor', cache: 'sl_ocr_fast_v1', workerPath: null, corePath: null, psm: '7',
 };
 const INK = 165;                     // 이보다 어두우면 글자 점 (앱 회색 글자 #888 ≈ 136 포함, 줄 구분선 #e5e5e5 제외)
 const POS_APP = { __proto__: null, P: '투', C: '포', '1B': '1', '2B': '2', '3B': '3', SS: '유', LF: '좌', CF: '중', RF: '우', DH: '지' };
+const POS_CHARS = 'PCBSLFRDH123';
 const STAT_HEAD = { __proto__: null, '타수': 'ab', '안타': 'h', '타점': 'rbi', '홈런': 'hr', '사사구': 'bb', '도루': 'sb', '득점': 'r', '삼진': 'so', '타율': 'avg' };
 const NAME_RE = /^(.*?)\(?(\d{1,3})\)$/;
 const HITS = ['안타', '내야안타', '2루타', '3루타', '홈런'], NOT_AB = ['볼넷', '사구', '희비'];
+const PITCH_HEAD = /^(투수명|피안타|자책|탈삼진|방어율)$/;
+// 사진 OCR 이 실제로 헷갈린 글자(2026-10-19 실제 앱 캡처) — 왼쪽으로 읽혔으면 오른쪽 후보
+const CONFUSE = { __proto__: null, '낮': '낫', '낯': '낫', '우': '웃', '망': '땅', '랑': '땅', '즈': '중', '프': '플' };
 
 const $ = id => document.getElementById(id);
 const _norm = s => String(s || '').replace(/\s+/g, '');
@@ -62,20 +73,22 @@ function readHeader(cells) {
     const t = _norm(c.text);
     let m;
     if (/^타순$/.test(t)) cols.push({ key: 'order', cx: c.cx });
-    else if (/^타자명?$|^자명$/.test(t)) cols.push({ key: 'name', cx: c.cx });
+    else if (/^타자명?$|^자명$|^투수명$/.test(t)) cols.push({ key: 'name', cx: c.cx });
+    else if (PITCH_HEAD.test(t)) cols.push({ key: 'pitch', cx: c.cx });
     else if (/^포지?션$/.test(t)) cols.push({ key: 'pos', cx: c.cx });
     else if ((m = /^(\d{1,2})[회외희호최]$/.exec(t))) innX.push({ n: +m[1], cx: c.cx });
     else if (STAT_HEAD[t]) cols.push({ key: STAT_HEAD[t], cx: c.cx });
   });
-  // 회 칸은 같은 간격 — 못 읽은 회는 읽은 회들로 직선을 맞춰 채운다(1회 ~ 읽은 마지막 회)
+  // 못 읽은 회만 읽은 회들로 직선을 맞춰 채운다(1회 ~ 읽은 마지막 회). 읽은 회는 제자리
   if (innX.length >= 2) {
     const n = innX.length, sx = innX.reduce((s, p) => s + p.n, 0), sy = innX.reduce((s, p) => s + p.cx, 0);
     const sxx = innX.reduce((s, p) => s + p.n * p.n, 0), sxy = innX.reduce((s, p) => s + p.n * p.cx, 0);
     const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n, last = Math.max(...innX.map(p => p.n));
     if (b > 0) for (let k = 1; k <= last; k++) cols.push({ key: 'inn' + k, cx: (innX.find(p => p.n === k) || { cx: a + b * k }).cx });
   } else innX.forEach(p => cols.push({ key: 'inn' + p.n, cx: p.cx }));
-  const kind = cols.some(c => c.key.startsWith('inn')) ? 'inning' : cols.some(c => c.key === 'ab' || c.key === 'h') ? 'stats' : null;
-  return kind && cols.some(c => c.key === 'name') ? { kind, cols: cols.sort((p, q) => p.cx - q.cx) } : null;
+  const kind = cols.some(c => c.key.startsWith('inn')) ? 'inning' : cols.some(c => c.key === 'pitch') ? 'pitch' : cols.some(c => c.key === 'ab' || c.key === 'h') ? 'stats' : null;
+  // all = 머리글 글 덩어리 자리 전부(이닝 · 실점처럼 칸 이름을 안 붙인 것도) — 머리글 없는 장이 어느 표인지 견줄 때 쓴다
+  return kind && cols.some(c => c.key === 'name') ? { kind, cols: cols.sort((p, q) => p.cx - q.cx), all: cells.map(c => c.cx) } : null;
 }
 
 // 한 줄의 덩어리들을 칸 이름에 붙인다 — 가장 가까운 칸, 칸 간격의 60% 안쪽만. 같은 칸 덩어리는 이어 붙임
@@ -87,7 +100,8 @@ function assignRow(cells, cols) {
     cols.forEach(k => { const d = Math.abs(k.cx - c.cx); if (d <= tol && (!best || d < best.d)) best = { key: k.key, d }; });
     // 이름은 머리글보다 넓어 가운데가 어긋날 수 있다 — '(숫자)' 로 끝나면 이름 칸
     if (/\(\d+\)?$|\d\)$/.test(_norm(c.text))) best = { key: 'name' };
-    if (best && _norm(c.text)) row[best.key] = (row[best.key] ? row[best.key] : '') + _norm(c.text);
+    if (best && best.key === 'pos' && c.en) row.pos = c.en;   // 영어 모델로 읽은 포지션
+    else if (best && _norm(c.text)) row[best.key] = (row[best.key] ? row[best.key] : '') + _norm(c.text);
   });
   return row;
 }
@@ -100,7 +114,7 @@ function toRows(kind, lines) {
     if (!nm || !nm[2]) return;
     const name = nm[1].replace(/[^가-힣A-Za-z]/g, '');
     const row = { order: /^\d{1,2}$/.test(r.order || '') ? +r.order : null, name, number: nm[2], pos: r.pos || '', inn: {}, stats: null };
-    if (kind === 'inning') Object.keys(r).forEach(k => { if (k.startsWith('inn')) row.inn[+k.slice(3)] = r[k]; });
+    if (kind === 'inning') Object.keys(r).forEach(k => { if (k.startsWith('inn')) row.inn[+k.slice(3)] = fixCell(r[k]); });
     else {
       row.stats = {};
       Object.keys(STAT_HEAD).forEach(h => { const k = STAT_HEAD[h], v = r[k]; row.stats[k] = v != null && /^\.?\d+(\.\d+)?$/.test(v) ? (k === 'avg' ? v : +v) : null; });
@@ -115,7 +129,13 @@ function mergeShots(shots) {
   const inn = [], st = [], seen = { inning: {}, stats: {} };
   shots.forEach(s => s.rows.forEach(r => {
     const key = (r.order == null ? '' : r.order) + '|' + r.number;
-    if (seen[s.kind][key]) { const o = seen[s.kind][key]; if (s.kind === 'inning') Object.keys(r.inn).forEach(k => { if (!o.inn[k]) o.inn[k] = r.inn[k]; }); return; }
+    if (!seen[s.kind]) return;   // 투수 표 줄은 쓰지 않는다
+    if (seen[s.kind][key]) {
+      // 겹쳐 찍힌 줄: 빈 칸은 채우고, 먼저 읽은 칸이 매핑표에 없는 기록이면 새로 읽은 쪽(매핑표에 있는 기록)으로
+      const o = seen[s.kind][key];
+      if (s.kind === 'inning') Object.keys(r.inn).forEach(k => { if (!o.inn[k] || (!cellKnown(o.inn[k]) && cellKnown(r.inn[k]))) o.inn[k] = r.inn[k]; });
+      return;
+    }
     seen[s.kind][key] = r; (s.kind === 'inning' ? inn : st).push(r);
   }));
   const byOrder = (a, b) => (a.order == null ? 99 : a.order) - (b.order == null ? 99 : b.order);
@@ -153,6 +173,88 @@ function checkStats(merged) {
   return out;
 }
 
+// ── 읽은 칸 보정 ──
+// 칸 = 쉼표로 이은 토큰들(4구,도루). 토큰이 매핑표(gameone.js classifyToken)에 있는지 — 끝의 [..] 부가 기록은 빼고 본다
+function _known(tok) {
+  const P = window.SLGameOne, t = tok.replace(/\[[^\]]*\]$/, '');
+  return !t || !P || P.classifyToken(t, null).kind !== 'unknown';
+}
+function cellKnown(cell) { return String(cell || '').split(',').every(_known); }
+// 마침표 → 쉼표(칸에는 마침표가 없다), 매핑표에 없는 토큰은 헷갈리는 글자를 한 자씩 바꿔 매핑표에 있게 되면 그걸로 (낮아웃- → 낫아웃- · 주자아우 → 주자아웃)
+function fixCell(cell) {
+  if (!cell) return cell;
+  return String(cell).replace(/\./g, ',').split(',').map(tok => {
+    if (_known(tok)) return tok;
+    for (let i = 0; i < tok.length; i++) {
+      const alt = CONFUSE[tok[i]];
+      if (alt) { const cand = tok.slice(0, i) + alt + tok.slice(i + 1); if (_known(cand)) return cand; }
+    }
+    return tok;
+  }).join(',');
+}
+
+// ── 점수판 (1 2 3 … R H E B · 선공 / 후공) ──
+// 머리글 = 앞에서부터 1 · 2 · 3 … 으로 읽힌 덩어리(3개 이상) + 바로 뒤 4개(R H E B, 글자는 못 읽어도 자리만 쓴다)
+function readScoreHeader(cells) {
+  let k = 0;
+  while (k < cells.length && _norm(cells[k].text) === String(k + 1)) k++;
+  if (k < 3 || cells.length < k + 4) return null;
+  return { inn: cells.slice(0, k).map(c => c.cx), sums: cells.slice(k, k + 4).map(c => c.cx) };
+}
+// 선공 · 후공 줄 → { inn: ['1' | '-' …], sum: [R, H, E, B] } — 칸마다 가장 가까운 머리글 자리. 숫자가 아니면 이닝은 '-'(진행 안 함), 합계는 null
+function readScoreRow(cells, sh) {
+  const cols = sh.inn.map((cx, i) => ({ k: 'i' + i, cx })).concat(sh.sums.map((cx, i) => ({ k: 's' + i, cx })));
+  const gaps = sh.inn.slice(1).map((x, i) => x - sh.inn[i]).sort((a, b) => a - b), tol = (gaps.length ? gaps[gaps.length >> 1] : 60) * 0.6;
+  const row = { inn: sh.inn.map(() => '-'), sum: sh.sums.map(() => null) };
+  cells.forEach(c => {
+    let best = null;
+    cols.forEach(k => { const d = Math.abs(k.cx - c.cx); if (d <= tol && (!best || d < best.d)) best = { k: k.k, d }; });
+    if (!best) return;
+    const t = _norm(c.text), n = /^\d{1,2}$/.test(t) ? t : null;
+    if (best.k[0] === 'i') row.inn[+best.k.slice(1)] = n || '-'; else row.sum[+best.k.slice(1)] = n;
+  });
+  return row;
+}
+// 점수판 → 「이닝별 점수표」 칸 글 (parseGameOneScoreboard 가 읽는 꼴: Team 1 … R H E B / 팀 이름 · 이닝 · 합계)
+function toScoreText(sc, teams) {
+  const head = ['Team'].concat(sc.inn.map((_, i) => String(i + 1)), ['R', 'H', 'E', 'B']);
+  const line = (name, r) => [name].concat(r.inn, r.sum.map(v => v == null ? '' : v)).join('\t');
+  // 팀 이름 칸이 숫자로만 읽히면 점수표 파서가 팀 줄로 못 본다 → 그때는 원정팀 · 홈팀
+  const nm = (t, d) => t && !/^[\d\sxX-]+$/.test(t) ? t : d;
+  return [head.join('\t'), line(nm(teams && teams.away, '원정팀'), sc.away), line(nm(teams && teams.home, '홈팀'), sc.home)].join('\n');
+}
+
+// ── 초록 판(흰 글자) → 팀 이름 ──
+// 판 안에서 밝은 점을 글자로 보고 글줄 · 덩어리를 다시 나눈다 → '선공' · '후공' 이 있는 줄 아래, 왼쪽 35% 안 = 원정 · 오른쪽 35% 안 = 홈 (가운데 점수 숫자는 뺀다)
+// 덩어리마다 한국어 · 영어로 둘 다 읽어 더 그럴듯한 쪽(한글이 있으면 한국어, 영문만이면 영어 — 확신도 비교)
+async function readPanel(img, L, box, read) {
+  const x0 = box.x0 + 12, x1 = box.x1 - 12, y0 = L.y0 + 8, y1 = L.y1 - 8, w = x1 - x0, h = y1 - y0, d = img.data, m = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const p = ((y0 + y) * img.width + x0 + x) * 4; m[y * w + x] = (d[p] * 0.299 + d[p + 1] * 0.587 + d[p + 2] * 0.114) > 200 ? 1 : 0; }
+  const out = [], sls = findLines(m, w, h), hs = sls.map(L => L.y1 - L.y0).sort((a, b) => a - b), med = hs.length ? hs[hs.length >> 1] : 30;
+  for (const SL of sls) {
+    const cells = [];
+    for (const c of findClusters(m, w, SL)) {
+      // 보통 높이 줄은 '한 줄'로, 두 줄로 쓴 긴 영문 이름(점수 숫자와 같은 높이에 걸쳐 한 띠)은 '글 묶음'으로
+      const r = await read(x0 + c.x0, y0 + SL.y0, x0 + c.x1, y0 + SL.y1, SL.y1 - SL.y0 > med * 1.6);
+      cells.push({ cx: c.cx, text: _pickName(r) });
+    }
+    out.push(cells);
+  }
+  const k = out.findIndex(cells => cells.some(c => _norm(c.text) === '선공') && cells.some(c => _norm(c.text) === '후공'));
+  if (k < 0) return null;
+  const part = (lo, hi) => out.slice(k + 1).map(cells => cells.filter(c => c.cx >= lo && c.cx <= hi).map(c => c.text).join(' ')).filter(Boolean).join(' ');
+  const clean = t => t.replace(/[^가-힣A-Za-z0-9 .&'-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
+  const teams = { away: clean(part(0, w * 0.35)), home: clean(part(w * 0.65, w)) };
+  return teams.away || teams.home ? teams : null;
+}
+function _pickName(r) {
+  const ko = r.find(x => x.lang === 'kor') || { text: '', conf: 0 }, en = r.find(x => x.lang === 'eng') || { text: '', conf: 0 };
+  const kt = ko.text.replace(/\s+/g, ' ').trim(), et = en.text.replace(/\s+/g, ' ').trim();
+  if (/[가-힣]/.test(kt) && (!/^[A-Za-z][A-Za-z0-9 .&'-]*$/.test(et) || ko.conf >= en.conf)) return kt;
+  if (/^[A-Za-z][A-Za-z0-9 .&'-]*$/.test(et)) return et;
+  return kt;
+}
+
 // 타순이 1부터 이어지지 않으면 그 줄이 찍힌 장이 빠진 것 — 빠진 타순들
 function orderGaps(rows) {
   const have = new Set(rows.map(r => r.order).filter(o => o != null)), max = Math.max(0, ...have), out = [];
@@ -160,33 +262,55 @@ function orderGaps(rows) {
   return out;
 }
 
-// ── 한 장 읽기 (recognize = 덩어리 위치 → 글자) → { width, head, lines } ──
-async function readShot(img, recognize, onLine) {
-  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [], hs = [];
-  let head = null;
+// ── 한 장 읽기 (recognize = 덩어리 위치 → 글자) → { width, head, lines, lh, score, teams } ──
+// more (없어도 됨) = { pos: 덩어리 → 영문 포지션 글자, panel: 덩어리 → [{ text, conf }] 한국어 · 영어 둘 다 (색 뒤집어) }
+async function readShot(img, recognize, onLine, more) {
+  const m = inkMask(img), lines = findLines(m, img.width, img.height), read = [], hs = [], side = {};
+  const lhs = lines.map(L => L.y1 - L.y0).filter(v => v < 150).sort((a, b) => a - b), lhMed = lhs.length ? lhs[lhs.length >> 1] : 30;   // 보통 글줄 높이(판 같은 큰 띠는 빼고)
+  let head = null, sh = null, teams = null;
   for (let i = 0; i < lines.length; i++) {
     const L = lines[i], cl = findClusters(m, img.width, L);
     if (onLine) onLine(i + 1, lines.length);
+    // 폭 대부분을 덮는 높은 어두운 띠 = 점수판 위 초록 판(흰 글자). 통째로 OCR 하지 않고, 있으면 색을 뒤집어 팀 이름만 읽는다
+    if (cl.length === 1 && L.y1 - L.y0 > Math.max(80, lhMed * 4) && cl[0].x1 - cl[0].x0 > img.width * 0.6) {
+      if (more && more.panel && !teams) teams = await readPanel(img, L, cl[0], more.panel);
+      continue;
+    }
     if (!cl.length || cl.length > 24) continue;   // 글이 아닌 띠(사진 · 그래프)
     if (cl.length >= 2) hs.push(L.y1 - L.y0);
     const cells = [];
-    for (const c of cl) cells.push({ cx: c.cx, text: await recognize(c.x0, L.y0, c.x1, L.y1) });
-    const h = readHeader(cells);
-    if (h) head = h; else read.push(cells);
+    for (const c of cl) cells.push({ cx: c.cx, x0: c.x0, x1: c.x1, y0: L.y0, y1: L.y1, text: await recognize(c.x0, L.y0, c.x1, L.y1) });
+    // 포지션 = 이름(번호) 바로 오른쪽의 짧은 덩어리 → 영어 모델로 다시 읽어 P · RF · 1B … 이면 en 에 둔다
+    // (글자를 바로 바꾸지 않는다 — 그 덩어리가 포지션 칸에 붙을 때만 쓴다. 투수 표의 이닝 숫자 3 을 3B 로 바꾸지 않게)
+    const ni = cells.findIndex(c => /\(\d+\)?$|\d\)$/.test(_norm(c.text))), pc = ni >= 0 ? cells[ni + 1] : null;
+    if (more && more.pos && pc && pc.x1 - pc.x0 <= (L.y1 - L.y0) * 2.2) {
+      const t = _norm(await more.pos(pc.x0, L.y0, pc.x1, L.y1)).toUpperCase();
+      if (POS_APP[t]) pc.en = t;
+    }
+    const h = readHeader(cells), s0 = _norm(cells[0].text);
+    if (h) head = h;
+    else if (!sh && (sh = readScoreHeader(cells))) continue;
+    else if (sh && /^(선공|후공)$/.test(s0)) side[s0] = readScoreRow(cells.slice(1), sh);
+    else read.push(cells);
   }
   // lh = 글줄 높이(가운데 값). 여러 장을 모아 찍은 화면 · 줄인 사진은 10px 안팎이라 못 읽는다 → 안내용
   hs.sort((a, b) => a - b);
-  return { width: img.width, head, lines: read, lh: hs.length ? hs[hs.length >> 1] : 0 };
+  const score = sh && side['선공'] && side['후공'] ? { inn: sh.inn, away: side['선공'], home: side['후공'] } : null;
+  return { width: img.width, head, lines: read, lh: hs.length ? hs[hs.length >> 1] : 0, score, teams };
 }
 // 읽은 장 → { kind, rows }. 머리글 없는 장(아래로 내려 찍은 장)은 같은 폭 사진의 머리글을 쓴다 — 숫자 칸이 6개 이상인 줄이 있으면 타자 표
 function placeShot(shot, heads) {
   let head = shot.head;
   if (!head) {
     const numeric = shot.lines.some(cells => cells.filter(c => /^[\d.]+$/.test(_norm(c.text))).length >= 6);
-    const same = heads.filter(h => h.width === shot.width && h.head.kind === (numeric ? 'stats' : 'inning'));
+    const same = heads.filter(h => h.width === shot.width && (numeric ? h.head.kind === 'stats' || h.head.kind === 'pitch' : h.head.kind === 'inning'));
+    // 숫자 줄이면 타자 표 · 투수 표 가운데 덩어리가 머리글 자리에 더 가깝게 놓이는 쪽
+    const cost = h => { let d = 0, n = 0; shot.lines.forEach(cells => cells.forEach(c => { d += Math.min(...h.all.map(x => Math.abs(x - c.cx))); n++; })); return n ? d / n : Infinity; };
+    same.sort((a, b) => cost(a.head) - cost(b.head));
     head = same.length ? same[0].head : null;
   }
   if (!head) return { kind: null, rows: [] };
+  if (head.kind === 'pitch') return { kind: 'pitch', rows: [] };
   return { kind: head.kind, rows: toRows(head.kind, shot.lines.map(cells => assignRow(cells, head.cols))) };
 }
 
@@ -199,17 +323,33 @@ function _script(src) {
     document.head.appendChild(s);
   });
 }
+function _opts() {
+  const o = { langPath: new URL(TESS.lang, location.href).href, gzip: false, cachePath: TESS.cache, logger: () => {} };
+  if (TESS.workerPath) o.workerPath = TESS.workerPath;
+  if (TESS.corePath) o.corePath = TESS.corePath;
+  return o;
+}
 function _worker() {
   if (!_wP) {
-    _wP = _script(TESS.src).then(() => {
-      const o = { langPath: new URL(TESS.lang, location.href).href, gzip: false, cachePath: TESS.cache, logger: () => {} };
-      if (TESS.workerPath) o.workerPath = TESS.workerPath;
-      if (TESS.corePath) o.corePath = TESS.corePath;
-      return window.Tesseract.createWorker('kor', 1, o);
-    }).then(async w => { await w.setParameters({ tessedit_pageseg_mode: TESS.psm }); return w; });
+    _wP = _script(TESS.src).then(() => window.Tesseract.createWorker(TESS.langs, 1, _opts()));
     _wP.catch(() => { _wP = null; });
   }
   return _wP;
+}
+// 영어 모델 — 포지션 · 영문 팀 이름만. 한국어와 같이 받는다(처음 한 번)
+let _weP = null;
+function _engWorker() {
+  if (!_weP) {
+    _weP = _script(TESS.src).then(() => window.Tesseract.createWorker('eng', 1, _opts()));
+    _weP.catch(() => { _weP = null; });
+  }
+  return _weP;
+}
+// 같은 설정이면 다시 보내지 않는다 (설정 바꾸기도 일꾼과 주고받는 한 번)
+async function _run(w, c, params) {
+  const key = JSON.stringify(params);
+  if (w._slParams !== key) { await w.setParameters(params); w._slParams = key; }
+  return (await w.recognize(c)).data;
 }
 // 덩어리 하나를 흰 여백을 둔 작은 canvas 로 잘라 읽는다. 글자 높이가 작으면 40px 쯤으로 키운다
 function _crop(src, x0, y0, x1, y1) {
@@ -217,6 +357,13 @@ function _crop(src, x0, y0, x1, y1) {
   const c = document.createElement('canvas'); c.width = Math.round((x1 - x0 + 2 * pad) * k); c.height = Math.round((lh + 2 * pad) * k);
   const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
   g.drawImage(src, Math.max(0, x0 - pad), Math.max(0, y0 - pad), x1 - x0 + 2 * pad, lh + 2 * pad, 0, 0, c.width, c.height);
+  return c;
+}
+// 흰 글자(초록 판)용: 잘라서 회색조로 바꾸고 밝기를 뒤집는다(흰 글자 → 검은 글자)
+function _cropInv(src, x0, y0, x1, y1) {
+  const c = _crop(src, x0, y0, x1, y1), g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  for (let i = 0; i < a.length; i += 4) { const v = 255 - (a[i] * 0.299 + a[i + 1] * 0.587 + a[i + 2] * 0.114); a[i] = a[i + 1] = a[i + 2] = v; }
+  g.putImageData(d, 0, 0);
   return c;
 }
 async function _load(file) {
@@ -231,29 +378,36 @@ async function _load(file) {
 
 // 사진 여러 장 → { text, rows, checks, statsOnly, shots, files } . 고른 순서는 상관없다(타순으로 줄 세움)
 async function readFiles(files, onProgress) {
-  const w = await _worker(), list = Array.from(files || []), read = [];
-  let psm = TESS.psm;
+  const [w, we] = await Promise.all([_worker(), _engWorker()]), list = Array.from(files || []), read = [];
+  const KO = p => ({ tessedit_pageseg_mode: p, tessedit_char_whitelist: '' });
   for (let i = 0; i < list.length; i++) {
     const { canvas, img } = await _load(list[i]);
     // '한 줄'(PSM 7)로 읽는다. 글자 하나 폭(숫자 한 개)인데 한 글자로 안 나오면(3 → 61) '한 단어'(8) · '한 글자'(10)로 다시
-    const run = async (c, want) => {
-      if (want !== psm) { await w.setParameters({ tessedit_pageseg_mode: want }); psm = want; }
-      return (await w.recognize(c)).data.text;
-    };
     const rec = async (x0, y0, x1, y1) => {
       const c = _crop(canvas, x0, y0, x1, y1);
-      let t = await run(c, TESS.psm);
+      let t = (await _run(w, c, KO(TESS.psm))).text;
       if (x1 - x0 <= (y1 - y0) * 0.9 && _norm(t).length !== 1) {
-        for (const p of ['8', '10']) { const u = await run(c, p); if (_norm(u).length === 1) { t = u; break; } }
+        for (const p of ['8', '10']) { const u = (await _run(w, c, KO(p))).text; if (_norm(u).length === 1) { t = u; break; } }
       }
       return t;
     };
-    read.push(await readShot(img, rec, (k, n) => onProgress && onProgress(i, list.length, k, n)));
+    const more = {
+      // 포지션: 영어 모델 · 한 단어 · 포지션 글자만
+      pos: async (x0, y0, x1, y1) => (await _run(we, _crop(canvas, x0, y0, x1, y1), { tessedit_pageseg_mode: '8', tessedit_char_whitelist: POS_CHARS })).text,
+      // 초록 판 팀 이름: 색을 뒤집어 한국어 · 영어 둘 다 (두 줄 이름 덩어리는 '글 묶음' PSM 6, 나머지는 '한 줄' 7)
+      panel: async (x0, y0, x1, y1, multi) => {
+        const psm = multi ? '6' : '7', c = _cropInv(canvas, x0, y0, x1, y1), ko = await _run(w, c, KO(psm)), en = await _run(we, c, { tessedit_pageseg_mode: psm, tessedit_char_whitelist: '' });
+        return [{ lang: 'kor', text: ko.text, conf: ko.confidence }, { lang: 'eng', text: en.text, conf: en.confidence }];
+      },
+    };
+    read.push(await readShot(img, rec, (k, n) => onProgress && onProgress(i, list.length, k, n), more));
   }
   const heads = read.filter(s => s.head), shots = read.map(s => placeShot(s, heads)).filter(s => s.kind);
   const merged = mergeShots(shots);
-  const small = read.length > 0 && read.every(s => !s.head && s.lh > 0 && s.lh < 16);
-  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), small, shots: shots.length, files: list.length };
+  const small = read.length > 0 && read.every(s => !s.head && !s.score && !s.teams && s.lh > 0 && s.lh < 16), sc = read.map(s => s.score).find(Boolean);
+  const teams = read.map(s => s.teams).find(Boolean) || null;
+  return { text: toText(merged), rows: merged.rows, statsOnly: merged.statsOnly, checks: checkStats(merged), gaps: orderGaps(merged.rows), small,
+    scoreText: sc ? toScoreText(sc, teams) : '', teams, shots: shots.length, files: list.length };
 }
 
 // ── 화면 ──
@@ -272,9 +426,21 @@ async function gameOneShotFiles(input) {
   if (!files.length) return;
   const label = _side === 'home' ? '홈' : '원정', t0 = Date.now(), btns = document.querySelectorAll('.go-shot-b');
   btns.forEach(b => { b.disabled = true; });
-  _msg(`${label}팀 사진 ${files.length}장 읽는 중… 처음 한 번은 글자 읽기 도구(약 6MB)를 받느라 더 걸립니다`);
+  _msg(`${label}팀 사진 ${files.length}장 읽는 중… 처음 한 번은 글자 읽기 도구(약 10MB)를 받느라 더 걸립니다`);
   try {
     const r = await api.readFiles(files, (i, n, k, m) => _msg(`${label}팀 사진 읽는 중… ${i + 1}/${n}장 · ${Math.round(100 * k / m)}%`));
+    if (r.scoreText && $('goScore')) $('goScore').value = r.scoreText;   // 점수판은 어느 팀 버튼으로 골라도 이닝별 점수표 칸에
+    // 팀 이름(초록 판): 이름 칸이 비어 있을 때만 넣는다 — 이미 적은 이름은 그대로
+    let teamFill = 0;
+    if (r.teams) [['goTa', r.teams.away], ['goTh', r.teams.home]].forEach(([id, v]) => { const el = $(id); if (el && v && !el.value.trim()) { el.value = v; teamFill++; } });
+    const teamNote = r.teams ? `팀 이름: 원정 <b>${_esc(r.teams.away || '?')}</b> · 홈 <b>${_esc(r.teams.home || '?')}</b>${teamFill ? '(빈 이름 칸에 넣음)' : ''} — 다르면 고쳐 주세요.` : '팀 이름은 위 칸에 적어 주세요.';
+    const scoreNote = r.scoreText ? `<div class="go-note">점수판도 읽어 「이닝별 점수표」 칸에 넣었습니다(선공 = 원정 · 후공 = 홈). ${teamNote}</div>` : '';
+    if (!r.rows.length && r.scoreText) {
+      if (typeof window.gameOnePreview === 'function') window.gameOnePreview();
+      _msg('점수판만 읽어 「이닝별 점수표」 칸에 넣었습니다(선공 = 원정 · 후공 = 홈). 타자 기록은 「경기기록」(1회 2회 …) 표 사진을 골라야 들어옵니다.' + (r.teams ? ' ' + teamNote : ''), 'warn');
+      _track('gameone_shot', { side: _side, files: r.files, rows: 0, why: 'score_only', score: 1, ms: Date.now() - t0 });
+      return;
+    }
     if (!r.rows.length) {
       // 왜 못 읽었는지: 타자 표만 골랐다 · 글자가 너무 작다(모아 찍은 화면 · 줄인 사진) · 머리글 있는 장이 없다
       const why = r.statsOnly.length ? 'stats_only' : r.small ? 'small' : 'no_header';
@@ -296,9 +462,10 @@ async function gameOneShotFiles(input) {
       : `<div class="go-ok">타자 표의 타수 · 안타 · 사사구 · 삼진과 ${withStats}명 모두 맞습니다.</div>`;
     else h += '<div class="go-note">「타자」 표(타수 · 안타 …)도 같이 고르면 읽은 칸이 맞는지 숫자로 맞춰 봅니다.</div>';
     if (r.gaps.length) h += `<div class="go-warn">타순 ${r.gaps.join(' · ')}번 줄이 사진에 없습니다 — 그 줄이 찍힌 사진을 같이 골라 주세요</div>`;
+    h += scoreNote;
     if (r.statsOnly.length) h += `<div class="go-warn">타자 표에는 있는데 경기기록에서 못 찾은 선수: ${r.statsOnly.map(s => _esc(s.name) + '(' + s.number + ')').join(' · ')} — 그 줄이 찍힌 사진을 더 골라 주세요</div>`;
     _msg(h, r.checks.length || r.statsOnly.length || r.gaps.length ? 'warn' : 'ok');
-    _track('gameone_shot', { side: _side, files: r.files, rows: r.rows.length, pa, stats: withStats, mismatch: r.checks.length + r.statsOnly.length, gaps: r.gaps.length, ms: Date.now() - t0 });
+    _track('gameone_shot', { side: _side, files: r.files, rows: r.rows.length, pa, stats: withStats, mismatch: r.checks.length + r.statsOnly.length, gaps: r.gaps.length, score: r.scoreText ? 1 : 0, teams: r.teams ? 1 : 0, pos: r.rows.filter(x => POS_APP[x.pos]).length, ms: Date.now() - t0 });
   } catch (e) {
     _msg('읽지 못했습니다: ' + _esc(e && e.message || e) + ' — 다시 골라 주세요', 'bad');
     _track('gameone_shot', { side: _side, files: files.length, rows: -1, ms: Date.now() - t0 });
@@ -310,4 +477,4 @@ async function gameOneShotFiles(input) {
 window.gameOneShotPick = gameOneShotPick;
 window.gameOneShotFiles = gameOneShotFiles;
 // 테스트는 api.readFiles 를 바꿔 끼워 화면만 확인한다(실제 Tesseract 는 CI 에서 못 받음)
-const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, readShot, placeShot, readFiles, POS_APP };
+const api = window.SLGameOneOcr = { TESS, inkMask, findLines, findClusters, readHeader, assignRow, toRows, mergeShots, toText, checkStats, orderGaps, fixCell, cellKnown, readScoreHeader, readScoreRow, toScoreText, readShot, placeShot, readFiles, POS_APP };

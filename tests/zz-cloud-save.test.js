@@ -16,9 +16,9 @@
     localStorage.setItem('sl_saves', JSON.stringify(saves));
   }
   function upserts(key) { return srv.log.filter(function (x) { return x.table === 'user_games' && x.op === 'upsert' && (x.rows || []).some(function (r) { return r.game_key === key; }); }); }
-  function loginAndSettle() {   // 시작 동기화가 끝날 때까지 (서버 요청이 1초 동안 더 없을 때까지)
+  function loginAndSettle(id) {   // 시작 동기화가 끝날 때까지 (서버 요청이 1초 동안 더 없을 때까지). id = 계정(생략하면 TEST-USER)
     return new Promise(function (resolve) {
-      srv.signIn();
+      srv.signIn(id);
       var n = 0, last = -1, quiet = 0;
       (function poll() {
         var len = srv.log.length;
@@ -203,6 +203,17 @@
     await loginAndSettle();
     eq(upserts(S).length, 1, '다시 로그인하면 올라감');
     eq(serverMod(S).length, 1, '서버에 그 경기');
+  });
+  // T3 의 다른 경우: 다른 계정으로 바뀌면 _ensureAuth 는 새 계정의 세션을 돌려주므로 막지 못한다 — 타이머의 계정 확인 하나만 막는다.
+  // 이 기기의 경기는 새 계정의 시작 동기화가 그 계정에 올린다(지금 동작). 옛 타이머가 같은 경기를 한 번 더 보내지 않는지 본다
+  test('(11번 T3b) 저장하고 업로드 전에 다른 계정으로 바뀌면, 옛 타이머는 올리지 않고 새 계정의 시작 동기화가 한 번 올린다', async function () {
+    await start(); seed([]); await loginAndSettle(); srv.log.length = 0;
+    var S = await saveNew(6);
+    await sleep(500);   // 저장 1초 뒤(업로드 타이머가 돌기 전)
+    srv.signOut(); await loginAndSettle('OTHER-USER');   // supabase-js 처럼 SIGNED_OUT → SIGNED_IN
+    await sleep(2500);   // 옛 타이머(저장 3초 뒤)가 지나도록
+    function by(uid) { return upserts(S).filter(function (x) { return x.rows.some(function (r) { return r.game_key === S && r.user_id === uid; }); }).length; }
+    eq([by('TEST-USER'), by('OTHER-USER')], [0, 1], '옛 계정 · 새 계정으로 그 경기를 올린 요청');
   });
   test('(11번 T4) 팀 코드를 설정하고 로그인한 상태에서 한 번 저장하면 games · user_games 에 한 번씩 올라간다', async function () {
     await start(); seed([]); await loginAndSettle(); srv.log.length = 0;

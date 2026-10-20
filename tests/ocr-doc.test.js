@@ -21,10 +21,13 @@
   };
 
   // 파일 하나를 입력 창에 넣고, 화면에 그려진 선수 목록(타순 · 이름 · 배번 · 포지션)을 읽는다
+  // 파일 읽기(FileReader)는 실제 시간이 걸리고 sleep 은 가상 시간이라, 여러 파일을 함께 돌리면 몇십 번 기다려도 모자랄 수 있다(EUC-KR 은 두 번 읽음).
+  // 목록을 먼저 비워 앞 테스트의 목록을 읽지 않게 하고, 새 목록이 그려질 때까지 넉넉히 기다린다
   async function read(fileName, text, type) {
     window.ocrModalOpen();
+    $('ocrPlayerList').innerHTML = '';
     window.ocrHandleFile(new File([text], fileName, { type: type }));
-    for (var i = 0; i < 40; i++) { await T.sleep(50); if ($('ocrResultWrap').style.display === 'block') break; }
+    for (var i = 0; i < 600; i++) { await T.sleep(50); if ($('ocrResultWrap').style.display === 'block' && $('ocrPlayerList').children.length) break; }
     var rows = [].map.call(document.querySelectorAll('#ocrPlayerList > div'), function (r) {
       function v(f) { var el = r.querySelector('[data-field="' + f + '"]'); return el ? el.value : ''; }
       return { order: (r.querySelector('span') || {}).textContent, name: v('name'), num: v('num'), pos: v('pos') };

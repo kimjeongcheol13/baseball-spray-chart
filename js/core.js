@@ -2443,7 +2443,12 @@ function saveGame(fromEdit){
     const key=prev?_curSaveKey:'sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
     const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers,info:AS.info||(prev&&prev.info)||null,live:_liveState()});   // info = 경기 정보(날짜·구장·홈/원정·이닝, 경기설정 탭)
     const label=_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as;
-    if(prev)saves[si].label=label;
+    if(prev){
+      saves[si].label=label;
+      // 이름을 바꾼 적 있는 경기: 다시 저장한 자동 이름도 바꾼 이름처럼 다른 기기로 보낸다(다음 동기화 · cloud.js _syncLabels).
+      // 안 그러면 다른 기기는 예전에 바꾼 이름을 계속 쓴다(그 경기는 경기 데이터에 실린 이름을 따르지 않는다)
+      if(saves[si].labelAt)saves[si].labelAt=Date.now();
+    }
     else saves.push({key,label,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));
     localStorage.setItem(key,JSON.stringify(data));
@@ -3930,11 +3935,12 @@ function renameGame(key) {
   var newName=prompt('경기 이름 변경:', s.label);
   if(newName===null||!newName.trim())return;
   s.label=newName.trim();
+  s.labelAt=Date.now();   // 바꾼 시각 — 기기끼리 더 새로 바꾼 이름을 쓴다(cloud.js _syncLabels)
   localStorage.setItem('sl_saves',JSON.stringify(saves));
   // 클라우드 label 업데이트
   if(window.cloudSave){
     var gd=JSON.parse(localStorage.getItem(key)||'null');
-    if(gd)cloudSave(key,gd,s.label,s.ts,true);   // 이름만 변경 — 로컬 수정 시각은 갱신하지 않는다
+    if(gd)cloudSave(key,gd,s.label,s.ts,true);   // 이름만 변경 — 로컬 수정 시각은 갱신하지 않고, 경기 내용 대신 이름만 올린다
   }
   openLoad();
   showToast('이름이 변경되었습니다',false);
@@ -9868,6 +9874,7 @@ function fieldFeedbackSubmit(){
     // 로그인 계정 클라우드(user_games): cloud.js 의 업로드. 이 함수가 window.cloudSave 를 같은 이름으로 다시 정의하면서 예전에는 그것을 버려,
     // 로그인 사용자가 저장해도 그 경기가 바로 올라가지 않았다(다음 시작 동기화 때야 올라감). 로그인 전 · 오프라인 처리는 cloud.js 가 한다
     if(!labelOnly&&typeof window._cloudSaveUser==='function')window._cloudSaveUser(key,data);
+    if(labelOnly&&typeof window._cloudSaveLabel==='function')window._cloudSaveLabel(key);   // 이름만: user_games.label · label_at 만 고친다(data · updated_at 그대로)
     if(!_init()||!getTeamCode())return;
     if(typeof navigator!=='undefined'&&!navigator.onLine)return; // 오프라인 시 조기 리턴
     // ts 를 숫자로 — 예전 경기는 로케일 문자열이라 그대로 보내면 400. 읽을 수 없으면 지금 시각(방금 저장·수정한 경기)

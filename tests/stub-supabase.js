@@ -28,6 +28,7 @@
   srv.reset = function () {
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.shared_links = []; srv.user = null;
     srv.log = []; srv.failRead = null; srv.failWrite = null; srv.delayRead = null; srv.channels = []; srv.rlsDelete = false;
+    srv.noLabelCols = false;   // true = sql/14 적용 전: user_games.label · label_at 을 읽거나 쓰면 42703(열 없음)
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
   // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다). id = 계정(생략하면 TEST-USER)
@@ -56,7 +57,7 @@
 
   function run(q) {
     return Promise.resolve().then(function () {
-      var rows = q.op === 'upsert' || q.op === 'insert' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;
+      var rows = q.op === 'upsert' || q.op === 'insert' || q.op === 'update' ? (Array.isArray(q.p) ? q.p : [q.p]) : null;   // update: [고칠 열]
       var fi = q.fi || {};
       function match(r) { return Object.keys(q.f).every(function (k) { return r[k] === q.f[k]; }) && Object.keys(q.n).every(function (k) { return r[k] !== q.n[k]; }) && Object.keys(fi).every(function (k) { return fi[k].indexOf(r[k]) >= 0; }); }
       srv.log.push({ table: q.t, op: q.op, cols: q.cols, rows: rows ? clone(rows) : null, f: clone(q.f), fi: clone(fi),
@@ -67,6 +68,13 @@
       if (f) return { data: null, error: { message: f.message, code: f.code || '', details: f.details }, status: f.status, statusText: '' };
       var tbl = srv[q.t];
       if (!Array.isArray(tbl)) throw new Error('stub: 지원하지 않는 테이블 ' + q.t);
+      if (srv.noLabelCols && q.t === 'user_games' && (/\blabel(_at)?\b/.test(q.cols) || (rows || []).some(function (r) { return 'label' in r || 'label_at' in r; })))
+        return { data: null, error: { message: 'column user_games.label does not exist', code: '42703' }, status: 400, statusText: '' };
+      if (q.op === 'update') {   // fail-closed: 필터 없는 update 는 예외. RLS 흉내: user_games 는 자기 행만 고친다(남의 행은 에러 없이 0행)
+        if (!Object.keys(q.f).length && !Object.keys(fi).length) throw new Error('stub: update 에 필터(eq/in) 필요');
+        tbl.forEach(function (r) { if (match(r) && (q.t !== 'user_games' || r.user_id === (srv.user || {}).id)) Object.assign(r, clone(q.p)); });
+        return { data: null, error: null, status: 204 };
+      }
       if (q.op === 'delete') {   // fail-closed: 필터 없는 delete 는 예외(표 전체 삭제 방지)
         if (!Object.keys(q.f).length && !Object.keys(fi).length) throw new Error('stub: delete 에 필터(eq/in) 필요');
         // RLS 흉내: user_games 는 자기 행(user_id = auth.uid())만 지울 수 있다. 정책이 막으면(srv.rlsDelete) 에러 없이 0행 삭제로 끝난다
@@ -96,7 +104,7 @@
       var keys = q.o.onConflict.split(',');
       rows.forEach(function (r) {
         var i = tbl.findIndex(function (x) { return keys.every(function (k) { return x[k] === r[k]; }); });
-        if (i >= 0) tbl[i] = clone(r); else tbl.push(clone(r));
+        if (i >= 0) Object.assign(tbl[i], clone(r)); else tbl.push(clone(r));   // PostgREST upsert 는 보낸 열만 바꾼다(user_games.label 등 나머지는 그대로)
       });
       return { data: null, error: null, status: 201 };
     }).then(function (res) {
@@ -133,7 +141,7 @@
   };
 
   var client = {
-    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, insert: function (rows) { return new Q(t, 'insert', rows); }, delete: function () { return new Q(t, 'delete'); } }; },
+    from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, update: function (patch) { return new Q(t, 'update', patch); }, insert: function (rows) { return new Q(t, 'insert', rows); }, delete: function () { return new Q(t, 'delete'); } }; },
     rpc: function (fn, args) {
       return Promise.resolve().then(function () {
         srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });

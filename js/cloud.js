@@ -593,8 +593,9 @@
             } else if (existMap[k]) {
               updated++;
               if (k === window._curSaveKey) openChanged = true;
-              // 다른 기기에서 고친(이름을 바꾼) 경기 → 그 이름으로. 이름을 싣지 않은 예전 행은 이 기기의 이름을 그대로 둔다
-              if (_rowLabel(row.data) && entryOf[k] && entryOf[k].label !== clean.label) { entryOf[k].label = clean.label; relabeled++; }
+              // 다른 기기에서 고친(이름을 바꾼) 경기 → 그 이름으로. 이름을 싣지 않은 예전 행은 이 기기의 이름을 그대로 둔다.
+              // 이름을 바꾼 적 있는 경기(labelAt)는 바꾼 이름(label · label_at, 아래 _syncLabels)을 따른다 — 내용만 고친 기기가 실어 온 예전 이름으로 돌아가지 않게
+              if (_rowLabel(row.data) && entryOf[k] && !entryOf[k].labelAt && entryOf[k].label !== clean.label) { entryOf[k].label = clean.label; relabeled++; }
             }
           } else if (!lm.reliable) {
             console.warn('[Cloud] 로컬 경기 시각을 읽지 못해 병합에서 제외:', k);
@@ -611,6 +612,8 @@
           if (lo && lo.classList.contains('show') && typeof openLoad === 'function') openLoad();   // 열려 있는 목록을 다시 그린다
         }
         return _pushAutoCleanup(db, user, plan).then(function () {
+          return _syncLabels(db, user);   // 실패해도 경기 동기화 결과에는 넣지 않는다(다음 동기화 때 다시 맞춘다)
+        }).then(function () {
           if (upErr || delFail) _notifySyncFail(); else _syncSaved(3000);
         });
       });
@@ -640,11 +643,44 @@
   }
 
   // 경기 이름(sl_saves 의 label)은 기기마다 따로였다 — 같은 경기가 휴대폰과 PC 에서 다른 이름으로 보였다.
-  // 올릴 때 data.saveLabel 로 함께 싣고(user_games 열은 그대로), 내려받을 때 목록 이름으로 쓴다. 로컬 경기 데이터에는 남기지 않는다
-  function _labelOf(key) {
-    var l = '';
-    try { JSON.parse(localStorage.getItem('sl_saves') || '[]').forEach(function (s) { if (s && s.key === key && typeof s.label === 'string') l = s.label; }); } catch (e) { /* 깨진 목록 */ }
-    return l;
+  // 올릴 때 data.saveLabel 로 함께 싣고, 내려받을 때 목록 이름으로 쓴다. 로컬 경기 데이터에는 남기지 않는다.
+  // 이름 바꾸기는 내용을 올리지 않으므로 따로 오간다(아래 label · label_at)
+  function _entryOf(key) {
+    var e = null;
+    try { JSON.parse(localStorage.getItem('sl_saves') || '[]').forEach(function (s) { if (s && s.key === key) e = s; }); } catch (x) { /* 깨진 목록 */ }
+    return e;
+  }
+  function _labelOf(key) { var e = _entryOf(key); return e && typeof e.label === 'string' ? e.label : ''; }
+
+  /* ── 경기 이름 바꾸기 (user_games.label · label_at, sql/14) ─────────────
+     이름 바꾸기(core.js renameGame)는 경기 내용을 올리지 않는다 — 내용이 오래된 기기가 서버의 더 새로운 기록을 덮지 않게(data · updated_at 은 그대로).
+     이름과 바꾼 시각(sl_saves 항목의 labelAt)만 따로 올리고, 시작 동기화 끝에 서로 맞춘다: 서버 label_at 이 더 새로우면 그 이름으로,
+     이 기기가 더 새로우면(로그인 전 · 오프라인 · 실패로 못 올린 이름) 올린다.
+     sql/14 적용 전(열 없음)이면 조회가 실패한다 — 경고만 남기고 경기 동기화는 그대로 끝낸다 */
+  function _pushLabel(db, user, s) {
+    return db.from('user_games').update({ label: s.label, label_at: new Date(s.labelAt).toISOString() })
+      .eq('user_id', user.id).eq('game_key', s.key).then(function (r) { if (r && r.error) throw r.error; });
+  }
+  function _syncLabels(db, user) {
+    return db.from('user_games').select('game_key,label,label_at').eq('user_id', user.id).then(function (r) {
+      if (r.error) throw r.error;
+      var remote = Object.create(null), saves = JSON.parse(localStorage.getItem('sl_saves') || '[]'), got = 0, send = [];
+      (r.data || []).forEach(function (x) { if (x && typeof x.game_key === 'string') remote[x.game_key] = x; });
+      saves.forEach(function (s) {
+        var x = s && typeof s.key === 'string' && remote[s.key];
+        if (!x) return;   // 서버에 없는 경기(올리기 실패 등) — 다음 동기화 때 맞춘다
+        var at = x.label_at ? new Date(x.label_at).getTime() || 0 : 0, mine = Number(s.labelAt) || 0;
+        var l = typeof x.label === 'string' ? x.label.trim() : '';
+        if (l && at > mine) { s.label = l; s.labelAt = at; got++; }
+        else if (mine > at && typeof s.label === 'string' && s.label) send.push(s);
+      });
+      if (got) {
+        localStorage.setItem('sl_saves', JSON.stringify(saves));
+        var lo = document.getElementById('loadOverlay');
+        if (lo && lo.classList.contains('show') && typeof openLoad === 'function') openLoad();   // 열려 있는 목록을 다시 그린다
+      }
+      return Promise.all(send.map(function (s) { return _pushLabel(db, user, s); }));
+    }).catch(function (e) { console.warn('[Cloud] 경기 이름 동기화 건너뜀:', e && e.message); });
   }
   function _withLabel(gd, label) { return typeof label === 'string' && label ? Object.assign({}, gd, { saveLabel: label }) : gd; }
   function _rowLabel(d) { var l = d && d.saveLabel; return typeof l === 'string' ? l.trim() : ''; }
@@ -891,6 +927,18 @@
         .then(function (ok) { if (ok) _syncSaved(3000); else _setStatus('clear'); })
         .catch(_notifySyncFail);
     }, 3000);
+  };
+
+  /* renameGame() → core.js cloudSave(…, labelOnly) → _cloudSaveLabel(key): 바꾼 이름과 그 시각만 올린다(경기 내용 · 수정 시각은 그대로).
+     로그인 전 · 오프라인 · 실패면 시작 동기화(_syncLabels)가 이 기기의 더 새로운 이름을 올린다 */
+  window._cloudSaveLabel = function (key) {
+    if (!_user || _user.is_anonymous) return;
+    if (!_online) { _pendSync = true; return; }
+    var s = _entryOf(key);
+    if (!s || !s.labelAt || typeof s.label !== 'string' || !s.label) return;
+    _ensureAuth().then(function (user) {
+      if (user) return _pushLabel(_client(), user, s).then(function () { _syncSaved(2000); });
+    }).catch(_notifySyncFail);
   };
 
   /* deleteGame() → cloudDeleteGame(key): 로그인 계정 클라우드(user_games)에서도 지운다. 못 지우면 대기 목록에 남겨 시작 동기화가 처리한다.

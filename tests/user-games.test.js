@@ -111,7 +111,8 @@
     await boot();
     seed([G(K1, T0)], {}); srv.failWrite = { status: 403, code: '42501', message: 'permission denied' };
     var s = await runLogin();
-    eq(ups(s).length, 1, '업로드 요청 수'); eq(sels(s).length, 2, '조회 2번(시각 조회 + 내려받기)');
+    eq(ups(s).length, 1, '업로드 요청 수');
+    eq(sels(s), ['game_key,updated_at', 'game_key,data,updated_at', 'game_key,label,label_at'], '조회 3번(시각 조회 + 내려받기 + 바꾼 이름)');
     ok(s.sawFail, '실패 알림이 표시되어야 함');
   });
 
@@ -159,6 +160,18 @@
     renameGame(K1);
     eq(ls('sl_saves')[0].label, '새 이름', '이름이 바뀌지 않음');
     eq(mod(K1), 777000000000, '이름 변경이 수정 시각을 건드림');
+    ok(ls('sl_saves')[0].labelAt > 0, '바꾼 시각(labelAt)이 없음 — 다른 기기로 이름을 보낼 때 쓴다');
+  });
+  test('경로: 이름을 바꾼 경기를 다시 저장하면 자동 이름으로 돌아가고(예전과 같다), 바꾼 시각(labelAt)도 앞으로 가 그 이름이 다른 기기로 간다', async function () {
+    seed([G(K1, T0)], {}); setGame();
+    window.prompt = function () { return '바꾼 이름'; };
+    renameGame(K1);
+    var a1 = ls('sl_saves')[0].labelAt;
+    window._curSaveKey = K1;
+    await sleep(10); saveGame(); await sleep(500);
+    var e = ls('sl_saves')[0];
+    ok(e.label !== '바꾼 이름', '다시 저장했는데 바꾼 이름 그대로(이 테스트의 전제): ' + e.label);
+    ok(e.labelAt > a1, '바꾼 시각이 앞으로 가지 않음: ' + a1 + ' → ' + e.labelAt);
   });
 
   // 저장 · 가져오기는 로그인 상태면 3초 뒤 user_games 에 올라간다(cloud.js _cloudSaveUser). 위 경로 테스트가 남긴 업로드가

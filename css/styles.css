@@ -2078,3 +2078,6 @@ nav i {
 /* 스킵 링크: 평소엔 화면 밖, 키보드 포커스를 받으면 상단에 표시 */
 .skip-link{position:fixed;top:-64px;left:8px;z-index:10000;padding:12px 16px;min-height:44px;box-sizing:border-box;background:#0B1220;color:#fff;font-weight:700;font-size:14px;border-radius:6px;text-decoration:none;transition:top .1s}
 .skip-link:focus{top:8px;outline:3px solid #2456D9;outline-offset:2px}
+
+/* 라인업 사진 입력 창의 외부 전송 안내: 좁은 화면에서 「개인정보처리방침」이 글자 중간에서 끊기지 않게 */
+@media (max-width:720px){#ocrPrivacyNote{word-break:keep-all}}

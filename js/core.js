@@ -2495,6 +2495,12 @@ function openLoad(){
         +'</div>';
     }).join('');
   }
+  // 경기 목록은 기기마다 따로 저장된다 — 로그인했으면 지금 클라우드와 다시 맞추고(cloud.js, 바뀌면 목록을 다시 그린다), 안 했으면 알려 준다
+  if(window._cloudIsLoggedIn&&!window._cloudIsLoggedIn())
+    el.insertAdjacentHTML('afterbegin','<div class="load-sync-hint" style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:8px;border:1px dashed var(--border,#ccc);font-size:12px;line-height:1.5;color:var(--text3)">'
+      +'<span style="flex:1">이 기기에만 있는 목록이에요. 로그인하면 휴대폰·PC가 같은 목록을 써요</span>'
+      +'<button type="button" style="min-width:64px;min-height:44px;font-size:12px" onclick="closeOverlay(\'loadOverlay\');openLoginModal()">로그인</button></div>');
+  else if(window.cloudSyncNow)cloudSyncNow();
   openOverlay('loadOverlay');
 }
 

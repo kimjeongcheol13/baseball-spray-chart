@@ -75,15 +75,18 @@
       ok(toasts.some(function (m) { return m.indexOf('다른 기기에서 바뀌었어요') >= 0; }), '알림 없음: ' + JSON.stringify(toasts));
     });
   });
-  test('이름 바꾸기 · 저장은 이름(saveLabel)을 함께 올린다 — 로컬 경기 데이터는 그대로', async function () {
+  test('올릴 때 이름(saveLabel)을 함께 싣는다 — 다시 맞추기(불러오기) · 저장 업로드 모두, 로컬 경기 데이터는 그대로', async function () {
     await isolated(async function () {
       await loggedIn();
-      window.prompt = function () { return '바꾼 이름'; };
-      renameGame(K1);
-      await sleep(3500); await settle();
+      localStorage.setItem(K1, JSON.stringify(game(K1, 2))); window._slMarkMod(K1, TS + 60000);   // 이 기기에서 더 기록했다(오프라인 등으로 아직 안 올라감)
+      openLoad(); await settle();
       var r = srv.user_games.filter(function (x) { return x.game_key === K1; })[0];
-      eq(r.data.saveLabel, '바꾼 이름', '서버 K1 이름');
-      ok(new Date(r.updated_at).getTime() > TS, '이름 바꾸기가 수정으로 올라가지 않음(다른 기기가 받지 못함)');
+      eq([r.data.abs.length, r.data.saveLabel], [2, 'PC 이름'], '다시 맞추기가 올린 K1');
+      var sl = ls('sl_saves'); sl[0].label = '저장한 이름'; localStorage.setItem('sl_saves', JSON.stringify(sl));
+      window._cloudSaveUser(K1, ls(K1));   // saveGame → core.js cloudSave → 이 함수 (3초 디바운스)
+      await sleep(3500); await settle();
+      r = srv.user_games.filter(function (x) { return x.game_key === K1; })[0];
+      eq(r.data.saveLabel, '저장한 이름', '저장 업로드가 올린 K1 이름');
       eq('saveLabel' in ls(K1), false, '로컬 K1 데이터에 이름 필드');
     });
   });

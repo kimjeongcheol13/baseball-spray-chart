@@ -3934,7 +3934,7 @@ function renameGame(key) {
   // 클라우드 label 업데이트
   if(window.cloudSave){
     var gd=JSON.parse(localStorage.getItem(key)||'null');
-    if(gd)cloudSave(key,gd,s.label,s.ts);   // 이름도 계정 클라우드(user_games data.saveLabel)에 올라간다 → 수정으로 친다(다른 기기가 바뀐 이름을 받는다)
+    if(gd)cloudSave(key,gd,s.label,s.ts,true);   // 이름만 변경 — 로컬 수정 시각은 갱신하지 않는다
   }
   openLoad();
   showToast('이름이 변경되었습니다',false);

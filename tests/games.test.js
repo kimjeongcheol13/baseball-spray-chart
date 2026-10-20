@@ -195,6 +195,16 @@
     var cur = G().loadGames().filter(function (g) { return g.current; }); eq(cur.length, 1, '저장 안 된 현재 경기'); eq(cur[0].abs.length, 3, '현재 경기 타석');
     eq(paOf(G().loadGames({ withCurrent: false })), 94, '저장 경기만 세면 그대로');
   });
+  test('팀 탭 「이번 경기」: 현재 경기가 저장본과 합쳐져도(current 꺼짐) 스코어가 undefined 가 아니라 지금 점수', function () {
+    backupLike();
+    AS.abs = JSON.parse(JSON.stringify(rows().filter(function (g) { return g.copyCount === 14; })[0].abs)); AS.hs = 6; AS.as = 5;
+    openTeamView(); setTeamScope('scope', 'game'); setTeamScope('side', 'home');
+    var el = $('teamContent');
+    eq(((el.querySelector('.tm-rec-main') || {}).textContent || '').replace(/\s/g, ''), '6:5', '진행 중 스코어');
+    ok(!/undefined/.test(el.textContent), 'undefined 없음');
+    eq((el.querySelector('.tm-games .tm-res') || {}).textContent, '중', '경기 결과 = 진행 중');
+    setTeamScope('scope', 'season');
+  });
 
   // ═══ 삭제 ═══
   test('삭제는 경기 단위: 확인 문구에 저장본 수 · 경기 요약, 사본까지 전부 지운다 · 취소하면 아무것도 안 지운다', function () {

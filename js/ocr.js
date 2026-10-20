@@ -165,6 +165,9 @@
     '선발':1,'팀명':1,'홈팀':1,'원정':1,'주심':1,'선심':1,'루심':1,
     '경기':1,'날짜':1,'시간':1,'기록':1,'점수':1,'구단':1,'심판':1,'라인업':1,
     '상대':1,'팀장':1,'대표':1,'작성':1,'확인':1,'서명':1,'기타':1,
+    // 수비 이름(1루수 → '루수', 유격수 …)과 협회 양식(GIBA 등)의 머리 · 제목 칸
+    '루수':1,'유격수':1,'좌익수':1,'중견수':1,'우익수':1,
+    '리그명':1,'경기일':1,'수비':1,'이름':1,'비고':1,'선수명':1,'타자명':1,
   };
 
   // 셀 노이즈 제거 (: ! 등 뒤따라오는 노이즈)
@@ -283,18 +286,39 @@
   }
 
   // ─── Document parsers (txt / csv / xlsx) ──────
+  // 한 줄 → 칸. 따옴표 안의 구분자는 칸을 나누지 않는다(엑셀 · 시트는 쉼표가 든 칸을 "…"로 감싼다)
+  function _splitRow(line, delim){
+    var out=[], cur='', q=false;
+    for(var i=0;i<line.length;i++){
+      var ch=line[i];
+      if(q){ if(ch==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+      else if(ch==='"') q=true;
+      else if(ch===delim){ out.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur.trim()); return out;
+  }
   function parseCsv(text) {
     var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
     if (!lines.length) return [];
-    var delim = lines[0].includes('\t') ? '\t' : ',';
-    var headers = lines[0].split(delim).map(function(h){ return h.trim().toLowerCase().replace(/\s/g,''); });
+    // 머리줄(이름 칸이 있는 줄)을 위에서부터 찾는다 — 협회 양식(GIBA 등)은 제목 · 리그명 · 팀명 · 경기일 줄 아래에 머리줄이 있다
+    // 이름 칸 머리 — 팀 · 리그마다 「선수명」 · 「선수 이름」 · 「타자명」(게임원)처럼 다르게 쓴다(칸 안 띄어쓰기는 아래에서 지운다)
+    var NAME_H=['성명','이름','name','선수','선수명','선수이름','타자명'];
+    var hi=-1, delim=',', headers=[];
+    for(var h=0;h<lines.length&&hi<0;h++){
+      var d=lines[h].includes('\t')?'\t':',';
+      var hs=_splitRow(lines[h],d).map(function(x){ return x.toLowerCase().replace(/\s/g,''); });
+      if(NAME_H.some(function(n){ return hs.indexOf(n)>=0; })){ hi=h; delim=d; headers=hs; }
+    }
     function fc(cands){ for(var i=0;i<cands.length;i++){var x=headers.indexOf(cands[i]);if(x>=0)return x;} return -1; }
-    var iO=fc(['타순','order','no']), iN=fc(['성명','이름','name','선수']), iP=fc(['위치','포지션','pos']), iU=fc(['배번','등번','num','#']), iB=fc(['타석','bh']);
+    var iO=fc(['타순','order','no']), iN=fc(NAME_H), iP=fc(['위치','포지션','pos','수비','수비위치']), iU=fc(['배번','등번','등번호','num','#']), iB=fc(['타석','bh']);
     if (iN<0) return parseOcrText(text);
     var players=[];
-    for(var i=1;i<lines.length;i++){
-      var cols=lines[i].split(delim).map(function(c){return c.trim();});
+    for(var i=hi+1;i<lines.length;i++){
+      var cols=_splitRow(lines[i],delim);
       var nm=cols[iN]||''; if(!nm) continue;
+      // 타순 칸에 수비 이름(협회 양식의 '투수' 줄 = 선발투수)이 있으면 타자 줄이 아니다
+      if(iO>=0&&cols[iO]&&isNaN(parseInt(cols[iO]))&&POS_MAP[cols[iO].replace(/\s/g,'')]) continue;
       players.push({order:iO>=0?parseInt(cols[iO])||null:null, name:nm, pos:iP>=0?normalizePos(cols[iP]):'', num:iU>=0?cols[iU]:'', bh:iB>=0?_bh(cols[iB]):''});
     }
     return players;
@@ -407,7 +431,12 @@
     // ── TXT / CSV ─────────────────────────────
     if(type==='text/plain'||type==='text/csv'||ext==='txt'||ext==='csv'){
       var rd2=new FileReader();
-      rd2.onload=function(e){ finish(ext==='csv'?parseCsv(e.target.result):parseOcrText(e.target.result), e.target.result); };
+      // txt 도 머리줄(이름 칸)이 있으면 칸대로 읽는다(엑셀에서 탭으로 저장한 양식). 머리줄이 없으면 parseCsv 가 예전처럼 parseOcrText 로 넘긴다
+      rd2.onload=function(e){
+        // 한국어 엑셀의 「CSV(쉼표로 분리)」는 UTF-8 이 아니라 EUC-KR(CP949)로 저장된다 — 깨진 글자(�)가 보이면 한 번만 EUC-KR 로 다시 읽는다
+        if(e.target.result.indexOf('�')>=0&&!rd2._kr){ rd2._kr=true; rd2.readAsText(file,'euc-kr'); return; }
+        finish(parseCsv(e.target.result), e.target.result);
+      };
       rd2.readAsText(file,'UTF-8'); return;
     }
 

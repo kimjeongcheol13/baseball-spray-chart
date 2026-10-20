@@ -167,7 +167,7 @@
     '상대':1,'팀장':1,'대표':1,'작성':1,'확인':1,'서명':1,'기타':1,
     // 수비 이름(1루수 → '루수', 유격수 …)과 협회 양식(GIBA 등)의 머리 · 제목 칸
     '루수':1,'유격수':1,'좌익수':1,'중견수':1,'우익수':1,
-    '리그명':1,'경기일':1,'수비':1,'이름':1,'비고':1,
+    '리그명':1,'경기일':1,'수비':1,'이름':1,'비고':1,'선수명':1,'타자명':1,
   };
 
   // 셀 노이즈 제거 (: ! 등 뒤따라오는 노이즈)
@@ -302,14 +302,16 @@
     var lines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
     if (!lines.length) return [];
     // 머리줄(이름 칸이 있는 줄)을 위에서부터 찾는다 — 협회 양식(GIBA 등)은 제목 · 리그명 · 팀명 · 경기일 줄 아래에 머리줄이 있다
+    // 이름 칸 머리 — 팀 · 리그마다 「선수명」 · 「선수 이름」 · 「타자명」(게임원)처럼 다르게 쓴다(칸 안 띄어쓰기는 아래에서 지운다)
+    var NAME_H=['성명','이름','name','선수','선수명','선수이름','타자명'];
     var hi=-1, delim=',', headers=[];
     for(var h=0;h<lines.length&&hi<0;h++){
       var d=lines[h].includes('\t')?'\t':',';
       var hs=_splitRow(lines[h],d).map(function(x){ return x.toLowerCase().replace(/\s/g,''); });
-      if(['성명','이름','name','선수'].some(function(n){ return hs.indexOf(n)>=0; })){ hi=h; delim=d; headers=hs; }
+      if(NAME_H.some(function(n){ return hs.indexOf(n)>=0; })){ hi=h; delim=d; headers=hs; }
     }
     function fc(cands){ for(var i=0;i<cands.length;i++){var x=headers.indexOf(cands[i]);if(x>=0)return x;} return -1; }
-    var iO=fc(['타순','order','no']), iN=fc(['성명','이름','name','선수']), iP=fc(['위치','포지션','pos','수비','수비위치']), iU=fc(['배번','등번','등번호','num','#']), iB=fc(['타석','bh']);
+    var iO=fc(['타순','order','no']), iN=fc(NAME_H), iP=fc(['위치','포지션','pos','수비','수비위치']), iU=fc(['배번','등번','등번호','num','#']), iB=fc(['타석','bh']);
     if (iN<0) return parseOcrText(text);
     var players=[];
     for(var i=hi+1;i<lines.length;i++){

@@ -326,12 +326,43 @@
   // 사진(표 모드 OCR) 글자 → 타순 1~9 칸. 머리줄(이름 칸)이 보이면 칸대로도 읽어 보고, 이름이 더 많이 맞는 쪽을 쓴다.
   // 엑셀 화면을 찍으면 줄마다 추측하는 읽기(parseOcrText)는 왼쪽 행 번호를 타순으로, '타자1'을 '타자'로 읽었다 — 칸대로 읽으면 생기지 않는다.
   // 머리줄이 없거나 칸이 어긋나 이름이 덜 맞으면 예전 읽기를 그대로 쓴다(같으면 예전 쪽)
+  // 세 가지로 읽고(예전 줄마다 추측 · 칸대로 · 줄 순서대로) 이름 · 수비가 더 많이 맞는 쪽을 쓴다. 같으면 앞쪽(예전 읽기가 먼저)
   function _parsePhoto(text){
-    var guess=parseOcrText(text), slots={}, byCol=[];
+    var slots={}, byCol=[], rows=_photoRows(text);
     parseCsv(text).forEach(function(p){ var o=p.order; if(o>=1&&o<=9&&!slots[o]) slots[o]=p; });
     for(var i=1;i<=9;i++) byCol.push(slots[i]||{ order:i, name:'', pos:'', num:'', bh:'' });
-    function score(ps){ return ps.filter(function(p){ var n=(p.name||'').replace(/\s/g,''); return /[가-힣]{2}|[A-Za-z]{2}/.test(n)&&!BLOCKED[n]&&!POS_MAP[n]; }).length; }
-    return score(byCol)>score(guess)?byCol:guess;
+    var POS_OK={'투수':1,'포수':1,'1루':1,'2루':1,'3루':1,'유격':1,'좌익':1,'중견':1,'우익':1,'DH':1};
+    function score(ps){ return ps.reduce(function(s,p){ var n=(p.name||'').replace(/\s/g,''); return s+(/[가-힣]{2}|[A-Za-z]{2}/.test(n)&&!BLOCKED[n]&&!POS_MAP[n]?1+(POS_OK[p.pos]?1:0):0); },0); }
+    var best=parseOcrText(text);
+    [byCol, rows].forEach(function(ps){ if(ps&&score(ps)>score(best)) best=ps; });
+    if(best===rows) for(var j=rows.length+1;j<=9;j++) rows.push({ order:j, name:'', pos:'', num:'', bh:'' });
+    return best;
+  }
+  // 줄 순서대로 읽기 — 실제 OCR.space 표 모드는 칸을 줄마다 다르게 묶는다(엑셀 화면: 「1 1루수 | 타자1」 「7 | 22루수 | 타자2」 —
+  // 타순과 수비가 한 칸, 2+2루수가 붙음, 엑셀 행 번호가 붙었다 빠졌다). 그래서 칸 위치 대신 머리줄(이름 칸 머리) 아래 한 줄의 낱말에서
+  // 이름(한글 2~4자 + 숫자 0~2개, 수비 이름 · 양식 칸 제외) · 수비 · 이름 뒤 첫 숫자(배번)를 찾고, 타순은 위에서부터 1, 2, … .
+  // 이름 없는 줄(양식 아래 「투수」 줄)이 나오면 멈춘다. 9명까지. 머리줄이 없으면 null
+  var PHOTO_POS=/^\d*?([123]루수?|유격수?|좌익수?|중견수?|우익수?|포수|투수|지명타자|[123]B|SS|LF|CF|RF|DH)$/i;
+  function _photoRows(text){
+    var lines=text.split(/\r?\n/), hi=-1, out=[];
+    for(var h=0;h<lines.length&&hi<0;h++){
+      var hs=lines[h].split(/[\t ]+/);
+      if(['성명','이름','선수','선수명','타자명','name','NAME','Name'].some(function(n){ return hs.indexOf(n)>=0; })) hi=h;
+    }
+    if(hi<0) return null;
+    for(var i=hi+1;i<lines.length&&out.length<9;i++){
+      var toks=lines[i].split(/[\t ]+/).map(function(t){ return t.replace(/[^0-9A-Za-z가-힣]/g,''); }).filter(Boolean);
+      var ni=-1, pos='', num='';
+      toks.forEach(function(t,j){
+        var m=t.match(PHOTO_POS);
+        if(m){ if(!pos) pos=normalizePos(m[1]); return; }
+        if(ni<0&&/^[가-힣]{2,4}\d{0,2}$/.test(t)&&!BLOCKED[t.replace(/\d+$/,'')]) ni=j;
+      });
+      if(ni<0){ if(out.length) break; continue; }
+      for(var j=ni+1;j<toks.length;j++){ if(/^\d{1,3}$/.test(toks[j])){ num=toks[j]; break; } }
+      out.push({ order:out.length+1, name:toks[ni], pos:pos, num:num, bh:'' });
+    }
+    return out;
   }
   function parseXlsx(buf){
     try{ var wb=XLSX.read(buf,{type:'array'}); var ws=wb.Sheets[wb.SheetNames[0]]; return parseCsv(XLSX.utils.sheet_to_csv(ws,{FS:','})); }catch(e){ return []; }

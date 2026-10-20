@@ -31,9 +31,9 @@
     srv.noLabelCols = false;   // true = sql/14 적용 전: user_games.label · label_at 을 읽거나 쓰면 42703(열 없음)
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
-  // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다)
-  srv.signIn = function () {
-    srv.user = { id: 'TEST-USER', email: 'test@example.invalid', is_anonymous: false, user_metadata: {} };
+  // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다). id = 계정(생략하면 TEST-USER)
+  srv.signIn = function (id) {
+    srv.user = { id: id || 'TEST-USER', email: 'test@example.invalid', is_anonymous: false, user_metadata: {} };
     if (!authCb) throw new Error('stub: onAuthStateChange 콜백이 등록되지 않음');
     authCb('SIGNED_IN', { user: srv.user });
   };

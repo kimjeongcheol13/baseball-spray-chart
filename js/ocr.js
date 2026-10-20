@@ -45,8 +45,12 @@
   }
 
   // ─── OCR.space API ────────────────────────────
-  var OCR_API = 'https://api.ocr.space/parse/image';
-  var OCR_KEY = 'helloworld'; // 무료 데모 키 (월 500회)
+  // 글자 인식은 SprayLab Supabase 함수(supabase/functions/ocr)를 거쳐 OCR.space 로 간다.
+  // OCR.space 키는 Supabase 비밀(OCR_SPACE_KEY)에만 있다 — 이 파일 · GitHub · 브라우저에는 없다. 사진 1장 = 요청 2회(표모드 + 일반모드)
+  var OCR_API = 'https://bsmbrngkpsdmbwoqcrps.supabase.co/functions/v1/ocr';
+  // 사진 1장 분석 중 서버가 거절했거나(한도 초과 등) 연결이 안 됐는지. 두 요청 모두 글자를 못 받았을 때만 사용자에게 알린다
+  var _ocrErr = false;
+  var OCR_FAIL_MSG = '사진 인식 서버가 응답하지 않았습니다(사용 한도 초과 · 인터넷 연결 등). 잠시 후 다시 시도하거나 문서(txt/csv/xlsx)로 입력해 주세요';
 
   // 이미지를 800px 이하로 리사이즈 후 base64 변환 (1MB 제한 대응)
   function _resizeToBase64(file, cb) {
@@ -83,12 +87,17 @@
     fd.append('scale', 'true');
     fd.append('isTable', useTable ? 'true' : 'false');
     fd.append('OCREngine', String(engine));
-    return fetch(OCR_API, { method:'POST', headers:{'apikey':OCR_KEY}, body:fd })
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        return (data.ParsedResults && data.ParsedResults[0] && data.ParsedResults[0].ParsedText) || '';
+    return fetch(OCR_API, { method:'POST', body:fd })
+      .then(function(r){
+        // 한도 초과 응답은 JSON 이 아닌 글로 올 수 있어 글로 받아 풀어 본다
+        return r.text().then(function(t){
+          var data = null; try { data = JSON.parse(t); } catch(e) {}
+          var text = (data && data.ParsedResults && data.ParsedResults[0] && data.ParsedResults[0].ParsedText) || '';
+          if (!text && (!r.ok || !data || data.IsErroredOnProcessing)) _ocrErr = true;
+          return text;
+        });
       })
-      .catch(function(){ return ''; });
+      .catch(function(){ _ocrErr = true; return ''; });
   }
 
   // 일반 텍스트(isTable=false) 결과에서 선수 이름 앞에 오는 포지션 코드 추출
@@ -115,6 +124,7 @@
     _resizeToBase64(file, function(base64) {
       if (!base64) { doneCb(new Error('이미지 로딩 실패'), null, null); return; }
       setStatus('OCR 분석 중...', 30);
+      _ocrErr = false;
 
       // ① 표모드(Engine2) + ② 일반모드(Engine1) 병렬 실행
       // 표모드가 놓친 포지션을 일반모드 텍스트에서 이름 앞 단어로 보완
@@ -123,6 +133,8 @@
         _fetchOcr(base64, 1, false)   // 평문 파싱용 (포지션 보완)
       ])
         .then(function(texts) {
+          // 두 요청 모두 서버 거절 · 연결 실패로 글자가 없으면 "인식된 선수 없음" 대신 이유를 알린다
+          if (!texts[0] && !texts[1] && _ocrErr) { doneCb(new Error(OCR_FAIL_MSG), null, null); return; }
           setStatus('결과 합산 중...', 88);
           var tableText = texts[0], plainText = texts[1];
           var players = parseOcrText(tableText);

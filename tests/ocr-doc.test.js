@@ -62,6 +62,17 @@
     eq(col(rows, 'num'), ['7', '24'], '배번');
   });
 
+  test('라인업 문서: 이름 칸 머리가 「선수명」 · 「선수 이름」 · 「타자명」이어도 칸대로 읽는다', async function () {
+    var heads = ['선수명', '선수 이름', '타자명'];
+    for (var i = 0; i < heads.length; i++) {
+      var csv = HEAD.slice(0, 4).concat(['타순,수비,' + heads[i] + ',배번,비고'], BATTERS, ['투수,,,,'], FOOT).join('\n');
+      same(await read('lineup.csv', csv, 'text/csv'), heads[i]);
+    }
+    var rows = await read('team.csv', ['타순,포지션,선수명,등번호', '1,SS,가선수,7', '2,CF,나선수,24'].join('\n'), 'text/csv');
+    eq(col(rows, 'name'), ['가선수', '나선수'], '선수명 · 등번호 양식 이름');
+    eq(col(rows, 'num'), ['7', '24'], '선수명 · 등번호 양식 배번');
+  });
+
   test('라인업 문서: 한국어 엑셀 기본 CSV(EUC-KR)도 한글이 깨지지 않게 읽는다', async function () {
     // '타순,수비,이름,배번 / 1,1루수,타자1,1 / 2,유격수,타자2,2' 를 EUC-KR 로 저장한 바이트
     var hex = 'c5b8bcf82cbcf6baf12cc0ccb8a72cb9e8b9f80d0a312c31b7e7bcf62cc5b8c0da312c310d0a322cc0afb0ddbcf62cc5b8c0da322c320d0a';

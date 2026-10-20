@@ -1,10 +1,13 @@
 // 게임원 가져오기 보정 — 「타구 위치 확인」 (2026-10-19)
 // 게임원 기록 표기(좌안 · 중플 · 3땅 …)는 방향이 거칠어 가져오기가 찍는 좌표는 대표 지점이다(js/gameone.js — 파서는 고치지 않는다).
-// 가져오기 저장 직후 이 화면을 한 번 연다: 필드 위에 가져온 타구 점을 그리고, 끌어서 실제 자리로 옮긴다.
+// 가져오기 저장 직후 이 화면을 한 번 연다: 필드 위에 가져온 타구 점을 그리고, 필드를 탭하거나 점을 끌어 실제 자리로 옮긴다.
 //  · 점선 테두리 = estimated(가져오기 때 파서 confidence 'low'). 끌어 옮기면 x · y · deg · dir · ft 를 기록 탭 필드 탭(core onFClick)과
 //    같은 식으로 다시 정하고 estimated = false. 홈런은 ft 를 그대로 둔다(비거리 기록 [2R 97M] 이 있을 수 있다)
 //  · 탭만 하고 끌지 않은 점 · 건드리지 않은 점은 그대로(estimated 유지). 옮길 때마다 바로 저장 — '나중에 할게'로 닫아도 옮긴 점은 남는다
 //  · 타자별(이전 / 다음) · 전체 보기. 같은 자리에 겹친 점(같은 표기 → 같은 대표 지점)은 화면에서만 둥글게 벌려 그린다(저장 좌표는 그대로)
+//  · 탭으로 찍기(2026-10-20): '지금 찍을 공'(노란 테두리 · 위 안내)을 하나 정해 두고, 필드 빈 곳을 탭하면 그 공을 그 자리로 옮긴 뒤
+//    다음 대략 위치 공으로 넘어간다(그 타자 공이 끝나면 다음 타자로). 점을 탭하면 그 공을 고르고(옮기지는 않음), 끌기는 그대로.
+//    게임원 기록에는 떨어진 자리가 없어서 정확한 위치는 경기를 본 사람이 찍어야 한다 — 끌기보다 탭이 휴대폰에서 빠르다
 //  · 지금 열린 경기(_curSaveKey)면 AS.abs 를 바로 고치고 _saveEditImmediate(타석 기록 수정과 같은 저장),
 //    아니면 저장된 경기(localStorage)를 고쳐 다시 저장하고 닫을 때 cloudSave 한 번
 //  · 필드 · 점 그림 = 기록 탭과 같은 것(scorebook.js window.sbPaint), 기하 = core.js(_fieldGeo · _semiToCone · _coneToSemi)
@@ -16,6 +19,8 @@ const $ = id => document.getElementById(id);
 const _esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const DIR = d => (d < 54 ? 'LF' : d < 78 ? 'LC' : d < 102 ? 'CF' : d < 126 ? 'RC' : 'RF');   // core onFClick 과 같은 경계
 const HIT = 24;   // 끌기 시작 판정 반지름(px) — 손가락으로 지름 44px 이상
+const TAP = 10;   // 이만큼(px) 안 움직이고 뗀 것 = 탭
+const DIR_KO = { LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
 const _has = a => !!a && typeof a.x === 'number' && typeof a.y === 'number' && isFinite(a.x) && isFinite(a.y);
 const _track = (name, params) => { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (e) {} };
 
@@ -46,8 +51,11 @@ export function openGameOneFix(key) {
     if (!by[k]) { by[k] = { name: a.bname || '', num: a.bnum, team: a.team, abs: [] }; batters.push(by[k]); }
     by[k].abs.push(a);
   });
-  S = { key, live, game, pts, batters, i: 0, all: false, moved: new Set(), drag: null, view: [], geo: null,
+  S = { key, live, game, pts, batters, i: 0, all: false, moved: new Set(), drag: null, tap: null, view: [], geo: null, target: null, taps: 0, msg: '',
     est0: pts.filter(a => a.estimated === true).length, wall: _wallFt(game.stadium || '') };
+  // 처음 찍을 공 = 경기 순서로 첫 대략 위치 공. 그 타자부터 보여 준다
+  S.target = _order().find(a => a.estimated === true) || null;
+  if (S.target) S.i = Math.max(0, _batterOf(S.target));
   if (window.openOverlay) window.openOverlay('goFixOverlay');
   _render();
   return true;
@@ -60,6 +68,28 @@ function _teamLbl(t) {
 }
 function _visible() { return S.all ? S.pts : S.batters[S.i].abs; }
 const _estN = list => list.filter(a => a.estimated === true).length;
+// 찍는 순서 = 타자(처음 나온 순) → 그 타자의 타석 순. 타자별 · 전체 보기 둘 다 같은 순서
+function _order() { return S.batters.reduce((o, b) => o.concat(b.abs), []); }
+function _batterOf(a) { return S.batters.findIndex(b => b.abs.indexOf(a) >= 0); }
+// a 다음(없으면 처음부터)의 대략 위치 공 — a 자신은 빼고. 없으면 null
+function _nextEst(a) {
+  const o = _order(), k = o.indexOf(a), rot = k < 0 ? o : o.slice(k + 1).concat(o.slice(0, k));
+  return rot.find(x => x !== a && x.estimated === true) || null;
+}
+// 지금 찍을 공을 b 로 — 타자별 보기면 그 타자로 넘어간다
+function _setTarget(b) {
+  S.target = b || null;
+  if (b && !S.all) { const k = _batterOf(b); if (k >= 0) S.i = k; }
+}
+function _targetHtml() {
+  const t = S.target;
+  if (!t) return S.pts.some(a => a.estimated === true)
+    ? '점을 탭해 고른 뒤 필드를 탭하면 그 자리로 옮겨져요'
+    : '<b>대략 위치를 모두 찍었어요 ✓</b> 더 고칠 점은 탭해 고른 뒤 필드를 탭하세요';
+  const left = _estN(S.pts), dir = DIR_KO[t.dir] ? ` · ${DIR_KO[t.dir]} 쪽` : '';
+  return `<b>지금 찍을 공</b> ${_esc(t.bname || '')} · ${_esc(t.inn || '')} · ${_esc(t.res || '')}${dir}`
+    + `<small>${S.msg ? _esc(S.msg) : '실제로 떨어진 자리를 탭하세요'}${left ? ` · 남은 대략 ${left}개` : ''}</small>`;
+}
 
 function _render() {
   if (!S) return;
@@ -69,13 +99,16 @@ function _render() {
     : `<b>${_esc(b.name)}${b.num != null && b.num !== '' ? ` <span>#${_esc(b.num)}</span>` : ''}</b><small>${_esc(_teamLbl(b.team))} · ${S.i + 1}/${n}명 · 대략 ${_estN(b.abs)}</small>`;
   $('gfPrev').disabled = S.all || S.i === 0;
   $('gfNext').disabled = S.all || S.i === n - 1;
+  if (S.target && !S.all && S.batters[S.i].abs.indexOf(S.target) < 0) S.target = S.batters[S.i].abs.find(a => a.estimated === true) || null;   // 이전 · 다음 타자로 넘기면 그 타자의 공
+  if ($('gfTarget')) $('gfTarget').innerHTML = _targetHtml();
+  if ($('gfSkip')) $('gfSkip').disabled = !S.target || !_nextEst(S.target);
   $('gfModeOne').setAttribute('aria-pressed', String(!S.all));
   $('gfModeAll').setAttribute('aria-pressed', String(S.all));
   const list = $('gfList');
   list.hidden = S.all;
   list.innerHTML = S.all ? '' : b.abs.map((a, k) => {
     const st = S.moved.has(a) ? ['moved', '옮김'] : a.estimated === true ? ['est', '대략'] : null;
-    return `<li><span class="gf-n">${k + 1}</span>${_esc(a.inn || '')} · ${_esc(a.res || '')}${st ? `<em class="gf-st gf-${st[0]}">${st[1]}</em>` : ''}</li>`;
+    return `<li${a === S.target ? ' class="gf-now"' : ''}><span class="gf-n">${k + 1}</span>${_esc(a.inn || '')} · ${_esc(a.res || '')}${st ? `<em class="gf-st gf-${st[0]}">${st[1]}</em>` : ''}</li>`;
   }).join('');
   _draw();
 }
@@ -121,6 +154,11 @@ function _draw() {
       ctx.beginPath(); ctx.arc(v.x, v.y, R + 5, 0, Math.PI * 2); ctx.stroke();
     }
     if (drag) { ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.strokeStyle = T.hl; ctx.beginPath(); ctx.arc(v.x, v.y, R + 7, 0, Math.PI * 2); ctx.stroke(); }
+    else if (a === S.target) {   // 지금 찍을 공 = 노란 두 겹
+      ctx.setLineDash([]); ctx.strokeStyle = T.hl;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(v.x, v.y, R + 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(v.x, v.y, R + 13, 0, Math.PI * 2); ctx.stroke();
+    }
     if (!S.all) {   // 아래 목록 번호
       ctx.setLineDash([]); ctx.font = `700 ${Math.round(R * 1.3)}px system-ui, sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.lineWidth = 3; ctx.strokeStyle = T.paper2; ctx.strokeText(String(v.n), v.x + R + 4, v.y - R - 2);
@@ -142,13 +180,14 @@ function _hit(p) {
 function _down(e) {
   if (!S || !S.geo || S.drag) return;
   const p = _pt(e), v = _hit(p);
-  if (!v) return;
   e.preventDefault();
   try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {}
+  if (!v) { S.tap = { id: e.pointerId, p, off: false }; return; }   // 빈 곳 = 탭으로 찍기(뗄 때)
   S.drag = { a: v.a, id: e.pointerId, sp: null, dx: v.x - p.x, dy: v.y - p.y };   // 잡은 자리 그대로 끌리게(점이 손가락 밑으로 튀지 않게)
   _draw();
 }
 function _move(e) {
+  if (S && S.tap && e.pointerId === S.tap.id) { const p = _pt(e); if (Math.hypot(p.x - S.tap.p.x, p.y - S.tap.p.y) > TAP) S.tap.off = true; return; }
   if (!S || !S.drag || e.pointerId !== S.drag.id) return;
   e.preventDefault();
   const p = _pt(e), sp = _coneToSemi(S.geo.g, p.x + S.drag.dx, p.y + S.drag.dy);
@@ -156,11 +195,32 @@ function _move(e) {
   _draw();
 }
 function _up(e, cancel) {
+  if (S && S.tap && e.pointerId === S.tap.id) { const t = S.tap; S.tap = null; if (!cancel && !t.off) _place(_pt(e)); return; }
   if (!S || !S.drag || e.pointerId !== S.drag.id) return;
   const d = S.drag;
   S.drag = null;
   if (d.sp && !cancel) _commit(d.a, d.sp);
+  else if (!cancel) S.target = d.a;   // 점을 탭 = 그 공을 지금 찍을 공으로(옮기지는 않음)
+  S.msg = '';
+  if (d.sp && !cancel && d.a === S.target && S.target.estimated !== true) S.target = S.batters[S.i].abs.find(a => a.estimated === true) || null;   // 끌어서 찍었으면 이 타자의 다음 대략 공
   _render();
+}
+// 필드 빈 곳을 탭 → 지금 찍을 공을 그 자리로, 다음 대략 위치 공으로 넘어감(그 타자가 끝나면 다음 타자). 파울 지역이면 그대로 + 안내
+function _place(p) {
+  if (!S.target) { S.msg = ''; _render(); return; }
+  const sp = _coneToSemi(S.geo.g, p.x, p.y);
+  if (!sp) { S.msg = '파울 지역이에요 — 선 안쪽을 탭하세요'; _render(); return; }
+  const t = S.target;
+  _commit(t, sp);
+  S.taps++; S.msg = '';
+  _setTarget(_nextEst(t));
+  _render();
+}
+// 「건너뛰기」 — 지금 공은 대략 위치로 두고 다음 대략 위치 공으로
+export function gameOneFixSkip() {
+  if (!S || !S.target) return;
+  const n = _nextEst(S.target);
+  if (n) { S.msg = ''; _setTarget(n); _render(); }
 }
 
 function _commit(a, sp) {
@@ -201,7 +261,7 @@ export function gameOneFixClose(action) {
     const on = document.querySelector('#anaSubnav .ana-sub.on'), av = $('analysisView');
     if (on && av && av.classList.contains('active') && window.shellSub) window.shellSub(on.dataset.sub);
   }
-  _track('gameone_fix', { action: action === 'done' ? 'done' : 'later', pts: s.pts.length, est: s.est0, moved: s.moved.size, left: _estN(s.pts) });
+  _track('gameone_fix', { action: action === 'done' ? 'done' : 'later', pts: s.pts.length, est: s.est0, moved: s.moved.size, left: _estN(s.pts), tap: s.taps });
 }
 
 // 분석 탭 '위치 확인'(팀 방향도 범례 · 타자 · 스카우트 스프레이 차트): scope 'game' = 지금 열린 경기만,
@@ -224,6 +284,7 @@ if (typeof window !== 'undefined') {
   window.gameOneFixAll = gameOneFixAll;
   window.gameOneFixClose = gameOneFixClose;
   window.gameOneFixFrom = gameOneFixFrom;
+  window.gameOneFixSkip = gameOneFixSkip;
   window.SLGameOneFix = { open: openGameOneFix, state: () => S, view: () => (S ? S.view.map(v => ({ a: v.a, x: v.x, y: v.y, n: v.n })) : []) };
   const cv = $('gfCanvas');
   if (cv) {

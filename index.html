@@ -508,6 +508,8 @@ var _kakaoSdkLoaded = false;
       <div style="font-size:14px;font-weight:700;color:#c9d1d9">사진 / 문서 선택</div>
       <div style="font-size:11px;color:#6b7280;margin-top:5px;line-height:1.6">📷 사진 (jpg/png/heic) — 라인업 카드 촬영<br>📄 문서 (txt/csv/xlsx) — 라인업 표 파일</div>
     </div>
+    <!-- 사진은 외부 글자 인식(OCR.space)으로 전송된다 — 개인정보처리방침 1 · 2항 -->
+    <div id="ocrPrivacyNote" style="font-size:11px;color:#6b7280;line-height:1.6;margin:-6px 0 14px">사진은 글자 인식을 위해 외부 서비스(OCR.space)로 전송됩니다. 문서로 넣으면 전송하지 않아요 · <a href="privacy.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;font-weight:700">개인정보처리방침</a></div>
     <input type="file" id="ocrFileInput" accept="image/*,.txt,.csv,.xlsx,.xls,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="ocrHandleFile(this.files[0])">
     <!-- 미리보기 이미지 -->
     <div id="ocrImgWrap" style="display:none;margin-bottom:14px;border-radius:10px;overflow:hidden;max-height:200px;text-align:center;background:#0d0d1a">

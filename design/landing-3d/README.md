@@ -41,7 +41,7 @@ python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인
   - 모드 안: 한 손가락 = 돌리기(좌우)·기울이기(위아래, 위에서 내려다보기까지 −30~70°), 두 손가락 = 확대 0.5–4배 + 두 손가락 가운데를 끌면 화면 이동(필드가 손가락을 따라온다, `panX/panZ`). 자동 카메라(근접↔넓은 장면, 흔들림)는 멈춘다.
   - "완료"를 누르거나 3D가 화면 밖으로 나가면 모드가 꺼지고 확대·기울기·이동이 원래 구도로 부드럽게 돌아간다(회전은 그대로).
   - 데스크톱(`pointer: fine`)에는 버튼이 생기지 않고 마우스 경로는 바뀌지 않는다.
-- 글꼴은 Pretendard(jsDelivr 동적 서브셋 `<link>`). 외부 의존은 그것뿐이다.
+- 글꼴은 Pretendard(jsDelivr 동적 서브셋 `<link>`). 그 밖의 외부 의존은 앱과 같은 방문 통계 `js/analytics.js`(GA4)뿐이다. 맨 아래 스크립트가 `waitlist_click`(`cta` = 버튼의 `data-cta`)과 `section_view`(`section` = how·live·features·compare·cta, 화면 위쪽 절반에 처음 들어올 때 1회)를 보낸다.
 - 검토 과정의 다른 시안: `next/index.html`(A안 흰 배경 제품 랜딩), `next/hero-b.html`(B안 다크 테크), `next/index-c.html`(C안 정지 그림 버전). 레퍼런스 보드와 전후 비교는 `harness/clips/report/`(gitignore).
 - 아래 내용(3D 선수 제작, 동작, 장비, 옛 캔버스 변환 `unbundle.py`의 페이지 편집)은 그대로 유효한 기록이다. `unbundle.py`의 페이지 변환 부분은 이제 `legacy/landing.html`에만 쓰인다.
 

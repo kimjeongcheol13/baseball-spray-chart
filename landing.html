@@ -197,6 +197,7 @@
     .paste pre { padding: 16px 14px; font-size: 10.5px; }   /* 320px 폭(1세대 iPhone SE)에서 샘플 줄 끝(3내안)이 가로 스크롤로 잘리던 것 */
   }
 </style>
+<script src="js/analytics.js"></script>
 </head>
 <body>
 
@@ -349,6 +350,20 @@
   var t = setInterval(function () { if (p && p.renderer) { h.classList.add('live-on'); clearInterval(t); } else if (++n > 600) clearInterval(t); }, 100);
   var nav = document.querySelector('.nav'), onScroll = function () { nav.classList.toggle('scrolled', scrollY > 40); };
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  // 전환 측정(GA4, js/analytics.js): 오픈 알림 버튼 클릭, 섹션 첫 진입(화면 위쪽 절반에 들어올 때) 1회
+  var track = function (n, p) { if (typeof window.gtag === 'function') window.gtag('event', n, p); };
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('.js-waitlist');
+    if (a) track('waitlist_click', { cta: a.getAttribute('data-cta') });
+  });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (en) { if (en.isIntersecting) { io.unobserve(en.target); track('section_view', { section: en.target.getAttribute('data-sv') }); } });
+    }, { rootMargin: '0px 0px -50% 0px' });
+    [['how', '#how'], ['live', '#live'], ['features', '#features'], ['compare', '#compare'], ['cta', '.cta-band']].forEach(function (s) {
+      var el = document.querySelector(s[1]); if (el) { el.setAttribute('data-sv', s[0]); io.observe(el); }
+    });
+  }
 })();
 </script>
 </body>

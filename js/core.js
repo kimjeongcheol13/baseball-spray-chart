@@ -349,7 +349,9 @@ function showApp(){
 // 필드는 항상 마지막 경기 상태로 연다: 진행 중 자동저장 → 가장 최근 저장 경기 → 빈 필드
 function _hasRecoveryData(){
   var rec=storageManager.getRecovery(),d=rec&&rec.data;
-  return !!(d&&(_hasAnyRecord(d)||(d.home_lineup&&d.home_lineup.length)||(d.away_lineup&&d.away_lineup.length)));
+  // newGame = 경기 만들기로 시작해 아직 기록 · 라인업이 없는 새 경기(_scheduleRecoverySave). 카메라 · 파일 선택을 다녀온 사이의 새로고침만 이어 주려고 6시간 안일 때만
+  var fresh=!!(d&&d.newGame&&rec._ts&&Date.now()-rec._ts<6*3600*1000);
+  return !!(d&&(_hasAnyRecord(d)||(d.home_lineup&&d.home_lineup.length)||(d.away_lineup&&d.away_lineup.length)||fresh));
 }
 function _openLastGame(){
   if(_hasAnyRecord()||AS.home_lineup.length||AS.away_lineup.length)return;
@@ -3401,10 +3403,18 @@ function _recordCountTxt(d){
   var pa=(d&&d.abs||[]).length,pc=(d&&d.pitchers||[]).reduce(function(s,p){return s+((p&&p.pitches)||[]).length;},0);
   return [pa?pa+'타석':'',pc?'투구 '+pc+'구':''].filter(Boolean).join(' · ')||'0타석';
 }
-// 복구 슬롯(sl_autosave) 예약 — 타석 기록 뒤(updateAll) · 투구 기록 뒤 · 화면 숨김이 같은 모양으로 적는다. 기록이 없으면 적지 않는다
+// 복구 슬롯(sl_autosave) 예약 — 타석 기록 뒤(updateAll) · 투구 기록 뒤 · 화면 숨김이 같은 모양으로 적는다.
+// 기록이 없어도 라인업이 있거나 저장 전 새 경기(경기 만들기로 시작 — AS.curGame, _curSaveKey 없음)면 적는다: 라인업 사진을 찍으러 카메라에 다녀온 사이
+// 새로고침되면(안드로이드 탭 정리 · 새 버전 적용) 복구할 게 없어 이전 경기가 열렸다(_openLastGame). 기록이 있는 복구본은 이런 빈 상태로 덮지 않는다
 function _scheduleRecoverySave(delay){
-  if(!_hasAnyRecord())return;
+  var newGame=(!_curSaveKey&&AS.curGame)||null;
+  if(!_hasAnyRecord()){
+    if(!(AS.home_lineup||[]).length&&!(AS.away_lineup||[]).length&&!newGame)return;
+    var rec=storageManager.getRecovery();
+    if(rec&&rec.data&&_hasAnyRecord(rec.data))return;
+  }
   storageManager.scheduleAutosave({
+    newGame:newGame,
     abs:AS.abs,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
     hs:AS.hs,as:AS.as,zoneHistory:AS.zoneHistory,
     pitchers:AS.pitchers||[],saveKey:_curSaveKey,
@@ -9128,6 +9138,7 @@ function archRecoverAutosave(){
   if(!rec||!rec.data)return;
   var d=rec.data;
   AS.curGame=null;_autoKey=null;   // 자동저장 키를 이전 경기에서 풀어, 복구한 경기가 그 경기의 자동저장본을 덮지 않게(아래 _archQuietSave 가 복구한 경기 키로 다시 정한다)
+  if(d.newGame&&!_hasAnyRecord(d))AS.curGame=d.newGame;   // 기록 없는 새 경기는 그 경기 그대로 — 다시 새로고침돼도 이어지게(_scheduleRecoverySave 의 newGame)
   AS.abs=d.abs||[];
   AS.home_lineup=d.home_lineup||[];
   AS.away_lineup=d.away_lineup||[];
@@ -9149,7 +9160,7 @@ function archRecoverAutosave(){
   storageManager.cancelPendingAutosave();
   // 복구된 데이터를 영구 저장소에 저장해 브라우저 재시작 후에도 안전하게 보호
   if(_archQuietSave(d.saveKey))_cloudSaveCur();
-  showToast('✓ 마지막 기록을 복구했습니다',false);
+  showToast(_hasAnyRecord()?'✓ 마지막 기록을 복구했습니다':'✓ 하던 경기를 이어서 열었어요',false);
 }
 
 // 복구 저장(_archQuietSave)한 경기를 평소 「경기 저장」처럼 클라우드에도 올린다 — 로그인 · 팀 코드 상태에 따라 user_games · games, 아니면 아무것도 안 함.

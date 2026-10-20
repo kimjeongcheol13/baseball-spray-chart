@@ -17,7 +17,7 @@ python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인
 
 - 3D 요소 `<spray-play>`의 진짜 소스는 `src/spray-play.js`(장면·필드·카메라·공·마커)와 `src/glbfig.js`(선수)다. 빌드가 `src/spray-play.js`의 `//@glbfig` 줄 자리에 `glbfig.js`를 끼워 `js/landing/spray-play.js`를 만든다 — 생성물은 직접 고치지 말 것. 둘 중 하나를 바꾸면 `build_landing.py`의 `V`(`?v=`)를 올린다.
   (2026-10-17 전까지는 디자인 도구 번들 `SprayLab_Landing.glb.html`에서 스크립트를 꺼내 썼다. `tools/build.py`·`tools/unbundle.py`는 이제 그 번들 미리보기와 3D 자원(`js/landing/vendor/`, `assets/landing/*.glb`·`clips_shared.json`)을 다시 풀 때만 쓴다.)
-- 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다.
+- 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다. `../../landing.html`도 생성물이다 — 글을 고칠 때는 `landing.src.html`을 고치고 빌드할 것(루트 파일만 고치면 다음 빌드가 되돌린다).
 - 숫자는 전부 샘플 선수 김민준(#8, 15타석)의 것이다(.333 / .467 / .583 · OPS 1.050 · wOBA .451 · ISO .250 · 당김 36 / 센터 36 / 밀어 27%). 3D의 카운터만 "이번 경기".
 - 3D 요소는 인라인 스타일로 자기 크기를 정하므로 페이지 CSS가 `!important`로 absolute·inset을 덮어쓴다. 첫 화면에서는 요소의 자체 라벨(투구·타격·기록, 카운터)을 숨기고, "필드" 칸에서는 흰색으로 보여 준다.
 - 공유 미리보기: head의 `og:`·`twitter:` 메타와 `img/og.jpg`(1200×630, 첫 화면을 그대로 찍은 것), 파비콘 `img/icon-32/192.png`(앱의 player-logo). 상단 바는 fixed이고 40px 넘게 내리면 `.nav.scrolled`(반투명+블러, 60px)로 바뀐다.

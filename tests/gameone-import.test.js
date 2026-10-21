@@ -359,6 +359,92 @@
     closeOverlay('loadOverlay');
   });
 
+  // ── 경기 정보 줄(날짜 · 구장) · 팀 이름 칸 자동 채우기 (2026-10-21) ──
+  // 정보 줄 날짜의 기대값: 올해, 오늘보다 뒤면 작년 (테스트를 언제 돌려도 맞게 여기서 따로 계산)
+  function expYmd(m, d) {
+    var t = new Date(), y = t.getFullYear();
+    if (new Date(y, m - 1, d) > new Date(y, t.getMonth(), t.getDate())) y--;
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+  // 입력창을 빈 상태로 다시 연다 — 날짜 칸이 비면 오늘(자동 값)
+  function freshImport() {
+    openGameOneImport();
+    ['goScore', 'goAway', 'goHome', 'goPitch', 'goTa', 'goTh', 'goDate'].forEach(function (id) { type(id, ''); });
+    closeOverlay('goOverlay'); openGameOneImport();
+  }
+
+  test('경기 정보 줄: 리그 / 월.일(시:분) / 구장 → 날짜(올해, 오늘보다 뒤면 작년) · 구장 · 맨 위 다른 경기 링크 줄은 읽지 않는다', function () {
+    var I = window.SLGameOne.parseGameOneInfo, D = window.SLGameOneImport.gameOneInfoDate;
+    eq(I('평일야간 안성리그 / 10.07(20:00) / 안성맞춤야구장'), { league: '평일야간 안성리그', month: 10, day: 7, time: '20:00', venue: '안성맞춤야구장' }, '정보 줄(사용자 예시)');
+    var p = I(PAGE);
+    eq([p.league, p.month, p.day, p.time, p.venue], ['(후)일요리그', 10, 18, '10:20', '가상구장'], '페이지 통째 — 위쪽 「다른팀 2 vs 15 또다른팀 (10.18)」 줄이 아니라 정보 줄');
+    eq([I('다른팀 2 vs 15 또다른팀 (10.18)\nTeam\t1\t2\t3\tR\tH\tE\tB'), I(''), I(null)], [null, null, null], '정보 줄 없음');
+    var now = new Date(2026, 9, 21, 12).getTime();
+    eq([D({ month: 10, day: 7 }, now), D({ month: 10, day: 21 }, now), D({ month: 12, day: 25 }, now), D({ month: 2, day: 30 }, now), D(null, now)],
+      ['2026-10-07', '2026-10-21', '2025-12-25', '', ''], '연도: 올해 · 오늘은 올해 · 오늘보다 뒤면 작년 · 없는 날짜 · 정보 없음');
+    var sp = window.SLGameOne.splitGameOnePage(PAGE), base = { awayText: sp.tables[0].text, homeText: sp.tables[1].text, now: 1790000800000 };
+    eq(window.SLGameOneImport.buildGameOneGame(Object.assign({ venue: '가상구장' }, base)).game.info.venue, '가상구장', '구장 → 경기 정보(info.venue)');
+    ok(!window.SLGameOneImport.buildGameOneGame(base).game.info, '구장 · 날짜 · 점수표 없으면 경기 정보 없음(지금과 같음)');
+  });
+
+  test('통째 붙여넣기: 정보 줄 날짜 → 경기 날짜 칸 · 점수표 첫 열 팀 이름 → 원정 · 홈 칸 · 구장은 저장 경기 정보에 · 저장 뒤 자동 값은 비움', async function () {
+    freshImport();
+    var today = $('goDate').value;
+    type('goScore', PAGE);
+    await T.sleep(300);
+    eq([$('goTa').value, $('goTh').value, $('goDate').value], ['가팀', '나팀', expYmd(10, 18)], '원정 · 홈 · 경기 날짜 칸');
+    var note = $('goPrev').querySelector('.go-split');
+    ok(note && note.textContent.indexOf('경기 정보 줄에서 날짜 10월 18일 · 구장 가상구장을 넣었습니다') >= 0, '안내 — ' + (note ? note.textContent : '없음'));
+    $('goSave').click();
+    var s = saves(), g = JSON.parse(localStorage.getItem(s[s.length - 1].key));
+    eq([g.ta, g.th, g.info.date, g.info.venue], ['가팀', '나팀', expYmd(10, 18), '가상구장'], '저장: 팀 · 날짜 · 구장');
+    ok(s[s.length - 1].label.indexOf('나팀 0:1 가팀') === 0, '저장 제목 — ' + s[s.length - 1].label);
+    eq([$('goTa').value, $('goTh').value, $('goDate').value], ['', '', today], '저장 뒤 자동으로 채운 값은 비우고 날짜는 오늘');
+    closeOverlay('loadOverlay'); closeOverlay('goFixOverlay');
+    // 저장하지 않고 칸을 다 비운 뒤 다른 경기 표를 따로 붙여넣으면 지난 구장이 붙지 않는다
+    freshImport();
+    type('goScore', PAGE); await T.sleep(300);
+    ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(function (id) { type(id, ''); }); await T.sleep(300);
+    var sp = window.SLGameOne.splitGameOnePage(PAGE);
+    type('goAway', sp.tables[0].text); await T.sleep(300);
+    $('goSave').click();
+    s = saves(); g = JSON.parse(localStorage.getItem(s[s.length - 1].key));
+    ok(!(g.info && g.info.venue), '칸을 비운 뒤 따로 붙여넣은 경기에 지난 구장 없음 — ' + JSON.stringify(g.info));
+    closeOverlay('loadOverlay'); closeOverlay('goFixOverlay');
+  });
+
+  test('통째 붙여넣기: 사용자가 고친 칸은 그대로(고친 값 우선) · 비었거나 자동으로 채운 칸만 다음 붙여넣기가 덮는다', async function () {
+    freshImport();
+    type('goTa', '우리팀'); type('goDate', '2026-10-15');
+    type('goAway', PAGE);
+    await T.sleep(300);
+    eq([$('goTa').value, $('goTh').value, $('goDate').value], ['우리팀', '나팀', '2026-10-15'], '고친 원정 · 날짜는 그대로, 빈 홈 칸만 채움');
+    type('goScore', PAGE.replace(/나팀/g, '다팀'));
+    await T.sleep(300);
+    eq($('goTh').value, '다팀', '자동으로 채운 홈 칸은 다음 붙여넣기가 덮는다');
+    type('goTh', '상대팀');
+    type('goScore', PAGE);
+    await T.sleep(300);
+    eq([$('goTa').value, $('goTh').value], ['우리팀', '상대팀'], '사용자가 고친 홈 칸은 덮지 않는다');
+    freshImport(); closeOverlay('goOverlay');
+  });
+
+  test('정보 줄 없는 입력: 점수표 · 타자 표를 따로 붙여넣으면 지금 그대로(칸 · 날짜 그대로) · 정보 줄 없는 통째 붙여넣기도 날짜는 오늘 그대로', async function () {
+    freshImport();
+    var today = $('goDate').value, sp = window.SLGameOne.splitGameOnePage(PAGE);
+    type('goScore', sp.score); type('goAway', sp.tables[0].text); type('goHome', sp.tables[1].text);
+    await T.sleep(300);
+    eq([$('goTa').value, $('goTh').value, $('goDate').value], ['', '', today], '따로 붙여넣기: 팀 칸 · 날짜 그대로');
+    ok(!$('goPrev').querySelector('.go-split') && $('goPrev').textContent.indexOf('가팀 1 : 0 나팀') >= 0, '나눔 없음 · 점수표 이름으로 미리보기(지금과 같음) — ' + $('goPrev').textContent.slice(0, 80));
+    freshImport();
+    type('goScore', PAGE.replace('(후)일요리그 / 10.18(10:20) / 가상구장\n', ''));
+    await T.sleep(300);
+    eq([$('goTa').value, $('goTh').value, $('goDate').value], ['가팀', '나팀', today], '정보 줄 없는 통째: 팀 칸만 채우고 날짜는 오늘');
+    var note = $('goPrev').querySelector('.go-split');
+    ok(note && note.textContent.indexOf('경기 정보 줄') < 0, '정보 줄 안내 없음 — ' + (note ? note.textContent : '나눔 안내 없음'));
+    freshImport(); closeOverlay('goOverlay');
+  });
+
   test('타격방해 타석은 저장하지 않아도 투수의 상대 타자 수에는 든다 — 그 뒤 타석이 다음 투수에게 맞게 붙는다', function () {
     var away = realTable([real('1지가일(1)', { 1: '삼진' }), real('2三가이(2)', { 1: '타격방해' }), real('3一가삼(3)', { 1: '좌안' })]);
     var pitch = [' 가팀', PH, ' 나팀', PH, '나일투(1)\t-\t0 ⅓\t2\t1\t0\t0\t0\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0.00\t0.00', '나이투(2)\t-\t0\t1\t1\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0.00\t0.00'].join('\n');

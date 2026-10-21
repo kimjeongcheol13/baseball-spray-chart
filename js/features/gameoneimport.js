@@ -101,7 +101,7 @@ function _secondTable(text, players) {
  *            ls = 이닝별 점수표를 썼으면 { away, home } (parseGameOneScoreboard 의 팀 줄), 아니면 null
  * now · stadiums · stadium 을 받아 순수하게 만든다 (테스트용)
  */
-export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '', pitchText = '', th = '', ta = '', date = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
+export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '', pitchText = '', th = '', ta = '', date = '', venue = '', now = Date.now(), stadiums = window.STADIUMS || {}, stadium = '' } = {}) {
   const st = stadiums[stadium] || stadiums.standard || { lfDist: 90, cfDist: 120, rfDist: 90 };
   const lf = Math.round(st.lfDist * 3.281), cf = Math.round(st.cfDist * 3.281), rf = Math.round(st.rfDist * 3.281);
   const wallFt = { LF: lf, LC: Math.round((lf + cf) / 2), CF: cf, RC: Math.round((cf + rf) / 2), RF: rf };   // core.js onFClick 과 같은 담장 거리
@@ -229,6 +229,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
   }
   const info = {};
   if (dm) info.date = date;
+  if (String(venue).trim()) info.venue = String(venue).trim().slice(0, 20);   // 페이지 경기 정보 줄의 구장(경기설정 탭 '구장'과 같은 칸 · 20자)
   if (ls) info.ls = { away: ls.away.innings, home: ls.home.innings };
   if (Object.keys(info).length) game.info = info;
   return { game, report };
@@ -253,8 +254,23 @@ export function findSameGames(game, saved) {
   return saved.filter(({ g }) => g && _ymd(g) === day && (is(g, th, ta, hs, as) || is(g, ta, th, as, hs)));
 }
 
+// 경기 정보 줄의 월.일(parseGameOneInfo) → 'YYYY-MM-DD'. 페이지에 연도가 없어 올해로 하되, 그 날짜가 오늘보다 뒤면 작년(지난 시즌 경기를 연초에 가져오는 경우).
+// 없는 날짜(2.30 등) · 정보 없음 → ''
+const _p2 = v => String(v).padStart(2, '0');
+export function gameOneInfoDate(info, now = Date.now()) {
+  if (!info || !info.month || !info.day) return '';
+  const t = new Date(now), today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  for (const y of [t.getFullYear(), t.getFullYear() - 1]) {
+    const d = new Date(y, info.month - 1, info.day);
+    if (d.getMonth() !== info.month - 1) continue;   // 그해에 없는 날짜(2.30 → 3.2 로 넘어감)
+    if (d <= today) return `${y}-${_p2(info.month)}-${_p2(info.day)}`;
+  }
+  return '';
+}
+
 // ── 화면 ──────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+const _today = () => { const n = new Date(); return `${n.getFullYear()}-${_p2(n.getMonth() + 1)}-${_p2(n.getDate())}`; };
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 let _timer = null;
 
@@ -294,7 +310,7 @@ function _issues(R, dup) {
 function _inputs() {
   return {
     awayText: ($('goAway') || {}).value || '', homeText: ($('goHome') || {}).value || '', scoreText: ($('goScore') || {}).value || '', pitchText: ($('goPitch') || {}).value || '',
-    ta: ($('goTa') || {}).value || '', th: ($('goTh') || {}).value || '', date: ($('goDate') || {}).value || '',
+    ta: ($('goTa') || {}).value || '', th: ($('goTh') || {}).value || '', date: ($('goDate') || {}).value || '', venue: _venue,
     stadium: (window.AS || {}).stadium || '',
   };
 }
@@ -323,17 +339,34 @@ function _lsTable(ls, g) {
 // 박스스코어 페이지를 통째로 붙여넣었으면(휴대폰 '전체 선택 → 복사') 이닝별 점수표 · 원정 · 홈 칸으로 나눠 채운다 (splitGameOnePage).
 // 페이지 위 타자 표 = 점수표 윗줄 팀 = 원정(초) — 따로 붙여넣을 때와 같은 규칙. 나눈 결과가 칸에 보여서 사용자가 확인 · 고칠 수 있다
 let _splitNote = '', _usedSplit = false;   // _usedSplit = 지난 저장 뒤 통째 붙여넣기를 나눈 적이 있다(사용 기록용)
+// 통째 붙여넣기를 나눌 때 경기 날짜 · 원정 · 홈 칸도 채운다(2026-10-21). 비었거나 지난번에 자동으로 채운 칸(data-auto)만 — 사용자가 직접 고치면
+// 그 칸의 표시를 지워(input 이벤트, 아래 시작 처리) 고친 값이 우선. 구장은 입력칸이 없어 저장할 때 경기 정보(info.venue)로만 넣는다
+let _venue = '';
+function _autoFill(id, v) {
+  const el = $(id), val = String(v || '').trim().slice(0, 20);
+  if (!el || !val || (el.value.trim() && el.dataset.auto !== '1')) return false;
+  el.value = val; el.dataset.auto = '1';
+  return true;
+}
 function _autoSplit() {
   for (const id of ['goScore', 'goAway', 'goHome', 'goPitch']) {
-    const el = $(id), sp = el && el.value ? _P().splitGameOnePage(el.value) : null;
+    const el = $(id), src = el ? el.value : '', sp = src ? _P().splitGameOnePage(src) : null;
     if (!sp) continue;
     if (sp.score) $('goScore').value = sp.score; else if (id === 'goScore') $('goScore').value = '';
     if ($('goPitch') && (sp.pitch || id === 'goPitch')) $('goPitch').value = sp.pitch;
     $('goAway').value = sp.tables[0].text; $('goHome').value = sp.tables[1].text;
     _usedSplit = true;
+    // 팀 이름 = 점수표 첫 열(윗줄 원정 · 아랫줄 홈), 점수표가 없으면 타자 표 위 팀 이름 줄 · 날짜 · 구장 = 페이지 위 경기 정보 줄('리그 / 10.07(20:00) / 구장')
+    const sb = sp.score ? _P().parseGameOneScoreboard(sp.score) : null;
+    const names = sb && sb.teams.length >= 2 ? [sb.teams[0].name, sb.teams[1].name] : [sp.tables[0].name, sp.tables[1].name];
+    _autoFill('goTa', names[0]); _autoFill('goTh', names[1]);
+    const info = _P().parseGameOneInfo ? _P().parseGameOneInfo(src) : null, ymd = gameOneInfoDate(info);
+    const dated = !!ymd && _autoFill('goDate', ymd);
+    _venue = info && info.venue ? info.venue.trim().slice(0, 20) : '';
     const nm = (t, d) => (t.name ? `${d}(${t.name})` : d);
     _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표${sp.pitch ? ' · 투수 표' : ''}로 나눴습니다`
-      + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 메뉴 · 요약 글자는 쓰지 않습니다';
+      + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 메뉴 · 요약 글자는 쓰지 않습니다'
+      + (dated || _venue ? ` · 경기 정보 줄에서 ${[dated ? `날짜 ${+ymd.slice(5, 7)}월 ${+ymd.slice(8)}일` : '', _venue ? `구장 ${_venue}` : ''].filter(Boolean).join(' · ')}을 넣었습니다` : '');
     return;
   }
 }
@@ -353,6 +386,7 @@ function _preview() {
   _autoSplit();
   const inp = _inputs(), hasBat = !!(inp.awayText.trim() || inp.homeText.trim());
   if (!hasBat && !inp.scoreText.trim()) {
+    _venue = '';   // 칸을 다 비웠으면 지난 통째 붙여넣기의 구장도 다음 경기에 남기지 않는다
     box.innerHTML = '<div class="go-empty">표를 붙여넣으면 여기에 가져올 내용이 나옵니다</div>';
     btn.disabled = true;
     return;
@@ -391,7 +425,7 @@ export function openGameOneImport(from) {
   if (!_P()) { if (window.showToast) window.showToast('게임원 파서를 불러오지 못했습니다 — 새로고침 후 다시 시도해 주세요', false); return; }
   if (window.closeOverlay) window.closeOverlay('dataSettingsOverlay');
   const dt = $('goDate');
-  if (dt && !dt.value) { const n = new Date(), p = v => String(v).padStart(2, '0'); dt.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`; }
+  if (dt && !dt.value) { dt.value = _today(); dt.dataset.auto = '1'; }   // 기본값(오늘)도 자동 값 — 페이지 경기 정보 줄의 날짜가 덮는다
   _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
   _preview();
   const fresh = from === 'link' || from === 'empty';
@@ -424,6 +458,11 @@ export function saveGameOneImport() {
   } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
   if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
   ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  // 자동으로 채운 팀 이름 · 날짜는 이 경기 것 — 다음 경기 표를 따로 붙여넣을 때 남지 않게 비우고(날짜는 오늘로) 구장도 지운다. 사용자가 고친 값은 그대로
+  ['goTa', 'goTh'].forEach(id => { const t = $(id); if (t && t.dataset.auto === '1') { t.value = ''; delete t.dataset.auto; } });
+  const dt = $('goDate');
+  if (dt && dt.dataset.auto === '1') dt.value = _today();
+  _venue = '';
   _preview();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();
@@ -465,7 +504,9 @@ function _openFromLink() {
 }
 
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame, findSameGames, _openFromLink, _syncStart };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames, gameOneInfoDate, _openFromLink, _syncStart };
+  // 원정 · 홈 · 날짜 칸을 사용자가 직접 고치면 자동 표시를 지운다 — 다음 통째 붙여넣기가 덮지 않는다(_autoFill). 값을 코드로 넣을 때는 input 이벤트가 없다
+  ['goTa', 'goTh', 'goDate'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { delete el.dataset.auto; }); });
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
   window.gameOnePreview = _schedule;

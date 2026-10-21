@@ -374,8 +374,23 @@
     return out;
   }
 
+  // ── 경기 정보 줄 ──
+  // 박스스코어 페이지 점수표 위의 '리그 / 월.일(시:분) / 구장' 줄 (예: '평일야간 안성리그 / 10.07(20:00) / 안성맞춤야구장').
+  // 맨 위 다른 경기 링크 줄('… 2 vs 15 … (10.18)')은 '/' 로 나뉘지 않아 읽지 않는다. 연도는 페이지에 없다 — 가져오기가 정한다
+  // → { league, month, day, time, venue } | null
+  var INFO_RE = /^\s*([^\/\t]+?)\s*\/\s*(\d{1,2})\.(\d{1,2})\s*(?:\(\s*(\d{1,2}:\d{2})\s*\))?\s*\/\s*([^\/\t]+?)\s*$/;
+  function parseGameOneInfo(text) {
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var m = INFO_RE.exec(lines[i]);
+      if (!m || +m[2] < 1 || +m[2] > 12 || +m[3] < 1 || +m[3] > 31) continue;
+      return { league: m[1], month: +m[2], day: +m[3], time: m[4] || '', venue: m[5] };
+    }
+    return null;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, parseGameOneInfo: parseGameOneInfo, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

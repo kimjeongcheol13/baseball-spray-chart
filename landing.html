@@ -75,6 +75,7 @@
   h1 { margin-top: 14px; font-size: 72px; line-height: 1.04; letter-spacing: -.04em; font-weight: 800; }
   .lead { margin-top: 20px; font-size: 18px; color: var(--fg-2); max-width: 30em; }
   .cta { margin-top: 30px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } .cta small { margin-left: 8px; font-size: 13px; color: var(--fg-3); }
+  .cta .app-open { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--fg-2); text-decoration: underline; text-underline-offset: 4px; } .cta .app-open:hover { color: #fff; }   /* 기록하던 사람은 가져오기 창 없이 바로 앱으로 (index.html?app=1) */
   .chips { margin-top: 32px; display: flex; gap: 10px; }
   .chip { flex: 1 1 0; min-width: 0; padding: 12px 16px; border-radius: 8px; background: rgba(255,255,255,.07); border: 1px solid var(--line); backdrop-filter: blur(16px); }
   .chip:last-child { flex-grow: 1.5; }
@@ -222,7 +223,7 @@
       <div class="kicker">사회인야구 · 게임원 기록 → 타구 차트</div>
       <h1>게임원&nbsp;기록&nbsp;붙여넣으면,<br>타구&nbsp;차트가&nbsp;그려집니다</h1>
       <p class="lead">지난 경기를 다시 칠 필요 없습니다. 박스스코어 복사 한 번이면 선수별 스프레이차트와 OPS·방향 분포가 나옵니다.</p>
-      <div class="cta"><a class="btn btn-red js-start" data-cta="hero" href="index.html?go=1">게임원 기록 가져오기</a><a class="btn btn-ghost" href="#import">어떻게 쓰나요</a><small>기본 무료 · 가입 없음 · 설치 없음</small></div>
+      <div class="cta"><a class="btn btn-red js-start" data-cta="hero" href="index.html?go=1">게임원 기록 가져오기</a><a class="btn btn-ghost" href="#import">어떻게 쓰나요</a><small>기본 무료 · 가입 없음 · 설치 없음</small><a class="app-open" href="index.html?app=1">앱 바로 열기 →</a></div>
     <div class="chips">
       <div class="chip"><span>Season AVG</span><b class="num">.333</b></div>
       <div class="chip"><span>OPS</span><b class="num">1.050</b></div>

@@ -1,4 +1,4 @@
-// 첫 방문 → landing.html (index.html <head> 맨 앞 스크립트). 이 페이지에 들어 있는 그 스크립트를 떼어 가짜 주소 · 저장소로 돌려 본다
+// 첫 방문 · 설치 앱 실행 → landing.html (index.html <head> 맨 앞 스크립트). 이 페이지에 들어 있는 그 스크립트를 떼어 가짜 주소 · 저장소로 돌려 본다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test;
 
@@ -15,8 +15,13 @@
     ['진행 중 자동저장 있음', '', '', { sl_autosave: '{}' }, {}, false, false, null],
     ['로그인함', '', '', { sl_cloud_session: '{}' }, {}, false, false, null],
     ['이 탭에서 앱을 연 적 있음 (?go=1 이 지워진 뒤 새로고침)', '', '', {}, { sl_in_app: '1' }, false, false, null],
-    ['홈 화면 앱', '', '', {}, {}, true, false, null],
-    ['홈 화면 앱 (iOS)', '', '', {}, {}, false, true, null]
+    ['홈 화면 앱', '', '', {}, {}, true, false, 'landing.html'],
+    ['홈 화면 앱 (iOS)', '', '', {}, {}, false, true, 'landing.html'],
+    ['홈 화면 앱은 기록 · 로그인이 있어도 랜딩 먼저', '', '', { sl_saves: '[{"key":"sl_1"}]', sl_ftu_done: '1', sl_cloud_session: '{}' }, {}, true, false, 'landing.html'],
+    ['홈 화면 앱 (iOS) 기록 있어도 랜딩 먼저', '', '', { sl_autosave: '{}' }, {}, false, true, 'landing.html'],
+    ['홈 화면 앱: 랜딩 버튼(?go=1)으로 들어오면 앱', '?go=1', '', { sl_saves: '[{"key":"sl_1"}]' }, {}, true, false, null],
+    ['홈 화면 앱: 이 실행에서 앱을 연 적 있으면 앱', '', '', {}, { sl_in_app: '1' }, true, false, null],
+    ['홈 화면 앱: 공유 링크(#)로 열면 앱', '', '#share=abc', {}, {}, true, false, null]
   ];
 
   test('첫 방문 이동: 조건마다 landing.html 로 보내거나 앱에 남는다', async function () {

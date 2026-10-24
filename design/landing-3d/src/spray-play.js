@@ -235,6 +235,11 @@
       // pan-y would let the browser scroll the page with a two-finger move (and cancel the pinch): keep two-finger touches here
       const two2 = e => { if (e.touches.length > 1) e.preventDefault(); };
       this.addEventListener('touchstart', two2, { passive: false }); this.addEventListener('touchmove', two2, { passive: false });
+      // Ctrl + wheel zooms (a trackpad pinch arrives as one too); a plain wheel stays the page's scroll
+      this.addEventListener('wheel', e => {
+        if (!e.ctrlKey) return; e.preventDefault();
+        const R = this.rot; R.zoom = clamp(R.zoom * Math.exp(-e.deltaY * (e.deltaMode ? 40 : 1) * .002), .5, 4); R.lastDrag = performance.now();   // deltaMode 1 = lines (Firefox)
+      }, { passive: false });
       const wait = document.createElement('div'); wait.textContent = '선수들 불러오는 중…';
       Object.assign(wait.style, { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: INK, opacity: .55 });
       this.append(wait); this.waitEl = wait;

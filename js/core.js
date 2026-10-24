@@ -531,17 +531,9 @@ function toggleAnalysisPanel(){
     safeRender();
   },280);
 }
-function goLanding(){
-  // 경기설정·분석 화면(.savant-view)은 #app-page 밖에 떠 있어서, 기록 탭으로 되돌려 닫지 않으면 랜딩 위에 겹쳐 남는다
-  if(window.shellNav)window.shellNav('record');
-  document.getElementById('app-page').style.display='none';
-  document.getElementById('landing-page').style.display='block';
-  document.body.style.overflowY='';
-  document.body.style.overflowX='';
-  var nav=document.getElementById('savantNav');
-  if(nav)nav.style.display='none';
-  window.scrollTo(0,0);
-}
+// 처음 화면 = 새 소개 페이지(landing.html). 옛 랜딩(#landing-page)은 더 띄우지 않는다.
+// 진행 중 기록은 pagehide 의 복구 슬롯(_scheduleRecoverySave(0))에 남고, 저장 안 한 기록이 있으면 beforeunload 가 떠날지 묻는다
+function goLanding(){location.href='landing.html';}
 
 // ───── LANDING SCRIPTS ─────
 (function(){
@@ -5002,16 +4994,10 @@ function importExcel(input) {
 _loadSharedGame();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 랜딩 스킵: 공유 링크이거나 모바일이면 바로 필드 화면으로
+// 랜딩 스킵: 첫 화면은 landing.html(index.html <head> 맨 앞 스크립트)이 맡으므로, index.html 이 그려지면 기기와 상관없이 바로 필드 화면으로
+// (옛 랜딩 #landing-page 는 더 띄우지 않는다)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-(function autoSkipLanding(){
-  var sp=new URLSearchParams(location.search);
-  var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
-  if(hasShare){showApp();return;}
-  // 모바일은 항상 랜딩 스킵 → 바로 필드
-  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
-  if(isMobile) showApp();
-})();
+(function autoSkipLanding(){showApp();})();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE 2: WEAKNESS DETECTION

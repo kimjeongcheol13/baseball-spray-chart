@@ -66,7 +66,7 @@
   .live spray-play > div { color: #fff !important; font-size: 14px !important; }   /* phase · live counter · landing tag, in white */
   .hero .shade, .live .shade { pointer-events: none; }
   .hero .wrap > div, .live .wrap > * { pointer-events: none; } .hero .wrap a, .live .wrap a { pointer-events: auto; }
-  @media (pointer: coarse) { .hero .wrap, .live .wrap { pointer-events: none; } }   /* touch devices: the text boxes lie over the 3D -- let fingers through to it (desktop left as it was) */
+  .hero .wrap, .live .wrap { pointer-events: none; }   /* the text boxes lie over the 3D -- let the mouse and fingers through to it (links stay clickable) */
   .hero spray-play .sp-ctl { top: auto !important; bottom: 40px !important; right: 16px !important; } .hero spray-play .sp-tip { top: auto !important; bottom: 96px !important; }   /* the 3D button and its hint, above the headline (under the fixed nav otherwise) */
   .hero spray-play { --shift: .2 .1; }                                          /* lens shift: home plate to the right of the text, feet above the fold */
   .hero .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.7) 36%, rgba(11,13,18,.1) 58%, transparent 72%), linear-gradient(180deg, rgba(11,13,18,.3) 0%, transparent 28%, transparent 62%, rgba(11,13,18,.85) 100%); }

@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script>
+/* 첫 방문(기록·로그인 없음, ?는 utm_만, 설치 앱 아님) → landing.html. sl_in_app=이 탭에서 앱 열었음(?go=1 등은 곧 지워짐), plaintext=아래 GA·앱 안 돌림 */
+(function(){try{var s=sessionStorage,l=localStorage,ok=!s.sl_in_app&&!location.hash;
+new URLSearchParams(location.search).forEach(function(v,k){if(k.indexOf('utm_'))ok=false;});
+if(ok&&!matchMedia('(display-mode:standalone)').matches&&!navigator.standalone&&!l.sl_ftu_done&&!l.sl_autosave&&!l.sl_cloud_session&&!JSON.parse(l.sl_saves||'[]').length){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
+s.sl_in_app=1}catch(e){}})();
+</script>
 <script
   src="https://js.sentry-cdn.com/faa955c28109534c40458ca1e32c2909.min.js"
   crossorigin="anonymous"

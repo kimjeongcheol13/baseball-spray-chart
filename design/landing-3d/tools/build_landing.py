@@ -6,7 +6,7 @@
 import sys, os, json, base64, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 D3 = os.path.join(HERE, '..'); ROOT = os.path.normpath(os.path.join(D3, '..', '..')); NEXT = os.path.join(D3, 'next')
-V = '6'   # ?v= of spray-play.js (bump when src/spray-play.js or src/glbfig.js changes)
+V = '7'   # ?v= of spray-play.js (bump when src/spray-play.js or src/glbfig.js changes)
 RES = {'three.module': 'js/landing/vendor/three.module.js', 'three.core': 'js/landing/vendor/three.core.js',
        'GLTFLoader': 'js/landing/vendor/GLTFLoader.js', 'BufferGeometryUtils': 'js/landing/vendor/BufferGeometryUtils.js', 'SkeletonUtils': 'js/landing/vendor/SkeletonUtils.js',
        **{n + '.glb': 'assets/landing/' + n + '.glb' for n in ('player', 'player_helmet2', 'player_cap', 'player_cap2', 'player_cap3', 'player_ump', 'glove', 'mitt', 'mask')},

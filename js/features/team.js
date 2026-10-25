@@ -236,7 +236,7 @@ function _show3d() {
   if (!box) return;
   const list = _fieldList;
   const top = `${_scope === 'game' ? '이번 경기' : '시즌 전체'} · ${_side === 'away' ? '원정' : _side === 'all' ? '양 팀' : '홈(우리)'}`;
-  import('./spray3d.js?v=3').then(() => {
+  import('./spray3d.js?v=4').then(() => {
     if (!box.isConnected) return;
     _f3d = _f3d || document.createElement('spray-field-3d');
     box.appendChild(_f3d);

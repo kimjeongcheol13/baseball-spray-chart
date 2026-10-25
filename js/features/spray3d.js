@@ -20,7 +20,8 @@ const EYE = 0.075;                                           // 중앙 백스크
 const KINDS = ['out', 'hit', 'xbh', 'hr'];                   // 그리는 순서 = 겹칠 때 위로 오는 순서 (2D 와 같음)
 const Q = Math.PI / 4;                                       // 좌측 폴 각도 (core _FQ) · 중앙 2Q · 우측 폴 3Q
 // 카메라: 처음 시점 · near/far · 확대 반지름 · 위아래 각 범위 · 끌어서 더하는 위아래 각 범위 (k = 105m 구장 대비 크기)
-const sprayCfg = (k) => ({ cam: { pos: CAM.pos.map((v) => v * k), tgt: CAM.tgt.map((v) => v * k) }, near: 4 * k, far: 900 * k, r: [40 * k, 260 * k], phi: [0.2, 1.45], uPhi: [-0.5, 0.6] });
+// box = 보는 점(끌어 옮기기 · 확대)이 갈 수 있는 범위 [[x, y, z] 최소, 최대]
+const sprayCfg = (k) => ({ cam: { pos: CAM.pos.map((v) => v * k), tgt: CAM.tgt.map((v) => v * k) }, near: 4 * k, far: 900 * k, r: [40 * k, 260 * k], phi: [0.2, 1.45], uPhi: [-0.5, 0.6], box: [[-150 * k, -5 * k, -170 * k], [150 * k, 30 * k, 40 * k]] });
 
 // 방향(phi) → 펜스까지 m. core _fenceR 와 같은 모양(좌 · 우 폴은 짧고 가운데는 깊게)
 export function fenceFn(dist) {
@@ -413,35 +414,43 @@ class SprayField3D extends HTMLElement {
     this._setup();
     const C = this._cfg;
     this._camera = new THREE.PerspectiveCamera(36, 1, C.near, C.far);
-    this._tgt = new THREE.Vector3(); this._sph = new THREE.Spherical(); this._cur = new THREE.Spherical();
-    this._resetCam(); this._cur.copy(this._sph);
+    this._tgt = new THREE.Vector3(); this._tgtTo = new THREE.Vector3(); this._sph = new THREE.Spherical(); this._cur = new THREE.Spherical();
+    this._resetCam(); this._cur.copy(this._sph); this._tgt.copy(this._tgtTo);
     this._ready = true;
     if (this._got) this._apply();
 
-    const zoom = (k) => { const [r0, r1] = this._cfg.r; this._sph.radius = Math.max(r0, Math.min(r1, this._sph.radius * k)); };
-    // 손가락(포인터) 하나 = 돌리기, 둘 = 집어서 확대. 거의 안 움직이고 뗀 하나 = 누름(_tap) · _grab 이 받으면 그쪽이 끌기를 쓴다
-    const pts = new Map(); let drag = null, pinch = 0, tap = null, own = null;
-    const gap = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    // 손가락(포인터) 하나 = 돌리기, 둘 = 집어서 확대 + 옮기기(지도처럼). 오른쪽 · 가운데 버튼 · Shift 끌기 = 옮기기
+    // 거의 안 움직이고 뗀 하나 = 누름(_tap) · _grab 이 받으면 그쪽이 끌기를 쓴다
+    const pts = new Map(); let drag = null, pinch = null, tap = null, own = null;
+    const duo = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), m: { clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 } }; };
     this.addEventListener('pointerdown', (e) => {
-      if (e.button > 0) return;
+      if (e.button > 2) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.setPointerCapture(e.pointerId);
-      if (pts.size === 1 && this._grab(e, 'down')) { own = e.pointerId; return; }
+      if (pts.size === 1 && !e.button && !e.shiftKey && this._grab(e, 'down')) { own = e.pointerId; return; }
       this.style.cursor = 'grabbing';
-      if (pts.size === 2) { drag = null; pinch = gap(); tap = null; } else if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY }; tap = { x: e.clientX, y: e.clientY, id: e.pointerId }; }
+      if (pts.size === 2) { drag = null; pinch = duo(); tap = null; }
+      else if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY, pan: e.button > 0 || e.shiftKey }; tap = e.button ? null : { x: e.clientX, y: e.clientY, id: e.pointerId }; }
     });
     this.addEventListener('pointermove', (e) => {
       if (!pts.has(e.pointerId)) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (own === e.pointerId) { this._grab(e, 'move'); return; }
       if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 6) tap = null;
-      if (pinch) { const d = gap(); if (d > 0) zoom(pinch / d); pinch = d; return; }
+      if (pinch && pts.size === 2) {
+        const t = duo();
+        if (t.d > 0) this._zoom(pinch.d / t.d, t.m);
+        this._pan(t.m.clientX - pinch.m.clientX, t.m.clientY - pinch.m.clientY);
+        pinch = t; return;
+      }
       if (!drag) return;
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y, [u0, u1] = this._cfg.uPhi; drag = { x: e.clientX, y: e.clientY };
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y, [u0, u1] = this._cfg.uPhi; drag = { ...drag, x: e.clientX, y: e.clientY };
+      if (drag.pan) { this._pan(dx, dy); return; }
       this._userTheta -= dx * 0.005; this._userPhi = Math.max(u0, Math.min(u1, this._userPhi - dy * 0.004));
     });
+    this.addEventListener('contextmenu', (e) => e.preventDefault());   // 오른쪽 끌기 = 옮기기
     const up = (e) => {
       if (!pts.has(e.pointerId)) return;
-      pts.delete(e.pointerId); pinch = 0;
+      pts.delete(e.pointerId); pinch = null;
       if (own === e.pointerId) { own = null; this._grab(e, e.type === 'pointerup' ? 'up' : 'cancel'); return; }
       if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !pts.size) this._tap(e);
       tap = null;
@@ -452,22 +461,41 @@ class SprayField3D extends HTMLElement {
     // 두 손가락: 집는 동안 페이지가 스크롤 · 확대되지 않게 (한 손가락은 그대로 스크롤)
     const two = (e) => { if (e.touches.length > 1) e.preventDefault(); };
     this.addEventListener('touchstart', two, { passive: false }); this.addEventListener('touchmove', two, { passive: false });
-    // Ctrl+휠(트랙패드 집기도 이렇게 온다) = 확대. 그냥 휠은 페이지 스크롤
+    // Ctrl+휠(트랙패드 집기도 이렇게 온다) = 마우스 밑 점을 향해 확대. 그냥 휠은 페이지 스크롤
     this.addEventListener('wheel', (e) => {
       if (!e.ctrlKey) return; e.preventDefault();
-      zoom(Math.exp(e.deltaY * (e.deltaMode ? 40 : 1) * 0.002));   // deltaMode 1 = 줄 단위(Firefox)
+      this._zoom(Math.exp(e.deltaY * (e.deltaMode ? 40 : 1) * 0.002), e);   // deltaMode 1 = 줄 단위(Firefox)
     }, { passive: false });
-    this.addEventListener('dblclick', () => this._resetCam());
+    this.addEventListener('dblclick', (e) => this._dbl(e));
     new ResizeObserver(() => this._resize()).observe(this); this._resize();
     this._loop();
   }
 
   _resetCam() {
     const cam = this._cfg.cam;
-    this._tgt.set(...cam.tgt);
-    this._sph.setFromVector3(new THREE.Vector3(...cam.pos).sub(this._tgt));
+    this._tgtTo.set(...cam.tgt);
+    this._sph.setFromVector3(new THREE.Vector3(...cam.pos).sub(this._tgtTo));
     this._userTheta = 0; this._userPhi = 0; this._dirty = true;
   }
+  _dbl() { this._resetCam(); }
+  // 확대 · 축소. at(화면 좌표)이 있으면 그 밑 점을 향해 — 손가락 · 마우스 밑에 있던 것이 그 자리에 남는다
+  _zoom(k, at) {
+    const [r0, r1] = this._cfg.r, r = this._sph.radius, nr = Math.max(r0, Math.min(r1, r * k));
+    const p = at && this._hit(at, this._focus());
+    if (p) this._moveTgt(p.sub(this._tgtTo).multiplyScalar(1 - nr / r));
+    this._sph.radius = nr; this._dirty = true;
+  }
+  // 끌어 옮기기: 화면 픽셀 → 지금 거리에서의 m 만큼 카메라 오른쪽 · 위 방향으로
+  _pan(dx, dy) {
+    const s = 2 * this._cur.radius * Math.tan(this._camera.fov * Math.PI / 360) / (this.clientHeight || 1), m = this._camera.matrixWorld.elements;
+    this._moveTgt(new THREE.Vector3(m[0], m[1], m[2]).multiplyScalar(-dx * s).addScaledVector(new THREE.Vector3(m[4], m[5], m[6]), dy * s));
+  }
+  _moveTgt(v) {
+    const [a, b] = this._cfg.box, t = this._tgtTo.add(v);
+    t.set(...[0, 1, 2].map((i) => Math.max(a[i], Math.min(b[i], t.getComponent(i)))));
+    this._dirty = true;
+  }
+  _focus() { return new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); }   // 확대할 때 손가락 밑 점을 찾는 면: 구장 = 땅
 
   _apply() {
     if (this._built !== String(this._dist || [])) this._rebuild();
@@ -530,13 +558,15 @@ class SprayField3D extends HTMLElement {
       const r = this._sph.radius;
       const [p0, p1] = this._cfg.phi, phi = Math.max(p0, Math.min(p1, this._sph.phi + this._userPhi));
       const theta = this._sph.theta + this._userTheta;
-      const moving = Math.abs(r - cur.radius) > 0.01 || Math.abs(phi - cur.phi) > 1e-4 || Math.abs(theta - cur.theta) > 1e-4;
+      const moving = Math.abs(r - cur.radius) > r * 1e-3 || Math.abs(phi - cur.phi) > 1e-4 || Math.abs(theta - cur.theta) > 1e-4 || this._tgt.distanceTo(this._tgtTo) > r * 1e-4;
       if (!moving && !this._dirty) return;   // 바뀐 게 없으면 그리지 않는다
       this._dirty = false;
       cur.radius += (r - cur.radius) * 0.08;
       cur.phi += (phi - cur.phi) * 0.08;
       cur.theta += (theta - cur.theta) * 0.08;
+      this._tgt.lerp(this._tgtTo, 0.08);
       this._camera.position.setFromSpherical(cur).add(this._tgt);
+      if (this._cfg.floor != null) this._camera.position.y = Math.max(this._cfg.floor, this._camera.position.y);   // 땅 밑으로 내려가지 않게
       this._camera.lookAt(this._tgt);
       this._renderer.render(this._scene, this._camera);
     };
@@ -565,7 +595,7 @@ if (!customElements.get('spray-field-3d')) customElements.define('spray-field-3d
 const ZS = 0.432 / 56;                     // 그림 1칸(m): 존 폭 56칸 = 홈플레이트 43.2cm
 const ZLO = 0.46, ZH = 84 * ZS;            // 존 아래 높이 · 존 높이(m)
 const zoneAt = (x, y) => [(x - 50) * ZS, ZLO + (102 - y) * ZS];
-const ZONE_CFG = { cam: { pos: [0, 1.05, 1.15], tgt: [0, 0.66, 0] }, near: 0.05, far: 80, r: [0.6, 24], phi: [0.3, 1.66], uPhi: [-1.25, 0.15] };
+const ZONE_CFG = { cam: { pos: [0, 1.05, 1.15], tgt: [0, 0.66, 0] }, near: 0.02, far: 80, r: [0.18, 24], phi: [0.15, 1.66], uPhi: [-1.1, 0.4], box: [[-2.5, 0.05, -19], [2.5, 3, 3]], floor: 0.04 };
 const ZONE_GRID_CFG = { ...ZONE_CFG, cam: { pos: [0.7, 1.3, 1.15], tgt: [0, 0.8, -0.2] } };   // 기둥 길이가 보이게 비스듬히
 const BAR = { count: '#4f8df5', hits: '#e5484d' };
 
@@ -627,22 +657,76 @@ function buildZone() {
   return scene;
 }
 
+// 위치 그림에서 한 손가락 끌기: 'pick' = 구역 고르기(2D 와 같음) · 'turn' = 돌리기. 이 기기에 기억
+let zoneDrag = 'pick';
+try { if (localStorage.getItem('sl_zone3d_drag') === 'turn') zoneDrag = 'turn'; } catch (e) {}
+const ZBTN = { minWidth: '44px', height: '44px', padding: '0 10px', border: '1px solid rgba(255,255,255,.25)', borderRadius: '8px', background: 'rgba(12,15,21,.72)', color: '#fff', font: `700 13px ${FONT}`, cursor: 'pointer' };
+
 class PitchZone3D extends SprayField3D {
   get _cfg() { return this._grid ? ZONE_GRID_CFG : ZONE_CFG; }
   connectedCallback() {
     super.connectedCallback();
     if (!this._renderer || this._hint) return;
     const t = this._hint = document.createElement('p');
-    t.textContent = '공 쪽을 끌면 구역 고르기 · 바깥을 끌면 돌리기';
-    Object.assign(t.style, { position: 'absolute', left: '10px', bottom: '8px', margin: '0', font: `600 11px ${FONT}`, color: 'rgba(255,255,255,.72)', pointerEvents: 'none' });
+    Object.assign(t.style, { position: 'absolute', left: '10px', right: '64px', bottom: '8px', margin: '0', font: `600 11px ${FONT}`, color: 'rgba(255,255,255,.72)', pointerEvents: 'none' });
     this.appendChild(t);
+    // 버튼: 왼쪽 위 = 끌기 고르기 | 돌리기(위치 그림만) · 오른쪽 아래 = 확대 · 축소 · 처음 시점. 누름이 장면의 끌기 · 두 번 누름으로 가지 않게 막는다
+    const bar = (css) => { const d = document.createElement('div'); Object.assign(d.style, { position: 'absolute', display: 'flex', gap: '4px', ...css }); this.appendChild(d); return d; };
+    const btn = (box, text, title, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = text; b.title = title; b.setAttribute('aria-label', title);
+      Object.assign(b.style, ZBTN);
+      ['pointerdown', 'dblclick'].forEach((n) => b.addEventListener(n, (e) => e.stopPropagation()));
+      b.addEventListener('click', fn);
+      box.appendChild(b); return b;
+    };
+    this._modeBar = bar({ left: '8px', top: '8px' });
+    [['pick', '고르기', '끌어서 구역 고르기'], ['turn', '돌리기', '끌어서 돌려 보기']].forEach(([m, txt, title]) => btn(this._modeBar, txt, title, () => {
+      zoneDrag = m;
+      try { localStorage.setItem('sl_zone3d_drag', m); } catch (e) {}
+      this._modeUi();
+    }).dataset.m = m);
+    const zb = bar({ right: '8px', bottom: '8px', flexDirection: 'column' });
+    btn(zb, '+', '확대 (두 손가락 · Ctrl+휠)', () => this._zoom(0.7));
+    btn(zb, '−', '축소', () => this._zoom(1 / 0.7));
+    btn(zb, '↺', '처음 시점 (빈 곳 두 번 누르기)', () => this._resetCam());
     this._modeUi();
   }
-  // 고를 수 있는 위치 그림: 안내 글 · 끌기가 페이지를 움직이지 않게(2D #pcPlot 의 touch-action: none 과 같음)
+  // 위치 그림(고를 수 있음): 끌기 모드 버튼 · 안내 글 · 끌기가 페이지를 움직이지 않게(2D #pcPlot 의 touch-action: none 과 같음)
   _modeUi() {
     const pick = this._pick && !this._grid;
-    if (this._hint) this._hint.hidden = !pick;
+    if (this._hint) {
+      this._hint.hidden = !pick;
+      this._hint.textContent = zoneDrag === 'turn' ? '끌면 돌리기 · 공을 누르면 그 공 · 두 번 누르면 가까이' : '끌면 구역 고르기 · 두 손가락 확대·이동 · 공 두 번 누르면 가까이';
+    }
+    if (this._modeBar) {
+      this._modeBar.hidden = !pick;
+      this._modeBar.querySelectorAll('button').forEach((b) => {
+        const on = b.dataset.m === zoneDrag;
+        b.setAttribute('aria-pressed', String(on));
+        Object.assign(b.style, on ? { background: '#fff', color: '#11151c' } : { background: ZBTN.background, color: ZBTN.color });
+      });
+    }
     this.style.touchAction = pick ? 'none' : 'pan-y';
+  }
+  _focus() { return new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); }   // 공이 놓인 존 앞면
+  // 그림 좌표 a 에서 가장 가까운 공(6칸 안). 없으면 null
+  _near(a) {
+    let best = null, bd = 6;
+    this._pts.forEach((p) => { const d = Math.hypot(p.x - a[0], p.y - a[1]); if (d <= bd) { bd = d; best = p; } });
+    return best;
+  }
+  // 두 번 누름: 공 위면 그 공을 가까이(돌린 각도는 그대로), 빈 곳이면 처음 시점
+  _dbl(e) {
+    const a = !this._grid && this._plotAt(e), p = a && this._near(a);
+    if (!p) { this._resetCam(); return; }
+    const [x, y] = zoneAt(p.x, p.y);
+    this._tgtTo.set(x, y, 0); this._sph.radius = 0.4; this._dirty = true;
+  }
+  // 돌리기 모드에서 짧게 누름 = 2D 탭처럼 그 자리 공 하나 고르기 (고르기 모드의 누름은 _grab 이 받는다)
+  _tap(e) {
+    const a = this._pick && !this._grid && this._plotAt(e);
+    if (a) this.dispatchEvent(new CustomEvent('zonepick', { detail: { a, b: a } }));
   }
   update(d) {
     const was = !!this._grid;
@@ -664,7 +748,7 @@ class PitchZone3D extends SprayField3D {
   // 그림 안(0~100 × 0~120)을 누르면 돌리기 대신 구역 고르기. 떼면 'zonepick' — 탭 · 끌기 판단과 결과 카드는 2D 와 같은 pitcher.js 가 한다
   _grab(e, ph) {
     if (ph === 'down') {
-      const a = this._pick && !this._grid && this._plotAt(e);
+      const a = this._pick && !this._grid && zoneDrag === 'pick' && this._plotAt(e);
       if (!a || a[0] < 0 || a[0] > 100 || a[1] < 0 || a[1] > 120) return false;
       this._drag = { a, b: a }; this._apply();
       return true;

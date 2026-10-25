@@ -24,6 +24,10 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const hex = (c) => '#' + c.toString(16).padStart(6, '0');
   const FONT = "'Pretendard Variable', Pretendard, Archivo, sans-serif";
+  // the crowd's sprite sheet (tools/bake_crowd.py): columns are views CROWD_COLS degrees round from the front, rows an empty seat
+  // then the seated spectators; each cell is a CROWD_CW x CROWD_CH ft window standing on the seat's floor. null: block figures
+  let CROWD = null;
+  const CROWD_COLS = [0, 25, 50, 75], CROWD_CW = 3.2, CROWD_CH = 4.4, CROWD_MIX = [3, 2, 2, 1, 3, 3];   // MIX: how often each spectator row turns up
 
   const BOX = [-3.1, .4], DECK = [[-31, 19], [31, 19]], BAG = [62.9, -62.9];   // the batter's spot in the box; on-deck circles (third-base side first: the batting team's); where the runner stops
   const RUN0 = 3.05, RUN1 = 3.45, ARR = 7.2, JOG0 = 4.3, JOG1 = 7.4;           // tau: the hitter breaks for first (swing -> run blend) and gets there; the next batter's jog to the box
@@ -226,7 +230,8 @@
     let up = 0; for (let i = 0; i < nrm.count; i += 6) up += nrm.getY(i);    // treads should face up: else flip the winding (the loop's direction)
     if (up < 0) { const p = geo.attributes.position.array; for (let i = 0; i < p.length; i += 9) for (let k = 0; k < 3; k++) { const t = p[i + 3 + k]; p[i + 3 + k] = p[i + 6 + k]; p[i + 6 + k] = t; } geo.computeVertexNormals(); }
     const stands = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true })); scene.add(stands);
-    // the crowd: about 60 % of the seats, every row
+    // the crowd: a seat every 2.2 ft of every row, about 60 % taken. With the sprite sheet (CROWD) every seat is one quad turned
+    // to the camera; without it, block figures on the taken seats
     let seed = 1907; const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
     const GREY = new THREE.Color(0x6E7078), SHIRT = [0xC8303A, 0xF1EDE4, 0x1F2740, 0x2D3A55, 0xE9C94C, 0x6E6F75, 0x3D7A4F, 0xB85C2A, 0x202024, 0xC8303A, 0xF1EDE4];
     const seats = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), S = new THREE.Vector3();
@@ -237,35 +242,165 @@
         const [ax, az] = at(j, oa), [bx, bz] = at(i1, ob), ha = (pts[j].of ? 9.6 : 7) + r * RISE, hb = (pts[i1].of ? 9.6 : 7) + r * RISE, len = Math.hypot(bx - ax, bz - az);
         const face = Math.atan2(-segN[j].x, -segN[j].y);
         for (let s = carry; s < len; s += 2.2) {
-          if (rnd() < .6) { const u = s / len; seats.push([ax + (bx - ax) * u, ha + (hb - ha) * u, az + (bz - az) * u, face + (rnd() - .5) * .5, .9 + rnd() * .2, SHIRT[Math.floor(rnd() * SHIRT.length)], SKIN[Math.floor(rnd() * SKIN.length)]]); }
+          const u = s / len; seats.push([ax + (bx - ax) * u, ha + (hb - ha) * u, az + (bz - az) * u, face + (rnd() - .5) * .3, .94 + rnd() * .12, SHIRT[Math.floor(rnd() * SHIRT.length)], SKIN[Math.floor(rnd() * SKIN.length)], rnd() < .6, rnd()]);
           carry = s + 2.2 - len;
         }
       }
     }
-    [[new THREE.CylinderGeometry(.85, .6, 1.9, 4, 1, true).rotateY(Math.PI / 4).scale(1, 1, .55).translate(0, .95, .1), 5], [new THREE.SphereGeometry(.34, 5, 3).scale(1, 1.15, 1).translate(0, 2.28, .12), 6]].forEach(([g, ci]) => {   // bodies (shirts), heads (skin)
-      const m = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial(), seats.length), C = new THREE.Color();
-      seats.forEach((s, i) => { m.setMatrixAt(i, m4.compose(V.set(s[0], s[1], s[2]), q.setFromAxisAngle(Y, s[3]), S.set(s[4], s[4], s[4]))); m.setColorAt(i, C.setHex(s[ci]).lerp(GREY, .3).multiplyScalar(.62)); });
-      scene.add(m);
-    });
-    // dugouts: floor 2.6 ft under the field, roof under the first row; the field's own edge is their front wall up to a lip and a rail
-    const lam = (h) => new THREE.MeshLambertMaterial({ color: h });
+    if (CROWD) {
+      const cols = CROWD_COLS.length, rows = Math.round(CROWD.image.height / (CROWD.image.width / cols * CROWD_CH / CROWD_CW)), step = CROWD_COLS[1] * D2R;
+      const mat = new THREE.MeshBasicMaterial({ map: CROWD, alphaTest: .45, side: THREE.DoubleSide, toneMapped: false });   // the sheet is lit and tone-mapped already
+      mat.onBeforeCompile = (sh) => {   // a cylindrical billboard: the quad turns round y to the camera and shows the sheet's column nearest the view
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aRow;').replace('#include <project_vertex>', `
+          vec3 ctr = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.)).xyz, ax = normalize(instanceMatrix[0].xyz), fw = normalize(instanceMatrix[2].xyz);
+          vec3 toC = cameraPosition - ctr; toC.y = 0.; toC = normalize(toC);
+          float ang = atan(dot(toC, ax), dot(toC, fw)), col = min(floor(abs(ang) / ${step.toFixed(5)} + .5), ${cols - 1}.);
+          vMapUv = vec2((col + (ang < 0. ? 1. - uv.x : uv.x)) / ${cols}., (${rows}. - aRow - 1. + uv.y) / ${rows}.);   // the other side: the column mirrored
+          vec4 mvPosition = viewMatrix * vec4(ctr + (vec3(toC.z, 0., -toC.x) * position.x + vec3(0., position.y, 0.)) * length(instanceMatrix[0].xyz), 1.);
+          gl_Position = projectionMatrix * mvPosition;`);
+      };
+      const mix = Array.from({ length: rows - 1 }, (_, k) => CROWD_MIX[k] || 1);
+      const m = new THREE.InstancedMesh(new THREE.PlaneGeometry(CROWD_CW, CROWD_CH).translate(0, CROWD_CH / 2, 0), mat, seats.length), C = new THREE.Color(), row = new Float32Array(seats.length);
+      seats.forEach((s, i) => {
+        m.setMatrixAt(i, m4.compose(V.set(s[0], s[1], s[2]), q.setFromAxisAngle(Y, s[3]), S.set(s[4], s[4], s[4])));
+        let k = 0, u = s[8] * mix.reduce((a, b) => a + b, 0); while (k < mix.length - 1 && (u -= mix[k]) > 0) k++;
+        row[i] = s[7] ? 1 + k : 0; m.setColorAt(i, C.setScalar(.5 + .22 * (s[8] * 7.31 % 1)));   // row 0: an empty seat
+      });
+      m.geometry.setAttribute('aRow', new THREE.InstancedBufferAttribute(row, 1)); m.frustumCulled = false; scene.add(m);
+    } else {
+      const taken = seats.filter(s => s[7]);
+      [[new THREE.CylinderGeometry(.85, .6, 1.9, 4, 1, true).rotateY(Math.PI / 4).scale(1, 1, .55).translate(0, .95, .1), 5], [new THREE.SphereGeometry(.34, 5, 3).scale(1, 1.15, 1).translate(0, 2.28, .12), 6]].forEach(([g, ci]) => {   // bodies (shirts), heads (skin)
+        const m = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial(), taken.length), C = new THREE.Color();
+        taken.forEach((s, i) => { m.setMatrixAt(i, m4.compose(V.set(s[0], s[1], s[2]), q.setFromAxisAngle(Y, s[3]), S.set(s[4], s[4], s[4]))); m.setColorAt(i, C.setHex(s[ci]).lerp(GREY, .3).multiplyScalar(.62)); });
+        scene.add(m);
+      });
+    }
+    const lam = (h, x = {}) => new THREE.MeshLambertMaterial({ color: h, ...x }), std = (h, r = .6) => new THREE.MeshStandardMaterial({ color: h, roughness: r });
+    const lit = (x) => new THREE.MeshBasicMaterial({ toneMapped: false, ...x });   // LED boards, light strips: as drawn, not lit
     const box = (g, mat, x0, x1, y0, y1, z0, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat); m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); g.add(m); return m; };
+    const inst = (g, geo, mat, at) => { const m = new THREE.InstancedMesh(geo, mat, at.length); at.forEach((p, i) => m.setMatrixAt(i, m4.compose(V.set(p[0], p[1], p[2]), q.setFromAxisAngle(Y, p[3] || 0), S.set(1, 1, 1)))); g.add(m); return m; };
+    // the brand mark (red dot + SPRAYLAB, as in the page's nav) centred on cx; a little spray chart (fan, chalk lines, red dots)
+    const mark = (c, cx, y, s, col, dot = '#E0343F') => {
+      c.font = `800 ${s}px ${FONT}`; c.letterSpacing = `${(s * .1).toFixed(1)}px`; c.textAlign = 'left'; c.textBaseline = 'middle';
+      const x = cx - (s * 1.05 + c.measureText('SPRAYLAB').width) / 2;
+      c.fillStyle = dot; c.beginPath(); c.arc(x + s * .27, y, s * .27, 0, 7); c.fill();
+      c.fillStyle = col; c.fillText('SPRAYLAB', x + s * 1.05, y + s * .04); c.letterSpacing = '0px';
+    };
+    const fan = (c, x, y, r, ink, dots) => {
+      c.save(); c.translate(x, y); c.strokeStyle = ink; c.lineWidth = Math.max(2, r * .035);
+      c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, r, -Math.PI * .75, -Math.PI * .25); c.closePath(); c.stroke();
+      c.beginPath(); c.arc(0, 0, r * .45, -Math.PI * .75, -Math.PI * .25); c.stroke();
+      dots.forEach(([a, d], i) => { const t = (a - 90) * D2R; c.fillStyle = i % 3 ? '#E0343F' : ink; c.beginPath(); c.arc(Math.cos(t) * d * r, Math.sin(t) * d * r, r * .055, 0, 7); c.fill(); });
+      c.restore();
+    };
+    const DOTS = [[-30, .82], [-18, .55], [-36, .5], [-8, .9], [4, .66], [14, .4], [24, .78], [-24, .7], [32, .55], [-12, .3], [8, .85], [-40, .35]];
+    const text = (c, s, w, col, str, x, y, align = 'center') => { c.font = `${w} ${s}px ${FONT}`; c.fillStyle = col; c.textAlign = align; c.textBaseline = 'middle'; c.fillText(str, x, y); };
+
+    // ad boards on the backstop, like a ballpark's sponsor panels on the padded wall behind home: one canvas strip on the inside of
+    // a cylinder just in front of the wall's chords (the wall is the bowl's front edge on the arc behind home)
+    const BR = BACK - .25, BW = BR * Math.PI / 2, BH = 6, PW = 11.4;
+    const ads = canvasTex(THREE, 4096, Math.round(4096 * BH / BW), (c, W, H) => {
+      const k = W / BW, ph = 4.6 * k, py = (H - ph) / 2, gap = (BW - 5 * PW) / 6, cream = '#F1EDE4', navy = '#1F2740', ink = '#0B0D12';
+      c.fillStyle = '#141922'; c.fillRect(0, 0, W, H);
+      c.fillStyle = 'rgba(255,255,255,.05)'; for (let x = 0; x < W; x += 4 * k) c.fillRect(x, 0, 3, H);   // the wall's pad seams, every 4 ft
+      [(w, h) => { c.fillStyle = navy; c.fillRect(0, 0, w, h); mark(c, w / 2, h * .42, h * .2, '#fff'); text(c, h * .12, 500, 'rgba(255,255,255,.72)', 'Your Swing, Visualized', w / 2, h * .72); },
+       (w, h) => { c.fillStyle = cream; c.fillRect(0, 0, w, h); text(c, h * .24, 800, ink, '게임원 기록', w / 2, h * .34); text(c, h * .24, 800, '#E0343F', '→ 타구 차트', w / 2, h * .68); },
+       (w, h) => { c.fillStyle = '#E0343F'; c.fillRect(0, 0, w, h); mark(c, w / 2, h * .5, h * .26, '#fff', '#fff'); },
+       (w, h) => { c.fillStyle = cream; c.fillRect(0, 0, w, h); fan(c, w * .2, h * .8, h * .6, ink, DOTS); text(c, h * .2, 800, ink, '기본 무료', w * .64, h * .36); text(c, h * .13, 600, 'rgba(11,13,18,.62)', '가입 없음 · 설치 없음', w * .64, h * .66); },
+       (w, h) => { c.fillStyle = navy; c.fillRect(0, 0, w, h); const s = h * .3, x = w * .5 - h * .95; c.strokeStyle = '#fff'; c.lineWidth = s * .1;
+         c.beginPath(); c.roundRect(x - s / 2, h / 2 - s / 2, s, s, s * .28); c.stroke(); c.beginPath(); c.arc(x, h / 2, s * .22, 0, 7); c.stroke(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x + s * .26, h / 2 - s * .26, s * .06, 0, 7); c.fill();
+         text(c, h * .17, 700, '#fff', '@spraylab2026', x + s * .8, h / 2, 'left'); }
+      ].forEach((draw, i) => { c.save(); c.translate((gap + i * (PW + gap)) * k, py); draw(PW * k, ph); c.restore(); });
+    });
+    ads.repeat.x = -1; ads.offset.x = 1;   // seen from inside the cylinder: mirror back
+    const ad = new THREE.Mesh(new THREE.CylinderGeometry(BR, BR, BH, 48, 1, true, -Math.PI / 4, Math.PI / 2), lit({ map: ads, color: 0xD9D9D9, side: THREE.BackSide }));
+    ad.position.y = .6 + BH / 2; scene.add(ad);
+
+    // the scoreboard: a video board on two legs behind the left-centre stands, facing home -- line score, count, the batter and his
+    // spray chart. SA: its angle off centre field (- toward left)
+    const SA = -17 * D2R, SR = 402, SW = 140, SH = 56, SY = 37, sb = new THREE.Group();
+    sb.position.set(SR * Math.sin(SA), 0, -SR * Math.cos(SA)); sb.rotation.y = -SA;
+    const steel = lam(0x1B2029), screen = canvasTex(THREE, 2560, 1024, (c, W, H) => {
+      const mute = 'rgba(241,237,228,.55)', cream = '#F1EDE4', red = '#E0343F';
+      c.fillStyle = '#06080C'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#10141C'; c.fillRect(0, 0, W, 150); c.fillStyle = red; c.fillRect(0, 150, W, 6);
+      mark(c, 330, 76, 64, '#fff'); text(c, 40, 600, mute, 'Your Swing, Visualized', W - 60, 78, 'right');
+      // line score: the home side bats in the bottom of the 7th
+      const cx = (i) => 420 + i * 92, rx = (i) => 1320 + i * 104, rows = [['SEOUL', [0, 1, 0, 0, 2, 0, 0], [3, 7, 1]], ['SPRAYLAB', [1, 0, 3, 0, 1, 0], [5, 9, 0]]];
+      for (let i = 0; i < 9; i++) text(c, 38, 600, mute, String(i + 1), cx(i), 220);
+      ['R', 'H', 'E'].forEach((s, i) => text(c, 38, 700, mute, s, rx(i), 220));
+      c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(380, 254, 1050, 2); c.fillRect(1260, 190, 3, 300);
+      rows.forEach(([team, inn, rhe], r) => {
+        const y = 315 + r * 120;
+        if (r) { c.fillStyle = 'rgba(224,52,63,.16)'; c.fillRect(40, y - 52, 1390, 104); }
+        text(c, 54, 800, r ? '#fff' : cream, team, 70, y, 'left');
+        inn.forEach((v, i) => text(c, 56, 700, cream, String(v), cx(i), y));
+        rhe.forEach((v, i) => text(c, 60, 800, i ? cream : '#FFD34D', String(v), rx(i), y));
+      });
+      text(c, 46, 800, cream, '7회말', 70, 600, 'left');
+      [['B', 4, 2, '#3DDC84'], ['S', 3, 1, '#FFD34D'], ['O', 3, 1, red]].forEach(([s, n, on, col], j) => {
+        const x = 330 + j * 330; text(c, 44, 800, mute, s, x, 600, 'left');
+        for (let i = 0; i < n - 1; i++) { c.fillStyle = i < on ? col : 'rgba(255,255,255,.12)'; c.beginPath(); c.arc(x + 80 + i * 62, 600, 22, 0, 7); c.fill(); }
+      });
+      c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(40, 680, 1390, 2);
+      text(c, 40, 700, mute, '오늘의 타구 차트 · 게임원 기록 → SprayLab', 70, 760, 'left');
+      text(c, 40, 700, mute, '당김 36 · 센터 36 · 밀어 27%', 70, 830, 'left');
+      c.fillStyle = red; c.fillRect(70, 880, 1360 * .36, 18); c.fillStyle = cream; c.fillRect(70 + 1360 * .36, 880, 1360 * .36, 18); c.fillStyle = 'rgba(255,255,255,.3)'; c.fillRect(70 + 1360 * .72, 880, 1360 * .28, 18);
+      // the batter
+      c.fillStyle = '#0D1118'; c.fillRect(1500, 190, 1020, 790);
+      text(c, 36, 800, red, 'NOW BATTING', 1550, 240, 'left'); text(c, 150, 800, '#fff', '27', 1550, 350, 'left');
+      [['AVG', '.333'], ['OPS', '1.050'], ['wOBA', '.451']].forEach(([s, v], i) => { text(c, 32, 600, mute, s, 1800 + i * 240, 290, 'left'); text(c, 64, 800, cream, v, 1800 + i * 240, 350, 'left'); });
+      fan(c, 2010, 950, 520, 'rgba(241,237,228,.6)', DOTS);
+    });
+    box(sb, steel, -SW / 2 - 3, SW / 2 + 3, SY - 3, SY + SH + 4, -7, -.2);                                  // the board's frame
+    [-1, 1].forEach(s => box(sb, steel, s * SW * .28 - 4, s * SW * .28 + 4, -2.2, SY - 3, -6, -1.2));      // legs
+    box(sb, lit({ color: 0xE0343F }), -SW / 2 - 3, SW / 2 + 3, SY + SH + 1.6, SY + SH + 2.6, -.15, 0);     // a red LED line along the top
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), lit({ map: screen, color: 0xE6E6E6 })); scr.position.set(0, SY + SH / 2, 0); sb.add(scr);
+    scene.add(sb);
+
+    // dugouts: floor 2.6 ft under the field, roof under the first row; the field's own edge is their front wall up to a padded lip
+    // and rail. Lit fascia with the team's name, light strips under the roof, padded seats, bat and helmet racks, a water cooler
     return [-1, 1].map(sg => {
       const sd = sides[sg], L = DG[1] - DG[0], h = L / 2, mid = (DG[0] + DG[1]) / 2, g = new THREE.Group(), team = sg < 0 ? 'SPRAYLAB' : 'SEOUL';
       const z = new THREE.Vector3(sd.n.x, 0, sd.n.y), x = new THREE.Vector3().crossVectors(Y, z);
       g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, Y, z)); g.position.set(sd.A.x + sd.e.x * mid, 0, sd.A.y + sd.e.y * mid);
-      const wall = lam(0x232A36), dark = lam(0x161A21), trim = lam(sg < 0 ? 0xA8262F : 0x1F2740);
-      box(g, lam(0x2A2C30), -h, h, -2.8, -2.6, 0, 9.4);                       // floor
+      const tc = sg < 0 ? 0xC8303A : 0x26365C, tcs = sg < 0 ? '#C8303A' : '#26365C', wall = lam(0x232A36), dark = lam(0x161A21), pad = std(tc, .55), steelM = std(0x2B3038, .4);
+      box(g, std(0x1C1F24, .9), -h, h, -2.8, -2.6, 0, 9.4);                  // floor (rubber)
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(L, 8.6), lam(0xFFFFFF, { map: canvasTex(THREE, 2048, 392, (c, W, H) => {   // back wall: padded panels in the team colour, the name faint across them
+        const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#12161D'); gr.addColorStop(1, sg < 0 ? '#6E1A22' : '#1B2846'); c.fillStyle = gr; c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(0,0,0,.35)'; for (let x = 0; x < W; x += W / 15) c.fillRect(x, 0, 4, H);
+        c.globalAlpha = .16; text(c, 210, 800, '#fff', team, W / 2, H * .42); c.globalAlpha = 1;
+      }), emissive: tc, emissiveIntensity: .05 }));
+      back.position.set(0, 1.7, 8.88); back.rotation.y = Math.PI; g.add(back);
       box(g, wall, -h, h, -2.6, 6, 8.9, 9.4); [-h - .5, h].forEach(x0 => box(g, wall, x0, x0 + .5, -2.6, 6, 0, 9.4));   // back and end walls
       box(g, dark, -h - .6, h + .6, 6, 6.95, -.8, 9.4);                        // roof, under the first row of seats
-      box(g, trim, -h, h, -2.6, .4, .05, .6);                                  // front lip, a little above the field
-      box(g, trim, -h + 1.5, h - 1.5, -2.6, -1.2, 7.2, 8.9);                   // bench along the back wall
-      const rail = new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, L, 8).rotateZ(Math.PI / 2), dark); rail.position.set(0, .95, .35); g.add(rail);
-      for (let x0 = -h; x0 <= h + .01; x0 += L / 6) box(g, dark, x0 - .06, x0 + .06, .4, .95, .29, .41);
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(L * .5, .8), new THREE.MeshBasicMaterial({ map: canvasTex(THREE, 1024, 64, (c, W, H) => {
-        c.fillStyle = '#161A21'; c.fillRect(0, 0, W, H); c.font = `800 46px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = sg < 0 ? '#E0343F' : '#F1EDE4'; c.fillText(team, W / 2, H * .55);
-      }), toneMapped: false }));
-      sign.position.set(0, 6.47, -.81); sign.rotation.y = Math.PI; g.add(sign);
+      box(g, dark, -h - .6, h + .6, 5.1, 6, -.8, -.35);                        // its deep front edge, carrying the sign
+      const fascia = new THREE.Mesh(new THREE.PlaneGeometry(L + 1.2, 1.85), lit({ map: canvasTex(THREE, 2048, 80, (c, W, H) => {
+        c.fillStyle = '#0E1117'; c.fillRect(0, 0, W, H); c.fillStyle = tcs; c.fillRect(0, H - 7, W, 7);
+        if (sg < 0) mark(c, W / 2, H * .45, 44, '#fff'); else text(c, 46, 800, '#F1EDE4', team, W / 2, H * .48);
+        c.globalAlpha = .5; [W * .12, W * .88].forEach(x => fan(c, x, H * .86, 54, '#F1EDE4', DOTS.slice(0, 6))); c.globalAlpha = 1;
+      }) }));
+      fascia.position.set(0, 6.02, -.82); fascia.rotation.y = Math.PI; g.add(fascia);
+      [2.6, 6.4].forEach(z0 => box(g, lit({ color: 0xFFF1DC }), -h + 1, h - 1, 5.86, 6, z0, z0 + .35));   // light strips under the roof
+      box(g, pad, -h, h, -2.6, .25, .05, .6);                                  // front lip, padded, a little above the field
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, L, 12).rotateZ(Math.PI / 2), pad); rail.position.set(0, .95, .35); g.add(rail);
+      inst(g, new THREE.CylinderGeometry(.07, .07, .7, 8), steelM, Array.from({ length: 7 }, (_, i) => [-h + i * L / 6, .55, .35]));
+      // seats along the back wall: a steel bench frame, padded seat and back cushions (seat top at -1.2, where the bench sitters sit)
+      box(g, steelM, -h + 1.5, h - 1.5, -2.6, -1.55, 7.3, 8.6);
+      const seatsX = []; for (let x0 = -h + 2.9; x0 < h - 1.6; x0 += 2.8) seatsX.push(x0);
+      inst(g, new THREE.BoxGeometry(2.55, .35, 1.45), pad, seatsX.map(x0 => [x0, -1.38, 7.95]));
+      inst(g, new THREE.BoxGeometry(2.55, 1.7, .3), pad, seatsX.map(x0 => [x0, -.2, 8.68]));
+      box(g, wall, -h, -h + 3.4, -2.6, -1.75, .6, 2.2); box(g, wall, -h, -h + 3.4, -2.6, -.9, .6, 1.4);   // steps up to the field, at the plate end
+      // bat rack and helmet cubbies at the far end, a water cooler at the near end
+      const rx = h - 5.2;
+      box(g, steelM, rx - 3.2, rx + 3.2, -2.6, -2.2, 6.9, 8.8); box(g, steelM, rx - 3.2, rx + 3.2, .3, .5, 7.9, 8.8);
+      inst(g, new THREE.CylinderGeometry(.11, .05, 2.75, 8), std(0xB98A55, .45), Array.from({ length: 12 }, (_, i) => [rx - 2.9 + i * .53, -.85, 8.3 + (i % 2) * .2]));
+      box(g, dark, rx - 3.2, rx + 3.2, 1.4, 4.4, 7.9, 8.86);
+      inst(g, new THREE.SphereGeometry(.42, 14, 8, 0, Math.PI * 2, 0, Math.PI * .55), std(sg < 0 ? 0xC8303A : 0x1F2740, .25), [[rx - 2, 1.75], [rx - .7, 1.75], [rx + .7, 1.75], [rx + 2, 1.75], [rx - 2, 3.15], [rx - .7, 3.15], [rx + .7, 3.15], [rx + 2, 3.15]].map(([x0, y0]) => [x0, y0, 7.6]));
+      const cx0 = -h + 5;
+      box(g, steelM, cx0 - .9, cx0 + .9, -2.6, -.6, 7.6, 8.8);
+      const jug = new THREE.Mesh(new THREE.CylinderGeometry(.62, .62, 1.6, 20), std(0xF07A1A, .5)); jug.position.set(cx0, .2, 8.2); g.add(jug);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(.66, .66, .22, 20), std(0xF4F1EA, .4)); lid.position.set(cx0, 1.1, 8.2); g.add(lid);
       scene.add(g); g.updateMatrixWorld(true);
       return { sg, team, at: (lx, ly, lz) => g.localToWorld(new THREE.Vector3(lx, ly, lz)), face: Math.atan2(-z.x, -z.z) };
     });
@@ -932,7 +1067,8 @@
       const wait = document.createElement('div'); wait.textContent = '선수들 불러오는 중…';
       Object.assign(wait.style, { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: INK, opacity: .55 });
       this.append(wait); this.waitEl = wait;
-      const start = () => three().then(T => loadBody(T).then(b => { BODY = b; }, err => console.warn('spray-play: realistic body unavailable, using mannequin', err)).then(() => this.init(T)))
+      const crowd = (T) => CROWD || resBlob('crowd.webp').then(b => new T.TextureLoader().loadAsync(URL.createObjectURL(b))).then(t => { t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; CROWD = t; }, err => console.warn('spray-play: crowd sprites unavailable', err));
+      const start = () => three().then(T => Promise.all([loadBody(T).then(b => { BODY = b; }, err => console.warn('spray-play: realistic body unavailable, using mannequin', err)), crowd(T)]).then(() => this.init(T)))
         .catch(err => console.error('spray-play: three.js failed to load', err));
       if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '25% 0px' }); io.observe(this); }
       else start();

@@ -1,0 +1,46 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"../../../js/landing/vendor/three.module.js","three/addons/":"../vendor/three-0.184.0/examples/jsm/"}}</script>
+<body style="margin:0;background:#556"><script type="module">
+// The crowd's sprite sheet (tools/bake_crowd.py opens this page): ?m=a,b,c names seated spectators in harness/crowd/<name>.glb.
+// Row 0 is an empty stadium seat, row i the i-th spectator on one. Columns: the camera COLS[k] degrees round from straight in
+// front, toward the model's +x side (the page mirrors a column for the other side), 8 degrees up. Each cell is a CW x CH ft
+// window, its bottom edge on the seat's floor -- the page draws the same window as a quad. Lit from the field: front, above.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const CW = 3.2, CH = 4.4, COLS = [0, 25, 50, 75], EL = 8, PX = 176;   // cell: PX x PX * CH / CW pixels
+const SEAT_H = 1.45, HEAD = 4.25;                                      // seat top, seated head top (ft)
+const names = (new URLSearchParams(location.search).get('m') || '').split(',').filter(Boolean);
+const cw = PX, ch = Math.round(PX * CH / CW), rows = names.length + 1;
+const r = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+r.setPixelRatio(1); r.setSize(cw * COLS.length, ch * rows); r.setClearColor(0, 0); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
+r.setScissorTest(true); document.body.append(r.domElement);
+// the seat: a moulded shell (pan + back) on a dark stand
+function seat() {
+  const g = new THREE.Group(), shell = new THREE.MeshStandardMaterial({ color: 0x24375C, roughness: .45 }), dark = new THREE.MeshStandardMaterial({ color: 0x15181E, roughness: .6 });
+  const b = (m, w, h, d, x, y, z, rx = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.x = rx; g.add(o); };
+  b(shell, 1.55, .14, 1.35, 0, SEAT_H - .07, .05); b(shell, 1.55, 1.45, .14, 0, SEAT_H + .62, -.68, -.12); b(dark, .16, SEAT_H - .14, .16, 0, (SEAT_H - .14) / 2, -.2);
+  return g;
+}
+const people = await Promise.all(names.map(n => new GLTFLoader().loadAsync('crowd/' + n + '.glb').then(gl => {
+  const m = gl.scene; m.traverse(o => { if (o.isMesh) { o.material.metalness = 0; o.material.side = THREE.DoubleSide; } });
+  const holder = new THREE.Group(); holder.add(m); holder.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(m), k = HEAD / (box.max.y - box.min.y);    // seated head top at HEAD ft
+  m.scale.multiplyScalar(k); m.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, (-.95 - box.min.z * k));   // feet on the floor, back against the seat
+  return holder;
+})));
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xEEF2FF, 0x3A3530, 1.6));
+const key = new THREE.DirectionalLight(0xFFF4E6, 2.6); key.position.set(3, 9, 10); scene.add(key);
+const cam = new THREE.OrthographicCamera(-CW / 2, CW / 2, CH / 2, -CH / 2, .1, 200);
+[null, ...people].forEach((p, row) => {
+  const s = seat(); scene.add(s); if (p) scene.add(p);
+  COLS.forEach((a, col) => {
+    const t = a * Math.PI / 180, e = EL * Math.PI / 180, D = 60;
+    cam.position.set(D * Math.sin(t) * Math.cos(e), CH / 2 + D * Math.sin(e), D * Math.cos(t) * Math.cos(e)); cam.lookAt(0, CH / 2, 0);
+    const x = col * cw, y = (rows - 1 - row) * ch;            // GL viewport origin is bottom left: row 0 at the top
+    r.setViewport(x, y, cw, ch); r.setScissor(x, y, cw, ch); r.render(scene, cam);
+  });
+  scene.remove(s); if (p) scene.remove(p);
+});
+window.__sheet = { url: r.domElement.toDataURL('image/png'), cols: COLS.length, rows, cw, ch };
+</script>

@@ -423,8 +423,9 @@ function _fieldFtHtml() {
 }
 
 // ── 필드 카드 머리: 스프레이 차트 · 2D | 3D ──────────────────
-//   3D = 보기 전용(spray3d.js, 처음 누를 때만 불러옴). 타구 위치 찍기는 2D 필드 — 위치를 찍어야 하면(field-tap-pending) CSS 가 2D 를 다시 보여 준다
-let _fv = '2d', _f3k = 'all', _f3d = null;
+//   3D(spray3d.js, 처음 누를 때만 불러옴)에서도 타구 위치를 찍는다: 3D 땅을 짧게 누르면 그 자리를 2D 캔버스 좌표로 바꿔 core onFClick 에 넘긴다
+//   → 결과 팝업 · 타자 고르기(firstrun) · 퀵버튼 대기(안타 등을 먼저 누름)가 2D 와 똑같이 돈다. 팝업만 3D 칸으로 옮겨 누른 자리 옆에 둔다
+let _fv = '2d', _f3k = 'all', _f3d = null, _f3at = null, _f3pop = false;
 const _F3TABS = [['all', '전체'], ['hit', '안타'], ['out', '아웃'], ['batter', '이번 타자']];
 function _fieldHdHtml() {
   const AS = _AS(), team = AS.curTeam === 'away' ? _val('tAway', '원정팀') : _val('tHome', '내 팀');
@@ -450,10 +451,15 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=2').then(() => {
+  import('./spray3d.js?v=3').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
-    _f3d = _f3d || document.createElement('spray-field-3d');
+    if (!_f3d) {
+      _f3d = document.createElement('spray-field-3d');
+      _f3d.tappable = true;
+      _f3d.addEventListener('fieldtap', (e) => _tap3d(e.detail));
+    }
     if (_f3d.parentNode !== box) box.appendChild(_f3d);
+    if (!_popOpen()) _f3d.mark(null);   // 기록했거나 취소했으면 찍은 자리 고리를 지운다
     const AS = _AS(), list = _field3dList(), st = _fieldGeo(1).st;
     const who = _f3k === 'batter' ? (AS.batter ? AS.batter.name : '타자 미선택') : _F3TABS.find(t => t[0] === _f3k)[1];
     _f3d.update({
@@ -463,11 +469,44 @@ function _paint3d() {
     });
   }).catch(() => { if (box.isConnected && !box.querySelector('.sb-none')) box.insertAdjacentHTML('beforeend', '<p class="sb-none">3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.</p>'); });
 }
+const _popOpen = () => !!window._tp || !!document.querySelector('#batPick:not([hidden])');
+// 3D 에서 누른 자리 → 2D 와 같은 기록. 누르는 순간 팝업이 열려 있었으면 2D 처럼 닫기만 (바깥 누름으로 이미 닫혔다)
+function _tap3d(d) {
+  if (_f3pop || _fv !== '3d' || typeof window.onFClick !== 'function' || !FS) return;
+  const p = _semiToCone(_fieldGeo(FS), d.x, d.y);
+  _f3at = [d.px, d.py];
+  window.onFClick({ clientX: p[0], clientY: p[1], rect: { left: 0, top: 0, width: FS, height: FS }, sx: 1, sy: 1 });
+  _place3d();
+  if (_f3d && _popOpen()) _f3d.mark(d);
+}
+// 결과 팝업 · 타자 고르기를 3D 칸에서 누른 자리 옆에 (core _tpPlace 와 같은 규칙: 오른쪽 위, 넘치면 왼쪽 · 아래로, 둘 다 안 되면 위 · 아래 + 가로 맞춤)
+function _place3d() {
+  const box = $('sbField3d');
+  if (_fv !== '3d' || !_f3at || !box) return;
+  const W = box.clientWidth, H = box.clientHeight, [px, py] = _f3at, G = 24, clamp = (v, max) => Math.max(0, Math.min(v, max));
+  ['tapPop', 'batPick'].forEach((id) => {
+    const el = $(id);
+    if (!el || el.hidden) return;
+    if (el.parentNode !== box) box.appendChild(el);
+    const pw = el.offsetWidth, ph = el.offsetHeight;
+    const fitR = px + G + pw <= W, fitL = px - G - pw >= 0, fitT = py - G - ph >= 0, fitB = py + G + ph <= H;
+    let left, top;
+    if (fitR || fitL) { left = fitR ? px + G : px - G - pw; top = fitT ? py - G - ph : (fitB ? py + G : clamp(py - ph / 2, H - ph)); }
+    else { left = clamp(px - pw / 2, W - pw); top = fitT ? py - G - ph : (fitB ? py + G : clamp(py - G - ph, H - ph)); }
+    el.style.left = Math.round(left) + 'px'; el.style.top = Math.round(top) + 'px';
+  });
+}
 function sbFieldView(v) {
   _fv = v === '3d' ? '3d' : '2d';
   render();
-  // 2D 로 돌아오면 숨어 있던 동안 바뀐 크기로 필드를 다시 잰다
-  if (_fv === '2d') { try { window.dispatchEvent(new Event('resize')); } catch (e) {} _redraw(); }
+  // 2D 로 돌아오면 팝업 자리를 2D 필드(#cwrap)로 되돌리고, 숨어 있던 동안 바뀐 크기로 필드를 다시 잰다
+  if (_fv === '2d') {
+    _f3at = null;
+    const w = $('cwrap');
+    ['tapPop', 'batPick'].forEach((id) => { const el = $(id); if (el && w && el.parentNode !== w) w.appendChild(el); });
+    try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    _redraw();
+  }
 }
 function sbField3dTab(k) {
   _f3k = _F3TABS.some(t => t[0] === k) ? k : 'all';
@@ -689,6 +728,19 @@ function _hook() {
     w._sb = true;
     window.showToast = w;
   }
+  // 3D 필드: core 가 결과 팝업 자리를 잡을 때마다(장타 단계로 넘어갈 때 포함) 3D 칸 자리로
+  const tpp = window._tpPlace;
+  if (typeof tpp === 'function' && !tpp._sb) {
+    const w = function () { const r = tpp.apply(this, arguments); _place3d(); return r; };
+    w._sb = true;
+    window._tpPlace = w;
+  }
+  // 3D 를 누르는 순간 팝업이 열려 있었는지 — window 캡처는 core · firstrun 의 '바깥 누름 → 닫기'(document 캡처)보다 먼저 돈다
+  window.addEventListener('pointerdown', (e) => {
+    if (!_f3d) return;
+    _f3pop = _f3d.contains(e.target) && _popOpen();
+    setTimeout(() => { if (!_popOpen()) _f3d.mark(null); }, 0);
+  }, true);
   // 고대비: body 클래스만 바뀌므로 캔버스 색 다시 읽고 다시 그림
   const hc = window.toggleHighContrast;
   if (typeof hc === 'function' && !hc._sb) {

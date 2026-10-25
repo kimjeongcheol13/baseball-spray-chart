@@ -1,7 +1,7 @@
 // 야간 화면(css/night.css · scorebook.js _night · 필드 머리 2D | 3D)
 //  · 기록 · 분석 · 경기설정 모두 body.sb-night(밤 토큰) · 고대비를 켜면 밝은 종이
 //  · 캔버스 색(sbPaint.tok)은 밤이면 --fld-*(바닥 = 카드색, 선 · 글자 = 분필색), 고대비를 바꾸면 캐시도 바로 바뀐다
-//  · 3D 보기 = 2D 필드와 같은 타구 목록 + 탭(전체 · 안타 · 아웃 · 이번 타자) · 위치를 찍어야 하면 2D 필드가 다시 보인다
+//  · 3D 보기 = 2D 필드와 같은 타구 목록 + 탭(전체 · 안타 · 아웃 · 이번 타자) · 3D 땅을 누르면(fieldtap) 2D 와 같은 onFClick → 결과 팝업이 3D 칸에
 //  · 하네스 크롬은 GPU 를 끈다 — 3D 는 그림이 아니라 넘긴 데이터만 본다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
@@ -78,13 +78,31 @@
     sbField3dTab('all');
   });
 
-  test('3D 보기 중 위치를 찍어야 하면(field-tap-pending) 2D 필드가 다시 보이고, 2D 로 돌아가면 3D 를 접는다', function () {
+  test('3D 땅을 누르면 2D 와 같은 기록 흐름 — 저장 좌표 · 결과 팝업이 3D 칸에서 누른 자리 옆 · 취소하면 표시도 지운다', async function () {
+    var e = await el3d(), pop = $('tapPop');
+    window.AS.batter = { id: 'p1', name: '가' };
+    window.AS.pending = null;
+    e.dispatchEvent(new CustomEvent('fieldtap', { detail: { x: 0.4, y: 0.5, px: 10, py: 200 } }));
+    ok(window._tp && !pop.hidden, '결과 팝업이 안 열림');
+    ok(Math.abs(window.AS.pending.x - 0.4) < 0.01 && Math.abs(window.AS.pending.y - 0.5) < 0.01, '저장 좌표 ' + JSON.stringify(window.AS.pending));
+    eq(pop.parentNode, $('sbField3d'), '팝업 자리');
+    eq(pop.style.left, '34px', '누른 자리 오른쪽(+24) ' + $('sbField3d').clientWidth);
+    eq(e._pin, { x: 0.4, y: 0.5, px: 10, py: 200 }, '누른 자리 표시');
+    window._tpCancel();
+    await T.sleep(0);
+    window.sbRenderNow(); await T.sleep(50);
+    eq([!!window._tp, e._pin], [false, null], '취소');
+    window.AS.pending = null;
+  });
+
+  test('3D 보기 중 위치를 찍어야 하면(field-tap-pending) 3D 그대로 점선 테두리, 2D 로 돌아가면 팝업도 2D 필드로', function () {
     var fw = document.querySelector('#sbField > .field-wrap');
     fw.classList.add('field-tap-pending');
-    ok(getComputedStyle(fw).display !== 'none', '2D 필드가 안 보임');
-    eq(getComputedStyle($('sbField3d')).display, 'none', '3D 상자');
+    eq(getComputedStyle(fw).display, 'none', '2D 필드가 다시 보임');
+    eq([getComputedStyle($('sbField3d')).display, getComputedStyle($('sbField3d')).outlineStyle], ['block', 'dashed'], '3D 상자');
     fw.classList.remove('field-tap-pending');
     sbFieldView('2d');
+    eq($('tapPop').parentNode, $('cwrap'), '팝업이 2D 필드로');
     ok(!$('sbField').classList.contains('is-3d'), 'is-3d 남음');
     ok(getComputedStyle(fw).display !== 'none', '2D 필드');
     eq(getComputedStyle($('sbField3d')).display, 'none', '3D 상자 접힘');

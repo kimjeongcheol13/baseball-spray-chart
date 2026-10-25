@@ -4,7 +4,7 @@ python tools/shoot_app.py          -> writes the 3 JPEGs into next/img/ (then bu
 python tools/shoot_app.py --dry    -> raw/alt PNGs + preview JPEGs only (nothing in the repo is touched)
 Needs playwright (pip install playwright; python -m playwright install chromium). Serves the repo root itself on a free port.
 """
-import base64, functools, http.server, io, sys, tempfile, threading
+import functools, http.server, io, sys, tempfile, threading
 from pathlib import Path
 from PIL import Image
 from playwright.sync_api import sync_playwright
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[3]
 IMG = ROOT / "design/landing-3d/next/img"
 OUT = Path(tempfile.gettempdir()) / "spraylab_appshots"; OUT.mkdir(exist_ok=True)
 DRY = "--dry" in sys.argv
-sys.stdout.reconfigure(encoding="utf-8")   # the report alt has an em dash; the Windows console is cp949
+sys.stdout.reconfigure(encoding="utf-8")   # prints can hold Korean or dashes; the Windows console is cp949
 BLOCK = ("sentry-cdn", "googletagmanager", "google-analytics", "kakao", "formspree", "supabase")
 FLAGS = ["sl_ftu_done", "sl_menu_moved_seen", "sl_scout_intro_seen", "sl_scout_info_closed", "sl_lineup_banner_closed", "sl_visited"]
 
@@ -110,17 +110,18 @@ with sync_playwright() as p:
     print("team overlays:", overlays(pg))
     team = shot(pg, "team")
 
-    # 4) 선수 리포트: the PNG the app exports for 김민준 (rpImg.src is the same canvas _save() writes out)
-    pg.evaluate("openPlayerReport({ name: '김민준' })")
-    pg.wait_for_function("document.getElementById('rpSave') && !document.getElementById('rpSave').disabled", timeout=30000)
-    url = pg.evaluate("document.getElementById('rpImg').src")
-    raw = base64.b64decode(url.split(",", 1)[1])
-    (OUT / "raw_report.png").write_bytes(raw)
-    rep = Image.open(io.BytesIO(raw))
-    print("report png", rep.size, pg.evaluate("document.getElementById('rpImg').alt"))
+    # 4) 경기설정 scrolled to the end: 팀 만들기 (팀원과 기록 공유) + 내보내기 · 공유 (QR·링크, PNG, 카드, 엑셀) + 데이터 · 도움말.
+    #    The exported report/cards stay cream paper by design, so the 03 · 공유 card shows this night-theme screen instead.
+    #    Only the end works: anywhere higher, a row shows through the floating "저장하고 기록 시작" bar.
+    pg.click(".savant-nav-btn[data-tab=settings]")
+    pg.wait_for_timeout(1500)
+    pg.evaluate("(() => { const v = document.getElementById('settingsView'); v.scrollTop = v.scrollHeight; })()")
+    pg.wait_for_timeout(600)
+    print("share overlays:", overlays(pg))
+    share = shot(pg, "share")
     br.close()
 srv.shutdown()
 
 save_jpg(rec, "app_record.jpg", (630, 1274))
 save_jpg(team, "app_team.jpg", (630, 1274))
-save_jpg(rep, "report.jpg", (810, 1440))
+save_jpg(share, "app_share.jpg", (630, 1274))

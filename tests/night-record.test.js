@@ -1,6 +1,6 @@
-// 야간 기록 화면(css/night.css · scorebook.js _night · 필드 머리 2D | 3D)
-//  · 기록 탭이 보일 때만 body.sb-night(밤 토큰) — 분석 탭으로 가면 종이 · 고대비를 켜면 밝은 종이
-//  · 캔버스 색(sbPaint.tok)은 밤이면 --fld-*(바닥 = 카드색, 선 · 글자 = 분필색), 탭을 바꾸면 캐시도 바로 바뀐다
+// 야간 화면(css/night.css · scorebook.js _night · 필드 머리 2D | 3D)
+//  · 기록 · 분석 · 경기설정 모두 body.sb-night(밤 토큰) · 고대비를 켜면 밝은 종이
+//  · 캔버스 색(sbPaint.tok)은 밤이면 --fld-*(바닥 = 카드색, 선 · 글자 = 분필색), 고대비를 바꾸면 캐시도 바로 바뀐다
 //  · 3D 보기 = 2D 필드와 같은 타구 목록 + 탭(전체 · 안타 · 아웃 · 이번 타자) · 위치를 찍어야 하면 2D 필드가 다시 보인다
 //  · 하네스 크롬은 GPU 를 끈다 — 3D 는 그림이 아니라 넘긴 데이터만 본다
 (function () {
@@ -30,15 +30,19 @@
     eq([t.paper, t.ink, t.bg], ['#E9ECF1', '#FFFFFF', '#12151C'], '캔버스 색');
   });
 
-  test('분석 탭으로 가면 종이(캐시까지) · 돌아오면 다시 밤', async function () {
-    shellNav('analysis');
-    await T.sleep(0);   // MutationObserver 콜백
-    ok(!document.body.classList.contains('sb-night'), '분석 탭인데 밤');
-    eq([css('--paper'), window.sbPaint.tok().paper, window.sbPaint.tok().bg], ['#F3EDDF', '#F3EDDF', '#FBF7EE'], '종이 색');
+  test('분석 · 경기설정도 밤 — 카드 · 머리 테두리는 흰 잉크가 아니라 옅은 선', async function () {
+    shellNav('analysis', 'team');
+    await T.sleep(50);
+    ok(document.body.classList.contains('sb-night'), '분석 탭인데 종이');
+    eq([css('--paper'), window.sbPaint.tok().paper], ['#0B0D12', '#E9ECF1'], '밤 색');
+    var card = document.querySelector('#analysisView .an-card');
+    ok(card, '분석 카드 없음');
+    eq(getComputedStyle(card).borderTopColor, 'rgba(255, 255, 255, 0.12)', '카드 테두리');
+    shellNav('settings');
+    await T.sleep(50);
+    ok(document.body.classList.contains('sb-night'), '경기설정인데 종이');
+    eq(getComputedStyle(document.querySelector('#settingsView .sb-vhdr')).borderBottomColor, 'rgba(255, 255, 255, 0.12)', '경기설정 머리 선');
     shellNav('record');
-    await T.sleep(0);
-    ok(document.body.classList.contains('sb-night'), '기록 탭인데 종이');
-    eq(window.sbPaint.tok().paper, '#E9ECF1', '캐시가 밤으로');
   });
 
   test('고대비(야외)를 켜면 밤 토큰을 쓰지 않는다', function () {

@@ -768,18 +768,10 @@ function _redraw() {
   } catch (e) {}
 }
 
-// 야간 기록 화면(css/night.css): 기록 탭(#app-page)이 보일 때만 body.sb-night — 분석 · 경기설정은 종이 그대로
-//   탭 전환은 여러 길(shellNav · 딥링크 등)로 오므로 #app-page 의 display 를 지켜본다. 바뀌면 캔버스 색(tok)도 다시 읽는다
+// 야간 화면(css/night.css): 기록 · 분석 · 경기설정 모두 body.sb-night — 고대비(야외)를 켜면 CSS 가 밝은 종이로 돌린다
 function _night() {
-  const ap = $('app-page');
-  const sync = () => {
-    const on = !!ap && ap.style.display !== 'none';
-    if (document.body.classList.contains('sb-night') === on) return;
-    document.body.classList.toggle('sb-night', on);
-    tok(true);
-  };
-  if (ap && window.MutationObserver) new MutationObserver(sync).observe(ap, { attributes: true, attributeFilter: ['style'] });
-  sync();
+  document.body.classList.add('sb-night');
+  tok(true);
 }
 
 function _init() {

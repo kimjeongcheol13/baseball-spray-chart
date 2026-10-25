@@ -670,6 +670,9 @@ body.sb #analysisView .ad-who-b.on { background: var(--highlight-soft); box-shad
 .ad-fn { margin-left: 2px; font: 600 12px/1 var(--f-num); }
 .ad-field-box { display: flex; justify-content: center; padding: 10px 10px 4px; min-width: 0; }
 .ad-field-box canvas { display: block; max-width: 100%; }
+/* 3D 방향도 (spray3d.js) — 밤 구장 장면이라 어두운 바탕, 종이 카드 안의 중계 화면처럼 잉크 테두리 */
+.ad-field-box.ad-3d { display: block; aspect-ratio: 5 / 4; margin-top: 10px; margin-bottom: 4px; padding: 0; border: 1.5px solid var(--ink); background: #11151c; overflow: hidden; }
+.ad-3d .ad-none { padding: 16px; color: var(--paper); }
 .ad-legend { padding: 6px 12px 8px; border-top: 1px solid var(--rule); }
 .ad-legend-n { margin-left: auto; font-size: 11px !important; color: var(--ink-soft); }
 /* 게임원에서 가져와 대략 찍은 위치(gameonefix.js) — 범례 점선 원 + 위치 확인 (새 요소) */
@@ -975,6 +978,7 @@ body.sb .pg-sh-btn.acc { background: var(--paper-2); border-color: var(--pen-red
   .ad-big > div:last-child { border-right: 0; }
   .ad-big b { font-size: 22px; }
   .ad-field-box { padding: 6px 6px 2px; }
+  .ad-field-box.ad-3d { aspect-ratio: 9 / 8; margin-top: 6px; margin-bottom: 2px; padding: 0; }   /* 좁은 화면은 덜 납작하게 → 구장이 더 크게 */
 }
 
 /* ═══════════════════════════════════════════════════════════

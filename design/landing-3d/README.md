@@ -17,7 +17,7 @@ python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인
 
 - 3D 요소 `<spray-play>`의 진짜 소스는 `src/spray-play.js`(장면·필드·카메라·공·마커)와 `src/glbfig.js`(선수)다. 빌드가 `src/spray-play.js`의 `//@glbfig` 줄 자리에 `glbfig.js`를 끼워 `js/landing/spray-play.js`를 만든다 — 생성물은 직접 고치지 말 것. 둘 중 하나를 바꾸면 `build_landing.py`의 `V`(`?v=`)를 올린다.
   (2026-10-17 전까지는 디자인 도구 번들 `SprayLab_Landing.glb.html`에서 스크립트를 꺼내 썼다. `tools/build.py`·`tools/unbundle.py`는 이제 그 번들 미리보기와 3D 자원(`js/landing/vendor/`, `assets/landing/*.glb`·`clips_shared.json`)을 다시 풀 때만 쓴다.)
-- 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg`, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다. `../../landing.html`도 생성물이다 — 글을 고칠 때는 `landing.src.html`을 고치고 빌드할 것(루트 파일만 고치면 다음 빌드가 되돌린다).
+- 페이지 소스는 `next/landing.src.html`(글·CSS·구조), 이미지는 `next/img/`(앱 화면 2배 캡처 `app_*.jpg`, 앱이 내보낸 리포트 `report.jpg` — 지금은 옛 시안 `next/index*.html`만 쓴다, 3D를 찍은 `hero_close.jpg`·`cta_bg.jpg`), QR은 빌드 때 SVG로 본문에 들어 있다. `../../landing.html`도 생성물이다 — 글을 고칠 때는 `landing.src.html`을 고치고 빌드할 것(루트 파일만 고치면 다음 빌드가 되돌린다).
 - 숫자는 전부 샘플 선수 김민준(#8, 15타석)의 것이다(.333 / .467 / .583 · OPS 1.050 · wOBA .451 · ISO .250 · 당김 36 / 센터 36 / 밀어 27%). 3D의 카운터만 "이번 경기".
 - 3D 요소는 인라인 스타일로 자기 크기를 정하므로 페이지 CSS가 `!important`로 absolute·inset을 덮어쓴다. 첫 화면에서는 요소의 자체 라벨(투구·타격·기록, 카운터)을 숨기고, "필드" 칸에서는 흰색으로 보여 준다.
 - 공유 미리보기: head의 `og:`·`twitter:` 메타와 `img/og.jpg`(1200×630, 첫 화면을 그대로 찍은 것), 파비콘 `img/icon-32/192.png`(앱의 player-logo). 상단 바는 fixed이고 40px 넘게 내리면 `.nav.scrolled`(반투명+블러, 60px)로 바뀐다.
@@ -59,6 +59,9 @@ python tools/build_landing.py --single SprayLab_Landing.page.html   # 전부 인
     - 리포트는 테마와 상관없어서 날짜만 바뀐다.
   - 정지 그림 4장을 다시 찍었다(`--check` 평균 픽셀차: 데스크톱 1.3, 폰 1.0). `og.jpg`가 바뀌어서 `?v=6`으로 올렸다.
   - 비용: 넓은 샷 삼각형 약 56만, 첫 화면 약 35만.
+- 03 · 공유 그림(2026-10-26): 사용자가 "이거 왜 안 고쳐"라고 했다. 리포트 PNG는 크림색 종이라 밤 테마인 01·02와 안 맞았고, 810×1440이라 630×1274 폰 틀 아래가 하얗게 남았다.
+  - 앱의 리포트·성적 카드는 일부러 종이 디자인이라 그대로 두었다. 대신 경기설정 › 그 밖의 기능을 맨 아래까지 내린 화면(`app_share.jpg`: 팀 만들기, 내보내기 · 공유 4개, 데이터 · 도움말)을 쓴다. 사용자가 고른 안이다.
+  - `tools/shoot_app.py`의 4단계가 이 화면을 찍는다. 맨 아래가 아니면 떠 있는 "저장하고 기록 시작" 막대 뒤로 목록 줄이 비쳐 보여서 맨 아래로 고정했다.
 - 화면 배치(2026-10-18): 선수가 글·버튼에 가려지지 않게. 3D 요소는 페이지 CSS의 `--shift: x y`(렌즈 이동, 화면 비율, +는 장면을 오른쪽·위로)와 `--zoom`(렌즈 확대)을 크기가 바뀔 때마다 읽는다.
   데스크톱 첫 화면은 `--shift: .2 .1`로 홈 플레이트를 글 오른쪽에 두고, 숫자 카드 3개는 글 아래 한 줄로 옮겼다. 폰·태블릿(1023px 이하) 첫 화면은 3D를 위쪽 띠(`clamp(340px, 54vh, 480px)`, `--zoom: 1.3; --shift: 0 .24`)로, 글·버튼·카드를 그 아래로 둔다. 폰 "필드" 칸은 `--shift: 0 .14`로 필드를 설명 바로 아래로 올렸다.
   그 밖에: 숫자 띠의 칸 여백 규칙이 감싸는 `.wrap`에도 걸려 양옆 여백이 0이던 것(`.ticker .wrap > div`로 한정), "필드" 칸 아래 라벨을 본문 칸에 맞춤, 맨 아래 배경을 선수가 잘리지 않게(데스크톱 `center 78%`, 폰은 버튼 아래로), 코스별 타율 칸에 안타/타수 표시(김민준 15타석 — 칸마다 0~4타수라 .000·1.000이 많다; `js/sample.js` 고정 시드로 다시 계산해 페이지 숫자와 일치 확인), QR 태그 2×2, 한글 라벨의 넓은 자간 정리.

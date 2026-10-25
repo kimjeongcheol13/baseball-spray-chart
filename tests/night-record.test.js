@@ -1,0 +1,90 @@
+// 야간 기록 화면(css/night.css · scorebook.js _night · 필드 머리 2D | 3D)
+//  · 기록 탭이 보일 때만 body.sb-night(밤 토큰) — 분석 탭으로 가면 종이 · 고대비를 켜면 밝은 종이
+//  · 캔버스 색(sbPaint.tok)은 밤이면 --fld-*(바닥 = 카드색, 선 · 글자 = 분필색), 탭을 바꾸면 캐시도 바로 바뀐다
+//  · 3D 보기 = 2D 필드와 같은 타구 목록 + 탭(전체 · 안타 · 아웃 · 이번 타자) · 위치를 찍어야 하면 2D 필드가 다시 보인다
+//  · 하네스 크롬은 GPU 를 끈다 — 3D 는 그림이 아니라 넘긴 데이터만 본다
+(function () {
+  var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
+  var ABS = [
+    { bid: 'p1', bname: '가', team: 'home', inning: 1, res: '안타', x: 0.5, y: 0.3 },
+    { bid: 'p2', bname: '나', team: 'home', inning: 1, res: '플라이 아웃', x: 0.3, y: 0.5 },
+    { bid: 'p1', bname: '가', team: 'home', inning: 2, res: '홈런', x: 0.5, y: 0.02 },
+    { bid: 'p3', bname: '다', team: 'home', inning: 2, res: '삼진' }
+  ];
+  function css(n) { return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+  function kinds(e) { return e._balls.map(function (b) { return b.k; }); }
+  async function el3d() {
+    for (var i = 0; i < 50; i++) { var e = document.querySelector('#sbField3d spray-field-3d'); if (e && e._balls) return e; await T.sleep(100); }
+    return null;
+  }
+
+  test('(준비) 앱 시작 처리가 끝날 때까지 기다린다', async function () {
+    await T.sleep(2500);
+    ok(window.sbFieldView && window.sbPaint && window.shellNav && $('sbFieldHd'), '기록 화면 · 필드 머리');
+  });
+
+  test('기록 탭: body.sb-night · 밤 토큰 · 캔버스는 분필색(--fld-*)', function () {
+    ok(document.body.classList.contains('sb-night'), 'sb-night 없음');
+    eq(css('--paper'), '#0B0D12', '바탕');
+    var t = window.sbPaint.tok(true);
+    eq([t.paper, t.ink, t.bg], ['#E9ECF1', '#FFFFFF', '#12151C'], '캔버스 색');
+  });
+
+  test('분석 탭으로 가면 종이(캐시까지) · 돌아오면 다시 밤', async function () {
+    shellNav('analysis');
+    await T.sleep(0);   // MutationObserver 콜백
+    ok(!document.body.classList.contains('sb-night'), '분석 탭인데 밤');
+    eq([css('--paper'), window.sbPaint.tok().paper, window.sbPaint.tok().bg], ['#F3EDDF', '#F3EDDF', '#FBF7EE'], '종이 색');
+    shellNav('record');
+    await T.sleep(0);
+    ok(document.body.classList.contains('sb-night'), '기록 탭인데 종이');
+    eq(window.sbPaint.tok().paper, '#E9ECF1', '캐시가 밤으로');
+  });
+
+  test('고대비(야외)를 켜면 밤 토큰을 쓰지 않는다', function () {
+    toggleHighContrast();
+    eq(css('--paper'), '#FFFFFF', '고대비 종이');
+    toggleHighContrast();
+    eq(css('--paper'), '#0B0D12', '다시 밤');
+  });
+
+  test('필드 머리 2D | 3D → 3D 는 위치 있는 타구 · 탭(안타 · 아웃 · 이번 타자) · 전광판', async function () {
+    window.AS.abs = ABS.slice();
+    window.AS.batter = null;
+    window.sbRenderNow();
+    eq($('sbFieldHd').querySelector('h2').firstChild.nodeValue, '스프레이 차트', '제목');
+    sbFieldView('3d');
+    var e = await el3d();
+    ok(e, '3D 요소 없음');
+    ok($('sbField').classList.contains('is-3d'), 'is-3d');
+    eq(getComputedStyle(document.querySelector('#sbField > .field-wrap')).display, 'none', '2D 필드 숨김');
+    eq(kinds(e), ['hit', 'out', 'hr'], '전체(삼진은 위치 없음)');
+    eq(e._board[1], '안타 2 · 타구 3', '전광판');
+    sbField3dTab('hit'); await T.sleep(50);
+    eq(kinds(e), ['hit', 'hr'], '안타');
+    sbField3dTab('out'); await T.sleep(50);
+    eq(kinds(e), ['out'], '아웃');
+    sbField3dTab('batter'); await T.sleep(50);
+    eq(kinds(e), [], '타자 미선택');
+    window.AS.batter = { id: 'p1', name: '가' };
+    window.sbRenderNow(); await T.sleep(50);
+    eq([kinds(e), / · 가$/.test(e._board[0])], [['hit', 'hr'], true], '이번 타자 — ' + e._board[0]);
+    eq([].map.call($('sbFieldHd').querySelectorAll('button'), function (b) { return b.textContent + ':' + b.getAttribute('aria-pressed'); }),
+      ['전체:false', '안타:false', '아웃:false', '이번 타자:true', '2D:false', '3D:true'], '머리 버튼');
+    sbField3dTab('all');
+  });
+
+  test('3D 보기 중 위치를 찍어야 하면(field-tap-pending) 2D 필드가 다시 보이고, 2D 로 돌아가면 3D 를 접는다', function () {
+    var fw = document.querySelector('#sbField > .field-wrap');
+    fw.classList.add('field-tap-pending');
+    ok(getComputedStyle(fw).display !== 'none', '2D 필드가 안 보임');
+    eq(getComputedStyle($('sbField3d')).display, 'none', '3D 상자');
+    fw.classList.remove('field-tap-pending');
+    sbFieldView('2d');
+    ok(!$('sbField').classList.contains('is-3d'), 'is-3d 남음');
+    ok(getComputedStyle(fw).display !== 'none', '2D 필드');
+    eq(getComputedStyle($('sbField3d')).display, 'none', '3D 상자 접힘');
+    window.AS.abs = []; window.AS.batter = null;
+    window.sbRenderNow();
+  });
+})();

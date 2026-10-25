@@ -1075,7 +1075,7 @@
     get count() { return Number(this.getAttribute('count') ?? 60); } set count(v) { if (v != null) this.setAttribute('count', String(v)); }
     get motion() { return this.getAttribute('motion') !== 'false'; } set motion(v) { this.setAttribute('motion', String(v)); }
     get cam() { return this.getAttribute('cam') || 'cycle'; }   // 'cycle': close for the pitch, wide for the flight and the record · 'close': stays at the plate
-    attributeChangedCallback() { if (this.T) this.rebuildDots(); }
+    attributeChangedCallback() { if (this.dotsGroup) this.rebuildDots(); }
     connectedCallback() {
       if (this.mounted) return; this.mounted = true;
       Object.assign(this.style, { display: 'block', position: 'relative', width: '100%', height: '100%', minHeight: '240px', aspectRatio: '4 / 3', touchAction: 'pan-y', cursor: 'grab', userSelect: 'none', webkitUserSelect: 'none' });
@@ -1148,9 +1148,9 @@
     }
     disconnectedCallback() { cancelAnimationFrame(this.raf); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); }
 
-    init(THREE) {
-      this.T = THREE; if (this.waitEl) this.waitEl.remove();
-      const renderer = this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    async init(THREE) {
+      this.T = THREE;
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearColor(0x000000, 0);
       renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
@@ -1163,7 +1163,16 @@
       const env = new THREE.Scene(); env.background = new THREE.Color(0xC9C4BB);
       const panel = (w, h, x, y, z, ry, c) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.y = ry; m.lookAt(0, 0, 0); env.add(m); };
       panel(60, 30, -40, 60, 40, 0, 0xFFFFFF); panel(40, 40, 50, 40, -30, 0, 0xFFF4E8); panel(200, 200, 0, -40, 0, 0, 0x6F6B64);
-      const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(env, .04).texture; scene.environmentIntensity = .55; pm.dispose();
+      const pm = new THREE.PMREMGenerator(renderer);
+      // its blur and GGX shaders compile in the background first (the GGX one held the page ~0.5 s): three 0.184 internals --
+      // the two materials fromScene() makes, compiled against one of its render targets so the programs match
+      if (pm._allocateTargets) {
+        pm._setSize(256); const rt = pm._allocateTargets(), probe = new THREE.Group();
+        [pm._blurMaterial, pm._ggxMaterial].forEach(m => probe.add(new THREE.Mesh(new THREE.BufferGeometry(), m)));
+        renderer.setRenderTarget(rt); const ready = renderer.compileAsync(probe, this.camera); renderer.setRenderTarget(null);
+        await ready; rt.dispose();
+      }
+      scene.environment = pm.fromScene(env, .04).texture; scene.environmentIntensity = .55; pm.dispose();
       scene.add(this.hemi = new THREE.HemisphereLight(0xFFFFFF, 0x8A857C, .35));
       const sun = new THREE.DirectionalLight(0xFFF3E6, 2.4);
       sun.position.set(-120, 220, 140); sun.castShadow = true;
@@ -1318,7 +1327,11 @@
         this.append(btn, tip);
       }
       const loop = (t) => { this.raf = requestAnimationFrame(loop); if (this.visible) this.frame(t); };
-      this.raf = requestAnimationFrame(loop);
+      // compile every shader before the first frame, in the background where the browser can (KHR_parallel_shader_compile):
+      // drawing straight away made the first render wait on ~2 s of shader compiles and froze the page on arrival.
+      // `this.renderer` (the page's "3D is live" signal) is set once it can draw.
+      const go = () => { this.renderer = renderer; if (this.waitEl) this.waitEl.remove(); this.raf = requestAnimationFrame(loop); };
+      renderer.compileAsync(scene, this.camera).then(go, go);
     }
 
     rebuildDots() {

@@ -336,12 +336,6 @@ function clipPlayer(BD, bones, role, fig) {
       else if (t < COME) { ready(t - END, A); sample('pitch', BACK + (t - HOLD) / (COME - HOLD) * (5.2 - BACK), Bp); mix(A, Bp, smooth01((t - HOLD) / .5), O); }
       else { sample('pitch', 5.2, A); sample('pitch', SET, Bp); mix(A, Bp, smooth01((t - COME) / .6), O); }
     },
-    batter(t) {
-      if (t < SW - .25 || t >= 7.2) sample('idle', IDLE(t), O);
-      else if (t < SW) { sample('idle', IDLE(t), A); sample('swing', 0, Bp); mix(A, Bp, smooth01((t - SW + .25) / .25), O); }
-      else if (t < 4.6) sample('swing', Math.min(t - SW, 2.2), O);                                   // follow-through, briefly held; the run-out is cut
-      else { sample('swing', 2.2, A); sample('idle', IDLE(t), Bp); mix(A, Bp, smooth01((t - 4.6) / 1.8), O); }
-    },
     catcher(t) { sample('catcher', .45 * (1 - Math.cos(Math.PI * t / 2)), O); },
     ump(t) { sample('ump', .3 * (1 - Math.cos(Math.PI * t / 2)), O); },
     coach(t) { sample('fidle', t % ((C.fidle.n - 1) / C.fidle.fps), O); }   // the third-base coach stands in the fielders' ready loop
@@ -378,14 +372,42 @@ function clipPlayer(BD, bones, role, fig) {
       apply();
     };
   }
-  if (!TL[role] || (role === 'batter' && !(C.idle && C.swing)) || (role === 'pitcher' && !C.pitch) || (role !== 'batter' && role !== 'pitcher' && !C[role === 'coach' ? 'fidle' : role])) return null;
-  const YAW = { batter: Math.PI / 2 };                  // mocap batter stands side-on; turn him so the front shoulder faces the mound
+  // batter: the page places and turns him (side-on in the box: root turned a half turn), fig.mode says which part he plays --
+  // 'hit': stance, swing, then the clip's follow-through blends into Running as he breaks for first, and into the ready loop on
+  // the bag; 'deck': stance in the on-deck circle, a jog to the box, set again by the cycle's end. Cadence follows ground speed.
+  if (role === 'batter') {
+    if (!(C.idle && C.swing && C.run && C.jog && C.fidle)) return null;
+    const dur = (id) => (C[id].n - 1) / C[id].fps;
+    let last = null, px = 0, pz = 0, mps = 0, ph = 0;
+    return (t) => {
+      let dt = last === null ? 0 : t - last; if (dt < 0) dt += 8; dt = Math.min(dt, .25); last = t;
+      const p = fig.root.position; if (dt > 0) mps += (Math.hypot(p.x - px, p.z - pz) / dt / (5.9 / 1.8) - mps) * Math.min(1, dt * 12); px = p.x; pz = p.z;
+      if (fig.mode === 'deck') {
+        sample('idle', IDLE(t), O);
+        const w = smooth01((t - JOG0) / .3) * (1 - smooth01((t - JOG1 + .45) / .5));
+        if (w > .002) { ph += dt * Math.min(1.4, Math.max(.9, mps / 2)); sample('jog', ph % dur('jog'), Bp); mix(O, Bp, w, O); } else ph = 0;
+      } else if (t < SW - .25) sample('idle', IDLE(t), O);
+      else if (t < SW) { sample('idle', IDLE(t), A); sample('swing', 0, Bp); mix(A, Bp, smooth01((t - SW + .25) / .25), O); }
+      else if (t < RUN0) sample('swing', t - SW, O);
+      else {
+        ph += dt * Math.min(1.6, Math.max(.9, mps / 3.7));
+        sample('swing', Math.min(t - SW, 2.2), A); sample('run', ph % dur('run'), Bp); mix(A, Bp, smooth01((t - RUN0) / (RUN1 - RUN0)), O);
+        const w = smooth01((t - ARR + .2) / .5);            // on the bag: the ready loop
+        if (w > .002) { sample('fidle', (t - ARR) % dur('fidle'), Bp); mix(O, Bp, w, O); }
+      }
+      apply();
+    };
+  }
+  // in the dugouts: at the rail (the fielders' ready loop: a crouch, hands on the knees) or on the bench (a fixed pose, see makeFigureGLB)
+  if (role === 'rail') { if (!C.fidle) return null; const ph0 = Math.random() * 4, d = (C.fidle.n - 1) / C.fidle.fps; return (t) => { sample('fidle', (t + ph0) % d, O); apply(); }; }
+  if (role === 'bench') return () => fig.seat();
+  if (!TL[role] || (role === 'pitcher' && !C.pitch) || (role !== 'pitcher' && !C[role === 'coach' ? 'fidle' : role])) return null;
   let base = null, yaw0 = null;
   return (t) => {
     if (base === null && t < 1.8) base = fig.root.position.clone();     // page root offsets (pitcher's stride) are zero here; the mocap carries its own
     if (yaw0 === null) yaw0 = fig.root.rotation.y;
     if (base) fig.root.position.copy(base);
-    fig.root.rotation.y = yaw0 + (YAW[role] || 0);
+    fig.root.rotation.y = yaw0;
     TL[role](t);
     apply();
   };
@@ -402,8 +424,9 @@ function makeFigureGLB(THREE, o, BD) {
   const tone = new THREE.Color(o.skin ?? 0xC98C68), ref = new THREE.Color(0xC98C68);   // the page's skin palette, relative to its first tone
   const skin = new THREE.Vector3(...['r', 'g', 'b'].map(c => Math.min(1.15, Math.max(.45, 1 + (tone[c] / ref[c] - 1) * .6))));
   mesh.material = playerMaterial(THREE, BD.mesh.material, { ...kit, keep: kit.keep || kit.name === 'SEOUL' }, n, BD, skin);
-  const far = o.role === 'fielder' || o.role === 'coach' || !o.role;   // small on screen: skip the costly skinned shadow pass
+  const far = o.role === 'fielder' || o.role === 'coach' || o.role === 'rail' || o.role === 'bench' || !o.role;   // small on screen: skip the costly skinned shadow pass
   mesh.castShadow = !far; mesh.receiveShadow = true; mesh.frustumCulled = false;   // skinned poses leave the bind bounds
+  let cull = o.role === 'rail' || o.role === 'bench' ? 1 : 0;   // the dugout players barely move: bound their pose once (after a render) and cull them off-screen
   if (far) {
     const blob = new THREE.Mesh(BLOB.geo || (BLOB.geo = new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2)), BLOB.mat || (BLOB.mat = new THREE.MeshBasicMaterial({
       map: canvasTex(THREE, 64, 64, (g, W) => { const r = g.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2); r.addColorStop(0, 'rgba(0,0,0,.42)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, W, W); }),
@@ -526,10 +549,27 @@ function makeFigureGLB(THREE, o, BD) {
     hand.getWorldQuaternion(hq); hq.slerp(qd, w); hand.parent.getWorldQuaternion(pq);
     hand.quaternion.copy(pq.invert().multiply(hq));
   };
+  // On the bench: thighs forward, shins down, hands on the thighs, a slight lean. Each bone's rest orientation is turned in body
+  // axes by its own entry (or its parent's), once, here, while the root is still unturned; fig.seat() puts it back every frame
+  // (under the head turn). sitDrop: how far the pose lifted the feet, for the page to lower him onto the bench.
+  if (o.role === 'bench') {
+    const Rx = (a) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), a);
+    const toward = (a, b, x, y, z) => new THREE.Quaternion().setFromUnitVectors(BD.bind(b).sub(BD.bind(a)).normalize(), new THREE.Vector3(x, y, z).normalize());
+    const turn = { Spine: Rx(.12), LeftUpLeg: Rx(.08 - Math.PI / 2), RightUpLeg: Rx(.08 - Math.PI / 2), LeftLeg: Rx(.05), RightLeg: Rx(.05),
+      LeftArm: toward('LeftArm', 'LeftForeArm', .18, -.9, .35), RightArm: toward('RightArm', 'RightForeArm', -.18, -.9, .35),
+      LeftForeArm: toward('LeftForeArm', 'LeftHand', -.1, -.65, .75), RightForeArm: toward('RightForeArm', 'RightHand', .1, -.65, .75) };
+    const pose = (b, up) => { const n = b.name.replace(/^mixamorig:?/, ''), q = turn[n] || up; if (bones[n] === b) setWorldQ(b, q.clone().multiply(BD.restQ(n))); b.children.forEach(ch => ch.isBone && pose(ch, q)); };
+    root.updateMatrixWorld(true); const y0 = B.LeftFoot.getWorldPosition(v1).y;
+    pose(B.Hips, new THREE.Quaternion()); fig.sitDrop = B.LeftFoot.getWorldPosition(v1).y - y0;
+    const seat = mesh.skeleton.bones.map(b => [b, b.quaternion.clone()]);
+    fig.seat = () => seat.forEach(([b, q]) => b.quaternion.copy(q));
+  }
+  fig.hipsAt = (v) => B.Hips.getWorldPosition(v);
   const gloved = o.role === 'fielder' || o.role === 'pitcher' || o.role === 'catcher';
   fig.sync = (tau) => {                                    // first call comes from the page's frame, after it has placed the figure
     if (!play || tau === undefined) return;
     play(tau);
+    if (cull && ++cull > 2) { cull = 0; mesh.computeBoundingSphere(); mesh.boundingSphere.radius *= 1.3; mesh.frustumCulled = true; }
     const at = fig.watch && fig.watch();
     if (gloved) {
       const rw = o.role === 'catcher' ? 0 : fig.readyW || 0, aw = o.role === 'catcher' ? 1 : rw;

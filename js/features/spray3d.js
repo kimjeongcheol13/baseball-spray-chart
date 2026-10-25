@@ -2,8 +2,10 @@
 //   three.js 는 랜딩과 같은 vendor 파일. team.js 가 3D 를 처음 누를 때만 이 모듈을 불러온다(2D 만 쓰면 내려받지 않음)
 //   el.update({ balls: [{ x, y, k }], board: [윗줄, 큰 줄], dist: [좌, 중, 우] })
 //     x,y = 저장 좌표(홈 0.5,1 · 펜스 반지름 .97) · k = sbPaint.kindOf (hit | xbh | hr | out, 그 밖은 그리지 않음)
-//   위치는 2D 방향도와 같은 규칙(core _semiToCone): 각도는 _degToPhi, 거리는 '펜스까지 비율' → 3D 펜스(105m) 기준
+//   위치는 2D 방향도와 같은 규칙(core _semiToCone): 각도는 _degToPhi, 거리는 '펜스까지 비율' → 3D 펜스 기준
+//   펜스는 dist(좌 · 중 · 우 m)대로 휜다(core _fenceR 와 같은 모양, 실제 m). dist 가 바뀌면 구장을 다시 짓는다 · 없으면 105m 원
 //   끌기 = 돌리기 · 두 손가락 / Ctrl+휠 = 확대 · 두 번 누르기 = 처음 시점
+//   el.tappable = true(기록 탭)면 짧게 누른 자리를 저장 좌표로 바꿔 'fieldtap' 이벤트(detail { x, y, px, py })를 보낸다 · el.mark({ x, y } | null) = 찍은 자리 고리
 //   다시 그려도 같은 요소를 옮겨 붙이면 장면을 새로 만들지 않는다(WebGL 컨텍스트 1개)
 //   <pitch-zone-3d> (아래) = 투구 코스 3D — 같은 돌리기 · 확대 · 그리기를 물려받고 장면 · 카메라 범위만 다르다
 import * as THREE from '../landing/vendor/three.module.js';
@@ -13,25 +15,51 @@ const CAM = { pos: [0, 86, 56], tgt: [0, -2, -58] };   // 중계 화면 시점
 const FENCE = 105;
 const S2 = Math.SQRT1_2;
 const STAND = { off: 9, d: 3.2, n: 9, h0: 1.4, dh: 1.0 };   // 내야 관중석 계단
-const BL = { r0: 107.5, d: 4.5, n: 6, h0: 3.6, dh: 1.4 };   // 외야석 계단
+const BL = { gap: 2.5, d: 4.5, n: 6, h0: 3.6, dh: 1.4 };    // 외야석 계단 (펜스 뒤 gap 부터)
 const EYE = 0.075;                                           // 중앙 백스크린 반각(rad)
 const KINDS = ['out', 'hit', 'xbh', 'hr'];                   // 그리는 순서 = 겹칠 때 위로 오는 순서 (2D 와 같음)
-// 카메라: 처음 시점 · near/far · 확대 반지름 · 위아래 각 범위 · 끌어서 더하는 위아래 각 범위
-const SPRAY_CFG = { cam: CAM, near: 4, far: 900, r: [40, 260], phi: [0.2, 1.45], uPhi: [-0.5, 0.6] };
+const Q = Math.PI / 4;                                       // 좌측 폴 각도 (core _FQ) · 중앙 2Q · 우측 폴 3Q
+// 카메라: 처음 시점 · near/far · 확대 반지름 · 위아래 각 범위 · 끌어서 더하는 위아래 각 범위 (k = 105m 구장 대비 크기)
+const sprayCfg = (k) => ({ cam: { pos: CAM.pos.map((v) => v * k), tgt: CAM.tgt.map((v) => v * k) }, near: 4 * k, far: 900 * k, r: [40 * k, 260 * k], phi: [0.2, 1.45], uPhi: [-0.5, 0.6] });
+
+// 방향(phi) → 펜스까지 m. core _fenceR 와 같은 모양(좌 · 우 폴은 짧고 가운데는 깊게)
+export function fenceFn(dist) {
+  const [lf, cf, rf] = Array.isArray(dist) && dist.length === 3 && dist.every((v) => +v > 0) ? dist.map(Number) : [FENCE, FENCE, FENCE];
+  const kl = lf / cf, kr = rf / cf;
+  return (phi) => {
+    const t = (Math.max(Q, Math.min(3 * Q, phi)) - Q) / (2 * Q);
+    return t < 0.5 ? cf * (kl + (1 - kl) * Math.sin(t * Math.PI)) : cf * (kr + (1 - kr) * Math.sin((1 - t) * Math.PI));
+  };
+}
+const ROUND = fenceFn();
 
 // 저장 좌표 → 필드 [x, z] (m, 홈 = 원점 · 중견 = -z). 펜스 밖 홈런은 외야석 계단 한가운데, 그 밖의 타구는 펜스 안쪽에 놓는다
-export function toField(x, y, hr) {
+export function toField(x, y, hr, R = ROUND) {
   const dx = x - 0.5, dy = Math.min(y - 1, 0);
   const deg = (Math.atan2(dy, dx) + Math.PI) * 180 / Math.PI;
   const phi = typeof _degToPhi === 'function' ? _degToPhi(deg) : (45 + deg / 2) * Math.PI / 180;
-  let r = Math.min(Math.hypot(dx, dy) / 0.97, 1.06) * FENCE;
-  if (hr && r > FENCE) r = BL.r0 + BL.d * (Math.min(BL.n - 1, Math.floor(Math.max(0, r - BL.r0) / BL.d)) + 0.5);
-  else r = Math.min(r, FENCE - 2);
+  const F = R(phi), s0 = F + BL.gap;
+  let r = Math.min(Math.hypot(dx, dy) / 0.97, 1.06) * F;
+  if (hr && r > F) r = s0 + BL.d * (Math.min(BL.n - 1, Math.floor(Math.max(0, r - s0) / BL.d)) + 0.5);
+  else r = Math.min(r, F - 2);
   return [-r * Math.cos(phi), -r * Math.sin(phi)];
 }
-const groundY = (x, z) => {
-  const r = Math.hypot(x, z);
-  return r < BL.r0 ? 0 : BL.h0 + BL.dh * Math.min(BL.n - 1, Math.floor((r - BL.r0) / BL.d));
+// 필드 [x, z] → 저장 좌표. core _coneToSemi 와 같은 규칙: 파울 지역(라인 밖 3° 넘게) · 펜스 8% 넘게 밖이면 null, 펜스 너머는 펜스 위로
+export function fromField(x, z, R = ROUND) {
+  if (z > 0) return null;
+  let phi = Math.atan2(-z, -x);
+  const tol = Math.PI / 60;
+  if (phi < Q - tol || phi > 3 * Q + tol) return null;
+  phi = Math.max(Q, Math.min(3 * Q, phi));
+  const frac = Math.hypot(x, z) / R(phi);
+  if (frac > 1.08) return null;
+  const deg = typeof _phiToDeg === 'function' ? _phiToDeg(phi) : (phi * 180 / Math.PI - 45) * 2;
+  const a = deg * Math.PI / 180 - Math.PI, d = Math.min(frac, 1) * 0.97;
+  return { x: 0.5 + Math.cos(a) * d, y: 1 + Math.sin(a) * d };
+}
+const groundY = (x, z, R) => {
+  const s = Math.hypot(x, z) - R(Math.atan2(-z, -x)) - BL.gap;
+  return s < 0 ? 0 : BL.h0 + BL.dh * Math.min(BL.n - 1, Math.floor(s / BL.d));
 };
 
 // 텍스처 무늬가 매번 같게 고정 난수
@@ -81,6 +109,27 @@ function sectorShape(ri, ro, a0, a1) {
 function ringSector(ri, ro, a0, a1, h) {
   return new THREE.ExtrudeGeometry(sectorShape(ri, ro, a0, a1), { depth: h, bevelEnabled: false, curveSegments: 48 }).rotateX(-Math.PI / 2);
 }
+// 펜스를 따라 휘는 부채꼴 띠(바닥 모양): 안 · 밖 반지름이 방향(phi)마다 다르다. rIn 이 없으면 홈까지 채운다
+//   모양 좌표 (-r cos phi, r sin phi) → rotateX(-90°) 하면 필드 (x, z) = (-r cos phi, -r sin phi)
+function fan(rIn, rOut, a0 = Q, a1 = 3 * Q, n = 96) {
+  const P = (phi, r) => new THREE.Vector2(-r * Math.cos(phi), r * Math.sin(phi));
+  const out = [], inn = [];
+  for (let i = 0; i <= n; i++) { const p = a0 + (a1 - a0) * i / n; out.push(P(p, rOut(p))); if (rIn) inn.unshift(P(p, rIn(p))); }
+  return new THREE.Shape(rIn ? out.concat(inn) : [new THREE.Vector2(0, 0), ...out]);
+}
+const fanFloor = (rIn, rOut) => new THREE.ShapeGeometry(fan(rIn, rOut)).rotateX(-Math.PI / 2);
+// 펜스를 따라 세운 띠 (반지름 = 펜스 + off, 높이 y0~y1)
+function wallStrip(R, off, y0, y1, n = 96) {
+  const pos = [], idx = [];
+  for (let i = 0; i <= n; i++) {
+    const p = Q + 2 * Q * i / n, r = R(p) + off, x = -r * Math.cos(p), z = -r * Math.sin(p);
+    pos.push(x, y0, z, x, y1, z);
+    if (i) idx.push(2 * i - 2, 2 * i - 1, 2 * i, 2 * i - 1, 2 * i + 1, 2 * i);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
 // 가운데가 원점인 w × l 바닥, 높이 h. 그룹 0 = 위·아래, 1 = 옆면 (상자보다 draw call 이 적다)
 function slab(w, l, h) {
   const sh = new THREE.Shape();
@@ -88,15 +137,16 @@ function slab(w, l, h) {
   return new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2);
 }
 
-// 구장(움직이지 않는 부분). 색은 시안에서 LightCraft 로 보정한 값
-function build() {
+// 구장(움직이지 않는 부분). 색은 시안에서 LightCraft 로 보정한 값. R = 방향별 펜스 거리 → 외야 · 펜스 · 외야석 · 전광판이 그 모양을 따른다
+function build(R) {
+  const LP = R(Q), RP = R(3 * Q), CF = R(2 * Q), k = Math.max(LP, CF, RP) / FENCE;
   const scene = new THREE.Scene();
   scene.background = canvasTex(4, 256, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, '#191e2c'); g.addColorStop(0.55, '#11151c'); g.addColorStop(1, '#12151C');
     x.fillStyle = g; x.fillRect(0, 0, w, h);
   }, false);
-  scene.fog = new THREE.Fog('#11151c', 240, 430);
+  scene.fog = new THREE.Fog('#11151c', 240 * k, 430 * k);
 
   const grassTex = canvasTex(256, 256, (x, w, h) => {
     x.fillStyle = '#347046'; x.fillRect(0, 0, w, h);
@@ -148,10 +198,10 @@ function build() {
     scene.add(mesh); return mesh;
   };
 
-  add(new THREE.CircleGeometry(300, 64).rotateX(-Math.PI / 2), M.ground, { y: -0.06 });
+  add(new THREE.CircleGeometry(300 * k, 64).rotateX(-Math.PI / 2), M.ground, { y: -0.06 });
 
   // 파울 지역: 관중석 앞 짧은 트랙까지 잔디 (양쪽 띠는 월드 좌표 uv 라 무늬가 이어진다)
-  const L = 112, dF = STAND.off, dT = 1.6;
+  const L = Math.max(LP, RP) + 7, dF = STAND.off, dT = 1.6;
   [[-1, -3 * Math.PI / 4], [1, 3 * Math.PI / 4]].forEach(([sgn, rot]) => {
     [[0, dF - dT, M.foul, grassUV], [dF - dT, dF, M.track, dirtUV]].forEach(([a, b, mat, uv]) => {
       const mid = (a + b) / 2;
@@ -163,10 +213,10 @@ function build() {
   add(uvFrom(new THREE.ShapeGeometry(sectorShape(dF - dT, dF, Math.PI * 1.25, Math.PI * 1.75), 24).rotateX(-Math.PI / 2), dirtUV), M.track, { y: -0.01 });
 
   // 페어 지역 + 워닝 트랙 + 2D 와 같은 동심원 잔디 띠
-  add(uvFrom(new THREE.CircleGeometry(FENCE, 96, Math.PI / 4, Math.PI / 2).rotateX(-Math.PI / 2), grassUV), M.grass);
-  add(uvFrom(new THREE.RingGeometry(99.5, FENCE, 96, 1, Math.PI / 4, Math.PI / 2).rotateX(-Math.PI / 2), dirtUV), M.track, { y: 0.02 });
-  [38, 57, 76, 95].forEach((r) => {
-    add(uvFrom(new THREE.RingGeometry(r, Math.min(r + 9.5, 99.5), 96, 1, Math.PI / 4, Math.PI / 2).rotateX(-Math.PI / 2), grassUV), M.band, { y: 0.01 });
+  add(uvFrom(fanFloor(null, R), grassUV), M.grass);
+  add(uvFrom(fanFloor((p) => R(p) - 5.5, R), dirtUV), M.track, { y: 0.02 });
+  [38, 57, 76, 95].forEach((r) => {   // 105m 구장의 띠 자리를 펜스 비율로
+    add(uvFrom(fanFloor((p) => R(p) * r / FENCE, (p) => R(p) * Math.min(r + 9.5, 99.5) / FENCE), grassUV), M.band, { y: 0.01 });
   });
 
   // 내야 흙: 파울라인을 따라 홈에서 마운드 중심 29m 호까지
@@ -183,9 +233,9 @@ function build() {
   add(new THREE.BoxGeometry(0.6, 0.06, 0.16), M.line).position.set(0, 0.4, -18.4);
 
   // 파울라인 · 베이스 · 홈플레이트
-  [-1, 1].forEach((sgn) => {
-    const ln = add(new THREE.BoxGeometry(0.22, 0.03, FENCE), M.line, { y: 0.07 });
-    ln.position.x = sgn * (FENCE / 2) * S2; ln.position.z = -(FENCE / 2) * S2; ln.rotation.y = sgn * 3 * Math.PI / 4;
+  [[-1, LP], [1, RP]].forEach(([sgn, len]) => {
+    const ln = add(new THREE.BoxGeometry(0.22, 0.03, len), M.line, { y: 0.07 });
+    ln.position.x = sgn * (len / 2) * S2; ln.position.z = -(len / 2) * S2; ln.rotation.y = sgn * 3 * Math.PI / 4;
   });
   [[19.4, -19.4], [0, -38.8], [-19.4, -19.4]].forEach(([x, z]) => {
     const b = add(new THREE.BoxGeometry(1.1, 0.16, 1.1), M.line, { cast: true });
@@ -194,9 +244,9 @@ function build() {
   add(new THREE.BoxGeometry(0.9, 0.05, 0.9), M.line, { y: 0.07 }).rotation.y = Math.PI / 4;
 
   // 외야 펜스 + 노란 홈런 라인 + 파울 폴
-  add(new THREE.CylinderGeometry(FENCE, FENCE, 3.2, 96, 1, true, 3 * Math.PI / 4, Math.PI / 2), M.wall, { y: 1.6, cast: true });
-  add(new THREE.CylinderGeometry(FENCE + 0.1, FENCE + 0.1, 0.28, 96, 1, true, 3 * Math.PI / 4, Math.PI / 2), M.cap, { y: 3.2 });
-  [-1, 1].forEach((sgn) => { add(new THREE.CylinderGeometry(0.25, 0.25, 16, 12), M.cap, { cast: true }).position.set(sgn * FENCE * S2, 8, -FENCE * S2); });
+  add(wallStrip(R, 0, 0, 3.2), M.wall, { cast: true });
+  add(wallStrip(R, 0.1, 3.06, 3.34), M.cap);
+  [[-1, LP], [1, RP]].forEach(([sgn, r]) => { add(new THREE.CylinderGeometry(0.25, 0.25, 16, 12), M.cap, { cast: true }).position.set(sgn * r * S2, 8, -r * S2); });
 
   // 내야 관중석: 파울라인을 따라 계단 + 홈 뒤 둥근 구역(아래 4줄은 붉은 좌석)
   for (let i = 0; i < STAND.n; i++) {
@@ -219,16 +269,19 @@ function build() {
     add(slab(2.2, 15, 1.6).rotateY(sgn * 3 * Math.PI / 4).translate(sgn * (along + mid) * S2, 0, -(along - mid) * S2), [M.roof, M.dugout]);
   });
 
-  // 외야석 + 가운데 어두운 백스크린
+  // 외야석(펜스 뒤를 따라 휜다) + 가운데 어두운 백스크린
   for (let i = 0; i < BL.n; i++) {
-    const ri = BL.r0 + BL.d * i, h = BL.h0 + BL.dh * i;
-    [[Math.PI / 4 - 0.09, Math.PI / 2 - EYE, M.seatHigh], [Math.PI / 2 - EYE, Math.PI / 2 + EYE, M.eye], [Math.PI / 2 + EYE, 3 * Math.PI / 4 + 0.09, M.seatHigh]].forEach(([a0, a1, seat]) => {
-      add(uvFrom(ringSector(ri, ri + BL.d, a0, a1, h), ringUV(ri + BL.d / 2)), [seat, M.riser], { cast: true });
+    const h = BL.h0 + BL.dh * i, ri = (p) => R(p) + BL.gap + BL.d * i, ro = (p) => ri(p) + BL.d;
+    [[Q - 0.09, 2 * Q - EYE, M.seatHigh], [2 * Q - EYE, 2 * Q + EYE, M.eye], [2 * Q + EYE, 3 * Q + 0.09, M.seatHigh]].forEach(([a0, a1, seat]) => {
+      const g = new THREE.ExtrudeGeometry(fan(ri, ro, a0, a1, 48), { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2);
+      add(uvFrom(g, ringUV(CF + BL.gap + BL.d * (i + 0.5))), [seat, M.riser], { cast: true });
     });
   }
+  const BACK = CF + BL.gap + BL.d * BL.n;   // 가운데 외야석 뒤끝 (105m 구장 = 134.5)
 
-  // 조명탑(빛 번짐 포함) — 외야 쪽은 중계 화면 안에 들어오는 높이
-  [[-98, 24, 42], [98, 24, 42], [-72, -122, 28], [72, -122, 28]].forEach(([x, z, h]) => {
+  // 조명탑(빛 번짐 포함) — 외야 쪽은 외야석 뒤, 중계 화면 안에 들어오는 높이
+  const tb = (BACK + 7.2) / Math.hypot(72, 122);
+  [[-98, 24, 42], [98, 24, 42], [-72 * tb, -122 * tb, 28], [72 * tb, -122 * tb, 28]].forEach(([x, z, h]) => {
     add(new THREE.CylinderGeometry(0.5, 0.9, h, 10), M.tower).position.set(x, h / 2, z);
     const head = add(new THREE.BoxGeometry(9, 4, 1.2), M.lamp);
     head.position.set(x, h + 1, z); head.lookAt(0, 0, -45);
@@ -236,24 +289,31 @@ function build() {
     glow.scale.set(16, 16, 1); glow.position.set(x, h + 1, z); scene.add(glow);
   });
   // 전광판 (글자는 update 의 board 로 그린다)
-  add(new THREE.BoxGeometry(40, 14, 1.4), M.board, { cast: true }).position.set(0, 18, -142);
-  [-12, 12].forEach((x) => add(new THREE.BoxGeometry(1.2, 11, 1.2), M.tower).position.set(x, 5.5, -142.6));
+  const bz = BACK + 7.5;
+  add(new THREE.BoxGeometry(40, 14, 1.4), M.board, { cast: true }).position.set(0, 18, -bz);
+  [-12, 12].forEach((x) => add(new THREE.BoxGeometry(1.2, 11, 1.2), M.tower).position.set(x, 5.5, -bz - 0.6));
   const boardTex = canvasTex(1024, 340, () => {}, false);
   const face = new THREE.Mesh(new THREE.PlaneGeometry(37.5, 12.4), new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false, fog: false }));
-  face.position.set(0, 18.2, -141.25); scene.add(face);
+  face.position.set(0, 18.2, -bz + 0.75); scene.add(face);
 
   // 빛: 차가운 밤하늘 + 조명탑 쪽 따뜻한 주광
   scene.add(new THREE.HemisphereLight('#cfd8ee', '#161a22', 0.85));
   scene.add(new THREE.AmbientLight('#ffffff', 0.15));
   const sun = new THREE.DirectionalLight('#fff4e2', 2.2);
-  sun.position.set(-90, 150, 60); sun.castShadow = true;
+  sun.position.set(-90 * k, 150 * k, 60 * k); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  const sc = sun.shadow.camera; sc.left = -175; sc.right = 175; sc.top = 175; sc.bottom = -175; sc.near = 20; sc.far = 420;
+  const sc = sun.shadow.camera; sc.left = -175 * k; sc.right = 175 * k; sc.top = 175 * k; sc.bottom = -175 * k; sc.near = 20 * k; sc.far = 420 * k;
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.2;
   scene.add(sun);
   const fill = new THREE.DirectionalLight('#9fb4ff', 0.5); fill.position.set(120, 60, -80); scene.add(fill);
 
-  return { scene, boardTex };
+  // 펜스 거리 (좌 · 중 · 우) 글자
+  [[Q + 0.12, 4.6, LP], [2 * Q, 5.6, CF], [3 * Q - 0.12, 4.6, RP]].forEach(([phi, y, d]) => {
+    const s = label(Math.round(d) + 'm', { fg: 'rgba(255,255,255,.95)', scale: 0.065, shadow: true }), r = R(phi) - 1;
+    s.position.set(-r * Math.cos(phi), y, -r * Math.sin(phi)); scene.add(s);
+  });
+
+  return { scene, boardTex, k };
 }
 
 // 타구 기호: 범례(scorebook markSvg)와 같은 모양 — 안타 빨간 원 · 장타 마름모 · 홈런 고리+점 · 아웃 ×. 바닥에 납작하게
@@ -287,22 +347,61 @@ class SprayField3D extends HTMLElement {
   disconnectedCallback() { cancelAnimationFrame(this._frame); }
 
   update(d) {
-    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr') }));
-    this._board = d.board || ['', ''];
     this._dist = d.dist || [];
+    this._R = fenceFn(this._dist);
+    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr', this._R) }));
+    this._board = d.board || ['', ''];
     this._got = true;
     if (this._ready) this._apply();
   }
+  // 찍은 자리 고리 (기록 탭: 결과 팝업이 열려 있는 동안). p = 저장 좌표 { x, y } | null
+  mark(p) {
+    this._pin = p || null;
+    if (this._ready) this._setPin();
+  }
 
-  get _cfg() { return SPRAY_CFG; }
+  get _cfg() { return this._sc || sprayCfg(1); }
   _setup() {
-    const { scene, boardTex } = build();
-    this._scene = scene; this._boardTex = boardTex;
+    this._R = this._R || fenceFn(this._dist);
+    this._built = String(this._dist || []);
+    const { scene, boardTex, k } = build(this._R);
+    this._scene = scene; this._boardTex = boardTex; this._sc = sprayCfg(k);
     this._parts = markParts();
     const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.9, emissiveIntensity: 0.35 });   // 납작한 원이 번들거리지 않게 무광
     this._mats = { red: mat(), hl: mat(), paper: new THREE.MeshStandardMaterial({ roughness: 0.5 }) };
-    this._labels = new THREE.Group(); scene.add(this._labels);
+    this._marks = null; this._pinMesh = null;
   }
+  // 구장 거리가 바뀌면 장면을 버리고 다시 짓는다 (구장을 바꿀 때만 — 드물다)
+  _rebuild() {
+    this._scene.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      [].concat(o.material || []).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+    });
+    if (this._scene.background && this._scene.background.dispose) this._scene.background.dispose();
+    this._setup();
+    const C = this._cfg;
+    this._camera.near = C.near; this._camera.far = C.far; this._camera.updateProjectionMatrix();
+    this._resetCam();
+    this._renderer.shadowMap.needsUpdate = true;
+  }
+  // 화면 좌표 → 평면과 만나는 3D 점 (없으면 null)
+  _hit(e, plane) {
+    const r = this._canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const v = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    const rc = new THREE.Raycaster(); rc.setFromCamera(v, this._camera);
+    return rc.ray.intersectPlane(plane, new THREE.Vector3());
+  }
+  // 짧게 누름: 땅에서 그 자리 → 저장 좌표 → 'fieldtap' (파울 지역 · 펜스 한참 밖은 2D 처럼 무시)
+  _tap(e) {
+    if (!this.tappable) return;
+    const p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)), s = p && fromField(p.x, p.z, this._R);
+    if (!s) return;
+    const r = this.getBoundingClientRect();
+    this.dispatchEvent(new CustomEvent('fieldtap', { detail: { ...s, px: e.clientX - r.left, py: e.clientY - r.top } }));
+  }
+  // 끌기를 돌리기 대신 쓸 때 true (pitch-zone-3d 의 구역 고르기). ph = down · move · up · cancel
+  _grab() { return false; }
 
   _init() {
     const renderer = new THREE.WebGLRenderer({ canvas: this._canvas, antialias: true, powerPreference: 'high-performance' });
@@ -319,24 +418,33 @@ class SprayField3D extends HTMLElement {
     this._ready = true;
     if (this._got) this._apply();
 
-    const zoom = (k) => { this._sph.radius = Math.max(C.r[0], Math.min(C.r[1], this._sph.radius * k)); };
-    // 손가락(포인터) 하나 = 돌리기, 둘 = 집어서 확대
-    const pts = new Map(); let drag = null, pinch = 0;
+    const zoom = (k) => { const [r0, r1] = this._cfg.r; this._sph.radius = Math.max(r0, Math.min(r1, this._sph.radius * k)); };
+    // 손가락(포인터) 하나 = 돌리기, 둘 = 집어서 확대. 거의 안 움직이고 뗀 하나 = 누름(_tap) · _grab 이 받으면 그쪽이 끌기를 쓴다
+    const pts = new Map(); let drag = null, pinch = 0, tap = null, own = null;
     const gap = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     this.addEventListener('pointerdown', (e) => {
-      pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.setPointerCapture(e.pointerId); this.style.cursor = 'grabbing';
-      if (pts.size === 2) { drag = null; pinch = gap(); } else if (pts.size === 1) drag = { x: e.clientX, y: e.clientY };
+      if (e.button > 0) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.setPointerCapture(e.pointerId);
+      if (pts.size === 1 && this._grab(e, 'down')) { own = e.pointerId; return; }
+      this.style.cursor = 'grabbing';
+      if (pts.size === 2) { drag = null; pinch = gap(); tap = null; } else if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY }; tap = { x: e.clientX, y: e.clientY, id: e.pointerId }; }
     });
     this.addEventListener('pointermove', (e) => {
       if (!pts.has(e.pointerId)) return;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (own === e.pointerId) { this._grab(e, 'move'); return; }
+      if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 6) tap = null;
       if (pinch) { const d = gap(); if (d > 0) zoom(pinch / d); pinch = d; return; }
       if (!drag) return;
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY };
-      this._userTheta -= dx * 0.005; this._userPhi = Math.max(C.uPhi[0], Math.min(C.uPhi[1], this._userPhi - dy * 0.004));
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y, [u0, u1] = this._cfg.uPhi; drag = { x: e.clientX, y: e.clientY };
+      this._userTheta -= dx * 0.005; this._userPhi = Math.max(u0, Math.min(u1, this._userPhi - dy * 0.004));
     });
     const up = (e) => {
+      if (!pts.has(e.pointerId)) return;
       pts.delete(e.pointerId); pinch = 0;
+      if (own === e.pointerId) { own = null; this._grab(e, e.type === 'pointerup' ? 'up' : 'cancel'); return; }
+      if (tap && tap.id === e.pointerId && e.type === 'pointerup' && !pts.size) this._tap(e);
+      tap = null;
       const rest = [...pts.values()][0]; drag = rest ? { ...rest } : null;   // 남은 손가락으로 이어서 돌린다(튀지 않게)
       if (!rest) this.style.cursor = 'grab';
     };
@@ -362,10 +470,20 @@ class SprayField3D extends HTMLElement {
   }
 
   _apply() {
+    if (this._built !== String(this._dist || [])) this._rebuild();
     const T = (window.sbPaint && window.sbPaint.tok()) || {};
     [['red', T.red || '#C8322B'], ['hl', T.hl || '#D9A441']].forEach(([k, c]) => { this._mats[k].color.set(c); this._mats[k].emissive.set(c); });
     this._mats.paper.color.set(T.paper || '#F3EDDF');   // 범례의 잉크색 × 는 밤 잔디에서 안 보여 종이색으로
-    this._setMarks(); this._setBoard(); this._setDist();
+    this._setMarks(); this._setBoard(); this._setPin();
+    this._dirty = true;
+  }
+  _setPin() {
+    if (this._pinMesh) this._scene.remove(this._pinMesh);
+    if (this._pin) {
+      this._pinMesh = this._pinMesh || new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.32, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
+      const [x, z] = toField(this._pin.x, this._pin.y, false, this._R);
+      this._pinMesh.position.set(x, 0.35, z); this._scene.add(this._pinMesh);
+    }
     this._dirty = true;
   }
 
@@ -375,7 +493,7 @@ class SprayField3D extends HTMLElement {
     const g = this._marks = new THREE.Group();
     const balls = KINDS.flatMap((k) => this._balls.filter((b) => b.k === k));
     // 겹친 기호가 깜빡이지 않게 6mm 씩 층을 둔다 (40개마다 바닥으로 — ponytail: 41개째부터 같은 높이, 정확히 겹칠 때만 깜빡임)
-    balls.forEach((b, i) => { b.y = groundY(b.p[0], b.p[1]) + (i % 40) * 0.006; });
+    balls.forEach((b, i) => { b.y = groundY(b.p[0], b.p[1], this._R) + (i % 40) * 0.006; });
     const m4 = new THREE.Matrix4(), rot = new THREE.Matrix4();
     KINDS.forEach((k) => {
       const list = balls.filter((b) => b.k === k);
@@ -402,18 +520,6 @@ class SprayField3D extends HTMLElement {
     tex.needsUpdate = true;
   }
 
-  // 구장 펜스 거리 (좌 · 중 · 우) — 3D 펜스 모양은 하나라 숫자만 그 구장 것
-  _setDist() {
-    const key = this._dist.join();
-    if (key === this._distKey) return;
-    this._distKey = key;
-    this._labels.children.slice().forEach((s) => { s.material.map.dispose(); s.material.dispose(); this._labels.remove(s); });
-    [[Math.PI / 4 + 0.12, 4.6], [Math.PI / 2, 5.6], [3 * Math.PI / 4 - 0.12, 4.6]].forEach(([phi, y], i) => {
-      if (this._dist[i] == null) return;
-      const s = label(this._dist[i] + 'm', { fg: 'rgba(255,255,255,.95)', scale: 0.065, shadow: true });
-      s.position.set(-104 * Math.cos(phi), y, -104 * Math.sin(phi)); this._labels.add(s);
-    });
-  }
 
   _loop() {
     cancelAnimationFrame(this._frame);
@@ -449,14 +555,35 @@ class SprayField3D extends HTMLElement {
 }
 if (!customElements.get('spray-field-3d')) customElements.define('spray-field-3d', SprayField3D);
 
-// ── 투구 코스 3D (<pitch-zone-3d>) — 분석 › 투수 '코스' · 타자 '본 공 위치'의 3D 보기 ──
-//   el.update({ pts: [{ x, y, k }], cols: { k: '#색' } })
+// ── 투구 코스 3D (<pitch-zone-3d>) — 분석 › 투수 '코스'(위치 · 분포 · 피안타) · 타자 '본 공 위치'의 3D 보기 ──
+//   위치: el.update({ pts: [{ x, y, k, on }], cols: { k: '#색' }, pick, picking, sel })
 //     x,y = 2D 그림 좌표(가로 0~100 · 세로 0~120, 존 x 22~78 · y 18~102) · k = 2D 점의 종류(strike · ball · hit …), 색은 2D 와 같은 값
+//     pick = 투수 코스처럼 구역을 고를 수 있는 그림 → 그림 안을 끌면(누르면) 'zonepick' 이벤트(detail { a: [x, y], b: [x, y] }, 2D 와 같은 좌표)
+//     picking · on · sel = 2D 에서 지금 고른 구역(pitcher.js 가 그린 것) — 구역 밖 공은 흐리게, 구역은 흰 테두리
+//   분포 · 피안타: el.update({ grid: { view: 'count' | 'hits', cells: [{ n, h, t }] × 9 } }) — 존 9칸마다 기둥(값만큼 투수 쪽으로 길다) + 2D 칸 글자
 //   포수 뒤 시점. 공은 존 앞면(홈플레이트 앞변, z 0)에 놓는다 — 기록에 깊이 · 궤적은 없어서 그리지 않는다
 const ZS = 0.432 / 56;                     // 그림 1칸(m): 존 폭 56칸 = 홈플레이트 43.2cm
 const ZLO = 0.46, ZH = 84 * ZS;            // 존 아래 높이 · 존 높이(m)
 const zoneAt = (x, y) => [(x - 50) * ZS, ZLO + (102 - y) * ZS];
 const ZONE_CFG = { cam: { pos: [0, 1.05, 1.15], tgt: [0, 0.66, 0] }, near: 0.05, far: 80, r: [0.6, 24], phi: [0.3, 1.66], uPhi: [-1.25, 0.15] };
+const ZONE_GRID_CFG = { ...ZONE_CFG, cam: { pos: [0.7, 1.3, 1.15], tgt: [0, 0.8, -0.2] } };   // 기둥 길이가 보이게 비스듬히
+const BAR = { count: '#4f8df5', hits: '#e5484d' };
+
+// 고른 구역: 존 앞면(z 0) 위 흰 테두리 + 옅은 면. 탭(가까운 공 하나)은 공을 두른 원
+function selMesh(b) {
+  const g = new THREE.Group();
+  if (b.tap) {
+    const [cx, cy] = zoneAt((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2), r = 0.06;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.005, r, 48), new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.DoubleSide }));
+    ring.position.set(cx, cy, 0.04); g.add(ring);
+    return g;
+  }
+  const [x0, y1] = zoneAt(b.x0, b.y0), [x1, y0] = zoneAt(b.x1, b.y1);   // 그림 y 는 아래로 갈수록 크다
+  g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => new THREE.Vector3(x, y, 0.002))), new THREE.LineBasicMaterial({ color: '#ffffff' })));
+  const f = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(x1 - x0, 1e-4), Math.max(y1 - y0, 1e-4)), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+  f.position.set((x0 + x1) / 2, (y0 + y1) / 2, 0.001); g.add(f);
+  return g;
+}
 
 function buildZone() {
   const scene = new THREE.Scene();
@@ -501,29 +628,100 @@ function buildZone() {
 }
 
 class PitchZone3D extends SprayField3D {
-  get _cfg() { return ZONE_CFG; }
+  get _cfg() { return this._grid ? ZONE_GRID_CFG : ZONE_CFG; }
+  connectedCallback() {
+    super.connectedCallback();
+    if (!this._renderer || this._hint) return;
+    const t = this._hint = document.createElement('p');
+    t.textContent = '공 쪽을 끌면 구역 고르기 · 바깥을 끌면 돌리기';
+    Object.assign(t.style, { position: 'absolute', left: '10px', bottom: '8px', margin: '0', font: `600 11px ${FONT}`, color: 'rgba(255,255,255,.72)', pointerEvents: 'none' });
+    this.appendChild(t);
+    this._modeUi();
+  }
+  // 고를 수 있는 위치 그림: 안내 글 · 끌기가 페이지를 움직이지 않게(2D #pcPlot 의 touch-action: none 과 같음)
+  _modeUi() {
+    const pick = this._pick && !this._grid;
+    if (this._hint) this._hint.hidden = !pick;
+    this.style.touchAction = pick ? 'none' : 'pan-y';
+  }
   update(d) {
+    const was = !!this._grid;
+    this._grid = d.grid || null;
     this._pts = d.pts || []; this._cols = d.cols || {};
+    this._pick = !!d.pick; this._picking = !!d.picking; this._sel = d.sel || null;
     this._got = true;
-    if (this._ready) this._apply();
+    this._modeUi();
+    if (this._ready) { if (was !== !!this._grid) this._resetCam(); this._apply(); }
   }
   _setup() {
     this._scene = buildZone();
     this._geo = new THREE.SphereGeometry(0.037, 24, 16);   // 야구공 지름 7.4cm
   }
+  _plotAt(e) {
+    const p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 0, 1), 0));
+    return p && [p.x / ZS + 50, 102 - (p.y - ZLO) / ZS];
+  }
+  // 그림 안(0~100 × 0~120)을 누르면 돌리기 대신 구역 고르기. 떼면 'zonepick' — 탭 · 끌기 판단과 결과 카드는 2D 와 같은 pitcher.js 가 한다
+  _grab(e, ph) {
+    if (ph === 'down') {
+      const a = this._pick && !this._grid && this._plotAt(e);
+      if (!a || a[0] < 0 || a[0] > 100 || a[1] < 0 || a[1] > 120) return false;
+      this._drag = { a, b: a }; this._apply();
+      return true;
+    }
+    if (!this._drag) return false;
+    const b = ph !== 'cancel' && this._plotAt(e);
+    if (b) this._drag.b = [Math.max(0, Math.min(100, b[0])), Math.max(0, Math.min(120, b[1]))];
+    if (ph === 'move') { this._apply(); return true; }
+    const d = this._drag;
+    this._drag = null;
+    if (ph === 'up') this.dispatchEvent(new CustomEvent('zonepick', { detail: { a: d.a, b: d.b } }));
+    this._apply();
+    return true;
+  }
   _apply() {
-    if (this._marks) { this._scene.remove(this._marks); this._marks.children.forEach((m) => { m.material.dispose(); m.dispose(); }); }
-    const g = this._marks = new THREE.Group(), m4 = new THREE.Matrix4();
-    [...new Set(this._pts.map((p) => p.k))].forEach((k) => {
-      const list = this._pts.filter((p) => p.k === k), col = this._cols[k] || '#ffffff';
+    if (this._marks) {
+      this._scene.remove(this._marks);
+      this._marks.traverse((o) => {
+        if (o.isInstancedMesh) o.dispose(); else if (o.geometry) o.geometry.dispose();   // 공 모양(_geo)은 같이 쓰므로 두고 인스턴스만
+        [].concat(o.material || []).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      });
+    }
+    const g = this._marks = new THREE.Group();
+    if (this._grid) this._bars(g); else this._balls(g);
+    this._scene.add(g);
+    this._dirty = true;
+  }
+  _balls(g) {
+    const m4 = new THREE.Matrix4(), dr = this._drag;
+    const box = dr ? { x0: Math.min(dr.a[0], dr.b[0]), y0: Math.min(dr.a[1], dr.b[1]), x1: Math.max(dr.a[0], dr.b[0]), y1: Math.max(dr.a[1], dr.b[1]) } : this._sel;
+    const picking = !!dr || this._picking;
+    const lit = (p) => !picking || (dr ? p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1 : !!p.on);
+    [...new Set(this._pts.map((p) => p.k))].forEach((k) => [true, false].forEach((on) => {
+      const list = this._pts.filter((p) => p.k === k && lit(p) === on), col = this._cols[k] || '#ffffff';
+      if (!list.length) return;
       const ghost = k === 'ball' || k === 'seen';   // 2D 에서 속 빈 고리 · 흐린 점
-      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.35, roughness: 0.5, transparent: ghost, opacity: ghost ? 0.55 : 1 });
+      const op = on ? (ghost ? 0.55 : 1) : 0.15;    // 고르는 중: 구역 밖 공은 2D(.picking)처럼 흐리게
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: picking && on ? 0.6 : 0.35, roughness: 0.5, transparent: op < 1, opacity: op, depthWrite: op === 1 });
       const im = new THREE.InstancedMesh(this._geo, mat, list.length);
       list.forEach((p, i) => { const [x, y] = zoneAt(p.x, p.y); im.setMatrixAt(i, m4.makeTranslation(x, y, 0)); });
       g.add(im);
+    }));
+    if (box) g.add(selMesh(box));
+  }
+  // 분포 = 칸 투구 수 / 가장 많은 칸 · 피안타 = 피안타 / 투구 (3구 미만은 2D 처럼 색 없음)
+  _bars(g) {
+    const G = this._grid, cs = (G.cells || []).slice(0, 9), maxN = Math.max(1, ...cs.map((c) => c.n || 0));
+    const cw = 0.432 / 3, ch = ZH / 3;
+    cs.forEach((c, i) => {
+      const x = -0.216 + cw * (i % 3 + 0.5), y = ZLO + ZH - ch * (Math.floor(i / 3) + 0.5);
+      const v = G.view === 'hits' ? (c.n >= 3 ? c.h / c.n : null) : (c.n ? c.n / maxN : null);
+      const col = v == null ? '#3a4150' : BAR[G.view] || BAR.count, d = v == null ? 0.01 : 0.03 + v * 0.5;
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: v == null ? 0 : 0.2 + 0.35 * v, roughness: 0.6, transparent: true, opacity: v == null ? 0.35 : 0.55 + 0.4 * v, depthWrite: false });
+      const m = new THREE.Mesh(new THREE.BoxGeometry(cw * 0.92, ch * 0.92, d), mat);
+      m.position.set(x, y, -d / 2); g.add(m);
+      if (c.t) { const s = label(c.t, { scale: 0.001, shadow: true }); s.position.set(x, y, 0.01); g.add(s); }
     });
-    this._scene.add(g);
-    this._dirty = true;
   }
 }
 if (!customElements.get('pitch-zone-3d')) customElements.define('pitch-zone-3d', PitchZone3D);

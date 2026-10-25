@@ -36,7 +36,8 @@ function _tapAt(e) {
 
 // 고른 뒤: 지금 필드 위치 기준으로 같은 자리를 다시 계산해 기존 onFClick 으로 (타자 선택으로 배치가 바뀌어도 같은 지점)
 function _continue(at, orig) {
-  const r = fC.getBoundingClientRect();
+  let r = fC.getBoundingClientRect();
+  if (!r.width) r = { left: 0, top: 0, width: FS, height: FS };   // 3D 보기(2D 필드 숨김)에서 찍은 경우: 캔버스 좌표 그대로
   orig({ clientX: r.left + at.fx * r.width, clientY: r.top + at.fy * r.height, rect: r, sx: FS / r.width, sy: FS / r.height });
 }
 // 타자를 고르면 샘플 버튼 숨김 · NOW BATTING 줄 등으로 필드 크기가 다시 계산될 수 있다 (record/scorebook 의 80ms 지연 resize 포함)

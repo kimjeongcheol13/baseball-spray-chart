@@ -306,7 +306,7 @@ function _zoneCard(S, P) {
     });
     const maxN = Math.max(1, ...cells.map(c => c.n));
     body = `
-      <div class="sc-zone">
+      <div class="sc-zone" data-view="${view}">
         <div class="sc-zone-top"><span>몸쪽</span><span>가운데</span><span>바깥쪽</span></div>
         <div class="sc-zone-side"><span>높음</span><span>중간</span><span>낮음</span></div>
         <div class="sc-zone-grid">${cells.map(c => {
@@ -314,7 +314,7 @@ function _zoneCard(S, P) {
           const bg = view === 'count' ? `rgba(44,79,138,${(0.08 + a * 0.47).toFixed(2)})` : c.n >= 3 ? `rgba(200,50,43,${(0.08 + a * 0.47).toFixed(2)})` : 'transparent';   // 종이 팔레트 · 잉크 글자 대비 유지
           const main = view === 'count' ? (c.n ? `${Math.round(c.n / zoned.length * 100)}%` : '—') : c.n ? `${c.h}/${c.n}` : '—';
           const sub = view === 'count' ? (c.n ? `${c.n}구` : '') : c.n ? '피안타/투구' : '';
-          return `<div class="sc-zc${c.n ? '' : ' thin'}" style="background:${bg}" title="${c.z}: ${c.n}구 · 피안타 ${c.h}"><b>${main}</b><small>${sub}</small></div>`;
+          return `<div class="sc-zc${c.n ? '' : ' thin'}" style="background:${bg}" title="${c.z}: ${c.n}구 · 피안타 ${c.h}" data-n="${c.n}" data-h="${c.h}"><b>${main}</b><small>${sub}</small></div>`;
         }).join('')}</div>
       </div>
       <div class="an-hd-note pc-note">${view === 'count' ? '색이 진할수록 많이 던진 코스' : '색이 진할수록 많이 맞은 코스 · 3구 미만은 색 없음'} · 존 안으로 기록된 ${zoned.length}구</div>`;
@@ -404,18 +404,25 @@ function _bindPlot() {
   });
   svg.addEventListener('pointerup', e => {
     if (!start) return;
-    const p = at(e) || start, b = boxOf(start, p);
+    const p = at(e) || start, a = start;
     start = null;
-    if (b.x1 - b.x0 < 2.5 && b.y1 - b.y0 < 2.5) {   // 탭: 가까운 점 하나 (겹친 점은 같이)
-      const near = _plot.xy.map(q => [q, Math.hypot(q.zoneX * 100 - p[0], q.zoneY * 120 - p[1])]).sort((x, y) => x[1] - y[1])[0];
-      const cx = near && near[0].zoneX * 100, cy = near && near[0].zoneY * 120;
-      _box = near && near[1] <= 6 ? { x0: cx - 4, y0: cy - 4, x1: cx + 4, y1: cy + 4, tap: true } : null;   // 탭은 점을 둘러싼 원으로
-    } else _box = b;
-    _boxAll = false;
-    _applyPick(true);
+    _pickAt(a, p);
   });
   svg.addEventListener('pointercancel', () => { start = null; _applyPick(false); });
   _applyPick(false);
+}
+
+// 끌기 시작 a → 뗀 자리 p (그림 좌표). 3D 보기(ana3d.js · <pitch-zone-3d>)도 setPitchPick({ a, b }) 로 여기를 쓴다
+function _pickAt(a, p) {
+  if (!_plot) return;
+  const b = { x0: Math.min(a[0], p[0]), y0: Math.min(a[1], p[1]), x1: Math.max(a[0], p[0]), y1: Math.max(a[1], p[1]) };
+  if (b.x1 - b.x0 < 2.5 && b.y1 - b.y0 < 2.5) {   // 탭: 가까운 점 하나 (겹친 점은 같이)
+    const near = _plot.xy.map(q => [q, Math.hypot(q.zoneX * 100 - p[0], q.zoneY * 120 - p[1])]).sort((x, y) => x[1] - y[1])[0];
+    const cx = near && near[0].zoneX * 100, cy = near && near[0].zoneY * 120;
+    _box = near && near[1] <= 6 ? { x0: cx - 4, y0: cy - 4, x1: cx + 4, y1: cy + 4, tap: true } : null;   // 탭은 점을 둘러싼 원으로
+  } else _box = b;
+  _boxAll = false;
+  _applyPick(true);
 }
 
 function _showBox(b) {
@@ -545,6 +552,7 @@ function _scoreboard(p, c) {
 }
 
 export function setPitchPick(cmd) {
+  if (cmd && cmd.a && cmd.b) { _pickAt(cmd.a, cmd.b); return; }
   if (cmd === 'clear') _box = null;
   if (cmd === 'all') _boxAll = true;
   _applyPick(false);

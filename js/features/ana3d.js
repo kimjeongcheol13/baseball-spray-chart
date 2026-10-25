@@ -121,7 +121,7 @@ function scan() {
   Object.values(pool).flat().forEach((el) => { if (!used.has(el) && el.isConnected) el.remove(); });   // 안 쓰는 장면은 떼어 그리기를 멈춘다
   if (on && !ready && !loading && items.length) {
     loading = true;
-    import('./spray3d.js?v=3').then(() => { loading = false; ready = true; scan(); }).catch(() => {
+    import('./spray3d.js?v=4').then(() => { loading = false; ready = true; scan(); }).catch(() => {
       loading = false; on = false; scan();   // 2D 로 되돌린다(기억한 값은 그대로 — 다음에 열 때 다시 시도)
       if (window.showToast) window.showToast('3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.', false);
     });

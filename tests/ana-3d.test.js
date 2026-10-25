@@ -52,7 +52,7 @@
     window.ana3dView('3d');
     var s = await el3d('#tA3 spray-field-3d', '_balls'), z = await el3d('#tZ3 pitch-zone-3d', '_pts'), g = await el3d('#tG3 pitch-zone-3d', '_grid');
     ok(s && z && g, '3D 요소 없음');
-    m3 = await import('/js/features/spray3d.js?v=3');
+    m3 = await import('/js/features/spray3d.js?v=4');
     eq(s._balls.map(function (b) { return b.k; }), ['out', 'hit', 'xbh', 'hr'], '타구 종류');
     var want = { out: ABS[3], hit: ABS[0], xbh: ABS[2] };
     s._balls.forEach(function (b) {

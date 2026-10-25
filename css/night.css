@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
-   SprayLab — 야간 기록 화면 (Claude Design 시안 '기록' 검정 화면)
-   · 기록 탭(#app-page)이 보일 때만 scorebook.js 가 body.sb-night 를 붙인다 — 분석 · 경기설정은 종이 그대로
+   SprayLab — 야간 화면 (Claude Design 시안 '기록' 검정 화면 · 분석 · 경기설정도 같은 모양)
+   · scorebook.js 가 시작할 때 body.sb-night 를 붙인다 (기록 · 분석 · 경기설정 모두)
    · 종이 테마(paper.css)의 색 토큰만 밤 색으로 바꾸고, 시안 모양(둥근 카드 · 옅은 테두리 · 굵은 고딕)을 덧입힌다
    · 고대비(야외, body.high-contrast)를 켜면 밝은 종이로 돌아간다 · 이 파일을 빼면 원래 종이 화면
    · 캔버스(필드 · 투구 코스)는 --fld-* 로 따로: 바닥은 카드색, 선 · 베이스 · 글자는 분필색 (scorebook.js tok)
@@ -42,15 +42,16 @@ body.sb.sb-night:not(.high-contrast) {
 }
 
 /* 테두리: 종이 테마는 글자와 같은 잉크로 그었는데, 시안은 옅은 선 — 기록 화면 · 하단 탭 안의 모든 테두리를 옅게 (강조 테두리는 아래에서 다시) */
-body.sb.sb-night:not(.high-contrast) :is(#app-page, #savantNav) * { border-color: var(--n-line); }
+body.sb.sb-night:not(.high-contrast) :is(#app-page, #savantNav, #analysisView, #settingsView) * { border-color: var(--n-line); }
 body.sb.sb-night:not(.high-contrast) #app-page { font-weight: 500; }
 
 /* ── 헤더 띠 ── */
 body.sb.sb-night:not(.high-contrast) .app-hdr.sb-hdr { background: var(--paper) !important; border-top: 0 !important; border-bottom: 1px solid var(--n-line) !important; padding: 14px 32px !important; gap: 20px; }
-body.sb-night:not(.high-contrast) .app-hdr .sb-brand { flex-direction: row; align-items: center; gap: 9px; }
-body.sb-night:not(.high-contrast) .app-hdr .sb-brand::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pen-red); }
-body.sb-night:not(.high-contrast) .app-hdr .sb-brand b { font: 800 17px/1 var(--f-body); letter-spacing: .1em; }
-body.sb-night:not(.high-contrast) .app-hdr .sb-brand small { display: none; }
+body.sb.sb-night:not(.high-contrast) .sb-vhdr { background: var(--paper) !important; border-top: 0 !important; border-bottom: 1px solid var(--n-line) !important; }
+body.sb-night:not(.high-contrast) :is(.app-hdr, .sb-vhdr) .sb-brand { flex-direction: row; align-items: center; gap: 9px; }
+body.sb-night:not(.high-contrast) :is(.app-hdr, .sb-vhdr) .sb-brand::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pen-red); }
+body.sb-night:not(.high-contrast) :is(.app-hdr, .sb-vhdr) .sb-brand b { font: 800 17px/1 var(--f-body); letter-spacing: .1em; }
+body.sb-night:not(.high-contrast) :is(.app-hdr, .sb-vhdr) .sb-brand small { display: none; }
 body.sb-night:not(.high-contrast) .sb-hdr-mid { justify-content: flex-end; gap: 16px; }
 body.sb-night:not(.high-contrast) .sb-ls-wrap { border: 1px solid var(--n-line); border-radius: 6px; background: var(--paper-2); }
 body.sb-night:not(.high-contrast) .sb-ls { border: 0; background: none; font: 700 13px/1 var(--f-num); }
@@ -177,6 +178,12 @@ body.sb .sb-field.is-3d > .field-wrap.field-tap-pending { display: flex; }
 body.sb .sb-field.is-3d > .field-wrap.field-tap-pending ~ .sb-field3d { display: none; }
 .sb-field3d .sb-none { position: absolute; inset: auto 0 0; color: #fff; }
 
+/* ── 분석 · 경기설정 (시안에 없는 화면 — 기록 화면과 같은 카드 모양) ──
+   종이 테마가 여기서는 !important 로 잉크(흰) 테두리를 많이 긋는다 → 두 화면 안의 테두리는 모두 옅은 선, 경기 중 강조(빨강)만 되살린다 */
+body.sb.sb-night:not(.high-contrast) :is(#analysisView, #settingsView) * { border-color: var(--n-line) !important; }
+body.sb.sb-night:not(.high-contrast) #analysisView .bt-hero.is-live { border-color: var(--pen-red) !important; }
+body.sb.sb-night:not(.high-contrast) :is(#analysisView, #settingsView) :is(.an-card, [class$="-hero"], .an-empty, .set-sec) { border-width: 1px !important; border-radius: 10px !important; }
+
 /* ═══ 태블릿 (721–1199px): 2열 ═══ */
 @media (min-width: 721px) and (max-width: 1199px) {
   body.sb.sb-night:not(.high-contrast) .app-layout { grid-template-columns: minmax(0, 1fr) 320px !important; padding: 16px 20px; gap: 16px; }
@@ -187,7 +194,7 @@ body.sb .sb-field.is-3d > .field-wrap.field-tap-pending ~ .sb-field3d { display:
 /* ═══ 모바일 (≤720px): 시안 휴대폰 배치 — 머리 줄바꿈 · 필드 먼저 · 탭 44px ═══ */
 @media (max-width: 720px) {
   body.sb.sb-night:not(.high-contrast) .app-hdr.sb-hdr { padding: 12px 16px !important; gap: 8px; }
-  body.sb-night:not(.high-contrast) .app-hdr .sb-brand b { font-size: 16px; }
+  body.sb-night:not(.high-contrast) :is(.app-hdr, .sb-vhdr) .sb-brand b { font-size: 16px; }
   body.sb-night:not(.high-contrast) .sb-inn { min-height: 44px; }
   body.sb-night:not(.high-contrast) .sb-score-btn { min-width: 44px; min-height: 44px; padding: 0 6px; }
   body.sb.sb-night:not(.high-contrast) .hdr-menu-btn { width: 44px !important; height: 44px !important; }

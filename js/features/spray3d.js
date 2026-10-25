@@ -5,6 +5,7 @@
 //   위치는 2D 방향도와 같은 규칙(core _semiToCone): 각도는 _degToPhi, 거리는 '펜스까지 비율' → 3D 펜스(105m) 기준
 //   끌기 = 돌리기 · 두 손가락 / Ctrl+휠 = 확대 · 두 번 누르기 = 처음 시점
 //   다시 그려도 같은 요소를 옮겨 붙이면 장면을 새로 만들지 않는다(WebGL 컨텍스트 1개)
+//   <pitch-zone-3d> (아래) = 투구 코스 3D — 같은 돌리기 · 확대 · 그리기를 물려받고 장면 · 카메라 범위만 다르다
 import * as THREE from '../landing/vendor/three.module.js';
 
 const FONT = 'system-ui, sans-serif';
@@ -15,6 +16,8 @@ const STAND = { off: 9, d: 3.2, n: 9, h0: 1.4, dh: 1.0 };   // 내야 관중석 
 const BL = { r0: 107.5, d: 4.5, n: 6, h0: 3.6, dh: 1.4 };   // 외야석 계단
 const EYE = 0.075;                                           // 중앙 백스크린 반각(rad)
 const KINDS = ['out', 'hit', 'xbh', 'hr'];                   // 그리는 순서 = 겹칠 때 위로 오는 순서 (2D 와 같음)
+// 카메라: 처음 시점 · near/far · 확대 반지름 · 위아래 각 범위 · 끌어서 더하는 위아래 각 범위
+const SPRAY_CFG = { cam: CAM, near: 4, far: 900, r: [40, 260], phi: [0.2, 1.45], uPhi: [-0.5, 0.6] };
 
 // 저장 좌표 → 필드 [x, z] (m, 홈 = 원점 · 중견 = -z). 펜스 밖 홈런은 외야석 계단 한가운데, 그 밖의 타구는 펜스 안쪽에 놓는다
 export function toField(x, y, hr) {
@@ -287,7 +290,18 @@ class SprayField3D extends HTMLElement {
     this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr') }));
     this._board = d.board || ['', ''];
     this._dist = d.dist || [];
+    this._got = true;
     if (this._ready) this._apply();
+  }
+
+  get _cfg() { return SPRAY_CFG; }
+  _setup() {
+    const { scene, boardTex } = build();
+    this._scene = scene; this._boardTex = boardTex;
+    this._parts = markParts();
+    const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.9, emissiveIntensity: 0.35 });   // 납작한 원이 번들거리지 않게 무광
+    this._mats = { red: mat(), hl: mat(), paper: new THREE.MeshStandardMaterial({ roughness: 0.5 }) };
+    this._labels = new THREE.Group(); scene.add(this._labels);
   }
 
   _init() {
@@ -297,19 +311,15 @@ class SprayField3D extends HTMLElement {
     renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;   // 구장은 움직이지 않으니 그림자는 한 번만 굽는다
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
     this._renderer = renderer;
-    const { scene, boardTex } = build();
-    this._scene = scene; this._boardTex = boardTex;
-    this._parts = markParts();
-    const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.9, emissiveIntensity: 0.35 });   // 납작한 원이 번들거리지 않게 무광
-    this._mats = { red: mat(), hl: mat(), paper: new THREE.MeshStandardMaterial({ roughness: 0.5 }) };
-    this._labels = new THREE.Group(); scene.add(this._labels);
-    this._camera = new THREE.PerspectiveCamera(36, 1, 4, 900);
+    this._setup();
+    const C = this._cfg;
+    this._camera = new THREE.PerspectiveCamera(36, 1, C.near, C.far);
     this._tgt = new THREE.Vector3(); this._sph = new THREE.Spherical(); this._cur = new THREE.Spherical();
     this._resetCam(); this._cur.copy(this._sph);
     this._ready = true;
-    if (this._balls) this._apply();
+    if (this._got) this._apply();
 
-    const zoom = (k) => { this._sph.radius = Math.max(40, Math.min(260, this._sph.radius * k)); };
+    const zoom = (k) => { this._sph.radius = Math.max(C.r[0], Math.min(C.r[1], this._sph.radius * k)); };
     // 손가락(포인터) 하나 = 돌리기, 둘 = 집어서 확대
     const pts = new Map(); let drag = null, pinch = 0;
     const gap = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
@@ -323,7 +333,7 @@ class SprayField3D extends HTMLElement {
       if (pinch) { const d = gap(); if (d > 0) zoom(pinch / d); pinch = d; return; }
       if (!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY };
-      this._userTheta -= dx * 0.005; this._userPhi = Math.max(-0.5, Math.min(0.6, this._userPhi - dy * 0.004));
+      this._userTheta -= dx * 0.005; this._userPhi = Math.max(C.uPhi[0], Math.min(C.uPhi[1], this._userPhi - dy * 0.004));
     });
     const up = (e) => {
       pts.delete(e.pointerId); pinch = 0;
@@ -345,8 +355,9 @@ class SprayField3D extends HTMLElement {
   }
 
   _resetCam() {
-    this._tgt.set(...CAM.tgt);
-    this._sph.setFromVector3(new THREE.Vector3(...CAM.pos).sub(this._tgt));
+    const cam = this._cfg.cam;
+    this._tgt.set(...cam.tgt);
+    this._sph.setFromVector3(new THREE.Vector3(...cam.pos).sub(this._tgt));
     this._userTheta = 0; this._userPhi = 0; this._dirty = true;
   }
 
@@ -411,7 +422,7 @@ class SprayField3D extends HTMLElement {
       if (!this.isConnected) return;
       this._frame = requestAnimationFrame(tick);
       const r = this._sph.radius;
-      const phi = Math.max(0.2, Math.min(1.45, this._sph.phi + this._userPhi));
+      const [p0, p1] = this._cfg.phi, phi = Math.max(p0, Math.min(p1, this._sph.phi + this._userPhi));
       const theta = this._sph.theta + this._userTheta;
       const moving = Math.abs(r - cur.radius) > 0.01 || Math.abs(phi - cur.phi) > 1e-4 || Math.abs(theta - cur.theta) > 1e-4;
       if (!moving && !this._dirty) return;   // 바뀐 게 없으면 그리지 않는다
@@ -437,3 +448,82 @@ class SprayField3D extends HTMLElement {
   }
 }
 if (!customElements.get('spray-field-3d')) customElements.define('spray-field-3d', SprayField3D);
+
+// ── 투구 코스 3D (<pitch-zone-3d>) — 분석 › 투수 '코스' · 타자 '본 공 위치'의 3D 보기 ──
+//   el.update({ pts: [{ x, y, k }], cols: { k: '#색' } })
+//     x,y = 2D 그림 좌표(가로 0~100 · 세로 0~120, 존 x 22~78 · y 18~102) · k = 2D 점의 종류(strike · ball · hit …), 색은 2D 와 같은 값
+//   포수 뒤 시점. 공은 존 앞면(홈플레이트 앞변, z 0)에 놓는다 — 기록에 깊이 · 궤적은 없어서 그리지 않는다
+const ZS = 0.432 / 56;                     // 그림 1칸(m): 존 폭 56칸 = 홈플레이트 43.2cm
+const ZLO = 0.46, ZH = 84 * ZS;            // 존 아래 높이 · 존 높이(m)
+const zoneAt = (x, y) => [(x - 50) * ZS, ZLO + (102 - y) * ZS];
+const ZONE_CFG = { cam: { pos: [0, 1.05, 1.15], tgt: [0, 0.66, 0] }, near: 0.05, far: 80, r: [0.6, 24], phi: [0.3, 1.66], uPhi: [-1.25, 0.15] };
+
+function buildZone() {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#11151c');
+  scene.fog = new THREE.Fog('#11151c', 9, 34);
+  const add = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); scene.add(m); return m; };
+  const flat = (geo) => geo.rotateX(-Math.PI / 2);
+  const chalk = new THREE.MeshBasicMaterial({ color: '#e9ecf1' });
+  // 땅: 잔디 · 홈 둘레 흙 · 마운드(18.44m) · 투수판
+  add(flat(new THREE.PlaneGeometry(90, 90)), new THREE.MeshStandardMaterial({ color: '#2a5c41', roughness: 1 }), 0, 0, -12);
+  const dirt = new THREE.MeshStandardMaterial({ color: '#8f6a45', roughness: 1 });
+  add(flat(new THREE.CircleGeometry(4, 64)), dirt, 0, 0.004, 0.2);
+  add(new THREE.CylinderGeometry(2.74, 2.9, 0.25, 48), dirt, 0, 0.125, -18.44);
+  add(new THREE.BoxGeometry(0.61, 0.04, 0.15), chalk, 0, 0.27, -18.44);
+  // 분필선: 타석 두 칸(1.22 × 1.83m, 플레이트에서 15cm) · 파울라인
+  const line = (x1, z1, x2, z2) => {
+    const m = add(new THREE.BoxGeometry(Math.hypot(x2 - x1, z2 - z1), 0.006, 0.05), chalk, (x1 + x2) / 2, 0.008, (z1 + z2) / 2);
+    m.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+  };
+  [-1, 1].forEach((s) => {
+    const xi = s * 0.366, xo = s * 1.586, z0 = -0.7, z1 = 1.13;
+    line(xi, z0, xo, z0); line(xo, z0, xo, z1); line(xo, z1, xi, z1); line(xi, z1, xi, z0);
+    line(s * 2.2, 0.432 - 2.2, s * 40, 0.432 - 40);
+  });
+  // 홈플레이트: 앞변 z 0 · 뒤 꼭짓점이 포수 쪽(+z)
+  const h = 0.216, sh = new THREE.Shape();
+  sh.moveTo(-h, 0); sh.lineTo(h, 0); sh.lineTo(h, h); sh.lineTo(0, 2 * h); sh.lineTo(-h, h); sh.closePath();
+  add(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#f5f6f8', roughness: 0.6, side: THREE.DoubleSide }), 0, 0.012, 0);
+  // 스트라이크존: 플레이트 위 상자 테두리 + 앞면 9칸 + 옅은 앞면
+  const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(2 * h, ZH, 2 * h)), new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.75 }));
+  box.position.set(0, ZLO + ZH / 2, h); scene.add(box);
+  const g = [];
+  [-1, 1].forEach((s) => g.push(s * h / 3, ZLO, 0, s * h / 3, ZLO + ZH, 0));
+  [1, 2].forEach((k) => g.push(-h, ZLO + ZH * k / 3, 0, h, ZLO + ZH * k / 3, 0));
+  const grid = new THREE.BufferGeometry(); grid.setAttribute('position', new THREE.Float32BufferAttribute(g, 3));
+  scene.add(new THREE.LineSegments(grid, new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.35 })));
+  add(new THREE.PlaneGeometry(2 * h, ZH), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide }), 0, ZLO + ZH / 2, 0);
+  // 빛
+  scene.add(new THREE.HemisphereLight('#cfd8ee', '#161a22', 1.0));
+  const sun = new THREE.DirectionalLight('#fff4e2', 1.8); sun.position.set(-3, 8, 5); scene.add(sun);
+  return scene;
+}
+
+class PitchZone3D extends SprayField3D {
+  get _cfg() { return ZONE_CFG; }
+  update(d) {
+    this._pts = d.pts || []; this._cols = d.cols || {};
+    this._got = true;
+    if (this._ready) this._apply();
+  }
+  _setup() {
+    this._scene = buildZone();
+    this._geo = new THREE.SphereGeometry(0.037, 24, 16);   // 야구공 지름 7.4cm
+  }
+  _apply() {
+    if (this._marks) { this._scene.remove(this._marks); this._marks.children.forEach((m) => { m.material.dispose(); m.dispose(); }); }
+    const g = this._marks = new THREE.Group(), m4 = new THREE.Matrix4();
+    [...new Set(this._pts.map((p) => p.k))].forEach((k) => {
+      const list = this._pts.filter((p) => p.k === k), col = this._cols[k] || '#ffffff';
+      const ghost = k === 'ball' || k === 'seen';   // 2D 에서 속 빈 고리 · 흐린 점
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.35, roughness: 0.5, transparent: ghost, opacity: ghost ? 0.55 : 1 });
+      const im = new THREE.InstancedMesh(this._geo, mat, list.length);
+      list.forEach((p, i) => { const [x, y] = zoneAt(p.x, p.y); im.setMatrixAt(i, m4.makeTranslation(x, y, 0)); });
+      g.add(im);
+    });
+    this._scene.add(g);
+    this._dirty = true;
+  }
+}
+if (!customElements.get('pitch-zone-3d')) customElements.define('pitch-zone-3d', PitchZone3D);

@@ -81,13 +81,15 @@
     ok($('gfWho').textContent.indexOf('가선수') === 0 && !$('gfList').hidden, '타자별로 돌아옴');
   });
 
-  test('끌기: 좌안 점을 중견 깊숙이 → x · y · deg · dir · ft 다시 계산 · estimated false · fa 지움 · 바로 저장 · 다른 점은 그대로', function () {
+  test('끌기: 좌안 점을 중견 깊숙이 → x · y · deg · dir · ft 다시 계산 · estimated false · fa · ov 지움 · 바로 저장 · 다른 점은 그대로', function () {
     var before = saved(), W = F().state().geo.W, g = _fieldGeo(W);
     vOf('가선수', '안타').a.fa = 12;   // 3D 에서 파울 지역에 찍었던 점이라 해도 새 자리는 파울라인 사이 → fa 는 버린다
+    vOf('가선수', '안타').a.ov = 10;   // 외야석에 찍었던 점이라 해도 새 자리는 펜스 안 → ov 도 버린다
     var v = vOf('가선수', '안타'), to = [W * 0.5, W * 0.3], want = _coneToSemi(g, to[0], to[1]);
     drag(v, [[v.x + 5, v.y - 5], [W * 0.5, W * 0.45], to]);
     var a = ab(saved(), '가선수', '안타');
     eq([a.estimated, +a.x.toFixed(4), +a.y.toFixed(4), +a.deg.toFixed(2), a.dir, 'fa' in a], [false, +want.x.toFixed(4), +want.y.toFixed(4), +want.deg.toFixed(2), 'CF', false], '옮긴 점');
+    ok(!('ov' in a), 'ov 지움');
     var st = window.STADIUMS.standard, cf = Math.round(st.cfDist * 3.281);
     eq(a.ft, Math.round(want.dist * cf), '거리(ft) = 펜스 비율 × 중견 담장');
     eq([ab(saved(), '가선수', '2루타'), ab(saved(), '나선수', '땅볼 아웃'), ab(saved(), '다선수', '안타')],

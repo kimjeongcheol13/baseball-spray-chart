@@ -1,11 +1,12 @@
 // 3D 방향도 — 분석 › 팀 '팀 타구 방향'의 3D 보기 (<spray-field-3d>)
 //   three.js 는 랜딩과 같은 vendor 파일. team.js 가 3D 를 처음 누를 때만 이 모듈을 불러온다(2D 만 쓰면 내려받지 않음)
-//   el.update({ balls: [{ x, y, k, fa }], board: [윗줄, 큰 줄], dist: [좌, 중, 우] })
+//   el.update({ balls: [{ x, y, k, fa, ov }], board: [윗줄, 큰 줄], dist: [좌, 중, 우] })
 //     x,y = 저장 좌표(홈 0.5,1 · 펜스 반지름 .97) · k = sbPaint.kindOf (hit | xbh | hr | out, 그 밖은 그리지 않음) · fa = 파울 타구가 파울라인 밖으로 벗어난 각도(°, 없으면 라인 안)
+//     ov = 외야석에 찍은 타구가 펜스 뒤로 몇 m 인지(없으면 펜스 안)
 //   위치는 2D 방향도와 같은 규칙(core _semiToCone): 각도는 _degToPhi, 거리는 '펜스까지 비율' → 3D 펜스 기준
 //   펜스는 dist(좌 · 중 · 우 m)대로 휜다(core _fenceR 와 같은 모양, 실제 m). dist 가 바뀌면 구장을 다시 짓는다 · 없으면 105m 원
 //   끌기 = 돌리기 · 두 손가락 / Ctrl+휠 = 확대 · 두 번 누르기 = 처음 시점
-//   el.tappable = true(기록 탭)면 짧게 누른 자리를 저장 좌표로 바꿔 'fieldtap' 이벤트(detail { x, y, deg, dist, fa?, px, py })를 보낸다 · el.mark({ x, y, fa } | null) = 찍은 자리 고리
+//   el.tappable = true(기록 탭)면 짧게 누른 자리를 저장 좌표로 바꿔 'fieldtap' 이벤트(detail { x, y, deg, dist, fa?, ov?, px, py })를 보낸다 · el.mark({ x, y, fa, ov } | null) = 찍은 자리 고리
 //   다시 그려도 같은 요소를 옮겨 붙이면 장면을 새로 만들지 않는다(WebGL 컨텍스트 1개)
 //   <pitch-zone-3d> (아래) = 투구 코스 3D — 같은 돌리기 · 확대 · 그리기를 물려받고 장면 · 카메라 범위만 다르다
 import * as THREE from '../landing/vendor/three.module.js';
@@ -17,6 +18,7 @@ const S2 = Math.SQRT1_2;
 const STAND = { off: 9, d: 3.2, n: 9, h0: 1.4, dh: 1.0 };   // 내야 관중석 계단
 const BL = { gap: 2.5, d: 4.5, n: 6, h0: 3.6, dh: 1.4 };    // 외야석 계단 (펜스 뒤 gap 부터)
 const DUG = { along: 24, len: 15, mid: STAND.off + 0.6, d: 2.2, h: 1.6 };   // 더그아웃: 홈에서 라인 따라 가운데 · 길이 · 라인에서 가운데 · 폭 · 높이
+const OV = BL.gap + BL.d * BL.n;                             // 펜스 뒤 외야석 끝까지(m) = 저장 ov 의 최댓값 (core _OV_MAX 와 같은 값)
 const EYE = 0.075;                                           // 중앙 백스크린 반각(rad)
 const KINDS = ['out', 'hit', 'xbh', 'hr'];                   // 그리는 순서 = 겹칠 때 위로 오는 순서 (2D 와 같음)
 const Q = Math.PI / 4;                                       // 좌측 폴 각도 (core _FQ) · 중앙 2Q · 우측 폴 3Q
@@ -35,16 +37,19 @@ export function fenceFn(dist) {
 }
 const ROUND = fenceFn();
 
-// 저장 좌표 → 필드 [x, z] (m, 홈 = 원점 · 중견 = -z). 펜스 밖 홈런은 외야석 계단 한가운데, 그 밖의 타구는 펜스 안쪽에 놓는다
-// fa > 0 = 파울 타구: 라인 위 자리에서 파울라인 밖으로 fa° 돌린다. 내야 관중석 위면 외야석 홈런처럼 그 줄 한가운데(기호가 다음 줄 계단에 가리지 않게)
+// 저장 좌표 → 필드 [x, z] (m, 홈 = 원점 · 중견 = -z). 펜스 너머는 외야석 그 줄 한가운데(기호가 다음 줄 계단에 가리지 않게), 그 밖의 타구는 펜스 안쪽에 놓는다
+//   ov = 3D 에서 외야석에 찍은 타구가 펜스 뒤 몇 m 인지(그 자리 그대로) · ov 없는 홈런은 펜스 밖 비율(2D 처럼 최대 6%)을 외야석 깊이(OV)로 늘린다 — 펜스 위 = 첫 줄
+//   (core _semiToCone 은 거꾸로 ov 를 펜스 밖 6% 안에 줄여 그린다 → 2D 그림을 읽는 분석 3D(ana3d)도 같은 줄에 놓인다)
+// fa > 0 = 파울 타구: 라인 위 자리에서 파울라인 밖으로 fa° 돌린다. 내야 관중석 위면 외야석처럼 그 줄 한가운데
 // dy 를 -0 으로 자르는 이유 = core _semiToCone (왼쪽 라인 y = 1 → 오른쪽으로 읽힘)
-export function toField(x, y, hr, R = ROUND, fa = 0) {
+export function toField(x, y, hr, R = ROUND, fa = 0, ov = 0) {
   const dx = x - 0.5, dy = Math.min(y - 1, -0);
   const deg = (Math.atan2(dy, dx) + Math.PI) * 180 / Math.PI;
   const phi = typeof _degToPhi === 'function' ? _degToPhi(deg) : (45 + deg / 2) * Math.PI / 180;
   const F = R(phi), s0 = F + BL.gap;
   let r = Math.min(Math.hypot(dx, dy) / 0.97, 1.06) * F, p = phi;
-  if (hr && r > F) r = s0 + BL.d * (Math.min(BL.n - 1, Math.floor(Math.max(0, r - s0) / BL.d)) + 0.5);
+  const deep = ov > 0 ? Math.min(ov, OV) : hr && r >= F * 0.999 ? Math.max(0, r / F - 1) / 0.06 * OV : -1;   // 펜스 뒤 m (-1 = 펜스 안)
+  if (deep >= 0) r = s0 + BL.d * (Math.min(BL.n - 1, Math.floor(Math.max(0, F + deep - s0) / BL.d)) + 0.5);
   else r = Math.min(r, F - 2);
   if (fa > 0) {
     const along = r * Math.cos(fa * Math.PI / 180), row = Math.floor((r * Math.sin(fa * Math.PI / 180) - STAND.off) / STAND.d);
@@ -53,9 +58,9 @@ export function toField(x, y, hr, R = ROUND, fa = 0) {
   }
   return [-r * Math.cos(p), -r * Math.sin(p)];
 }
-// 필드 [x, z] → 저장 좌표 { x, y, deg, dist, fa? }. core _coneToSemi 와 같은 식이지만 3D 는 파울 지역 · 관중석도 찍힌다(홈 뒤만 null):
+// 필드 [x, z] → 저장 좌표 { x, y, deg, dist, fa?, ov? }. core _coneToSemi 와 같은 식이지만 3D 는 파울 지역 · 관중석도 찍힌다(홈 뒤만 null):
 //   x,y,deg 는 파울라인 사이 · 펜스(.97)까지라서(방향 · 거리 통계는 그대로) 파울 지역은 가까운 파울라인 위 + fa = 라인 밖 각도(°),
-//   펜스 너머(관중석)는 펜스 위로
+//   펜스 너머(외야석)는 펜스 위 + ov = 펜스 뒤 m (그리는 쪽만 쓴다)
 export function fromField(x, z, R = ROUND) {
   if (z > 0) return null;
   const raw = Math.atan2(-z, -x), phi = Math.max(Q, Math.min(3 * Q, raw));
@@ -63,8 +68,9 @@ export function fromField(x, z, R = ROUND) {
   const deg = typeof _phiToDeg === 'function' ? _phiToDeg(phi) : (phi * 180 / Math.PI - 45) * 2;
   const a = deg * Math.PI / 180 - Math.PI, d = Math.min(frac, 1) * 0.97;
   const s = { x: 0.5 + Math.cos(a) * d, y: 1 + Math.sin(a) * d, deg, dist: d };
-  const fa = Math.round(Math.abs(raw - phi) * 1800 / Math.PI) / 10;
+  const fa = Math.round(Math.abs(raw - phi) * 1800 / Math.PI) / 10, ov = Math.min(OV, Math.round((frac - 1) * R(phi) * 10) / 10);
   if (fa) s.fa = fa;
+  else if (ov > 0) s.ov = ov;
   return s;
 }
 // 그 자리 높이: 외야석(펜스 뒤 gap 부터) · 내야 관중석(파울라인 밖 STAND.off 부터, 라인 따라 폴 + 7m 까지) · 더그아웃 위면 그 높이, 아니면 땅
@@ -365,7 +371,7 @@ class SprayField3D extends HTMLElement {
   update(d) {
     this._dist = d.dist || [];
     this._R = fenceFn(this._dist);
-    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr', this._R, b.fa) }));
+    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr', this._R, b.fa, b.ov) }));
     this._board = d.board || ['', ''];
     this._got = true;
     if (this._ready) this._apply();
@@ -408,7 +414,7 @@ class SprayField3D extends HTMLElement {
     const rc = new THREE.Raycaster(); rc.setFromCamera(v, this._camera);
     return rc.ray.intersectPlane(plane, new THREE.Vector3());
   }
-  // 짧게 누름: 누른 자리 → 저장 좌표 → 'fieldtap' (파울 지역 = 파울라인 위 + fa · 관중석 = 펜스 위, fromField)
+  // 짧게 누름: 누른 자리 → 저장 좌표 → 'fieldtap' (파울 지역 = 파울라인 위 + fa · 외야석 = 펜스 위 + ov, fromField)
   // 관중석은 땅보다 높아서 땅 평면만 보면 실제보다 멀리 잡힌다 → 그 자리 계단 높이(groundY) 평면으로 몇 번 다시 맞춘다
   _tap(e) {
     if (!this.tappable) return;
@@ -530,7 +536,7 @@ class SprayField3D extends HTMLElement {
     if (this._pinMesh) this._scene.remove(this._pinMesh);
     if (this._pin) {
       this._pinMesh = this._pinMesh || new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.32, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
-      const [x, z] = toField(this._pin.x, this._pin.y, false, this._R, this._pin.fa);
+      const [x, z] = toField(this._pin.x, this._pin.y, false, this._R, this._pin.fa, this._pin.ov);
       this._pinMesh.position.set(x, groundY(x, z, this._R) + 0.35, z); this._scene.add(this._pinMesh);
     }
     this._dirty = true;

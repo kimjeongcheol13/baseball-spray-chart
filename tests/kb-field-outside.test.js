@@ -61,9 +61,9 @@
     var s = await said();
     ok(s.indexOf('중견수') === 0 && s.indexOf('파울') < 0, '안내: ' + s);
     var g = _fieldGeo(FS);
-    _kb.x = g.cx; _kb.y = g.cy - 1;
-    key('ArrowDown');
-    eq(_kb.y, g.cy - 1, '홈 뒤로 안 움직임');
+    _kb.x = g.cx; _kb.y = g.cy - 0.1;     // 홈 바로 위. Shift 한 칸(FS×0.1)이면 필드가 아주 작아도(CI 창) 홈 뒤로 넘어간다
+    key('ArrowDown', true);
+    eq(_kb.y, g.cy - 0.1, '홈 뒤로 안 움직임');
     s = await said();
     eq(s, '필드 끝입니다', '안내');
     if (window._tp) _tpCancel();

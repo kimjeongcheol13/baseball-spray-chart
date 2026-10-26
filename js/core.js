@@ -2156,7 +2156,7 @@ function renderPsTable(){
   const targetLineup = getActiveLineup();
   const el=document.getElementById('psTable');if(!targetLineup.length){el.innerHTML='<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px">선수를 추가하세요</div>';return;}
   const noab=['bold','볼넷','사구','희타','희비'],hits=['안타','내야안타','2루타','3루타','홈런'];
-  el.innerHTML=targetLineup.map(p=>{const pAbs=AS.abs.filter(a=>a.bid===p.id);const oab=pAbs.filter(a=>!noab.includes(a.res)).length;const h=pAbs.filter(a=>hits.includes(a.res)).length;const av=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';const rbi=pAbs.reduce((s,a)=>s+a.rbi,0);return`<div class="ps-row"><div class="ps-num">${_escHtml(p.num)}</div><div class="ps-name">${_escHtml(p.name)}</div><div class="ps-avg">${av}</div><div class="ps-ab">${h}H/${oab}AB${rbi>0?' '+rbi+'타점':''}</div></div>`;}).join('');
+  el.innerHTML=targetLineup.map(p=>{const pAbs=AS.abs.filter(a=>a.bid===p.id);const oab=pAbs.filter(a=>!noab.includes(a.res)).length;const h=pAbs.filter(a=>hits.includes(a.res)).length;const av=oab?(h/oab).toFixed(3).replace('0.','.'):'.---';const rbi=pAbs.reduce((s,a)=>s+a.rbi,0);const rs=window.slRunnerStats?slRunnerStats(AS.abs,p):null;return`<div class="ps-row"><div class="ps-num">${_escHtml(p.num)}</div><div class="ps-name">${_escHtml(p.name)}</div><div class="ps-avg">${av}</div><div class="ps-ab">${h}H/${oab}AB${rbi>0?' '+rbi+'타점':''}${rs&&rs.r?' '+rs.r+'득점':''}${rs&&rs.sb?' '+rs.sb+'도루':''}${rs&&rs.cs?' 도루실패 '+rs.cs:''}</div></div>`;}).join('');   // 득점 · 도루 = 경기 운영 모드 주자 기록 (features/runners.js)
 }
 
 var _tabOrder=['rec','batter','stat','chart','pitcher'];
@@ -5236,6 +5236,7 @@ function _shareGameBuild(withNames){
   if(_SHARE_STADIUMS.indexOf(_st)>=0)_info.stadium=_st;
   else if(_st==='custom'&&_cs){var _d=_restoreDistFromPayload({lf:_cs.lfDist,cf:_cs.cfDist,rf:_cs.rfDist});if(_d){_info.stadium='custom';_info.dist=_d;}}
   if(_si.ls&&typeof _si.ls==='object')_info.ls=_si.ls;
+  else if(window.slLineScore){var _dls=slLineScore(AS.abs);if(_dls)_info.ls=_dls;}   // 직접 기록한 경기: 경기 운영 모드 득점으로 만든 이닝별 득점 (features/runners.js)
   if(Object.keys(_info).length){fullPayload.info=_info;compactPayload.info=_info;}
 
   /* 기본: 선수 실명을 치환해서 내보낸다 (체크박스 "선수 실명 포함" 을 켠 경우만 실명 그대로) */
@@ -9403,7 +9404,8 @@ function toggleHighContrast(){
     var enhanced=Object.assign({},data,{
       gf:{toJSON:function(){   // 적을 때의 값으로 — 타석 기록은 타순 · 주자를 옮기기 전에 저장을 예약한다
         return{active:GF.active,inning:GF.inning,half:GF.half,outs:GF.outs,
-          batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false]};
+          batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false],
+          runners:Array.isArray(GF.runners)?GF.runners.slice():null};   // 주자 이름 (features/runners.js)
       }}
     });
     _orig(enhanced,delay);
@@ -9430,6 +9432,9 @@ function toggleHighContrast(){
           GF.outs=Math.min(2,Math.max(0,Number(gfData.outs)||0));
           GF.batterIdx=Math.max(0,Number(gfData.batterIdx)||0);
           GF.bases=Array.isArray(gfData.bases)&&gfData.bases.length===3?gfData.bases.map(Boolean):[false,false,false];
+          // 주자 이름 (features/runners.js) — 여기서 거른다: 복구가 모듈보다 먼저 돌 수 있다
+          GF.runners=[0,1,2].map(function(i){var r=Array.isArray(gfData.runners)?gfData.runners[i]:null;
+            return GF.bases[i]&&r&&typeof r==='object'&&typeof r.name==='string'?{id:r.id!=null?String(r.id):null,name:r.name,num:r.num!=null?String(r.num):null}:null;});
           swLineupTab(GF.half==='top'?'home':'away');   // 공격 팀 명단에서 그 타순 타자
           var lu=gfGetLineup(),p=lu.length?lu[GF.batterIdx%lu.length]:null;
           if(p){AS.batter=null;selBatter(p.id);}

@@ -140,8 +140,8 @@
     var F = e._R(Math.PI / 2), cf = e._balls.filter(function (o) { return o.k === 'hr' && Math.abs(Math.atan2(-o.p[1], -o.p[0]) - Math.PI / 2) < 0.01; })
       .map(function (o) { return Math.round((Math.hypot(o.p[0], o.p[1]) - F) * 100) / 100; }).sort(function (a, b) { return a - b; });
     eq(cf, [4.75, 9.25], '3D 중견 외야석 줄(펜스 뒤 m)');
-    var back = _restoreAbsFromPayload([{ r: '홈런', x: 0.5, y: 0.03, d: 90, ov: 10 }, { ov: '<b>' }, { ov: 99 }]);
-    eq(back.map(function (a) { return a.ov; }), [10, null, null], '공유 링크 ov(0~29.5m 숫자만)');
+    var back = _restoreAbsFromPayload([{ r: '홈런', x: 0.5, y: 0.03, d: 90, ov: 10 }, { ov: '<b>' }, { ov: 999 }]);
+    eq(back.map(function (a) { return a.ov; }), [10, null, null], '공유 링크 ov(0~200m 숫자만)');
     window.AS.abs.splice(n);
     window.sbRenderNow(); await T.sleep(50);
   });

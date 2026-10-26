@@ -429,6 +429,9 @@ class SprayField3D extends HTMLElement {
     renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;   // 구장은 움직이지 않으니 그림자는 한 번만 굽는다
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
     this._renderer = renderer;
+    // 브라우저가 WebGL 을 끊었다 되살리면(오래 열어 둔 탭 · 다른 탭이 GPU 를 많이 쓸 때) three.js 가 자원은 다시 올리지만
+    // 여기서는 바뀐 게 있을 때만 그리므로 까만 화면으로 남는다 → 그림자를 다시 굽고 한 번 다시 그린다
+    this._canvas.addEventListener('webglcontextrestored', () => { renderer.shadowMap.needsUpdate = true; this._dirty = true; });
     this._setup();
     const C = this._cfg;
     this._camera = new THREE.PerspectiveCamera(36, 1, C.near, C.far);

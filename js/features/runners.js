@@ -1,5 +1,6 @@
 // 주자 이름 · 득점 · 도루 — 경기 운영 모드(core.js GF)에서만. core.js 의 진루 규칙 · 아웃 · 이닝 전환은 그대로 두고 함수를 감싼다
 //  · GF.runners = [1루, 2루, 3루] 주자 { id, name, num } | null — GF.bases(있다/없다)와 짝. 베이스를 손으로 켜면 이름 없는 주자(null)
+//    이름 없는 주자는 이번 이닝 타석 기록을 다시 따라가 채운다(backfill) — 이 기능 전에 시작한 경기도 이름이 나오게
 //  · 타석 기록에 항목만 추가 (기존 필드 · 저장 키 그대로):
 //      scored = [{ id, name, num }]  이 타석 플레이로 홈인한 주자 (홈런은 타자 포함) — 경기 운영 모드로 적은 타석에만 있다(빈 배열 포함)
 //      runEv  = [{ t: 'SB'|'CS', id, name, num, from, inn, team, scored, pre }]  이 타석 뒤 · 다음 타석 전의 도루 · 도루 실패
@@ -103,6 +104,22 @@ function paint() {
 function inn() { const s = $('innSel'); return (s && s.value) || (window.gfInnStr ? window.gfInnStr() : ''); }
 const atk = () => (G().half === 'top' ? 'home' : 'away');   // 공격 팀 (core.js gfAfterRecord 와 같이: 초 = 홈팀 공격)
 
+// 이름 모르는 주자(이 기능 전에 시작한 경기 등) — 이번 이닝 타석 기록을 처음부터 다시 따라가 채운다.
+// 따라간 베이스 모양이 지금 GF.bases 와 같을 때만 (손으로 켠 베이스 · 되돌린 타석이 섞이면 그대로 '주자'). skip = 방금 넣어 아직 진루 전인 타석
+function backfill(skip) {
+  const g = G(), R = runners();
+  if (![0, 1, 2].some(i => g.bases[i] && !R[i])) return;
+  const cur = inn(), team = atk();
+  let b = [null, null, null];
+  window.AS.abs.forEach(a => {
+    if (!a || a === skip || a.inn !== cur || a.team !== team) return;
+    b = advance(a.res, b, clean({ id: a.bid, name: a.bname, num: a.bnum })).bases;
+    (Array.isArray(a.runEv) ? a.runEv : []).forEach(e => { const r = b[e.from]; b[e.from] = null; if (e.t === 'SB' && e.from < 2) b[e.from + 1] = r; });
+  });
+  if (b.some((r, i) => !!r !== !!g.bases[i])) return;
+  b.forEach((r, i) => { if (!R[i] && r && r.name) R[i] = r; });
+}
+
 // 도루 성공(ok) · 실패 — i = 출발 베이스(0~2)
 function steal(ok, i) {
   const g = G(), R = runners(), A = window.AS, last = A.abs[A.abs.length - 1];
@@ -177,6 +194,7 @@ function wrap(name, make) { const f = window[name]; if (typeof f === 'function')
 wrap('gfUpdateBases', orig => function (res) {
   const g = G(), R = runners(), A = window.AS, last = A.abs[A.abs.length - 1];
   const mine = last && last.res === res ? last : null;   // recHit · recOther 가 방금 넣은 타석
+  backfill(mine);
   const bat = mine ? clean({ id: mine.bid, name: mine.bname, num: mine.bnum }) : UNK;
   const mv = advance(res, g.bases.map((on, i) => (on ? R[i] || UNK : null)), bat);
   const n = orig.apply(this, arguments);
@@ -192,7 +210,7 @@ wrap('gfUpdateBases', orig => function (res) {
 });
 
 wrap('gfUpdateBar', orig => function () {
-  if (G() && G().active) sync();
+  if (G() && G().active) { sync(); backfill(); }
   const r = orig.apply(this, arguments);
   paint();
   return r;

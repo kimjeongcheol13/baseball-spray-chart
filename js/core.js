@@ -125,16 +125,19 @@ function _phiToDeg(phi){
   return _FZ_DEG[i]+(p-_FZ_PHI[i])/18*(_FZ_DEG[i+1]-_FZ_DEG[i]);
 }
 // 저장 좌표 → 화면 좌표. fa = 파울 타구가 파울라인 밖으로 벗어난 각도(°, 3D 에서 찍은 타구만 — x,y,deg 는 라인 위)
-// ov = 3D 외야석에 찍은 타구가 펜스 뒤로 몇 m 인지(x,y 는 펜스 위). 2D 에는 관중석이 없어 그 깊이(최대 _OV_MAX)를 펜스 밖 6% 안에 줄여 그린다
+// ov = 외야석 · 펜스 밖에 찍은 타구가 펜스 뒤로 몇 m 인지(x,y 는 펜스 위 · 파울이면 그 라인의 펜스 거리 위). 분석 그림에는 관중석이 없어 그 깊이(최대 _OV_MAX)를 펜스 밖 6% 안에 줄여 그린다
 //   (펜스 밖 홈런이 그려지던 범위 · spray3d toField 가 이 비율을 다시 외야석 깊이로 늘린다)
+//   real = 기록 탭 2D(_fieldPx): 실제 m 그대로 → 누른 자리(_coneToSemiAll)에 다시 그린다
 // dy 는 -0 으로 자른다: 왼쪽 파울라인 타구는 y 가 반올림으로 정확히 1 이 되기도 하는데(+0) 그러면 atan2 가 오른쪽(360°)으로 읽는다
 var _OV_MAX=29.5;   // = spray3d 외야석 깊이(BL.gap + BL.d × BL.n, m)
-function _semiToCone(g,x,y,fa,ov){
+var _OV_LIM=200;    // 저장 ov 최댓값(m) — 2D 는 필드 칸 빈 곳 끝까지 찍힌다(3D 는 외야석 깊이로 자른다)
+function _semiToCone(g,x,y,fa,ov,real){
   var dx=x-.5,dy=Math.min(y-1,-0);
   var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;
   var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);
-  if(ov>0)frac=Math.max(frac,1+.06*Math.min(ov/_OV_MAX,1));
+  if(ov>0&&!real)frac=Math.max(frac,1+.06*Math.min(ov/_OV_MAX,1));
   var phi=_degToPhi(deg),r=frac*_fenceR(g,phi);
+  if(ov>0&&real)r=_fenceR(g,phi)+ov*g.m;
   if(fa>0)phi+=(phi<2*_FQ?-fa:fa)*Math.PI/180;
   return _conePt(g,phi,r);
 }
@@ -151,6 +154,19 @@ function _coneToSemi(g,px,py){
   var deg=_phiToDeg(phi),dist=frac*.97,ang=deg*Math.PI/180-Math.PI;
   return {x:.5+Math.cos(ang)*dist,y:1+Math.sin(ang)*dist,deg:deg,dist:dist};
 }
+// 화면 좌표 → 저장 좌표, 부채꼴 밖도(기록 탭 2D 탭). 홈 뒤(아래)만 null — spray3d fromField 와 같은 규칙
+//   x,y,deg,dist 는 파울라인 사이 · 펜스(.97)까지(방향 · 거리 통계 그대로) + fa = 파울라인 밖 각도(°) · ov = 펜스 뒤 m (그리는 쪽만 쓴다)
+function _coneToSemiAll(g,px,py){
+  var dx=px-g.cx,dy=py-g.cy;
+  if(dy>0)return null;
+  var raw=Math.atan2(-dy,-dx),phi=Math.max(_FQ,Math.min(3*_FQ,raw)),F=_fenceR(g,phi),h=Math.sqrt(dx*dx+dy*dy);
+  var deg=_phiToDeg(phi),dist=Math.min(h/F,1)*.97,ang=deg*Math.PI/180-Math.PI;
+  var s={x:.5+Math.cos(ang)*dist,y:1+Math.sin(ang)*dist,deg:deg,dist:dist};
+  var fa=Math.round(Math.abs(raw-phi)*1800/Math.PI)/10,ov=Math.min(_OV_LIM,Math.round((h-F)/g.m*10)/10);
+  if(fa>0)s.fa=fa;
+  if(ov>0)s.ov=ov;
+  return s;
+}
 // 저장 좌표 구역(deg1~deg2, 반지름 r1~r2: 필드 비율) → 화면 경로 (핫/콜드 존용)
 function _coneSectorPath(ctx,g,deg1,deg2,r1,r2){
   var n=12,i,phi,p;
@@ -163,7 +179,18 @@ function _coneSectorPath(ctx,g,deg1,deg2,r1,r2){
 function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y,a.fa,a.ov);}
 window._fieldPos=_fieldPos;
 // 저장 좌표 → 기록 필드 캔버스 px
-function _fieldPx(a){var p=_fieldPos(a);return [p[0]*FS,p[1]*FS];}
+// 기록 탭 필드(FS px). 외야석 ov 는 실제 m · 필드 칸(_outB) 밖으로 나가면 홈에서 그 점 쪽 선 위 칸 끝에 놓는다(3D 에서 찍은 깊은 외야석)
+function _fieldPx(a){
+  var g=_fieldGeo(FS),p=_semiToCone(g,a.x,a.y,a.fa,a.ov,1),B=_outB;
+  if(B&&(a.ov>0||a.fa>0)){
+    var dx=p[0]-g.cx,dy=p[1]-g.cy,t=1;
+    if(dx<0&&p[0]<B[0])t=Math.min(t,(B[0]-g.cx)/dx);
+    if(dx>0&&p[0]>B[2])t=Math.min(t,(B[2]-g.cx)/dx);
+    if(dy<0&&p[1]<B[1])t=Math.min(t,(B[1]-g.cy)/dy);
+    p=[g.cx+dx*t,g.cy+dy*t];
+  }
+  return p;
+}
 function _dirLbl(dir,bats){
   if(!dir)return '';
   var rh={LF:'당겨치기',LC:'좌중간',CF:'센터',RC:'우중간',RF:'밀어치기'};
@@ -1271,8 +1298,9 @@ function onFClick(e){
   if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
-  // 화면(부채꼴) 좌표 → 저장 좌표(기존 반원 기준). 3D 파울 지역은 부채꼴 밖이라 저장 좌표를 직접 받는다(e.sp — scorebook _tap3d)
-  const sp=e.sp||_coneToSemi(_fieldGeo(FS),x,y);
+  // 화면(부채꼴) 좌표 → 저장 좌표(기존 반원 기준). 파울 지역 · 펜스 밖은 라인 · 펜스 위 + fa · ov (_coneToSemiAll)
+  // 3D 는 저장 좌표를 직접 받는다(e.sp — scorebook _tap3d)
+  const sp=e.sp||_coneToSemiAll(_fieldGeo(FS),x,y);
   if(!sp)return;
   closeHitDetail();
   const deg=sp.deg;
@@ -1394,6 +1422,7 @@ function _tpOpen(x,y,sub){
   if(!pop||!w){openOverlay('hitOverlay');return;}
   _tp={x:x,y:y,w:w.clientWidth,t:performance.now()};
   _tpMarker(x,y);
+  _outRender();
   document.getElementById('tapPopSub').textContent=sub||'';
   document.getElementById('tapPopMain').hidden=false;
   document.getElementById('tapPopXbh').hidden=true;
@@ -1424,6 +1453,7 @@ function _tpClose(){
   _tp=null;
   var pop=document.getElementById('tapPop');
   if(pop)pop.hidden=true;
+  _outRender();
 }
 function _tpCancel(){
   if(!_tp)return;
@@ -1456,7 +1486,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // 팝업 바깥 탭 → 취소 (필드 캔버스 탭은 onFClick에서 취소 처리)
   // 막 열렸을 때 팝업이 든 필드(2D #cwrap · 3D 칸)를 누른 건 무시 — _TP_HOLD
   document.addEventListener('pointerdown',function(e){
-    if(!_tp||pop.contains(e.target)||e.target===fC)return;
+    if(!_tp||pop.contains(e.target)||e.target===fC||e.target===_oc)return;
     if(_tpFresh(_tp.t)&&pop.parentNode&&pop.parentNode.contains(e.target))return;
     _tpCancel();
   },true);
@@ -1667,10 +1697,48 @@ function safeRender(){
     let list=AS.abs;
     if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
     if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
+    _outRender();   // 칸 경계(_outB)를 먼저 잰다 — _fieldPx 가 쓴다
     list.forEach(a=>{if(a.x)drawDot(a);});
     drawHotZoneOverlay(); // ovrCanvas 초기화 후 핫존 블롭 그리기
     updateHotCold();      // 그 다음 핫/콜드 존 그리기 (덮어씌우기 방지)
   });
+}
+
+// ── 2D 필드 칸의 정사각형(#cwrap) 밖 빈 곳 = 외야석 · 파울 지역: 누르면 기록하고, 그 자리 공 · 탭 표시를 그린다 ──
+// 캔버스(#fldOut)는 칸 전체를 덮고 #cwrap 아래에 깔린다. 그리기는 drawDot 그대로(hCtx 를 잠깐 바꿔 FS 좌표로) — 모양 · 필터가 같다
+var _oc=null,_outB=null;   // _outB = 필드 칸 안쪽 [좌, 위, 우, 아래] (FS 좌표, 공 반지름만큼 줄임)
+function _outCanvas(){
+  var w=document.getElementById('cwrap'),fw=w&&w.parentElement;
+  if(!fw||!fC)return null;
+  if(!_oc){
+    _oc=document.createElement('canvas');_oc.id='fldOut';_oc.setAttribute('aria-hidden','true');
+    _oc.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;cursor:crosshair';
+    _oc.addEventListener('click',function(e){var r=fC.getBoundingClientRect();if(r.width)onFClick({clientX:e.clientX,clientY:e.clientY,rect:r,sx:FS/r.width,sy:FS/r.height});});
+    var ro=new ResizeObserver(function(){safeRender();});ro.observe(fw);ro.observe(w);   // 칸 · 정사각형 어느 쪽이 바뀌어도 다시 그린다
+  }
+  if(_oc.parentNode!==fw)fw.insertBefore(_oc,w);
+  return _oc;
+}
+function _outRender(){
+  var c=_outCanvas();if(!c)return;
+  var fw=c.parentNode,W=fw.clientWidth,H=fw.clientHeight,d=DPR||1,ctx=c.getContext('2d');
+  if(c.width!==Math.round(W*d)||c.height!==Math.round(H*d)){c.width=Math.round(W*d);c.height=Math.round(H*d);}
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,c.width,c.height);
+  var a=fw.getBoundingClientRect(),b=fC.getBoundingClientRect(),k=b.width/FS,M=12;
+  if(!W||!k){_outB=null;return;}
+  var ox=b.left-a.left-fw.clientLeft,oy=b.top-a.top-fw.clientTop;
+  _outB=[(14-ox)/k,(14-oy)/k,(W-14-ox)/k,(H-14-oy)/k];
+  ctx.setTransform(d*k,0,0,d*k,d*ox,d*oy);
+  var out=function(p){return p[0]<M||p[1]<M||p[0]>FS-M||p[1]>FS-M;};   // 정사각형 밖에 걸친 것만(안쪽은 hitCanvas 가 그린다)
+  var list=AS.abs;
+  if(AS.batterFilter&&AS.batter)list=list.filter(a=>a.bid===AS.batter.id);
+  if(AS.teamFilter)list=list.filter(a=>(a.team||'home')===AS.teamFilter);
+  var keep=hCtx;hCtx=ctx;
+  try{list.forEach(function(r){if(r.x&&(r.fa||r.ov)&&out(_fieldPx(r)))drawDot(r);});}finally{hCtx=keep;}
+  if(_tp&&out([_tp.x,_tp.y])){   // 탭 표시(_tpMarker 와 같은 점선 고리)
+    ctx.save();ctx.setLineDash([4,3]);ctx.beginPath();ctx.arc(_tp.x,_tp.y,12,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  }
 }
 
 function updateAll(){renderLP();renderMob();renderRecs();updStats();safeRender();updBatterStat();if(document.getElementById('pnl-chart')&&document.getElementById('pnl-chart').classList.contains('on'))updCharts();scheduleAutoSave();_gameSaved=false;_updateSaveUI(AS.abs.length>0);checkSaveReminder();if(window.cloudAutoSyncRecord)cloudAutoSyncRecord();_trackFirstRecordGA();}
@@ -5358,7 +5426,7 @@ function _restoreAbsFromPayload(payloadAbs){
     bats:a.ba||'R',
     team:a.t||'home',
     res:a.r, pt:a.p, zone:a.z, rbi:a.b||0,
-    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined, ov:a.ov>0&&a.ov<=_OV_MAX?+a.ov:undefined,
+    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined, ov:a.ov>0&&a.ov<=_OV_LIM?+a.ov:undefined,
     ev:a.ev!=null?a.ev:null,
     inn:a.i||'1회초',
     ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),

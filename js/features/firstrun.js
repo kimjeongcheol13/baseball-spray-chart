@@ -23,14 +23,15 @@ function _tapAt(e) {
     const rect = e.rect || fC.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     const fx = (e.clientX - rect.left) / rect.width, fy = (e.clientY - rect.top) / rect.height;
-    const sp = _coneToSemi(_fieldGeo(FS), fx * FS, fy * FS);
+    // 파울 지역 · 펜스 뒤도 같은 흐름(core onFClick 과 같은 _coneToSemiAll) · 3D 는 계산한 저장 좌표(e.sp)를 그대로
+    const sp = e.sp || _coneToSemiAll(_fieldGeo(FS), fx * FS, fy * FS);
     if (!sp) return null;
     // 방향 · 추정 거리: core onFClick 과 같은 계산 (표시용)
     const d = sp.deg, dir = d < 54 ? 'LF' : d < 78 ? 'LC' : d < 102 ? 'CF' : d < 126 ? 'RC' : 'RF';
     const st = STADIUMS[_AS().stadium] || STADIUMS.standard;
     const lf = st.lfDist, cf = st.cfDist, rf = st.rfDist;
     const wall = { LF: lf, LC: (lf + cf) / 2, CF: cf, RC: (cf + rf) / 2, RF: rf }[dir];
-    return { fx, fy, sub: `${dir} · ${Math.round(sp.dist * wall)}m` };
+    return { fx, fy, sp: e.sp || null, sub: `${dir} · ${Math.round(sp.dist * wall)}m` };
   } catch (e) { return null; }
 }
 
@@ -38,7 +39,7 @@ function _tapAt(e) {
 function _continue(at, orig) {
   let r = fC.getBoundingClientRect();
   if (!r.width) r = { left: 0, top: 0, width: FS, height: FS };   // 3D 보기(2D 필드 숨김)에서 찍은 경우: 캔버스 좌표 그대로
-  orig({ clientX: r.left + at.fx * r.width, clientY: r.top + at.fy * r.height, rect: r, sx: FS / r.width, sy: FS / r.height });
+  orig({ clientX: r.left + at.fx * r.width, clientY: r.top + at.fy * r.height, rect: r, sx: FS / r.width, sy: FS / r.height, sp: at.sp });
 }
 // 타자를 고르면 샘플 버튼 숨김 · NOW BATTING 줄 등으로 필드 크기가 다시 계산될 수 있다 (record/scorebook 의 80ms 지연 resize 포함)
 // → 필드 폭이 몇 프레임 그대로일 때 이어서 연다. 먼저 열면 결과 팝업이 옛 크기 자리에 남고 탭 표시가 지워진다
@@ -216,7 +217,7 @@ function _hookFieldTap() {
     // 결과 팝업 열림(탭=취소) · 다른 창 열림 · 타자 있음 → 기존 흐름 그대로
     if (window._tp || document.querySelector('.overlay.show') || _AS().batter) return orig.apply(this, arguments);
     const at = _tapAt(e);
-    if (!at) return orig.apply(this, arguments);   // 파울 지역 · 펜스 밖: 기존 처리
+    if (!at) return orig.apply(this, arguments);   // 홈 뒤: 기존 처리
     if (_gfOn() && _gfAuto()) {
       const kb = document.activeElement === fC;   // 키보드로 입력했으면 결과 팝업 첫 버튼으로 포커스
       _afterLayout(() => {

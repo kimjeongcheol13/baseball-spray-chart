@@ -119,6 +119,7 @@
     var at = { bubbles: true, clientX: rw.left - 30, clientY: rw.top + (g.cy - 0.7 * g.R) * k };
     o.dispatchEvent(new MouseEvent('click', at));
     ok(window._tp && !pop.hidden, '열림 ' + JSON.stringify({ ov: (document.querySelector('.overlay.show') || {}).id, p: window.AS.pending, top: (document.elementFromPoint(at.clientX, at.clientY) || {}).id }));
+    for (var i = 0; i < 40 && window._tp && window._tp.t == null; i++) await T.sleep(50);   // _tp.t 는 그려진 뒤(rAF) 찍힌다 — 하네스에서는 늦을 때가 있다
     await T.sleep(500);   // 막 열린 팝업은 _TP_HOLD(400ms) 동안 필드 탭을 무시한다
     o.dispatchEvent(new PointerEvent('pointerdown', at));
     o.dispatchEvent(new MouseEvent('click', at));

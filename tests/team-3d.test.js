@@ -47,7 +47,7 @@
   });
 
   test('위치 규칙: 가운데 → 중견 방향(x≈0, z<0) · 펜스 너머 홈런은 펜스(105) 밖', async function () {
-    var m = await import('/js/features/spray3d.js?v=6');
+    var m = await import('/js/features/spray3d.js?v=7');
     var cf = m.toField(0.5, 0.3, false), hr = m.toField(0.5, 0.0, true);
     ok(Math.abs(cf[0]) < 1e-6 && cf[1] < 0, '중견 — ' + cf);
     ok(Math.hypot(hr[0], hr[1]) > 105, '홈런 — ' + hr);

@@ -52,7 +52,7 @@
     window.ana3dView('3d');
     var s = await el3d('#tA3 spray-field-3d', '_balls'), z = await el3d('#tZ3 pitch-zone-3d', '_pts'), g = await el3d('#tG3 pitch-zone-3d', '_grid');
     ok(s && z && g, '3D 요소 없음');
-    m3 = await import('/js/features/spray3d.js?v=6');
+    m3 = await import('/js/features/spray3d.js?v=7');
     eq(s._balls.map(function (b) { return b.k; }), ['out', 'hit', 'xbh', 'hr'], '타구 종류');
     var want = { out: ABS[3], hit: ABS[0], xbh: ABS[2] };
     s._balls.forEach(function (b) {
@@ -94,6 +94,11 @@
     // 내야 관중석(라인에서 9m 부터 3.2m 씩 계단) 위 파울: 라인 따라 거리는 그대로, 라인에서 거리는 그 줄 한가운데(15 → 2번째 줄 9 + 3.2 × 1.5)
     var sx = m3.fromField(-45 * Math.SQRT1_2, -15 * Math.SQRT1_2, R), q = m3.toField(sx.x, sx.y, false, R, sx.fa);
     eq([Math.SQRT1_2 * -(q[0] + q[1]), Math.SQRT1_2 * (q[1] - q[0])].map(function (v) { return Math.round(v * 10) / 10; }), [30, 13.8], '관중석 파울 (라인 따라, 라인에서)');
+    // 외야석: 저장 x · y 는 펜스 위 그대로 + ov(펜스 뒤 m, 최대 29.5) → 누른 줄 한가운데(펜스 + 2.5 + 4.5 × (줄 + .5))에 다시 그린다
+    var st = m3.fromField(0, -(122 + 10), R), d3 = function (p) { return Math.round(Math.hypot(p[0], p[1]) * 100) / 100; };
+    ok(near(st, 0.5, 0.03) && st.ov === 10 && !st.fa, '중견 외야석 10m → 펜스 위 + ov ' + JSON.stringify(st));
+    eq(far.ov, 29.5, '외야석 끝 너머 → ov 최대');
+    eq([d3(m3.toField(st.x, st.y, false, R, 0, st.ov)), d3(m3.toField(st.x, st.y, true, R)), d3(m3.toField(st.x, st.y, false, R))], [131.25, 126.75, 120], '외야석 2번째 줄 · ov 없는 펜스 홈런 = 첫 줄 · 홈런 아님 = 펜스 앞');
   });
 
   test('코스 3D: 2D 에서 고른 구역 · 점을 읽고, 3D 에서 끌어 고르면 setPitchPick({ a, b }) 로 넘긴다', async function () {

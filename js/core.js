@@ -125,11 +125,15 @@ function _phiToDeg(phi){
   return _FZ_DEG[i]+(p-_FZ_PHI[i])/18*(_FZ_DEG[i+1]-_FZ_DEG[i]);
 }
 // 저장 좌표 → 화면 좌표. fa = 파울 타구가 파울라인 밖으로 벗어난 각도(°, 3D 에서 찍은 타구만 — x,y,deg 는 라인 위)
+// ov = 3D 외야석에 찍은 타구가 펜스 뒤로 몇 m 인지(x,y 는 펜스 위). 2D 에는 관중석이 없어 그 깊이(최대 _OV_MAX)를 펜스 밖 6% 안에 줄여 그린다
+//   (펜스 밖 홈런이 그려지던 범위 · spray3d toField 가 이 비율을 다시 외야석 깊이로 늘린다)
 // dy 는 -0 으로 자른다: 왼쪽 파울라인 타구는 y 가 반올림으로 정확히 1 이 되기도 하는데(+0) 그러면 atan2 가 오른쪽(360°)으로 읽는다
-function _semiToCone(g,x,y,fa){
+var _OV_MAX=29.5;   // = spray3d 외야석 깊이(BL.gap + BL.d × BL.n, m)
+function _semiToCone(g,x,y,fa,ov){
   var dx=x-.5,dy=Math.min(y-1,-0);
   var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;
   var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);
+  if(ov>0)frac=Math.max(frac,1+.06*Math.min(ov/_OV_MAX,1));
   var phi=_degToPhi(deg),r=frac*_fenceR(g,phi);
   if(fa>0)phi+=(phi<2*_FQ?-fa:fa)*Math.PI/180;
   return _conePt(g,phi,r);
@@ -156,7 +160,7 @@ function _coneSectorPath(ctx,g,deg1,deg2,r1,r2){
   ctx.closePath();
 }
 // 저장 좌표 → 기록 필드 기준 비율 [x,y] (heatmap.js·shell.js 등 외부 모듈용)
-function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y,a.fa);}
+function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y,a.fa,a.ov);}
 window._fieldPos=_fieldPos;
 // 저장 좌표 → 기록 필드 캔버스 px
 function _fieldPx(a){var p=_fieldPos(a);return [p[0]*FS,p[1]*FS];}
@@ -1280,6 +1284,7 @@ function onFClick(e){
   clearTimeout(_ftLabelTimer);
   AS.pending={x:sp.x,y:sp.y,deg,dir,ft:estFt};
   if(sp.fa)AS.pending.fa=sp.fa;
+  if(sp.ov)AS.pending.ov=sp.ov;
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
     var res=AS.pendingQuickRes,_lk=AS._pendLink;
@@ -1473,6 +1478,7 @@ function recHit(res){
   var _laType=_la===null?null:(_la<10?'땅볼':_la<25?'라인드라이브':'플라이볼');
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:_abOuts()},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
   if(AS.pending.fa)r.fa=AS.pending.fa;   // 파울 타구: 파울라인 밖 각도(°) — 그리는 쪽(_semiToCone)만 쓴다
+  if(AS.pending.ov)r.ov=AS.pending.ov;   // 외야석 타구: 펜스 뒤 m — 그리는 쪽만 쓴다
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
@@ -1634,7 +1640,7 @@ function _drawMiniSpray(canvas, abs){
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.stroke();
   abs.forEach(function(a){
     if(a.x==null||a.y==null)return;
-    var q=_semiToCone(g,a.x,a.y,a.fa),x=q[0],y=q[1];
+    var q=_semiToCone(g,a.x,a.y,a.fa,a.ov),x=q[0],y=q[1];
     var col=RC[a.res]||'#94a3b8';
     var out=a.res.indexOf('아웃')!==-1||a.res==='삼진';
     ctx.beginPath();ctx.arc(x,y,out?2:3,0,Math.PI*2);
@@ -5192,7 +5198,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,fa:a.fa,t:a.team,ba:_batsOf(a),tm:a.ts||'',
+      ft:a.ft,fa:a.fa,ov:a.ov,t:a.team,ba:_batsOf(a),tm:a.ts||'',
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -5213,7 +5219,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
       x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
-      ft:a.ft,fa:a.fa,t:a.team,ba:_batsOf(a),
+      ft:a.ft,fa:a.fa,ov:a.ov,t:a.team,ba:_batsOf(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
     };})
   };
@@ -5352,7 +5358,7 @@ function _restoreAbsFromPayload(payloadAbs){
     bats:a.ba||'R',
     team:a.t||'home',
     res:a.r, pt:a.p, zone:a.z, rbi:a.b||0,
-    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined,
+    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined, ov:a.ov>0&&a.ov<=_OV_MAX?+a.ov:undefined,
     ev:a.ev!=null?a.ev:null,
     inn:a.i||'1회초',
     ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
@@ -7098,7 +7104,7 @@ function _cardField(ctx,cx,cy,S,abs,dots){
   ctx.restore();
 
   var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
-  var pos=function(a){return _semiToCone(g,a.x,a.y,a.fa);};
+  var pos=function(a){return _semiToCone(g,a.x,a.y,a.fa,a.ov);};
   if(dots){ // 시즌 카드: 작은 점 (안타 빨강, 아웃 잉크 ×)
     pts.forEach(function(p){
       var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;
@@ -8235,7 +8241,7 @@ function _drawConeMini(ctx,w,h,abs,opt){
   var hits=['안타','내야안타','2루타','3루타','홈런'];
   (abs||[]).forEach(function(a){
     if(a.x==null||a.y==null)return;
-    var q=_semiToCone(g,a.x,a.y,a.fa);
+    var q=_semiToCone(g,a.x,a.y,a.fa,a.ov);
     var col=opt.color?opt.color(a):(_MINI_COL[a.res]||'#94a3b8');
     var out=opt.isOut?opt.isOut(a):hits.indexOf(a.res)===-1;
     ctx.beginPath();ctx.arc(q[0],q[1],out?r*.6:r,0,Math.PI*2);

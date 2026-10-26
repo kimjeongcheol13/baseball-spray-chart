@@ -1,11 +1,11 @@
 // 3D 방향도 — 분석 › 팀 '팀 타구 방향'의 3D 보기 (<spray-field-3d>)
 //   three.js 는 랜딩과 같은 vendor 파일. team.js 가 3D 를 처음 누를 때만 이 모듈을 불러온다(2D 만 쓰면 내려받지 않음)
-//   el.update({ balls: [{ x, y, k }], board: [윗줄, 큰 줄], dist: [좌, 중, 우] })
-//     x,y = 저장 좌표(홈 0.5,1 · 펜스 반지름 .97) · k = sbPaint.kindOf (hit | xbh | hr | out, 그 밖은 그리지 않음)
+//   el.update({ balls: [{ x, y, k, fa }], board: [윗줄, 큰 줄], dist: [좌, 중, 우] })
+//     x,y = 저장 좌표(홈 0.5,1 · 펜스 반지름 .97) · k = sbPaint.kindOf (hit | xbh | hr | out, 그 밖은 그리지 않음) · fa = 파울 타구가 파울라인 밖으로 벗어난 각도(°, 없으면 라인 안)
 //   위치는 2D 방향도와 같은 규칙(core _semiToCone): 각도는 _degToPhi, 거리는 '펜스까지 비율' → 3D 펜스 기준
 //   펜스는 dist(좌 · 중 · 우 m)대로 휜다(core _fenceR 와 같은 모양, 실제 m). dist 가 바뀌면 구장을 다시 짓는다 · 없으면 105m 원
 //   끌기 = 돌리기 · 두 손가락 / Ctrl+휠 = 확대 · 두 번 누르기 = 처음 시점
-//   el.tappable = true(기록 탭)면 짧게 누른 자리를 저장 좌표로 바꿔 'fieldtap' 이벤트(detail { x, y, px, py })를 보낸다 · el.mark({ x, y } | null) = 찍은 자리 고리
+//   el.tappable = true(기록 탭)면 짧게 누른 자리를 저장 좌표로 바꿔 'fieldtap' 이벤트(detail { x, y, deg, dist, fa?, px, py })를 보낸다 · el.mark({ x, y, fa } | null) = 찍은 자리 고리
 //   다시 그려도 같은 요소를 옮겨 붙이면 장면을 새로 만들지 않는다(WebGL 컨텍스트 1개)
 //   <pitch-zone-3d> (아래) = 투구 코스 3D — 같은 돌리기 · 확대 · 그리기를 물려받고 장면 · 카메라 범위만 다르다
 import * as THREE from '../landing/vendor/three.module.js';
@@ -16,6 +16,7 @@ const FENCE = 105;
 const S2 = Math.SQRT1_2;
 const STAND = { off: 9, d: 3.2, n: 9, h0: 1.4, dh: 1.0 };   // 내야 관중석 계단
 const BL = { gap: 2.5, d: 4.5, n: 6, h0: 3.6, dh: 1.4 };    // 외야석 계단 (펜스 뒤 gap 부터)
+const DUG = { along: 24, len: 15, mid: STAND.off + 0.6, d: 2.2, h: 1.6 };   // 더그아웃: 홈에서 라인 따라 가운데 · 길이 · 라인에서 가운데 · 폭 · 높이
 const EYE = 0.075;                                           // 중앙 백스크린 반각(rad)
 const KINDS = ['out', 'hit', 'xbh', 'hr'];                   // 그리는 순서 = 겹칠 때 위로 오는 순서 (2D 와 같음)
 const Q = Math.PI / 4;                                       // 좌측 폴 각도 (core _FQ) · 중앙 2Q · 우측 폴 3Q
@@ -35,31 +36,46 @@ export function fenceFn(dist) {
 const ROUND = fenceFn();
 
 // 저장 좌표 → 필드 [x, z] (m, 홈 = 원점 · 중견 = -z). 펜스 밖 홈런은 외야석 계단 한가운데, 그 밖의 타구는 펜스 안쪽에 놓는다
-export function toField(x, y, hr, R = ROUND) {
-  const dx = x - 0.5, dy = Math.min(y - 1, 0);
+// fa > 0 = 파울 타구: 라인 위 자리에서 파울라인 밖으로 fa° 돌린다. 내야 관중석 위면 외야석 홈런처럼 그 줄 한가운데(기호가 다음 줄 계단에 가리지 않게)
+// dy 를 -0 으로 자르는 이유 = core _semiToCone (왼쪽 라인 y = 1 → 오른쪽으로 읽힘)
+export function toField(x, y, hr, R = ROUND, fa = 0) {
+  const dx = x - 0.5, dy = Math.min(y - 1, -0);
   const deg = (Math.atan2(dy, dx) + Math.PI) * 180 / Math.PI;
   const phi = typeof _degToPhi === 'function' ? _degToPhi(deg) : (45 + deg / 2) * Math.PI / 180;
   const F = R(phi), s0 = F + BL.gap;
-  let r = Math.min(Math.hypot(dx, dy) / 0.97, 1.06) * F;
+  let r = Math.min(Math.hypot(dx, dy) / 0.97, 1.06) * F, p = phi;
   if (hr && r > F) r = s0 + BL.d * (Math.min(BL.n - 1, Math.floor(Math.max(0, r - s0) / BL.d)) + 0.5);
   else r = Math.min(r, F - 2);
-  return [-r * Math.cos(phi), -r * Math.sin(phi)];
+  if (fa > 0) {
+    const along = r * Math.cos(fa * Math.PI / 180), row = Math.floor((r * Math.sin(fa * Math.PI / 180) - STAND.off) / STAND.d);
+    const side = row >= 0 && along <= Math.max(R(Q), R(3 * Q)) + 7 ? STAND.off + STAND.d * (Math.min(STAND.n - 1, row) + 0.5) : r * Math.sin(fa * Math.PI / 180);
+    r = Math.hypot(along, side); p += (phi < 2 * Q ? -1 : 1) * Math.atan2(side, along);
+  }
+  return [-r * Math.cos(p), -r * Math.sin(p)];
 }
-// 필드 [x, z] → 저장 좌표. core _coneToSemi 와 같은 규칙: 파울 지역(라인 밖 3° 넘게) · 펜스 8% 넘게 밖이면 null, 펜스 너머는 펜스 위로
+// 필드 [x, z] → 저장 좌표 { x, y, deg, dist, fa? }. core _coneToSemi 와 같은 식이지만 3D 는 파울 지역 · 관중석도 찍힌다(홈 뒤만 null):
+//   x,y,deg 는 파울라인 사이 · 펜스(.97)까지라서(방향 · 거리 통계는 그대로) 파울 지역은 가까운 파울라인 위 + fa = 라인 밖 각도(°),
+//   펜스 너머(관중석)는 펜스 위로
 export function fromField(x, z, R = ROUND) {
   if (z > 0) return null;
-  let phi = Math.atan2(-z, -x);
-  const tol = Math.PI / 60;
-  if (phi < Q - tol || phi > 3 * Q + tol) return null;
-  phi = Math.max(Q, Math.min(3 * Q, phi));
+  const raw = Math.atan2(-z, -x), phi = Math.max(Q, Math.min(3 * Q, raw));
   const frac = Math.hypot(x, z) / R(phi);
-  if (frac > 1.08) return null;
   const deg = typeof _phiToDeg === 'function' ? _phiToDeg(phi) : (phi * 180 / Math.PI - 45) * 2;
   const a = deg * Math.PI / 180 - Math.PI, d = Math.min(frac, 1) * 0.97;
-  return { x: 0.5 + Math.cos(a) * d, y: 1 + Math.sin(a) * d };
+  const s = { x: 0.5 + Math.cos(a) * d, y: 1 + Math.sin(a) * d, deg, dist: d };
+  const fa = Math.round(Math.abs(raw - phi) * 1800 / Math.PI) / 10;
+  if (fa) s.fa = fa;
+  return s;
 }
+// 그 자리 높이: 외야석(펜스 뒤 gap 부터) · 내야 관중석(파울라인 밖 STAND.off 부터, 라인 따라 폴 + 7m 까지) · 더그아웃 위면 그 높이, 아니면 땅
 const groundY = (x, z, R) => {
-  const s = Math.hypot(x, z) - R(Math.atan2(-z, -x)) - BL.gap;
+  const r = Math.hypot(x, z), phi = Math.atan2(-z, -x), out = Math.max(Q - phi, phi - 3 * Q);
+  if (out > 0) {
+    const side = r * Math.sin(out), along = r * Math.cos(out), s = side - STAND.off;
+    if (Math.abs(along - DUG.along) <= DUG.len / 2 && Math.abs(side - DUG.mid) <= DUG.d / 2) return DUG.h;
+    return s < 0 || along > Math.max(R(Q), R(3 * Q)) + 7 ? 0 : STAND.h0 + STAND.dh * Math.min(STAND.n - 1, Math.floor(s / STAND.d));
+  }
+  const s = r - R(phi) - BL.gap;
   return s < 0 ? 0 : BL.h0 + BL.dh * Math.min(BL.n - 1, Math.floor(s / BL.d));
 };
 
@@ -266,8 +282,7 @@ function build(R) {
   });
   add(ringSector(back - 0.6, back, Math.PI * 1.25, Math.PI * 1.75, 1.4), M.rim, { y: top });
   [-1, 1].forEach((sgn) => {   // 더그아웃
-    const along = 24, mid = STAND.off + 0.6;
-    add(slab(2.2, 15, 1.6).rotateY(sgn * 3 * Math.PI / 4).translate(sgn * (along + mid) * S2, 0, -(along - mid) * S2), [M.roof, M.dugout]);
+    add(slab(DUG.d, DUG.len, DUG.h).rotateY(sgn * 3 * Math.PI / 4).translate(sgn * (DUG.along + DUG.mid) * S2, 0, -(DUG.along - DUG.mid) * S2), [M.roof, M.dugout]);
   });
 
   // 외야석(펜스 뒤를 따라 휜다) + 가운데 어두운 백스크린
@@ -350,7 +365,7 @@ class SprayField3D extends HTMLElement {
   update(d) {
     this._dist = d.dist || [];
     this._R = fenceFn(this._dist);
-    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr', this._R) }));
+    this._balls = (d.balls || []).filter((b) => KINDS.includes(b.k)).map((b) => ({ k: b.k, p: toField(b.x, b.y, b.k === 'hr', this._R, b.fa) }));
     this._board = d.board || ['', ''];
     this._got = true;
     if (this._ready) this._apply();
@@ -393,10 +408,13 @@ class SprayField3D extends HTMLElement {
     const rc = new THREE.Raycaster(); rc.setFromCamera(v, this._camera);
     return rc.ray.intersectPlane(plane, new THREE.Vector3());
   }
-  // 짧게 누름: 땅에서 그 자리 → 저장 좌표 → 'fieldtap' (파울 지역 · 펜스 한참 밖은 2D 처럼 무시)
+  // 짧게 누름: 누른 자리 → 저장 좌표 → 'fieldtap' (파울 지역 = 파울라인 위 + fa · 관중석 = 펜스 위, fromField)
+  // 관중석은 땅보다 높아서 땅 평면만 보면 실제보다 멀리 잡힌다 → 그 자리 계단 높이(groundY) 평면으로 몇 번 다시 맞춘다
   _tap(e) {
     if (!this.tappable) return;
-    const p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)), s = p && fromField(p.x, p.z, this._R);
+    let p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+    for (let i = 0; i < 3 && p; i++) p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), -groundY(p.x, p.z, this._R))) || p;
+    const s = p && fromField(p.x, p.z, this._R);
     if (!s) return;
     const r = this.getBoundingClientRect();
     this.dispatchEvent(new CustomEvent('fieldtap', { detail: { ...s, px: e.clientX - r.left, py: e.clientY - r.top } }));
@@ -509,8 +527,8 @@ class SprayField3D extends HTMLElement {
     if (this._pinMesh) this._scene.remove(this._pinMesh);
     if (this._pin) {
       this._pinMesh = this._pinMesh || new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.32, 8, 40).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
-      const [x, z] = toField(this._pin.x, this._pin.y, false, this._R);
-      this._pinMesh.position.set(x, 0.35, z); this._scene.add(this._pinMesh);
+      const [x, z] = toField(this._pin.x, this._pin.y, false, this._R, this._pin.fa);
+      this._pinMesh.position.set(x, groundY(x, z, this._R) + 0.35, z); this._scene.add(this._pinMesh);
     }
     this._dirty = true;
   }

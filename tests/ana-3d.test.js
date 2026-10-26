@@ -52,7 +52,7 @@
     window.ana3dView('3d');
     var s = await el3d('#tA3 spray-field-3d', '_balls'), z = await el3d('#tZ3 pitch-zone-3d', '_pts'), g = await el3d('#tG3 pitch-zone-3d', '_grid');
     ok(s && z && g, '3D 요소 없음');
-    m3 = await import('/js/features/spray3d.js?v=4');
+    m3 = await import('/js/features/spray3d.js?v=5');
     eq(s._balls.map(function (b) { return b.k; }), ['out', 'hit', 'xbh', 'hr'], '타구 종류');
     var want = { out: ABS[3], hit: ABS[0], xbh: ABS[2] };
     s._balls.forEach(function (b) {
@@ -71,14 +71,29 @@
     eq(localStorage.getItem('sl_ana_3d'), '1', '기억');
   });
 
-  test('펜스 = 구장 거리(좌 · 중 · 우) · 땅 → 저장 좌표는 2D 와 같은 규칙(파울 · 펜스 한참 밖 = null)', function () {
+  test('펜스 = 구장 거리(좌 · 중 · 우) · 땅 → 저장 좌표(파울 지역 = 파울라인 위 + fa · 관중석 = 펜스 위 · 홈 뒤 = null)', function () {
     var R = m3.fenceFn([98, 122, 95]), Q = Math.PI / 4;
     eq([R(Q), R(2 * Q), R(3 * Q)].map(Math.round), [98, 122, 95], '좌 · 중 · 우');
     [[0.5, 0.3], [0.2, 0.6], [0.75, 0.5], [0.5, 0.9]].forEach(function (p) {
       var f = m3.toField(p[0], p[1], false, R), b = m3.fromField(f[0], f[1], R);
       ok(b && Math.abs(b.x - p[0]) < 0.01 && Math.abs(b.y - p[1]) < 0.01, '왕복 ' + p + ' → ' + JSON.stringify(b));
     });
-    eq([m3.fromField(-50, 10, R), m3.fromField(0, -200, R), m3.fromField(60, -5, R)], [null, null, null], '홈 뒤 · 펜스 밖 · 파울');
+    eq(m3.fromField(-50, 10, R), null, '홈 뒤');
+    var near = function (b, x, y) { return b && Math.abs(b.x - x) < 0.01 && Math.abs(b.y - y) < 0.01; };
+    var far = m3.fromField(0, -200, R), f3 = m3.fromField(-50, -5, R), f1 = m3.fromField(60, -5, R);
+    ok(near(far, 0.5, 0.03) && !far.fa, '중견 관중석 → 중앙 펜스 ' + JSON.stringify(far));
+    ok(near(f3, 0.5 - 0.97 * Math.hypot(50, 5) / 98, 1) && f3.deg === 0 && f3.fa === 39.3, '3루 쪽 파울 → 좌측 파울라인 + fa ' + JSON.stringify(f3));
+    ok(near(f1, 0.5 + 0.97 * Math.hypot(60, 5) / 95, 1) && f1.deg === 180 && f1.fa === 40.2, '1루 쪽 파울 → 우측 파울라인 + fa ' + JSON.stringify(f1));
+    // 파울 잔디는 누른 자리 그대로 다시 그린다 — 홈 가까운 3루 쪽 파울은 y 가 반올림으로 정확히 1(예전엔 1루 쪽으로 그려졌다)
+    var s3 = m3.fromField(-15, -10, R);
+    eq(s3.y, 1, '가까운 3루 쪽 파울 y');
+    [[-30, -20], [40, -30], [-15, -10]].forEach(function (c) {
+      var s = m3.fromField(c[0], c[1], R), p = m3.toField(s.x, s.y, false, R, s.fa);
+      ok(Math.abs(p[0] - c[0]) < 0.3 && Math.abs(p[1] - c[1]) < 0.3, '파울 왕복 ' + c + ' → ' + p.map(Math.round));
+    });
+    // 내야 관중석(라인에서 9m 부터 3.2m 씩 계단) 위 파울: 라인 따라 거리는 그대로, 라인에서 거리는 그 줄 한가운데(15 → 2번째 줄 9 + 3.2 × 1.5)
+    var sx = m3.fromField(-45 * Math.SQRT1_2, -15 * Math.SQRT1_2, R), q = m3.toField(sx.x, sx.y, false, R, sx.fa);
+    eq([Math.SQRT1_2 * -(q[0] + q[1]), Math.SQRT1_2 * (q[1] - q[0])].map(function (v) { return Math.round(v * 10) / 10; }), [30, 13.8], '관중석 파울 (라인 따라, 라인에서)');
   });
 
   test('코스 3D: 2D 에서 고른 구역 · 점을 읽고, 3D 에서 끌어 고르면 setPitchPick({ a, b }) 로 넘긴다', async function () {

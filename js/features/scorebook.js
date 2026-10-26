@@ -315,7 +315,7 @@ function paperMiniSpray(canvas, abs) {
   ctx.fillStyle = T.grass; ctx.fill(); ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5; ctx.stroke();
   abs.forEach(a => {
     if (a.x == null || a.y == null) return;
-    const q = _semiToCone(g, a.x, a.y);
+    const q = _semiToCone(g, a.x, a.y, a.fa);
     drawMark(ctx, kindOf(a.res), q[0], q[1], 3.4, T);
   });
 }
@@ -451,7 +451,7 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=4').then(() => {
+  import('./spray3d.js?v=5').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
     if (!_f3d) {
       _f3d = document.createElement('spray-field-3d');
@@ -463,7 +463,7 @@ function _paint3d() {
     const AS = _AS(), list = _field3dList(), st = _fieldGeo(1).st;
     const who = _f3k === 'batter' ? (AS.batter ? AS.batter.name : '타자 미선택') : _F3TABS.find(t => t[0] === _f3k)[1];
     _f3d.update({
-      balls: list.map(a => ({ x: a.x, y: a.y, k: kindOf(a.res) })),
+      balls: list.map(a => ({ x: a.x, y: a.y, fa: a.fa, k: kindOf(a.res) })),
       board: [`${_inn().label} · ${who}`, `안타 ${list.filter(a => HITS.includes(a.res)).length} · 타구 ${list.length}`],
       dist: [st.lfDist, st.cfDist, st.rfDist],
     });
@@ -473,9 +473,10 @@ const _popOpen = () => !!window._tp || !!document.querySelector('#batPick:not([h
 // 3D 에서 누른 자리 → 2D 와 같은 기록. 누르는 순간 팝업이 열려 있었으면 2D 처럼 닫기만 (바깥 누름으로 이미 닫혔다)
 function _tap3d(d) {
   if (_f3pop || _fv !== '3d' || typeof window.onFClick !== 'function' || !FS) return;
-  const p = _semiToCone(_fieldGeo(FS), d.x, d.y);
+  const p = _semiToCone(_fieldGeo(FS), d.x, d.y, d.fa);
   _f3at = [d.px, d.py];
-  window.onFClick({ clientX: p[0], clientY: p[1], rect: { left: 0, top: 0, width: FS, height: FS }, sx: 1, sy: 1 });
+  // 파울 지역(d.fa)은 2D 부채꼴 밖이라 onFClick 의 _coneToSemi 가 버린다 → 3D 가 계산한 저장 좌표를 그대로 넘긴다
+  window.onFClick({ clientX: p[0], clientY: p[1], rect: { left: 0, top: 0, width: FS, height: FS }, sx: 1, sy: 1, sp: d.fa ? d : null });
   _place3d();
   if (_f3d && _popOpen()) _f3d.mark(d);
 }

@@ -95,6 +95,31 @@
     window.AS.pending = null;
   });
 
+  test('3D 파울 지역을 누르면 누른 자리 그대로 — x,y,deg,dir 는 파울라인 위(통계 그대로) + fa · 2D · 3D · 공유 링크도 그 자리', async function () {
+    var e = await el3d(), pop = $('tapPop'), n = window.AS.abs.length, g = _fieldGeo(1);
+    window.AS.batter = { id: 'p1', name: '가' };
+    window.AS.pending = null;
+    // 3루 쪽 홈 가까운 파울(spray3d fromField 가 주는 모양) — 라인 위 y 는 반올림으로 정확히 1
+    e.dispatchEvent(new CustomEvent('fieldtap', { detail: { x: 0.2, y: 1, deg: 0, dist: 0.3, fa: 20, px: 10, py: 200 } }));
+    ok(window._tp && !pop.hidden, '결과 팝업이 안 열림');
+    eq([window.AS.pending.x, window.AS.pending.y, window.AS.pending.deg, window.AS.pending.dir, window.AS.pending.fa], [0.2, 1, 0, 'LF', 20], '대기 좌표');
+    pop.querySelector('[data-res="플라이 아웃"]').click();
+    await T.sleep(50);
+    var r = window.AS.abs[window.AS.abs.length - 1];
+    eq([window.AS.abs.length - n, r.res, r.dir, r.deg, r.fa], [1, '플라이 아웃', 'LF', 0, 20], '기록');
+    // 2D: 홈 왼쪽 · 파울라인(45°)보다 20° 아래 (y = 1 이어도 1루 쪽으로 가지 않는다)
+    var p = _fieldPos(r), ang = Math.atan2(g.cy - p[1], g.cx - p[0]) * 180 / Math.PI;
+    ok(p[0] < g.cx && Math.abs(ang - 25) < 0.5, '2D 자리 ' + p + ' · ' + ang);
+    ok(_semiToCone(g, 0.2, 1)[0] < g.cx, 'fa 없는 3루 라인 타구(y = 1)도 왼쪽');
+    window.sbRenderNow(); await T.sleep(50);
+    var b = e._balls.find(function (o) { return Math.atan2(-o.p[1], -o.p[0]) * 180 / Math.PI < 44; });
+    ok(b && Math.abs(Math.atan2(-b.p[1], -b.p[0]) * 180 / Math.PI - 25) < 0.5, '3D 자리 ' + JSON.stringify(e._balls.map(function (o) { return o.p.map(Math.round); })));
+    var back = _restoreAbsFromPayload([{ r: '플라이 아웃', x: 0.2, y: 1, d: 0, fa: 20 }, { fa: '<b>' }, { fa: 500 }]);
+    eq(back.map(function (a) { return a.fa; }), [20, null, null], '공유 링크 fa(0~90° 숫자만)');
+    window.AS.abs.splice(n);
+    window.sbRenderNow(); await T.sleep(50);
+  });
+
   test('3D 보기 중 위치를 찍어야 하면(field-tap-pending) 3D 그대로 점선 테두리, 2D 로 돌아가면 팝업도 2D 필드로', function () {
     var fw = document.querySelector('#sbField > .field-wrap');
     fw.classList.add('field-tap-pending');

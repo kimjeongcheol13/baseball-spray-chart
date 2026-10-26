@@ -1,11 +1,11 @@
 // 종이 스코어북(기록지) 테마 — 공통 셸 + 기록 탭 화면
 //   입력·저장·계산은 core.js / record.js / shell.js 그대로 두고, 그 함수만 불러 쓴다 (데이터 구조·저장 좌표 변경 없음).
 //   · 헤더 띠: SPRAYLAB + 라인스코어(TEAM | 1~9 | R H E) + 이닝 ◀ ▶ (#innSel 값 그대로)
-//       이닝별 득점·실책은 저장하지 않으므로 이닝 칸은 비워 두고 R = 현재 스코어, H = 기록된 안타, E = '–'
+//       이닝 칸 = 게임원 가져오기 점수표 또는 경기 운영 모드 득점(runners.js), 없으면 빈칸 · R = 현재 스코어, H = 기록된 안타, E = '–'(실책은 저장 안 함)
 //   · 왼쪽 타순표: 행을 누르면 현재 타자(shellSelectBatter) · NOW BATTING · [라인업 편집] = 기존 라인업 서랍
 //   · 가운데 필드: 기존 캔버스 3겹과 기하(_fieldGeo·_fieldPx) 그대로, 그리는 색·기호만 바꿈
 //       (PNG 내보내기·분석 탭 복사본이 같은 캔버스를 읽으므로 캔버스에 그려야 결과가 같다)
-//   · 오른쪽: 볼카운트(chCount) → 기록 도장 K/BB/HBP(recQuick) → 보조 버튼(recOther) → 타석 기록 + 지우개(undoLast)
+//   · 오른쪽: 볼카운트(chCount) → 기록 도장 K/BB/HBP(recQuick) → 보조 버튼(recOther · 경기 운영 모드면 도루 recSB) → 타석 기록 + 지우개(undoLast)
 import { HITS, esc } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -329,9 +329,11 @@ function _lsHtml() {
   const hits = t => (AS.abs || []).filter(a => (a.team || 'home') === t && HITS.includes(a.res)).length;
   // 이닝 칸 = 경기 정보의 이닝 수(5·7·9, 기본 9) — 연장으로 넘어가면 그만큼 늘림
   const info = window.gameInfo ? window.gameInfo() : { innings: 9, side: 'home' };
-  // 이닝별 득점: 직접 기록하는 경기에는 없다. 게임원 가져오기(gameoneimport.js)가 이닝별 점수표를 붙여넣으면 info.ls = { away: [...], home: [...] }
-  // (값 = 득점 숫자 · 'X'(공격 안 함) · null(진행 안 함)) — 있으면 이닝 칸에 그린다
-  const ls = info.ls && typeof info.ls === 'object' ? info.ls : null;
+  // 이닝별 득점: 게임원 가져오기(gameoneimport.js)가 이닝별 점수표를 붙여넣으면 info.ls = { away: [...], home: [...] }
+  // (값 = 득점 숫자 · 'X'(공격 안 함) · null(진행 안 함)) — 있으면 이닝 칸에 그린다.
+  // 없으면 경기 운영 모드로 적은 타석의 득점(runners.js slLineScore — 같은 모양), 그것도 없으면 빈칸
+  const own = info.ls && typeof info.ls === 'object' ? null : (window.slLineScore ? window.slLineScore(AS.abs || []) : null);
+  const ls = own || (info.ls && typeof info.ls === 'object' ? info.ls : null);
   const lsOf = t => (ls && Array.isArray(ls[t]) ? ls[t] : []);
   const lsCell = (t, n) => { const v = lsOf(t)[n - 1]; return typeof v === 'number' && isFinite(v) ? String(v) : v === 'X' ? 'X' : ''; };
   const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0, lsOf('away').length, lsOf('home').length) }, (_, i) => i + 1);
@@ -339,7 +341,7 @@ function _lsHtml() {
   const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}>${lsCell(t, n)}</td>`).join('')}`
     + `<td class="r">${esc(runs)}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
   // R 칸은 44px 터치 타겟이 안 나와서 점수 수정은 옆 버튼으로 (기존 스코어 수정 팝오버)
-  return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — ${ls ? '이닝별 득점은 가져온 이닝별 점수표 값' : '이닝별 득점은 기록하지 않아 비워 둡니다'}</caption>`
+  return `<div class="sb-ls-wrap"><table class="sb-ls"><caption class="sb-sr">라인스코어 — ${own ? '이닝별 득점은 경기 운영 모드 득점 기록' : ls ? '이닝별 득점은 가져온 이닝별 점수표 값' : '이닝별 득점은 기록하지 않아 비워 둡니다'}</caption>`
     // 윗줄 = 초 공격(원정) 팀: 내 팀이 원정이면 내 팀이 위 (야구 라인스코어 표기)
     + `<thead>${head}</thead><tbody>${info.side === 'away' ? row(th, 'home', AS.hs || 0) + row(ta, 'away', AS.as || 0) : row(ta, 'away', AS.as || 0) + row(th, 'home', AS.hs || 0)}</tbody></table></div>`
     + `<button type="button" class="sb-score-btn" onclick="shellScore(true)" aria-label="스코어 수정">${ICON.pencil}<span>점수</span></button>`;
@@ -541,6 +543,8 @@ function _sideHtml() {
     <section class="sb-aux" role="group" aria-label="그 밖의 결과">
       ${[['희타', 'SH', '희생번트'], ['희비', 'SF', '희생플라이'], ['병살', 'GDP', '병살'], ['내야안타', 'IH', '내야안타']]
         .map(([r, a, l]) => `<button type="button" onclick="recOther('${r}')" aria-label="${l} 기록"><b>${a}</b><span>${l}</span></button>`).join('')}
+      ${gf ? `<button type="button" onclick="recSB(true)" aria-label="도루 기록"><b>SB</b><span>도루</span></button>`
+        + `<button type="button" onclick="recSB(false)" aria-label="도루 실패 기록"><b>CS</b><span>도루실패</span></button>` : ''}
     </section>
     <section class="sb-card sb-pa" aria-label="타석 기록">
       <div class="sb-card-hd"><h2>타석 기록</h2>

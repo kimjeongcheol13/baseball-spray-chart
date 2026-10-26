@@ -1327,7 +1327,8 @@ function onFClick(e){
 
 // ── 키보드로 타구 위치 입력: 방향키 이동(Shift=크게) · Enter/Space 입력 · Esc 취소 ──
 // 입력은 기존 onFClick(마우스·터치와 동일 경로)으로 넘기므로 저장 형식은 그대로
-var _kb={x:0,y:0,on:false,cur:null,live:null,viaKey:false};
+// 부채꼴 밖(파울 지역 · 펜스 뒤)도 마우스 탭과 같이 간다(_coneToSemiAll) — 홈 뒤만 막는다
+var _kb={x:0,y:0,set:false,on:false,cur:null,live:null,viaKey:false};   // set = 첫 키에서 시작 자리를 잡았다 (구석 (0,0)도 갈 수 있어 좌표로는 못 가린다)
 function _kbEls(){
   var w=document.getElementById('cwrap');
   if(!w)return false;
@@ -1345,8 +1346,8 @@ function _kbEls(){
 function _kbSay(msg){if(_kbEls()){_kb.live.textContent='';setTimeout(function(){_kb.live.textContent=msg;},30);}}
 function _kbDescribe(sp){
   var d=sp.deg,n=d<54?'좌익수':d<78?'좌중간':d<102?'중견수':d<126?'우중간':'우익수';
-  var depth=sp.dist<.4?'내야':sp.dist<.7?'중간 깊이':'깊은 쪽';
-  return n+' 방면, '+depth;
+  var depth=sp.ov>0?'펜스 뒤 '+Math.round(sp.ov)+'m':sp.dist<.4?'내야':sp.dist<.7?'중간 깊이':'깊은 쪽';
+  return (sp.fa>0?'파울 지역, ':'')+n+' 방면, '+depth;
 }
 function _kbDraw(){
   if(!_kbEls()||!FS)return;
@@ -1363,14 +1364,14 @@ function _kbInit(){
   fC.setAttribute('tabindex','0');
   fC.addEventListener('keydown',function(e){
     var k=e.key,g=_fieldGeo(FS);
-    if(!_kb.x&&!_kb.y){var c=_conePt(g,2*_FQ,.6*g.R);_kb.x=c[0];_kb.y=c[1];}
+    if(!_kb.set){_kb.set=true;var c=_conePt(g,2*_FQ,.6*g.R);_kb.x=c[0];_kb.y=c[1];}
     var step=FS*(e.shiftKey?.1:.025),dx=0,dy=0;
     if(k==='ArrowLeft')dx=-step;else if(k==='ArrowRight')dx=step;
     else if(k==='ArrowUp')dy=-step;else if(k==='ArrowDown')dy=step;
     else if(k==='Enter'||k===' '||k==='Spacebar'){
       e.preventDefault();
-      var sp0=_coneToSemi(g,_kb.x,_kb.y);
-      if(!sp0){_kbSay('필드 안쪽 위치를 선택하세요');return;}
+      var sp0=_coneToSemiAll(g,_kb.x,_kb.y);
+      if(!sp0){_kbSay('홈 뒤는 입력할 수 없습니다');return;}
       var r=fC.getBoundingClientRect(),sx=FS/r.width,sy=FS/r.height;
       onFClick({clientX:r.left+_kb.x/sx,clientY:r.top+_kb.y/sy,rect:r,sx:sx,sy:sy});
       _kb.viaKey=true;
@@ -1384,7 +1385,7 @@ function _kbInit(){
     e.preventDefault();
     _kb.on=true;
     var nx=Math.max(0,Math.min(FS,_kb.x+dx)),ny=Math.max(0,Math.min(FS,_kb.y+dy));
-    var sp=_coneToSemi(g,nx,ny);
+    var sp=_coneToSemiAll(g,nx,ny);
     if(!sp){_kbSay('필드 끝입니다');_kbDraw();return;}
     _kb.x=nx;_kb.y=ny;_kbDraw();_kbSay(_kbDescribe(sp));
   });

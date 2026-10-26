@@ -11,13 +11,29 @@
     for (var i = 0, last = -1, same = 0; i < 40 && same < 3; i++) { same = FS === last ? same + 1 : 0; last = FS; await T.sleep(150); }
     _outRender();   // safeRender 는 requestAnimationFrame 안에서 그리는데 하네스(가상 시간)에서는 제때 안 돌 때가 있다
   }
+  // MouseEvent 의 clientX/Y 는 정수로 잘린다 → 정수 좌표로 누르고, 실제로 누른 필드 좌표를 돌려준다
+  function click(el, rw, k, px, py) {
+    var x = Math.round(rw.left + px * k), y = Math.round(rw.top + py * k);
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+    return [(x - rw.left) / k, (y - rw.top) / k];
+  }
 
-  test('(준비) 앱 시작 처리가 끝날 때까지 기다린다', async function () {
+  test('(준비) 앱 시작 처리가 끝날 때까지 기다린다 · 부채꼴 안 타석 하나를 먼저 기록한다(첫 기록 뒤 필드 칸 배치가 바뀐다)', async function () {
     await T.sleep(2500);
     if (window.shellNav) window.shellNav('record');
     if (window.sbFieldView) window.sbFieldView('2d');
     await T.sleep(300);
     ok(typeof _coneToSemiAll === 'function' && window.AS && $('cwrap'), '기록 화면');
+    window.AS.batter = { id: 'p1', name: '가' };
+    window.AS.pending = null;
+    await settle();
+    var n = window.AS.abs.length, g = _fieldGeo(FS), rw = $('cwrap').getBoundingClientRect();
+    click($('fldCanvas'), rw, rw.width / FS, g.cx, g.cy - 0.5 * g.R);
+    await T.sleep(800);
+    $('tapPop').querySelector('[data-res="플라이 아웃"]').click();
+    await T.sleep(800);   // core 연타 가드(_guard 700ms)
+    await settle();
+    eq(window.AS.abs.length - n, 1, '첫 기록');
   });
 
   test('_coneToSemiAll: 부채꼴 안 = _coneToSemi 그대로 · 펜스 뒤 = 펜스 위 + ov(m) · 파울 = 라인 위 + fa · 둘 다 · 홈 뒤 = null · real 로 다시 그리면 누른 자리', function () {
@@ -55,8 +71,7 @@
     window.AS.pending = null;
     await settle();
     var rw = w.getBoundingClientRect(), k = rw.width / FS, g = _fieldGeo(FS), FS0 = FS;
-    var px = -40, py = g.cy - 0.3 * g.R;   // 정사각형 왼쪽 40px · 3루 쪽 파울 지역(라인에서 20° 남짓 밖)
-    o.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rw.left + px * k, clientY: rw.top + py * k }));
+    var at = click(o, rw, k, -40, g.cy - 0.3 * g.R), px = at[0], py = at[1];   // 정사각형 왼쪽 40px · 3루 쪽 파울 지역(라인에서 20° 남짓 밖)
     ok(window._tp && !pop.hidden, '결과 팝업이 안 열림');
     var pd = window.AS.pending;
     eq([pd.deg, pd.dir, pd.fa > 0, pd.x < 0.5 && Math.abs(pd.y - 1) < 1e-9], [0, 'LF', true, true], '대기 좌표(3루 라인 위) ' + JSON.stringify(pd));
@@ -65,9 +80,9 @@
     await T.sleep(100);
     var r = window.AS.abs[window.AS.abs.length - 1];
     eq([window.AS.abs.length - n, r.res, r.fa, r.ov], [1, '플라이 아웃', pd.fa, pd.ov], '기록');
-    await settle();   // 기록 뒤 필드 크기가 다시 계산될 수 있다 → 비율로 비교하고 픽셀은 지금 크기로 다시 잰다
-    var q = _fieldPx(r);
-    ok(near([q[0] / FS, q[1] / FS], [px / FS0, py / FS0], 0.003), '그릴 자리(필드 비율) ' + [q[0] / FS, q[1] / FS].map(r1) + ' / ' + [px / FS0, py / FS0].map(r1));
+    await settle();   // 기록 뒤 필드 크기가 다시 계산될 수 있다 → 누를 때 크기(FS0)로 되돌려 비교하고 픽셀은 지금 크기로 다시 잰다
+    var q = _fieldPx(r), r3 = function (v) { return Math.round(v * 1000) / 1000; };
+    ok(near([q[0] * FS0 / FS, q[1] * FS0 / FS], [px, py], 0.5), '그릴 자리(필드 비율) ' + [q[0] / FS, q[1] / FS].map(r3) + ' / ' + [px / FS0, py / FS0].map(r3) + ' · FS ' + FS0 + '→' + FS + ' · _outB ' + (_outB || []).map(Math.round));
     px = q[0]; py = q[1]; rw = w.getBoundingClientRect(); k = rw.width / FS;
     var rf = o.getBoundingClientRect(), ctx = o.getContext('2d'), sc = o.width / rf.width, fw = w.parentElement;
     eq(_outB.map(Math.round), [14 - (rw.left - rf.left), 14 - (rw.top - rf.top), fw.clientWidth - 14 - (rw.left - rf.left), fw.clientHeight - 14 - (rw.top - rf.top)].map(function (v) { return Math.round(v / k); }), '칸 경계(_outB) = 지금 배치');
@@ -82,8 +97,7 @@
     window.AS.pending = null;
     var rw = w.getBoundingClientRect(), k = rw.width / FS, F = _fenceR(g, Math.PI / 2), back = Math.min(8, (g.cy - F - 20) / g.m);
     ok(back > 2, '전제: 중견 펜스 위 빈 곳 ' + back);
-    var py = g.cy - F - back * g.m;
-    $('fldCanvas').dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rw.left + g.cx * k, clientY: rw.top + py * k }));
+    var at = click($('fldCanvas'), rw, k, g.cx, g.cy - F - back * g.m), px = at[0], py = at[1];
     ok(window._tp && !pop.hidden, '결과 팝업이 안 열림 ' + JSON.stringify({ ov: (document.querySelector('.overlay.show') || {}).id, pk: !!document.querySelector('.fr-pk:not([hidden])'), q: window.AS.pendingQuickRes, p: window.AS.pending, bat: window.AS.batter }));
     eq([window.AS.pending.dir, Math.abs(window.AS.pending.ov - back) < 0.5, 'fa' in window.AS.pending], ['CF', true, false], '대기 좌표 ' + JSON.stringify(window.AS.pending) + ' / ' + back);
     await T.sleep(800);
@@ -93,7 +107,7 @@
     var r = window.AS.abs[window.AS.abs.length - 1];
     eq([window.AS.abs.length - n, r.res, r.ov, r.dir], [1, '홈런', window.AS.abs[window.AS.abs.length - 1].ov, 'CF'], '기록');
     ok(r.ov > 2, 'ov ' + r.ov);
-    ok(near(_fieldPx(r), [g.cx, py], 1), '그릴 자리 ' + _fieldPx(r).map(Math.round) + ' / ' + [g.cx, py].map(Math.round));
+    ok(near(_fieldPx(r), [px, py], 0.5), '그릴 자리 ' + _fieldPx(r).map(Math.round) + ' / ' + [px, py].map(Math.round));
     var deep = _fieldPx({ x: 0.5, y: 0.03, ov: 29.5 });
     ok(deep[1] >= _outB[1] - 0.01 && Math.abs(deep[0] - g.cx) < 0.5, '깊은 외야석은 칸 위 끝 ' + deep.map(Math.round) + ' / ' + _outB.map(Math.round));
   });

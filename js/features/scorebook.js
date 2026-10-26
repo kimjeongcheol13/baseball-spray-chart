@@ -451,7 +451,7 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=4').then(() => {
+  import('./spray3d.js?v=5').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
     if (!_f3d) {
       _f3d = document.createElement('spray-field-3d');

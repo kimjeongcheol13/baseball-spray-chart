@@ -45,15 +45,12 @@ export function toField(x, y, hr, R = ROUND) {
   else r = Math.min(r, F - 2);
   return [-r * Math.cos(phi), -r * Math.sin(phi)];
 }
-// 필드 [x, z] → 저장 좌표. core _coneToSemi 와 같은 규칙: 파울 지역(라인 밖 3° 넘게) · 펜스 8% 넘게 밖이면 null, 펜스 너머는 펜스 위로
+// 필드 [x, z] → 저장 좌표. core _coneToSemi 와 같은 식이지만 3D 는 파울 지역 · 관중석도 찍힌다(홈 뒤만 null):
+//   저장 좌표는 파울라인 사이 · 펜스(.97)까지라서 파울 지역은 가까운 파울라인 위로, 펜스 너머(관중석)는 펜스 위로
 export function fromField(x, z, R = ROUND) {
   if (z > 0) return null;
-  let phi = Math.atan2(-z, -x);
-  const tol = Math.PI / 60;
-  if (phi < Q - tol || phi > 3 * Q + tol) return null;
-  phi = Math.max(Q, Math.min(3 * Q, phi));
+  const phi = Math.max(Q, Math.min(3 * Q, Math.atan2(-z, -x)));
   const frac = Math.hypot(x, z) / R(phi);
-  if (frac > 1.08) return null;
   const deg = typeof _phiToDeg === 'function' ? _phiToDeg(phi) : (phi * 180 / Math.PI - 45) * 2;
   const a = deg * Math.PI / 180 - Math.PI, d = Math.min(frac, 1) * 0.97;
   return { x: 0.5 + Math.cos(a) * d, y: 1 + Math.sin(a) * d };
@@ -393,7 +390,7 @@ class SprayField3D extends HTMLElement {
     const rc = new THREE.Raycaster(); rc.setFromCamera(v, this._camera);
     return rc.ray.intersectPlane(plane, new THREE.Vector3());
   }
-  // 짧게 누름: 땅에서 그 자리 → 저장 좌표 → 'fieldtap' (파울 지역 · 펜스 한참 밖은 2D 처럼 무시)
+  // 짧게 누름: 땅에서 그 자리 → 저장 좌표 → 'fieldtap' (파울 지역 = 파울라인 위 · 관중석 = 펜스 위, fromField)
   _tap(e) {
     if (!this.tappable) return;
     const p = this._hit(e, new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)), s = p && fromField(p.x, p.z, this._R);

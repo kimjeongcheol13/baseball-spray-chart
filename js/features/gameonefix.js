@@ -225,6 +225,7 @@ export function gameOneFixSkip() {
 
 function _commit(a, sp) {
   a.x = sp.x; a.y = sp.y; a.deg = sp.deg; a.dir = DIR(sp.deg);
+  delete a.fa;   // 새로 찍은 자리는 파울라인 사이(fa = 3D 파울 각도는 버린다)
   if (a.res !== '홈런') a.ft = Math.round(sp.dist * (S.wall[a.dir] || 370));
   a.estimated = false;
   S.moved.add(a);

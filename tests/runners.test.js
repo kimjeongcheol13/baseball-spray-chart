@@ -2,6 +2,7 @@
 //  · 타석 결과대로 주자 이름이 베이스를 따라가고, 홈인한 주자가 그 타석의 scored 에 남는다
 //  · 도루 · 도루 실패는 마지막 타석의 runEv 에 남고, 되돌리기는 도루부터 (점수 · 주자 · 아웃 · 끝난 이닝까지)
 //  · 이닝별 득점(slLineScore) · 선수별 득점 · 도루(slRunnerStats) · 새로고침 뒤 주자 이름 복구
+//  · 이름 없는 주자(이 기능 전에 시작한 경기)는 이번 이닝 타석 기록으로 채운다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
@@ -125,6 +126,24 @@
       eq([GF.active, GF.bases, names()], [true, [true, true, false], ['이번', '일번', null]], '주자 이름 복구');
       await hit('안타');
       eq(names(), ['삼번', '이번', '일번'], '이어서 진루');
+    });
+  });
+
+  test('이 기능 전에 시작한 경기(베이스만 있고 이름 없음): 이번 이닝 타석으로 이름을 채운다 · 손으로 켠 베이스는 그대로 주자', async function () {
+    await isolated(async function () {
+      start();
+      await hit('안타'); await other('볼넷');
+      GF.runners = [null, null, null];   // 예전 버전이 남긴 상태
+      gfUpdateBar();
+      eq(names(), ['이번', '일번', null], '이번 이닝 타석으로 채움');
+      eq($('gfbRunners').textContent, '1루 이번 · 2루 일번', '막대 글자');
+      await gap();
+      GF.runners = [null, null, null];   // 막대를 다시 그리기 전에 쳐도 진루 · 홈인에 이름이 쓰인다
+      AS.pending = { x: 0.45, y: 0.35, deg: 85, dir: 'CF', ft: 250 }; AS.rbi = 0; recHit('2루타');
+      eq(who(AS.abs[2].scored), ['일번'], '홈인 이름'); eq(names(), [null, '삼번', '이번'], '진루');
+      gfToggleBase(0); gfUpdateBar();   // 손으로 켠 1루 — 기록과 베이스 모양이 달라 채우지 않는다
+      eq(names(), [null, '삼번', '이번'], '손으로 켠 베이스는 이름 없음');
+      eq($('gfbRunners').textContent, '1루 주자 · 2루 삼번 · 3루 이번', '막대 글자');
     });
   });
 

@@ -373,3 +373,12 @@
   /* 이름을 막대 위로 올려 막대가 카드 폭을 다 쓰게 (좁은 칸 숫자 잘림 방지) */
   .an-mixrow { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* ── 그림 3D 보기 (js/features/ana3d.js) — 카드 머리 2D | 3D · 3D 면 SVG 대신 같은 자리에 3D 상자 ── */
+.an-3d-box { display: none; }
+.an-is-3d .an-3d-box { display: block; position: relative; width: 100%; aspect-ratio: 10 / 9; margin: 6px 0; border-radius: 8px; overflow: hidden; background: #11151c; }
+.an-is-3d .an-3d-box.is-zone { aspect-ratio: 4 / 5; max-height: 460px; }
+.an-is-3d figure.an-spray > svg, .an-is-3d svg.pc-plot, .an-is-3d .sc-zone[data-view], .an-is-3d .st-prev > svg { display: none; }
+.st-prev > .an-3d-box { max-width: 460px; margin: 0 0 6px; }
+.an-3d-box .ad-none { padding: 16px; color: #fff; }
+.an-hd .an-3d-seg { margin-left: 8px; }

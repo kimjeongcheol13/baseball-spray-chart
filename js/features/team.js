@@ -11,6 +11,7 @@ let _ldr = 'ops';
 let _sort = { k: 'pa', dir: -1 };
 let _trendKey = 'avg';
 let _logAll = false;
+let _fv = '2d';          // 팀 타구 방향: 2d | 3d
 
 const LEADERS = [
   { k: 'ops', l: 'OPS', fmt: 'f3', rate: true },
@@ -69,6 +70,7 @@ export function setTeamScope(k, v) {
   if (k === 'trend') _trendKey = v === 'ops' ? 'ops' : 'avg';
   if (k === 'sort') _sort = _sort.k === v ? { k: v, dir: -_sort.dir } : { k: v, dir: v === 'kRate' ? 1 : -1 };
   if (k === 'log') _logAll = !_logAll;
+  if (k === 'fv') _fv = v === '3d' ? '3d' : '2d';
   _render();
 }
 
@@ -181,7 +183,7 @@ function _render() {
     ${pitchTable([{ name: '팀', cls: 'a', pitch: _pitchMap(T.abs) }])}
     ${_exportCard(team)}
   `;
-  requestAnimationFrame(_paintField);
+  if (_fv === '3d') _show3d(); else requestAnimationFrame(_paintField);
 }
 
 // ── 팀 타구 방향 (예전 종합의 5구역 방향도 · 상세 필터는 이 방향도에만 적용) ──
@@ -202,10 +204,13 @@ function _dirCard(T) {
   return `
     <section class="an-card ad-field tm-dir">
       <header class="an-hd"><h3>팀 타구 방향</h3>
-        <span class="an-hd-note">${nF ? `상세 필터 ${nF}개 · 이 방향도에만 적용` : '숫자 = 구역별 타구 수'}</span>
+        <span class="an-hd-note">${nF ? `상세 필터 ${nF}개 · 이 방향도에만 적용` : _fv === '3d' ? '끌어서 돌리기 · 두 손가락·Ctrl+휠 확대' : '숫자 = 구역별 타구 수'}</span>
         <button type="button" class="sb-mini${nF ? ' on' : ''}" onclick="_sfOpen && _sfOpen()" aria-label="상세 필터${nF ? ' ' + nF + '개 켜짐' : ''}">${FILTER_ICON}상세 필터${nF ? `<b class="ad-fn">${nF}</b>` : ''}</button>
+        <div class="an-seg" role="group" aria-label="방향도 보기">${[['2d', '2D'], ['3d', '3D']].map(([v, l]) => `<button type="button" class="${_fv === v ? 'on' : ''}" aria-pressed="${_fv === v}" onclick="setTeamScope('fv','${v}')">${l}</button>`).join('')}</div>
       </header>
-      <div class="ad-field-box"><canvas id="tmField" role="img" aria-label="팀 타구 방향도: ${K.ZONES.map((z, i) => z.full + ' ' + zc[i]).join(', ')}"></canvas></div>
+      ${_fv === '3d'
+        ? `<div class="ad-field-box ad-3d" id="tmField3d" role="img" aria-label="팀 타구 방향 3D: ${K.ZONES.map((z, i) => z.full + ' ' + zc[i]).join(', ')}"></div>`
+        : `<div class="ad-field-box"><canvas id="tmField" role="img" aria-label="팀 타구 방향도: ${K.ZONES.map((z, i) => z.full + ' ' + zc[i]).join(', ')}"></canvas></div>`}
       <ul class="sb-legend ad-legend" aria-label="기호">${[['hit', '안타'], ['xbh', '장타'], ['hr', '홈런'], ['out', '아웃']].map(([k, l]) => `<li>${window.sbPaint ? window.sbPaint.markSvg(k, 16) : ''}${l}</li>`).join('')}${K.estKey ? K.estKey(list, 'auto') : ''}</ul>
       <div class="ad-band" aria-label="방향 비율">${band}</div>
     </section>`;
@@ -222,6 +227,24 @@ function _paintField() {
   const ctx = cv.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   window.slDash.drawField(ctx, S, _fieldList);
+}
+
+// 3D 보기: 처음 누를 때만 spray3d.js(+three.js)를 불러온다. 다시 그려도 같은 요소를 새 상자로 옮겨 붙여 장면 1개만 유지
+let _f3d = null;
+function _show3d() {
+  const box = document.getElementById('tmField3d');
+  if (!box) return;
+  const list = _fieldList;
+  const top = `${_scope === 'game' ? '이번 경기' : '시즌 전체'} · ${_side === 'away' ? '원정' : _side === 'all' ? '양 팀' : '홈(우리)'}`;
+  import('./spray3d.js?v=6').then(() => {
+    if (!box.isConnected) return;
+    _f3d = _f3d || document.createElement('spray-field-3d');
+    box.appendChild(_f3d);
+    const P = window.sbPaint, st = _fieldGeo(1).st;
+    const balls = list.filter(a => a.x != null && a.y != null).map(a => ({ x: a.x, y: a.y, fa: a.fa, k: P ? P.kindOf(a.res) : 'out' }));
+    const shown = balls.filter(b => ['hit', 'xbh', 'hr', 'out'].includes(b.k));
+    _f3d.update({ balls, board: [top, `안타 ${shown.filter(b => b.k !== 'out').length} · 타구 ${shown.length}`], dist: [st.lfDist, st.cfDist, st.rfDist] });
+  }).catch(() => { if (box.isConnected) box.innerHTML = '<p class="ad-none">3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.</p>'; });
 }
 
 // ── 타석 결과 막대 + 표본 경고 (예전 종합) ──────────────────

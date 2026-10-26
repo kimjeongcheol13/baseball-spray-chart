@@ -124,13 +124,15 @@ function _phiToDeg(phi){
   for(var i=0;i<4&&p>_FZ_PHI[i+1];i++);
   return _FZ_DEG[i]+(p-_FZ_PHI[i])/18*(_FZ_DEG[i+1]-_FZ_DEG[i]);
 }
-// 저장 좌표 → 화면 좌표
-function _semiToCone(g,x,y){
-  var dx=x-.5,dy=Math.min(y-1,0);
+// 저장 좌표 → 화면 좌표. fa = 파울 타구가 파울라인 밖으로 벗어난 각도(°, 3D 에서 찍은 타구만 — x,y,deg 는 라인 위)
+// dy 는 -0 으로 자른다: 왼쪽 파울라인 타구는 y 가 반올림으로 정확히 1 이 되기도 하는데(+0) 그러면 atan2 가 오른쪽(360°)으로 읽는다
+function _semiToCone(g,x,y,fa){
+  var dx=x-.5,dy=Math.min(y-1,-0);
   var deg=(Math.atan2(dy,dx)+Math.PI)*180/Math.PI;
   var frac=Math.min(Math.sqrt(dx*dx+dy*dy)/.97,1.06);
-  var phi=_degToPhi(deg);
-  return _conePt(g,phi,frac*_fenceR(g,phi));
+  var phi=_degToPhi(deg),r=frac*_fenceR(g,phi);
+  if(fa>0)phi+=(phi<2*_FQ?-fa:fa)*Math.PI/180;
+  return _conePt(g,phi,r);
 }
 // 화면 좌표 → 저장 좌표 (파울 지역·펜스 밖이면 null)
 function _coneToSemi(g,px,py){
@@ -154,7 +156,7 @@ function _coneSectorPath(ctx,g,deg1,deg2,r1,r2){
   ctx.closePath();
 }
 // 저장 좌표 → 기록 필드 기준 비율 [x,y] (heatmap.js·shell.js 등 외부 모듈용)
-function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y);}
+function _fieldPos(a){return _semiToCone(_fieldGeo(1),a.x,a.y,a.fa);}
 window._fieldPos=_fieldPos;
 // 저장 좌표 → 기록 필드 캔버스 px
 function _fieldPx(a){var p=_fieldPos(a);return [p[0]*FS,p[1]*FS];}
@@ -531,17 +533,9 @@ function toggleAnalysisPanel(){
     safeRender();
   },280);
 }
-function goLanding(){
-  // 경기설정·분석 화면(.savant-view)은 #app-page 밖에 떠 있어서, 기록 탭으로 되돌려 닫지 않으면 랜딩 위에 겹쳐 남는다
-  if(window.shellNav)window.shellNav('record');
-  document.getElementById('app-page').style.display='none';
-  document.getElementById('landing-page').style.display='block';
-  document.body.style.overflowY='';
-  document.body.style.overflowX='';
-  var nav=document.getElementById('savantNav');
-  if(nav)nav.style.display='none';
-  window.scrollTo(0,0);
-}
+// 처음 화면 = 새 소개 페이지(landing.html). 옛 랜딩(#landing-page)은 더 띄우지 않는다.
+// 진행 중 기록은 pagehide 의 복구 슬롯(_scheduleRecoverySave(0))에 남고, 저장 안 한 기록이 있으면 beforeunload 가 떠날지 묻는다
+function goLanding(){location.href='landing.html';}
 
 // ───── LANDING SCRIPTS ─────
 (function(){
@@ -1273,8 +1267,8 @@ function onFClick(e){
   if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
   x=(e.clientX-rect.left)*sx;y=(e.clientY-rect.top)*sy;
-  // 화면(부채꼴) 좌표 → 저장 좌표(기존 반원 기준)
-  const sp=_coneToSemi(_fieldGeo(FS),x,y);
+  // 화면(부채꼴) 좌표 → 저장 좌표(기존 반원 기준). 3D 파울 지역은 부채꼴 밖이라 저장 좌표를 직접 받는다(e.sp — scorebook _tap3d)
+  const sp=e.sp||_coneToSemi(_fieldGeo(FS),x,y);
   if(!sp)return;
   closeHitDetail();
   const deg=sp.deg;
@@ -1285,6 +1279,7 @@ function onFClick(e){
   const estFt=Math.round(sp.dist*(_wallFt[dir]||370));
   clearTimeout(_ftLabelTimer);
   AS.pending={x:sp.x,y:sp.y,deg,dir,ft:estFt};
+  if(sp.fa)AS.pending.fa=sp.fa;
   // Quick-button hit: position captured → record immediately without overlay
   if(AS.pendingQuickRes){
     var res=AS.pendingQuickRes,_lk=AS._pendLink;
@@ -1470,6 +1465,7 @@ function recHit(res){
   var _laRaw=parseFloat((document.getElementById('laInput')||{}).value);var _la=isNaN(_laRaw)?null:_laRaw;
   var _laType=_la===null?null:(_la<10?'땅볼':_la<25?'라인드라이브':'플라이볼');
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:_abOuts()},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
+  if(AS.pending.fa)r.fa=AS.pending.fa;   // 파울 타구: 파울라인 밖 각도(°) — 그리는 쪽(_semiToCone)만 쓴다
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
@@ -1631,7 +1627,7 @@ function _drawMiniSpray(canvas, abs){
   ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;ctx.stroke();
   abs.forEach(function(a){
     if(a.x==null||a.y==null)return;
-    var q=_semiToCone(g,a.x,a.y),x=q[0],y=q[1];
+    var q=_semiToCone(g,a.x,a.y,a.fa),x=q[0],y=q[1];
     var col=RC[a.res]||'#94a3b8';
     var out=a.res.indexOf('아웃')!==-1||a.res==='삼진';
     ctx.beginPath();ctx.arc(x,y,out?2:3,0,Math.PI*2);
@@ -5002,16 +4998,10 @@ function importExcel(input) {
 _loadSharedGame();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 랜딩 스킵: 공유 링크이거나 모바일이면 바로 필드 화면으로
+// 랜딩 스킵: 첫 화면은 landing.html(index.html <head> 맨 앞 스크립트)이 맡으므로, index.html 이 그려지면 기기와 상관없이 바로 필드 화면으로
+// (옛 랜딩 #landing-page 는 더 띄우지 않는다)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-(function autoSkipLanding(){
-  var sp=new URLSearchParams(location.search);
-  var hasShare=sp.has('game')||sp.has('team')||(location.hash&&location.hash.includes('#share='));
-  if(hasShare){showApp();return;}
-  // 모바일은 항상 랜딩 스킵 → 바로 필드
-  var isMobile=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
-  if(isMobile) showApp();
-})();
+(function autoSkipLanding(){showApp();})();
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FEATURE 2: WEAKNESS DETECTION
@@ -5195,7 +5185,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,t:a.team,ba:_batsOf(a),tm:a.ts||'',
+      ft:a.ft,fa:a.fa,t:a.team,ba:_batsOf(a),tm:a.ts||'',
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -5216,7 +5206,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
       x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
-      ft:a.ft,t:a.team,ba:_batsOf(a),
+      ft:a.ft,fa:a.fa,t:a.team,ba:_batsOf(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
     };})
   };
@@ -5356,7 +5346,7 @@ function _restoreAbsFromPayload(payloadAbs){
     bats:a.ba||'R',
     team:a.t||'home',
     res:a.r, pt:a.p, zone:a.z, rbi:a.b||0,
-    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null,
+    x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined,
     ev:a.ev!=null?a.ev:null,
     inn:a.i||'1회초',
     ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
@@ -7102,7 +7092,7 @@ function _cardField(ctx,cx,cy,S,abs,dots){
   ctx.restore();
 
   var pts=abs.map(function(a,i){return {a:a,i:i};}).filter(function(p){return p.a.x!=null&&p.a.y!=null;});
-  var pos=function(a){return _semiToCone(g,a.x,a.y);};
+  var pos=function(a){return _semiToCone(g,a.x,a.y,a.fa);};
   if(dots){ // 시즌 카드: 작은 점 (안타 빨강, 아웃 잉크 ×)
     pts.forEach(function(p){
       var xy=pos(p.a),hit=CARD_HITS.indexOf(p.a.res)!==-1;
@@ -8239,7 +8229,7 @@ function _drawConeMini(ctx,w,h,abs,opt){
   var hits=['안타','내야안타','2루타','3루타','홈런'];
   (abs||[]).forEach(function(a){
     if(a.x==null||a.y==null)return;
-    var q=_semiToCone(g,a.x,a.y);
+    var q=_semiToCone(g,a.x,a.y,a.fa);
     var col=opt.color?opt.color(a):(_MINI_COL[a.res]||'#94a3b8');
     var out=opt.isOut?opt.isOut(a):hits.indexOf(a.res)===-1;
     ctx.beginPath();ctx.arc(q[0],q[1],out?r*.6:r,0,Math.PI*2);

@@ -260,3 +260,7 @@ body.sb #gfBar .gfb-runners { font: 700 12px var(--f-body); color: var(--ink); }
 body.sb .sl-runpick { background: var(--paper-2); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 0; box-shadow: 4px 4px 0 var(--ink); }
 body.sb .sl-runpick button { border: 1.5px solid var(--ink); border-radius: 0; background: var(--paper-2); font-family: var(--f-body); }
 body.sb .sl-runpick button.x { border-color: var(--ink-soft); }
+body.sb.sb-night:not(.high-contrast) .sl-runpick { border: 1px solid var(--n-line); border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
+body.sb.sb-night:not(.high-contrast) .sl-runpick button { border: 1px solid var(--n-line); border-radius: 4px; }
+body.sb.sb-night:not(.high-contrast) .sl-runpick button:focus-visible { outline-color: var(--n-pink); }
+body.sb.sb-night:not(.high-contrast) #gfBar .gfb-runners { color: var(--n-ink2); }

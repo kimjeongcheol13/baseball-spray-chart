@@ -93,8 +93,10 @@ function tok(force) {
   if (!force && _T && performance.now() - _Tat < 1000) return _T;
   const cs = getComputedStyle(document.body);
   const g = (n, d) => cs.getPropertyValue(n).trim() || d;
+  // 야간 기록 화면(night.css): 화면은 어둡게 바뀌어도 캔버스의 '종이'는 분필 선 · 흰 글자로 써야 해서 --fld-* 가 있으면 그 값
+  const f = (n, d) => g('--fld-' + n, '') || g('--' + n, d);
   _T = {
-    paper: g('--paper', '#F3EDDF'), paper2: g('--paper-2', '#FBF7EE'), ink: g('--ink', '#1F2A23'),
+    paper: f('paper', '#F3EDDF'), paper2: f('paper-2', '#FBF7EE'), ink: f('ink', '#1F2A23'), bg: g('--fld-bg', '') || f('paper-2', '#FBF7EE'),
     grass: g('--grass', '#3E7A5B'), dirt: g('--dirt', '#D3A670'), mound: g('--mound', '#BF915C'),
     red: g('--pen-red', '#C8322B'), blue: g('--pen-blue', '#2C4F8A'), hl: g('--highlight', '#D9A441'),
     inkSoft: g('--ink-soft', '#55605A'), rule: g('--rule', '#C9BFA9'),
@@ -131,7 +133,7 @@ function paintField(ctx, S, T) {
   ctx.save();
   ctx.clearRect(0, 0, S, S);
   // 파울 지역 = 카드 종이색 (PNG로 내보내도 같은 배경)
-  ctx.fillStyle = T.paper2; ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = T.bg || T.paper2; ctx.fillRect(0, 0, S, S);
   // 페어 지역 잔디
   fair(); ctx.fillStyle = T.grass; ctx.fill();
 
@@ -313,7 +315,7 @@ function paperMiniSpray(canvas, abs) {
   ctx.fillStyle = T.grass; ctx.fill(); ctx.strokeStyle = T.ink; ctx.lineWidth = 1.5; ctx.stroke();
   abs.forEach(a => {
     if (a.x == null || a.y == null) return;
-    const q = _semiToCone(g, a.x, a.y);
+    const q = _semiToCone(g, a.x, a.y, a.fa);
     drawMark(ctx, kindOf(a.res), q[0], q[1], 3.4, T);
   });
 }
@@ -422,6 +424,98 @@ function _fieldFtHtml() {
     + `<p class="sb-sum">${esc(_inn().label)} · ${abs.length}타석 · ${h}H</p>`;
 }
 
+// ── 필드 카드 머리: 스프레이 차트 · 2D | 3D ──────────────────
+//   3D(spray3d.js, 처음 누를 때만 불러옴)에서도 타구 위치를 찍는다: 3D 땅을 짧게 누르면 그 자리를 2D 캔버스 좌표로 바꿔 core onFClick 에 넘긴다
+//   → 결과 팝업 · 타자 고르기(firstrun) · 퀵버튼 대기(안타 등을 먼저 누름)가 2D 와 똑같이 돈다. 팝업만 3D 칸으로 옮겨 누른 자리 옆에 둔다
+let _fv = '2d', _f3k = 'all', _f3d = null, _f3at = null, _f3pop = false;
+const _F3TABS = [['all', '전체'], ['hit', '안타'], ['out', '아웃'], ['batter', '이번 타자']];
+function _fieldHdHtml() {
+  const AS = _AS(), team = AS.curTeam === 'away' ? _val('tAway', '원정팀') : _val('tHome', '내 팀');
+  const seg = (cur, opts, fn, label) => `<div class="sb-seg" role="group" aria-label="${label}">${opts.map(([v, l]) => `<button type="button" aria-pressed="${cur === v}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
+  return `<h2>스프레이 차트<small>${esc(team)} · ${esc(_inn().label)}</small></h2>`
+    + (_fv === '3d' ? seg(_f3k, _F3TABS, 'sbField3dTab', '결과 필터') : '')
+    + seg(_fv, [['2d', '2D'], ['3d', '3D']], 'sbFieldView', '필드 보기');
+}
+// 3D 에 넘길 타구: 2D 필드와 같은 목록(타자 · 팀 보기 필터 + 상세 필터) → 탭
+function _field3dList() {
+  const AS = _AS();
+  let list = (AS.abs || []).filter(a => a.x != null && a.y != null);
+  if (AS.batterFilter && AS.batter) list = list.filter(a => a.bid === AS.batter.id);
+  if (AS.teamFilter) list = list.filter(a => (a.team || 'home') === AS.teamFilter);
+  if (window._sfPass) list = list.filter(a => window._sfPass(a));
+  if (_f3k === 'hit') list = list.filter(a => HITS.includes(a.res));
+  if (_f3k === 'out') list = list.filter(a => kindOf(a.res) === 'out');
+  if (_f3k === 'batter') list = AS.batter ? list.filter(a => _isBatter(a, AS.batter)) : [];
+  return list;
+}
+function _paint3d() {
+  const card = $('sbField'), box = $('sbField3d');
+  if (!card || !box) return;
+  card.classList.toggle('is-3d', _fv === '3d');
+  if (_fv !== '3d') return;
+  import('./spray3d.js?v=6').then(() => {
+    if (_fv !== '3d' || !box.isConnected) return;
+    if (!_f3d) {
+      _f3d = document.createElement('spray-field-3d');
+      _f3d.tappable = true;
+      _f3d.addEventListener('fieldtap', (e) => _tap3d(e.detail));
+    }
+    if (_f3d.parentNode !== box) box.appendChild(_f3d);
+    if (!_popOpen()) _f3d.mark(null);   // 기록했거나 취소했으면 찍은 자리 고리를 지운다
+    const AS = _AS(), list = _field3dList(), st = _fieldGeo(1).st;
+    const who = _f3k === 'batter' ? (AS.batter ? AS.batter.name : '타자 미선택') : _F3TABS.find(t => t[0] === _f3k)[1];
+    _f3d.update({
+      balls: list.map(a => ({ x: a.x, y: a.y, fa: a.fa, k: kindOf(a.res) })),
+      board: [`${_inn().label} · ${who}`, `안타 ${list.filter(a => HITS.includes(a.res)).length} · 타구 ${list.length}`],
+      dist: [st.lfDist, st.cfDist, st.rfDist],
+    });
+  }).catch(() => { if (box.isConnected && !box.querySelector('.sb-none')) box.insertAdjacentHTML('beforeend', '<p class="sb-none">3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.</p>'); });
+}
+const _popOpen = () => !!window._tp || !!document.querySelector('#batPick:not([hidden])');
+// 3D 에서 누른 자리 → 2D 와 같은 기록. 누르는 순간 팝업이 열려 있었으면 2D 처럼 닫기만 (바깥 누름으로 이미 닫혔다)
+function _tap3d(d) {
+  if (_f3pop || _fv !== '3d' || typeof window.onFClick !== 'function' || !FS) return;
+  const p = _semiToCone(_fieldGeo(FS), d.x, d.y, d.fa);
+  _f3at = [d.px, d.py];
+  // 파울 지역(d.fa)은 2D 부채꼴 밖이라 onFClick 의 _coneToSemi 가 버린다 → 3D 가 계산한 저장 좌표를 그대로 넘긴다
+  window.onFClick({ clientX: p[0], clientY: p[1], rect: { left: 0, top: 0, width: FS, height: FS }, sx: 1, sy: 1, sp: d.fa ? d : null });
+  _place3d();
+  if (_f3d && _popOpen()) _f3d.mark(d);
+}
+// 결과 팝업 · 타자 고르기를 3D 칸에서 누른 자리 옆에 (core _tpPlace 와 같은 규칙: 오른쪽 위, 넘치면 왼쪽 · 아래로, 둘 다 안 되면 위 · 아래 + 가로 맞춤)
+function _place3d() {
+  const box = $('sbField3d');
+  if (_fv !== '3d' || !_f3at || !box) return;
+  const W = box.clientWidth, H = box.clientHeight, [px, py] = _f3at, G = 24, clamp = (v, max) => Math.max(0, Math.min(v, max));
+  ['tapPop', 'batPick'].forEach((id) => {
+    const el = $(id);
+    if (!el || el.hidden) return;
+    if (el.parentNode !== box) box.appendChild(el);
+    const pw = el.offsetWidth, ph = el.offsetHeight;
+    const fitR = px + G + pw <= W, fitL = px - G - pw >= 0, fitT = py - G - ph >= 0, fitB = py + G + ph <= H;
+    let left, top;
+    if (fitR || fitL) { left = fitR ? px + G : px - G - pw; top = fitT ? py - G - ph : (fitB ? py + G : clamp(py - ph / 2, H - ph)); }
+    else { left = clamp(px - pw / 2, W - pw); top = fitT ? py - G - ph : (fitB ? py + G : clamp(py - G - ph, H - ph)); }
+    el.style.left = Math.round(left) + 'px'; el.style.top = Math.round(top) + 'px';
+  });
+}
+function sbFieldView(v) {
+  _fv = v === '3d' ? '3d' : '2d';
+  render();
+  // 2D 로 돌아오면 팝업 자리를 2D 필드(#cwrap)로 되돌리고, 숨어 있던 동안 바뀐 크기로 필드를 다시 잰다
+  if (_fv === '2d') {
+    _f3at = null;
+    const w = $('cwrap');
+    ['tapPop', 'batPick'].forEach((id) => { const el = $(id); if (el && w && el.parentNode !== w) w.appendChild(el); });
+    try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    _redraw();
+  }
+}
+function sbField3dTab(k) {
+  _f3k = _F3TABS.some(t => t[0] === k) ? k : 'all';
+  render();
+}
+
 // ── 오른쪽: 볼카운트 → 도장 → 보조 버튼 → 타석 기록 ────────
 function _sideHtml() {
   const AS = _AS(), gf = _gfOn();
@@ -465,7 +559,7 @@ function _sideHtml() {
 
 // ── 그리기 (여러 번 불려도 프레임당 1번) ─────────────────────
 let _raf = 0, _lsInn = null, _lsScroll = 0;
-const _ZONES = '#sbHdrMid, #sbOrder, #sbNow, #sbSide';
+const _ZONES = '#sbHdrMid, #sbOrder, #sbNow, #sbSide, #sbFieldHd';
 function render() {
   _raf = 0;
   // 다시 그려도 키보드 포커스 유지 (같은 동작의 버튼으로 되돌림)
@@ -479,6 +573,8 @@ function render() {
   set('sbNow', _nowHtml());
   set('sbNowBar', _nowBarHtml());
   set('sbFieldFt', _fieldFtHtml());
+  set('sbFieldHd', _fieldHdHtml());
+  _paint3d();
   set('sbSide', _sideHtml());
   // 이닝이 바뀌면 현재 이닝 칸이 보이도록 (모바일 가로 스크롤 — 손으로 넘긴 위치는 이닝이 바뀔 때까지 유지)
   const w = document.querySelector('#sbHdrMid .sb-ls-wrap'), c = w && w.querySelector('th.cur'), iv = _inn().v;
@@ -567,7 +663,9 @@ function _mountRecord() {
   card.className = 'sb-card sb-field';
   card.setAttribute('aria-label', '타구 기록 필드');
   fw.before(card);
+  card.insertAdjacentHTML('afterbegin', '<header class="sb-card-hd sb-field-hd" id="sbFieldHd"></header>');
   card.appendChild(fw);
+  card.insertAdjacentHTML('beforeend', '<div class="sb-field3d" id="sbField3d"></div>');
   const mini = $('miniSprayWrap');
   if (mini) card.appendChild(mini);
   const hint = center.querySelector('.field-hint');
@@ -635,6 +733,19 @@ function _hook() {
     w._sb = true;
     window.showToast = w;
   }
+  // 3D 필드: core 가 결과 팝업 자리를 잡을 때마다(장타 단계로 넘어갈 때 포함) 3D 칸 자리로
+  const tpp = window._tpPlace;
+  if (typeof tpp === 'function' && !tpp._sb) {
+    const w = function () { const r = tpp.apply(this, arguments); _place3d(); return r; };
+    w._sb = true;
+    window._tpPlace = w;
+  }
+  // 3D 를 누르는 순간 팝업이 열려 있었는지 — window 캡처는 core · firstrun 의 '바깥 누름 → 닫기'(document 캡처)보다 먼저 돈다
+  window.addEventListener('pointerdown', (e) => {
+    if (!_f3d) return;
+    _f3pop = _f3d.contains(e.target) && _popOpen();
+    setTimeout(() => { if (!_popOpen()) _f3d.mark(null); }, 0);
+  }, true);
   // 고대비: body 클래스만 바뀌므로 캔버스 색 다시 읽고 다시 그림
   const hc = window.toggleHighContrast;
   if (typeof hc === 'function' && !hc._sb) {
@@ -714,8 +825,15 @@ function _redraw() {
   } catch (e) {}
 }
 
+// 야간 화면(css/night.css): 기록 · 분석 · 경기설정 모두 body.sb-night — 고대비(야외)를 켜면 CSS 가 밝은 종이로 돌린다
+function _night() {
+  document.body.classList.add('sb-night');
+  tok(true);
+}
+
 function _init() {
   document.addEventListener('scroll', e => { if (e.target && e.target.classList && e.target.classList.contains('sb-ls-wrap')) _lsScroll = e.target.scrollLeft; }, true);
+  _night();
   _mountShell();
   _mountRecord();
   _hook();
@@ -737,6 +855,8 @@ if (typeof window !== 'undefined') {
   window.sbTeam = sbTeam;
   window.sbOrderSheet = sbOrderSheet;
   window.sbEditLineup = sbEditLineup;
+  window.sbFieldView = sbFieldView;
+  window.sbField3dTab = sbField3dTab;
   window.sbRender = schedule;
   window.sbRenderNow = render;   // 다음 프레임을 기다리지 않고 바로 그림 — 가상 시간으로 도는 테스트(tests/run.mjs)에서는 rAF 가 오지 않는다
   // record.js(setTimeout 0)가 필드 주변을 먼저 재배치한 뒤에 마운트

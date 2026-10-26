@@ -118,7 +118,7 @@ function _layout(g) {
   const vis = _visible(), out = [], grp = Object.create(null);
   vis.forEach((a, k) => {
     const d = S.drag && S.drag.a === a && S.drag.sp;
-    const p = _semiToCone(g, d ? d.x : a.x, d ? d.y : a.y);
+    const p = _semiToCone(g, d ? d.x : a.x, d ? d.y : a.y, d ? 0 : a.fa);
     const v = { a, x: p[0], y: p[1], n: k + 1 };
     out.push(v);
     if (!d) { const id = Math.round(p[0]) + ',' + Math.round(p[1]); (grp[id] = grp[id] || []).push(v); }
@@ -225,6 +225,7 @@ export function gameOneFixSkip() {
 
 function _commit(a, sp) {
   a.x = sp.x; a.y = sp.y; a.deg = sp.deg; a.dir = DIR(sp.deg);
+  delete a.fa;   // 새로 찍은 자리는 파울라인 사이(fa = 3D 파울 각도는 버린다)
   if (a.res !== '홈런') a.ft = Math.round(sp.dist * (S.wall[a.dir] || 370));
   a.estimated = false;
   S.moved.add(a);

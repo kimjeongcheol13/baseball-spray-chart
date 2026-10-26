@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<script>
+/* 첫 화면 = landing.html (모든 기기·설치 앱, 기록 있어도. ?utm_·fbclid 등은 넘김). 앱으로 바로: 아래 앱 링크 파라미터(새로 만들면 추가)·#·
+   이 탭(설치 앱은 이번 실행)에서 앱 열었음(sl_in_app — ?go=1 등은 곧 지워짐). plaintext=아래 GA·앱 안 돌림 */
+(function(){try{var s=sessionStorage,p=new URLSearchParams(location.search);
+if(!s.sl_in_app&&!location.hash&&!['go','app','game','gid','team','import','code','error','debug'].some(function(k){return p.has(k);})){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
+s.sl_in_app=1}catch(e){}})();
+</script>
 <script
   src="https://js.sentry-cdn.com/faa955c28109534c40458ca1e32c2909.min.js"
   crossorigin="anonymous"
@@ -10,22 +17,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>
-/* 첫 화면 가림막: 모바일·공유 링크는 바로 기록 화면이 열리는데, 종이 테마(scorebook.js 모듈)가 입혀지기 전의
+/* 첫 화면 가림막: index.html 은 언제나 바로 기록 화면이 열리는데(첫 화면은 위 스크립트의 landing.html · core.js autoSkipLanding), 종이 테마(scorebook.js 모듈)가 입혀지기 전의
    옛 화면(어두운 필드·하단 탭)이 열 때·새로고침될 때마다 잠깐 보였다 → 테마가 입혀질 때까지 종이색으로 덮고 scorebook.js 가 걷는다
-   · 조건은 core.js autoSkipLanding 과 같다 (데스크톱은 랜딩이 먼저 떠서 해당 없음)
    · 모듈을 못 불러와도 4초 뒤에는 무조건 걷는다 (가려진 채 멈추지 않게) */
 (function(){
-  var sp=new URLSearchParams(location.search);
-  var share=sp.has('game')||sp.has('team')||(location.hash&&location.hash.indexOf('#share=')>=0);
-  var mob=('ontouchstart' in window||navigator.maxTouchPoints>0)&&window.innerWidth<1024;
-  if(!share&&!mob)return;
   var el=document.documentElement;
   el.classList.add('sb-boot');
   setTimeout(function(){el.classList.remove('sb-boot');},4000);
 })();
 </script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#F3EDDF">
+<meta name="theme-color" content="#0B0D12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SprayLab">
@@ -83,7 +85,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/styles.css?v=89">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=13">
-<link rel="stylesheet" href="css/analysis.css?v=10">
+<link rel="stylesheet" href="css/analysis.css?v=12">
 <link rel="stylesheet" href="css/compare.css?v=6">
 <link rel="stylesheet" href="css/profile.css?v=8">
 <link rel="stylesheet" href="css/scout.css?v=5">
@@ -91,9 +93,10 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/pitcher.css?v=27">
 <link rel="stylesheet" href="css/batter.css?v=5">
 <link rel="stylesheet" href="css/spray.css?v=4">
-<link rel="stylesheet" href="css/record.css?v=11">
+<link rel="stylesheet" href="css/record.css?v=12">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=22">
+<link rel="stylesheet" href="css/paper.css?v=23">
+<link rel="stylesheet" href="css/night.css?v=3">
 <link rel="stylesheet" href="css/report.css?v=2">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -2463,10 +2466,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=232"></script>
+<script defer src="js/core.js?v=233"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=8"></script>
-<script type="module" src="js/app.js?v=143"></script>
+<script type="module" src="js/app.js?v=149"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

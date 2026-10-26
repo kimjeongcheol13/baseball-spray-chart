@@ -35,9 +35,11 @@ function testPage(only) {
   //     모든 실행이 시작 직후 한 번 다시 로드됐다. 테스트와 무관한 캐시도 끼어든다(sw.js 는 이 하네스의 검사 대상이 아니다)
   //  2) 가시성 변경 이벤트를 앱에 전달하지 않는다. 서비스워커 컨트롤러가 없으면 앱이 가시성이 visible 이 될 때 location.reload 를 부르는데,
   //     헤드리스 창이 여러 개일 때 가시성이 바뀔 수 있다
+  //  3) 이 탭은 앱을 이미 연 탭으로 둔다(sessionStorage sl_in_app). 테스트 페이지 주소(/?f=)는 앱 링크 파라미터가 아니라서, 안 그러면 index.html 첫 스크립트가 landing.html 로 보낸다
   // 그래도 다시 로드되면 harness.js 가 알아채 실패시킨다(조용히 넘어가지 않는다)
   const guard = `<script>if (navigator.serviceWorker) navigator.serviceWorker.register = function () { return new Promise(function () {}); };`
-    + ` window.addEventListener('visibilitychange', function (e) { e.stopImmediatePropagation(); }, true);</script>`;
+    + ` window.addEventListener('visibilitychange', function (e) { e.stopImmediatePropagation(); }, true);`
+    + ` try { sessionStorage.setItem('sl_in_app', '1'); } catch (e) {}</script>`;
   if (!/<head[^>]*>/.test(h)) throw new Error('index.html 에 <head> 가 없다');
   return h.replace(/<head[^>]*>/, (m) => m + guard).replace(CDN_SUPABASE, '<script src="/tests/stub-supabase.js"></script>').replace('</body>', tags + '</body>');
 }

@@ -127,4 +127,39 @@
     var back = _restoreAbsFromPayload([{ r: '홈런', x: 0.5, y: 0.03, d: 90, ov: 120 }, { ov: '<b>' }, { ov: 999 }, { ov: -3 }]);
     eq(back.map(function (a) { return a.ov; }), [120, null, null, null], '공유 링크 ov');
   });
+
+  // 경기 운영 모드는 타석 사이마다 타자가 비어 있다 → firstrun 이 필드 탭을 먼저 받아 타자를 고르게 한다 (#247)
+  // 예전엔 거기서 부채꼴 안(_coneToSemi)만 받아 파울 지역은 '타자를 먼저 선택하세요'로 끝났고, 3D 의 저장 좌표(sp)는 버려졌다
+  test('타자를 안 고른 채 파울 지역(2D) · 깊은 외야석(3D)을 누르면 → 타자 선택 → 같은 자리로 결과 팝업 (firstrun)', async function () {
+    // firstrun 은 고른 뒤 rAF 로 배치가 멈추길 기다린다 — 하네스(가상 시간)에서는 rAF 가 제때 안 돌아서 이 테스트 동안만 타이머로
+    var raf = window.requestAnimationFrame, lu = getActiveLineup();
+    window.requestAnimationFrame = function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
+    try {
+      if (!lu.some(function (p) { return p.id === 'q1'; })) { lu.push({ id: 'q1', name: '나', num: '1', pos: '', bh: '', isStarter: true }); renderLP(); }
+      await settle();
+      async function pickQ1() {
+        await T.sleep(100);
+        var pk = $('batPick'), b = pk && !pk.hidden && pk.querySelector('.bp-b[data-id="q1"]');
+        ok(!!b, '타자 선택 팝업 ' + JSON.stringify({ toast: ($('toast') || {}).textContent, pk: !!pk && !pk.hidden }));
+        if (b) b.click();
+        for (var i = 0; i < 30 && !window._tp; i++) await T.sleep(100);
+        ok(window._tp && window.AS.batter && window.AS.batter.id === 'q1', '결과 팝업 · 고른 타자');
+      }
+      var g = _fieldGeo(FS), rw = $('cwrap').getBoundingClientRect(), k = rw.width / FS;
+      window.AS.batter = null; window.AS.pending = null;
+      click($('fldCanvas'), rw, k, g.cx - 0.6 * g.R, g.cy - 0.15 * g.R);   // 3루 쪽 파울(정사각형 안 검은 칸)
+      await pickQ1();
+      eq([window.AS.pending && window.AS.pending.deg, !!window.AS.pending && window.AS.pending.fa > 0], [0, true], '파울 = 3루 라인 위 + fa ' + JSON.stringify(window.AS.pending));
+      await T.sleep(500); if (window._tp) _tpCancel();
+      // 3D: scorebook _tap3d 처럼 계산한 저장 좌표(sp)를 같이 넘긴다 → 외야석 29.5m 그대로(화면 좌표로 다시 재면 6% 띠 안으로 줄어든다)
+      window.AS.batter = null; window.AS.pending = null;
+      var sp = { x: 0.5, y: 0.03, deg: 90, dist: 0.97, ov: 29.5 }, p = _semiToCone(_fieldGeo(FS), sp.x, sp.y, 0, sp.ov);
+      onFClick({ clientX: p[0], clientY: p[1], rect: { left: 0, top: 0, width: FS, height: FS }, sx: 1, sy: 1, sp: sp });
+      await pickQ1();
+      eq([window.AS.pending && window.AS.pending.dir, window.AS.pending && window.AS.pending.ov], ['CF', 29.5], '3D 외야석 ov');
+      await T.sleep(500); if (window._tp) _tpCancel();
+    } finally {
+      window.requestAnimationFrame = raf;
+    }
+  });
 })();

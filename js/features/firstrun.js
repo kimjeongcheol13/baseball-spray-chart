@@ -119,13 +119,15 @@ function _pkPlace() {
 function _pkOpen(at, lu, orig) {
   const el = _pkEl();
   if (!el) return false;
-  _pk = { fx: at.fx, fy: at.fy, w: $('cwrap').clientWidth, at, orig };
+  _pk = { fx: at.fx, fy: at.fy, w: $('cwrap').clientWidth, at, orig, t: performance.now() };
   el.setAttribute('aria-label', lu.length ? '타자 선택' : '선수 추가');
   el.classList.toggle('empty', !lu.length);
   el.innerHTML = _pkHtml(at, lu);
   el.hidden = false;
   try { _tpMarker(at.fx * FS, at.fy * FS); } catch (e) {}   // 탭 지점 점선 원 (core 결과 팝업과 같은 표시)
   _pkPlace();
+  const p = _pk;
+  requestAnimationFrame(() => { if (_pk === p) p.t = performance.now(); });   // core _TP_HOLD 는 그려진 때부터
   // 빈 라인업은 이름칸, 아니면 키보드로 연 경우에만 첫 타자에 포커스 (마우스·터치 탭에서 포커스 링이 뜨지 않게)
   const inp = el.querySelector('input');
   if (inp) inp.focus({ preventScroll: true });
@@ -195,9 +197,10 @@ function _pkInit() {
       if (!_AS().batter && p && p.name === nm) _select(p.id);
     }, false);
   });
-  // 팝업 바깥 탭 → 취소 (필드 캔버스 탭은 감싼 onFClick 에서 취소)
+  // 팝업 바깥 탭 → 취소 (필드 캔버스 탭은 감싼 onFClick 에서 취소) · 막 열렸을 때 필드를 누른 건 무시 (core _tpFresh)
   document.addEventListener('pointerdown', e => {
     if (!_pk || el.contains(e.target) || e.target === fC) return;
+    if (_tpFresh(_pk.t) && el.parentNode && el.parentNode.contains(e.target)) return;
     _pkClose();
   }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && _pk) { _pkClose(); if (fC && fC.offsetParent) fC.focus(); } });
@@ -209,7 +212,7 @@ function _hookFieldTap() {
   const orig = window.onFClick;
   if (typeof orig !== 'function' || orig._fr) return;
   const w = function (e) {
-    if (_pk) { _pkClose(); return; }   // 팝업이 열린 채 필드 탭 = 취소 (결과 팝업과 같은 동작)
+    if (_pk) { if (!_tpFresh(_pk.t)) _pkClose(); return; }   // 팝업이 열린 채 필드 탭 = 취소 (결과 팝업과 같은 동작 · 막 열렸으면 무시)
     // 결과 팝업 열림(탭=취소) · 다른 창 열림 · 타자 있음 → 기존 흐름 그대로
     if (window._tp || document.querySelector('.overlay.show') || _AS().batter) return orig.apply(this, arguments);
     const at = _tapAt(e);

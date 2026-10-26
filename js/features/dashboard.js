@@ -98,7 +98,7 @@ function drawDashField(ctx, S, list) {
     .map(a => ({ a, k: P.kindOf(a.res) }))
     .sort((x, y) => (rank[x.k] || 0) - (rank[y.k] || 0))
     .forEach(({ a, k }) => {
-      const q = _semiToCone(g, a.x, a.y);
+      const q = _semiToCone(g, a.x, a.y, a.fa);
       P.mark(ctx, k, q[0], q[1], R, T);
       if (a.estimated === true) {   // 게임원에서 가져와 대략 찍은 위치(gameonefix.js) = 점선 테두리. 구역 수 · 통계는 그대로
         ctx.save(); ctx.setLineDash([3, 2.5]); ctx.lineWidth = Math.max(1.2, 1.6 * u); ctx.strokeStyle = T.ink;

@@ -241,7 +241,7 @@ function _show3d() {
     _f3d = _f3d || document.createElement('spray-field-3d');
     box.appendChild(_f3d);
     const P = window.sbPaint, st = _fieldGeo(1).st;
-    const balls = list.filter(a => a.x != null && a.y != null).map(a => ({ x: a.x, y: a.y, k: P ? P.kindOf(a.res) : 'out' }));
+    const balls = list.filter(a => a.x != null && a.y != null).map(a => ({ x: a.x, y: a.y, fa: a.fa, k: P ? P.kindOf(a.res) : 'out' }));
     const shown = balls.filter(b => ['hit', 'xbh', 'hr', 'out'].includes(b.k));
     _f3d.update({ balls, board: [top, `안타 ${shown.filter(b => b.k !== 'out').length} · 타구 ${shown.length}`], dist: [st.lfDist, st.cfDist, st.rfDist] });
   }).catch(() => { if (box.isConnected) box.innerHTML = '<p class="ad-none">3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.</p>'; });

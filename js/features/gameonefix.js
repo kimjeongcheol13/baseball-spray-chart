@@ -118,7 +118,7 @@ function _layout(g) {
   const vis = _visible(), out = [], grp = Object.create(null);
   vis.forEach((a, k) => {
     const d = S.drag && S.drag.a === a && S.drag.sp;
-    const p = _semiToCone(g, d ? d.x : a.x, d ? d.y : a.y);
+    const p = _semiToCone(g, d ? d.x : a.x, d ? d.y : a.y, d ? 0 : a.fa);
     const v = { a, x: p[0], y: p[1], n: k + 1 };
     out.push(v);
     if (!d) { const id = Math.round(p[0]) + ',' + Math.round(p[1]); (grp[id] = grp[id] || []).push(v); }

@@ -24,11 +24,12 @@ function _xy(el) {
 }
 
 // 그림 좌표(필드 1 = 100) → 저장 좌표. _coneToSemi 와 같지만 홈런이 펜스 밖(최대 1.06)에 놓이게 거리를 1 로 자르지 않는다
+// 파울라인 밖에 그려진 점(3D 에서 찍은 파울 타구)은 라인 위 + fa(라인 밖 각도°) — 반올림으로 생기는 0.5° 아래는 라인 위로 본다
 function _toSemi(px, py) {
-  const g = _fieldGeo(1), dx = px - g.cx, dy = py - g.cy;
-  const phi = Math.max(_FQ, Math.min(3 * _FQ, Math.atan2(-dy, -dx)));
+  const g = _fieldGeo(1), dx = px - g.cx, dy = py - g.cy, raw = Math.atan2(-dy, -dx);
+  const phi = Math.max(_FQ, Math.min(3 * _FQ, raw)), fa = Math.abs(raw - phi) * 180 / Math.PI;
   const d = Math.min(Math.hypot(dx, dy) / _fenceR(g, phi), 1.06) * 0.97, ang = _phiToDeg(phi) * Math.PI / 180 - Math.PI;
-  return { x: 0.5 + Math.cos(ang) * d, y: 1 + Math.sin(ang) * d };
+  return { x: 0.5 + Math.cos(ang) * d, y: 1 + Math.sin(ang) * d, fa: fa > 0.5 ? fa : 0 };
 }
 const _dist = () => { const st = _fieldGeo(1).st; return [st.lfDist, st.cfDist, st.rfDist]; };
 

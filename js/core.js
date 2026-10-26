@@ -1263,8 +1263,8 @@ window.setStadium = function setStadium(id){
 
 var _ftLabelTimer;
 function onFClick(e){
-  // 탭 자리 결과 팝업이 열려 있으면: 필드 탭 = 취소
-  if(_tp){_tpCancel();return;}
+  // 탭 자리 결과 팝업이 열려 있으면: 필드 탭 = 취소 (막 열렸으면 무시 — _TP_HOLD)
+  if(_tp){if(!_tpFresh(_tp.t))_tpCancel();return;}
   // 팝업 열린 상태에서 field 클릭 이벤트 차단
   if(document.querySelector('.overlay.show'))return;
   // 타자 미선택: 라인업이 비어 있으면 "타자 1" 자동 생성, 아니면 선택 요청
@@ -1375,6 +1375,10 @@ function _kbInit(){
 // 선택 시 기존 recHit()으로 저장하므로 타석 기록 형식은 그대로
 var _tp=null; // 열려 있을 때 {x,y} (FS 좌표)
 var _TP_GAP=24; // 손가락에 가리지 않도록 탭 지점과 띄우는 거리(px)
+// 팝업이 화면에 뜬 뒤 이 시간(ms) 안에 필드를 또 누르면 무시 — 느린 기기에서 반응이 없어 한 번 더 누른 탭이 막 열린 팝업을 닫지 않게
+// (firstrun.js 타자 선택 팝업도 같은 규칙)
+var _TP_HOLD=400;
+function _tpFresh(t){return t!=null&&performance.now()-t<_TP_HOLD;}
 function _tpMarker(x,y){
   oCtx.clearRect(0,0,FS,FS);
   if(AS.showHotCold&&AS.batter)_drawHotColdOnCtx();
@@ -1388,13 +1392,14 @@ function _tpMarker(x,y){
 function _tpOpen(x,y,sub){
   var pop=document.getElementById('tapPop'),w=document.getElementById('cwrap');
   if(!pop||!w){openOverlay('hitOverlay');return;}
-  _tp={x:x,y:y,w:w.clientWidth};
+  _tp={x:x,y:y,w:w.clientWidth,t:performance.now()};
   _tpMarker(x,y);
   document.getElementById('tapPopSub').textContent=sub||'';
   document.getElementById('tapPopMain').hidden=false;
   document.getElementById('tapPopXbh').hidden=true;
   pop.hidden=false;
   _tpPlace();
+  var t=_tp;requestAnimationFrame(function(){if(_tp===t)t.t=performance.now();}); // _TP_HOLD 는 그려진 때부터
 }
 // 기본: 탭 지점 우측 상단. 넘치면 좌/하로 뒤집고, 양쪽 다 안 되면 위/아래 + 가로 클램프
 function _tpPlace(){
@@ -1449,8 +1454,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // 팝업 위 움직임이 필드의 '근처 타구 상세' 카드를 띄우지 않도록
   pop.addEventListener('pointermove',function(e){e.stopPropagation();});
   // 팝업 바깥 탭 → 취소 (필드 캔버스 탭은 onFClick에서 취소 처리)
+  // 막 열렸을 때 팝업이 든 필드(2D #cwrap · 3D 칸)를 누른 건 무시 — _TP_HOLD
   document.addEventListener('pointerdown',function(e){
     if(!_tp||pop.contains(e.target)||e.target===fC)return;
+    if(_tpFresh(_tp.t)&&pop.parentNode&&pop.parentNode.contains(e.target))return;
     _tpCancel();
   },true);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')_tpCancel();});

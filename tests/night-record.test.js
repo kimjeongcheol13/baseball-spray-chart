@@ -120,6 +120,32 @@
     window.sbRenderNow(); await T.sleep(50);
   });
 
+  test('3D 외야석을 누르면 그 줄에 홈런 — x,y,deg,dir 는 펜스 위(통계 그대로) + ov(펜스 뒤 m) · 2D 는 펜스 바로 밖 · 3D 는 누른 줄', async function () {
+    var e = await el3d(), pop = $('tapPop'), n = window.AS.abs.length, g = _fieldGeo(1);
+    window.AS.batter = { id: 'p1', name: '가' };
+    window.AS.pending = null;
+    await T.sleep(800);   // core 연타 가드(_guard 700ms) — 바로 앞 테스트의 기록 직후라서
+    // 중견 외야석 펜스 뒤 10m(spray3d fromField 가 주는 모양)
+    e.dispatchEvent(new CustomEvent('fieldtap', { detail: { x: 0.5, y: 0.03, deg: 90, dist: 1, ov: 10, px: 10, py: 200 } }));
+    ok(window._tp && !pop.hidden, '결과 팝업이 안 열림');
+    eq([window.AS.pending.x, window.AS.pending.y, window.AS.pending.dir, window.AS.pending.ov, 'fa' in window.AS.pending], [0.5, 0.03, 'CF', 10, false], '대기 좌표');
+    pop.querySelector('[data-res="홈런"]').click();
+    await T.sleep(50);
+    var r = window.AS.abs[window.AS.abs.length - 1];
+    eq([window.AS.abs.length - n, r.res, r.dir, r.x, r.y, r.ov], [1, '홈런', 'CF', 0.5, 0.03, 10], '기록');
+    var p = _fieldPos(r), f = Math.hypot(p[0] - g.cx, p[1] - g.cy) / _fenceR(g, Math.PI / 2);
+    ok(f > 1.015 && f < 1.025, '2D 펜스 바로 밖 ' + f);
+    window.sbRenderNow(); await T.sleep(50);
+    // 중견 홈런: 원래 있던 펜스 밖 홈런(ov 없음 = 첫 줄 F + 4.75) + 방금 찍은 2번째 줄(F + 2.5 + 4.5 × 1.5)
+    var F = e._R(Math.PI / 2), cf = e._balls.filter(function (o) { return o.k === 'hr' && Math.abs(Math.atan2(-o.p[1], -o.p[0]) - Math.PI / 2) < 0.01; })
+      .map(function (o) { return Math.round((Math.hypot(o.p[0], o.p[1]) - F) * 100) / 100; }).sort(function (a, b) { return a - b; });
+    eq(cf, [4.75, 9.25], '3D 중견 외야석 줄(펜스 뒤 m)');
+    var back = _restoreAbsFromPayload([{ r: '홈런', x: 0.5, y: 0.03, d: 90, ov: 10 }, { ov: '<b>' }, { ov: 99 }]);
+    eq(back.map(function (a) { return a.ov; }), [10, null, null], '공유 링크 ov(0~29.5m 숫자만)');
+    window.AS.abs.splice(n);
+    window.sbRenderNow(); await T.sleep(50);
+  });
+
   test('3D 보기 중 위치를 찍어야 하면(field-tap-pending) 3D 그대로 점선 테두리, 2D 로 돌아가면 팝업도 2D 필드로', function () {
     var fw = document.querySelector('#sbField > .field-wrap');
     fw.classList.add('field-tap-pending');

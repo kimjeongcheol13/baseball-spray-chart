@@ -8,7 +8,7 @@
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
-  var GK = ['active', 'inning', 'half', 'outs', 'batterIdx', 'bases', 'runners'];
+  var GK = ['active', 'inning', 'half', 'first', 'outs', 'batterIdx', 'bases', 'runners'];
 
   // 경기 운영 바(주자 칸 · 베이스 설명)는 타석 기록 뒤 다음 프레임에 그린다(core.js gfAfterRecord → requestAnimationFrame → gfUpdateBar → paint).
   // 하네스(가상 시간 · CI 는 크롬 두 개를 같이 돌린다)에서는 그 프레임이 테스트의 50ms 대기보다 늦을 때가 있어 "주자 표시"가 직전 타석 글자로 남았다
@@ -49,6 +49,7 @@
     AS.home_lineup = ['일번', '이번', '삼번', '사번'].map(function (n, i) { return { id: 'rn' + (i + 1), name: n, num: String(i + 1), pos: '', bh: '', isStarter: true }; });
     AS.away_lineup = [{ id: 'ra1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }];
     renderLP();
+    GF.first = 'home';   // 아래 테스트들은 우리 팀(홈) 선공 — 1회초에 일번부터 (기본 원정 선공은 따로 본다)
     gfActivate();
   }
   var gap = function () { return T.sleep(750); };   // recHit · recOther 연타 방지(0.7초)
@@ -120,6 +121,40 @@
       eq([GF.half, GF.outs, GF.bases, names()], ['top', 2, [false, true, true], [null, '삼번', null]], '끝난 이닝을 되돌림');
       eq(AS.batter && AS.batter.name, '사번', '그 타순 타자');
     });
+  });
+
+  test('경기 운영 모드를 켤 때 선공 팀을 고른다 — 기본은 원정 선공(1회초 = 원정 공격) · 득점 · 이닝 전환 · 새로고침', async function () {
+    var th = $('tHome').value, ta = $('tAway').value;
+    await isolated(async function () {
+      localStorage.clear(); fresh(); gfDeactivate();
+      AS.curTeam = 'home'; $('tHome').value = '우리팀'; $('tAway').value = '상대팀';
+      AS.home_lineup = ['일번', '이번'].map(function (n, i) { return { id: 'rn' + (i + 1), name: n, num: String(i + 1), pos: '', bh: '', isStarter: true }; });
+      AS.away_lineup = ['원정일', '원정이', '원정삼'].map(function (n, i) { return { id: 'ra' + (i + 1), name: n, num: String(11 + i), pos: '', bh: '', isStarter: true }; });
+      renderLP();
+      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
+      gfToggle();
+      eq(txt(), ['상대팀 먼저 — 우리 팀 후공 (기본)', '우리팀 먼저 — 우리 팀 선공', '취소'], '선공 고르기');
+      $('slRunPick').querySelector('.x').click();
+      ok(!GF.active && !$('slRunPick'), '취소하면 켜지 않는다');
+      gfToggle(); $('slRunPick').querySelector('button').click();
+      eq([GF.active, GF.first, gfInnStr(), AS.curTeam, AS.batter && AS.batter.name], [true, 'away', '1회초', 'away', '원정일'], '1회초 = 원정 공격');
+      await hit('안타'); await hit('홈런');
+      eq([AS.as, AS.hs, AS.abs[1].team, $('scA').textContent], [2, 0, 'away', '2'], '원정 득점');
+      await other('삼진'); await other('삼진'); await other('삼진');
+      eq([gfInnStr(), AS.curTeam, AS.batter && AS.batter.name], ['1회말', 'home', '일번'], '1회말 = 우리 팀 공격');
+      gfScoreAtk(1);
+      eq([AS.hs, AS.as], [1, 2], '공격 팀 득점 + 는 우리 팀');
+      eq(slLineScore(AS.abs).away, [2], '이닝별 득점: 원정 1회');
+      _scheduleRecoverySave(0);
+      await T.sleep(50);
+      gfDeactivate(); GF.first = 'home'; GF.inning = 1; GF.half = 'top'; GF.outs = 0; GF.batterIdx = 0; GF.bases = [false, false, false];
+      fresh(); AS.home_lineup = []; AS.away_lineup = []; AS.curTeam = 'away'; _openLastGame();   // 앱을 막 연 상태
+      await T.sleep(400);   // 경기 운영 모드 복구는 200ms 뒤
+      eq([GF.active, GF.first, gfInnStr(), AS.curTeam, AS.batter && AS.batter.name], [true, 'away', '1회말', 'home', '일번'], '새로고침 뒤에도 선공 팀 그대로');
+      await other('삼진'); await other('삼진'); await other('삼진');
+      eq([gfInnStr(), AS.curTeam, AS.batter && AS.batter.name], ['2회초', 'away', '원정삼'], '2회초 = 원정 · 1회초 마지막 타자 다음');
+    });
+    $('tHome').value = th; $('tAway').value = ta;
   });
 
   test('새로고침 뒤에도 주자 이름이 그대로', async function () {

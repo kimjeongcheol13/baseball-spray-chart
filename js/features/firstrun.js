@@ -64,7 +64,7 @@ function _select(id) {
 function _gfAuto() {
   const lu = window.gfGetLineup ? window.gfGetLineup() || [] : [];
   if (!lu.length) return false;
-  const team = GF.half === 'top' ? 'home' : 'away';
+  const team = window.gfAtk();   // 공격 팀 (core.js — 선공 팀에 따라)
   if (_AS().curTeam !== team && window.swLineupTab) window.swLineupTab(team);   // 기록은 AS.curTeam 으로 들어가므로 공격 팀에 맞춘다
   _select(lu[GF.batterIdx % lu.length].id);
   return !!_AS().batter;

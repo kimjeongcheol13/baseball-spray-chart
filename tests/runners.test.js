@@ -62,7 +62,9 @@
       eq(who(AS.abs[2].scored), ['일번'], '2루 주자 홈인'); eq(names(), [null, '삼번', '이번'], '1루 → 3루 · 타자 2루');
       eq(AS.hs, 1, '점수');
       ok(/홈인 일번/.test($('toastTxt').textContent), '알림에 홈인 주자: ' + $('toastTxt').textContent);
-      await T.sleep(50);   // 경기 운영 바는 다음 프레임에 그린다 (core.js gfAfterRecord)
+      // 경기 운영 바는 다음 프레임(rAF)에 그린다 (core.js gfAfterRecord). 이 하네스는 가상 시간이라 프레임이 제때 안 올 때가 있다
+      // (CI에서 50ms 뒤에도 볼넷 때 글자 "1루 이번 · 2루 일번"이 남아 두 번 실패) → 바로 그려서 읽는다 (gameone-import 의 sbRenderNow 와 같은 방식)
+      gfUpdateBar();
       ok($('gfbRunners'), '경기 운영 바에 주자 칸');
       eq($('gfbRunners').textContent, '2루 삼번 · 3루 이번', '주자 표시');
       eq($('gfbB3').title, '3루 주자 이번', '베이스 설명');

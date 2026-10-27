@@ -14,7 +14,7 @@ const $ = id => document.getElementById(id);
 const ABBR = { __proto__: null,
   '안타': '1B', '내야안타': 'IH', '2루타': '2B', '3루타': '3B', '홈런': 'HR',
   '땅볼 아웃': 'G', '플라이 아웃': 'F', '삼진': 'K', '볼넷': 'BB', '사구': 'HBP',
-  '희타': 'SH', '희비': 'SF', '병살': 'GDP',
+  '희타': 'SH', '희비': 'SF', '병살': 'GDP', '실책': 'E', '야수선택': 'FC',
 };
 const KIND = { __proto__: null, '안타': 'hit', '내야안타': 'hit', '2루타': 'xbh', '3루타': 'xbh', '홈런': 'hr', '삼진': 'k', '볼넷': 'bb', '사구': 'hbp' };
 const DIR = { __proto__: null, LF: '좌익', LC: '좌중간', CF: '중견', RC: '우중간', RF: '우익' };
@@ -610,7 +610,7 @@ function _sideHtml() {
       <button type="button" class="sb-stamp hbp" onclick="recQuick('사구')" aria-label="사구 기록"><b>HBP</b><small>사구</small></button>
     </section>
     <section class="sb-aux" role="group" aria-label="그 밖의 결과">
-      ${[['희타', 'SH', '희생번트'], ['희비', 'SF', '희생플라이'], ['병살', 'GDP', '병살'], ['내야안타', 'IH', '내야안타']]
+      ${[['희타', 'SH', '희생번트'], ['희비', 'SF', '희생플라이'], ['병살', 'GDP', '병살'], ['내야안타', 'IH', '내야안타'], ['실책', 'E', '실책 출루'], ['야수선택', 'FC', '야수선택']]
         .map(([r, a, l]) => `<button type="button" onclick="recOther('${r}')" aria-label="${l} 기록"><b>${a}</b><span>${l}</span></button>`).join('')}
       ${gf ? `<button type="button" onclick="recSB(true)" aria-label="도루 기록"><b>SB</b><span>도루</span></button>`
         + `<button type="button" onclick="recSB(false)" aria-label="도루 실패 기록"><b>CS</b><span>도루실패</span></button>`

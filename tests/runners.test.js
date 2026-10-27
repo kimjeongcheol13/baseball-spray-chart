@@ -262,6 +262,23 @@
     });
   });
 
+  test('기록 화면 그 밖의 결과에 실책 · 야수선택 버튼 — 누르면 바로 기록 · 타석 기록에 E · FC', async function () {
+    await isolated(async function () {
+      start();
+      shellNav('record'); window.sbRenderNow();
+      var b = function (l) { return document.querySelector('.sb-aux button[aria-label="' + l + ' 기록"]'); };
+      eq([b('실책 출루') && b('실책 출루').textContent, b('야수선택') && b('야수선택').textContent], ['E실책 출루', 'FC야수선택'], '버튼');
+      await gap(); b('실책 출루').click();   // 일번
+      eq([AS.abs[0].res, names()], ['실책', ['일번', null, null]], '실책 출루 → 1루');
+      window.sbRenderNow();
+      await gap(); b('야수선택').click();   // 이번 — 1루 일번
+      tap('1루 주자 일번 아웃');
+      eq([AS.abs[1].res, GF.outs, names()], ['야수선택', 1, ['이번', null, null]], '야수선택 → 1아웃 · 1루 이번');
+      window.sbRenderNow();
+      eq([].map.call(document.querySelectorAll('.sb-pa-list .rs'), function (e) { return e.textContent; }), ['FC', 'E'], '타석 기록 약어 (최근 먼저)');
+    });
+  });
+
   test('다른 경기를 열면 이전 경기의 경기 운영 상태(이닝 · 아웃 · 주자)를 넘기지 않는다 — 같은 경기를 다시 열면 그대로 · 새 경기도 끈다', async function () {
     await isolated(async function () {
       start();

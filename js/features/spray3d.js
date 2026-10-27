@@ -381,6 +381,16 @@ class SprayField3D extends HTMLElement {
     this._pin = p || null;
     if (this._ready) this._setPin();
   }
+  // 저장 좌표 → 이 요소 안의 화면 px { px, py } (키보드 입력의 팝업 자리 — scorebook _kb3d). 화면 밖(돌려 둔 시점 · 깊은 파울 관중석)이면 가까운 가장자리로, 준비 전 · 카메라 뒤면 null
+  screenAt(p) {
+    if (!this._ready || !p) return null;
+    const [x, z] = toField(p.x, p.y, false, this._R, p.fa, p.ov);
+    const v = new THREE.Vector3(x, groundY(x, z, this._R), z).project(this._camera);
+    const r = this.getBoundingClientRect();
+    if (!r.width || !r.height || v.z > 1) return null;
+    const cl = (t) => Math.max(-1, Math.min(1, t));
+    return { px: (cl(v.x) + 1) / 2 * r.width, py: (1 - cl(v.y)) / 2 * r.height };
+  }
 
   get _cfg() { return this._sc || sprayCfg(1); }
   _setup() {

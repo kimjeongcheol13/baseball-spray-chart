@@ -117,6 +117,9 @@ function _pkPlace() {
   el.style.top = Math.round(top) + 'px';
 }
 
+// 키보드로 입력했나 — 2D 캔버스 또는 3D 필드(scorebook <spray-field-3d>)에 포커스가 있다
+const _kbFocus = () => { const a = document.activeElement; return a === fC || !!(a && a.tagName === 'SPRAY-FIELD-3D'); };
+
 function _pkOpen(at, lu, orig) {
   const el = _pkEl();
   if (!el) return false;
@@ -132,7 +135,7 @@ function _pkOpen(at, lu, orig) {
   // 빈 라인업은 이름칸, 아니면 키보드로 연 경우에만 첫 타자에 포커스 (마우스·터치 탭에서 포커스 링이 뜨지 않게)
   const inp = el.querySelector('input');
   if (inp) inp.focus({ preventScroll: true });
-  else if (document.activeElement === fC) { const b = el.querySelector('.bp-b'); if (b) b.focus({ preventScroll: true }); }
+  else if (_kbFocus()) { const b = el.querySelector('.bp-b'); if (b) b.focus({ preventScroll: true }); }
   // 키보드 입력 안내(core _kbSay 의 '입력됨')를 덮어쓴다
   setTimeout(() => { const live = $('fldKbLive'); if (live && _pk) live.textContent = lu.length ? '타자를 고르세요' : '라인업이 비어 있어요. 선수 이름을 입력하세요'; }, 60);
   return true;
@@ -219,7 +222,7 @@ function _hookFieldTap() {
     const at = _tapAt(e);
     if (!at) return orig.apply(this, arguments);   // 홈 뒤: 기존 처리
     if (_gfOn() && _gfAuto()) {
-      const kb = document.activeElement === fC;   // 키보드로 입력했으면 결과 팝업 첫 버튼으로 포커스
+      const kb = _kbFocus();   // 키보드로 입력했으면(2D 캔버스 · 3D 필드) 결과 팝업 첫 버튼으로 포커스
       _afterLayout(() => {
         if (!_AS().batter || window._tp || document.querySelector('.overlay.show')) return;
         _continue(at, orig);

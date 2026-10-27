@@ -182,6 +182,28 @@
     });
   });
 
+  test('다른 경기를 열면 이전 경기의 경기 운영 상태(이닝 · 아웃 · 주자)를 넘기지 않는다 — 같은 경기를 다시 열면 그대로 · 새 경기도 끈다', async function () {
+    await isolated(async function () {
+      start();
+      await hit('안타'); await other('삼진'); await other('삼진'); await other('삼진');   // 1회말
+      await hit('안타'); await other('삼진');
+      eq([GF.active, GF.inning + GF.half, GF.outs, GF.bases], [true, '1bottom', 1, [true, false, false]], '1회말 1아웃 1루');
+      localStorage.setItem('sl_gfsw', JSON.stringify({ th: '다른홈', ta: '다른원정', hs: 3, as: 1, home_lineup: [], away_lineup: [],
+        abs: [{ id: 777, bid: 'x1', bname: '남', bnum: '9', team: 'away', res: '안타', inn: '1회초', rbi: 0 }] }));
+      window._gameSaved = true;   // 지금 경기를 먼저 저장하는 건 이 테스트와 상관없다
+      restoreGame('sl_gfsw');
+      eq([GF.active, GF.inning + GF.half, GF.outs, GF.bases, names()], [false, '1top', 0, [false, false, false], [null, null, null]], '경기 운영 모드 꺼짐 · 상태 비움');
+      ok(!$('gfBar').classList.contains('active') && !$('gfbRunners').textContent, '경기 운영 막대 숨김 · 주자 글자 비움');
+      gfActivate(); gfToggleBase(0); $('slRunPick').querySelector('.x').click();
+      window._gameSaved = true;
+      restoreGame('sl_gfsw');   // 같은 경기(클라우드 정리가 남긴 항목으로 다시 열 때도 첫 타석이 같다)
+      eq([GF.active, GF.bases[0]], [true, true], '같은 경기는 그대로');
+      startFromWizard();
+      eq([GF.active, GF.bases[0], $('gfBar').classList.contains('active')], [false, false, false], '새 경기');
+      await T.sleep(3500);   // 경기를 열 때 예약된 자동 동기화(3초)가 다음 테스트로 새지 않게
+    });
+  });
+
   test('이닝이 바뀌면 그 팀 마지막 타석의 다음 타자부터 — 타자가 3아웃이면 그다음, 도루 실패로 끝나면 그때 타석에 있던 타자', async function () {
     await isolated(async function () {
       start();

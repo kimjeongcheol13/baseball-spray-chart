@@ -487,6 +487,20 @@ wrap('gfUpdateBar', orig => function () {
   return r;
 });
 
+// 다른 경기를 열면(저장 목록 · 새 경기 · 공유 링크 · 복구) 이전 경기의 경기 운영 상태(이닝 · 아웃 · 주자)를 넘기지 않는다 — 경기 운영 모드를 끈다
+// (core.js startFromWizard 의 'GF 초기화'가 하려던 것 — 그쪽은 없는 필드 이름이라 아무것도 안 바뀌었다). 같은 경기를 다시 열면(첫 타석이 같으면) 그대로 ·
+// 복구가 그 경기의 경기 운영 상태를 되살리는 건(core.js _enhanceRecovery, 200ms 뒤) 이 다음이라 그대로 된다
+const gameId = () => { const A = window.AS, a = A.abs && A.abs[0]; return a ? 'ab:' + a.id : 'g:' + A.curGame; };
+['restoreGame', 'startFromWizard', 'loadSharedGame', 'recoverHiddenAutosave', 'archRecoverAutosave'].forEach(n => wrap(n, orig => function () {
+  const was = gameId(), r = orig.apply(this, arguments), g = G();
+  if (g && gameId() !== was) {
+    if (g.active) window.gfDeactivate();
+    Object.assign(g, { inning: 1, half: 'top', outs: 0, batterIdx: 0, bases: [false, false, false], runners: [null, null, null] });
+    window.gfUpdateBar();   // 숨은 막대의 주자 글자도 비운다 (다시 켜면 1회초부터)
+  }
+  return r;
+}));
+
 wrap('recSB', orig => function (ok) {
   const g = G();
   if (!g || !g.active) return orig.apply(this, arguments);   // 경기 운영 모드가 아니면 주자를 모른다 — 예전처럼 안내만

@@ -384,12 +384,31 @@ class SprayField3D extends HTMLElement {
   // 저장 좌표 → 이 요소 안의 화면 px { px, py } (키보드 입력의 팝업 자리 — scorebook _kb3d). 화면 밖(돌려 둔 시점 · 깊은 파울 관중석)이면 가까운 가장자리로, 준비 전 · 카메라 뒤면 null
   screenAt(p) {
     if (!this._ready || !p) return null;
-    const [x, z] = toField(p.x, p.y, false, this._R, p.fa, p.ov);
-    const v = new THREE.Vector3(x, groundY(x, z, this._R), z).project(this._camera);
+    const v = this._settled(p).project(this._camera);
     const r = this.getBoundingClientRect();
     if (!r.width || !r.height || v.z > 1) return null;
     const cl = (t) => Math.max(-1, Math.min(1, t));
     return { px: (cl(v.x) + 1) / 2 * r.width, py: (1 - cl(v.y)) / 2 * r.height };
+  }
+  // 저장 좌표의 3D 점을, 카메라가 보는 점까지 다 미끄러져 간 뒤(_tgt → _tgtTo)의 시점으로 지금 카메라에 투영할 수 있게 남은 이동량만큼 되돌린 점
+  //   (카메라는 보는 점과 같이 움직이고 방향은 그대로라서, 다 간 뒤의 투영 = 지금 카메라로 (점 − 남은 이동량) 투영) — 방향키 연타에 follow 가 겹쳐 쌓이지 않는다
+  _settled(p) {
+    const [x, z] = toField(p.x, p.y, false, this._R, p.fa, p.ov);
+    return new THREE.Vector3(x, groundY(x, z, this._R), z).sub(this._tgtTo).add(this._tgt);
+  }
+  // 저장 좌표의 자리가 화면 밖이면(돌려 둔 시점 · 깊은 파울 관중석) 그 자리가 보이게 보는 점을 옮긴다 — 키보드 커서(scorebook _kb3d). 옮겼으면 true
+  //   카메라는 보는 점과 같이 움직이므로, 화면 안쪽(IN)에 지금 보이는 땅 점 E 를 그 자리 P 로 옮기면 P 가 거기에 온다 (_loop 가 미끄러져 간다)
+  follow(p) {
+    if (!this._ready || !p) return false;
+    const M = 0.8, IN = 0.6;   // 여백 M 밖이면 안쪽 IN 까지 들여온다
+    const P = this._settled(p), v = P.clone().project(this._camera);
+    if (v.z <= 1 && Math.abs(v.x) <= M && Math.abs(v.y) <= M) return false;
+    const cl = (t) => Math.max(-IN, Math.min(IN, t));
+    const rc = new THREE.Raycaster(); rc.setFromCamera(new THREE.Vector2(cl(v.x), cl(v.y)), this._camera);
+    const E = rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -P.y), new THREE.Vector3());
+    if (!E) return false;
+    this._moveTgt(P.sub(E).setY(0));
+    return true;
   }
 
   get _cfg() { return this._sc || sprayCfg(1); }

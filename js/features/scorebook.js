@@ -453,7 +453,7 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=8').then(() => {
+  import('./spray3d.js?v=9').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
     if (!_f3d) {
       _f3d = document.createElement('spray-field-3d');
@@ -538,6 +538,7 @@ function _kb3d(e) {
   if (!sp) { _say3d('필드 끝입니다'); return; }
   kb.x = nx; kb.y = ny;
   _f3d.mark(sp);
+  if (_f3d.follow) _f3d.follow(sp);   // 화면 밖으로 나가면 카메라가 따라간다
   _say3d(_kbDescribe(sp));
 }
 // 화면 낭독기 안내 (core _kbSay 와 같은 방식: 비웠다가 넣어 같은 글도 다시 읽게). 2D 의 #fldKbLive 는 3D 에서 숨어 있다
@@ -564,7 +565,7 @@ function _kb3dBack() {
     if (a !== document.body && a !== $('fldCanvas')) return;
     _f3d.focus({ preventScroll: true });
     const sp = FS && typeof _coneToSemiAll === 'function' ? _coneToSemiAll(_fieldGeo(FS), kb.x, kb.y) : null;
-    if (sp) _f3d.mark(sp);
+    if (sp) { _f3d.mark(sp); if (_f3d.follow) _f3d.follow(sp); }
   }, 0);
 }
 function sbFieldView(v) {

@@ -5,7 +5,7 @@
 //   · 왼쪽 타순표: 행을 누르면 현재 타자(shellSelectBatter) · NOW BATTING · [라인업 편집] = 기존 라인업 서랍
 //   · 가운데 필드: 기존 캔버스 3겹과 기하(_fieldGeo·_fieldPx) 그대로, 그리는 색·기호만 바꿈
 //       (PNG 내보내기·분석 탭 복사본이 같은 캔버스를 읽으므로 캔버스에 그려야 결과가 같다)
-//   · 오른쪽: 볼카운트(chCount) → 기록 도장 K/BB/HBP(recQuick) → 보조 버튼(recOther · 경기 운영 모드면 도루 recSB · 폭투 · 포일 · 견제사 slRunPlay) → 타석 기록 + 지우개(undoLast)
+//   · 오른쪽: 볼카운트(chCount) → 기록 도장 K/BB/HBP(recQuick) → 보조 버튼(recOther · 경기 운영 모드면 도루 recSB · 폭투 · 포일 · 견제사 slRunPlay · 교체 slSub) → 타석 기록 + 지우개(undoLast)
 import { HITS, esc } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -613,7 +613,8 @@ function _sideHtml() {
         .map(([r, a, l]) => `<button type="button" onclick="recOther('${r}')" aria-label="${l} 기록"><b>${a}</b><span>${l}</span></button>`).join('')}
       ${gf ? `<button type="button" onclick="recSB(true)" aria-label="도루 기록"><b>SB</b><span>도루</span></button>`
         + `<button type="button" onclick="recSB(false)" aria-label="도루 실패 기록"><b>CS</b><span>도루실패</span></button>`
-        + [['WP', '폭투'], ['PB', '포일'], ['PO', '견제사']].map(([t, l]) => `<button type="button" onclick="slRunPlay('${t}')" aria-label="${l} 기록"><b>${t}</b><span>${l}</span></button>`).join('') : ''}
+        + [['WP', '폭투'], ['PB', '포일'], ['PO', '견제사']].map(([t, l]) => `<button type="button" onclick="slRunPlay('${t}')" aria-label="${l} 기록"><b>${t}</b><span>${l}</span></button>`).join('')
+        + `<button type="button" onclick="slSub()" aria-label="선수 교체 기록 (대타 · 대주자 · 대수비 · 투수)"><b>SUB</b><span>교체</span></button>` : ''}
     </section>
     <section class="sb-card sb-pa" aria-label="타석 기록">
       <div class="sb-card-hd"><h2>타석 기록</h2>

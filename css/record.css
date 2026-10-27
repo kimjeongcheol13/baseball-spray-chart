@@ -257,6 +257,18 @@ body.sb #gfBar .gfb-runners { font: 700 12px var(--f-body); color: var(--ink); }
 .sl-runpick button { min-height: 44px; padding: 0 12px; border: 1px solid rgba(246,194,62,.35); border-radius: 8px; background: rgba(246,194,62,.1); color: inherit; font: 700 14px var(--font, sans-serif); text-align: left; cursor: pointer; }
 .sl-runpick button.x { border-color: var(--border2, #1e2535); background: transparent; font-weight: 600; text-align: center; }
 .sl-runpick button:focus-visible { outline: 2px solid var(--yellow, #f6c23e); outline-offset: 1px; }
+/* 폭투 · 포일 진루 주자 고르기(누른 주자 = 진루) · 교체 새 이름 칸 */
+.sl-runpick { max-height: calc(100vh - 32px); overflow-y: auto; }
+.sl-runpick button.tg::before { content: ''; display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-radius: 3px; box-sizing: border-box; }
+.sl-runpick button.tg[aria-pressed="true"]::before { background: currentColor; box-shadow: inset 0 0 0 2px var(--card, #0e1018); }
+.sl-runpick button.tg[aria-pressed="false"] { opacity: .6; }
+.sl-runpick button:disabled { opacity: .35; cursor: not-allowed; }
+.sl-runpick button.ok { text-align: center; }
+.sl-runpick .new { display: flex; gap: 8px; }
+.sl-runpick .new input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--border2, #1e2535); border-radius: 8px; background: transparent; color: inherit; font: 600 14px var(--font, sans-serif); }
+.sl-runpick .new button { flex: 0 0 auto; }
+body.sb .sl-runpick .new input { border: 1.5px solid var(--ink); border-radius: 0; font-family: var(--f-body); }
+body.sb .sl-runpick button.tg[aria-pressed="true"]::before { box-shadow: inset 0 0 0 2px var(--paper-2); }
 body.sb .sl-runpick { background: var(--paper-2); color: var(--ink); border: 1.5px solid var(--ink); border-radius: 0; box-shadow: 4px 4px 0 var(--ink); }
 body.sb .sl-runpick button { border: 1.5px solid var(--ink); border-radius: 0; background: var(--paper-2); font-family: var(--f-body); }
 body.sb .sl-runpick button.x { border-color: var(--ink-soft); }

@@ -1,5 +1,5 @@
 // 주자 이름 · 득점 · 주루 플레이 · 타순 · 교체 · 되돌리기 — 경기 운영 모드(core.js GF)에서만. core.js 의 진루 규칙 · 아웃 · 이닝 전환은 그대로 두고 함수를 감싼다
-//  · GF.runners = [1루, 2루, 3루] 주자 { id, name, num } | null — GF.bases(있다/없다)와 짝. 베이스를 손으로 켜면 이름 없는 주자(null)
+//  · GF.runners = [1루, 2루, 3루] 주자 { id, name, num } | null — GF.bases(있다/없다)와 짝. 베이스를 손으로 켜면 누가 나갔는지 고른다(pickOn · 취소하면 이름 없는 주자 null)
 //    이름 없는 주자는 이번 이닝 타석 기록을 다시 따라가 채운다(backfill) — 이 기능 전에 시작한 경기도 이름이 나오게
 //  · 타석 기록에 항목만 추가 (기존 필드 · 저장 키 그대로):
 //      scored = [{ id, name, num }]  이 타석 플레이로 홈인한 주자 (홈런은 타자 포함) — 경기 운영 모드로 적은 타석에만 있다(빈 배열 포함)
@@ -250,6 +250,20 @@ function pickAdv(t) {
   show(box);
 }
 
+// 손으로 켠 베이스 — 누가 나갔는지 고른다 (실책 · 야수선택 · 낫아웃 · 희타 · 진루타처럼 core.js 가 주자를 옮기지 않는 플레이).
+// 아래 베이스 주자를 고르면 그 주자가 옮겨 간다 · 이번 이닝 마지막 타자 · 공격 팀 주전(베이스에 없는 선수) · 취소하면 예전처럼 이름 없는 '주자'
+function pickOn(k) {
+  const g = G(), R = runners(), team = atk(), cur = inn(), box = sheet(`${BASE[k]}에 누가 나갔나요?`);
+  const put = (r, from) => { closePick(); if (from != null) { g.bases[from] = false; R[from] = null; } R[k] = r; window.gfUpdateBar(); };
+  for (let i = k - 1; i >= 0; i--) if (g.bases[i]) btn(box, `${BASE[i]} ${nm(R[i])} → ${BASE[k]}`, () => put(R[i], i));
+  const off = id => !R.some(r => same(r, { id }));
+  const last = window.AS.abs.slice().reverse().find(a => a && a.inn === cur && (a.team || 'home') === team);
+  const bat = last && off(last.bid) ? clean({ id: last.bid, name: last.bname, num: last.bnum }) : null;
+  if (bat) btn(box, `타자 ${nm(bat)} (${last.res})`, () => put(bat));
+  window.gfGetLineup().forEach((p, i) => { if (p && off(p.id) && !same(p, bat)) btn(box, `${i + 1}번 ${p.name}`, () => put(clean(p))); });
+  show(box);
+}
+
 // 지금 타자 · 되돌린 타자를 고른다 — core.js undoLast 가 그 타석의 앞 공을 되살렸으면 지킨다 (shell.js 되돌리기와 같이) · 대타는 볼카운트를 이어받는다
 function setBatter(id) {
   const A = window.AS, cp = A.currentPitches;
@@ -480,6 +494,13 @@ wrap('recSB', orig => function (ok) {
   if (!c.length) { window.showToast('도루할 주자가 없어요 — 위 베이스를 눌러 주자를 놓을 수 있어요', false); return; }
   const t = ok ? 'SB' : 'CS';
   if (c.length === 1) runEvent(t, c[0]); else pick(t, c);
+});
+
+// 베이스를 켜면 누가 나갔는지 묻는다 (pickOn) — 끄기 · 기록으로 이름이 채워지는 주자는 예전처럼
+wrap('gfToggleBase', orig => function (k) {
+  const r = orig.apply(this, arguments), g = G();
+  if (g && g.active && g.bases[k]) { sync(); backfill(); if (!runners()[k]) pickOn(k); }
+  return r;
 });
 
 wrap('undoLast', orig => function () {

@@ -150,9 +150,35 @@
       GF.runners = [null, null, null];   // 막대를 다시 그리기 전에 쳐도 진루 · 홈인에 이름이 쓰인다
       AS.pending = { x: 0.45, y: 0.35, deg: 85, dir: 'CF', ft: 250 }; AS.rbi = 0; recHit('2루타');
       eq(who(AS.abs[2].scored), ['일번'], '홈인 이름'); eq(names(), [null, '삼번', '이번'], '진루');
-      gfToggleBase(0); gfUpdateBar();   // 손으로 켠 1루 — 기록과 베이스 모양이 달라 채우지 않는다
+      gfToggleBase(0); gfUpdateBar();   // 손으로 켠 1루 — 기록과 베이스 모양이 달라 채우지 않는다 · 누군지 묻는 창은 취소
+      $('slRunPick').querySelector('.x').click();
       eq(names(), [null, '삼번', '이번'], '손으로 켠 베이스는 이름 없음');
       eq($('gfbRunners').textContent, '1루 주자 · 2루 삼번 · 3루 이번', '막대 글자');
+    });
+  });
+
+  test('손으로 켠 베이스는 누가 나갔는지 고른다 — 실책으로 나간 타자 · 희타로 옮긴 주자 · 취소하면 이름 없는 주자', async function () {
+    await isolated(async function () {
+      start();
+      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
+      var tap = function (t) { Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent === t; }).click(); };
+      await hit('안타'); await other('실책');   // core.js 는 실책에 주자를 옮기지 않는다
+      eq([GF.bases, names()], [[true, false, false], ['일번', null, null]], '실책 뒤 베이스 그대로');
+      gfToggleBase(1);
+      eq(txt(), ['1루 일번 → 2루', '타자 이번 (실책)', '3번 삼번', '4번 사번', '취소'], '2루 후보: 아래 주자 · 마지막 타자 · 베이스에 없는 주전');
+      tap('1루 일번 → 2루');
+      ok(!$('slRunPick'), '닫힘'); eq([GF.bases, names()], [[false, true, false], [null, '일번', null]], '1루 주자가 2루로');
+      gfToggleBase(0); tap('타자 이번 (실책)');
+      eq($('gfbRunners').textContent, '1루 이번 · 2루 일번', '실책으로 나간 타자');
+      await other('희타');   // 삼번 희타 — 주자는 손으로 옮긴다
+      gfToggleBase(2);
+      eq(txt(), ['2루 일번 → 3루', '1루 이번 → 3루', '타자 삼번 (희타)', '4번 사번', '취소'], '3루 후보');
+      tap('2루 일번 → 3루'); gfToggleBase(1); tap('1루 이번 → 2루');
+      eq([GF.bases, names(), $('gfbRunners').textContent], [[false, true, true], [null, '이번', '일번'], '2루 이번 · 3루 일번'], '희타로 한 베이스씩');
+      gfToggleBase(0); $('slRunPick').querySelector('.x').click(); gfUpdateBar();   // 막대는 다음 프레임에 그린다 — 여기서는 바로
+      eq([GF.bases[0], names()[0], $('gfbRunners').textContent], [true, null, '1루 주자 · 2루 이번 · 3루 일번'], '취소하면 이름 없는 주자');
+      gfToggleBase(0);
+      ok(!$('slRunPick') && !GF.bases[0], '끌 때는 묻지 않는다');
     });
   });
 

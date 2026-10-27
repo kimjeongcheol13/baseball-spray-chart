@@ -10,6 +10,7 @@
 //               pre = 그 직전 경기 운영 상태 — 되돌리기용
 //      gfPre  = { inning, half, outs, batterIdx, bases, hs?, as? }  그 타석 직전 경기 운영 상태 + 그 타석으로 오른 점수 — 지우개가 되돌린다
 //  · 타순은 '주전'만 돈다 ('후보'는 교체로 들어와야 친다) · 이닝이 바뀌면 그 팀 마지막 타석의 다음 타자부터 (core.js gfNextHalf 는 늘 1번부터)
+//  · 경기 운영 모드를 켤 때 1회초에 공격할 팀(선공)을 고른다 — 기본은 원정 선공(우리 팀 후공). core.js GF.first · gfAtk
 //  · 교체 = 들어온 선수가 타순표에서 나간 선수 자리로 · 나간 선수는 후보로 (그 자리의 타순을 이어받는다)
 //  · 병살은 1루 주자(1루가 비었으면 가장 앞 주자)를 지운다 — 0아웃이면 나머지 주자는 한 베이스씩(3루 주자 득점), 1아웃이면 3아웃이라 득점 없음
 //    (core.js 는 아웃 계열이면 베이스를 그대로 둔다)
@@ -139,7 +140,7 @@ function paint() {
 }
 
 function inn() { const s = $('innSel'); return (s && s.value) || (window.gfInnStr ? window.gfInnStr() : ''); }
-const atk = () => (G().half === 'top' ? 'home' : 'away');   // 공격 팀 (core.js gfAfterRecord 와 같이: 초 = 홈팀 공격)
+const atk = () => window.gfAtk();   // 공격 팀 (core.js — 초 · 말과 선공 팀 GF.first 로 정한다)
 const fld = () => (atk() === 'home' ? 'away' : 'home');      // 수비 팀
 const LU = team => (team === 'away' ? window.AS.away_lineup : window.AS.home_lineup);
 const starters = lu => lu.filter(p => p && p.isStarter !== false);
@@ -471,6 +472,18 @@ wrap('gfAfterRecord', orig => function (res) {
   if (A.as !== a) pre.as = A.as - a;
   last.gfPre = pre;
   return r;
+});
+
+// 경기 운영 모드 켜기(▶ 운영 · 설정의 경기 운영 시작) — 먼저 선공 팀을 고른다. 취소하면 켜지 않는다 (끌 때 · 복구가 켜는 gfActivate 는 묻지 않는다)
+wrap('gfToggle', orig => function () {
+  const g = G();
+  if (!g || g.active) return orig.apply(this, arguments);
+  const name = (id, d) => (($(id) || {}).value || '').trim() || d, self = this, args = arguments;
+  const go = f => { closePick(); g.first = f; orig.apply(self, args); if (window.shellSyncSettings) window.shellSyncSettings(); };
+  const box = sheet('1회초에 어느 팀이 먼저 공격하나요?');
+  btn(box, `${name('tAway', '원정팀')} 먼저 — 우리 팀 후공 (기본)`, () => go('away'));
+  btn(box, `${name('tHome', '홈팀')} 먼저 — 우리 팀 선공`, () => go('home'));
+  show(box);
 });
 
 wrap('gfNextHalf', orig => function () {

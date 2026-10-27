@@ -196,7 +196,7 @@
   // 경기 운영 모드: 복구가 gfActivate 로 1회초 · 첫 타자 · 주자 없음으로 덮어써서, 새로고침하면 「#1 타자 · 0구째」 + 남은 볼카운트로 그 타자가 삼진이 됐다
   test('경기 운영 모드도 새로고침 뒤 이닝 · 타순 · 주자 · 이번 타석이 그대로', async function () {
     await isolated(async function () {
-      var g0 = { active: GF.active, inning: GF.inning, half: GF.half, outs: GF.outs, batterIdx: GF.batterIdx, bases: GF.bases }, b0 = AS.batter, t0 = AS.curTeam;
+      var g0 = { active: GF.active, inning: GF.inning, half: GF.half, first: GF.first, outs: GF.outs, batterIdx: GF.batterIdx, bases: GF.bases }, b0 = AS.batter, t0 = AS.curTeam;
       try {
         localStorage.clear(); fresh();
         AS.curTeam = 'home';
@@ -206,7 +206,7 @@
         AS.pitchers = [{ id: 'gp1', name: '운영투수', num: '18', role: null, pitches: [] }];
         window._pitchInnAskedFor = AS.pitchers;   // P1: 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서 따로 본다
         selectPitcher('gp1'); AS.pitcherPt = '직구'; AS.pitcherZone = '외각 낮음';
-        gfActivate();
+        GF.first = 'home'; gfActivate();   // 우리 팀(홈) 선공 — 1회초에 백승민부터
         await T.sleep(750);   // 앞 테스트 기록의 연타 방지(0.7초)가 풀리길 기다린다
         recordPitch('볼'); recordPitch('볼'); recordPitch('볼'); recordPitch('볼');   // 백승민 볼넷 → 1루 · 김둘째
         await T.sleep(750);

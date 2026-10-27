@@ -7989,11 +7989,14 @@ function closeGameSummary(){
 var GF={
   active:false,
   inning:1,        // 현재 이닝 번호
-  half:'top',      // 'top'=초(홈팀 공격), 'bottom'=말(원정팀 공격)
+  half:'top',      // 'top'=초, 'bottom'=말 — 공격 팀은 gfAtk()
+  first:'away',    // 1회초에 공격하는 팀: 'away'=원정 선공(우리 팀 후공, 기본) · 'home'=우리 팀 선공 — 경기 운영 모드를 켤 때 고른다(features/runners.js)
   outs:0,          // 현재 아웃카운트 0~2
   batterIdx:0,     // 현재 타순 인덱스 (라인업 내)
   bases:[false,false,false] // [1루,2루,3루]
 };
+// 지금 공격 팀 'home' | 'away' (예전엔 초 = 늘 홈팀 공격이었다 — 그때 저장된 복구본은 first 가 없어 'home' 으로 되살린다)
+function gfAtk(){return (GF.half==='top')===(GF.first==='home')?'home':'away';}
 
 // ─── 모드 ON/OFF ───
 function gfToggle(){GF.active?gfDeactivate():gfActivate();}
@@ -8002,7 +8005,8 @@ function gfActivate(){
   GF.active=true;
   GF.inning=1;GF.half='top';GF.outs=0;GF.batterIdx=0;
   GF.bases=[false,false,false];
-  // 현재 공격팀 첫 타자 자동 선택
+  // 현재 공격팀 첫 타자 자동 선택 — 공격 팀 명단으로 바꾼 뒤 (기록은 AS.curTeam 팀으로 들어간다)
+  swLineupTab(gfAtk());
   var lu=gfGetLineup();
   if(lu.length){AS.batter=null;selBatter(lu[GF.batterIdx%lu.length].id);}
   gfSyncInnSel();
@@ -8033,7 +8037,7 @@ function gfDeactivate(){
 
 // ─── 유틸 ───
 function gfGetLineup(){
-  return GF.half==='top'?AS.home_lineup:AS.away_lineup;
+  return gfAtk()==='home'?AS.home_lineup:AS.away_lineup;
 }
 function gfInnStr(){
   return GF.inning+'회'+(GF.half==='top'?'초':'말');
@@ -8080,7 +8084,7 @@ function gfAfterRecord(res,rbi){
   var scored=gfUpdateBases(res,rbi);
   // 득점 스코어 반영
   if(scored>0){
-    if(GF.half==='top'){AS.hs+=scored;var h=document.getElementById('scH');if(h)h.textContent=AS.hs;}
+    if(gfAtk()==='home'){AS.hs+=scored;var h=document.getElementById('scH');if(h)h.textContent=AS.hs;}
     else{AS.as+=scored;var a=document.getElementById('scA');if(a)a.textContent=AS.as;}
   }
   // 아웃 처리
@@ -8114,7 +8118,7 @@ function gfToggleBase(idx){
 // ─── 공격팀 득점 +/- ───
 function gfScoreAtk(d){
   if(!GF.active)return;
-  chSc(GF.half==='top'?'h':'a',d);
+  chSc(gfAtk()==='home'?'h':'a',d);
   requestAnimationFrame(function(){gfUpdateBar();});
 }
 
@@ -8124,7 +8128,7 @@ function gfNextHalf(){
   else{GF.half='top';GF.inning++;}
   GF.batterIdx=0;
   // 공수 전환: 공격팀 탭 자동 전환
-  var nextTeam=GF.half==='top'?'home':'away';
+  var nextTeam=gfAtk();
   // AS.curTeam을 먼저 바꾸면 swLineupTab이 early return하므로 순서 중요
   AS.curTeam = nextTeam==='home'?'away':'home'; // 임시로 반대 팀으로 설정
   swLineupTab(nextTeam); // 이제 team이 다르므로 renderLP/renderMob 정상 실행
@@ -9472,7 +9476,7 @@ function toggleHighContrast(){
   storageManager.scheduleAutosave=function(data,delay){
     var enhanced=Object.assign({},data,{
       gf:{toJSON:function(){   // 적을 때의 값으로 — 타석 기록은 타순 · 주자를 옮기기 전에 저장을 예약한다
-        return{active:GF.active,inning:GF.inning,half:GF.half,outs:GF.outs,
+        return{active:GF.active,inning:GF.inning,half:GF.half,first:GF.first,outs:GF.outs,
           batterIdx:GF.batterIdx,bases:GF.bases?GF.bases.slice():[false,false,false],
           runners:Array.isArray(GF.runners)?GF.runners.slice():null};   // 주자 이름 (features/runners.js)
       }}
@@ -9495,6 +9499,7 @@ function toggleHighContrast(){
           // (예전엔 값을 먼저 넣고 gfActivate 가 덮어서, 새로고침하면 1회초 첫 타자로 돌아가고 이번 타석 투구가 비었다 — 볼카운트만 남아 그 타자가 삼진)
           var keep={bid:AS.batter?AS.batter.id:null,cp:AS.currentPitches,b:AS.balls,s:AS.strikes};   // _applyLive 가 되살린 이번 타석
           AS.balls=0;AS.strikes=0;AS.currentPitches=[];   // 첫 타자를 고를 때 '타자를 바꿔 0-0' 안내가 뜨지 않게 — 아래에서 되돌린다
+          GF.first=gfData.first==='away'?'away':'home';   // 선공 팀 — 없으면 예전 규칙(초 = 홈팀 공격)으로 시작한 경기
           if(typeof gfActivate==='function')gfActivate();
           GF.inning=Math.max(1,Number(gfData.inning)||1);
           GF.half=gfData.half==='bottom'?'bottom':'top';
@@ -9504,7 +9509,7 @@ function toggleHighContrast(){
           // 주자 이름 (features/runners.js) — 여기서 거른다: 복구가 모듈보다 먼저 돌 수 있다
           GF.runners=[0,1,2].map(function(i){var r=Array.isArray(gfData.runners)?gfData.runners[i]:null;
             return GF.bases[i]&&r&&typeof r==='object'&&typeof r.name==='string'?{id:r.id!=null?String(r.id):null,name:r.name,num:r.num!=null?String(r.num):null}:null;});
-          swLineupTab(GF.half==='top'?'home':'away');   // 공격 팀 명단에서 그 타순 타자
+          swLineupTab(gfAtk());   // 공격 팀 명단에서 그 타순 타자
           var lu=gfGetLineup(),p=lu.length?lu[GF.batterIdx%lu.length]:null;
           if(p){AS.batter=null;selBatter(p.id);}
           if(p&&keep.bid!=null&&String(keep.bid)===String(p.id)){AS.currentPitches=keep.cp;AS.balls=keep.b;AS.strikes=keep.s;}

@@ -453,12 +453,17 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=7').then(() => {
+  import('./spray3d.js?v=8').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
     if (!_f3d) {
       _f3d = document.createElement('spray-field-3d');
       _f3d.tappable = true;
       _f3d.addEventListener('fieldtap', (e) => _tap3d(e.detail));
+      // 키보드: Tab 으로 여기에 포커스 → 방향키 · Enter (_kb3d). 포커스가 나가면 커서 고리를 지운다(팝업이 열린 동안은 그 자리 표시)
+      _f3d.tabIndex = 0;
+      _f3d.setAttribute('aria-label', '3D 필드. 방향키로 타구 위치를 옮기고 Enter 로 입력');
+      _f3d.addEventListener('keydown', _kb3d);
+      _f3d.addEventListener('blur', () => { if (_f3d && !_popOpen()) _f3d.mark(null); });
     }
     if (_f3d.parentNode !== box) box.appendChild(_f3d);
     if (!_popOpen()) _f3d.mark(null);   // 기록했거나 취소했으면 찍은 자리 고리를 지운다
@@ -498,6 +503,69 @@ function _place3d() {
     else { left = clamp(px - pw / 2, W - pw); top = fitT ? py - G - ph : (fitB ? py + G : clamp(py - G - ph, H - ph)); }
     el.style.left = Math.round(left) + 'px'; el.style.top = Math.round(top) + 'px';
   });
+}
+// ── 키보드로 타구 위치 입력(3D): Tab 으로 3D 필드에 포커스 → 방향키(Shift = 크게) → Enter/Space · Esc = 커서 숨김 ──
+//   2D 캔버스(core _kbInit)와 같은 커서(core _kb: 2D 필드 FS 좌표) · 같은 저장 좌표(_coneToSemiAll) · 같은 안내 글(_kbDescribe)
+//   커서는 찍은 자리 고리(mark)로 보이고, Enter 는 손가락 탭(_tap3d)과 같은 길을 간다 — 팝업은 그 자리를 화면에 비춘 곳(screenAt) 옆
+const _KB3_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' ', 'Spacebar', 'Escape'];
+function _kb3d(e) {
+  const k = e.key, kb = window._kb;
+  if (!_KB3_KEYS.includes(k) || !_f3d || _fv !== '3d' || !kb || typeof _coneToSemiAll !== 'function' || !FS) return;
+  if (_popOpen()) return;   // 팝업이 열려 있으면 그쪽(결과 버튼 · 타자 고르기)이 키를 받는다
+  e.preventDefault();
+  const g = _fieldGeo(FS);
+  if (k === 'Escape') { _f3d.mark(null); _say3d('취소됨'); return; }
+  if (!kb.set) { kb.set = true; const c = _conePt(g, 2 * _FQ, 0.6 * g.R); kb.x = c[0]; kb.y = c[1]; }   // 첫 키: 중견 60% 자리(core 와 같음)
+  if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+    const sp = _coneToSemiAll(g, kb.x, kb.y);
+    if (!sp) { _say3d('홈 뒤는 입력할 수 없습니다'); return; }
+    const box = $('sbField3d'), at = (_f3d.screenAt && _f3d.screenAt(sp)) || { px: box.clientWidth / 2, py: box.clientHeight / 2 };
+    kb.viaKey = true;
+    _f3pop = false;   // 마지막 손가락 누름이 팝업을 닫은 것이었어도 키 입력은 새 탭
+    _tap3d({ ...sp, px: at.px, py: at.py });
+    const b = window._tp && document.querySelector('#tapPop .tp-btn');
+    if (b) { _say3d(_kbDescribe(sp) + '. 결과를 선택하세요: 안타, 장타, 땅볼, 플라이'); b.focus(); return; }
+    // 타자 고르기(firstrun)가 열렸으면 첫 타자에 포커스 — firstrun 은 숨은 2D 필드 안에서 열어 포커스가 안 되고, _tap3d 가 3D 칸으로 옮긴 뒤라야 된다
+    const pb = document.querySelector('#batPick:not([hidden]) .bp-b, #batPick:not([hidden]) input');
+    if (pb) pb.focus({ preventScroll: true });
+    _say3d(_kbDescribe(sp) + (pb ? '. 타자를 고르세요' : ' 입력됨'));
+    return;
+  }
+  const step = FS * (e.shiftKey ? 0.1 : 0.025);
+  const nx = Math.max(0, Math.min(FS, kb.x + (k === 'ArrowLeft' ? -step : k === 'ArrowRight' ? step : 0)));
+  const ny = Math.max(0, Math.min(FS, kb.y + (k === 'ArrowUp' ? -step : k === 'ArrowDown' ? step : 0)));
+  const sp = _coneToSemiAll(g, nx, ny);
+  if (!sp) { _say3d('필드 끝입니다'); return; }
+  kb.x = nx; kb.y = ny;
+  _f3d.mark(sp);
+  _say3d(_kbDescribe(sp));
+}
+// 화면 낭독기 안내 (core _kbSay 와 같은 방식: 비웠다가 넣어 같은 글도 다시 읽게). 2D 의 #fldKbLive 는 3D 에서 숨어 있다
+function _say3d(msg) {
+  const box = $('sbField3d');
+  if (!box) return;
+  let el = $('sbKbLive');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sbKbLive'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    Object.assign(el.style, { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' });
+  }
+  if (el.parentNode !== box) box.appendChild(el);
+  el.textContent = '';
+  setTimeout(() => { el.textContent = msg; }, 30);
+}
+// 팝업(결과 · 타자 고르기)에서 고르거나 Esc 로 닫히면 포커스를 3D 필드로 되돌리고 커서 고리를 다시 보인다 (core 는 2D 캔버스로 되돌리는데 3D 에서는 숨어 있다)
+function _kb3dBack() {
+  const kb = window._kb;
+  if (_fv !== '3d' || !_f3d || !kb || !kb.viaKey) return;
+  setTimeout(() => {
+    if (_fv !== '3d' || !_f3d || !_f3d.isConnected || _popOpen()) return;
+    const a = document.activeElement;
+    if (a !== document.body && a !== $('fldCanvas')) return;
+    _f3d.focus({ preventScroll: true });
+    const sp = FS && typeof _coneToSemiAll === 'function' ? _coneToSemiAll(_fieldGeo(FS), kb.x, kb.y) : null;
+    if (sp) _f3d.mark(sp);
+  }, 0);
 }
 function sbFieldView(v) {
   _fv = v === '3d' ? '3d' : '2d';
@@ -748,6 +816,9 @@ function _hook() {
     _f3pop = _f3d.contains(e.target) && _popOpen();
     setTimeout(() => { if (!_popOpen()) _f3d.mark(null); }, 0);
   }, true);
+  // 키보드(3D): 결과 팝업 · 타자 고르기에서 고르거나 Esc 로 닫으면 3D 필드로 포커스를 되돌린다 (_kb3dBack)
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#tapPop, #batPick')) _kb3dBack(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && e.target.closest && e.target.closest('#tapPop, #batPick')) _kb3dBack(); });
   // 고대비: body 클래스만 바뀌므로 캔버스 색 다시 읽고 다시 그림
   const hc = window.toggleHighContrast;
   if (typeof hc === 'function' && !hc._sb) {

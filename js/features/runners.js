@@ -14,6 +14,8 @@
 //  · 교체 = 들어온 선수가 타순표에서 나간 선수 자리로 · 나간 선수는 후보로 (그 자리의 타순을 이어받는다)
 //  · 병살은 1루 주자(1루가 비었으면 가장 앞 주자)를 지운다 — 0아웃이면 나머지 주자는 한 베이스씩(3루 주자 득점), 1아웃이면 3아웃이라 득점 없음
 //    (core.js 는 아웃 계열이면 베이스를 그대로 둔다)
+//  · 실책 · 야수선택은 타자 1루 · 밀려나는 주자만 한 베이스씩 (볼넷과 같이 — core.js 는 베이스를 그대로 둔다). 야수선택은 주자가 있으면 누가 아웃됐는지
+//    고른다(pickFC — 고르기 전 · 취소는 모두 세이프): 그 주자를 지우고 아웃 하나 · 타석 기록 fco = 아웃된 주자의 베이스 0~2
 //  · 이닝별 득점(lineScore) = scored · runEv 를 이닝 · 팀별로 더한 값 — scorebook.js 라인스코어 · 공유 링크(info.ls)와 같은 모양
 //  · 손으로 바꾼 점수(＋/−)는 누가 · 몇 회인지 몰라 이닝별 득점에 들어가지 않는다
 
@@ -27,9 +29,9 @@ const val = v => (typeof v === 'string' || (typeof v === 'number' && isFinite(v)
 const clean = r => ({ id: val(r && r.id), name: r && typeof r.name === 'string' ? r.name : null, num: val(r && r.num) });
 const same = (a, b) => !!a && !!b && a.id != null && b.id != null && String(a.id) === String(b.id);
 
-// 진루 — core.js gfUpdateBases 와 같은 규칙 (한쪽을 바꾸면 다른 쪽도 · 병살만 여기서 더 한다). b = [1루, 2루, 3루] 주자 | null, bat = 타자,
-// outs = 그 타석 전 아웃. 홈인은 앞 주자부터
-export function advance(res, b, bat, outs) {
+// 진루 — core.js gfUpdateBases 와 같은 규칙 (한쪽을 바꾸면 다른 쪽도 · 병살 · 실책 · 야수선택은 여기서 더 한다). b = [1루, 2루, 3루] 주자 | null, bat = 타자,
+// outs = 그 타석 전 아웃, fco = 야수선택으로 아웃된 주자의 베이스(없으면 모두 세이프). 홈인은 앞 주자부터
+export function advance(res, b, bat, outs, fco) {
   const [r1, r2, r3] = b;
   const on = [r3, r2, r1].filter(Boolean);
   switch (res) {
@@ -45,6 +47,8 @@ export function advance(res, b, bat, outs) {
       if (outs) return { bases: n, scored: [] };   // 1아웃 병살 = 3아웃 (포스 아웃으로 끝나 득점 없음)
       return { bases: [null, n[0], n[1]], scored: n[2] ? [n[2]] : [] };   // 0아웃이면 나머지 주자는 한 베이스씩
     }
+    case '실책': case '야수선택':   // 볼넷처럼 — 아웃된 주자가 있으면 그 자리가 비어 뒤 주자가 밀리지 않는다 (홈 포스 아웃이면 득점 없음)
+      return advance('볼넷', b.map((r, i) => (i === fco ? null : r)), bat, outs);
     default: return { bases: [r1, r2, r3], scored: [] };   // 아웃 계열 — 베이스 그대로 (core.js 와 같이 단순화)
   }
 }
@@ -154,7 +158,7 @@ function backfill(skip) {
   let b = [null, null, null];
   window.AS.abs.forEach(a => {
     if (!a || a === skip) return;
-    if (a.inn === cur && (a.team || 'home') === team) b = advance(a.res, b, clean({ id: a.bid, name: a.bname, num: a.bnum }), a.gfPre ? a.gfPre.outs : 0).bases;
+    if (a.inn === cur && (a.team || 'home') === team) b = advance(a.res, b, clean({ id: a.bid, name: a.bname, num: a.bnum }), a.gfPre ? a.gfPre.outs : 0, a.fco).bases;
     (Array.isArray(a.runEv) ? a.runEv : []).forEach(e => { if (e && e.inn === cur && e.team === team) b = runMove(e.t, e.from, b, e); });   // 3아웃 뒤 첫 주루 플레이는 앞 이닝 타석에 붙어 있다
   });
   if (b.some((r, i) => !!r !== !!g.bases[i])) return;
@@ -251,7 +255,32 @@ function pickAdv(t) {
   show(box);
 }
 
-// 손으로 켠 베이스 — 누가 나갔는지 고른다 (실책 · 야수선택 · 낫아웃 · 희타 · 진루타처럼 core.js 가 주자를 옮기지 않는 플레이).
+// 야수선택 — 누가 아웃됐나요? (gfUpdateBases 가 모두 세이프로 옮겨 둔 뒤 · 아웃 없음 · 취소는 그대로). f = 그 타석 직전 { ab, b, bat, outs }
+let fc = null;
+function pickFC(f) {
+  const box = sheet('야수선택 — 누가 아웃됐나요?');
+  [0, 1, 2].forEach(i => { if (f.b[i]) btn(box, `${BASE[i]} 주자 ${nm(f.b[i])} 아웃`, () => fcOut(f, i)); });
+  btn(box, '아웃 없음 — 모두 세이프', closePick);
+  show(box);
+}
+function fcOut(f, i) {
+  closePick();
+  const g = G(), A = window.AS, ab = f.ab, p = ab.gfPre;
+  if (A.abs[A.abs.length - 1] !== ab || ab.runEv || !g.active || !p || g.outs !== f.outs || g.half !== p.half || g.inning !== p.inning) {
+    window.showToast('그사이 다른 기록이 있어 아웃을 적지 않았어요 — 지우개로 되돌린 뒤 다시 적어 주세요', false);
+    return;
+  }
+  const mv = advance('야수선택', f.b, f.bat, f.outs, i), k = ab.team === 'away' ? 'as' : 'hs', d = mv.scored.length - (ab.scored || []).length;
+  if (d) { window.chSc(k === 'as' ? 'a' : 'h', d); p[k] = (p[k] || 0) + d; if (!p[k]) delete p[k]; }   // 모두 세이프로 올린 밀어내기 점수를 뺀다 (지우개가 빼는 점수도)
+  ab.scored = mv.scored.map(clean); ab.fco = i;
+  if (++g.outs >= 3) { g.outs = 0; g.bases = [false, false, false]; g.runners = [null, null, null]; window.gfNextHalf(); }   // core.js gfAfterRecord 의 3아웃 처리와 같이
+  else { g.bases = mv.bases.map(r => !!r); g.runners = mv.bases.map(r => (r && r !== UNK ? r : null)); }
+  window.updateAll();
+  window.gfUpdateBar();
+  window.showToast(`야수선택 · ${BASE[i]} 주자 ${nm(f.b[i])} 아웃`, true, 3000);
+}
+
+// 손으로 켠 베이스 — 누가 나갔는지 고른다 (낫아웃 · 희타 · 진루타처럼 core.js 가 주자를 옮기지 않는 플레이).
 // 아래 베이스 주자를 고르면 그 주자가 옮겨 간다 · 이번 이닝 마지막 타자 · 공격 팀 주전(베이스에 없는 선수) · 취소하면 예전처럼 이름 없는 '주자'
 function pickOn(k) {
   const g = G(), R = runners(), team = atk(), cur = inn(), box = sheet(`${BASE[k]}에 누가 나갔나요?`);
@@ -447,9 +476,10 @@ wrap('gfUpdateBases', orig => function (res) {
   const mine = last && last.res === res ? last : null;   // recHit · recOther 가 방금 넣은 타석
   backfill(mine);
   const bat = mine ? clean({ id: mine.bid, name: mine.bname, num: mine.bnum }) : UNK;
-  const mv = advance(res, g.bases.map((on, i) => (on ? R[i] || UNK : null)), bat, g.outs);
+  const b = g.bases.map((on, i) => (on ? R[i] || UNK : null)), mv = advance(res, b, bat, g.outs);
+  fc = res === '야수선택' && mine && b.some(Boolean) ? { ab: mine, b, bat, outs: g.outs } : null;   // gfAfterRecord 가 끝나면 누가 아웃됐는지 묻는다
   let n = orig.apply(this, arguments);
-  if (res === '병살') { g.bases = mv.bases.map(r => !!r); n = mv.scored.length; }   // core.js 는 병살에 베이스를 그대로 두고 득점 0 — 득점은 core.js 가 이 값만큼 올린다
+  if (res === '병살' || res === '실책' || res === '야수선택') { g.bases = mv.bases.map(r => !!r); n = mv.scored.length; }   // core.js 는 베이스를 그대로 두고 득점 0 — 득점은 core.js 가 이 값만큼 올린다
   g.runners = mv.bases.map((r, i) => (g.bases[i] && r && r !== UNK ? r : null));
   if (mine) {
     mine.scored = mv.scored.map(clean);
@@ -471,6 +501,7 @@ wrap('gfAfterRecord', orig => function (res) {
   if (A.hs !== h) pre.hs = A.hs - h;   // 이 타석으로 오른 점수 — 되돌릴 때 이만큼만 뺀다 (그사이 손으로 바꾼 점수는 두고)
   if (A.as !== a) pre.as = A.as - a;
   last.gfPre = pre;
+  if (fc && fc.ab === last) pickFC(fc);
   return r;
 });
 

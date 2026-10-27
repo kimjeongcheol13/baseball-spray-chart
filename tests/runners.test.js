@@ -4,7 +4,7 @@
 //  · 이닝별 득점(slLineScore) · 선수별 득점 · 도루(slRunnerStats) · 새로고침 뒤 주자 이름 복구
 //  · 이름 없는 주자(이 기능 전에 시작한 경기)는 이번 이닝 타석 기록으로 채운다
 //  · 이닝이 바뀌면 타순을 이어 가고, 지우개는 주자 · 아웃 · 점수 · 타자까지 되돌린다 · 병살 · 폭투 · 포일 · 견제사
-//  · 병살은 0아웃이면 나머지 주자 진루(3루 주자 득점) · 폭투 · 포일은 진루한 주자를 고른다 · 교체(대타 · 대주자 · 대수비 · 투수) · 타순은 주전만
+//  · 실책 · 야수선택은 타자 1루(야수선택은 아웃된 주자를 고른다) · 병살은 0아웃이면 나머지 주자 진루(3루 주자 득점) · 폭투 · 포일은 진루한 주자를 고른다 · 교체(대타 · 대주자 · 대수비 · 투수) · 타순은 주전만
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
@@ -192,28 +192,73 @@
     });
   });
 
-  test('손으로 켠 베이스는 누가 나갔는지 고른다 — 실책으로 나간 타자 · 희타로 옮긴 주자 · 취소하면 이름 없는 주자', async function () {
+  function txt() { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); }
+  function tap(t) { Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent === t; }).click(); }
+
+  test('손으로 켠 베이스는 누가 나갔는지 고른다 — 희타로 옮긴 주자 · 마지막 타자 · 취소하면 이름 없는 주자', async function () {
     await isolated(async function () {
       start();
-      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
-      var tap = function (t) { Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent === t; }).click(); };
-      await hit('안타'); await other('실책');   // core.js 는 실책에 주자를 옮기지 않는다
-      eq([GF.bases, names()], [[true, false, false], ['일번', null, null]], '실책 뒤 베이스 그대로');
-      gfToggleBase(1);
-      eq(txt(), ['1루 일번 → 2루', '타자 이번 (실책)', '3번 삼번', '4번 사번', '취소'], '2루 후보: 아래 주자 · 마지막 타자 · 베이스에 없는 주전');
-      tap('1루 일번 → 2루');
-      ok(!$('slRunPick'), '닫힘'); eq([GF.bases, names()], [[false, true, false], [null, '일번', null]], '1루 주자가 2루로');
-      gfToggleBase(0); tap('타자 이번 (실책)');
-      eq($('gfbRunners').textContent, '1루 이번 · 2루 일번', '실책으로 나간 타자');
-      await other('희타');   // 삼번 희타 — 주자는 손으로 옮긴다
+      await hit('안타'); await other('실책');   // 이번 실책 — 타자 1루 · 1루 주자 2루
+      eq([GF.bases, names()], [[true, true, false], ['이번', '일번', null]], '실책 = 타자 1루 · 밀려난 주자 한 베이스');
+      await other('희타');   // 삼번 희타 — core.js 는 아웃 계열에 주자를 옮기지 않아 손으로 옮긴다
       gfToggleBase(2);
-      eq(txt(), ['2루 일번 → 3루', '1루 이번 → 3루', '타자 삼번 (희타)', '4번 사번', '취소'], '3루 후보');
-      tap('2루 일번 → 3루'); gfToggleBase(1); tap('1루 이번 → 2루');
+      eq(txt(), ['2루 일번 → 3루', '1루 이번 → 3루', '타자 삼번 (희타)', '4번 사번', '취소'], '3루 후보: 아래 주자 · 마지막 타자 · 베이스에 없는 주전');
+      tap('2루 일번 → 3루');
+      ok(!$('slRunPick'), '닫힘'); eq([GF.bases, names()], [[true, false, true], ['이번', null, '일번']], '2루 주자가 3루로');
+      gfToggleBase(1); tap('1루 이번 → 2루');
       eq([GF.bases, names(), $('gfbRunners').textContent], [[false, true, true], [null, '이번', '일번'], '2루 이번 · 3루 일번'], '희타로 한 베이스씩');
       gfToggleBase(0); $('slRunPick').querySelector('.x').click(); gfUpdateBar();   // 막대는 다음 프레임에 그린다 — 여기서는 바로
       eq([GF.bases[0], names()[0], $('gfbRunners').textContent], [true, null, '1루 주자 · 2루 이번 · 3루 일번'], '취소하면 이름 없는 주자');
       gfToggleBase(0);
       ok(!$('slRunPick') && !GF.bases[0], '끌 때는 묻지 않는다');
+    });
+  });
+
+  test('실책 · 야수선택: 타자 1루 — 야수선택은 누가 아웃됐는지 고른다 · 3아웃이면 이닝 끝 · 지우개로 되돌린다', async function () {
+    await isolated(async function () {
+      start();
+      await other('실책');   // 일번 — 주자 없음
+      eq([GF.outs, GF.bases, names()], [0, [true, false, false], ['일번', null, null]], '실책: 타자 1루');
+      ok(!$('slRunPick'), '실책은 묻지 않는다');
+      await other('야수선택');   // 이번
+      eq(txt(), ['1루 주자 일번 아웃', '아웃 없음 — 모두 세이프', '취소'], '누가 아웃됐나요');
+      eq([GF.outs, names()], [0, ['이번', '일번', null]], '고르기 전 = 모두 세이프');
+      tap('1루 주자 일번 아웃'); gfUpdateBar();
+      eq([GF.outs, GF.bases, names(), AS.abs[1].fco, $('gfbRunners').textContent], [1, [true, false, false], ['이번', null, null], 0, '1루 이번'], '1루 주자 아웃 · 1아웃');
+      ok(/일번 아웃/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      GF.runners = [null, null, null]; gfUpdateBar();   // 이름 없는 주자 → 이번 이닝 기록(fco 포함)으로 다시 채운다
+      eq(names(), ['이번', null, null], 'backfill 도 아웃된 주자를 뺀다');
+      await other('삼진');   // 삼번 — 2아웃
+      await other('야수선택');   // 사번
+      tap('1루 주자 이번 아웃');
+      eq([GF.half, GF.outs, GF.bases, AS.curTeam], ['bottom', 0, [false, false, false], 'away'], '3아웃 — 1회말');
+      undoLast();
+      eq([GF.half, GF.outs, names(), AS.abs.length, AS.batter && AS.batter.name], ['top', 2, ['이번', null, null], 3, '사번'], '되돌림 — 1회초 2아웃 1루 이번 · 사번 타석');
+    });
+  });
+
+  test('만루 야수선택: 고르기 전엔 밀어내기 득점 · 홈 포스 아웃을 고르면 그 점수를 뺀다 · 실책도 밀어내기 · 그사이 다른 기록이 있으면 적지 않는다', async function () {
+    await isolated(async function () {
+      start();
+      await other('볼넷'); await other('볼넷'); await other('실책');   // 일번 · 이번 · 삼번 — 만루
+      eq(names(), ['삼번', '이번', '일번'], '만루');
+      await other('실책');   // 사번 — 밀어내기
+      eq([AS.hs, who(AS.abs[3].scored), names()], [1, ['일번'], ['사번', '삼번', '이번']], '실책 밀어내기 득점');
+      await other('야수선택');   // 일번
+      eq([AS.hs, who(AS.abs[4].scored)], [2, ['이번']], '고르기 전 = 모두 세이프 → 3루 주자 득점');
+      tap('3루 주자 이번 아웃');
+      eq([GF.outs, names(), AS.hs, who(AS.abs[4].scored), AS.abs[4].gfPre.hs], [1, ['일번', '사번', '삼번'], 1, [], undefined], '홈 포스 아웃 — 득점 취소 · 1아웃');
+      eq(slLineScore(AS.abs), { away: [], home: [1] }, '이닝별 득점');
+      undoLast();
+      eq([AS.abs.length, GF.outs, names(), AS.hs, AS.batter && AS.batter.name], [4, 0, ['사번', '삼번', '이번'], 1, '일번'], '되돌림 — 만루 0아웃');
+      await other('야수선택');   // 일번 다시
+      tap('아웃 없음 — 모두 세이프');
+      eq([GF.outs, names(), AS.hs, who(AS.abs[4].scored)], [0, ['일번', '사번', '삼번'], 2, ['이번']], '모두 세이프 — 밀어내기 1점');
+      await other('야수선택');   // 이번 — 고르지 않고 다음 타석
+      await other('삼진');   // 삼번
+      tap('1루 주자 일번 아웃');
+      eq([GF.outs, AS.hs, AS.abs[5].fco], [1, 3, undefined], '지난 야수선택 창은 적지 않는다');
+      ok(/다른 기록/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
     });
   });
 

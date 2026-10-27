@@ -9,14 +9,19 @@
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
   var GK = ['active', 'inning', 'half', 'outs', 'batterIdx', 'bases', 'runners'];
 
+  // 경기 운영 바(주자 칸 · 베이스 설명)는 타석 기록 뒤 다음 프레임에 그린다(core.js gfAfterRecord → requestAnimationFrame → gfUpdateBar → paint).
+  // 하네스(가상 시간 · CI 는 크롬 두 개를 같이 돌린다)에서는 그 프레임이 테스트의 50ms 대기보다 늦을 때가 있어 "주자 표시"가 직전 타석 글자로 남았다
+  // (rAF 를 300ms 늦추면 CI 와 같은 실패가 그대로 난다) → 테스트 동안만 rAF 를 16ms 타이머로 (field-out-tap 테스트와 같은 방법)
   async function isolated(fn) {
-    var store = {}, a = {}, g = {}, ck = window._curSaveKey, gs = window._gameSaved, ak = window._autoKey, cs = window.cloudAutoSyncRecord;
+    var store = {}, a = {}, g = {}, ck = window._curSaveKey, gs = window._gameSaved, ak = window._autoKey, cs = window.cloudAutoSyncRecord, raf = window.requestAnimationFrame;
     for (var i = 0; i < localStorage.length; i++) store[localStorage.key(i)] = localStorage.getItem(localStorage.key(i));
     F.forEach(function (k) { a[k] = AS[k]; });
     GK.forEach(function (k) { g[k] = GF[k]; });
     window.cloudAutoSyncRecord = function () {};
+    window.requestAnimationFrame = function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
     try { await fn(); }
     finally {
+      window.requestAnimationFrame = raf;
       gfDeactivate();
       GK.forEach(function (k) { GF[k] = g[k]; });
       storageManager.cancelPendingAutosave(); clearTimeout(_autoTimer); localStorage.clear();

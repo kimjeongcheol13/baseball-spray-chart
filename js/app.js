@@ -17,7 +17,7 @@ import './features/spray.js?v=6';
 import './features/shell.js?v=16';
 import './features/record.js?v=14';
 import './features/settings.js?v=3';
-import './features/scorebook.js?v=27';
+import './features/scorebook.js?v=28';
 import './features/dashboard.js?v=13';
 import './features/setup.js?v=8';
 import './features/report.js?v=7';
@@ -29,7 +29,7 @@ import './features/gameoneimport.js?v=19';
 import './features/gameonefix.js?v=4';     // 게임원 가져오기 보정 — 저장 직후 「타구 위치 확인」
 import './features/gameoneocr.js?v=5';     // 게임원 앱 스크린샷으로 채우기 — 휴대폰 안 OCR(Tesseract.js, 누를 때만 불러옴)
 import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPitcherView 를 감싼다
-import './features/runners.js?v=5';         // 주자 · 득점 · 주루 플레이 · 타순 · 되돌리기 — shell.js(위) 다음 (undoLast · gfAfterRecord 를 바깥에서 감싼다)
+import './features/runners.js?v=6';         // 주자 · 득점 · 주루 플레이 · 타순 · 교체 · 되돌리기 — shell.js(위) 다음 (undoLast · gfAfterRecord 를 바깥에서 감싼다)
 
 import './features/anahelp.js?v=4';
 import './features/anahelp.js?v=4';

@@ -4,6 +4,7 @@
 //  · 이닝별 득점(slLineScore) · 선수별 득점 · 도루(slRunnerStats) · 새로고침 뒤 주자 이름 복구
 //  · 이름 없는 주자(이 기능 전에 시작한 경기)는 이번 이닝 타석 기록으로 채운다
 //  · 이닝이 바뀌면 타순을 이어 가고, 지우개는 주자 · 아웃 · 점수 · 타자까지 되돌린다 · 병살 · 폭투 · 포일 · 견제사
+//  · 병살은 0아웃이면 나머지 주자 진루(3루 주자 득점) · 폭투 · 포일은 진루한 주자를 고른다 · 교체(대타 · 대주자 · 대수비 · 투수) · 타순은 주전만
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
@@ -192,37 +193,127 @@
     });
   });
 
-  test('병살은 1루 주자를 지우고 · 폭투 · 포일은 주자 모두 한 베이스씩(3루 주자 득점) · 견제사는 아웃 — 지우개로 하나씩 되돌린다', async function () {
+  test('병살은 1루 주자를 지우고 · 폭투 · 포일은 주자 한 베이스씩(3루 주자 득점) · 견제사는 아웃 — 지우개로 하나씩 되돌린다', async function () {
     await isolated(async function () {
       start();
       await hit('안타'); await other('볼넷');   // 1루 이번 · 2루 일번
-      await other('병살');   // 삼번
-      eq([GF.outs, GF.bases, names()], [2, [false, true, false], [null, '일번', null]], '병살: 1루 주자 지움 · 2아웃');
-      slRunPlay('WP');
-      eq([GF.bases, names(), AS.hs], [[false, false, true], [null, null, '일번'], 0], '폭투: 2루 → 3루');
-      ok(/^폭투 · 주자 한 베이스씩/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      await other('병살');   // 삼번 — 0아웃 병살: 1루 이번 아웃 · 2루 일번은 3루로
+      eq([GF.outs, GF.bases, names(), AS.hs], [2, [false, false, true], [null, null, '일번'], 0], '병살: 1루 주자 지움 · 2아웃 · 나머지 주자 진루');
+      slRunPlay('WP');   // 주자 하나 → 바로
+      eq([GF.bases, names(), AS.hs], [[false, false, false], [null, null, null], 1], '폭투: 3루 주자 득점');
+      ok(/^폭투 · 주자 한 베이스씩 · 홈인 일번/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      await hit('안타');   // 사번 1루
       slRunPlay('PB');
-      eq([GF.bases, AS.hs], [[false, false, false], 1], '포일: 3루 주자 득점');
-      eq(AS.abs[2].runEv.map(function (e) { return [e.t, e.name, e.from, e.scored]; }), [['WP', null, null, false], ['PB', '일번', null, true]], '병살 타석 뒤 주루 기록');
-      eq(slLineScore(AS.abs), { away: [], home: [1] }, '이닝별 득점에 포일 득점');
+      eq([GF.bases, names(), AS.hs], [[false, true, false], [null, '사번', null], 1], '포일: 1루 → 2루');
+      eq(AS.abs[2].runEv.map(function (e) { return [e.t, e.name, e.from, e.scored, e.adv]; }), [['WP', '일번', null, true, [2]]], '병살 타석 뒤 주루 기록');
+      eq(AS.abs[3].runEv.map(function (e) { return [e.t, e.name, e.scored, e.adv]; }), [['PB', null, false, [0]]], '안타 타석 뒤 주루 기록');
+      eq(slLineScore(AS.abs), { away: [], home: [1] }, '이닝별 득점에 폭투 득점');
       eq(slRunnerStats(AS.abs, AS.home_lineup[0]).r, 1, '일번 득점');
       undoLast();
-      eq([GF.bases, names(), AS.hs], [[false, false, true], [null, null, '일번'], 0], '포일 되돌림');
+      eq([GF.bases, names(), AS.hs], [[true, false, false], ['사번', null, null], 1], '포일 되돌림');
       ok(/직전 포일 기록을 취소/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
-      slRunPlay('PB');
-      await hit('안타');   // 사번 1루
+      slRunPlay('PB');   // 사번 2루
       slRunPlay('PO');   // 주자 하나 → 바로 견제사 = 3아웃
       eq([GF.half, GF.outs], ['bottom', 0], '견제사로 3아웃');
       undoLast();
-      eq([GF.half, GF.outs, GF.bases, names(), AS.batter && AS.batter.name], ['top', 2, [true, false, false], ['사번', null, null], '일번'], '견제사 되돌림');
+      eq([GF.half, GF.outs, GF.bases, names(), AS.batter && AS.batter.name], ['top', 2, [false, true, false], [null, '사번', null], '일번'], '견제사 되돌림');
       await other('볼넷');   // 일번 1루 · 사번 2루
       slRunPlay('PO');
       var box = $('slRunPick');
       ok(box, '주자 고르기'); eq(Array.prototype.map.call(box.querySelectorAll('button'), function (b) { return b.textContent; }), ['1루 일번', '2루 사번', '취소'], '견제사 후보');
       box.querySelectorAll('button')[1].click();
       eq([GF.half, AS.abs[4].runEv[0].name], ['bottom', '사번'], '2루 사번 견제사 = 3아웃');
-      for (var k = 0; k < 6; k++) undoLast();   // 견제사 · 볼넷 · 안타 · 포일 · 폭투 · 병살
+      for (var k = 0; k < 6; k++) undoLast();   // 견제사 · 볼넷 · 포일 · 안타 · 폭투 · 병살
       eq([AS.abs.length, GF.outs, GF.bases, names(), AS.hs, AS.batter && AS.batter.name], [2, 0, [true, true, false], ['이번', '일번', null], 0, '삼번'], '병살 전으로');
+    });
+  });
+
+  test('병살: 0아웃이면 나머지 주자가 한 베이스씩(3루 주자 득점) · 1아웃이면 3아웃이라 득점 없음', async function () {
+    await isolated(async function () {
+      start();
+      await hit('3루타'); await other('볼넷');   // 3루 일번 · 1루 이번
+      await other('병살');   // 삼번 (0아웃)
+      eq([GF.outs, GF.bases, AS.hs, who(AS.abs[2].scored)], [2, [false, false, false], 1, ['일번']], '1루 아웃 · 3루 주자 득점');
+      ok(/홈인 일번/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      eq(slLineScore(AS.abs), { away: [], home: [1] }, '이닝별 득점');
+      undoLast();
+      eq([GF.outs, GF.bases, names(), AS.hs, AS.batter && AS.batter.name], [0, [true, false, true], ['이번', null, '일번'], 0, '삼번'], '되돌림');
+      await other('삼진');   // 삼번 (1아웃)
+      await other('병살');   // 사번 — 3아웃
+      eq([GF.half, AS.hs, who(AS.abs[3].scored)], ['bottom', 0, []], '1아웃 병살은 득점 없이 이닝 끝');
+    });
+  });
+
+  test('폭투 · 포일: 주자가 둘 이상이면 진루한 주자를 고른다 — 앞 주자가 남으면 바로 뒤 주자는 못 간다', async function () {
+    await isolated(async function () {
+      start();
+      await hit('안타'); await other('볼넷');   // 1루 이번 · 2루 일번
+      slRunPlay('WP');
+      var box = $('slRunPick'), bs = function () { return Array.prototype.slice.call($('slRunPick').querySelectorAll('button')); };
+      var st = function () { return bs().map(function (b) { return b.textContent + (b.disabled ? '(막힘)' : '') + (b.getAttribute('aria-pressed') === 'false' ? '(안 감)' : ''); }); };
+      ok(box, '진루 주자 고르기');
+      eq(st(), ['2루 일번 → 3루', '1루 이번 → 2루', '확인', '취소'], '모두 고른 채로 열림');
+      bs()[0].click();   // 2루 주자가 남으면
+      eq(st(), ['2루 일번 → 3루(안 감)', '1루 이번 → 2루(막힘)(안 감)', '확인(막힘)', '취소'], '1루 주자는 못 감');
+      bs()[0].click();   // 다시 고름 — 1루 주자는 따로 골라야
+      eq(st(), ['2루 일번 → 3루', '1루 이번 → 2루(안 감)', '확인', '취소'], '2루만');
+      bs()[2].click();
+      eq([GF.bases, names(), AS.abs[1].runEv[0].adv], [[true, false, true], ['이번', null, '일번'], [1]], '2루 주자만 3루로');
+      ok(/^폭투 · 2루 일번 → 3루$/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      slRunPlay('PB');
+      eq(st(), ['3루 일번 → 홈', '1루 이번 → 2루', '확인', '취소'], '1 · 3루');
+      bs()[0].click();   // 3루 주자는 그대로 — 2루가 비어 1루 주자는 갈 수 있다
+      eq(st(), ['3루 일번 → 홈(안 감)', '1루 이번 → 2루', '확인', '취소'], '1루 주자만');
+      bs()[2].click();
+      eq([GF.bases, names(), AS.hs], [[false, true, true], [null, '이번', '일번'], 0], '1루 주자만 2루로');
+      undoLast(); undoLast();
+      eq([GF.bases, names()], [[true, true, false], ['이번', '일번', null]], '둘 다 되돌림');
+    });
+  });
+
+  test('교체: 들어온 선수가 그 타순을 잇고 나간 선수는 후보 · 후보는 타순에 안 든다 · 다음 이닝도 그 자리부터 · 지우개로 되돌린다', async function () {
+    await isolated(async function () {
+      start();
+      AS.home_lineup.push({ id: 'rb1', name: '후보일', num: '21', pos: '', bh: '', isStarter: false });
+      renderLP();
+      var lu = function () { return AS.home_lineup.map(function (p) { return p.name + (p.isStarter === false ? '*' : ''); }); };
+      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t); b.click(); };
+      var put = function (n) { $('slRunPick').querySelector('input').value = n; tap('넣기'); };
+      await other('삼진'); await other('삼진');   // 일번 · 이번
+      slSub();
+      eq(txt(), ['대타 — 지금 타자 대신', '대주자 — 베이스 주자 대신', '대수비 — 수비 선수 바꾸기', '투수 교체', '취소'], '교체 종류');
+      tap('대타 — 지금 타자 대신');
+      eq([$('slRunPick').getAttribute('aria-label'), txt()], ['대타 — 삼번 대신 누가 들어오나요?', ['#21 후보일', '넣기', '취소']], '후보 · 새 이름');
+      tap('#21 후보일');
+      eq([AS.batter && AS.batter.name, lu(), GF.batterIdx], ['후보일', ['일번', '이번', '후보일', '사번', '삼번*'], 2], '대타가 3번 자리 · 삼번은 후보');
+      ok(/^대타 · 1회초 후보일 \(삼번 대신\)/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      await hit('안타');   // 후보일 1루
+      eq([names()[0], AS.batter && AS.batter.name], ['후보일', '사번'], '대타가 쳐서 1루 · 다음은 사번(후보 건너뜀 없음)');
+      slSub(); tap('대주자 — 베이스 주자 대신');   // 주자 하나 → 바로 들어올 선수
+      eq(txt(), ['#3 삼번', '넣기', '취소'], '후보 = 나간 삼번');
+      put('발빠른');
+      eq([names()[0], lu()], ['발빠른', ['일번', '이번', '발빠른', '사번', '삼번*', '후보일*']], '대주자가 1루 · 3번 자리');
+      recSB(false);   // 발빠른 도루 실패 = 3아웃
+      eq([GF.half, AS.batter && AS.batter.name], ['bottom', '원정일'], '1회말');
+      slSub(); tap('대수비 — 수비 선수 바꾸기');
+      eq(txt(), ['1번 일번', '2번 이번', '3번 발빠른', '4번 사번', '취소'], '수비 팀(홈) 주전');
+      tap('3번 발빠른'); put('수비왕');
+      eq(lu(), ['일번', '이번', '수비왕', '사번', '삼번*', '후보일*', '발빠른*'], '대수비');
+      slSub(); tap('투수 교체');
+      tap('타순에 없는 투수 (지명타자)'); put('새투수');
+      eq([lu().length, AS.abs[2].runEv.map(function (e) { return e.t + (e.k ? ':' + e.k : '') + ':' + e.name; })], [7, ['SUB:PR:발빠른', 'CS:발빠른', 'SUB:DEF:수비왕', 'SUB:P:새투수']], '투수는 기록에만 · 교체도 타석 뒤 기록에');
+      eq(slLineScore(AS.abs), { away: [], home: [0] }, '교체는 이닝별 득점 칸을 만들지 않는다');
+      await other('삼진'); await other('삼진'); await other('삼진');   // 원정
+      eq([GF.inning, GF.half, GF.batterIdx, AS.batter && AS.batter.name], [2, 'top', 3, '사번'], '2회초는 후보일 → 발빠른 → 수비왕 자리 다음인 사번부터');
+      for (var k = 0; k < 4; k++) undoLast();   // 원정 삼진 3 · 투수 교체
+      ok(/직전 투수 교체 기록을 취소/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      undoLast();   // 대수비
+      eq(lu(), ['일번', '이번', '발빠른', '사번', '삼번*', '후보일*'], '대수비 되돌림 · 새로 넣은 선수는 명단에서도');
+      undoLast(); undoLast();   // 도루 실패 · 대주자
+      eq([GF.half, GF.outs, names()[0], lu()], ['top', 2, '후보일', ['일번', '이번', '후보일', '사번', '삼번*']], '대주자 되돌림');
+      undoLast(); undoLast();   // 후보일 안타 · 대타
+      eq([AS.batter && AS.batter.name, lu(), AS.home_lineup[4].isStarter], ['삼번', ['일번', '이번', '삼번', '사번', '후보일*'], false], '대타 되돌림');
     });
   });
 

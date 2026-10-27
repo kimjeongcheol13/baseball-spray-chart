@@ -5,6 +5,7 @@
 //  · 이름 없는 주자(이 기능 전에 시작한 경기)는 이번 이닝 타석 기록으로 채운다
 //  · 이닝이 바뀌면 타순을 이어 가고, 지우개는 주자 · 아웃 · 점수 · 타자까지 되돌린다 · 병살 · 폭투 · 포일 · 견제사
 //  · 실책 · 야수선택은 타자 1루(야수선택은 아웃된 주자를 고른다) · 병살은 0아웃이면 나머지 주자 진루(3루 주자 득점) · 폭투 · 포일은 진루한 주자를 고른다 · 교체(대타 · 대주자 · 대수비 · 투수) · 타순은 주전만
+//  · 저장 목록에서 다시 열면 이어서 기록할지 묻는다(저장 항목 live.gf)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
@@ -297,6 +298,49 @@
       eq([GF.active, GF.bases[0]], [true, true], '같은 경기는 그대로');
       startFromWizard();
       eq([GF.active, GF.bases[0], $('gfBar').classList.contains('active')], [false, false, false], '새 경기');
+      await T.sleep(3500);   // 경기를 열 때 예약된 자동 동기화(3초)가 다음 테스트로 새지 않게
+    });
+  });
+
+  test('저장 목록에서 다시 열면 이어서 기록할지 묻는다 — 그 이닝 · 아웃 · 주자 · 타순 그대로 · 저장 뒤 바꾼 주자도 · 취소 · 경기종료 · 그 뒤 타석이 늘었으면 묻지 않는다', async function () {
+    await isolated(async function () {
+      localStorage.clear(); start();
+      await hit('안타'); await other('볼넷'); await other('삼진');
+      eq([gfInnStr(), GF.outs, names(), AS.batter && AS.batter.name], ['1회초', 1, ['이번', '일번', null], '사번'], '전제: 1회초 1아웃 1 · 2루');
+      saveGame(true);
+      var key = window._curSaveKey;
+      localStorage.setItem('sl_gfother', JSON.stringify({ th: '다른홈', ta: '다른원정', hs: 0, as: 0, home_lineup: [], away_lineup: [],
+        abs: [{ id: 778, bid: 'x1', bname: '남', bnum: '9', team: 'away', res: '안타', inn: '1회초', rbi: 0 }] }));
+      var txt = function () { var b = $('slRunPick'); return b ? [b.querySelector('p').textContent].concat(Array.prototype.map.call(b.querySelectorAll('button'), function (x) { return x.textContent; })) : null; };
+      var reopen = function () { _lpClick('sl_gfother'); ok(!GF.active && !$('slRunPick'), '다른 경기 — 묻지 않는다'); _lpClick(key); };   // 저장 목록에서 누르기
+      reopen(); $('slRunPick').querySelector('.x').click();
+      restoreGame('sl_gfother'); restoreGame(key);
+      ok(!GF.active && !$('slRunPick'), '목록 누르기가 아닌 열기(로그인 정리 등)는 묻지 않는다');
+      reopen();
+      eq([GF.active, txt()], [false, ['경기 운영 모드로 기록하던 경기예요 — 1회초 1아웃 · 1루 이번 · 2루 일번', '이어서 기록 — 4번 사번 타석부터', '취소']], '이어서 기록할지 묻는다');
+      $('slRunPick').querySelector('.x').click();
+      ok(!GF.active && !$('slRunPick'), '취소 — 켜지 않는다');
+      reopen();
+      $('slRunPick').querySelector('button').click();
+      eq([GF.active, GF.first, gfInnStr(), GF.outs, GF.bases, names(), AS.curTeam, AS.batter && AS.batter.name, $('gfbRunners').textContent],
+        [true, 'home', '1회초', 1, [true, true, false], ['이번', '일번', null], 'home', '사번', '1루 이번 · 2루 일번'], '이어서 기록');
+      await hit('안타');
+      eq([names(), AS.hs], [['사번', '이번', '일번'], 0], '이어서 진루');
+      saveGame(true); gfToggleBase(0);   // 저장 뒤 1루 주자만 지움(타석 기록 없음 → 저장 안 됨 표시도 없다) — 다른 경기를 열기 전에 다시 저장해야 남는다
+      reopen();
+      eq(txt()[0], '경기 운영 모드로 기록하던 경기예요 — 1회초 1아웃 · 2루 이번 · 3루 일번', '저장 뒤 바꾼 주자도');
+      $('slRunPick').querySelector('button').click();
+      gfEndGame(); await T.sleep(400); closePgReport();
+      reopen();
+      ok(!GF.active && !$('slRunPick'), '경기종료한 경기는 묻지 않는다');
+      var d = JSON.parse(localStorage.getItem(key)), put = function () { localStorage.setItem(key, JSON.stringify(d)); window._gameSaved = true; };
+      d.live = Object.assign({}, d.live, { gf: { n: d.abs.length, first: 'home', inning: 2, half: 'top', outs: 0, batterIdx: 0, bases: [false, false, false], runners: [null, null, null] } });
+      put(); reopen();
+      eq(txt() && txt()[0], '경기 운영 모드로 기록하던 경기예요 — 2회초 0아웃 · 주자 없음', '대조: 타석 수가 같으면 묻는다');
+      $('slRunPick').querySelector('.x').click();
+      d.abs = d.abs.concat({ id: 779, bid: 'rn1', bname: '일번', bnum: '1', team: 'home', res: '삼진', inn: '2회초', rbi: 0 });
+      put(); reopen();
+      ok(!GF.active && !$('slRunPick'), '저장한 경기 운영 상태 뒤로 타석이 늘었으면 묻지 않는다');
       await T.sleep(3500);   // 경기를 열 때 예약된 자동 동기화(3초)가 다음 테스트로 새지 않게
     });
   });

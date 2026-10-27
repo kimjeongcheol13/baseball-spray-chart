@@ -18,6 +18,7 @@
 //    고른다(pickFC — 고르기 전 · 취소는 모두 세이프): 그 주자를 지우고 아웃 하나 · 타석 기록 fco = 아웃된 주자의 베이스 0~2
 //  · 이닝별 득점(lineScore) = scored · runEv 를 이닝 · 팀별로 더한 값 — scorebook.js 라인스코어 · 공유 링크(info.ls)와 같은 모양
 //  · 손으로 바꾼 점수(＋/−)는 누가 · 몇 회인지 몰라 이닝별 득점에 들어가지 않는다
+//  · 저장 항목의 live.gf = 저장할 때의 경기 운영 상태 — 저장 목록에서 다시 열면 이어서 기록할지 묻는다(askResume)
 
 const BASE = ['1루', '2루', '3루'];
 const EV = { SB: '도루', CS: '도루 실패', PO: '견제사', WP: '폭투', PB: '포일' };
@@ -544,6 +545,72 @@ const gameId = () => { const A = window.AS, a = A.abs && A.abs[0]; return a ? 'a
   }
   return r;
 }));
+
+// ── 저장한 경기 이어서 기록 ───────────────────────────────
+// 저장 항목의 진행 상태(core.js _liveState → live)에 경기 운영 상태도 — gf = { n(그때 타석 수), first, inning, half, outs, batterIdx, bases, runners }
+wrap('_liveState', orig => function () {
+  const r = orig.apply(this, arguments), g = G();
+  if (g && g.active) r.gf = Object.assign({ n: window.AS.abs.length, first: g.first }, preOf());
+  return r;
+});
+// 저장 목록에서 연 경기가 경기 운영 모드로 기록 중이었으면(live.gf · 그 뒤로 타석이 늘지 않았을 때만) 이어서 기록할지 묻는다.
+// 경기 운영 모드로 기록하던 경기에서 목록의 경기를 열면 지금 상태를 먼저 저장한다(core.js restoreGame 의 열기 전 저장) — 저장한 뒤 주자만 바뀌었거나 복구한 경기여도.
+// 목록 누르기(_lpClick)만 — restoreGame 을 부르는 로그인 정리(cloud.js _relinkOpenGame)는 저장하지 않아야 지운 항목이 되살아나지 않는다
+wrap('_lpClick', orig => function (key) {
+  const g = G(), open = !window._lpFired;
+  if (open && g && g.active && localStorage.getItem(key)) window._gameSaved = false;
+  const r = orig.apply(this, arguments);
+  if (!open) return r;
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(key)).live.gf; } catch (e) { s = null; }
+  if (s && typeof s === 'object' && g && !g.active && window._curSaveKey === key && s.n === window.AS.abs.length) askResume(key, s);
+  return r;
+});
+// 경기종료 — 저장 안 됨으로 표시해 다음 저장(다른 경기를 열기 전 저장 포함)에 live.gf 가 빠지게 (끝난 경기를 이어서 기록하자고 묻지 않게)
+wrap('gfEndGame', orig => function () {
+  const r = orig.apply(this, arguments);
+  window._gameSaved = false; window._updateSaveUI(window.AS.abs.length > 0);
+  return r;
+});
+function askResume(key, s) {
+  const A = window.AS, num = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.floor(Number(v)) || 0));
+  const st = {
+    first: s.first === 'away' ? 'away' : 'home', inning: num(s.inning, 1, 99), half: s.half === 'bottom' ? 'bottom' : 'top',
+    outs: num(s.outs, 0, 2), batterIdx: num(s.batterIdx, 0, 999),
+    bases: Array.isArray(s.bases) && s.bases.length === 3 ? s.bases.map(Boolean) : [false, false, false],
+  };
+  st.runners = cleanRunners(s.runners, st.bases);
+  const team = (st.half === 'top') === (st.first === 'home') ? 'home' : 'away', all = LU(team) || [], lu = starters(all).length ? starters(all) : all;
+  const k = lu.length ? st.batterIdx % lu.length : -1;
+  const where = `${st.inning}회${st.half === 'top' ? '초' : '말'} ${st.outs}아웃 · `
+    + ([0, 1, 2].filter(i => st.bases[i]).map(i => BASE[i] + ' ' + nm(st.runners[i])).join(' · ') || '주자 없음');
+  const box = sheet(`경기 운영 모드로 기록하던 경기예요 — ${where}`);
+  btn(box, '이어서 기록' + (k >= 0 ? ` — ${k + 1}번 ${lu[k].name} 타석부터` : ''), () => {
+    closePick();
+    const g = G();
+    if (g.active || window._curSaveKey !== key || A.abs.length !== s.n) {
+      window.showToast('그사이 다른 기록이 있어 이어서 기록하지 않았어요 — 경기를 다시 열어 주세요', false);
+      return;
+    }
+    // core.js _enhanceRecovery(새로고침 복구)와 같이 — gfActivate 가 1회초 · 첫 타자로 켜므로 켠 다음에 되돌리고, 같은 타자면 이번 타석 투구 · 볼카운트를 지킨다
+    const keep = { bid: A.batter ? A.batter.id : null, cp: A.currentPitches, b: A.balls, s: A.strikes };
+    A.balls = 0; A.strikes = 0; A.currentPitches = [];
+    g.first = st.first;
+    window.gfActivate();
+    Object.assign(g, st);
+    window.swLineupTab(atk());
+    const L = window.gfGetLineup(), p = L.length ? L[g.batterIdx % L.length] : null;
+    if (p) { A.batter = null; window.selBatter(p.id); }
+    if (p && keep.bid != null && String(keep.bid) === String(p.id)) { A.currentPitches = keep.cp; A.balls = keep.b; A.strikes = keep.s; }
+    window._cntBid = A.batter ? A.batter.id : null;
+    window.renderCount(); window.gfSyncInnSel(); window.gfUpdateBar();
+    if (window._renderMobPitchLog) window._renderMobPitchLog();
+    if (window.shellSyncSettings) window.shellSyncSettings();
+    window._scheduleRecoverySave();   // 새로고침해도 이어지게 (복구 슬롯의 gf)
+    window.showToast(`이어서 기록 — ${where}`, false, 3000);
+  });
+  show(box);
+}
 
 wrap('recSB', orig => function (ok) {
   const g = G();

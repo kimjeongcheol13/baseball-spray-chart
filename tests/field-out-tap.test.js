@@ -113,17 +113,26 @@
   });
 
   test('팝업이 열린 채 빈 곳(#fldOut)을 누르면 = 취소(필드 탭과 같음) · 공유 링크 ov 는 0~200m 숫자만', async function () {
-    await settle();
-    var o = $('fldOut'), w = $('cwrap'), pop = $('tapPop'), g = _fieldGeo(FS), rw = w.getBoundingClientRect(), k = rw.width / FS;
-    window.AS.pending = null;
-    var at = { bubbles: true, clientX: rw.left - 30, clientY: rw.top + (g.cy - 0.7 * g.R) * k };
-    o.dispatchEvent(new MouseEvent('click', at));
-    ok(window._tp && !pop.hidden, '열림 ' + JSON.stringify({ ov: (document.querySelector('.overlay.show') || {}).id, p: window.AS.pending, top: (document.elementFromPoint(at.clientX, at.clientY) || {}).id }));
-    for (var i = 0; i < 40 && window._tp && window._tp.t == null; i++) await T.sleep(50);   // _tp.t 는 그려진 뒤(rAF) 찍힌다 — 하네스에서는 늦을 때가 있다
-    await T.sleep(500);   // 막 열린 팝업은 _TP_HOLD(400ms) 동안 필드 탭을 무시한다
-    o.dispatchEvent(new PointerEvent('pointerdown', at));
-    o.dispatchEvent(new MouseEvent('click', at));
-    eq([!!window._tp, pop.hidden, window.AS.pending], [false, true, null], '취소');
+    // 막 열린 팝업은 _TP_HOLD(400ms) 동안 필드 탭을 무시한다(#243). 그 기준 시각 _tp.t 는 열 때 찍고, 그려진 뒤 rAF 에서 다시 찍는다.
+    // 하네스(가상 시간)에서는 그 rAF 가 500ms 를 기다린 뒤 · 취소 탭 직전에 늦게 돌 때가 있어 탭이 "막 열린" 것으로 무시됐다(둘 중 한 번꼴)
+    // → 이 테스트 동안만 rAF 를 16ms 타이머로(아래 firstrun 테스트와 같은 방법). 그러면 _tp.t 는 열고 16ms 뒤에 확정된다
+    var raf = window.requestAnimationFrame;
+    window.requestAnimationFrame = function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
+    try {
+      await settle();
+      var o = $('fldOut'), w = $('cwrap'), pop = $('tapPop'), g = _fieldGeo(FS), rw = w.getBoundingClientRect(), k = rw.width / FS;
+      window.AS.pending = null;
+      var at = { bubbles: true, clientX: rw.left - 30, clientY: rw.top + (g.cy - 0.7 * g.R) * k };
+      o.dispatchEvent(new MouseEvent('click', at));
+      ok(window._tp && !pop.hidden, '열림 ' + JSON.stringify({ ov: (document.querySelector('.overlay.show') || {}).id, p: window.AS.pending, top: (document.elementFromPoint(at.clientX, at.clientY) || {}).id }));
+      await T.sleep(550);   // _tp.t 다시 찍힘(16ms) + _TP_HOLD(400ms) 를 넘긴다
+      ok(window._tp && !_tpFresh(window._tp.t), '전제: 열린 지 _TP_HOLD 가 지났다 ' + JSON.stringify({ t: window._tp && window._tp.t, now: performance.now() }));
+      o.dispatchEvent(new PointerEvent('pointerdown', at));
+      o.dispatchEvent(new MouseEvent('click', at));
+      eq([!!window._tp, pop.hidden, window.AS.pending], [false, true, null], '취소');
+    } finally {
+      window.requestAnimationFrame = raf;
+    }
     var back = _restoreAbsFromPayload([{ r: '홈런', x: 0.5, y: 0.03, d: 90, ov: 120 }, { ov: '<b>' }, { ov: 999 }, { ov: -3 }]);
     eq(back.map(function (a) { return a.ov; }), [120, null, null, null], '공유 링크 ov');
   });

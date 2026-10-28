@@ -829,6 +829,8 @@ function selBatter(id){
 
 function delPlayer(id,e){
   e.stopPropagation();
+  const _lk=AS.curTeam==='home'?'home_lineup':'away_lineup',_i=AS[_lk].findIndex(p=>String(p.id)===String(id));
+  const _u=_i<0?null:{lk:_lk,i:_i,p:AS[_lk][_i],team:AS.curTeam,b:AS.batter?AS.batter.id:null};   // 되돌리기용 — 자리 · 그때 고른 타자
   if(AS.curTeam === 'home') {
     AS.home_lineup=AS.home_lineup.filter(p=>String(p.id)!==String(id));
   } else {
@@ -838,6 +840,30 @@ function delPlayer(id,e){
   renderLP();
   renderMob();
   selBatter(null);
+  if(_u)_playerUndoToast(_u);
+}
+
+// ✕ 는 확인 없이 지운다 — 대신 토스트의 '되돌리기'(#toastUndo, 원래 undoLast)로 되살린다.
+// 버튼은 이 토스트 문구가 떠 있을 때만 선수를 되살리고, 다른 토스트에서는 예전처럼 undoLast 를 부른다
+let _delUndo=null;
+function _playerUndoToast(u){
+  u.msg=(u.p.name||'선수')+' 삭제됨';
+  _delUndo=u;
+  const b=document.getElementById('toastUndo');
+  if(b&&!b._delWrap){b._delWrap=1;b.onclick=function(){
+    const d=_delUndo;_delUndo=null;
+    if(d&&document.getElementById('toastTxt').textContent===d.msg){hideToast();_restorePlayer(d);}
+    else window.undoLast();
+  };}
+  showToast(u.msg,true,6000);
+}
+function _restorePlayer(d){
+  const L=AS[d.lk];
+  if(L.some(x=>String(x.id)===String(d.p.id)))return;
+  L.splice(Math.min(d.i,L.length),0,d.p);
+  renderLP();
+  renderMob();
+  if(d.b!=null&&!AS.batter&&AS.curTeam===d.team)selBatter(d.b);
 }
 
 // 선수 이름 변경 (자동 생성된 "타자 1" 등) — 이미 기록된 타석의 이름도 함께 바꿈

@@ -2,7 +2,7 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=23';
+import './features/profile.js?v=24';
 import './features/compare.js?v=13';
 import './features/scouting.js?v=26';
 import './features/heatmap.js?v=3';
@@ -12,7 +12,7 @@ import './features/perf.js?v=2';
 import './features/team.js?v=21';
 import './features/teamgames.js?v=2';
 import './features/pitcher.js?v=46';
-import './features/batter.js?v=33';
+import './features/batter.js?v=34';
 import './features/spray.js?v=6';
 import './features/shell.js?v=16';
 import './features/record.js?v=14';
@@ -21,7 +21,7 @@ import './features/scorebook.js?v=32';
 import './features/dashboard.js?v=13';
 import './features/setup.js?v=10';
 import './features/report.js?v=7';
-import './features/anahelp.js?v=4';
+import './features/anahelp.js?v=5';
 import './features/firstrun.js?v=8';
 import './features/tabloop.js?v=1';
 import './features/ana3d.js?v=8';     // 분석 그림(타구 방향 · 코스) 2D | 3D
@@ -34,8 +34,8 @@ import './features/fielding.js?v=2';         // 아웃 수비 기록(6-3 · F8 �
 import './features/scoresheet.js?v=4';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
 import './features/ordersheet.js?v=2';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
 
-import './features/anahelp.js?v=4';
-import './features/anahelp.js?v=4';
+import './features/anahelp.js?v=5';
+import './features/anahelp.js?v=5';
 // ── Bottom Navigation ──
 function initSavantNav() {
   const nav = document.getElementById('savantNav');

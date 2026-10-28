@@ -389,8 +389,53 @@
     return null;
   }
 
+  // ── 선수 개인 통산 페이지 ──
+  // 게임원 선수 페이지(이름 · 우투우타 · 비선출 · 학교 / 타자기록 / 투수기록)를 복사한 평문.
+  // 한 줄에 '경기수68' · '* 경기수 68' · '경기수: 68' 처럼 오거나, 이름 줄 다음 줄에 값만 와도 읽는다.
+  // 게임원 숫자를 그대로 옮긴다(다시 계산하지 않음) — 방어율 · 탈삼진율은 게임원의 7이닝 기준.
+  // → { name, hand, bg, school, bat: {…} | null, pit: {…} | null } — 모르는 줄은 건너뛴다
+  var CAREER_BAT = { '경기수': 'g', '타율': 'avg', '타석': 'pa', '타수': 'ab', '득점': 'r', '총안타': 'h', '1루타': 's1', '2루타': 's2', '3루타': 's3', '홈런': 'hr', '루타': 'tb', '타점': 'rbi', '도루': 'sb', '도루자': 'cs', '희타': 'sh', '희비': 'sf', '볼넷': 'bb', '고의4구': 'ibb', '사구': 'hbp', '삼진': 'k', '병살': 'gdp', '장타율': 'slg', '출루율': 'obp', '도루성공률': 'sbPct', '멀티히트': 'multi', 'OPS': 'ops', 'BB/K': 'bbk', '장타/안타': 'xbhH' };
+  var CAREER_PIT = { '경기수': 'g', '방어율': 'era', '승': 'w', '패': 'l', '세': 'sv', '홀드': 'hld', '승률': 'wpct', '타자': 'tbf', '타수': 'ab', '투구수': 'np', '이닝': 'outs', '피안타': 'h', '피홈런': 'hr', '희타': 'sh', '희비': 'sf', '볼넷': 'bb', '고의4구': 'ibb', '사구': 'hbp', '탈삼진': 'k', '폭투': 'wp', '보크': 'bk', '실점': 'r', '자책점': 'er', 'WHIP': 'whip', '피안타율': 'avg', '탈삼진율': 'k7' };
+  var CAREER_VAL = /^[:：]?\s*(-|\d[\d,]*(?:\.\d+)?)$/;
+  var CAREER_IP = /^[:：]?\s*(\d+)\s*(⅓|⅔|1\/3|2\/3)?$/;
+  function careerLabels(map) { return Object.keys(map).sort(function (a, b) { return b.length - a.length; }); }
+  function parseGameOneCareer(text) {
+    var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/).map(function (l) { return l.replace(/^\s*[*•·\-]\s*/, '').trim(); }).filter(Boolean);
+    var out = { name: '', hand: '', bg: '', school: '', bat: null, pit: null };
+    var head = [], sec = null, map = null, labels = null, pending = null;
+    function put(label, raw) {
+      var key = map[label], v;
+      if (key === 'outs') { var m = CAREER_IP.exec(raw); if (!m) return false; v = +m[1] * 3 + (m[2] ? (m[2] === '⅔' || m[2] === '2/3' ? 2 : 1) : 0); }
+      else { var n = CAREER_VAL.exec(raw); if (!n) return false; v = n[1] === '-' ? null : +n[1].replace(/,/g, ''); }
+      (out[sec] || (out[sec] = {}))[key] = v;
+      return true;
+    }
+    lines.forEach(function (l) {
+      if (/^타자\s*기록$/.test(l)) { sec = 'bat'; map = CAREER_BAT; labels = careerLabels(map); pending = null; return; }
+      if (/^투수\s*기록$/.test(l)) { sec = 'pit'; map = CAREER_PIT; labels = careerLabels(map); pending = null; return; }
+      if (!sec) { head.push(l); return; }
+      if (pending && put(pending, l)) { pending = null; return; }
+      pending = null;
+      for (var i = 0; i < labels.length; i++) {
+        if (l.indexOf(labels[i]) !== 0) continue;
+        var rest = l.slice(labels[i].length).trim();
+        if (!rest) { pending = labels[i]; return; }
+        if (put(labels[i], rest)) return;
+      }
+    });
+    // 머리 부분: 이름은 '우투우타' 줄 바로 위(앞에 메뉴 글자가 딸려 와도) · 없으면 첫 줄
+    var hi = -1;
+    head.forEach(function (l, i) {
+      if (/^[우좌양]투[우좌양]타$/.test(l)) { if (hi < 0) hi = i; out.hand = out.hand || l; }
+      else if (/^비?선출$/.test(l)) out.bg = out.bg || l;
+      else if (/(학교|고|대)$/.test(l) && !out.school && i > 0) out.school = l.slice(0, 30);
+    });
+    out.name = String((hi > 0 ? head[hi - 1] : head[0]) || '').replace(/\s*[(#].*$/, '').slice(0, 20);
+    return out;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, parseGameOneInfo: parseGameOneInfo, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, parseGameOneInfo: parseGameOneInfo, parseGameOneCareer: parseGameOneCareer, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

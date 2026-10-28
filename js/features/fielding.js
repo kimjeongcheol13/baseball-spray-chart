@@ -115,7 +115,9 @@ function _toast() {
     const r = show.apply(this, arguments);
     const a = _last();
     // core recHit 의 저장 문구('저장됨 · #번호 이름 결과 수비 …')일 때만
-    $('toastFp').style.display = a && a.fp && typeof msg === 'string' && msg.indexOf('저장됨 · ') === 0 && msg.indexOf(a.res + ' ' + a.fp) > 0 ? '' : 'none';
+    const on = !!(a && a.fp && typeof msg === 'string' && msg.indexOf('저장됨 · ') === 0 && msg.indexOf(a.res + ' ' + a.fp) > 0);
+    $('toastFp').style.display = on ? '' : 'none';
+    $('toast').classList.toggle('toast-fp-on', on);   // 휴대폰: 버튼이 둘이면 버튼 줄을 글자 아래로 (css/record.css)
     return r;
   };
 }

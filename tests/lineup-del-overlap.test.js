@@ -26,24 +26,31 @@
     }
   });
 
-  // ✕ 는 확인 없이 지운다 — 토스트의 '되돌리기'로 같은 자리 · 같은 타자로 되살린다
-  test('✕ 로 지운 선수는 토스트의 되돌리기로 같은 자리에 돌아오고, 그 선수가 타자였으면 다시 고른다', async function () {
+  // ✕ 는 확인 없이 지운다 — 토스트의 '되돌리기'로 같은 자리 · 같은 타자로 되살린다.
+  // 라인업 창을 연 채로, 되돌리기 자리에서 맨 위에 있는 요소를 누른다 (예전엔 창 배경이 받아 창만 닫혔다)
+  test('라인업 창에서 ✕ 로 지운 선수는 토스트의 되돌리기로 같은 자리에 돌아오고, 그 선수가 타자였으면 다시 고른다', async function () {
     var keep = { home: AS.home_lineup, cur: AS.curTeam, b: AS.batter };
     try {
       AS.curTeam = 'home';
       AS.home_lineup = [{ id: 'u1', name: '김일번', num: '1', pos: '', bh: '' }, { id: 'u2', name: '박이번', num: '2', pos: '', bh: '' }, { id: 'u3', name: '최삼번', num: '3', pos: '', bh: '' }];
       AS.batter = AS.home_lineup[1];
-      renderLP();
+      shellDrawer(true);
+      await T.sleep(400);
       delPlayer('u2', { stopPropagation: function () {} });
       ok(AS.home_lineup.map(function (p) { return p.id; }).join() === 'u1,u3', '지워져야 한다: ' + AS.home_lineup.map(function (p) { return p.id; }));
       ok($('toastTxt').textContent === '박이번 삭제됨', '토스트 문구: ' + $('toastTxt').textContent);
       ok($('toastUndo').style.display !== 'none', '되돌리기 버튼이 보여야 한다');
-      $('toastUndo').click();
+      await T.sleep(400);   // 토스트가 올라오는 동안(280ms) 기다린다
+      var r = $('toastUndo').getBoundingClientRect(), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      ok(top === $('toastUndo'), '되돌리기 자리의 맨 위 요소가 버튼이어야 한다: ' + (top && (top.id || top.className)));
+      if (top) top.click();
       ok(AS.home_lineup.map(function (p) { return p.id; }).join() === 'u1,u2,u3', '같은 자리(2번)로 돌아와야 한다: ' + AS.home_lineup.map(function (p) { return p.id; }));
       ok(AS.batter && AS.batter.id === 'u2', '지운 선수가 타자였으면 다시 골라져야 한다: ' + (AS.batter && AS.batter.id));
       ok(!$('toast').classList.contains('show'), '되돌린 뒤 토스트는 닫힌다');
+      ok($('lineupDrawer').classList.contains('open'), '라인업 창은 열린 채로 있어야 한다');
     } finally {
       hideToast();
+      try { shellDrawer(false); } catch (e) {}
       AS.home_lineup = keep.home; AS.curTeam = keep.cur; AS.batter = keep.b;
       renderLP();
     }

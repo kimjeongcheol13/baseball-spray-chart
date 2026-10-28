@@ -373,8 +373,9 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .p-info{flex:1;min-width:52px}
 .p-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-mini{font-size:10px;color:var(--text3);font-family:var(--mono)}
-.p-del{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
-.player-row:hover .p-del{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
+/* ✕ 는 행 안 마지막 칸 — 예전엔 행 오른쪽에 떠 있어(absolute) 투명한 채로 '주전' 버튼을 덮어, '주전'을 누르면 선수가 지워졌다 (터치는 paper.css pointer: coarse 에서 먼저 고침) */
+.p-del{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;opacity:0;transition:all 100ms}
+.player-row:hover .p-del,.p-del:focus-visible{opacity:1}.p-del:hover{color:var(--red)!important;background:rgba(245,101,101,.1)}
 .add-row{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .inp{background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color 100ms;width:100%}
 .inp:focus{border-color:var(--accent)}.inp::placeholder{color:var(--text3)}

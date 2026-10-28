@@ -1,7 +1,7 @@
-// 오더지 (js/features/ordersheet.js) — 주전 타순 · 후보 · 빈 줄 · 수비 위치 번호 · 팀 이름 · 창(팀 고르기 · 이미지 · 인쇄 · 닫기) · 진입 버튼
+// 오더지 (js/features/ordersheet.js) — 주전 타순 · 후보 · 빈 줄 · 수비 위치 번호 · 팀 이름 · 창(팀 고르기 · 이미지 · 인쇄 · 닫기 · 그림을 누른 뒤 Esc) · 진입 버튼
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/ordersheet.js?v=1';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/ordersheet.js?v=2';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var P = function (id, name, num, pos, bench) { return { id: id, name: name, num: num, pos: pos || '', bh: '', isStarter: !bench }; };
 
   async function isolated(fn) {
@@ -35,7 +35,7 @@
     eq([e.starters.length, e.bench.length, e.name], [9, 5, ''], '라인업이 비어도 빈 양식');
   });
 
-  test('오더지 창: 처음엔 보고 있던 팀 · 홈/원정 고르기 · A4 그림 · 이미지 저장 · 인쇄(그림 한 장만) · 닫기 · Esc', async function () {
+  test('오더지 창: 처음엔 보고 있던 팀 · 홈/원정 고르기 · A4 그림 · 이미지 저장 · 인쇄(그림 한 장만) · 닫기 · 그림을 누른 뒤 Esc', async function () {
     await isolated(async function () {
       AS.home_lineup = [P('h1', '일번', '1', '중견')]; AS.away_lineup = [P('a1', '원정일', '11', '포수')];
       AS.info = { date: '2026-10-28', venue: '목동' }; AS.curTeam = 'away';
@@ -66,8 +66,9 @@
       openOrderSheet();
       await waitImg();
       ok(!$('osSave').disabled, '라인업이 비어도 빈 양식을 그린다');
-      $('osView').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      ok($('osView').hidden, 'Esc 로 닫기');
+      $('osImg').click(); if (document.activeElement) document.activeElement.blur();   // 그림을 누르면 포커스가 창 밖(body)으로
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      ok($('osView').hidden, '그림을 누른 뒤에도 Esc 로 닫힌다');
     });
   });
 

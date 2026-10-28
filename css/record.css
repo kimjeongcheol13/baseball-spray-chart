@@ -293,3 +293,9 @@ body.sb.sb-night:not(.high-contrast) #gfBar .gfb-runners { color: var(--n-ink2);
 .fp-act { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fp-act .btn { min-height: 44px; justify-content: center; }
 .fp-edit { width: 100%; min-height: 44px; text-align: left; cursor: pointer; }
+/* 휴대폰 저장 알림에 [수비 고치기] · [되돌리기] 둘이 붙으면 글자 칸이 좁아 '땅볼 아웃 / 6-3' 으로 갈렸다 → 글자 한 줄, 버튼은 아래 줄 오른쪽 */
+@media (max-width: 720px) {
+  .toast.toast-fp-on { flex-wrap: wrap; row-gap: 8px; width: calc(100vw - 32px); }
+  .toast.toast-fp-on #toastTxt { flex: 1 0 100%; }
+  .toast.toast-fp-on #toastFp { margin-left: auto; }
+}

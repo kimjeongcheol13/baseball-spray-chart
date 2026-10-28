@@ -126,7 +126,7 @@ const SLOT = 26, NAME = 112, TW = 27;
 export function drawSheet(cv, d) {
   const n = d.n, nT = d.teams.length;
   const lines = d.teams.reduce((s, t) => s + Math.max(1, t.rows.length) + 1, 0);   // 선수 줄 + 합계 줄
-  const top = 206, foot = 78, fixed = nT * (24 + 20 + 14);   // 띠 + 머리 줄 + 사이
+  const top = 206, foot = 93, fixed = nT * (24 + 20 + 14);   // 띠 + 머리 줄 + 사이
   const rh = Math.max(16, Math.min(28, Math.floor((H0 - top - foot - fixed) / lines)));
   const H = Math.max(H0, top + foot + fixed + lines * rh);
   cv.width = W * SCALE; cv.height = H * SCALE;
@@ -248,8 +248,8 @@ export function drawSheet(cv, d) {
   font('700', 12, F.kr);
   ['기록원', '원정 감독', '홈 감독'].forEach((s, i) => {
     const x0 = X + (CW / 3) * i, x1 = x0 + CW / 3 - 18;
-    text(s, x0, FY + 46, C.ink);
-    hl(x0 + c.measureText(s).width + 8, x1, FY + 50, C.ink);
+    text(s, x0, FY + 61, C.ink);   // 약어 세 줄(FY · +15 · +30) 아래 — 줄과 서명 사이를 예전 두 줄일 때와 같게
+    hl(x0 + c.measureText(s).width + 8, x1, FY + 65, C.ink);
   });
   return c;
 }

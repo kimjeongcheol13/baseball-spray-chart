@@ -30,8 +30,8 @@ import './features/gameonefix.js?v=4';     // 게임원 가져오기 보정 — 
 import './features/gameoneocr.js?v=5';     // 게임원 앱 스크린샷으로 채우기 — 휴대폰 안 OCR(Tesseract.js, 누를 때만 불러옴)
 import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPitcherView 를 감싼다
 import './features/runners.js?v=11';         // 주자 · 득점 · 주루 플레이 · 타순 · 교체 · 되돌리기 — shell.js(위) 다음 (undoLast · gfAfterRecord 를 바깥에서 감싼다)
-import './features/fielding.js?v=1';         // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정 · 번호판으로 고치기
-import './features/scoresheet.js?v=3';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
+import './features/fielding.js?v=2';         // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정 · 번호판으로 고치기
+import './features/scoresheet.js?v=4';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
 import './features/ordersheet.js?v=2';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
 
 import './features/anahelp.js?v=5';

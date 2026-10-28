@@ -1536,10 +1536,11 @@ function recHit(res){
   const r={id:Date.now(),bid:AS.batter.id,bname:AS.batter.name,bnum:AS.batter.num,bats:AS.batter.bats||AS.batter.bh||'R',team:AS.curTeam,res,pt:AS.pt,zone:AS.zone,rbi:AS.rbi,x:AS.pending.x,y:AS.pending.y,deg:AS.pending.deg,dir:AS.pending.dir,ft:AS.pending.ft,inn:_abInn(),ts:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),count:{b:AS.balls,s:AS.strikes,o:_abOuts()},pitches:[...AS.currentPitches],ev:_ev,launchAngle:_la,launchType:_laType};
   if(AS.pending.fa)r.fa=AS.pending.fa;   // 파울 타구: 파울라인 밖 각도(°) — 그리는 쪽(_semiToCone)만 쓴다
   if(AS.pending.ov)r.ov=AS.pending.ov;   // 외야석 타구: 펜스 뒤 m — 그리는 쪽만 쓴다
+  if(window.slFpGuess){var _fp=window.slFpGuess(res,r.deg,r.ft);if(_fp)r.fp=_fp;}   // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정, 고치기는 fielding.js
 AS.currentPitches=[];
   var _evEl=document.getElementById('evInput');if(_evEl)_evEl.value='';
   var _laEl=document.getElementById('laInput');if(_laEl)_laEl.value='';
-  AS.abs.push(r);_pitchLinkAfterAb(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
+  AS.abs.push(r);_pitchLinkAfterAb(r);closeHit();updateAll();ftuDone();showToast(`저장됨 · #${r.bnum} ${r.bname} ${res}${r.fp?' '+r.fp:''}${r.rbi>0?' ('+r.rbi+'타점)':''}`,true,3000);
   _showMiniSprayAfterRecord();
   _countAfterRecord();_recordToPitch(r);
   gfAfterRecord(res,r.rbi);
@@ -1792,7 +1793,7 @@ function renderRecs(){
   const BC={__proto__:null,'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out','라인드라이브 아웃':'b-out','삼중살':'b-out','실책':'b-other','야수선택':'b-other'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
-  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div></div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.fp,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div></div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
 }
 var _dragRecId=null;
 function recDragStart(e,id){_dragRecId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
@@ -5293,7 +5294,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,fa:a.fa,ov:a.ov,t:a.team,ba:_batsOf(a),tm:a.ts||'',
+      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),tm:a.ts||'',
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -5314,7 +5315,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
       x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
-      ft:a.ft,fa:a.fa,ov:a.ov,t:a.team,ba:_batsOf(a),
+      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
     };})
   };
@@ -5455,6 +5456,7 @@ function _restoreAbsFromPayload(payloadAbs){
     team:a.t||'home',
     res:a.r, pt:a.p, zone:a.z, rbi:a.b||0,
     x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined, ov:a.ov>0&&a.ov<=_OV_LIM?+a.ov:undefined,
+    fp:typeof a.fp==='string'&&/^(?:[FL][1-9]|[1-9](?:-[1-9]){0,3}|[1-9]U)$/.test(a.fp)?a.fp:undefined,   // 아웃 수비 기록(6-3 · F8) — 형식이 맞을 때만
     ev:a.ev!=null?a.ev:null,
     inn:a.i||'1회초',
     ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),

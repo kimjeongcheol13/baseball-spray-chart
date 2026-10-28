@@ -21,6 +21,7 @@ const DIR = { __proto__: null, LF: '좌익', LC: '좌중간', CF: '중견', RC: 
 const kindOf = res => KIND[res] || 'out';
 // 방향은 필드를 탭한 타구만 (내야안타 버튼은 방향 없이 중견 기본값이 들어가므로 표시하지 않음)
 const abbrOf = a => {
+  if (a.fp) return a.fp;   // 아웃 수비 기록(6-3 · F8 — fielding.js)
   const s = ABBR[a.res] || a.res || '';
   return a.dir && a.x != null && a.res !== '내야안타' ? `${s}·${DIR[a.dir] || a.dir}` : s;
 };

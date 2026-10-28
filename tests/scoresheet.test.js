@@ -2,7 +2,7 @@
 //  · 순수 함수는 앱이 올린 같은 모듈 인스턴스로 부르고, 경기 운영 모드 득점은 실제 recOther 로 적어 확인한다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/scoresheet.js?v=2';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/scoresheet.js?v=3';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
   var GK = ['active', 'inning', 'half', 'first', 'outs', 'batterIdx', 'bases', 'runners'];
 

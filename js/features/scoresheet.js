@@ -1,6 +1,6 @@
 // 리그 제출용 기록지 — 이번 경기를 A4 세로 한 장으로: 이닝별 점수(R H E) · 양 팀 타순 × 이닝 칸 · 선수별 합계 · 기록원 서명 칸
 //  · 읽기만 한다 (AS.abs · 라인업 · AS.info · runners.js 의 득점 slLineScore · slRunnerStats · core.js _cardStats) — 저장 구조 · 키 변경 없음
-//  · 칸 = 중계 문자 약어 (좌안 · 중2 · 우홈 · 중비 · 땅볼 · 삼진 · 4구 …). 방향은 필드를 탭한 타구만. 아웃 수비수(6-3)는 아직 기록하지 않는다
+//  · 칸 = 중계 문자 약어 (좌안 · 중2 · 우홈 · 중비 · 땅볼 · 삼진 · 4구 …). 방향은 필드를 탭한 타구만. 아웃에 수비 기록(6-3 · 3U · F8 · L6 — fielding.js)이 있으면 그것
 //  · 타순 = 지금 주전 순서, 자리마다 교체 기록(runEv SUB)을 거슬러 처음 선수부터. 라인업에 없는 타자는 맨 아래 (첫 타석 순)
 //  · 득점 · 도루는 경기 운영 모드로 적은 경기만 (그 밖의 경기는 빈칸 — 0 으로 적지 않는다). E = 상대 타자가 실책으로 나간 수
 //  · 이미지 저장 = core.js _downloadCanvas · 인쇄 / PDF = 이 그림 한 장만 (body.ss-printing · css/report.css)
@@ -22,6 +22,7 @@ const ZONED = { __proto__: null, '안타': ['안', '안타'], '2루타': ['2', '
 export function cellCode(a) {
   const r = a && a.res;
   if (!r) return '';
+  if (a.fp) return a.fp;   // 아웃 수비 기록 — 땅볼 · 뜬공 · 라인드라이브 아웃에만 붙는다
   if (FIX[r]) return FIX[r];
   const z = ZONED[r];
   if (!z) return String(r);
@@ -242,6 +243,7 @@ export function drawSheet(cv, d) {
   font('500', 10, F.kr);
   text('칸 — 좌 · 좌중 · 중 · 우중 · 우 = 타구 방향   안 안타 · 2 2루타 · 3 3루타 · 홈 홈런 · 비 뜬공 · 4구 볼넷 · 희번 희생번트 · 희플 희생플라이 · 야선 야수선택', X, FY, C.ink2);
   c.fillStyle = C.red; c.beginPath(); c.arc(X + 3, FY + 11.5, 2.4, 0, Math.PI * 2); c.fill();   // 칸에 찍는 점과 같은 모양
+  text('수비 — 1 투수 · 2 포수 · 3 1루 · 4 2루 · 5 3루 · 6 유격 · 7 좌익 · 8 중견 · 9 우익   6-3 유격수 땅볼 1루 송구 · 3U 1루수 혼자 · F8 중견수 뜬공 · L6 유격수 직선타', X, FY + 30, C.ink2);
   text('득점한 타석 · 칸 오른쪽 위 빨간 숫자 = 타점 · E = 실책으로 내보낸 타자 수 · 득점 · 도루 빈칸 = 경기 운영 모드로 적지 않은 경기', X + 10, FY + 15, C.ink2);
   font('700', 12, F.kr);
   ['기록원', '원정 감독', '홈 감독'].forEach((s, i) => {

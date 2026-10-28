@@ -76,6 +76,8 @@
    탭 뒤에 가려 안 보이던 문제 → 창은 탭 위 · 하단 탭(400) 아래로, 알림(.toast)은 창 위로 */
 .overlay{z-index:395}
 .toast{z-index:396}
+/* 라인업 창(.ld 450 · 배경 440)이 열려 있으면 알림도 그 위로 — 선수 ✕ 뒤 '되돌리기'를 누르면 배경이 받아 창만 닫혔다 */
+body:has(.ld.open) .toast{z-index:460}
 .shell-inner{max-width:960px;margin:0 auto;padding:12px 12px 28px;box-sizing:border-box}
 
 /* ── 분석 서브탭 바 ── */

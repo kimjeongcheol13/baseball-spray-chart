@@ -3,6 +3,7 @@ import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=9';
 import { hotColdFigure } from './zonefig.js?v=7';
 import { mixFigure } from './mixfig.js?v=5';
+import { goCareerCard } from './gocareer.js?v=1';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops
@@ -137,7 +138,8 @@ export function profileSeasonHtml(P, data) {
       ${trendChart([{ name: P.name, cls: 'a', trend: P.trend }], _trendKey, 'N번째 출전 경기까지의 누적 기록 · 최근 15경기')}
     </section>
     ${_gameLog(P)}
-    ${_pitchAndCounts(P)}`;
+    ${_pitchAndCounts(P)}
+    ${goCareerCard(P.name, P.games, P.st.pa)}`;
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────

@@ -135,7 +135,8 @@ function _mount() {
 </div>`);
   $('osClose').onclick = closeOrderSheet;
   $('osView').addEventListener('click', e => { if (e.target.id === 'osView') closeOrderSheet(); });
-  $('osView').addEventListener('keydown', e => { if (e.key === 'Escape') closeOrderSheet(); });
+  // Esc 는 문서에서 받는다 — 미리보기 이미지를 누르면 포커스가 창 밖(body)으로 빠진다 (scoresheet.js 와 같음)
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('osView').hidden) closeOrderSheet(); });
   $('osTeam').addEventListener('click', e => {
     const b = e.target.closest('button[data-team]');
     if (!b || b.dataset.team === _team) return;

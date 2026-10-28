@@ -1,8 +1,8 @@
-// 리그 기록지 (js/features/scoresheet.js) — 칸 약어 · 타순(교체 포함) · 득점한 타석 · 이닝 수 · R H E · 창(이미지 · 인쇄 · 닫기) · 진입 버튼
+// 리그 기록지 (js/features/scoresheet.js) — 칸 약어 · 타순(교체 포함) · 득점한 타석 · 이닝 수 · R H E · 창(이미지 · 인쇄 · 닫기 · Esc) · 진입 버튼(경기종료 → GAME REPORT 포함)
 //  · 순수 함수는 앱이 올린 같은 모듈 인스턴스로 부르고, 경기 운영 모드 득점은 실제 recOther 로 적어 확인한다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/scoresheet.js?v=1';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/scoresheet.js?v=2';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
   var GK = ['active', 'inning', 'half', 'first', 'outs', 'batterIdx', 'bases', 'runners'];
 
@@ -27,7 +27,7 @@
       $('scH').textContent = AS.hs; $('scA').textContent = AS.as;
       window._curSaveKey = ck; window._gameSaved = gs; window._autoKey = ak; window.cloudAutoSyncRecord = cs;
       var p = $('slRunPick'); if (p) p.remove();
-      $('gfEndOv').classList.remove('show');
+      $('gfEndOv').classList.remove('show'); $('pgReport').style.display = 'none'; $('pgCard').classList.remove('up');
       try { renderLP(); renderRecs(); renderCount(); shellNav('record'); } catch (e) {}
     }
   }
@@ -140,6 +140,10 @@
       await waitImg();
       eq([$('ssImg').naturalWidth, $('ssImg').naturalHeight], [1588, 2246], 'A4 세로 2배 (794 × 1123)');
       ok(!$('ssSave').disabled && !$('ssPrint').disabled, '그린 뒤 버튼 켜짐');
+      $('ssImg').click(); if (document.activeElement) document.activeElement.blur();   // 이미지를 누르면 포커스가 창 밖(body)으로
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      ok($('ssView').hidden, '창 안을 누른 뒤에도 Esc 로 닫힌다');
+      openScoresheet(); await waitImg();
       var dl = window._downloadCanvas, got = null;
       window._downloadCanvas = function (cv, name) { got = [cv.width, cv.height, name]; };
       try { $('ssSave').click(); } finally { window._downloadCanvas = dl; }
@@ -160,7 +164,7 @@
     });
   });
 
-  test('기록지 진입: ☰ 메뉴 내보내기 · 그 밖의 기능 · 경기 종료 카드 [닫기] [기록지] [저장 & 요약]', async function () {
+  test('기록지 진입: ☰ 메뉴 내보내기 · 그 밖의 기능 · 경기종료 버튼 → 확인 → GAME REPORT 공유 줄 [리그 기록지] (리포트 위에 열고 닫으면 리포트로)', async function () {
     await isolated(async function () {
       ok(document.querySelector('.slm-item[onclick^="openScoresheet"]'), '☰ 메뉴 내보내기');
       shellNav('settings');
@@ -168,13 +172,25 @@
       ok(document.querySelector('#stMore [onclick^="openScoresheet"]'), '그 밖의 기능 · 내보내기');
       shellNav('record');
       fresh();
-      AS.home_lineup = [P('h1', '일번', '1')];
-      AS.abs = [pa('h1', '일번', 'home', '1회초', '안타')];
-      gfShowEndCard();
-      eq([].map.call(document.querySelectorAll('#gfeCard .gfe-btns button'), function (b) { return b.textContent.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim(); }), ['닫기', '기록지', '저장 & 요약'], '경기 종료 카드 버튼');
-      document.querySelector('#gfeCard .ss-end').click();
-      ok(!$('gfEndOv').classList.contains('show') && !$('ssView').hidden, '카드를 닫고 기록지를 연다');
+      AS.curTeam = 'home';
+      AS.home_lineup = [P('eh1', '일번', '1'), P('eh2', '이번', '2')]; AS.away_lineup = [P('ea1', '원정일', '11')];
+      renderLP();
+      GF.first = 'home';
+      gfActivate();
+      await T.sleep(750); recOther('볼넷');
+      var cf = window.confirm, asked = '';
+      window.confirm = function (m) { asked = m; return true; };
+      try { document.querySelector('.gfb-end').click(); } finally { window.confirm = cf; }   // 경기 운영 바의 실제 경기종료 버튼
+      ok(/경기를 종료/.test(asked), '종료 확인을 묻는다: ' + asked);
+      for (var j = 0; j < 40 && $('pgReport').style.display !== 'flex'; j++) await T.sleep(50);
+      eq($('pgReport').style.display, 'flex', '경기종료 → GAME REPORT');
+      eq([].map.call(document.querySelectorAll('#pgReport .pg-share-row button'), function (b) { return b.textContent.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim(); }), ['스토리 9:16', '피드 1:1', '리그 기록지'], 'GAME REPORT 공유 줄');
+      eq(document.querySelectorAll('#pgSheetBtn').length, 1, '버튼은 하나만');
+      $('pgSheetBtn').click();
+      ok(!$('ssView').hidden, '기록지가 열린다');
       await waitImg();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      ok($('ssView').hidden && $('pgReport').style.display === 'flex', '기록지를 닫으면 GAME REPORT 가 그대로 있다');
     });
   });
 })();

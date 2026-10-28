@@ -4,7 +4,7 @@
 //  · 타순 = 지금 주전 순서, 자리마다 교체 기록(runEv SUB)을 거슬러 처음 선수부터. 라인업에 없는 타자는 맨 아래 (첫 타석 순)
 //  · 득점 · 도루는 경기 운영 모드로 적은 경기만 (그 밖의 경기는 빈칸 — 0 으로 적지 않는다). E = 상대 타자가 실책으로 나간 수
 //  · 이미지 저장 = core.js _downloadCanvas · 인쇄 / PDF = 이 그림 한 장만 (body.ss-printing · css/report.css)
-//  · 창은 선수 리포트(.rp) 모양을 그대로 쓴다. 진입: ☰ 메뉴 · 그 밖의 기능(setup.js) · 경기 종료 카드(gfShowEndCard 를 감싸 버튼 추가)
+//  · 창은 선수 리포트(.rp) 모양을 그대로 쓴다. 진입: ☰ 메뉴 · 그 밖의 기능(setup.js) · 경기종료 뒤 GAME REPORT 공유 줄(#pgReport — 버튼 추가)
 import { HITS } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -282,7 +282,8 @@ function _mount() {
 </div>`);
   $('ssClose').onclick = closeScoresheet;
   $('ssView').addEventListener('click', e => { if (e.target.id === 'ssView') closeScoresheet(); });
-  $('ssView').addEventListener('keydown', e => { if (e.key === 'Escape') closeScoresheet(); });
+  // Esc 는 문서에서 받는다 — 미리보기 이미지 · 창 머리를 누르면 포커스가 창 밖(body)으로 빠진다
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ssView').hidden) closeScoresheet(); });
   $('ssSave').onclick = () => { if (_cv) window._downloadCanvas(_cv, 'spraylab_scoresheet_' + Date.now() + '.png'); };
   $('ssPrint').onclick = () => {
     if (!_cv) return;
@@ -346,15 +347,10 @@ export function closeScoresheet() {
   try { if (_ret && _ret.focus) _ret.focus(); } catch (e) {}
 }
 
-// 경기 종료 카드: [닫기] [기록지] [저장 & 요약]
-const _end = window.gfShowEndCard;
-if (typeof _end === 'function') {
-  window.gfShowEndCard = function () {
-    const r = _end.apply(this, arguments), s = document.querySelector('#gfeCard .gfe-btn-save');
-    if (s && !document.querySelector('#gfeCard .ss-end')) s.insertAdjacentHTML('beforebegin', '<button class="gfe-btn gfe-btn-close ss-end" onclick="gfEndClose();openScoresheet()">기록지</button>');
-    return r;
-  };
-}
+// 경기종료 뒤 뜨는 GAME REPORT(core.js gfEndGame → showPostGameReport) 공유 줄: [스토리 9:16] [피드 1:1] [리그 기록지]
+// 리포트는 그대로 두고 그 위에 연다 (기록지를 닫으면 리포트로 돌아온다)
+const _row = document.querySelector('#pgReport .pg-share-row');
+if (_row && !$('pgSheetBtn')) _row.insertAdjacentHTML('beforeend', '<button class="pg-sh-btn" id="pgSheetBtn" onclick="openScoresheet()">📋 리그 기록지</button>');
 
 window.openScoresheet = openScoresheet;
 window.closeScoresheet = closeScoresheet;

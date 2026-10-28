@@ -8591,29 +8591,29 @@ function pgExport(W,H,mode){
     var date2=_pgDate();
 
     // badge
-    y=mode==='story'?H*.09:H*.1;
+    y=mode==='story'?H*.09:H*.075;   // 피드(1:1) 간격은 높이가 짧아 따로 — 예전 값은 배지가 점수에 붙고 필드 · 코멘트가 아래로 잘렸다
     ctx.font='bold '+Math.round(W*.022)+'px sans-serif';
     ctx.fillStyle='#f6c23e';ctx.textAlign='center';
     ctx.fillText('GAME REPORT',cx2,y);
     // score
-    y+=mode==='story'?H*.09:H*.11;
+    y+=mode==='story'?H*.09:H*.125;
     ctx.font='bold '+Math.round(W*.14)+'px sans-serif';
     ctx.fillStyle='#f6c23e';
     ctx.fillText(AS.hs+' : '+AS.as,cx2,y);
     // teams
-    y+=mode==='story'?H*.055:H*.065;
+    y+=mode==='story'?H*.055:H*.05;
     ctx.font=Math.round(W*.034)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.55)';
     ctx.fillText(th2+' vs '+ta2,cx2,y);
     // date
-    y+=mode==='story'?H*.038:H*.045;
+    y+=mode==='story'?H*.038:H*.04;
     ctx.font=Math.round(W*.024)+'px sans-serif';ctx.fillStyle='rgba(255,255,255,.3)';
     ctx.fillText(date2,cx2,y);
     // divider
-    y+=mode==='story'?H*.04:H*.048;
+    y+=mode==='story'?H*.04:H*.03;
     ctx.strokeStyle='rgba(246,194,62,.22)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();
     // stats
-    y+=mode==='story'?H*.065:H*.08;
+    y+=mode==='story'?H*.065:H*.068;
     var stats2=[{v:fmt2(avg2),l:'팀 타율'},{v:h2+'',l:'안타'},{v:rbi2+'',l:'타점'},{v:k2+'',l:'삼진'}];
     var cw=(W-pad*2)/4;
     stats2.forEach(function(s,i){
@@ -8624,7 +8624,7 @@ function pgExport(W,H,mode){
       ctx.fillText(s.l,sx,y+Math.round(W*.034));
     });
     // direction bar
-    y+=mode==='story'?H*.11:H*.13;
+    y+=mode==='story'?H*.11:H*.075;
     var dabs2=abs.filter(function(a){return a.deg!=null;});
     var tot2=dabs2.length||1;
     var pull2=dabs2.filter(function(a){return _isPull(a);}).length;
@@ -8641,8 +8641,8 @@ function pgExport(W,H,mode){
     ctx.textAlign='center';ctx.fillText('중앙 '+Math.round(ctr2/tot2*100)+'%',cx2,y);
     ctx.textAlign='right';ctx.fillText('밀어 '+Math.round(oppo2/tot2*100)+'%',W-pad,y);
     // 미니 스프레이 차트
-    y+=mode==='story'?H*.05:H*.06;
-    var mS=Math.round(W*.36),mc=document.createElement('canvas');
+    y+=mode==='story'?H*.05:H*.03;
+    var mS=Math.round(W*(mode==='story'?.36:.28)),mc=document.createElement('canvas');
     mc.width=mS;mc.height=mS;
     _pgDrawMiniOnCanvas(mc.getContext('2d'),mS);
     ctx.save();

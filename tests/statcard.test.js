@@ -1,5 +1,5 @@
 // 성적 카드 3종 (js/features/statcard.js) — core.js _drawCard 를 바꿔 낀 새 그림: 개인 · 팀 · 시즌 · 빈 상태
-//  · 글꼴은 Noto Sans KR · Oswald 둘만 (fillText 마다) · 크기(개인 · 시즌 1080×1920, 팀 1080×1080) · 빈 캔버스가 아님 · 데이터 글자(이름 · 상대 · 결과 · 배지 · 지표 · 전적)
+//  · 글꼴은 Noto Sans KR · Oswald 둘만 (fillText 마다) · 크기(개인 · 시즌 1080×1920, 팀 1080×1080) · 빈 캔버스가 아님 · 데이터 글자(이름 · 상대 · 결과 · 결과 약어 · 배지 · 지표 · 전적)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var CTX = CanvasRenderingContext2D.prototype;
@@ -57,7 +57,7 @@
         pa('t2', '이타자', '12', 'home', '1회초', '땅볼 아웃', { x: 0.55, y: 0.85, dir: 'CF', deg: 95 }),
         pa('t1', '김테스트', '7', 'home', '3회초', '홈런', { x: 0.5, y: 0.04, dir: 'CF', deg: 90, rbi: 2 }),
         pa('a1', '원정일', '1', 'away', '3회말', '2루타', { x: 0.8, y: 0.4, dir: 'RC', deg: 120 }),
-        pa('t1', '김테스트', '7', 'home', '5회초', '삼진'),
+        pa('t1', '김테스트', '7', 'home', '5회초', '삼진', { fp: 'F8' }),
         pa('t1', '김테스트', '7', 'home', '7회초', '볼넷'),
       ];
       window._readSavedGames = function () {
@@ -80,11 +80,15 @@
         ok(has(calls, t), '개인 카드에 「' + t + '」 없음 — ' + text(calls).slice(0, 400));
       });
       ok(/3\|타수\|2\|안타\|1\|홈런\|2\|타점\|1\|볼넷/.test(text(calls)), '한 줄 성적 3타수 2안타 1홈런 2타점 1볼넷');
+      // 타석 줄 오른쪽 결과 약어 (안타 1B · 홈런 HR · 삼진 K · 볼넷 BB). 수비 기록 a.fp 는 땅볼 · 뜬공 · 라인드라이브 아웃에만 — 삼진에 남은 값은 무시
+      ['1B', 'HR', 'K', 'BB'].forEach(function (t) { ok(has(calls, t), '결과 약어 「' + t + '」 없음'); });
+      ok(!has(calls, 'F8'), '삼진 줄에 수비 기록이 찍힘');
 
       calls = await drawn(async function () { switchCardType('team', $('cptTeam')); await window._drawCard(); });
       check(cv, 1080, 1080, '팀');
       eq(badFonts(calls), [], '팀 카드 글꼴');
-      ['테스트팀', '미래팀', 'TOP HITTERS', '김테스트', '5', '3'].forEach(function (t) { ok(has(calls, t), '팀 카드에 「' + t + '」 없음'); });
+      ['테스트팀', '미래팀', 'GAME RECORD', '팀 기록', 'TOP HITTERS', '김테스트', '5', '3'].forEach(function (t) { ok(has(calls, t), '팀 카드에 「' + t + '」 없음'); });
+      ok(has(calls, _cardDate()), '팀 카드에 날짜 없음');
       eq($('cardPlayerSel').style.display, 'none', '팀 카드에선 선수 고르기 숨김');
 
       calls = await drawn(async function () { switchCardType('season', $('cptSeason')); await window._drawCard(); });

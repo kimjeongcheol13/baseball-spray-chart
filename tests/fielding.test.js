@@ -153,7 +153,7 @@
     try { m.drawSheet(cv, d); } finally { CanvasRenderingContext2D.prototype.fillText = fill; }
     var leg = [at['칸'], at['표시'], at['수비']], sig = at['기록원'];   // 약어 줄 이름(칸 · 표시 · 수비) · 서명 상자 이름의 기준선
     ok(leg.every(function (y) { return y > 0; }) && sig > 0, '약어 줄 · 서명 줄 찾음: ' + JSON.stringify(Object.keys(at).filter(function (k) { return /칸|표시|수비|기록/.test(k); }).map(function (k) { return [k, at[k]]; })));
-    eq([leg[1] - leg[0], leg[2] - leg[1]], [15, 15], '약어 줄 간격 15');
+    eq([leg[1] - leg[0], leg[2] - leg[1]], [16, 16], '약어 줄 간격 16');
     ok(sig - leg[2] >= 30, '마지막 약어 줄과 서명 사이 ' + (sig - leg[2]) + ' — 예전(두 줄 · 31)만큼 떨어져야 한다');
     ok(sig + 30 <= cv.height / 2 - 10, '서명 상자(이름 아래 30)가 그림 아래 끝에서 10 이상 안쪽: ' + sig + ' / ' + cv.height / 2);
   });

@@ -1,38 +1,24 @@
 // 선수 리포트 — 학부모 공유용 세로 이미지(1080×1920, 9:16)
 // 선수 → 기간 → 코치 코멘트 → PNG 저장·공유 / 인쇄(PDF)
-// 계산·그림은 기존 것을 그대로 쓴다: calcStats · sprayFigure(batdata.js) · hotColdFigure(zonefig.js)
+// 계산은 기존 것을 그대로 쓴다: calcStats(batdata.js) · 코스 = zoneOf(zonefig.js) · 필드 좌표 = window._fieldPos(core.js)
+// 그림은 캔버스에 직접 그린다 (이미지 공통 키트 imgkit.js — 흰 종이 PAPER · Noto Sans KR · Oswald)
 // 저장 경기는 읽기만 한다. 새로 쓰는 키는 sl_report_cmt(선수별 마지막 코치 코멘트, 이 기기에만 · 동기화 안 함) 하나뿐
-import { buildData, calcStats, f3, pct, sampleBadge, sprayFigure } from './batdata.js?v=9';
-import { hotColdFigure } from './zonefig.js?v=7';
+import { buildData, calcStats, f3, pct, sampleBadge } from './batdata.js?v=9';
+import { zoneOf } from './zonefig.js?v=7';
+import { HITS, ZONES_9 } from '../constants.js';
+import { FONT, PAPER as P, font, fitFont, spacing, rr, wordmark, drawWithFonts } from './imgkit.js?v=1';
 
 const CMT_KEY = 'sl_report_cmt';
 const CMT_MAX = 80;           // 코멘트 최대 글자 (3줄 안쪽)
 const RANGES = [1, 3, 5, 10, 0];   // 최근 N경기 · 0 = 전체
 const DEF_RANGE = 5;
 
-// 캔버스 — 종이 스코어북 토큰(paper.css)과 같은 값
-const W = 1080, H = 1920, M = 64, CW = W - M * 2;
-const C = {
-  paper: '#F3EDDF', paper2: '#FBF7EE', ink: '#1F2A23', soft: '#55605A', rule: '#C9BFA9',
-  red: '#C8322B', blue: '#2C4F8A', hl: '#D9A441', hlSoft: '#FFF4C2', grass: '#3E7A5B',
-};
-const F = {
-  disp: '"Black Han Sans", "Noto Sans KR", sans-serif',
-  body: '"Gowun Batang", "Nanum Myeongjo", serif',
-  num: '"Oswald", "Noto Sans KR", sans-serif',
-  mono: '"IBM Plex Mono", monospace',
-};
-// 차트 SVG는 이미지로 옮기면 페이지 CSS가 안 먹으므로 종이 테마 스타일(paper.css · analysis.css)을 SVG 안에 넣는다
-const SVG_CSS = {
-  spray: '.f-grass{fill:#3E7A5B}.f-fence{fill:none;stroke:#1F2A23;stroke-width:.9}.f-line{fill:none;stroke:#FBF7EE;stroke-width:.7}'
-    + '.f-arc{fill:none;stroke:#FBF7EE;stroke-width:.6;stroke-dasharray:1.5 1.5;opacity:.55}'
-    + '.d-1b,.d-hr{fill:#C8322B;stroke:#1F2A23;stroke-width:.5}.d-xbh{fill:#D9A441;stroke:#1F2A23;stroke-width:.5}.d-out{fill:none;stroke:#1F2A23;stroke-width:1}',
-  zone: 'text{text-anchor:middle;dominant-baseline:central;font-family:"Noto Sans KR",sans-serif}'
-    + '.zf-ax{font-weight:700;font-size:15px;fill:#55605A}.zf-c rect{fill:none}.zf-c.ball rect{stroke:#C9BFA9;stroke-width:1.5}'
-    + '.zf-m{font-weight:700;font-size:26px;fill:#55605A}.zf-mb{font-size:20px}.zf-s{font-weight:500;font-size:12px;fill:#55605A}'
-    + '.zf-l{font-weight:700;font-size:12px;fill:#55605A}.zf-c.on .zf-m{fill:#1F2A23}.zf-c.on .zf-s,.zf-c.on .zf-l{fill:#1F2A23}'
-    + '.zf-sep{fill:none;stroke:#C9BFA9;stroke-width:1.5}.zf-box{fill:none;stroke:#1F2A23;stroke-width:3}',
-};
+// 캔버스 — 인쇄도 하는 흰 종이(PAPER). 글꼴은 둘만: 한글 = Noto Sans KR · 숫자/영문 라벨 = Oswald
+const W = 1080, H = 1920, M = 60, CW = W - M * 2;
+const KR = FONT.kr, NUM = FONT.num;
+const PW = (CW - 20) / 2, FW = PW - 40;   // 그림 칸 폭 · 그 안 그림 폭(1배)
+const MIN_AB = 3;   // 코스 칸 색칠 최소 타수 — zonefig.js(분석 · 스카우트 탭)와 같은 값
+const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];
 
 const $ = id => document.getElementById(id);
 const _e = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -224,39 +210,25 @@ function _reportData(p, games, range, sample) {
   };
 }
 
-// ── 그림: 기존 SVG → 이미지 ───────────────────────────────────
-function _svgImage(html, css, w) {
-  const m = /<svg[\s\S]*?<\/svg>/.exec(html || '');
-  if (!m) return Promise.resolve(null);
-  const vb = (/viewBox="([^"]+)"/.exec(m[0]) || [])[1];
-  const v = vb ? vb.split(/[\s,]+/).map(Number) : [0, 0, 1, 1];
-  const h = Math.round(w * v[3] / v[2]);
-  const svg = m[0]
-    .replace('<svg', `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"`)
-    .replace(/(<svg[^>]*>)/, `$1<style>${css}</style>`);
-  return new Promise(res => {
-    const img = new Image();
-    img.onload = () => res({ img, w, h });
-    img.onerror = () => res(null);
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  });
-}
-
-function _charts(R) {
-  const colW = (CW - 16) / 2;
-  const P = { name: R.name, abs: R.abs, st: R.st };
-  let spray = '', zone = '';
-  try { spray = sprayFigure(P); } catch (e) { spray = ''; }
-  try { zone = R.st.pa ? hotColdFigure(R.abs, R.st.avg, R.st.pa) : ''; } catch (e) { zone = ''; }
-  return Promise.all([_svgImage(spray, SVG_CSS.spray, colW), _svgImage(zone, SVG_CSS.zone, colW)]);
-}
-
 // ── 캔버스 그리기 ─────────────────────────────────────────────
-const _font = (w, px, fam) => `${w} ${px}px ${fam}`;
-
-function _text(ctx, t, x, y, font, color, align = 'left') {
-  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
-  ctx.fillText(t, x, y);
+function _t(c, t, x, y, w, px, fam, color, align = 'left') {
+  font(c, w, px, fam); c.fillStyle = color; c.textAlign = align; c.textBaseline = 'alphabetic';
+  c.fillText(t, x, y);
+}
+// 글자 묶음 [[글자, 굵기, 크기, 글꼴, 색]] 을 한 줄로 이어 그린다 (한글 · 숫자 글꼴 섞기). 그린 폭을 돌려준다
+function _runs(c, parts, x, y, align = 'left') {
+  const wd = p => { font(c, p[1], p[2], p[3]); return c.measureText(p[0]).width; };
+  const tw = parts.reduce((s, p) => s + wd(p), 0);
+  let cx = align === 'center' ? x - tw / 2 : align === 'right' ? x - tw : x;
+  parts.forEach(p => { const w = wd(p); _t(c, p[0], cx, y, p[1], p[2], p[3], p[4]); cx += w; });
+  return tw;
+}
+// 폭을 넘으면 뒤를 잘라 … (c.font 는 미리 맞춘 상태)
+function _clip(c, t, max) {
+  t = String(t);
+  if (c.measureText(t).width <= max) return t;
+  while (t.length > 1 && c.measureText(t + '…').width > max) t = t.slice(0, -1);
+  return t + '…';
 }
 
 // 한 글자씩 재서 줄바꿈 (띄어쓰기가 있으면 그 자리에서)
@@ -277,307 +249,407 @@ function _wrap(ctx, text, max) {
   return out.filter((l, i, a) => l.trim() || (i > 0 && i < a.length - 1));
 }
 
-// 글자 사이 간격을 직접 벌려서 그리기 (ctx.letterSpacing 미지원 브라우저 대비)
-function _spaced(ctx, t, x, y, gap) {
-  let cx = x;
-  for (const ch of t) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + gap; }
-  return cx - gap - x;
-}
-function _spacedWidth(ctx, t, gap) {
-  let w = 0;
-  for (const ch of t) w += ctx.measureText(ch).width + gap;
-  return w - gap;
+const _rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const _mix = (a, b, t) => { const A = _rgb(a), B = _rgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
+// 코스 칸 색: 이 선수 타율보다 낮으면 파랑 · 높으면 강조색 쪽 (기준과 폭은 zonefig.js 와 같다 — 색만 종이 팔레트)
+function _heat(avg, base) {
+  const t = Math.max(-1, Math.min(1, (avg - base) / Math.max(0.15, base)));
+  return _mix(P.bg, t < 0 ? P.bb : P.acc, Math.abs(t) * 0.5);
 }
 
-// 가로 비율 막대: parts = [[개수, 바탕색, 글자색]] — 개수 0은 건너뛰고, 합이 0이면 점선 빈 상자
-function _bar(ctx, x, y, w, h, parts) {
+// 가로 비율 막대: parts = [[개수, 바탕색, 글자색]] — 개수 0은 건너뛰고 넓은 칸에만 % 를 쓴다. 합이 0이면 점선 빈 막대
+function _bar(c, x, y, w, h, parts, px) {
   const tot = parts.reduce((t, p) => t + p[0], 0);
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-  if (!tot) { ctx.setLineDash([8, 6]); ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.setLineDash([]); return; }
+  if (!tot) {
+    c.setLineDash([6, 5]); c.strokeStyle = P.rule; c.lineWidth = 1.5;
+    rr(c, x + 0.75, y + 0.75, w - 1.5, h - 1.5, h / 2); c.stroke(); c.setLineDash([]);
+    return;
+  }
+  c.save(); rr(c, x, y, w, h, Math.min(7, h / 2)); c.clip();
   let sx = x;
   parts.forEach(([n, bg, fg]) => {
     if (!n) return;
     const pw = w * n / tot;
-    ctx.fillStyle = bg; ctx.fillRect(sx, y, pw - 2, h);
-    if (pw > 70) _text(ctx, Math.round(n / tot * 100) + '%', sx + (pw - 2) / 2, y + h - 5, _font(600, 18, F.num), fg, 'center');
+    c.fillStyle = bg; c.fillRect(sx, y, pw, h);
+    if (pw > px * 2.8) _t(c, Math.round(n / tot * 100) + '%', sx + pw / 2, y + h / 2 + px * 0.37, '600', px, NUM, fg, 'center');
     sx += pw;
+    c.fillStyle = P.bg; c.fillRect(sx - 1.5, y, 3, h);   // 칸 사이 흰 틈
   });
+  c.restore();
 }
-// 막대 아래 글자: 왼쪽 · 가운데 · 오른쪽 정렬 (items = [[글자, 색] × 3], 빈 칸은 null)
-function _barLabels(ctx, x, y, w, items) {
+// 막대 아래 글자: 왼쪽 · 가운데 · 오른쪽 — items = [[이름, 개수]] (개수 null 이면 이름만 옅게)
+function _barLabels(c, x, y, w, items) {
   [['left', x], ['center', x + w / 2], ['right', x + w]].forEach(([al, px], i) => {
-    if (items[i]) _text(ctx, items[i][0], px, y, _font(700, 22, F.body), items[i][1], al);
+    const it = items[i];
+    if (!it) return;
+    _runs(c, it[1] == null ? [[it[0], '500', 18, KR, P.ink3]]
+      : [[it[0] + ' ', '500', 18, KR, P.ink2], [String(it[1]), '600', 20, NUM, P.ink]], px, y, al);
   });
 }
-
-function _stamp(ctx, t, cx, cy, color, px, rot) {
-  ctx.save();
-  ctx.translate(cx, cy); ctx.rotate(rot);
-  ctx.font = _font(600, px, F.mono);
-  const gap = px * 0.2, tw = _spacedWidth(ctx, t, gap);
-  const bw = tw + px * 1.6, bh = px * 2.1;
-  ctx.strokeStyle = color; ctx.lineWidth = 3;
-  ctx.strokeRect(-bw / 2, -bh / 2, bw, bh);
-  ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  _spaced(ctx, t, -tw / 2, 1, gap);
-  ctx.restore();
-  return bw;
+// 점선 빈 칸 안 안내 글자
+function _emptyBar(c, x, y, w, h, msg) {
+  _bar(c, x, y, w, h, []);
+  _t(c, msg, x + w / 2, y + h / 2 + 6, '500', 17, KR, P.ink3, 'center');
 }
 
-function _draw(ctx, R, img) {
-  const s = R.st;
-  const fy = H - 150;   // 푸터 선
+// 타구 기호: 단타 = 강조색 원 · 2·3루타 = 주황 네모 · 홈런 = 진홍 마름모 · 아웃 = 빈 원
+// (게임원에서 가져온 대략 위치도 예전 이미지처럼 같은 기호 — 이미지에는 점선 설명 자리가 없다)
+function _mark(c, t, x, y) {
+  c.save();
+  if (t === 'xbh') rr(c, x - 7, y - 7, 14, 14, 2.5);
+  else {
+    c.beginPath();
+    if (t === 'hr') { c.moveTo(x, y - 9.5); c.lineTo(x + 9.5, y); c.lineTo(x, y + 9.5); c.lineTo(x - 9.5, y); c.closePath(); }
+    else c.arc(x, y, t === 'out' ? 6 : 7.5, 0, Math.PI * 2);
+  }
+  if (t === 'out') { c.fillStyle = P.bg; c.fill(); c.strokeStyle = P.out; c.lineWidth = 2.2; c.stroke(); }
+  else { c.fillStyle = t === 'hr' ? P.hr : t === 'xbh' ? P.xbh : P.acc; c.fill(); c.strokeStyle = P.bg; c.lineWidth = 2; c.stroke(); }
+  c.restore();
+}
+
+// ── 타구 방향 그림 ────────────────────────────────────────────
+// 저장 좌표 → 필드 비율(core.js _fieldPos — 분석 탭 스프레이와 같은 변환 · 구장 펜스 모양) → 이 상자 px
+// 각도를 파울라인 바로 안쪽으로 (batdata sprayFigure 와 같은 이유: deg 0 의 반올림 오차)
+const _fpAt = (fp, deg, dist) => {
+  const ang = Math.max(0.5, Math.min(179.5, deg)) * Math.PI / 180 - Math.PI;
+  return fp({ x: 0.5 + Math.cos(ang) * dist, y: 1 + Math.sin(ang) * dist });
+};
+// 그림 상자 = 펜스 조금 밖(펜스 밖 타구 자리)부터 홈까지 — 구장마다 펜스 모양이 달라 그때그때 잰다
+function _fieldBox() {
+  const fp = window._fieldPos;
+  if (typeof fp !== 'function') return null;
+  const b = { x0: 1, x1: 0, y0: 1, y1: _fpAt(fp, 90, 0)[1] + 0.025 };
+  for (let d = 0; d <= 180; d += 3) {
+    const p = _fpAt(fp, d, 1.03);
+    b.x0 = Math.min(b.x0, p[0]); b.x1 = Math.max(b.x1, p[0]); b.y0 = Math.min(b.y0, p[1]);
+  }
+  return b;
+}
+const _fieldH = w => { const b = _fieldBox(); return b ? w * (b.y1 - b.y0) / (b.x1 - b.x0) : w * 0.9; };
+function _field(c, abs, x, y, w) {
+  const fp = window._fieldPos, bx = _fieldBox();
+  if (!bx) return;
+  const k = w / (bx.x1 - bx.x0), h = _fieldH(w);
+  const px = p => [x + (p[0] - bx.x0) * k, y + (p[1] - bx.y0) * k];
+  const at = (deg, dist) => px(_fpAt(fp, deg, dist));
+  const path = (pts, close) => { c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); if (close) c.closePath(); };
+  const fence = [];
+  for (let d = 0; d <= 180; d += 3) fence.push(at(d, 0.97));
+  const hm = at(90, 0), lp = fence[0], rp = fence[fence.length - 1], cf = at(90, 0.97);
+  path([hm, ...fence], true); c.fillStyle = P.grass; c.fill();
+  // 내야(장식): 홈에서 파울라인 사이 흙 부채꼴 · 안쪽 잔디 네모 · 마운드 · 베이스
+  const un = p => { const dx = p[0] - hm[0], dy = p[1] - hm[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+  const uL = un(lp), uR = un(rp), b = Math.hypot(cf[0] - hm[0], cf[1] - hm[1]) * 0.25;
+  const dia = (u, v) => [hm[0] + (uL[0] * u + uR[0] * v) * b, hm[1] + (uL[1] * u + uR[1] * v) * b];
+  c.beginPath(); c.moveTo(hm[0], hm[1]); c.arc(hm[0], hm[1], b * 1.6, Math.atan2(uL[1], uL[0]), Math.atan2(uR[1], uR[0])); c.closePath();
+  c.fillStyle = P.dirt; c.fill();
+  path([dia(0.13, 0.13), dia(0.87, 0.13), dia(0.87, 0.87), dia(0.13, 0.87)], true); c.fillStyle = P.grass2; c.fill();
+  const mo = dia(0.5, 0.5);
+  c.beginPath(); c.arc(mo[0], mo[1], b * 0.11, 0, Math.PI * 2); c.fillStyle = P.dirt; c.fill();
+  c.lineWidth = 1; c.strokeStyle = P.ink3; c.fillStyle = P.bg;
+  [dia(1, 0), dia(1, 1), dia(0, 1)].forEach(p => {
+    const s = b * 0.06;
+    path([[p[0], p[1] - s], [p[0] + s, p[1]], [p[0], p[1] + s], [p[0] - s, p[1]]], true); c.fill(); c.stroke();
+  });
+  // 파울라인 · 펜스
+  path([lp, hm, rp]); c.strokeStyle = P.chalk; c.lineWidth = 1.6; c.stroke();
+  path(fence); c.lineWidth = 2.6; c.stroke();
+  // 타구 (아웃 → 단타 → 장타 → 홈런 순으로 위에 쌓는다)
+  const order = { out: 0, '1b': 1, xbh: 2, hr: 3 };
+  const pts = abs.filter(a => a.x != null && a.y != null);
+  pts.map(a => ({ a, t: a.res === '홈런' ? 'hr' : (a.res === '2루타' || a.res === '3루타') ? 'xbh' : HITS.includes(a.res) ? '1b' : 'out' }))
+    .sort((p, q) => order[p.t] - order[q.t])
+    .forEach(({ a, t }) => { const p = px(fp(a)); _mark(c, t, p[0], p[1]); });
+  if (!pts.length) {
+    font(c, '700', 20, KR);
+    const tw = c.measureText('타구 위치 기록이 없어요').width + 36, cy = y + h * 0.48;
+    rr(c, hm[0] - tw / 2, cy - 22, tw, 44, 22); c.fillStyle = P.bg; c.fill();
+    _t(c, '타구 위치 기록이 없어요', hm[0], cy + 7, '700', 20, KR, P.ink2, 'center');
+  }
+  // 범례: 필드 아래 양쪽 빈 모서리에
+  const leg = (t, l, lx, ly, right) => {
+    font(c, '500', 18, KR);
+    const tw = c.measureText(l).width, mx = right ? lx - tw - 16 : lx + 9;
+    _mark(c, t, mx, ly - 6);
+    _t(c, l, right ? lx : lx + 24, ly, '500', 18, KR, P.ink2, right ? 'right' : 'left');
+  };
+  leg('1b', '단타', x + 2, y + h - 34, false); leg('xbh', '2·3루타', x + 2, y + h - 6, false);
+  leg('hr', '홈런', x + w - 2, y + h - 34, true); leg('out', '아웃', x + w - 2, y + h - 6, true);
+}
+
+// ── 코스별 타율 (스트라이크존 9칸 + 바깥 볼 4칸) ─────────────────
+// 칸 숫자 · 색 기준은 zonefig.js hotColdFigure 와 같다: 칸마다 calcStats · 색 = 이 선수 타율 대비 · MIN_AB 타수 미만은 색 없음
+function _zoneGeo(w) {
+  const side = w * 0.112, g = 6, ax = 30, band = w * 0.1;
+  const cw = (w - 2 * (side + g)) / 3, ch = cw * 0.9;
+  return { side, g, ax, band, cw, ch, h: ax + band * 2 + g * 2 + ch * 3 };
+}
+const _zoneH = w => _zoneGeo(w).h;
+function _zone(c, zs, base, x, y, w) {
+  const { side, g, ax, band, cw, ch, h } = _zoneGeo(w);
+  const gx = x + side + g, gy = y + ax + band + g, zw = cw * 3, zh = ch * 3, sz = w / FW;
+  const zoned = Object.values(zs).reduce((n, s) => n + s.pa, 0);
+  ['내각', '중앙', '외각'].forEach((t, i) => _t(c, t, gx + cw * (i + 0.5), y + 20, '700', 18, KR, P.ink2, 'center'));
+  if (!zoned) {
+    // 빈 상태: 옅은 칸 + 가운데 안내
+    c.fillStyle = P.zebra;
+    [[gx, y + ax, zw, band], [gx, gy + zh + g, zw, band], [x, gy, side, zh], [gx + zw + g, gy, side, zh]].forEach(b => { rr(c, ...b, 8); c.fill(); });
+    c.strokeStyle = P.rule2; c.lineWidth = 1.5;
+    for (let i = 0; i <= 3; i++) {
+      c.beginPath(); c.moveTo(gx + cw * i, gy); c.lineTo(gx + cw * i, gy + zh); c.stroke();
+      c.beginPath(); c.moveTo(gx, gy + ch * i); c.lineTo(gx + zw, gy + ch * i); c.stroke();
+    }
+    font(c, '700', 20, KR);
+    const tw = c.measureText('코스(존) 기록이 없어요').width + 40;
+    rr(c, x + w / 2 - tw / 2, gy + zh / 2 - 40, tw, 80, 16); c.fillStyle = P.bg; c.fill();
+    _t(c, '코스(존) 기록이 없어요', x + w / 2, gy + zh / 2 - 6, '700', 20, KR, P.ink2, 'center');
+    _t(c, '코스를 기록하면 칸이 채워져요', x + w / 2, gy + zh / 2 + 24, '500', 16, KR, P.ink3, 'center');
+    return h;
+  }
+  // 바깥 볼 칸: 옅은 바탕만 · 기록이 있을 때만 숫자
+  const ball = (z, bx, by, bw, bh, vert) => {
+    const s = zs[z], on = s.ab >= MIN_AB;
+    rr(c, bx, by, bw, bh, 8); c.fillStyle = on ? _heat(s.avg, base) : P.zebra; c.fill();
+    const cx = bx + bw / 2, cy = by + bh / 2;
+    if (!s.pa) { _t(c, z, cx, cy + 6, '500', 16, KR, P.ink3, 'center'); return; }
+    const main = s.ab ? f3(s.avg) : '—';
+    if (!vert) {
+      _runs(c, [[z + '  ', '500', 16, KR, P.ink2], [main, '600', 22 * sz, NUM, P.ink], [`  ${s.h}/${s.ab} · ${s.pa}타석`, '500', 15, KR, P.ink2]], cx, cy + 7, 'center');
+    } else {
+      _t(c, z, cx, cy - 34, '500', 15, KR, P.ink2, 'center');
+      _t(c, main, cx, cy + 2, '600', 20 * sz, NUM, P.ink, 'center');
+      _t(c, `${s.h}/${s.ab}`, cx, cy + 26, '500', 16, NUM, P.ink2, 'center');
+      _t(c, `${s.pa}타석`, cx, cy + 46, '500', 14, KR, P.ink2, 'center');
+    }
+  };
+  ball('볼 위', gx, y + ax, zw, band, false);
+  ball('볼 아래', gx, gy + zh + g, zw, band, false);
+  ball('볼 내', x, gy, side, zh, true);
+  ball('볼 외', gx + zw + g, gy, side, zh, true);
+  // 9칸
+  ZONES_9.forEach((z, i) => {
+    const s = zs[z], on = s.ab >= MIN_AB, cx = gx + cw * (i % 3), cy = gy + ch * Math.floor(i / 3);
+    c.fillStyle = on ? _heat(s.avg, base) : P.bg; c.fillRect(cx, cy, cw, ch);
+    if (!s.pa) { _t(c, '—', cx + cw / 2, cy + ch / 2 + 8, '500', 24 * sz, NUM, P.rule, 'center'); return; }
+    _t(c, s.ab ? f3(s.avg) : '—', cx + cw / 2, cy + ch * 0.52, '600', 32 * sz, NUM, on ? P.ink : P.ink2, 'center');
+    _t(c, `${s.h}/${s.ab} · ${s.pa}타석`, cx + cw / 2, cy + ch * 0.8, '500', 15 * Math.max(sz, 0.9), KR, P.ink2, 'center');
+  });
+  c.strokeStyle = P.rule; c.lineWidth = 1.5;
+  for (let i = 1; i < 3; i++) {
+    c.beginPath(); c.moveTo(gx + cw * i, gy); c.lineTo(gx + cw * i, gy + zh); c.stroke();
+    c.beginPath(); c.moveTo(gx, gy + ch * i); c.lineTo(gx + zw, gy + ch * i); c.stroke();
+  }
+  c.strokeStyle = P.ink; c.lineWidth = 3; c.strokeRect(gx, gy, zw, zh);
+  return h;
+}
+
+// ── 한 장 그리기 ──────────────────────────────────────────────
+// 위에서부터: 머리(로고 · 이름 · 팀 · 기간) → 표본 안내 → 큰 숫자 4칸 → 기록 줄 → 요약 → 그림 2칸 → 타구 유형 → 코치 코멘트 → 바닥
+// 빈 띠가 생기지 않게: 남는 높이는 숫자 칸 · 블록 사이 간격에 나누고, 모자라면 간격 → 그림 크기 순으로 줄인다
+function _draw(c, R) {
+  const s = R.st, smp = sampleBadge(s.pa), fy = H - 122;   // fy = 바닥 선
+  c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
+
+  // 1. 머리: 로고 · PLAYER REPORT (· 샘플 표시)
+  wordmark(c, M, 76, 30, P.ink, P.acc);
+  spacing(c, 4);
+  font(c, '600', 22, NUM);
+  const lbW = c.measureText('PLAYER REPORT').width;
+  _t(c, 'PLAYER REPORT', W - M + 4, 74, '600', 22, NUM, P.ink2, 'right');
+  spacing(c, 0);
+  if (R.sample) {
+    const parts = [['SAMPLE', '600', 18, NUM, P.acc], [' · 가상 선수', '700', 18, KR, P.acc]];
+    const pw = parts.reduce((n, p) => { font(c, p[1], p[2], p[3]); return n + c.measureText(p[0]).width; }, 0) + 32;
+    const px = W - M - lbW - 22 - pw;
+    rr(c, px, 50, pw, 34, 17); c.strokeStyle = P.acc; c.lineWidth = 1.5; c.stroke();
+    _runs(c, parts, px + 16, 73);
+  }
+  c.fillStyle = P.band; c.fillRect(M, 98, CW, 3);
+
+  // 이름 + 등번호 (긴 이름은 줄여서 한 줄)
+  const nameY = 218;
+  let numZ = 0, numW = 0;
+  if (R.num) { numZ = 76; font(c, '600', numZ, NUM); numW = c.measureText('#' + R.num).width + 26; }
+  const nz = fitFont(c, R.name, '900', 108, KR, CW - numW, 60);
+  const name = _clip(c, R.name, CW - numW);
+  _t(c, name, M, nameY, '900', nz, KR, P.ink);
+  font(c, '900', nz, KR);
+  const nw = c.measureText(name).width;
+  if (R.num) _t(c, '#' + R.num, M + nw + 22, nameY, '600', Math.min(numZ, nz * 0.8), NUM, P.acc);
+  let y = nameY;
+  // 팀 · 포지션 (포지션은 라인업에 적었을 때만)
+  if (R.team || R.pos) {
+    y += 56;
+    font(c, '700', 30, KR);
+    const pos = R.pos ? '  ·  ' + R.pos : '';
+    const team = _clip(c, R.team || '', CW - c.measureText(pos).width);
+    _runs(c, [[team, '700', 30, KR, P.ink], [team ? pos : R.pos, '700', 30, KR, P.ink2]], M, y);
+  }
+  // 기간 칩 · 날짜 · 경기 수
+  y += 54;
+  font(c, '700', 22, KR);
+  const chipW = c.measureText(R.rangeLabel).width + 28;
+  rr(c, M, y - 28, chipW, 38, 19); c.fillStyle = P.fill; c.fill();
+  _t(c, R.rangeLabel, M + 14, y - 2, '700', 22, KR, P.ink);
+  _runs(c, [...(R.dates ? [[R.dates, '500', 24, NUM, P.ink2], ['   ·   ', '500', 22, KR, P.ink3]] : []),
+    [`${R.games}경기 ${s.pa}타석`, '500', 24, KR, P.ink2]], M + chipW + 16, y);
+  const headEnd = y + 16;
+
+  // 2. 높이 나누기
   const cmt = String(R.cmt || '').trim();
-  let cmtLines = [];
-  if (cmt) { ctx.font = _font(700, 34, F.body); cmtLines = _wrap(ctx, cmt, CW - 40); }
-  const cmtH = cmt ? 64 + Math.min(3, cmtLines.length) * 50 + 30 : 0;   // 코멘트 상자(아래 줄 수 판정식과 같은 64) + 위 간격
-  ctx.fillStyle = C.paper2; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.strokeRect(24, 24, W - 48, H - 48);
+  font(c, '500', 30, KR);
+  let lines = cmt ? _wrap(c, cmt, CW - 64) : [];
+  if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/.$/, '…'); }
+  const noteH = smp ? 50 : 0, metH = 80, sumH = 64, typeH = 110, cmtH = lines.length ? 92 + lines.length * 46 : 0;
+  const zs = Object.create(null);
+  [...ZONES_9, ...ZONE_BALL].forEach(z => { zs[z] = calcStats(R.abs.filter(a => zoneOf(a) === z)); });
+  const BARS = 124, LEG = 96;
+  const chartH = sc => 74 + Math.max(_fieldH(FW * sc) + 18 + BARS, _zoneH(FW * sc) + 18 + LEG) + 24;
+  let tileH = 160, stripH = 100, gap = 26, sc = 1;
+  const nGap = 5 + (noteH ? 1 : 0) + (cmtH ? 1 : 0);
+  const fixed = () => noteH + tileH + 14 + stripH + metH + sumH + typeH + cmtH;
+  let free = fy - headEnd - fixed() - chartH(1) - nGap * gap;
+  if (free < 0) { gap = Math.max(14, gap + free / nGap); free = fy - headEnd - fixed() - chartH(1) - nGap * gap; }
+  while (free < 0 && sc > 0.7) { sc -= 0.01; free = fy - headEnd - fixed() - chartH(sc) - nGap * gap; }
+  if (free > 0) {
+    const t1 = Math.min(free * 0.25, 24), t2 = Math.min(free * 0.1, 12);
+    tileH += t1; stripH += t2; gap += (free - t1 - t2) / nGap;
+  }
+  y = headEnd + gap;
 
-  // 1. 헤더
-  _text(ctx, '선수 리포트', M, 100, _font(700, 30, F.body), C.soft);
-  if (R.sample) _stamp(ctx, 'SAMPLE · 가상 선수', W - M - 190, 90, C.red, 22, -0.035);
-  ctx.font = _font(400, 100, F.disp);
-  let name = R.name;
-  while (ctx.measureText(name).width > CW - 200 && name.length > 1) name = name.slice(0, -1);
-  if (name !== R.name) name += '…';
-  _text(ctx, name, M, 202, _font(400, 100, F.disp), C.ink);
-  const nw = ctx.measureText(name).width;
-  if (R.num) _text(ctx, '#' + R.num, M + nw + 22, 198, _font(600, 60, F.num), C.red);
-  let y = 202;
-  const who = [R.team, R.pos].filter(Boolean).join('  ·  ');   // 포지션은 라인업에 적었을 때만
-  if (who) { y += 54; _text(ctx, who, M, y, _font(700, 38, F.body), C.ink); }
-  y += 46;
-  const meta = [R.rangeLabel, R.dates, `${R.games}경기 ${s.pa}타석`].filter(Boolean).join('  ·  ');
-  _text(ctx, meta, M, y, _font(700, 29, F.body), C.soft);
-  y += 28;
-  ctx.fillStyle = C.ink; ctx.fillRect(M, y, CW, 5);
-  y += 5 + 22;
-
-  // 2. 표본 안내
-  const smp = sampleBadge(s.pa);
+  // 3. 표본 안내 (가는 띠)
   if (smp) {
-    ctx.fillStyle = C.hlSoft; ctx.fillRect(M, y, CW, 52);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, 50);
-    const msg = (smp.cls === 'low' ? '표본이 매우 적어 참고용이에요' : '표본이 적어 참고용이에요') + ` · ${s.pa}타석 기준`;
-    _text(ctx, msg, W / 2, y + 37, _font(700, 28, F.body), C.ink, 'center');
-    y += 52 + 14;
+    rr(c, M, y, CW, noteH, 12); c.fillStyle = P.fill; c.fill();
+    c.beginPath(); c.arc(M + 28, y + 25, 11, 0, Math.PI * 2); c.fillStyle = P.ink2; c.fill();
+    _t(c, '!', M + 28, y + 31, '700', 16, NUM, P.bg, 'center');
+    _runs(c, [[smp.cls === 'low' ? '표본이 매우 적어 참고용이에요' : '표본이 적어 참고용이에요', '700', 22, KR, P.ink],
+      [`  ·  ${s.pa}타석 기준`, '500', 22, KR, P.ink2]], M + 52, y + 33);
+    y += noteH + gap;
   }
 
-  // 3. 핵심 스탯 — 큰 숫자 4개
-  // 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—'
-  const tiles = [['타율', s.avg, s.ab], ['출루율', s.obp, s.pa], ['장타율', s.slg, s.ab], ['OPS', s.ops, s.pa]];
-  const tw = (CW - 16 * 3) / 4, th = 144;
-  tiles.forEach(([l, v, n], i) => {
-    const x = M + i * (tw + 16);
-    ctx.fillStyle = C.paper; ctx.fillRect(x, y, tw, th);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, tw - 2, th - 2);
-    _text(ctx, l, x + tw / 2, y + 40, _font(700, 28, F.body), C.soft, 'center');
-    _text(ctx, n ? f3(v) : '—', x + tw / 2, y + 118, _font(600, 76, F.num), C.ink, 'center');
+  // 4. 큰 숫자 4칸 — 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—'
+  const tiles = [['타율', 'AVG', s.avg, s.ab], ['출루율', 'OBP', s.obp, s.pa], ['장타율', 'SLG', s.slg, s.ab], ['OPS', 'OPS', s.ops, s.pa]];
+  const tw = (CW - 14 * 3) / 4;
+  const vz = Math.min(...tiles.map(([, , v, n]) => fitFont(c, n ? f3(v) : '—', '600', 96, NUM, tw - 40, 50)));
+  tiles.forEach(([l, en, v, n], i) => {
+    const x = M + i * (tw + 14);
+    rr(c, x, y, tw, tileH, 14); c.fillStyle = P.zebra; c.fill(); c.strokeStyle = P.rule2; c.lineWidth = 1.5; c.stroke();
+    _t(c, l, x + 20, y + 44, '700', 24, KR, P.ink);
+    if (en !== l) { spacing(c, 2); _t(c, en, x + tw - 18, y + 42, '500', 18, NUM, P.ink3, 'right'); spacing(c, 0); }
+    _t(c, n ? f3(v) : '—', x + 18, y + tileH - 24, '600', vz, NUM, i === 3 ? P.acc : P.ink);
   });
-  y += th + 16;
+  y += tileH + 14;
 
-  // 기록 줄
-  const cnt = [['타석', s.pa], ['안타', s.h], ['2루타', s.s2], ['3루타', s.s3], ['홈런', s.hr], ['타점', s.rbi], ['볼넷', s.bb], ['삼진', s.k]];
-  const cw = CW / cnt.length, ch = 96;
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, ch - 2);
-  cnt.forEach(([l, v], i) => {
-    const x = M + i * cw;
-    if (i) { ctx.fillStyle = C.rule; ctx.fillRect(x, y + 14, 1.5, ch - 28); }
-    _text(ctx, l, x + cw / 2, y + 35, _font(700, 24, F.body), C.soft, 'center');
-    _text(ctx, String(v), x + cw / 2, y + 81, _font(600, 46, F.num), C.ink, 'center');
+  // 기록 줄 (색 점 = 이미지 공통 색: 안타 · 장타 · 홈런 · 볼넷 · 아웃)
+  const cnt = [['타석', s.pa], ['안타', s.h, P.acc], ['2루타', s.s2, P.xbh], ['3루타', s.s3, P.xbh], ['홈런', s.hr, P.hr], ['타점', s.rbi], ['볼넷', s.bb, P.bb], ['삼진', s.k, P.out]];
+  const cw = CW / cnt.length;
+  c.fillStyle = P.ink; c.fillRect(M, y, CW, 2);
+  c.fillStyle = P.rule; c.fillRect(M, y + stripH - 1, CW, 1);
+  cnt.forEach(([l, v, dot], i) => {
+    const x = M + i * cw, cx = x + cw / 2;
+    if (i) { c.fillStyle = P.rule2; c.fillRect(x, y + 18, 1.5, stripH - 36); }
+    font(c, '500', 21, KR);
+    const lw = c.measureText(l).width + (dot ? 16 : 0);
+    if (dot) { c.beginPath(); c.arc(cx - lw / 2 + 5, y + 30, 5, 0, Math.PI * 2); c.fillStyle = dot; c.fill(); }
+    _t(c, l, cx - lw / 2 + (dot ? 16 : 0), y + 37, '500', 21, KR, P.ink2);
+    _t(c, String(v), cx, y + stripH - 18, '600', 46, NUM, P.ink, 'center');
   });
-  y += ch + 40;
-
+  y += stripH;
   // 작은 줄: wOBA · 삼진% · 볼넷%
-  const small = [['wOBA', s.pa ? f3(s.woba) : '—'], ['삼진%', s.pa ? pct(s.kRate) : '—'], ['볼넷%', s.pa ? pct(s.bbRate) : '—']];
-  const parts = [];
-  small.forEach(([l, v], i) => {
-    if (i) parts.push(['   ·   ', _font(700, 30, F.body), C.rule]);
-    parts.push([l + ' ', _font(700, 28, F.body), C.soft]);
-    parts.push([v, _font(600, 34, F.num), C.ink]);
-  });
-  const pw = parts.reduce((w, [t, f]) => { ctx.font = f; return w + ctx.measureText(t).width; }, 0);
-  let px = (W - pw) / 2;
-  parts.forEach(([t, f, c]) => { _text(ctx, t, px, y, f, c); ctx.font = f; px += ctx.measureText(t).width; });
-  y += 32;
-  _text(ctx, 'wOBA = 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표', W / 2, y, _font(700, 21, F.body), C.soft, 'center');
-  y += 24;
+  const sep = ['    ·    ', '500', 24, KR, P.rule];
+  _runs(c, [['wOBA  ', '500', 22, NUM, P.ink2], [s.pa ? f3(s.woba) : '—', '600', 32, NUM, P.ink], sep,
+    ['삼진%  ', '500', 22, KR, P.ink2], [s.pa ? pct(s.kRate) : '—', '600', 32, NUM, P.ink], sep,
+    ['볼넷%  ', '500', 22, KR, P.ink2], [s.pa ? pct(s.bbRate) : '—', '600', 32, NUM, P.ink]], W / 2, y + 44, 'center');
+  _t(c, 'wOBA = 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표', W / 2, y + 74, '500', 18, KR, P.ink3, 'center');
+  y += metH + gap;
 
-  // 한 줄 요약 (규칙 기반 · AI 아님) — 근거 개수는 오른쪽에 작게, 자리가 모자라면 뺀다
-  const bandH = 56;
-  ctx.fillStyle = C.paper; ctx.fillRect(M, y, CW, bandH);
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.strokeRect(M + 1, y + 1, CW - 2, bandH - 2);
-  ctx.fillStyle = C.red; ctx.fillRect(M, y, 8, bandH);
-  _text(ctx, '요약', M + 28, y + 37, _font(700, 24, F.body), C.red);
-  let sumT = R.sum.text;
-  ctx.font = _font(700, 34, F.body);
-  const sumMax = CW - 28 - 70 - 24;
-  while (ctx.measureText(sumT).width > sumMax && sumT.length > 1) sumT = sumT.slice(0, -1);
-  if (sumT !== R.sum.text) sumT += '…';
-  _text(ctx, sumT, M + 98, y + 39, _font(700, 34, F.body), C.ink);
-  const sw0 = ctx.measureText(sumT).width;
-  ctx.font = _font(700, 20, F.body);
-  if (R.sum.detail && M + 98 + sw0 + 24 + ctx.measureText(R.sum.detail).width <= W - M - 20) _text(ctx, R.sum.detail, W - M - 20, y + 37, _font(700, 20, F.body), C.soft, 'right');
-  y += bandH + 22;
+  // 5. 한 줄 요약 (규칙 기반 · AI 아님) — 근거 개수는 오른쪽에 작게, 자리가 모자라면 뺀다
+  rr(c, M, y, CW, sumH, 14); c.strokeStyle = P.rule; c.lineWidth = 1.5; c.stroke();
+  rr(c, M + 14, y + 14, 66, 36, 18); c.fillStyle = P.acc; c.fill();
+  _t(c, '요약', M + 47, y + 39, '700', 20, KR, P.bg, 'center');
+  font(c, '700', 28, KR);
+  const sumT = _clip(c, R.sum.text, CW - 96 - 24);
+  _t(c, sumT, M + 96, y + 42, '700', 28, KR, P.ink);
+  const sw0 = c.measureText(sumT).width;
+  font(c, '500', 18, KR);
+  if (R.sum.detail && M + 96 + sw0 + 28 + c.measureText(R.sum.detail).width <= W - M - 20) _t(c, R.sum.detail, W - M - 20, y + 40, '500', 18, KR, P.ink3, 'right');
+  y += sumH + gap;
 
-  // 4·5. 스프레이차트 + 핫존 (좌우) — 아래에 좌·중·우 비율 · 타구 유형 비율을 붙인다.
-  // 아래에 올 고정 블록(코멘트 포함)이 들어가도록 두 그림을 같은 비율로 줄인다 (1배 → 최소 .7배). 코멘트가 없으면 줄이지 않는다
-  const colW = (CW - 16) / 2, x1 = M, x2 = M + colW + 16;
-  const dn = s.dn || 0;
+  // 6. 그림 2칸: 타구 방향 | 코스별 타율 — 설명 줄은 칸 아래쪽에 맞춘다
+  const chH = chartH(sc), x1 = M, x2 = M + PW + 20, fw = FW * sc;
+  [x1, x2].forEach(px => { rr(c, px, y, PW, chH, 16); c.strokeStyle = P.rule2; c.lineWidth = 1.5; c.stroke(); });
   const nPts = R.abs.filter(a => a.x != null && a.y != null).length;
-  _text(ctx, '타구 방향', x1, y + 30, _font(700, 32, F.body), C.ink);
-  _text(ctx, `타구 ${nPts}개`, x1 + colW, y + 30, _font(700, 22, F.body), C.soft, 'right');
-  _text(ctx, '코스별 타율', x2, y + 30, _font(700, 32, F.body), C.ink);
-  y += 40;
-  ctx.fillStyle = C.ink; ctx.fillRect(x1, y, colW, 2); ctx.fillRect(x2, y, colW, 2);
-  y += 8;
-  const cy = y;
-  const DIR_GAP = 14, LEG_GAP = 38, TYPE_GAP = 18;
-  const DIR_H = DIR_GAP + 22 + 30, TYPE_H = TYPE_GAP + 28 + 12 + 22 + 30;   // 좌·중·우 블록 · 타구 유형 블록 높이
-  const leftFix = 14 + 68 + DIR_H + LEG_GAP + 10;       // 스프레이 아래: 간격 · 당김 막대+글자 · 좌중우 · 범례
-  const rightFix = (img[1] ? 10 + 16 + 34 + 28 + 10 : 0) + TYPE_H;   // 핫존 아래: 간격 · 색 막대 · 안내 두 줄 · 유형
-  const roomH = fy - 28 - cmtH - cy;
-  let sc = 1;
-  if (img[0]) sc = Math.min(sc, (roomH - leftFix) / img[0].h);
-  sc = Math.min(sc, (roomH - rightFix) / (img[1] ? img[1].h : 420));
-  sc = Math.max(0.7, sc);
-
-  // 스프레이
-  let sy = cy;
-  if (img[0]) {
-    const iw = img[0].w * sc, ih = img[0].h * sc;
-    ctx.drawImage(img[0].img, x1 + (colW - iw) / 2, sy, iw, ih);
-    sy += ih + 14;
-  } else { sy += 14; }
+  const zoned = Object.values(zs).reduce((n, z) => n + z.pa, 0);
+  _t(c, '타구 방향', x1 + 24, y + 50, '700', 30, KR, P.ink);
+  _t(c, `타구 ${nPts}개`, x1 + PW - 24, y + 48, '500', 18, KR, P.ink3, 'right');
+  _t(c, '코스별 타율', x2 + 24, y + 50, '700', 30, KR, P.ink);
+  if (zoned) _t(c, `코스 기록 ${zoned}/${s.pa}타석`, x2 + PW - 24, y + 48, '500', 18, KR, P.ink3, 'right');
+  // 두 칸 높이는 같다 → 낮은 쪽 그림은 남는 높이만큼 키운다 (칸 폭까지)
+  const ffw = Math.min(FW, fw * (chH - 98 - 18 - BARS) / _fieldH(fw)), zfw = Math.min(FW, fw * (chH - 98 - 18 - LEG) / _zoneH(fw));
+  _field(c, R.abs, x1 + (PW - ffw) / 2, y + 74, ffw);
+  _zone(c, zs, s.avg, x2 + (PW - zfw) / 2, y + 74 + (zoned ? 0 : (chH - 98 - _zoneH(zfw)) / 2), zfw);   // 기록이 없으면 칸 가운데에
+  // 당김·센터·밀어(타자 기준) · 좌·중·우(필드 기준 — 좌·우타에 따라 뒤집히지 않는 방향)
+  const bx = x1 + 20, bw = PW - 40, dn = s.dn || 0, dsp = R.dirs;
+  let by = y + chH - 24 - BARS;
   if (dn) {
-    const seg = [[s.pull, C.red, '당김'], [s.center, C.grass, '센터'], [s.oppo, C.blue, '밀어']];
-    let sx = x1;
-    seg.forEach(([n, c]) => {
-      if (!n) return;
-      const w = colW * n / dn;
-      ctx.fillStyle = c; ctx.fillRect(sx, sy, w - 2, 36);
-      if (w > 60) _text(ctx, Math.round(n / dn * 100) + '%', sx + w / 2, sy + 27, _font(600, 22, F.num), C.paper2, 'center');
-      sx += w;
-    });
-    sy += 36 + 32;
-    _text(ctx, `당김 ${s.pull}`, x1, sy, _font(700, 22, F.body), C.red);
-    _text(ctx, `센터 ${s.center}`, x1 + colW / 2, sy, _font(700, 22, F.body), C.grass, 'center');
-    _text(ctx, `밀어 ${s.oppo}`, x1 + colW, sy, _font(700, 22, F.body), C.blue, 'right');
-  } else {
-    sy += 26;
-    _text(ctx, '방향 기록 없음', x1 + colW / 2, sy, _font(700, 22, F.body), C.soft, 'center');
+    _bar(c, bx, by, bw, 26, [[s.pull, P.ink, P.bg], [s.center, P.ink2, P.bg], [s.oppo, P.ink3, P.ink]], 18);
+    _barLabels(c, bx, by + 52, bw, [['당김', s.pull], ['센터', s.center], ['밀어', s.oppo]]);
+  } else _emptyBar(c, bx, by, bw, 26, '방향 기록 없음');
+  by += 70;
+  if (dsp.n) {
+    _bar(c, bx, by, bw, 22, [[dsp.left, P.ink, P.bg], [dsp.center, P.ink2, P.bg], [dsp.right, P.ink3, P.ink]], 16);
+    _barLabels(c, bx, by + 48, bw, [['좌', dsp.left], ['중', dsp.center], ['우', dsp.right]]);
+  } else _emptyBar(c, bx, by, bw, 22, '필드 기준 좌·중·우 기록 없음');
+  // 색 범례 · 읽는 법
+  if (zoned) {
+    const ly = y + chH - 24 - LEG, gw = 170, gx = x2 + (PW - gw) / 2;
+    const grd = c.createLinearGradient(gx, 0, gx + gw, 0);
+    grd.addColorStop(0, _mix(P.bg, P.bb, 0.5)); grd.addColorStop(0.5, P.bg); grd.addColorStop(1, _mix(P.bg, P.acc, 0.5));
+    rr(c, gx, ly + 6, gw, 14, 7); c.fillStyle = grd; c.fill(); c.strokeStyle = P.rule; c.lineWidth = 1; c.stroke();
+    _t(c, '약함', gx - 12, ly + 20, '700', 18, KR, P.bb, 'right');
+    _t(c, '강함', gx + gw + 12, ly + 20, '700', 18, KR, P.acc);
+    const n1 = `칸 숫자 = 그 코스 타율 · ${MIN_AB}타수 미만은 색 없음`, n2 = `색 = 이 선수 타율(${s.ab ? f3(s.avg) : '—'}) 대비`;
+    _t(c, n1, x2 + PW / 2, ly + 58, '500', fitFont(c, n1, '500', 18, KR, PW - 40, 14), KR, P.ink3, 'center');
+    _t(c, n2, x2 + PW / 2, ly + 86, '500', 18, KR, P.ink3, 'center');
   }
-  // 좌·중·우: 당김·센터·밀어는 좌·우타에 따라 방향이 뒤집히므로, 필드 기준 방향을 따로 보여 준다
-  sy += DIR_GAP;
-  const dsp = R.dirs;
-  _bar(ctx, x1, sy, colW, 22, dsp.n ? [[dsp.left, C.ink, C.paper2], [dsp.center, C.soft, C.paper2], [dsp.right, C.rule, C.ink]] : []);
-  if (dsp.n) _barLabels(ctx, x1, sy + 22 + 30, colW, [[`좌 ${dsp.left}`, C.ink], [`중 ${dsp.center}`, C.soft], [`우 ${dsp.right}`, C.ink]]);
-  else _text(ctx, '방향 기록 없음', x1 + colW / 2, sy + 17, _font(700, 18, F.body), C.soft, 'center');
-  sy += 22 + 30;
-  sy += LEG_GAP;
-  // 기호 범례
-  const keys = [['1b', '단타'], ['xbh', '2·3루타'], ['hr', '홈런'], ['out', '아웃']];
-  ctx.font = _font(700, 21, F.body);
-  const kw = keys.reduce((w, [, l]) => w + 26 + ctx.measureText(l).width + 18, -18);
-  let kx = x1 + (colW - kw) / 2;
-  keys.forEach(([k, l]) => {
-    const mx = kx + 9, my = sy - 8;
-    ctx.lineWidth = 2; ctx.strokeStyle = C.ink;
-    ctx.beginPath();
-    if (k === '1b') { ctx.arc(mx, my, 8, 0, Math.PI * 2); ctx.fillStyle = C.red; ctx.fill(); ctx.stroke(); }
-    else if (k === 'xbh') { ctx.fillStyle = C.hl; ctx.fillRect(mx - 8, my - 8, 16, 16); ctx.strokeRect(mx - 8, my - 8, 16, 16); }
-    else if (k === 'hr') { ctx.moveTo(mx, my - 10); ctx.lineTo(mx + 10, my); ctx.lineTo(mx, my + 10); ctx.lineTo(mx - 10, my); ctx.closePath(); ctx.fillStyle = C.red; ctx.fill(); ctx.stroke(); }
-    else { ctx.arc(mx, my, 7, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.font = _font(700, 21, F.body);
-    _text(ctx, l, kx + 26, sy, _font(700, 21, F.body), C.soft);
-    kx += 26 + ctx.measureText(l).width + 18;
-  });
-  sy += 10;
+  y += chH + gap;
 
-  // 핫존
-  let zy = cy;
-  if (img[1]) {
-    const iw = img[1].w * sc, ih = img[1].h * sc;
-    ctx.drawImage(img[1].img, x2 + (colW - iw) / 2, zy, iw, ih);
-    zy += ih + 10;
-    const gw = 200, gx = x2 + (colW - gw) / 2;
-    const grd = ctx.createLinearGradient(gx, 0, gx + gw, 0);
-    grd.addColorStop(0, '#899BB7'); grd.addColorStop(0.5, C.paper2); grd.addColorStop(1, '#DF8B83');
-    ctx.fillStyle = grd; ctx.fillRect(gx, zy, gw, 16);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.strokeRect(gx, zy, gw, 16);
-    _text(ctx, '약함', gx - 12, zy + 15, _font(700, 21, F.body), C.blue, 'right');
-    _text(ctx, '강함', gx + gw + 12, zy + 15, _font(700, 21, F.body), C.red, 'left');
-    zy += 16 + 34;
-    _text(ctx, '칸 숫자 = 그 코스 타율', x2 + colW / 2, zy, _font(700, 20, F.body), C.soft, 'center');
-    zy += 28;
-    _text(ctx, `색 = 이 선수 타율(${s.ab ? f3(s.avg) : '—'}) 대비 · 3타수 미만은 색 없음`, x2 + colW / 2, zy, _font(700, 18, F.body), C.soft, 'center');
-    zy += 10;
-  } else {
-    const bh = 420 * sc;
-    ctx.setLineDash([8, 6]); ctx.strokeStyle = C.rule; ctx.lineWidth = 2; ctx.strokeRect(x2 + 1, zy + 1, colW - 2, bh);
-    ctx.setLineDash([]);
-    _text(ctx, '코스(존) 기록이 없어요', x2 + colW / 2, zy + bh / 2, _font(700, 26, F.body), C.soft, 'center');
-    zy += bh;
-  }
-  // 타구 유형: 입력한 타구 유형이 있으면 그것으로, 없으면 아웃 타구(땅볼·플라이)만으로. 안타는 짐작해서 넣지 않는다
+  // 7. 타구 유형: 입력한 타구 유형이 있으면 그것으로, 없으면 아웃 타구(땅볼·플라이)만으로. 안타는 짐작해서 넣지 않는다
   const tm = R.types;
-  zy += TYPE_GAP + 28;
-  _text(ctx, '타구 유형', x2, zy, _font(700, 26, F.body), C.ink);
-  _text(ctx, tm.n ? (tm.basis === 'launch' ? `입력 ${tm.n}개 기준` : `아웃 타구 ${tm.n}개 기준`) : '', x2 + colW, zy, _font(700, 20, F.body), C.soft, 'right');
-  zy += 12;
+  rr(c, M, y, CW, typeH, 16); c.strokeStyle = P.rule2; c.lineWidth = 1.5; c.stroke();
+  _t(c, '타구 유형', M + 24, y + 50, '700', 30, KR, P.ink);
+  if (tm.n) _t(c, tm.basis === 'launch' ? `입력 ${tm.n}개 기준` : `아웃 타구 ${tm.n}개 기준`, M + 24, y + 84, '500', 18, KR, P.ink3);
+  const tx = M + 250, tbw = CW - 250 - 24;
   if (tm.n >= MIN_TYPE) {
-    const parts = [[tm.ground, C.hl, C.ink]];
-    if (tm.line != null) parts.push([tm.line, C.blue, C.paper2]);
-    parts.push([tm.fly, C.grass, C.paper2]);
-    _bar(ctx, x2, zy, colW, 22, parts);
-    _barLabels(ctx, x2, zy + 22 + 30, colW, [[`땅볼 ${tm.ground}`, C.ink], tm.line != null ? [`라인드라이브 ${tm.line}`, C.blue] : ['라인드라이브 미입력', C.soft], [`뜬공 ${tm.fly}`, C.grass]]);
+    const parts = [[tm.ground, P.ink, P.bg]];
+    if (tm.line != null) parts.push([tm.line, P.ink2, P.bg]);
+    parts.push([tm.fly, P.ink3, P.ink]);
+    _bar(c, tx, y + 26, tbw, 28, parts, 18);
+    _barLabels(c, tx, y + 84, tbw, [['땅볼', tm.ground], tm.line != null ? ['라인드라이브', tm.line] : ['라인드라이브 미입력', null], ['뜬공', tm.fly]]);
   } else {
-    _bar(ctx, x2, zy, colW, 22, []);
-    _text(ctx, tm.basis === 'launch' || !tm.n ? '타구 유형 기록이 적어요' : `아웃 타구 ${tm.n}개 — 유형 기록이 적어요`, x2 + colW / 2, zy + 17, _font(700, 18, F.body), C.soft, 'center');
+    _emptyBar(c, tx, y + 26, tbw, 28, tm.basis === 'launch' || !tm.n ? '타구 유형 기록이 적어요' : `아웃 타구 ${tm.n}개 — 유형 기록이 적어요`);
   }
-  zy += 22 + 30;
-  y = Math.max(sy, zy) + 30;
+  y += typeH + gap;
 
-  // 6. 코치 코멘트 (푸터와 겹치지 않게 남은 높이만큼만 — 위에서 그림을 줄여 보통은 3줄이 다 들어간다)
-  if (cmt) {
-    ctx.font = _font(700, 34, F.body);
-    const room = Math.max(1, Math.min(3, Math.floor((fy - 28 - y - 64) / 50)));
-    let lines = cmtLines;
-    if (lines.length > room) { lines = lines.slice(0, room); lines[room - 1] = lines[room - 1].replace(/.$/, '…'); }
-    const bh = 60 + lines.length * 50;
-    ctx.fillStyle = C.red; ctx.fillRect(M, y, 6, bh);
-    _text(ctx, '코치 코멘트', M + 26, y + 34, _font(700, 26, F.body), C.red);
-    lines.forEach((l, i) => _text(ctx, l, M + 26, y + 82 + i * 50, _font(700, 34, F.body), C.ink));
+  // 8. 코치 코멘트 (3줄까지)
+  if (cmtH) {
+    rr(c, M, y, CW, cmtH, 16); c.fillStyle = P.zebra; c.fill();
+    c.save(); rr(c, M, y, CW, cmtH, 16); c.clip(); c.fillStyle = P.acc; c.fillRect(M, y, 6, cmtH); c.restore();
+    _t(c, '코치 코멘트', M + 32, y + 46, '700', 22, KR, P.acc);
+    lines.forEach((l, i) => _t(c, l, M + 32, y + 94 + i * 46, '500', 30, KR, P.ink));
   }
 
-  // 7. 푸터: 로고 + 태그라인 도장 / 생성일 · 주소
-  ctx.fillStyle = C.ink; ctx.fillRect(M, fy, CW, 3);
-  _text(ctx, 'SPRAYLAB', M, fy + 70, _font(400, 48, F.disp), C.ink);
-  ctx.font = _font(400, 48, F.disp);
-  const lw = ctx.measureText('SPRAYLAB').width;
-  const sw = 20;
-  ctx.font = _font(600, sw, F.mono);
-  const stampW = _spacedWidth(ctx, 'YOUR SWING, VISUALIZED', sw * 0.2) + sw * 1.6;
-  _stamp(ctx, 'YOUR SWING, VISUALIZED', M + lw + 28 + stampW / 2, fy + 52, C.red, sw, -0.035);
-  _text(ctx, '생성 ' + _ymd(Date.now(), true), W - M, fy + 66, _font(700, 24, F.body), C.soft, 'right');
-  _text(ctx, 'kimjeongcheol13.github.io/baseball-spray-chart', M, fy + 110, _font(500, 18, F.mono), C.soft);
-  if (R.sample) _text(ctx, '샘플 · 실제 기록 아님', W - M, fy + 110, _font(700, 20, F.body), C.red, 'right');
-}
-
-// 캔버스에 쓸 글꼴을 미리 불러온다 (한글 웹폰트는 글자 범위별로 나뉘어 있어 실제 글자로 요청). 오프라인이면 기본 글꼴로 그린다
-function _fonts(text) {
-  if (!document.fonts || !document.fonts.load) return Promise.resolve();
-  const t = text + '0123456789.%·#–—…';
-  const jobs = [_font(400, 100, F.disp), _font(700, 30, F.body), _font(600, 60, F.num), _font(500, 20, F.mono), _font(600, 20, F.mono)]
-    .map(f => document.fonts.load(f, t).catch(() => {}));
-  return Promise.race([Promise.all(jobs), new Promise(r => setTimeout(r, 2500))]);
+  // 9. 바닥: 로고 · 주소 / 생성일 (· 샘플 표시)
+  c.fillStyle = P.rule; c.fillRect(M, fy, CW, 1.5);
+  wordmark(c, M, fy + 50, 26, P.ink, P.acc);
+  _runs(c, [['생성  ', '500', 20, KR, P.ink2], [_ymd(Date.now(), true), '500', 22, NUM, P.ink]], W - M, fy + 49, 'right');
+  _t(c, 'kimjeongcheol13.github.io/baseball-spray-chart', M, fy + 86, '500', 18, KR, P.ink3);
+  if (R.sample) _t(c, '샘플 · 실제 기록 아님', W - M, fy + 86, '700', 18, KR, P.acc, 'right');
 }
 
 // ── 상태 · 화면 ───────────────────────────────────────────────
 const S = { sample: false, key: null, range: DEF_RANGE, cmt: '' };
 let _games = [], _players = [], _sampleP = null, _sampleG = null;
-let _chartCache = { id: '', img: [null, null] };
 let _canvas = null, _seq = 0, _ready = false, _cmtTimer = 0, _returnFocus = null;
 
 function _cmtRead() {
@@ -702,7 +774,6 @@ function _open(opts) {
     if (!_players.some(p => p.key === S.key)) S.key = _players[0] ? _players[0].key : null;
   }
   S.range = DEF_RANGE;
-  _chartCache = { id: '', img: [null, null] };   // 열 때마다 새로 그림 (타석 수정 반영)
   _syncRange();
 
   const hasData = S.sample || _players.length > 0;
@@ -762,26 +833,14 @@ async function _render() {
   const R = _reportData(p, games, S.range, S.sample);
   R.cmt = S.cmt;
 
-  const cid = (S.sample ? 'S|' : '') + p.key + '|' + S.range + '|' + p.items.length;
-  if (_chartCache.id !== cid) {
-    const img = await _charts(R);
-    if (seq !== _seq) return;
-    _chartCache = { id: cid, img };
-  }
-  await _fonts([R.name, R.num, R.team, R.pos, R.rangeLabel, R.dates, R.cmt, R.sum.text, R.sum.detail, '선수 리포트 SAMPLE 가상 선수 타율 출루율 장타율 OPS 타석 안타 2루타 3루타 홈런 타점 볼넷 삼진 wOBA 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표 타구 방향 개 코스별 당김 센터 밀어 기록 없음 단타 아웃 약함 강함 칸 숫자 그 코스 색 이 선수 대비 미만은 코스(존) 기록이 없어요 코치 코멘트 생성 샘플 · 실제 기록 아님 표본이 매우 적어 참고용이에요 기준 경기 전체 기간 최근 YOUR SWING, VISUALIZED SPRAYLAB 요약 좌 중 우 타구 유형 입력 아웃 땅볼 라인드라이브 뜬공 미입력 기록이 적어요 방향 쏠림이 뚜렷하지 않음 비중 높음 좌측 중앙 우측 경향 판단 보류 있는 유형을 아는 중'].join(' '));
+  // 한 번 그려 쓰인 글자의 웹폰트 묶음을 받은 뒤 다시 그린다 (imgkit drawWithFonts). 오프라인이면 기본 글꼴로 그린다
+  // 그릴 때마다 새 캔버스: 앞선 그리기가 글꼴을 기다렸다 늦게 다시 그려도 저장할 캔버스(_canvas)를 덮지 않는다
+  const cv = document.createElement('canvas');
+  await drawWithFonts(cv, () => { cv.width = W; cv.height = H; _draw(cv.getContext('2d'), R); });
   if (seq !== _seq) return;
-
-  const cv = _canvas || (_canvas = document.createElement('canvas'));
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  _draw(ctx, R, _chartCache.img);
   let url = '';
   try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
-  if (!url) {
-    // 차트 이미지 때문에 캔버스를 못 내보내는 브라우저 → 차트 없이 다시 그림
-    _draw(ctx, R, [null, null]);
-    try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
-  }
+  _canvas = cv;
   const img = $('rpImg');
   img.src = url;
   img.alt = `${R.name} 선수 리포트 — ${R.rangeLabel} ${R.games}경기 ${R.st.pa}타석, 타율 ${f3(R.st.avg)} 출루율 ${f3(R.st.obp)} 장타율 ${f3(R.st.slg)}`;

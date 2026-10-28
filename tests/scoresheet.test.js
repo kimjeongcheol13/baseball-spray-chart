@@ -136,7 +136,7 @@
       $('tHome').value = '홈팀'; $('tAway').value = '원정팀';
       openScoresheet();
       ok(!$('ssView').hidden, '창 열림'); ok(document.documentElement.classList.contains('rp-open'), '뒤 화면 스크롤 잠금');
-      ok($('ssEmpty').hidden && !$('ssAct').hidden, '안내 숨김 · 버튼 보임');
+      ok($('ssEmpty').hidden && !$('ssAct').hidden && !$('ssView').classList.contains('ss-none'), '안내 숨김 · 버튼 보임');
       await waitImg();
       eq([$('ssImg').naturalWidth, $('ssImg').naturalHeight], [1588, 2246], 'A4 세로 2배 (794 × 1123)');
       ok(!$('ssSave').disabled && !$('ssPrint').disabled, '그린 뒤 버튼 켜짐');
@@ -159,6 +159,8 @@
       AS.abs = [];
       openScoresheet();
       ok(!$('ssEmpty').hidden && $('ssAct').hidden && $('ssPrev').hidden, '타석이 없으면 안내만');
+      var pr2 = $('ssView').querySelector('.rp-panel').getBoundingClientRect();
+      ok($('ssView').classList.contains('ss-none') && pr2.height < innerHeight * 0.8, '안내만 있을 때 창은 안내 크기 (빈 큰 판 아님): ' + Math.round(pr2.height) + ' / ' + innerHeight);
       $('ssView').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       ok($('ssView').hidden, 'Esc 로 닫기');
     });

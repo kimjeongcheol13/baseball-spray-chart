@@ -151,11 +151,11 @@
     var cv = document.createElement('canvas'), at = {}, fill = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (t, x, y) { at[String(t).slice(0, 4)] = y; return fill.apply(this, arguments); };   // 글자 줄의 기준선 y
     try { m.drawSheet(cv, d); } finally { CanvasRenderingContext2D.prototype.fillText = fill; }
-    var leg = [at['칸 — '], at['득점한 '], at['수비 —']], sig = at['기록원'];
-    ok(leg.every(function (y) { return y > 0; }) && sig > 0, '약어 줄 · 서명 줄 찾음: ' + JSON.stringify(Object.keys(at).filter(function (k) { return /칸|득점|수비|기록|—/.test(k); }).map(function (k) { return [k, at[k]]; })));
+    var leg = [at['칸'], at['표시'], at['수비']], sig = at['기록원'];   // 약어 줄 이름(칸 · 표시 · 수비) · 서명 상자 이름의 기준선
+    ok(leg.every(function (y) { return y > 0; }) && sig > 0, '약어 줄 · 서명 줄 찾음: ' + JSON.stringify(Object.keys(at).filter(function (k) { return /칸|표시|수비|기록/.test(k); }).map(function (k) { return [k, at[k]]; })));
     eq([leg[1] - leg[0], leg[2] - leg[1]], [15, 15], '약어 줄 간격 15');
     ok(sig - leg[2] >= 30, '마지막 약어 줄과 서명 사이 ' + (sig - leg[2]) + ' — 예전(두 줄 · 31)만큼 떨어져야 한다');
-    ok(sig + 4 <= cv.height - 10, '서명 밑줄이 그림 아래 끝에서 10 이상 안쪽: ' + sig + ' / ' + cv.height);
+    ok(sig + 30 <= cv.height / 2 - 10, '서명 상자(이름 아래 30)가 그림 아래 끝에서 10 이상 안쪽: ' + sig + ' / ' + cv.height / 2);
   });
 
   test('공유 링크: 수비 기록을 싣고, 받을 때는 형식이 맞는 것만 (6-3 · 3U · F8 · L6)', async function () {

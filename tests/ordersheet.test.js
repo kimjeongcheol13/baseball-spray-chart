@@ -1,7 +1,7 @@
 // 오더지 (js/features/ordersheet.js) — 주전 타순 · 후보 · 빈 줄 · 수비 위치 번호 · 팀 이름 · 창(팀 고르기 · 이미지 · 인쇄 · 닫기 · 그림을 누른 뒤 Esc) · 진입 버튼
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/ordersheet.js?v=2';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/ordersheet.js?v=3';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var P = function (id, name, num, pos, bench) { return { id: id, name: name, num: num, pos: pos || '', bh: '', isStarter: !bench }; };
 
   async function isolated(fn) {

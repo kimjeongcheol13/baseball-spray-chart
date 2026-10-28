@@ -156,3 +156,23 @@ body.sb .slm .slm-item[onclick^="openPlayerReport"] { --mi: url("data:image/svg+
   body.rp-printing .rp-prev-box img { width: auto; height: auto; max-width: 100%; max-height: 96vh; margin: 0 auto; }
   body.rp-printing { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ═══ 리그 기록지 (js/features/scoresheet.js) — 선수 리포트 창(.rp)을 그대로 쓰고 미리보기만 A4 세로 ═══ */
+.ss .rp-panel { max-width: 860px; }
+.ss-prev { margin: 0; }
+.ss-prev img { display: block; width: 100%; height: auto; border: 2px solid var(--rp-ink); background: #fff; -webkit-touch-callout: default; }
+.ss-prev img:not([src]) { aspect-ratio: 794 / 1123; visibility: hidden; }
+.ss-prev figcaption { margin-top: 8px; text-align: center; }
+body.sb .slm .slm-item[onclick^="openScoresheet"] { --mi: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 4h12v17H6z%22/%3E%3Cpath d=%22M9.5 2.5h5v3h-5zM6 10h12M6 15h12M10.5 5.5V21%22/%3E%3C/svg%3E"); }
+
+/* 인쇄 / PDF: 기록지 이미지 한 장만 */
+@media print {
+  body.ss-printing > :not(#ssView) { display: none !important; }
+  body.ss-printing, html.rp-open body.ss-printing { overflow: visible !important; background: #fff !important; padding-top: 0 !important; }
+  body.ss-printing #ssView { position: static; display: block; background: #fff; }
+  body.ss-printing #ssView .rp-panel { display: block; max-width: none; height: auto; border: 0; background: #fff; }
+  body.ss-printing #ssView .rp-hd, body.ss-printing #ssView .rp-act, body.ss-printing #ssView figcaption { display: none !important; }
+  body.ss-printing #ssView .rp-body { overflow: visible; padding: 0; }
+  body.ss-printing #ssView .ss-prev img { width: auto; max-width: 100%; max-height: 96vh; margin: 0 auto; border: 0; }
+  body.ss-printing { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

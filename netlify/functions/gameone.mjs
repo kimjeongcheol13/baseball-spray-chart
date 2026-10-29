@@ -11,10 +11,11 @@ import { rankRows, roster, uniqueRoster, careerRec, teamData } from '../gameone_
 
 const APP = 'https://kimjeongcheol13.github.io';
 const UA = 'SprayLab/1.0 (+https://kimjeongcheol13.github.io/baseball-spray-chart/)';
-// 한 번에 게임원 연결 4개까지(선수 통산을 4개씩) — 연결은 다시 쓴다
-const agent = new https.Agent({ keepAlive: true, maxSockets: 4, ciphers: 'DEFAULT@SECLEVEL=0' });
+// 한 번에 게임원 연결 4개까지(선수 통산을 4개씩). 연결은 한 번 부를 때(요청 하나) 안에서만 다시 쓰고 끝나면 닫는다 —
+// 게임원은 15초 쉬면 연결을 끊는데, Netlify 는 부름 사이에 함수를 얼려 두어 끊긴 줄 모르고 다시 써 실패한다(20초 뒤 다시 부르면 502, 2026-10-29 재현)
+const newAgent = () => new https.Agent({ keepAlive: true, maxSockets: 4, ciphers: 'DEFAULT@SECLEVEL=0' });
 
-function get(p) {
+function get(agent, p) {
   return new Promise((ok, no) => {
     const req = https.get('https://www.gameone.kr' + p, { agent, headers: { 'User-Agent': UA }, timeout: 15000 }, r => {
       if (r.statusCode !== 200) { r.resume(); return no(new Error(p + ' → ' + r.statusCode)); }
@@ -28,11 +29,11 @@ function get(p) {
   });
 }
 
-async function team(club, season) {
+async function team(a, club, season) {
   const q = `club_idx=${club}${season ? `&season=${season}` : ''}`;
-  const [hit, pit, list] = await Promise.all([get(`/club/info/ranking/hitter?${q}`), get(`/club/info/ranking/pitcher?${q}`), get(`/club/info/player?club_idx=${club}`)]);
+  const [hit, pit, list] = await Promise.all([get(a, `/club/info/ranking/hitter?${q}`), get(a, `/club/info/ranking/pitcher?${q}`), get(a, `/club/info/player?club_idx=${club}`)]);
   const careers = {};
-  await Promise.all(uniqueRoster(roster(list)).map(p => get(`/locker/record/sum?group_code=${p.code}`).then(h => { careers[p.code] = h; }, () => {})));
+  await Promise.all(uniqueRoster(roster(list)).map(p => get(a, `/locker/record/sum?group_code=${p.code}`).then(h => { careers[p.code] = h; }, () => {})));
   return teamData(G, { hit, pit, list, careers }, Date.now());
 }
 
@@ -42,19 +43,22 @@ export default async req => {
     status,
     headers: { 'Access-Control-Allow-Origin': APP, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=300' : 'no-store' }
   });
+  const a = newAgent();
   try {
     if (/^\d{1,7}$/.test(club) && /^(\d{4})?$/.test(season)) {
-      const d = await team(club, season);
+      const d = await team(a, club, season);
       return d.bat.length + d.pit.length + Object.keys(d.players).length ? out(d) : out({ error: 'empty' }, 404);
     }
     if (/^[0-9A-Z]{10,40}$/.test(player)) {
-      const c = careerRec(G, await get(`/locker/record/sum?group_code=${player}`));
+      const c = careerRec(G, await get(a, `/locker/record/sum?group_code=${player}`));
       return c ? out(Object.assign({ v: 1, at: Date.now() }, c)) : out({ error: 'empty' }, 404);
     }
     return out({ error: 'bad request' }, 400);
   } catch (e) {
     console.log(String(e && e.message || e));
     return out({ error: 'gameone' }, 502);
+  } finally {
+    a.destroy();
   }
 };
 

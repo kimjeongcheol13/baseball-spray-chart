@@ -1,6 +1,6 @@
 // 게임원 박스스코어 가져오기(js/features/gameoneimport.js) — 데이터 관리 › 가져오기 › 게임원
 //  · 타일 → 입력창 · 미리보기(점수 · 타석 수 · 모르는 기록 · 타점 안내) · 새 경기로 저장(sl_saves · 경기 데이터 · 저장 형식 검증)
-//  · 기록 중인 경기(AS.abs)는 그대로 · 원정 = 초 / 홈 = 말 · 홈런은 펜스 밖 그대로 · 타석 타점 0 · 타석 순서(타순이 돌아가는 순서) 복원
+//  · 기록 중인 경기(AS.abs)는 그대로 · 원정 = 초 / 홈 = 말 · 홈런은 펜스 밖 그대로 · 표의 타점 합계를 타석에 나눠 넣기 · 타석 순서(타순이 돌아가는 순서) 복원
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   // 원정: 사용자 예시 3행 그대로 (득점 3 + 4 + 1 = 8, 타점 7 + 3 + 0 = 10)
@@ -16,6 +16,7 @@
   function saves() { try { return JSON.parse(localStorage.getItem('sl_saves') || '[]'); } catch (e) { return []; } }
   function type(id, v) { var el = $(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
   function seq(g) { return g.abs.map(function (a) { return a.inn + ' ' + a.bname + ' ' + a.res; }); }
+  function rbiOf(g, name) { return g.abs.filter(function (a) { return a.bname === name; }).map(function (a) { return a.res + ':' + a.rbi; }); }
 
   test('(준비) 앱 시작 처리가 끝날 때까지 기다린다', async function () {
     await T.sleep(2500);
@@ -47,7 +48,8 @@
     var t = $('goPrev').textContent;
     ok(t.indexOf('상대 8 : 1 우리') >= 0, '점수 — ' + t);
     ok(t.indexOf("저장 안 함 1타석") >= 0 && t.indexOf("마동석 4회 '번트'") >= 0, '모르는 기록 — ' + t);
-    ok(t.indexOf('0으로 저장') >= 0 && t.indexOf('타점 합계 11') >= 0 && t.indexOf('기록 없는 홈런은 최소 1타점') >= 0 && t.indexOf('홈런으로 넣은 타점 3') >= 0, '타점 안내 — ' + t);
+    ok(t.indexOf('타석에 나눠 넣었습니다') >= 0 && t.indexOf('타점 합계 11') >= 0 && t.indexOf('기록 없는 홈런은 최소 1타점') >= 0 && t.indexOf('홈런으로 넣은 타점 3') >= 0
+      && t.indexOf('나눠 넣은 타점 8') >= 0 && t.indexOf('빠진 타점') < 0, '타점 안내 — ' + t);
     ok(!$('goSave').disabled, '저장 버튼 켜짐');
     eq($('goSave').textContent, '새 경기로 저장 (13타석)', '버튼 글자');
   });
@@ -66,7 +68,11 @@
     eq(g.away_lineup.map(function (p) { return p.name + '#' + p.num + '/' + p.pos; }), ['배성웅#15/2루', '이현준#24/중견', '김수찬#5/유격'], '원정 라인업');
     eq(g.home_lineup.map(function (p) { return p.name + '/' + p.pos; }), ['마동석/포수'], '홈 라인업');
     eq(g.abs.length, 13, '타석 13개 (번트 제외)');
-    ok(g.abs.every(function (a) { return a.rbi === (a.res === '홈런' ? 1 : 0) && a.pt === null && Array.isArray(a.pitches); }), '타석 타점: 홈런 1(최소) · 나머지 0 · 구종 없음');
+    // 표의 타점 합계 − 홈런 타점 → 장타 → 안타 순으로 한 타석에 1점씩, 남으면 안타 타석에 더
+    eq(rbiOf(g, '배성웅'), ['3루타:2', '홈런:1', '안타:2', '2루타:2'], '배성웅 타점 7 = 홈런 1 + 나눠 넣은 6');
+    eq(rbiOf(g, '이현준'), ['홈런:1', '안타:1', '내야안타:0', '2루타:1'], '이현준 타점 3 = 홈런 1 + 2루타 1 + 안타 1');
+    eq(rbiOf(g, '김수찬').concat(rbiOf(g, '마동석')), ['사구:0', '땅볼 아웃:0', '플라이 아웃:0', '홈런:1', '삼진:0'], '타점 0 · 홈런 타점뿐인 선수');
+    ok(g.abs.every(function (a) { return a.pt === null && Array.isArray(a.pitches); }), '구종 없음');
     ok(g.abs.every(function (a) { return a.team === (a.bname === '마동석' ? 'home' : 'away'); }), '팀');
     eq(JSON.stringify(AS.abs), cur, '기록 중인 경기는 그대로');
     ok($('loadOverlay').classList.contains('show') && !$('goOverlay').classList.contains('show'), '입력창 닫고 불러오기 목록 열림');
@@ -302,6 +308,15 @@
     eq(out.game.abs.map(function (a) { return a.res + ':' + a.rbi + ':' + a.ft; }).slice(0, 2), ['홈런:2:318', '홈런:1:' + out.game.abs[1].ft], '홈런 타점 · 비거리');
     ok(out.game.abs[1].ft > 0 && out.game.abs[1].ft !== 318, '괄호 없는 홈런은 펜스 거리로 추정한 ft');
     eq([out.game.abs[2].rbi, out.report.away.hrRbi], [0, 2], '다른 타석 타점 0 · 홈런으로 넣은 타점 합');
+  });
+
+  // 남은 타점(표 합계 − 홈런 타점)은 그 선수 타석에 나눠 넣는다(위 '새 경기로 저장' 테스트). 이닝별 점수표가 있으면 팀이 득점한 이닝까지만:
+  // 원정 2 1 0 5 … → 1회 최대 2 · 3회(0점) 타석은 건너뜀 · 4회 최대 3(안타류) / 1(내야안타 외 다른 결과도 1)
+  test('남은 타점 나눠 넣기 + 이닝별 점수표: 0점 이닝은 건너뛰고 이닝 득점까지만 · 넣을 곳이 없는 타점은 빠진 타점으로 알림', function () {
+    var out = window.SLGameOneImport.buildGameOneGame({ awayText: AWAY, homeText: HOME, scoreText: SB, now: 1790000600000 }), g = out.game;
+    eq(rbiOf(g, '배성웅'), ['3루타:2', '홈런:1', '안타:0', '2루타:3'], '배성웅: 1회 3루타 2(1회 2점) · 3회 안타 0(0점 이닝) · 4회 2루타 3 → 7 중 6');
+    eq(rbiOf(g, '이현준'), ['홈런:1', '안타:0', '내야안타:1', '2루타:1'], '이현준: 3회 안타 건너뛰고 4회 2루타 · 내야안타');
+    eq(out.report.rbiLeft, 1, '넣을 타석이 없어 빠진 타점');
   });
 
   test('실제 형식에서 한 칸에 표 두 개: 합 계 · 팀 이름 · 선수 머리글 줄 다음 표(sep) · 줄 없이 이어 붙인 두 표(restart)', function () {

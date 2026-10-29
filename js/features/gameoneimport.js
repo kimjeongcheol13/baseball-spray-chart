@@ -8,6 +8,8 @@
 //   · 타석 타점은 0 — 게임원 표에는 타석별 타점이 없다(선수별 합계만). 미리보기에 안내한다
 //     예외(2026-10-19): 홈런 [2R 97M] 표기가 있으면 그 홈런 타석은 타점 2 · 비거리 97m(ft 로 저장).
 //     괄호 없는 홈런은 1타점 — 홈런은 타자 본인이 반드시 홈인하므로 최소 1타점은 확실하다(몇 점 홈런인지는 표에 없다)
+//     2026-10-30: 표의 선수별 타점 합계 − 홈런 타점 = 남은 타점을 그 선수 타석에 나눠 넣는다(어느 타석인지는 추정) — _spreadRbi.
+//     타점은 타석마다 a.rbi 를 더해 세는 곳이 많아(시즌 · 순위 · 리포트 · 엑셀 …) 여기서 채우면 모두 맞는다. 기록 수정 창에서 고칠 수 있다
 //   · unknown 타석(결과를 모름)과 교체·주루 사건뿐인 칸은 저장하지 않고 미리보기에 보여 준다
 //   · 이닝별 점수표(선택 칸): 점수 = 표의 R, 팀 이름이 비어 있으면 표의 이름. 이닝별 득점은 경기 정보에 info.ls = { away: [...], home: [...] } 로
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
@@ -43,6 +45,26 @@ const POS = {
 const _P = () => window.SLGameOne;
 const _track = (name, params) => { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (e) {} };
 const _num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
+
+// 남은 타점 나눠 넣기: 타점이 날 수 있는 결과만, 장타 → 안타 → 희비 → 야수선택 · 땅볼 → 볼넷 · 사구 순(같으면 경기 순서)으로
+// 한 타석에 1점씩 돌고, 남으면 안타 타석에 더 넣는다(한 타석 최대 3 · 나머지는 1). 이닝별 점수표가 있으면 그 이닝 팀 득점까지만(0점 이닝은 건너뜀).
+// 삼진 · 뜬공 · 병살 · 실책은 넣지 않는다. 넣을 곳이 없어 남은 타점 수를 돌려준다(미리보기 안내용)
+const RBI_RANK = { '3루타': 0, '2루타': 0, '안타': 1, '내야안타': 1, '희비': 2, '야수선택': 3, '땅볼 아웃': 3, '볼넷': 4, '사구': 4 };
+const RBI_HIT = { '3루타': 1, '2루타': 1, '안타': 1, '내야안타': 1 };
+function _spreadRbi(rows, ls) {
+  let left = 0;
+  rows.forEach(w => {
+    let need = w.rbi - w.pas.reduce((s, x) => s + x.ab.rbi, 0);
+    if (need <= 0) return;
+    const c = w.pas.filter(x => x.ab.res in RBI_RANK).map(x => {
+      const v = ls && x.inning != null ? ls[x.team].innings[x.inning - 1] : null;
+      return { ab: x.ab, cap: Math.min(RBI_HIT[x.ab.res] ? 3 : 1, typeof v === 'number' ? v : 3) };
+    }).sort((p, q) => RBI_RANK[p.ab.res] - RBI_RANK[q.ab.res]);
+    for (let k = 0; k < 3 && need > 0; k++) c.forEach(o => { if (need > 0 && o.ab.rbi < o.cap) { o.ab.rbi++; need--; } });
+    left += need;
+  });
+  return left;
+}
 
 // 타석 순서 복원: 표는 타순별 행이라, 이닝 안에서는 앞 이닝 마지막 타자 다음 타순부터 돌아가며 친다.
 // 정렬 = 이닝 → 같은 이닝 몇 번째 타석인지(round, '/' 두 번째 = 1) → 시작 타순부터의 거리 → 행 순서.
@@ -106,7 +128,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
   const lf = Math.round(st.lfDist * 3.281), cf = Math.round(st.cfDist * 3.281), rf = Math.round(st.rfDist * 3.281);
   const wallFt = { LF: lf, LC: Math.round((lf + cf) / 2), CF: cf, RC: Math.round((cf + rf) / 2), RF: rf };   // core.js onFClick 과 같은 담장 거리
   const lineups = { home: [], away: [] }, report = { pa: 0, unknownTokens: [] }, seenTok = Object.create(null);
-  const all = [];
+  const all = [], rbiRows = [];   // rbiRows: 선수 행마다 { rbi: 표의 타점 합계, pas: 저장할 타석 } — _spreadRbi
   let nid = 0;
 
   ['away', 'home'].forEach(team => {
@@ -128,11 +150,13 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
         lineups[team].push(lp);
       }
       r.runs += _num(p.stats.r); r.rbi += _num(p.stats.rbi);
+      const w = { rbi: _num(p.stats.rbi), pas: [] };
+      rbiRows.push(w);
       let lastInn = null, round = 0;
       p.atBats.forEach(a => {
         round = a.inning != null && a.inning === lastInn ? round + 1 : 0;
         lastInn = a.inning;
-        const e = { a, lp, slot: p.order, round, row, inning: a.inning == null ? Infinity : a.inning, team };
+        const e = { a, lp, slot: p.order, round, row, inning: a.inning == null ? Infinity : a.inning, team, w };
         // 모르는 기록 · 타격방해는 저장하지 않지만 타석이라 순서에는 넣는다(drop) — 투수의 '상대 타자' 수에 들어간다
         if (a.type === 'unknown') { r.skipped.push({ name: p.name, inning: a.inning, raw: a.raw }); e.drop = true; entries.push(e); return; }
         if (a.result == null) { r.noPA++; if (/타격방해/.test(a.raw)) { e.drop = true; entries.push(e); } return; }   // 교체 · 주루 사건뿐 — 타석이 아니다
@@ -179,16 +203,18 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
     } else report.pitchWarnings.push(P.tables.length ? '투수 표를 1개만 찾았습니다 — 원정 · 홈 두 표가 다 있어야 씁니다' : '투수 표 머리글(선수 결과 이닝 …)을 찾지 못했습니다');
   }
 
-  const abs = sorted.filter(e => !e.drop).map(({ a, lp, team, pitcher }) => {
+  const abs = sorted.filter(e => !e.drop).map(({ a, lp, team, pitcher, w }) => {
     const inn = a.inning == null ? '' : a.inning > 9 ? '연장' : a.inning + '회' + (team === 'away' ? '초' : '말');
     const loc = a.type === 'batted';
-    return {
+    const ab = {
       id: now + nid++, bid: lp.id, bname: lp.name, bnum: lp.num, team, res: a.result, pt: null, zone: null, rbi: a.rbi != null ? a.rbi : a.result === '홈런' ? 1 : 0,
       x: loc ? a.x : null, y: loc ? a.y : null, deg: loc ? a.angle : null, dir: loc ? a.dir : null,
       ft: loc ? (a.distance ? Math.round(a.distance * 3.281) : Math.round(a.depth * (wallFt[a.dir] || 370))) : null, inn, ts: '', pitches: [],
       ...(pitcher ? { pitcher } : {}),
       ...(loc ? { estimated: a.confidence === 'low' } : {}),   // 위치 추정(대략) — 「타구 위치 확인」(gameonefix.js)에서 옮기면 false
     };
+    w.pas.push({ ab, inning: a.inning, team });
+    return ab;
   });
   report.pa = abs.length;
   // 원정 · 홈 칸에 같은 선수(이름 + 등번호): 2명 이상(한쪽이 1명뿐이면 그 1명)이면 같은 표를 두 칸에 붙여넣은 것으로 본다 — 동명이인 한 명은 넘어간다
@@ -215,6 +241,7 @@ export function buildGameOneGame({ awayText = '', homeText = '', scoreText = '',
     } else if (sb.teams.length === 1) report.lsWarnings.push('팀 줄을 1개만 찾았습니다 — 원정 · 홈 두 줄이 다 있어야 씁니다');
   }
   const ls = report.ls;
+  report.rbiLeft = _spreadRbi(rbiRows, ls);   // 남은 타점 나눠 넣기(이닝별 점수표가 있으면 득점한 이닝까지만) · 넣을 곳이 없어 빠진 타점 수
 
   const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
   const d = (dm ? new Date(+dm[1], +dm[2] - 1, +dm[3]) : new Date(now)).toLocaleDateString('ko-KR');
@@ -408,8 +435,11 @@ function _preview() {
       + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('') + lsH + h;
     const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi, hrMin = R.away.hrMin + R.home.hrMin;
     const hrTxt = [hr ? '홈런 [2R 97M] 같은 기록이 있으면 그 타점' : '', hrMin ? '기록 없는 홈런은 최소 1타점(타자 본인 득점)' : ''].filter(Boolean).join(', ');
-    h += `<div class="go-note">타점: 게임원 표에는 타석별 타점이 없어 ${hrTxt ? hrTxt + ', 나머지 타석은 ' : ''}0으로 저장됩니다`
-      + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''})` : '') + '.'
+    const spread = g.abs.reduce((s, a) => s + a.rbi, 0) - hr - hrMin;
+    h += `<div class="go-note">타점: 게임원 표에는 선수별 타점 합계만 있어 ${hrTxt ? hrTxt + '을 넣고, ' : ''}나머지는 그 선수의 안타 · 희비 · 땅볼 · 볼넷 타석에 나눠 넣었습니다`
+      + '(어느 타석인지는 추정 — 저장한 뒤 기록 수정에서 고칠 수 있습니다)'
+      + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''}${spread ? ` · 나눠 넣은 타점 ${spread}` : ''}`
+        + `${R.rbiLeft ? ` · 넣을 타석이 없어 빠진 타점 ${R.rbiLeft}` : ''})` : '') + '.'
       + (R.away.low + R.home.low ? ' "대략"은 안타·뜬공·땅볼처럼 떨어진 자리 폭이 넓어 방향 대표값으로 찍은 타구입니다. 저장한 뒤 「타구 위치 확인」에서 실제 자리로 옮길 수 있습니다.' : '') + '</div>';
     if (R.pitch) h += '<div class="go-note">투수: 투수 성적은 이 경기에 함께 저장되어 분석 탭 › 투수의 「게임원 투수 시즌 기록」에 모입니다.'
       + (R.pitch.linked.away || R.pitch.linked.home ? ' 투수 표 순서대로 상대 타석에 투수를 붙여, 기록 탭 타자 상세 「투수별 요약」과 엑셀 투수 칸에도 나옵니다.' : '') + '</div>';

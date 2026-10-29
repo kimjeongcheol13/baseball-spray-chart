@@ -269,23 +269,52 @@ export async function goTeamPull(force) {
   return n;
 }
 
+// 팀 번호를 연결하고 바로 받는다(「연결」 · ?goteam= 링크). 못 받으면 { msg }
+async function _connect(club) {
+  const old = _team();
+  if (!old || old.club !== club) localStorage.setItem(TEAM, JSON.stringify({ club }));
+  const r = await goTeamPull(true);
+  if (r.status === 404) return { msg: `팀 번호 ${club} 연결해 두었어요. 이 팀은 아직 매일 받는 팀 목록에 없어요 — 목록에 들어가면 다음 날부터 저절로 들어와요.` };
+  if (r.status != null) return { msg: '불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.' };
+  const t = _team();
+  if (window.showToast) window.showToast(`${t.team || '게임원 팀'} — 통산 ${r.car}명 · 시즌 타자 ${r.bat}명 · 투수 ${r.pit}명 불러옴`, false);
+  return r;
+}
+
 // 「연결」 · 「다시 받기」: 주소(club_idx=숫자) 또는 팀 번호만 넣어도 된다
 export async function goTeamConnect(btn) {
   const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-sync-msg');
   const v = box.querySelector('.go-cr-club').value, m = /club_idx=(\d{1,7})/.exec(v) || /^\s*(\d{1,7})\s*$/.exec(v);
   if (!m) { msg.textContent = '게임원 팀 페이지 주소를 넣어 주세요. 주소에 club_idx=숫자 가 있어야 해요.'; return; }
-  const old = _team();
-  if (!old || old.club !== m[1]) localStorage.setItem(TEAM, JSON.stringify({ club: m[1] }));
   btn.disabled = true;
   msg.textContent = '불러오는 중…';
-  const r = await goTeamPull(true);
+  const r = await _connect(m[1]);
   btn.disabled = false;
-  if (r.status === 404) { msg.textContent = `팀 번호 ${m[1]} 연결해 두었어요. 이 팀은 아직 매일 받는 팀 목록에 없어요 — 목록에 들어가면 다음 날부터 저절로 들어와요.`; return; }
-  if (r.status != null) { msg.textContent = '불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'; return; }
-  const t = _team();
-  if (window.showToast) window.showToast(`${t.team || '게임원 팀'} — 통산 ${r.car}명 · 시즌 타자 ${r.bat}명 · 투수 ${r.pit}명 불러옴`, false);
+  if (r.msg) { msg.textContent = r.msg; return; }
   if (window.selectBatterSeason && (box.dataset.name || r.first)) { window.selectBatterSeason(box.dataset.name || r.first); _showChip(); }
   else _redraw(box);
+}
+
+// 팀 연결 링크(?goteam=팀 번호): 열면 연결 · 받기까지 하고 분석 › 타자 › 시즌 전체를 연다(기기마다 한 번이면 된다)
+export async function goTeamFromLink() {
+  let sp;
+  try { sp = new URLSearchParams(location.search); } catch (e) { return false; }
+  const club = sp.get('goteam');
+  if (club == null) return false;
+  sp.delete('goteam');
+  const q = sp.toString();
+  try { history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) {}
+  const lp = document.getElementById('landing-page');
+  if (lp && lp.offsetParent !== null && typeof window.showApp === 'function') window.showApp();   // 데스크톱 랜딩이 떠 있으면
+  if (window.shellOpenAnalysis) window.shellOpenAnalysis('batter');
+  if (window.setBatterView) window.setBatterView('scope', 'season');
+  const r = /^\d{1,7}$/.test(club) ? await _connect(club) : { msg: '게임원 팀 연결 링크의 팀 번호가 잘못됐어요. 아래에 팀 페이지 주소를 넣어 주세요.' };
+  if (!r.msg && r.first && window.selectBatterSeason) { window.selectBatterSeason(r.first); _showChip(); return true; }
+  // 못 받았으면 「＋」 카드를 열어 팀 연결 칸에 이유를 보여 준다
+  if (window.setBatterView) window.setBatterView('goadd');
+  const msg = document.querySelector('#goCareer .go-cr-sync-msg');
+  if (msg) msg.textContent = r.msg || '';
+  return true;
 }
 
 // 앱을 열 때: 연결한 팀이 있으면 조용히 받아 두고, 통산 카드가 떠 있으면 다시 그린다
@@ -302,6 +331,8 @@ if (typeof window !== 'undefined') {
   window.goCareerFromLink = goCareerFromLink;
   window.goTeamConnect = goTeamConnect;
   window.goTeamPull = goTeamPull;
-  const run = () => setTimeout(() => { goCareerFromLink(); _autoPull(); }, 0);   // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게
+  window.goTeamFromLink = goTeamFromLink;
+  // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게. 팀 연결 링크로 열었으면 그게 받기까지 한다
+  const run = () => setTimeout(() => { goCareerFromLink(); goTeamFromLink().then(on => { if (!on) _autoPull(); }); }, 0);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 }

@@ -179,7 +179,7 @@
   }
   var PAGES = { hit: rankHtml(BAT_ROWS), pit: rankHtml(PIT_ROWS), list: LIST_HTML, careers: {
     KHI0000000001: careerHtml('김호인', { '경기수': 66, '타율': '0.615', '타석': 236, '홈런': 25, 'OPS': '1.842' }, { '경기수': 20, '이닝': '22 ⅓', '방어율': '5.33', '자책점': 17 }),
-    LKJ0000000001: careerHtml('임꺽정', { '경기수': 30, '타율': '0.400' }, { '경기수': 40, '이닝': '100' }),
+    LKJ0000000001: careerHtml('임꺽정', { '경기수': 30, '타율': '0.400' }, { '경기수': 0, '이닝': '0', '방어율': '0.00' }),
     SC00000000001: careerHtml('심청', { '경기수': 0 }, { '경기수': 0 }),
     HGD0000000001: careerHtml('홍길동', { '경기수': 5 }, {}), HGD0000000002: careerHtml('홍길동', { '경기수': 9 }, {}) } };
   var DATA, realFetch = window.fetch, calls = [], reply;
@@ -194,6 +194,7 @@
     eq(X.roster(LIST_HTML).map(function (p) { return p.name + p.number + ':' + p.code; }), ['김호인97:KHI0000000001', '임꺽정14:LKJ0000000001', '심청10:SC00000000001', '홍길동20:HGD0000000001', '홍길동55:HGD0000000002'], '선수단');
     DATA = X.teamData(window.SLGameOne, PAGES, 1790000000000);
     eq(Object.keys(DATA.players).sort(), ['김호인', '임꺽정'], '0경기(심청) · 같은 이름 둘(홍길동)은 통산에서 뺀다');
+    eq([DATA.players['임꺽정'].bat.g, DATA.players['임꺽정'].pit], [30, null], '투수 0경기 칸은 뺀다(카드에 투수 0 이 안 뜨게)');
     var k = DATA.players['김호인'];
     eq([k.hand, k.school, k.bat.g, k.bat.ops, k.pit.g, k.pit.outs, k.pit.era], ['우투우타', '대산고등학교', 66, 1.842, 20, 67, 5.33], '김호인 통산 — 투수 999(주석)는 안 읽음');
     eq([DATA.v, DATA.at, DATA.team, DATA.season, DATA.bat.length, DATA.pit.length], [1, 1790000000000, '테스트팀', 2026, 7, 4], '머리');
@@ -265,6 +266,31 @@
     setBatterView('sel', '');
     tap(addBtn());
     ok(/팀 번호 12345 연결됨 · 아직 받은 기록이 없어요/.test(card().querySelector('.go-cr-sync').textContent), '연결 칸 안내');
+  });
+
+  test('팀 연결 링크(?goteam=): 열면 연결 · 받기 · 타자 › 시즌 전체 첫 선수 · 주소에서 지움 · 잘못된 번호 · 404', async function () {
+    localStorage.removeItem('sl_go_career');
+    localStorage.removeItem('sl_go_team');
+    calls.length = 0;
+    reply = json(DATA);
+    var q = location.search;
+    function go(v) { history.replaceState(null, '', location.pathname + q + (q ? '&' : '?') + 'goteam=' + v + location.hash); }
+    var msg = function () { return card().querySelector('.go-cr-sync-msg').textContent; };
+    go('14797');
+    eq(await goTeamFromLink(), true, '링크로 열림');
+    ok(location.search.indexOf('goteam') < 0, '주소에서 지움(새로고침해도 다시 안 받음)');
+    ok(/\/gameone-data\/14797\.json\?t=\d+$/.test(calls[0]), '받는 주소 — ' + calls[0]);
+    eq([JSON.parse(localStorage.getItem('sl_go_team')).club, Object.keys(stored()).length, stored()['김호인'].bat.g], ['14797', 9, 66], '연결 · 9명 · 통산');
+    ok(toastTxt().indexOf('테스트팀 — 통산 2명') >= 0, '알림 — ' + toastTxt());
+    ok(document.getElementById('batterView').offsetParent !== null && card().dataset.name === '홍길동', '타자 › 시즌 전체 · 표 첫 선수 카드');
+    go('abc');
+    await goTeamFromLink();
+    ok(/팀 번호가 잘못됐어요/.test(msg()) && JSON.parse(localStorage.getItem('sl_go_team')).club === '14797', '잘못된 번호 — 「＋」 카드에 안내 · 연결은 그대로 — ' + msg());
+    reply = json({}, 404);
+    go('12345');
+    await goTeamFromLink();
+    ok(/팀 번호 12345 연결해 두었어요/.test(msg()), '404 — ' + msg());
+    eq(await goTeamFromLink(), false, '링크 없으면 아무것도 안 함');
   });
 
   test('(정리) 이 파일이 만든 저장 경기 · 설정을 지운다', function () {

@@ -17,6 +17,7 @@
     ['구글 로그인 복귀 ?code=', '?code=abc', '', {}, null],
     ['로그인 실패 복귀 ?error=', '?error=access_denied&error_description=x', '', {}, null],
     ['디버그 ?debug=1', '?debug=1', '', {}, null],
+    ['게임원 팀 연결 링크 ?goteam=', '?goteam=14797', '', {}, null],
     ['utm_ + 공유 링크', '?utm_source=ig&game=x', '', {}, null],
     ['# 공유 링크', '', '#share=abc', {}, null],
     ['# 로그인 토큰', '', '#access_token=abc', {}, null],

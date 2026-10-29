@@ -53,8 +53,10 @@ export function teamData(G, { hit, pit, list, careers }, at) {
   for (const p of ro) {
     if (seen[p.name] > 1 || !careers[p.code]) continue;
     const c = G.parseGameOneCareer(career(careers[p.code]));
-    if (!((c.bat && c.bat.g) || (c.pit && c.pit.g))) continue;
-    players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat: c.bat, pit: c.pit };
+    // 0경기 쪽은 뺀다 — 투수를 안 하는 선수도 HTML 에 0 으로 찬 투수 칸이 있어 카드에 투수 0 이 뜬다(게임원 화면은 숨김)
+    const bat = c.bat && c.bat.g ? c.bat : null, pit = c.pit && c.pit.g ? c.pit : null;
+    if (!bat && !pit) continue;
+    players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat, pit };
   }
   return { v: 1, at, team: title(hit), season: season(hit), bat: t.bat, pit: t.pit, players };
 }

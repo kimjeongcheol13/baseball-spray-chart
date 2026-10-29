@@ -65,6 +65,7 @@
     eq([both.name, both.bat, both.pit], [b.name, b.bat, b.pit], '둘 다 머리글 없이 = 경기수 줄로 나눔');
     eq([P('홍길동\n경기수3\n볼넷2\n사구1').bat, P('홍길동\n경기수3\n볼넷2').pit], [null, null], '타자인지 투수인지 모름');
     eq(P('세종고등학교\n경기수3\n승1').name, '세종고등학교', "'세' · '승'으로 시작하는 머리 줄도 머리로");
+    eq([P('우투우타\n타자기록\n경기수3').name, P('비선출\n경기수3\n승1').name], ['', ''], "'우투우타' · '비선출'부터 붙이면 이름 없음");
   });
 
   test('카드: 분석 탭 › 타자 › 시즌 맨 아래 · 처음엔 안내 + 붙여넣기(접힘)', async function () {
@@ -125,6 +126,62 @@
   test('지우기 → 저장에서 빠지고 빈 카드', function () {
     press('.go-cr-del');
     ok(!('김호인' in stored()) && !card().querySelector('.pf-counts'), '지움');
+  });
+
+  // SprayLab 타석 기록이 없는 선수(2026-10-29 요청): 시즌 전체 › 「＋ 게임원 통산」 → 이름은 붙여넣은 글에서
+  function tap(b) {
+    b.scrollIntoView({ block: 'center' });
+    var r = b.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    ok(hit && b.contains(hit), b.className + ' 가 맨 위 — ' + (hit && (hit.id || hit.className)));
+    hit.click();
+  }
+  function addBtn() { return Array.prototype.find.call(document.querySelectorAll('#batterView .bt-link-pill'), function (b) { return b.textContent.indexOf('게임원 통산') >= 0; }); }
+  function chipOf(name) { return document.querySelectorAll('#batterView .an-chip[data-name="' + name + '"]'); }
+
+  test('기록 없는 선수: 시즌 전체 › 「＋ 게임원 통산」 → 펼친 새 카드(44px 버튼)', function () {
+    setBatterView('scope', 'season');
+    var add = addBtn();
+    ok(add && add.getBoundingClientRect().height >= 44, '＋ 버튼 44px 이상');
+    tap(add);
+    var c = card();
+    eq([c.dataset.name, c.dataset.pa, c.querySelector('details').open, !!c.querySelector('.pf-counts')], ['', '0', true, false], '새 선수 칸 펼침');
+    ok(!document.querySelector('#batterView .an-chip.on'), '고른 칩 없음');
+  });
+
+  test('이름 줄 없는 글은 저장 안 함 → 홍길동 페이지 저장 · 칩이 생기고 통산 카드만', function () {
+    paste('우투우타\n타자기록\n경기수3\n타율0.500\n타석4');
+    press('.go-cr-save');
+    ok(card().querySelector('.go-cr-msg').textContent.indexOf('이름을 찾지 못했어요') >= 0, '이름 없음 안내');
+    eq(Object.keys(stored()), [], '저장 안 함');
+    paste(SAMPLE.replace('김호인', '홍길동'));
+    press('.go-cr-save');
+    ok(stored()['홍길동'] && stored()['홍길동'].bat.g === 68, '홍길동으로 저장');
+    var c = card();
+    eq([c.dataset.name, c.dataset.pa, cells().length], ['홍길동', '0', 24], '홍길동 카드');
+    ok(c.querySelector('.an-note').textContent.indexOf('아직 이 선수 타석 기록이 없어요') >= 0, 'SprayLab 기록 없음 안내');
+    eq(document.querySelectorAll('#batterView .bt-result > *').length, 1, 'SprayLab 카드 없이 통산 카드만');
+    ok(chipOf('홍길동').length === 1 && chipOf('홍길동')[0].classList.contains('on'), '칩 생김 · 고름');
+    var cr = chipOf('홍길동')[0].getBoundingClientRect(), pr = chipOf('홍길동')[0].parentElement.getBoundingClientRect();
+    ok(cr.left >= pr.left - 1 && cr.right <= pr.right + 1, '새 칩이 칩 줄 안에 보임(옆으로 넘김)');
+  });
+
+  test('다른 선수 칩 → 다시 홍길동 칩 · 지우면 칩도 없어진다', function () {
+    tap(chipOf('김호인')[0]);
+    eq([card().dataset.name, card().dataset.pa], ['김호인', '3'], '김호인(SprayLab 3타석)');
+    tap(chipOf('홍길동')[0]);
+    eq([card().dataset.name, cells().length], ['홍길동', 24], '다시 홍길동');
+    press('.go-cr-del');
+    ok(!('홍길동' in stored()) && !chipOf('홍길동').length, '저장 · 칩 없어짐');
+    ok(!card() || card().dataset.name !== '홍길동', '다른 선수 화면');
+  });
+
+  test('「＋」로 SprayLab에 있는 선수(김호인)를 붙이면 그 선수 시즌 화면 맨 아래에 · 칩은 하나', function () {
+    tap(addBtn());
+    paste(SAMPLE);
+    press('.go-cr-save');
+    eq([card().dataset.name, card().dataset.pa, cells().length], ['김호인', '3', 24], '김호인 시즌 화면 카드');
+    ok(document.querySelector('#batterView .pf-report'), 'SprayLab 시즌 화면');
+    eq(chipOf('김호인').length, 1, '칩 하나');
   });
 
   test('(정리) 이 파일이 만든 저장 경기 · 설정을 지운다', function () {

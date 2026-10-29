@@ -62,4 +62,7 @@ export default async req => {
   }
 };
 
-export const config = { path: '/api/gameone' };
+// 호출 제한: 같은 곳(IP)에서 1분에 10번까지. 넘으면 Netlify 가 함수 앞에서 429 로 막는다(앱은 _NET '잠시 뒤 다시' 를 보여 준다).
+// 팀 한 번 부르면 게임원 페이지를 30개 넘게 읽어서, 막지 않으면 크레딧도 게임원도 버티지 못한다. 무료 플랜은 이런 규칙이 프로젝트당 2개까지
+// ponytail: 창이 1분(최대 180초)이라 천천히 오래 부르는 쪽은 못 막는다 — 그런 일이 생기면 하루 한도(Netlify Blobs 카운터)를 단다
+export const config = { path: '/api/gameone', rateLimit: { windowLimit: 10, windowSize: 60, aggregateBy: ['ip', 'domain'] } };

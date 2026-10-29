@@ -62,9 +62,17 @@ const files = want.length ? allFiles.filter((f) => want.some((w) => f.includes(w
 if (!files.length) { console.error(`✘ 인자 ${JSON.stringify(want)} 에 맞는 테스트 파일이 없다 (있는 파일: ${allFiles.join(', ')})`); process.exit(1); }
 const chrome = findChrome();
 
+// 도는 파일 → 페이지가 POST /__result 로 보낸 결과(harness.js publish). 받으면 그 브라우저를 바로 닫는다(runFile)
+const posted = new Map();
 const server = http.createServer((req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
+    if (req.method === 'POST' && url.pathname === '/__result') {
+      let b = '';
+      req.on('data', (d) => (b += d));
+      req.on('end', () => { const p = posted.get(url.searchParams.get('f')); if (p && p.b64 === null) { p.b64 = b; p.done(); } res.writeHead(204); res.end(); });
+      return;
+    }
     if (url.pathname === '/' || url.pathname === '/index.html') {
       const f = url.searchParams.get('f');
       if (f !== null && !allFiles.includes(f)) { res.writeHead(404); return res.end(); }
@@ -99,11 +107,15 @@ async function runFile(file) {
   child.stderr.on('data', (d) => (err += d));
   child.on('error', () => {});
   const killer = setTimeout(() => { killed = true; child.kill(); }, WALL_MS);
+  // 결과가 POST 로 오면 DOM 덤프(남은 가상 시간 예산을 다 돌린 뒤)를 기다리지 않고 닫는다 — 그 기다림에서 가상 시간이 멈춰 실제 시간 상한에 걸리곤 했다
+  const post = { b64: null, done: () => child.kill() };
+  posted.set(file, post);
   const code = await new Promise((r) => child.on('close', r));
   clearTimeout(killer);
+  posted.delete(file);
   try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
 
-  const m = out.match(/id="t-result" data-b64="([^"]+)"/);
+  const m = post.b64 !== null ? [null, post.b64] : out.match(/id="t-result" data-b64="([^"]+)"/);
   if (!m) {
     // 결과가 없는데 브라우저가 스스로 정상 종료(코드 0)했고 진행 표시가 있으면 → 가상 시간 예산이 먼저 바닥난 것(fail-closed)
     const tag = (out.match(/<pre id="t-progress"[^>]*>/) || [''])[0];

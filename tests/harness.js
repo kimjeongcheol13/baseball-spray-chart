@@ -1,12 +1,12 @@
 // 테스트 공용 도구. 러너(run.mjs)는 테스트 파일마다 페이지를 따로 띄우므로, 이 페이지에는 *.test.js 하나만 들어 있다.
 // 각 파일이 window.__T.test(이름, 함수)로 등록하면, 파일이 로드된 뒤(load 이벤트) 등록 순서대로 실행한다.
-// T.last(...)로 등록한 것은 전부 끝난 뒤 마지막에 실행. 결과는 base64 로 DOM 에 게시 — run.mjs 가 읽어 간다.
+// T.last(...)로 등록한 것은 전부 끝난 뒤 마지막에 실행. 결과는 base64 로 DOM 에 게시하고 러너 서버로도 보낸다(POST /__result) — run.mjs 가 받아 간다.
 (function () {
   // 테스트 도중 페이지가 다시 로드되면(앱의 location.reload) 처음부터 다시 돌아 결과를 믿을 수 없다. window.name 은 새로고침 뒤에도 남으므로
   // 두 번째 로드를 알아채 fatal 로 끝낸다(fail-closed). 가장 흔한 원인은 러너가 막아 둔다(run.mjs 의 visibilitychange 차단)
   var reloaded = window.name === '__sl_harness';
   window.name = '__sl_harness';
-  var tests = [], lasts = [];
+  var tests = [], lasts = [], post = window.fetch;   // post: 결과 보내기용(아래 publish) — 테스트가 fetch 를 바꿔 끼워도 원래 것으로
   var T = window.__T = {
     test: function (name, fn) { tests.push({ name: name, fn: fn }); },
     last: function (name, fn) { lasts.push({ name: name, fn: fn }); },
@@ -57,6 +57,9 @@
     var bytes = new TextEncoder().encode(JSON.stringify(payload)), bin = '';
     for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
     var el = document.createElement('pre'); el.id = 't-result'; el.setAttribute('data-b64', btoa(bin)); document.body.appendChild(el);
+    // 같은 결과를 러너 서버로도 보낸다 → 러너가 이 브라우저를 바로 닫는다(DOM 덤프를 기다리지 않음). 덤프는 남은 가상 시간 예산을 다 돌린 뒤에야
+    // 나오는데, 그 사이 가상 시간이 멈춰 실제 시간 상한에 걸리곤 했다(테스트를 다 끝내고 게시까지 한 뒤의 멈춤 — CI '실행하지 못함'의 대부분)
+    try { post.call(window, '/__result?f=' + encodeURIComponent(new URLSearchParams(location.search).get('f') || ''), { method: 'POST', body: btoa(bin) }).catch(function () {}); } catch (e) {}
     // 결과를 게시했으니 남은 타이머 · 애니메이션 프레임을 모두 끊는다. 크롬은 가상 시간 예산을 다 소진한 뒤에야 DOM 을 덤프하는데,
     // 앱의 반복 타이머가 남아 있으면 남은 예산(수백 초)을 헛돌아 실제 시간만 늘어난다. 이미 게시한 결과에는 영향이 없다
     for (var t = setTimeout(function () {}, 0); t >= 0; t--) { clearTimeout(t); clearInterval(t); }

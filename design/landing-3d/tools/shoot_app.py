@@ -110,15 +110,19 @@ with sync_playwright() as p:
     print("team overlays:", overlays(pg))
     team = shot(pg, "team")
 
-    # 4) 경기설정 scrolled to the end: 팀 만들기 (팀원과 기록 공유) + 내보내기 · 공유 (QR·링크, PNG, 카드, 엑셀) + 데이터 · 도움말.
-    #    The exported report/cards stay cream paper by design, so the 03 · 공유 card shows this night-theme screen instead.
-    #    Only the end works: anywhere higher, a row shows through the floating "저장하고 기록 시작" bar.
-    pg.click(".savant-nav-btn[data-tab=settings]")
-    pg.wait_for_timeout(1500)
-    pg.evaluate("(() => { const v = document.getElementById('settingsView'); v.scrollTop = v.scrollHeight; })()")
+    # 4) 03 · 공유: 선수 리포트 창 (선수 › 이 선수 리포트 만들기) scrolled to the top of the preview -> the whole report PNG on the dark viewer
+    #    + 이미지 저장 · 공유 / 인쇄 / PDF. Alternates for the caller: 성적 카드 창 / GAME REPORT 창.
+    pg.evaluate("openPlayerReport({ name: '김민준' })")
+    pg.wait_for_function("(() => { const i = document.getElementById('rpImg'); return document.getElementById('rpLoading').hidden && i.complete && i.naturalWidth > 0; })()", timeout=20000)
+    pg.evaluate("(() => { const b = document.getElementById('rpBody'), x = b.querySelector('.rp-prev-box');"
+                " b.scrollTop += x.getBoundingClientRect().top - b.getBoundingClientRect().top - 12; })()")
     pg.wait_for_timeout(600)
     print("share overlays:", overlays(pg))
     share = shot(pg, "share")
+    pg.evaluate("closePlayerReport()")
+    pg.evaluate("openCardPreview()"); pg.wait_for_timeout(1500); shot(pg, "share_alt_card")
+    pg.evaluate("closeCardPreview()"); pg.wait_for_timeout(300)
+    pg.evaluate("showPostGameReport()"); pg.wait_for_timeout(1500); shot(pg, "share_alt_gamereport")
     br.close()
 srv.shutdown()
 

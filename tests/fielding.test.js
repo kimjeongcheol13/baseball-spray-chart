@@ -138,24 +138,24 @@
   });
 
   test('리그 기록지 칸: 수비 기록이 있으면 그것(6-3 · F8 · L6) · 없으면 예전 약어', async function () {
-    var m = await import('/js/features/scoresheet.js?v=4');
+    var m = await import('/js/features/scoresheet.js?v=5');
     var c = function (res, fp) { return m.cellCode({ res: res, fp: fp, x: .3, dir: 'LC' }); };
     eq([c('땅볼 아웃', '6-3'), c('플라이 아웃', 'F8'), c('라인드라이브 아웃', 'L6'), c('땅볼 아웃', '3U')], ['6-3', 'F8', 'L6', '3U'], '수비 기록');
     eq([c('땅볼 아웃'), c('플라이 아웃')], ['땅볼', '좌중비'], '수비 기록 없는 예전 타석');
   });
 
   test('리그 기록지 맨 아래: 약어 세 줄(수비 줄 포함) 다음 서명 줄 — 간격은 예전 두 줄일 때와 같고 그림 안에 들어간다', async function () {
-    var m = await import('/js/features/scoresheet.js?v=4');
+    var m = await import('/js/features/scoresheet.js?v=5');
     var d = m.sheetData({ abs: [{ id: 1, bid: 'k1', bname: '김유격', bnum: '6', team: 'away', inn: '1회초', res: '땅볼 아웃', fp: '6-3' }],
       away_lineup: [{ id: 'k1', name: '김유격', num: '6' }], home_lineup: [], info: null, hs: 0, as: 0, th: '', ta: '' });
     var cv = document.createElement('canvas'), at = {}, fill = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (t, x, y) { at[String(t).slice(0, 4)] = y; return fill.apply(this, arguments); };   // 글자 줄의 기준선 y
     try { m.drawSheet(cv, d); } finally { CanvasRenderingContext2D.prototype.fillText = fill; }
-    var leg = [at['칸 — '], at['득점한 '], at['수비 —']], sig = at['기록원'];
-    ok(leg.every(function (y) { return y > 0; }) && sig > 0, '약어 줄 · 서명 줄 찾음: ' + JSON.stringify(Object.keys(at).filter(function (k) { return /칸|득점|수비|기록|—/.test(k); }).map(function (k) { return [k, at[k]]; })));
-    eq([leg[1] - leg[0], leg[2] - leg[1]], [15, 15], '약어 줄 간격 15');
+    var leg = [at['칸'], at['표시'], at['수비']], sig = at['기록원'];   // 약어 줄 이름(칸 · 표시 · 수비) · 서명 상자 이름의 기준선
+    ok(leg.every(function (y) { return y > 0; }) && sig > 0, '약어 줄 · 서명 줄 찾음: ' + JSON.stringify(Object.keys(at).filter(function (k) { return /칸|표시|수비|기록/.test(k); }).map(function (k) { return [k, at[k]]; })));
+    eq([leg[1] - leg[0], leg[2] - leg[1]], [16, 16], '약어 줄 간격 16');
     ok(sig - leg[2] >= 30, '마지막 약어 줄과 서명 사이 ' + (sig - leg[2]) + ' — 예전(두 줄 · 31)만큼 떨어져야 한다');
-    ok(sig + 4 <= cv.height - 10, '서명 밑줄이 그림 아래 끝에서 10 이상 안쪽: ' + sig + ' / ' + cv.height);
+    ok(sig + 30 <= cv.height / 2 - 10, '서명 상자(이름 아래 30)가 그림 아래 끝에서 10 이상 안쪽: ' + sig + ' / ' + cv.height / 2);
   });
 
   test('공유 링크: 수비 기록을 싣고, 받을 때는 형식이 맞는 것만 (6-3 · 3U · F8 · L6)', async function () {

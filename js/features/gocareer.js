@@ -53,7 +53,9 @@ export function goCareerCard(name, games, pa) {
         ${meta ? `<p class="go-cr-meta">${meta}</p>` : ''}
         ${c.bat ? _bat(c.bat) : ''}
         ${c.pit ? _pit(c.pit) : ''}
-        <div class="an-note">게임원 숫자를 그대로 옮겼어요(방어율은 게임원과 같은 7이닝 기준). ${+pa ? `위 SprayLab 기록은 여기서 기록한 ${+games || 0}경기 ${+pa}타석만이라 숫자가 달라요.` : 'SprayLab에는 아직 이 선수 타석 기록이 없어요.'}</div>`
+        <div class="an-note">게임원 숫자를 그대로 옮겼어요(방어율은 게임원과 같은 7이닝 기준). ${+pa ? `위 SprayLab 기록은 여기서 기록한 ${+games || 0}경기 ${+pa}타석만이라 숫자가 달라요.` : 'SprayLab에는 아직 이 선수 타석 기록이 없어요.'}</div>
+        <div class="go-cr-acts go-cr-send"><button type="button" class="go-cr-qrbtn" aria-expanded="false" onclick="goCareerQR(this)">📱 폰으로 보내기 (QR)</button></div>
+        <div class="go-cr-qr" hidden></div>`
       : `<div class="an-note">${add ? 'SprayLab에 타석 기록이 없는 선수도 게임원 선수 페이지를 붙여넣으면 통산을 볼 수 있어요. 이름은 붙여넣은 글에서 읽어요.' : '게임원에 이 선수 개인 기록이 있으면 붙여넣어 리그 통산을 같이 볼 수 있어요.'}</div>`}
       <details class="go-cr-paste"${add ? ' open' : ''}>
         <summary>${has ? '게임원 기록 다시 붙여넣기' : '게임원 기록 붙여넣기'}</summary>
@@ -69,6 +71,11 @@ export function goCareerCard(name, games, pa) {
 }
 
 function _redraw(box) { box.outerHTML = goCareerCard(box.dataset.name, box.dataset.g, box.dataset.pa); }
+// 통산만 있는 선수 칩은 칩 줄 끝에 생긴다 → 고른 칩이 보이게 옆으로 넘긴다
+function _showChip() {
+  const on = document.querySelector('#batterView .an-chip.on');
+  if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
 
 export function goCareerSave(btn) {
   const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-msg');
@@ -82,12 +89,9 @@ export function goCareerSave(btn) {
   // 타자 · 투수를 따로 붙여넣어도 앞서 저장한 쪽은 남긴다(새로 붙인 쪽만 바꾼다)
   all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null };
   try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
-  // 새 선수는 타자 › 시즌에서 그 선수 칩을 골라 연다(칩 줄 끝에 생기므로 보이게 옆으로 넘긴다)
-  if (add && window.selectBatterSeason) {
-    window.selectBatterSeason(name);
-    const on = document.querySelector('#batterView .an-chip.on');
-    if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  } else _redraw(box);
+  // 새 선수는 타자 › 시즌에서 그 선수 칩을 골라 연다
+  if (add && window.selectBatterSeason) { window.selectBatterSeason(name); _showChip(); }
+  else _redraw(box);
 }
 
 export function goCareerClear(btn) {
@@ -99,7 +103,77 @@ export function goCareerClear(btn) {
   else _redraw(box);
 }
 
+// 폰으로 보내기: 이 기록을 링크(?goc=)에 담아 QR로 — 폰 카메라로 열면 _fromLink 가 폰에 저장한다(기기마다 따로 저장이라)
+export function goCareerQR(btn) {
+  const box = btn.closest('#goCareer'), wrap = box.querySelector('.go-cr-qr');
+  if (!wrap.hidden) { wrap.hidden = true; btn.setAttribute('aria-expanded', 'false'); return; }
+  const c = _all()[box.dataset.name];
+  if (!c) return;
+  wrap.innerHTML = '';
+  if (typeof QRCode === 'undefined') {
+    wrap.innerHTML = '<p class="go-cr-how">QR 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</p>';
+  } else {
+    // 공유 링크(core.js ?game= · ?team=)와 같은 표기: 'z' + LZString, 없으면 'b' + base64
+    const json = JSON.stringify(Object.assign({ k: box.dataset.name }, c));
+    const enc = typeof LZString !== 'undefined' ? 'z' + LZString.compressToEncodedURIComponent(json) : 'b' + encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
+    const url = location.origin + location.pathname + '?goc=' + enc;
+    wrap.dataset.url = url;
+    // 흰 바탕 검은 점 — 어두운 바탕 QR은 못 읽는 폰 카메라가 있다
+    try { new QRCode(wrap, { text: url, width: 280, height: 280, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L }); }
+    catch (e) { wrap.innerHTML = '<p class="go-cr-how">QR을 만들지 못했어요.</p>'; }
+    wrap.insertAdjacentHTML('beforeend', '<p class="go-cr-how">휴대폰 카메라로 찍어 링크를 열면 폰 SprayLab에 이 통산이 저장돼요. 폰에 같은 선수 통산이 있으면 이걸로 바뀌어요.</p>');
+  }
+  wrap.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+}
+
+// 링크로 받은 기록은 믿지 않는다: 이름 · 글자 길이를 자르고, 숫자(또는 null) 칸만 남긴다
+function _clean(o) {
+  if (!o || typeof o !== 'object') return null;
+  const s = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+  const nums = x => {
+    if (!x || typeof x !== 'object') return null;
+    const r = {};
+    Object.keys(x).forEach(k => { const v = x[k]; if (/^[a-z0-9]{1,8}$/i.test(k) && (v === null || (typeof v === 'number' && isFinite(v)))) r[k] = v; });
+    return Object.keys(r).length ? r : null;
+  };
+  const key = s(o.k || o.name, 40), bat = nums(o.bat), pit = nums(o.pit);
+  if (!key || /^__/.test(key) || !(bat || pit)) return null;
+  return { key, rec: { at: +o.at > 0 ? +o.at : Date.now(), name: s(o.name, 20), hand: s(o.hand, 8), bg: s(o.bg, 8), school: s(o.school, 30), bat, pit } };
+}
+
+// QR 링크(?goc=)로 열면 이 기기에 저장하고 분석 › 타자 › 시즌 전체에서 그 선수를 연다
+export function goCareerFromLink() {
+  let sp;
+  try { sp = new URLSearchParams(location.search); } catch (e) { return; }
+  const enc = sp.get('goc');
+  if (!enc) return;
+  sp.delete('goc');
+  const q = sp.toString();
+  try { history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) {}
+  const toast = m => { if (window.showToast) window.showToast(m, false); };
+  let c = null;
+  try {
+    const json = enc[0] === 'z' && typeof LZString !== 'undefined' ? LZString.decompressFromEncodedURIComponent(enc.slice(1))
+      : enc[0] === 'b' ? decodeURIComponent(escape(atob(enc.slice(1)))) : '';
+    c = _clean(JSON.parse(json));
+  } catch (e) {}
+  if (!c) { toast('게임원 통산 QR을 읽지 못했어요. PC에서 QR을 다시 띄워 찍어 주세요.'); return; }
+  const all = _all();
+  all[c.key] = c.rec;
+  try { _put(all); } catch (e) { toast('저장 공간이 부족해 저장하지 못했어요.'); return; }
+  const lp = document.getElementById('landing-page');
+  if (lp && lp.offsetParent !== null && typeof window.showApp === 'function') window.showApp();   // 데스크톱 랜딩이 떠 있으면
+  if (window.shellOpenAnalysis) window.shellOpenAnalysis('batter');
+  if (window.setBatterView) { window.setBatterView('scope', 'season'); window.setBatterView('sel', c.key); _showChip(); }
+  toast(`📱 ${c.key} 게임원 통산을 받았어요`);
+}
+
 if (typeof window !== 'undefined') {
   window.goCareerSave = goCareerSave;
   window.goCareerClear = goCareerClear;
+  window.goCareerQR = goCareerQR;
+  window.goCareerFromLink = goCareerFromLink;
+  const run = () => setTimeout(goCareerFromLink, 0);   // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 }

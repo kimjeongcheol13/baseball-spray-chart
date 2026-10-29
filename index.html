@@ -5,7 +5,7 @@
 /* 첫 화면 = landing.html (모든 기기·설치 앱, 기록 있어도. ?utm_·fbclid 등은 넘김). 앱으로 바로: 아래 앱 링크 파라미터(새로 만들면 추가)·#·
    이 탭(설치 앱은 이번 실행)에서 앱 열었음(sl_in_app — ?go=1 등은 곧 지워짐). plaintext=아래 GA·앱 안 돌림 */
 (function(){try{var s=sessionStorage,p=new URLSearchParams(location.search);
-if(!s.sl_in_app&&!location.hash&&!['go','app','game','gid','team','import','code','error','debug'].some(function(k){return p.has(k);})){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
+if(!s.sl_in_app&&!location.hash&&!['go','app','game','gid','team','import','code','error','debug','goc'].some(function(k){return p.has(k);})){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
 s.sl_in_app=1}catch(e){}})();
 </script>
 <script
@@ -87,7 +87,7 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/shell.css?v=14">
 <link rel="stylesheet" href="css/analysis.css?v=12">
 <link rel="stylesheet" href="css/compare.css?v=6">
-<link rel="stylesheet" href="css/profile.css?v=9">
+<link rel="stylesheet" href="css/profile.css?v=10">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=5">
 <link rel="stylesheet" href="css/pitcher.css?v=27">
@@ -2471,7 +2471,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=243"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=11"></script>
-<script type="module" src="js/app.js?v=175"></script>
+<script type="module" src="js/app.js?v=176"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

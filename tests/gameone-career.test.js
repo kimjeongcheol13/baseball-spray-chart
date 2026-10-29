@@ -184,6 +184,57 @@
     eq(chipOf('김호인').length, 1, '칩 하나');
   });
 
+  // 폰으로 보내기(2026-10-29 요청): 통산은 기기마다 따로 저장 → QR 링크(?goc=)로 폰에 옮긴다
+  function link(enc) {
+    var q = location.search;
+    history.replaceState(null, '', location.pathname + q + (q ? '&' : '?') + 'goc=' + enc + location.hash);
+    goCareerFromLink();
+    return q;
+  }
+  function toastTxt() { return document.getElementById('toastTxt').textContent; }
+  function b64(o) { return 'b' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(o))))); }   // 하네스는 CDN 을 막아 LZString 이 없다 → 앱의 'b' 표기
+
+  test('「📱 폰으로 보내기」 → 흰 바탕 QR(링크 ?goc=) · 다시 누르면 접힘', function () {
+    // 하네스는 CDN 을 막아 QRCode 가 없다 → 받은 옵션을 그대로 적는 대역
+    var made = null;
+    if (typeof QRCode === 'undefined') { window.QRCode = function (el, o) { made = o; el.appendChild(document.createElement('img')); }; window.QRCode.CorrectLevel = { L: 1 }; }
+    var btn = card().querySelector('.go-cr-qrbtn');
+    ok(btn && btn.getBoundingClientRect().height >= 36, 'QR 버튼');
+    tap(btn);
+    var w = card().querySelector('.go-cr-qr');
+    ok(!w.hidden && w.querySelector('img, canvas') && btn.getAttribute('aria-expanded') === 'true', 'QR 보임');
+    ok(/\?goc=[zb]/.test(w.dataset.url), '링크 ' + w.dataset.url.length + '자');
+    if (made) eq([made.text, made.colorDark, made.colorLight], [w.dataset.url, '#000000', '#ffffff'], '흰 바탕 검은 점 · 그 링크');
+    tap(btn);
+    ok(w.hidden && btn.getAttribute('aria-expanded') === 'false', '접힘');
+  });
+
+  test('QR 링크로 열면(폰 = 아직 없음) 같은 기록 저장 · 주소에서 지움 · 타자 › 시즌 전체에서 그 선수', function () {
+    tap(card().querySelector('.go-cr-qrbtn'));
+    var enc = card().querySelector('.go-cr-qr').dataset.url.split('?goc=')[1], saved = stored()['김호인'];
+    localStorage.removeItem('sl_go_career');
+    setBatterView('scope', 'game');
+    var q = link(enc);
+    eq(stored()['김호인'], saved, '같은 기록');
+    eq(location.search, q, '주소에서 goc 지움');
+    eq([card().dataset.name, cells().length], ['김호인', 24], '김호인 시즌 화면 · 24칸');
+    ok(toastTxt().indexOf('김호인 게임원 통산을 받았어요') >= 0, '알림 — ' + toastTxt());
+  });
+
+  test('QR 링크를 믿지 않는다: 깨진 글 · 숫자 아닌 칸 · __proto__ 이름은 저장 안 함', function () {
+    var before = localStorage.getItem('sl_go_career');
+    link('abc');
+    ok(toastTxt().indexOf('읽지 못했어요') >= 0, '깨진 글');
+    link(b64({ k: '홍길동', bat: { g: '<img src=x>', 'a-b': 3 } }));
+    link(b64({ k: '__proto__', bat: { g: 1 } }));
+    eq(localStorage.getItem('sl_go_career'), before, '그대로');
+    link(b64({ k: '홍길동', name: '홍길동', hand: '<i>xxxxxxxxxxxx', bat: { g: 3, avg: null, bad: 'x' }, extra: 1 }));
+    var s = stored()['홍길동'];
+    eq([s.hand, s.bat, s.pit, 'extra' in s], ['<i>xxxxx', { g: 3, avg: null }, null, false], '숫자 칸만 · 길이 자름(8자)');
+    var meta = card().querySelector('.go-cr-meta');
+    ok(meta.textContent === '<i>xxxxx' && !meta.querySelector('i'), '받은 글은 글자로만(태그 아님)');
+  });
+
   test('(정리) 이 파일이 만든 저장 경기 · 설정을 지운다', function () {
     localStorage.removeItem(KEY);
     localStorage.setItem('sl_saves', JSON.stringify(JSON.parse(localStorage.getItem('sl_saves') || '[]').filter(function (s) { return s.key !== KEY; })));

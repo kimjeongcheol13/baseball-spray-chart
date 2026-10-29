@@ -267,6 +267,9 @@
 .go-cr-acts .go-cr-save { border-color: var(--an-accent); background: var(--an-accent); color: #fff; }
 .go-cr-msg { margin: 6px 0 0; font-size: 12px; color: var(--an-ink); }
 .go-cr-msg:empty { display: none; }
+.go-cr-send { margin-top: 10px; }
+.go-cr-qr { margin-top: 10px; text-align: center; }
+.go-cr-qr img { box-sizing: border-box; max-width: 100%; height: auto; margin: 0 auto; padding: 12px; background: #fff; border-radius: 8px; }
 @media (max-width: 720px) {
   .go-cr-paste summary { display: flex; align-items: center; min-height: 44px; }
   .go-cr-acts button { height: 44px; }

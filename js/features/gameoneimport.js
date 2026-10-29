@@ -15,6 +15,8 @@
 //     새로 둔다(기존 필드는 그대로) — 경기 정보는 저장 · 불러오기 · 복구를 따라다니고, 기록 화면 라인스코어(scorebook.js)가 이닝 칸에 그린다.
 //     공유 링크도 info.ls 를 싣는다(core.js _shareGameBuild — 다른 경기 정보와 함께) · 받는 쪽은 _restoreLsFromPayload 가 걸러 받는다
 //   · 같은 경기 다시 가져오기 (2026-10-18): 날짜 · 팀 · 점수가 같은 저장 경기가 있으면 미리보기에 알리고 저장 전에 한 번 묻는다(막지는 않는다) — findSameGames
+//     2026-10-30: 그 경기에 넣을 타점이 있으면 미리보기에 「기존 경기에 타점만 채우기」 — 새 경기를 만들지 않고 타석 타점만 옮긴다(planRbiFill).
+//     예전 가져오기(#292 전)는 타석 타점이 0(홈런만)이라 시즌 타점이 빠져 있었다. 위치 · 다른 칸은 그대로(「타구 위치 확인」에서 옮긴 자리 유지)
 //   · 붙여넣기 실수 (2026-10-18): 한 칸에 표 두 개(_secondTable) · 원정 · 홈 칸에 같은 표(report.shared)도 같은 방식으로 알리고 묻는다
 //   · 페이지 통째 붙여넣기 (2026-10-19): 휴대폰 '전체 선택 → 복사' 덩어리를 어느 칸에 넣어도 점수표 · 원정 · 홈 칸으로 나눠 채운다(_autoSplit)
 //   · 투수 표(선택 칸, 2026-10-19): 위 표 = 원정 투수, 아래 표 = 홈 투수. 투수 표 순서대로 '상대 타자' 수만큼 상대 팀 타석을 잘라
@@ -281,6 +283,33 @@ export function findSameGames(game, saved) {
   return saved.filter(({ g }) => g && _ymd(g) === day && (is(g, th, ta, hs, as) || is(g, ta, th, as, hs)));
 }
 
+// 기존 경기에 타점만 채우기: 다시 붙여넣은 표로 만든 경기(game)의 타석 타점을 같은 경기(old)의 같은 선수(팀 · 이름 · 등번호) 타석에 옮길 계획.
+// 그 선수의 타석 수 · 결과 순서가 모두 같고, 아직 손대지 않은 타점(홈런이 아닌 타석은 0 · 홈런은 0 또는 같은 값)일 때만 옮긴다.
+// 기록이 다르거나 타점을 이미 고친 선수는 건드리지 않고 이름을 돌려준다 → { sets: [[타석, 타점]…], added, skipped: [이름…] }
+export function planRbiFill(game, old) {
+  const swap = _tn(old.th) !== _tn(game.th);   // findSameGames 는 홈 · 원정이 바뀐 것도 같은 경기로 본다
+  const group = (abs, flip) => {
+    const m = new Map();
+    abs.forEach(a => {
+      const t = flip ? (a.team === 'home' ? 'away' : 'home') : a.team, k = t + '|' + a.bname + '|' + String(a.bnum == null ? '' : a.bnum);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(a);
+    });
+    return m;
+  };
+  const mine = group(old.abs || [], false), sets = [], skipped = [];
+  let added = 0;
+  group(game.abs, swap).forEach((list, k) => {
+    const cur = mine.get(k) || [], want = list.reduce((s, a) => s + a.rbi, 0), have = cur.reduce((s, a) => s + (a.rbi || 0), 0);
+    if (want <= have) return;
+    const ok = cur.length === list.length && cur.every((a, i) => a.res === list[i].res && (!a.rbi || (a.res === '홈런' && a.rbi === list[i].rbi)));
+    if (!ok) { skipped.push(list[0].bname); return; }
+    cur.forEach((a, i) => { if ((a.rbi || 0) !== list[i].rbi) sets.push([a, list[i].rbi]); });
+    added += want - have;
+  });
+  return { sets, added, skipped };
+}
+
 // 경기 정보 줄의 월.일(parseGameOneInfo) → 'YYYY-MM-DD'. 페이지에 연도가 없어 올해로 하되, 그 날짜가 오늘보다 뒤면 작년(지난 시즌 경기를 연초에 가져오는 경우).
 // 없는 날짜(2.30 등) · 정보 없음 → ''
 const _p2 = v => String(v).padStart(2, '0');
@@ -425,14 +454,16 @@ function _preview() {
   const lsH = (R.ls ? _lsTable(R.ls, g) : '') + R.lsWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('')
     + (R.pitch ? _pitchTable(R.pitch, g) : '') + R.pitchWarnings.map(w => `<div class="go-warn">${_esc(w)}</div>`).join('');
   let h = _sideHtml('원정', R.away) + _sideHtml('홈', R.home);
-  const iss = R.pa ? _issues(R, findSameGames(g, _savedGames())) : [];
+  const dup = R.pa ? findSameGames(g, _savedGames()) : [], iss = R.pa ? _issues(R, dup) : [];
+  const fillN = _fillPlans(g, dup).reduce((s, f) => s + f.plan.added, 0);
   if (!R.away.players && !R.home.players) {
     h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요.'
       + ' 전체 선택으로 복사했다면 <b>표를 한 번 누른 뒤</b> 다시 전체 선택해 보세요(리그 페이지는 박스스코어가 안쪽 화면에 따로 있습니다)</div>'
       : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
   } else {
     h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`
-      + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('') + lsH + h;
+      + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('')
+      + (fillN ? `<button type="button" class="btn btn-ghost go-fill" onclick="fillGameOneRbi()">기존 경기에 타점만 채우기 (${fillN}점)</button>` : '') + lsH + h;
     const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi, hrMin = R.away.hrMin + R.home.hrMin;
     const hrTxt = [hr ? '홈런 [2R 97M] 같은 기록이 있으면 그 타점' : '', hrMin ? '기록 없는 홈런은 최소 1타점(타자 본인 득점)' : ''].filter(Boolean).join(', ');
     const spread = g.abs.reduce((s, a) => s + a.rbi, 0) - hr - hrMin;
@@ -487,13 +518,7 @@ export function saveGameOneImport() {
     localStorage.setItem('sl_saves', JSON.stringify(saves));
   } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
   if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
-  ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
-  // 자동으로 채운 팀 이름 · 날짜는 이 경기 것 — 다음 경기 표를 따로 붙여넣을 때 남지 않게 비우고(날짜는 오늘로) 구장도 지운다. 사용자가 고친 값은 그대로
-  ['goTa', 'goTh'].forEach(id => { const t = $(id); if (t && t.dataset.auto === '1') { t.value = ''; delete t.dataset.auto; } });
-  const dt = $('goDate');
-  if (dt && dt.dataset.auto === '1') dt.value = _today();
-  _venue = '';
-  _preview();
+  _resetInputs();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();
   if (window.openGameOneFix) window.openGameOneFix(g.key);   // 타구 점이 있으면 「타구 위치 확인」을 불러오기 목록 위에 한 번 연다(나중에 할게로 넘길 수 있음)
@@ -505,6 +530,59 @@ export function saveGameOneImport() {
   _usedSplit = false;
   _syncStart();
   toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
+}
+
+function _resetInputs() {
+  ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  // 자동으로 채운 팀 이름 · 날짜는 이 경기 것 — 다음 경기 표를 따로 붙여넣을 때 남지 않게 비우고(날짜는 오늘로) 구장도 지운다. 사용자가 고친 값은 그대로
+  ['goTa', 'goTh'].forEach(id => { const t = $(id); if (t && t.dataset.auto === '1') { t.value = ''; delete t.dataset.auto; } });
+  const dt = $('goDate');
+  if (dt && dt.dataset.auto === '1') dt.value = _today();
+  _venue = '';
+  _preview();
+}
+
+// 같은 경기마다 타점 채우기 계획. 지금 열린 경기(_curSaveKey)면 화면의 AS.abs 를 고친다(gameonefix.js 와 같은 방식)
+function _curKey() { try { return typeof _curSaveKey !== 'undefined' ? _curSaveKey : null; } catch (e) { return null; } }
+function _fillPlans(g, dup) {
+  const cur = _curKey(), S = window.AS;
+  return dup.map(d => {
+    const live = d.key === cur && !!S && Array.isArray(S.abs);
+    return Object.assign({ live, plan: planRbiFill(g, live ? { th: d.g.th, abs: S.abs } : d.g) }, d);
+  });
+}
+
+// 「기존 경기에 타점만 채우기」: 새 경기를 만들지 않고 같은 경기의 타석 타점만 고쳐 저장한다(열린 경기면 _saveEditImmediate, 아니면 localStorage + cloudSave 한 번)
+export function fillGameOneRbi() {
+  const toast = m => { if (window.showToast) window.showToast(m, false); };
+  _autoSplit();
+  let out;
+  try { out = buildGameOneGame(Object.assign(_inputs(), { now: Date.now() })); } catch (e) { toast('읽지 못했습니다: ' + (e && e.message || e)); return; }
+  _saved.raw = null;
+  let games = 0, added = 0;
+  const skipped = [];
+  for (const f of _fillPlans(out.game, findSameGames(out.game, _savedGames()))) {
+    skipped.push(...f.plan.skipped);
+    if (!f.plan.sets.length) continue;
+    const back = f.plan.sets.map(([a]) => [a, a.rbi]);
+    f.plan.sets.forEach(([a, v]) => { a.rbi = v; });
+    if (f.live) {
+      if (typeof _saveEditImmediate === 'function') _saveEditImmediate();
+      if (typeof updateAll === 'function') updateAll();
+    } else {
+      try { localStorage.setItem(f.key, JSON.stringify(f.g)); }
+      catch (e) { back.forEach(([a, v]) => { a.rbi = v; }); toast('저장 공간이 부족해 타점을 채우지 못했습니다'); return; }
+      if (window.cloudSave) window.cloudSave(f.key, f.g, f.label, f.g.ts);
+    }
+    games++; added += f.plan.added;
+  }
+  _saved.raw = null;
+  const sk = [...new Set(skipped)];
+  _track('gameone_rbi_fill', { games, added, skipped: sk.length });
+  if (!games) { toast('채울 타점이 없습니다' + (sk.length ? ` — 기록이 다르거나 타점을 이미 고친 선수: ${sk.join(', ')}` : '')); _preview(); return; }
+  _resetInputs();
+  if (window.closeOverlay) window.closeOverlay('goOverlay');
+  toast(`기존 경기에 타점 ${added}점을 채웠습니다` + (sk.length ? ` (건너뛴 선수: ${sk.join(', ')} — 기록이 다르거나 타점을 이미 고침)` : ''));
 }
 
 // 첫 화면 버튼: 저장 경기도 기록 중인 타석도 없을 때만 (샘플 모드면 샘플 경기가 보여서 숨는다)
@@ -534,11 +612,12 @@ function _openFromLink() {
 }
 
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame, findSameGames, gameOneInfoDate, _openFromLink, _syncStart };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames, planRbiFill, gameOneInfoDate, _openFromLink, _syncStart };
   // 원정 · 홈 · 날짜 칸을 사용자가 직접 고치면 자동 표시를 지운다 — 다음 통째 붙여넣기가 덮지 않는다(_autoFill). 값을 코드로 넣을 때는 input 이벤트가 없다
   ['goTa', 'goTh', 'goDate'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { delete el.dataset.auto; }); });
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
+  window.fillGameOneRbi = fillGameOneRbi;
   window.gameOnePreview = _schedule;
   const orig = window.updateFieldTapHint;   // core.js(defer)가 먼저 정한다
   if (typeof orig === 'function' && !orig._go) {

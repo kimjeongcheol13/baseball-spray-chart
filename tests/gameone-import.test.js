@@ -319,6 +319,24 @@
     eq(out.report.rbiLeft, 1, '넣을 타석이 없어 빠진 타점');
   });
 
+  // 기존 경기에 타점만 채우기(planRbiFill): 예전 가져오기(#292 전 — 홈런이 아닌 타석 타점 0)와 다시 붙여넣은 표 → 같은 선수 · 같은 타석에만 옮긴다
+  function oldStyle(g) { var o = JSON.parse(JSON.stringify(g)); o.abs.forEach(function (a) { if (a.res !== '홈런') a.rbi = 0; }); return o; }
+  test('기존 경기에 타점만 채우기(planRbiFill): 같은 선수 · 같은 타석 순서일 때만 · 타점을 고친 선수 · 기록이 다른 선수는 건너뜀 · 홈 · 원정이 바뀐 경기도', function () {
+    var g = window.SLGameOneImport.buildGameOneGame({ awayText: AWAY, homeText: HOME, th: '우리', ta: '상대', now: 1790000700000 }).game, P = window.SLGameOneImport.planRbiFill;
+    var p = P(g, oldStyle(g));
+    eq([p.added, p.skipped, p.sets.length], [8, [], 5], '배성웅 6 · 이현준 2 → 8점, 바뀌는 타석 5개');
+    var o = oldStyle(g);
+    o.abs.filter(function (a) { return a.bname === '이현준' && a.res === '안타'; })[0].rbi = 1;   // 사용자가 고친 타점
+    o.abs.filter(function (a) { return a.bname === '배성웅' && a.res === '2루타'; })[0].res = '안타';   // 결과를 고친 타석
+    p = P(g, o);
+    eq([p.added, p.skipped, p.sets.length], [0, ['배성웅', '이현준'], 0], '고친 선수 · 다른 기록은 건너뜀');
+    var sw = oldStyle(g);   // 홈 · 원정을 바꿔 저장한 경기
+    sw.th = g.ta; sw.ta = g.th;
+    sw.abs.forEach(function (a) { a.team = a.team === 'home' ? 'away' : 'home'; });
+    eq(P(g, sw).added, 8, '홈 · 원정이 바뀐 경기');
+    eq(P(g, g).added, 0, '이미 채운 경기 → 채울 것 없음');
+  });
+
   test('실제 형식에서 한 칸에 표 두 개: 합 계 · 팀 이름 · 선수 머리글 줄 다음 표(sep) · 줄 없이 이어 붙인 두 표(restart)', function () {
     var B = realTable(['1우나일(11)\t삼진', '2좌나이(12)\t삼진', '3중나삼(13)\t삼진'].map(function (r) { return r + '\t\t\t\t\t\t\t\t\t1\t0\t0\t0\t0\t0.000\t0.000'; }));
     var both = REAL_A + '\n나팀\n' + B;
@@ -547,5 +565,53 @@
       ['gameone_import', { pa: 13, paste: 'tables', scoreboard: 0, pitch: 'none', skipped: 1, warned: 0 }]
     ], '이벤트');
     ok(!/[가-힣]/.test(JSON.stringify(ev.map(function (e) { return e[1]; }))), '값에 한글(선수 · 팀 이름 · 기록) 없음 — ' + JSON.stringify(ev));
+  });
+
+  test('같은 경기를 다시 붙여넣으면 「기존 경기에 타점만 채우기 (N점)」 → 새 경기 없이 타점만 저장 · 옮긴 위치는 그대로 · cloudSave 한 번', async function () {
+    var key = 'sl_1790000800000', base = window.SLGameOneImport.buildGameOneGame({ awayText: AWAY, homeText: HOME, th: '채움홈', ta: '채움원정', date: '2026-09-01', now: 1790000800000 }).game;
+    var old = oldStyle(base), moved = old.abs.filter(function (a) { return a.bname === '배성웅' && a.res === '안타'; })[0];
+    moved.x = 0.31; moved.estimated = false;   // 「타구 위치 확인」에서 옮긴 자리
+    var s0 = saves();
+    s0.push({ key: key, label: '채움 경기', ts: old.ts });
+    localStorage.setItem(key, JSON.stringify(old)); localStorage.setItem('sl_saves', JSON.stringify(s0));
+    openGameOneImport();
+    type('goTa', '채움원정'); type('goTh', '채움홈'); type('goDate', '2026-09-01'); type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    var b = document.querySelector('#goPrev .go-fill');
+    ok(b && b.textContent === '기존 경기에 타점만 채우기 (8점)', '버튼 — ' + (b && b.textContent));
+    ok(b.getBoundingClientRect().height >= 44, '버튼 높이 44px 이상 — ' + JSON.stringify({ h: b.getBoundingClientRect().height, mh: getComputedStyle(b).minHeight, ov: $('goOverlay').className, d: getComputedStyle($('goOverlay')).display }));
+    var cs = [], c0 = window.cloudSave, ev = [], g0 = window.gtag;
+    window.cloudSave = function (k) { cs.push(k); };
+    window.gtag = function (e, n, p) { ev.push([n, p]); };
+    try { b.click(); } finally { window.cloudSave = c0; window.gtag = g0; }
+    var g = JSON.parse(localStorage.getItem(key));
+    eq(rbiOf(g, '배성웅'), ['3루타:2', '홈런:1', '안타:2', '2루타:2'], '배성웅 타점 채움');
+    eq(rbiOf(g, '이현준'), ['홈런:1', '안타:1', '내야안타:0', '2루타:1'], '이현준 타점 채움');
+    eq(g.abs.filter(function (a) { return a.bname === '배성웅' && a.res === '안타'; })[0].x, 0.31, '옮긴 위치는 그대로');
+    eq([saves().length, cs], [s0.length, [key]], '새 경기 없음 · cloudSave 한 번');
+    eq(ev.filter(function (e) { return e[0] === 'gameone_rbi_fill'; }).map(function (e) { return e[1]; }), [{ games: 1, added: 8, skipped: 0 }], 'GA4 숫자만');
+    ok($('toastTxt').textContent.indexOf('기존 경기에 타점 8점을 채웠습니다') >= 0, '토스트: ' + $('toastTxt').textContent);
+    ok(!$('goOverlay').classList.contains('show'), '입력창 닫힘');
+  });
+
+  test('지금 열린 경기에 타점만 채우기 → 화면의 AS 를 고치고 기록 수정과 같은 저장(_saveEditImmediate)', async function () {
+    var key = 'sl_1790000800200', old = oldStyle(window.SLGameOneImport.buildGameOneGame({ awayText: AWAY, homeText: HOME, th: '열린홈', ta: '열린원정', date: '2026-09-02', now: 1790000800200 }).game);
+    var s0 = saves();
+    s0.push({ key: key, label: '열린 경기', ts: old.ts });
+    localStorage.setItem(key, JSON.stringify(old)); localStorage.setItem('sl_saves', JSON.stringify(s0));
+    restoreGame(key);
+    await T.sleep(300);
+    eq(_curSaveKey, key, '경기 열림');
+    openGameOneImport();
+    type('goTa', '열린원정'); type('goTh', '열린홈'); type('goDate', '2026-09-02'); type('goAway', AWAY); type('goHome', HOME);
+    await T.sleep(300);
+    var b = document.querySelector('#goPrev .go-fill');
+    ok(b && b.textContent === '기존 경기에 타점만 채우기 (8점)', '버튼 — ' + (b && b.textContent));
+    var c0 = window.cloudSave;
+    window.cloudSave = function () {};
+    try { b.click(); } finally { window.cloudSave = c0; }
+    eq(rbiOf(AS, '배성웅'), ['3루타:2', '홈런:1', '안타:2', '2루타:2'], '화면의 경기(AS) 타점 채움');
+    eq(rbiOf(JSON.parse(localStorage.getItem(key)), '이현준'), ['홈런:1', '안타:1', '내야안타:0', '2루타:1'], '저장도 됨');
+    eq(saves().length, s0.length, '새 경기 없음');
   });
 })();

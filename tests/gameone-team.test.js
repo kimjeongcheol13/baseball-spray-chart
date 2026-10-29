@@ -160,7 +160,116 @@
     eq([h.bat.g, h.ss.bat.g], [70, 14], 'QR 통산 70 · 팀 시즌 14 그대로');
   });
 
+  // ── 게임원 팀 연결(매일 자동) — 서버 쪽 추출(.github/scripts/gameone_extract.mjs) → JSON → 앱이 받아 넣기 ──
+  // 실제 게임원 HTML 모양(2026-10-29 확인)을 줄인 것: 주석 처리된 칸 · 화면 고정 칸 때문에 두 번 그린 표 · 선수단 group_code · 통산 머리 · 숨은 투수 칸
+  function rowsHtml(rows) {
+    return '<table><thead><tr><th>순위</th><th>이름</th></tr></thead><tbody>' + rows.split('\n').map(function (l) {
+      return '<tr>' + l.split('\t').map(function (v, i) {
+        return '<td>' + (i === 1 ? '<a href="#">' + v + '</a>' : v) + '</td>' + (i === 5 ? '<!--<td>1.000</td>-->' : '') + (i === 8 ? '<!-- <td>--><!--</td>-->' : '');
+      }).join('\n') + '</tr>';
+    }).join('\n') + '</tbody></table>';
+  }
+  function rankHtml(rows) { return '<html><head><title>테스트팀</title></head><body><select><option value="2025">2025</option><option value="2026" selected>2026</option></select>' + rowsHtml(rows) + rowsHtml(rows) + '</body></html>'; }
+  var LIST_HTML = [['김호인', '97', 'KHI0000000001'], ['임꺽정', '14', 'LKJ0000000001'], ['심청', '10', 'SC00000000001'], ['홍길동', '20', 'HGD0000000001'], ['홍길동', '55', 'HGD0000000002']]
+    .map(function (p) { return '<li><img src="/x.png" group_code="' + p[2] + '"><div><span class="rank">내야수</span> ' + p[0] + '(' + p[1] + ')</div></li>'; }).join('\n');
+  function careerHtml(name, bat, pit) {
+    function pairs(o) { return Object.keys(o).map(function (k) { return '<li><span class="title">' + k + '</span> <span class="score">' + o[k] + '</span></li>'; }).join(''); }
+    return '<div style="font-size:18px;font-weight:700">' + name + '</div><div>우투우타</div><div>비선출</div><div>대산고등학교</div><div class="player_info_detail"></div>' +
+      '<div class="hitter_section"><ul>' + pairs(bat) + '</ul></div><div class="pitcher_section" style="display:none"><ul>' + pairs(pit) + '<!--<li><span class="title">경기수</span><span class="score">999</span></li>--></ul></div>';
+  }
+  var PAGES = { hit: rankHtml(BAT_ROWS), pit: rankHtml(PIT_ROWS), list: LIST_HTML, careers: {
+    KHI0000000001: careerHtml('김호인', { '경기수': 66, '타율': '0.615', '타석': 236, '홈런': 25, 'OPS': '1.842' }, { '경기수': 20, '이닝': '22 ⅓', '방어율': '5.33', '자책점': 17 }),
+    LKJ0000000001: careerHtml('임꺽정', { '경기수': 30, '타율': '0.400' }, { '경기수': 40, '이닝': '100' }),
+    SC00000000001: careerHtml('심청', { '경기수': 0 }, { '경기수': 0 }),
+    HGD0000000001: careerHtml('홍길동', { '경기수': 5 }, {}), HGD0000000002: careerHtml('홍길동', { '경기수': 9 }, {}) } };
+  var DATA, realFetch = window.fetch, calls = [], reply;
+  function fakeFetch(u) { calls.push(String(u)); return reply(); }
+  function json(o, st) { return function () { return Promise.resolve(new Response(JSON.stringify(o), { status: st || 200 })); }; }
+
+  test('서버 추출: 주석 칸 지움 · 두 번 그린 표는 한 번 · 선수단 · 통산(숨은 투수 칸) → 앱이 넣을 JSON', async function () {
+    var X = await import('/.github/scripts/gameone_extract.mjs');
+    var t = P(X.rankRows(PAGES.hit) + '\n' + X.rankRows(PAGES.pit));
+    eq([t.bat.length, t.pit.length, t.warnings], [7, 4, []], '타자 7 · 투수 4 · 경고 없음(주석 칸이 남으면 31칸이라 경고)');
+    eq([X.season(PAGES.hit), X.title(PAGES.hit)], [2026, '테스트팀'], '시즌 · 팀 이름');
+    eq(X.roster(LIST_HTML).map(function (p) { return p.name + p.number + ':' + p.code; }), ['김호인97:KHI0000000001', '임꺽정14:LKJ0000000001', '심청10:SC00000000001', '홍길동20:HGD0000000001', '홍길동55:HGD0000000002'], '선수단');
+    DATA = X.teamData(window.SLGameOne, PAGES, 1790000000000);
+    eq(Object.keys(DATA.players).sort(), ['김호인', '임꺽정'], '0경기(심청) · 같은 이름 둘(홍길동)은 통산에서 뺀다');
+    var k = DATA.players['김호인'];
+    eq([k.hand, k.school, k.bat.g, k.bat.ops, k.pit.g, k.pit.outs, k.pit.era], ['우투우타', '대산고등학교', 66, 1.842, 20, 67, 5.33], '김호인 통산 — 투수 999(주석)는 안 읽음');
+    eq([DATA.v, DATA.at, DATA.team, DATA.season, DATA.bat.length, DATA.pit.length], [1, 1790000000000, '테스트팀', 2026, 7, 4], '머리');
+  });
+
+  test('팀 연결: ＋ 카드에 주소 → 「연결」 → 통산 · 팀 시즌 전원 저장(불러옴) · 칩 · 알림', async function () {
+    localStorage.removeItem('sl_go_career');
+    localStorage.removeItem('sl_go_team');
+    window.fetch = fakeFetch;
+    reply = json(DATA);
+    setBatterView('scope', 'season');
+    tap(addBtn());
+    var c = card();
+    ok(c.querySelector('.go-cr-sync') && /매일 저절로/.test(c.querySelector('.go-cr-sync').textContent), '연결 칸 · 안내');
+    c.querySelector('.go-cr-club').value = 'https://www.gameone.kr/club/info/ranking/hitter?club_idx=14797&season=2026';
+    tap(c.querySelector('.go-cr-conn'));
+    await T.sleep(150);
+    ok(/\/gameone-data\/14797\.json\?t=\d+$/.test(calls[0]), '받는 주소 — ' + calls[0]);
+    var s = stored();
+    eq([s['김호인'].bat.g, s['김호인'].auto, s['김호인'].ss.bat.g, s['김호인'].ss.team, s['김호인'].ss.season, s['홍길동'].bat, s['홍길동'].ss.bat.g, s['허균'].ss.pit.era],
+      [66, 1, 14, '테스트팀', 2026, undefined, 4, 12.32], '통산 · 팀 시즌');
+    ok(!('number' in s['김호인'].ss.bat) && !('name' in s['김호인'].ss.bat), '숫자 칸만 남김');
+    eq(JSON.parse(localStorage.getItem('sl_go_team')), { club: '14797', team: '테스트팀', at: 1790000000000 }, 'sl_go_team');
+    ok(toastTxt().indexOf('테스트팀 — 통산 2명 · 시즌 타자 7명 · 투수 4명') >= 0, '알림 — ' + toastTxt());
+    ok(NAMES.every(function (n) { return chipOf(n).length === 1; }), '칩 9개');
+    open('김호인');
+    c = card();
+    ok(/불러옴$/.test(c.querySelector('.an-hd-note').textContent), '통산 머리 — ' + c.querySelector('.an-hd-note').textContent);
+    ok(/^게임원 팀 시즌 기록 · 테스트팀 2026시즌 · \d+월 \d+일 불러옴$/.test(c.querySelector('.go-cr-ss .go-cr-sub').textContent), '팀 시즌 머리 — ' + c.querySelector('.go-cr-ss .go-cr-sub').textContent);
+  });
+
+  test('앱을 열 때 받기: 같은 데이터면 그대로 · 나중에 붙여넣은 기록은 남기고 · 더 새 데이터면 바꾼다', async function () {
+    eq(await goTeamPull(false), { same: 1 }, '같은 날 데이터');
+    open('김호인');
+    paste(CAREER);
+    press('.go-cr-save');
+    var older = JSON.parse(JSON.stringify(DATA));
+    older.at = Date.now() - 1000;
+    older.players['임꺽정'].bat.g = 31;
+    reply = json(older);
+    var r = await goTeamPull(false);
+    var s = stored();
+    eq([r.car, s['김호인'].bat.g, s['김호인'].auto, s['임꺽정'].bat.g], [2, 68, undefined, 31], '김호인은 붙여넣은 68 · 임꺽정은 새 31');
+    var newer = JSON.parse(JSON.stringify(DATA));
+    newer.at = Date.now() + 60000;
+    reply = json(newer);
+    await goTeamPull(false);
+    eq([stored()['김호인'].bat.g, stored()['김호인'].auto], [66, 1], '더 새 데이터는 붙여넣은 것도 바꾼다');
+  });
+
+  test('팀 연결: 아직 받는 팀이 아니면(404) 번호만 연결해 둔다 · 인터넷 오류 · 주소 아님', async function () {
+    localStorage.removeItem('sl_go_team');
+    setBatterView('sel', '');
+    tap(addBtn());
+    var c = card(), msg = function () { return card().querySelector('.go-cr-sync-msg').textContent; };
+    c.querySelector('.go-cr-club').value = 'https://www.gameone.kr/club/?club_idx=';
+    tap(c.querySelector('.go-cr-conn'));
+    ok(/club_idx=숫자/.test(msg()) && !localStorage.getItem('sl_go_team'), '주소 아님 — ' + msg());
+    reply = json({}, 404);
+    c.querySelector('.go-cr-club').value = '12345';
+    tap(c.querySelector('.go-cr-conn'));
+    await T.sleep(150);
+    ok(/팀 번호 12345 연결해 두었어요/.test(msg()), '404 — ' + msg());
+    eq(JSON.parse(localStorage.getItem('sl_go_team')), { club: '12345' }, '번호만 저장(다음에 열 때 다시 받아 본다)');
+    reply = function () { return Promise.reject(new TypeError('Failed to fetch')); };
+    tap(card().querySelector('.go-cr-conn'));
+    await T.sleep(150);
+    ok(/인터넷 연결/.test(msg()), '오류 — ' + msg());
+    setBatterView('sel', '');
+    tap(addBtn());
+    ok(/팀 번호 12345 연결됨 · 아직 받은 기록이 없어요/.test(card().querySelector('.go-cr-sync').textContent), '연결 칸 안내');
+  });
+
   test('(정리) 이 파일이 만든 저장 경기 · 설정을 지운다', function () {
+    window.fetch = realFetch;
+    localStorage.removeItem('sl_go_team');
     localStorage.removeItem(KEY);
     localStorage.setItem('sl_saves', JSON.stringify(JSON.parse(localStorage.getItem('sl_saves') || '[]').filter(function (s) { return s.key !== KEY; })));
     localStorage.removeItem('sl_go_career');

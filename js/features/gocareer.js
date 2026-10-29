@@ -7,8 +7,12 @@
 //   · 타자 · 투수 중 한쪽만 붙여넣으면 그쪽만 바꾸고 다른 쪽은 남긴다
 //   · 팀 기록통계(타자랭킹 · 투수랭킹) 페이지를 붙여넣으면 = parseGameOneTeam — 표에 있는 선수 전원을 이름으로 ss: { at, bat, pit } 에 넣는다.
 //     그 팀 · 그 시즌 경기만이라 통산(bat · pit)과 따로 두고 따로 보여 준다
+//   · 게임원 팀 연결(매일 자동): GitHub 이 매일 새벽 받아 둔 팀 데이터(.github/workflows/gameone-sync.yml → gameone-data 브랜치 <팀 번호>.json)를
+//     앱을 열 때 읽어 새것이면 같은 자리(bat · pit · ss)에 넣는다(auto 표시). 팀 번호 = sl_go_team { club, team, at }
 
 const KEY = 'sl_go_career';
+const TEAM = 'sl_go_team';
+const DATA = club => `https://raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/gameone-data/${club}.json`;
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const _nm = s => String(s || '').replace(/\s+/g, '');
 const _i = v => (v == null ? '—' : String(v));
@@ -20,6 +24,10 @@ function _all() {
   try { const o = JSON.parse(localStorage.getItem(KEY)); return o && o.p && typeof o.p === 'object' ? o.p : {}; } catch (e) { return {}; }
 }
 function _put(p) { localStorage.setItem(KEY, JSON.stringify({ p })); }
+function _team() {
+  try { const t = JSON.parse(localStorage.getItem(TEAM)); return t && /^\d{1,7}$/.test(t.club) ? t : null; } catch (e) { return null; }
+}
+const _md = at => { const d = new Date(+at); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
 
 const _dl = items => `<dl class="pf-counts">${items.map(([l, v]) => `<div><dt>${l}</dt><dd>${_esc(v)}</dd></div>`).join('')}</dl>`;
 
@@ -36,13 +44,30 @@ function _pit(p) {
 }
 // 팀 기록 페이지에서 받은 시즌 기록 — 통산과 따로(그 팀 · 그 시즌 경기만이라)
 function _ss(s) {
-  const d = new Date(s.at);
+  const who = s.team ? ` · ${_esc(s.team)}${s.season ? ` ${+s.season}시즌` : ''}` : '';
   return `
     <div class="go-cr-ss">
-      <p class="go-cr-sub">게임원 팀 시즌 기록 · ${d.getMonth() + 1}월 ${d.getDate()}일 붙여넣음</p>
+      <p class="go-cr-sub">게임원 팀 시즌 기록${who} · ${_md(s.at)} ${s.auto ? '불러옴' : '붙여넣음'}</p>
       ${s.bat ? _bat(s.bat) : ''}
       ${s.pit ? _pit(s.pit) : ''}
-      <div class="an-note">게임원 팀 기록통계 숫자예요. 통산이 아니라 붙여넣은 시즌 · 그 팀 경기만이에요.</div>
+      <div class="an-note">게임원 팀 기록통계 숫자예요. 통산이 아니라 ${s.auto ? '그' : '붙여넣은'} 시즌 · 그 팀 경기만이에요.</div>
+    </div>`;
+}
+
+// 게임원 팀 연결 칸(「＋」 새 선수 카드 맨 위) — 주소를 넣으면 그 팀 데이터를 받고, 다음부터는 앱을 열 때 저절로
+function _sync() {
+  const t = _team();
+  return `
+    <div class="go-cr-sync">
+      <p class="go-cr-sub">게임원 팀 연결 · 매일 자동</p>
+      <p class="go-cr-how">${t && t.at ? `${_esc(t.team || '팀')}(팀 번호 ${t.club}) 연결됨 · ${_md(t.at)} 기록. 앱을 열 때 새 기록이 있으면 저절로 바뀌어요.`
+        : t ? `팀 번호 ${t.club} 연결됨 · 아직 받은 기록이 없어요. 매일 받는 팀 목록에 들어가면 저절로 들어와요.`
+        : '게임원 팀 페이지 주소를 넣으면 팀 선수 전원의 통산과 이번 시즌 팀 기록을 불러오고, 그다음부터는 매일 저절로 새로 받아요.'}</p>
+      <div class="go-cr-acts">
+        <input type="url" class="go-cr-club" aria-label="게임원 팀 페이지 주소" placeholder="https://www.gameone.kr/club/?club_idx=…" value="${t ? `https://www.gameone.kr/club/?club_idx=${t.club}` : ''}">
+        <button type="button" class="go-cr-conn" onclick="goTeamConnect(this)">${t ? '다시 받기' : '연결'}</button>
+      </div>
+      <p class="go-cr-msg go-cr-sync-msg" role="status"></p>
     </div>`;
 }
 
@@ -62,7 +87,8 @@ export function goCareerCard(name, games, pa) {
   const meta = has ? [c.hand, c.bg, c.school].filter(Boolean).map(_esc).join(' · ') : '';
   return `
     <section class="an-card go-cr" id="goCareer" data-name="${_esc(name)}" data-g="${+games || 0}" data-pa="${+pa || 0}">
-      <header class="an-hd"><h3>게임원 통산</h3><span class="an-hd-note">${d ? `${d.getMonth() + 1}월 ${d.getDate()}일 붙여넣음` : '게임원 선수 페이지 기록'}</span></header>
+      <header class="an-hd"><h3>게임원 통산</h3><span class="an-hd-note">${d ? `${d.getMonth() + 1}월 ${d.getDate()}일 ${c.auto ? '불러옴' : '붙여넣음'}` : '게임원 선수 페이지 기록'}</span></header>
+      ${add ? _sync() : ''}
       ${has ? `
         ${meta ? `<p class="go-cr-meta">${meta}</p>` : ''}
         ${c.bat ? _bat(c.bat) : ''}
@@ -99,7 +125,7 @@ function _saveTeam(box, t, msg) {
   rows.forEach(([k, list]) => list.forEach(r => {
     if (/^__/.test(r.name)) return;
     const o = all[r.name] || (all[r.name] = {});
-    o.ss = Object.assign({}, o.ss, { at, [k]: r });
+    o.ss = Object.assign({}, o.ss && !o.ss.auto ? o.ss : null, { at, [k]: r });   // 불러온(auto) 기록 위에 붙이면 새로 시작
   }));
   try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
   if (window.showToast) window.showToast(`게임원 팀 기록 저장 — 타자 ${t.bat.length}명 · 투수 ${t.pit.length}명`, false);
@@ -160,17 +186,17 @@ export function goCareerQR(btn) {
   btn.setAttribute('aria-expanded', 'true');
 }
 
-// 링크로 받은 기록은 믿지 않는다: 이름 · 글자 길이를 자르고, 숫자(또는 null) 칸만 남긴다
+// 링크 · 팀 데이터로 받은 기록은 믿지 않는다: 이름 · 글자 길이를 자르고, 숫자(또는 null) 칸만 남긴다
+function _nums(x) {
+  if (!x || typeof x !== 'object') return null;
+  const r = {};
+  Object.keys(x).forEach(k => { const v = x[k]; if (/^[a-z0-9]{1,8}$/i.test(k) && (v === null || (typeof v === 'number' && isFinite(v)))) r[k] = v; });
+  return Object.keys(r).length ? r : null;
+}
 function _clean(o) {
   if (!o || typeof o !== 'object') return null;
   const s = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-  const nums = x => {
-    if (!x || typeof x !== 'object') return null;
-    const r = {};
-    Object.keys(x).forEach(k => { const v = x[k]; if (/^[a-z0-9]{1,8}$/i.test(k) && (v === null || (typeof v === 'number' && isFinite(v)))) r[k] = v; });
-    return Object.keys(r).length ? r : null;
-  };
-  const key = s(o.k || o.name, 40), bat = nums(o.bat), pit = nums(o.pit);
+  const key = s(o.k || o.name, 40), bat = _nums(o.bat), pit = _nums(o.pit);
   if (!key || /^__/.test(key) || !(bat || pit)) return null;
   return { key, rec: { at: +o.at > 0 ? +o.at : Date.now(), name: s(o.name, 20), hand: s(o.hand, 8), bg: s(o.bg, 8), school: s(o.school, 30), bat, pit } };
 }
@@ -203,11 +229,79 @@ export function goCareerFromLink() {
   toast(`📱 ${c.key} 게임원 통산을 받았어요`);
 }
 
+// 팀 데이터(gameone_extract.mjs teamData) → sl_go_career. 이 기기에서 데이터보다 나중에 붙여넣은 기록은 남긴다
+function _applyTeam(d) {
+  const all = _all(), at = +d.at, by = {};
+  const ss = { at, auto: 1, team: String(d.team || '').slice(0, 40), season: +d.season || null };
+  Object.keys(d.players || {}).forEach(n => {
+    const c = _clean(Object.assign({}, d.players[n], { k: n, name: n, at }));
+    if (!c || +(all[c.key] || {}).at > at) return;
+    all[c.key] = Object.assign(c.rec, { auto: 1, ss: (all[c.key] || {}).ss });
+  });
+  [['bat', d.bat], ['pit', d.pit]].forEach(([k, list]) => (Array.isArray(list) ? list : []).forEach(r => {
+    const n = String((r && r.name) || '').trim().slice(0, 40), v = _nums(r);
+    if (n && !/^__/.test(n) && v) (by[n] = by[n] || {})[k] = v;
+  }));
+  Object.keys(by).forEach(n => {
+    const o = all[n] || (all[n] = {});
+    if (o.ss && +o.ss.at > at) return;
+    o.ss = Object.assign({}, ss, { bat: by[n].bat || null, pit: by[n].pit || null });
+  });
+  _put(all);
+  return { car: Object.keys(d.players || {}).length, bat: Object.keys(by).filter(n => by[n].bat).length, pit: Object.keys(by).filter(n => by[n].pit).length, first: Object.keys(by)[0] };
+}
+
+// 연결한 팀의 오늘 데이터를 받아 넣는다. 돌려주는 값: { status }(못 받음) · { same } · { car, bat, pit, first }
+export async function goTeamPull(force) {
+  const t = _team();
+  if (!t) return null;
+  let d;
+  try {
+    const r = await fetch(`${DATA(t.club)}?t=${Date.now()}`);   // ?t= — sw.js 가 GET 을 캐시해 어제 파일을 먼저 주지 않게
+    if (!r.ok) return { status: r.status };
+    d = await r.json();
+  } catch (e) { return { status: 0 }; }
+  if (!d || d.v !== 1 || !(+d.at > 0)) return { status: 0 };
+  if (!force && +d.at === +t.at) return { same: 1 };
+  let n;
+  try { n = _applyTeam(d); } catch (e) { return { status: 0 }; }
+  localStorage.setItem(TEAM, JSON.stringify({ club: t.club, team: String(d.team || '').slice(0, 40), at: +d.at }));
+  return n;
+}
+
+// 「연결」 · 「다시 받기」: 주소(club_idx=숫자) 또는 팀 번호만 넣어도 된다
+export async function goTeamConnect(btn) {
+  const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-sync-msg');
+  const v = box.querySelector('.go-cr-club').value, m = /club_idx=(\d{1,7})/.exec(v) || /^\s*(\d{1,7})\s*$/.exec(v);
+  if (!m) { msg.textContent = '게임원 팀 페이지 주소를 넣어 주세요. 주소에 club_idx=숫자 가 있어야 해요.'; return; }
+  const old = _team();
+  if (!old || old.club !== m[1]) localStorage.setItem(TEAM, JSON.stringify({ club: m[1] }));
+  btn.disabled = true;
+  msg.textContent = '불러오는 중…';
+  const r = await goTeamPull(true);
+  btn.disabled = false;
+  if (r.status === 404) { msg.textContent = `팀 번호 ${m[1]} 연결해 두었어요. 이 팀은 아직 매일 받는 팀 목록에 없어요 — 목록에 들어가면 다음 날부터 저절로 들어와요.`; return; }
+  if (r.status != null) { msg.textContent = '불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'; return; }
+  const t = _team();
+  if (window.showToast) window.showToast(`${t.team || '게임원 팀'} — 통산 ${r.car}명 · 시즌 타자 ${r.bat}명 · 투수 ${r.pit}명 불러옴`, false);
+  if (window.selectBatterSeason && (box.dataset.name || r.first)) { window.selectBatterSeason(box.dataset.name || r.first); _showChip(); }
+  else _redraw(box);
+}
+
+// 앱을 열 때: 연결한 팀이 있으면 조용히 받아 두고, 통산 카드가 떠 있으면 다시 그린다
+async function _autoPull() {
+  const r = await goTeamPull(false);
+  const box = r && r.car != null && document.getElementById('goCareer');
+  if (box) _redraw(box);
+}
+
 if (typeof window !== 'undefined') {
   window.goCareerSave = goCareerSave;
   window.goCareerClear = goCareerClear;
   window.goCareerQR = goCareerQR;
   window.goCareerFromLink = goCareerFromLink;
-  const run = () => setTimeout(goCareerFromLink, 0);   // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게
+  window.goTeamConnect = goTeamConnect;
+  window.goTeamPull = goTeamPull;
+  const run = () => setTimeout(() => { goCareerFromLink(); _autoPull(); }, 0);   // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 }

@@ -259,6 +259,8 @@
 .go-cr-meta { margin: 0 0 8px; font-size: 12px; color: var(--an-ink2); }
 .go-cr-ss { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--an-line); }
 .go-cr-sub { margin: 0; font-size: 13px; font-weight: 700; color: var(--an-ink); }
+.go-cr-sync { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--an-line); }
+.go-cr-club { flex: 1; min-width: 0; height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-raised); color: var(--an-ink); font: 13px var(--font); }
 .go-cr-h { margin: 10px 0 6px; font-size: 12px; font-weight: 700; color: var(--an-ink2); }
 .go-cr-paste { margin-top: 10px; }
 .go-cr-paste summary { cursor: pointer; padding: 6px 0; font: 700 12px var(--font); color: var(--an-accent); }
@@ -266,7 +268,7 @@
 .go-cr-ta { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-raised); color: var(--an-ink); font: 13px var(--mono); resize: vertical; }
 .go-cr-acts { display: flex; gap: 8px; margin-top: 8px; }
 .go-cr-acts button { height: 36px; padding: 0 16px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-raised); color: var(--an-ink); font: 700 13px var(--font); cursor: pointer; }
-.go-cr-acts .go-cr-save { border-color: var(--an-accent); background: var(--an-accent); color: #fff; }
+.go-cr-acts .go-cr-save, .go-cr-acts .go-cr-conn { border-color: var(--an-accent); background: var(--an-accent); color: #fff; }
 .go-cr-msg { margin: 6px 0 0; font-size: 12px; color: var(--an-ink); }
 .go-cr-msg:empty { display: none; }
 .go-cr-send { margin-top: 10px; }
@@ -275,5 +277,6 @@
 @media (max-width: 720px) {
   .go-cr-paste summary { display: flex; align-items: center; min-height: 44px; }
   .go-cr-acts button { height: 44px; }
-  .go-cr-ta { font-size: 16px; }   /* iOS 입력 확대 방지 */
+  .go-cr-ta, .go-cr-club { font-size: 16px; }   /* iOS 입력 확대 방지 */
+  .go-cr-club { height: 44px; }
 }

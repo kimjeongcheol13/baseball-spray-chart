@@ -37,14 +37,16 @@
     });
   });
 
-  // 이미지에 그린 글자 · 그림의 사각형을 모은다 (그 크기의 캔버스만) — 겹치거나 밖으로 나간 것을 찾는다
+  // 이미지에 그린 글자 · 그림의 사각형을 모은다 (그 크기의 캔버스만, 이미지 픽셀 기준) — 겹치거나 밖으로 나간 것을 찾는다
   async function boxes(W, H, mode) {
     var P = CanvasRenderingContext2D.prototype, ft = P.fillText, di = P.drawImage, dl = window._downloadCanvas, out = [], got = false;
     var mine = function (cx) { return cx.canvas.width === W && cx.canvas.height === H; };
     P.fillText = function (t, x, y) {
       if (mine(this)) {
         var m = this.measureText(t), a = this.textAlign, l = a === 'center' ? x - m.width / 2 : (a === 'right' || a === 'end') ? x - m.width : x;
-        out.push({ k: String(t).trim(), l: l, r: l + m.width, t: y - m.actualBoundingBoxAscent, b: y + m.actualBoundingBoxDescent });
+        // 이미지 픽셀로 바꿔 잰다 (statcard.js 는 540 기준 좌표에 배율 변환을 걸고 그린다)
+        var M = this.getTransform(), X = function (v) { return M.a * v + M.e; }, Y = function (v) { return M.d * v + M.f; };
+        out.push({ k: String(t).trim(), l: X(l), r: X(l + m.width), t: Y(y - m.actualBoundingBoxAscent), b: Y(y + m.actualBoundingBoxDescent) });
       }
       return ft.apply(this, arguments);
     };

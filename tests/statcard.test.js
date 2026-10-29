@@ -1,4 +1,4 @@
-// 성적 카드 3종 (js/features/statcard.js) — core.js _drawCard 를 바꿔 낀 새 그림: 개인 · 팀 · 시즌 · 빈 상태
+// 성적 카드 3종 (js/features/statcard.js) — core.js _drawCard 를 바꿔 낀 새 그림: 개인 · 팀 · 시즌 · 빈 상태 · GAME REPORT 이미지(pgExport)
 //  · 글꼴은 Noto Sans KR · Oswald 둘만 (fillText 마다) · 크기(개인 · 시즌 1080×1920, 팀 1080×1080) · 빈 캔버스가 아님 · 데이터 글자(이름 · 상대 · 결과 · 결과 약어 · 배지 · 지표 · 전적)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
@@ -19,7 +19,7 @@
   // 그리는 동안 fillText 를 모두 기록 (글꼴 · 글자)
   async function drawn(fn) {
     var out = [], orig = CTX.fillText;
-    CTX.fillText = function (t) { out.push({ font: this.font, t: String(t) }); return orig.apply(this, arguments); };
+    CTX.fillText = function (t) { out.push({ font: this.font, t: String(t), cv: this.canvas }); return orig.apply(this, arguments); };
     try { await fn(); } finally { CTX.fillText = orig; }
     return out;
   }
@@ -118,5 +118,46 @@
       ok(has(calls, '저장된 경기가 없어요') && has(calls, '경기를 저장하면 시즌 기록이 쌓여요'), '시즌 빈 상태 문구');
       eq(badFonts(calls), [], '빈 시즌 글꼴');
     });
+  });
+
+  // GAME REPORT 이미지: pgExport 는 다 그린 캔버스를 _downloadCanvas 로 넘긴다 — 가로채서 크기 · 글꼴 · 글자를 본다
+  async function report(W, H, mode) {
+    var dl = window._downloadCanvas, cv = null, calls;
+    window._downloadCanvas = function (c) { cv = c; };
+    try { calls = await drawn(async function () { pgExport(W, H, mode); for (var i = 0; i < 80 && !cv; i++) await T.sleep(50); }); }
+    finally { window._downloadCanvas = dl; }
+    ok(cv, mode + ' 이미지를 만들지 않음');
+    return { cv: cv, calls: calls.filter(function (c) { return c.cv === cv; }) };   // 내보낸 캔버스에 그린 것만 (기다리는 사이 앱의 다른 캔버스 제외)
+  }
+
+  test('GAME REPORT 이미지: 스토리 1080×1920 · 피드 1080×1080 — 글꼴 · 점수 · 팀 이름 · 날짜 · 지표 · 코멘트', async function () {
+    var keepNote = $('pgAITxt').textContent;
+    try {
+      await isolated(async function () {
+        $('tHome').value = '테스트팀'; $('tAway').value = '미래팀';
+        AS.hs = 7; AS.as = 12; AS.batter = null;
+        AS.abs = [
+          pa('t1', '김테스트', '7', 'home', '1회초', '안타', { x: 0.3, y: 0.55, dir: 'LF', deg: 40 }),
+          pa('t1', '김테스트', '7', 'home', '3회초', '홈런', { x: 0.5, y: 0.04, dir: 'CF', deg: 90, rbi: 2 }),
+          pa('t2', '이타자', '12', 'home', '5회초', '삼진'),
+          pa('t2', '이타자', '12', 'home', '7회초', '볼넷'),
+        ];
+        var memo = '첫 문장입니다. 둘째 문장은 조금 더 길게 써서 코멘트 칸에서 줄이 나뉘게 합니다.';
+        $('pgAITxt').textContent = memo;
+        for (const [W, H, mode] of [[1080, 1920, 'story'], [1080, 1080, 'feed']]) {
+          var r = await report(W, H, mode);
+          check(r.cv, W, H, mode);
+          eq(badFonts(r.calls), [], mode + ' 글꼴');
+          // 팀 타율 = 안타 2 / (볼넷 뺀 3타석) · 안타 2 · 타점 2 · 삼진 1
+          ['GAME REPORT', _pgDate(), '테스트팀', '미래팀', '7', '12', '팀 타율', '.667', '삼진', '@spraylab2026'].forEach(function (t) {
+            ok(has(r.calls, t), mode + ' 이미지에 「' + t + '」 없음 — ' + text(r.calls).slice(0, 300));
+          });
+          var all = ' ' + text(r.calls).replace(/\|/g, ' ') + ' ';
+          ok(memo.split(' ').every(function (w) { return all.indexOf(' ' + w + ' ') >= 0; }), mode + ' 코멘트를 다 그리지 않음');
+        }
+        $('pgAITxt').textContent = '';
+        check((await report(1080, 1080, 'feed')).cv, 1080, 1080, '피드 (코멘트 없음)');
+      });
+    } finally { $('pgAITxt').textContent = keepNote; }
   });
 })();

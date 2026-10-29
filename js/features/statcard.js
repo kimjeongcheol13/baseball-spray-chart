@@ -1,4 +1,4 @@
-// 성적 카드 3종(개인 · 팀 · 시즌) — 방송 그래픽 스타일(야간 스코어보드). core.js 의 _drawCard 를 바꿔 낀다
+// 성적 카드 3종(개인 · 팀 · 시즌) + GAME REPORT 공유 이미지 — 방송 그래픽 스타일(야간 스코어보드). core.js 의 _drawCard · pgExport 를 바꿔 낀다
 //  · 무엇을 그릴지는 core.js 그대로 읽는다 (_cardPlayers · _cardStats · _cardAbText · _cardInn · _cardDate · _cardFmt · _readSavedGames · _isPull · _isCtr)
 //    선수 고르기 · 타석 고르기 · 배지 규칙 · 승무패 · 지표 계산은 core 의 _drawPersonalCard / _drawTeamCard / _drawSeasonCard 와 같다. 그리기만 새로
 //  · 효과 없음: 빛 번짐 · 그림자 · 흐린 큰 숫자 · 잔디 줄무늬 없이 평평한 남색 + 가는 선. 맨 위는 TV 스코어 버그, 로고는 꼬리에 한 번
@@ -69,12 +69,12 @@ const tokens = (list, n, u, gap, nw, uw) => list.reduce((a, t, i) => a.concat([
   [String(t[0]), nw || '700', n, FONT.num, t[2] || N.tx, n * .06], [t[1], uw || '500', u, FONT.kr, N.tx2, i < list.length - 1 ? gap : 0]]), []);
 
 // ── 바탕 · 꼬리 ────────────────────────────────────────
-// 캔버스 크기 · 화면 맞춤(높이 60% 안) · 평평한 남색
-function begin(cv, H) {
-  cv.width = W * SCALE; cv.height = H * SCALE;
+// 캔버스 크기 · 화면 맞춤(높이 60% 안) · 평평한 남색. sc = 배율(카드 2배 · GAME REPORT 는 내보낼 폭 / 540)
+function begin(cv, H, sc = SCALE) {
+  cv.width = W * sc; cv.height = H * sc;
   cv.style.width = '100%'; cv.style.height = 'auto'; cv.style.maxWidth = 'calc(60vh * ' + (W / H).toFixed(4) + ')'; cv.style.margin = '0 auto';
   const c = cv.getContext('2d');
-  c.setTransform(SCALE, 0, 0, SCALE, 0, 0); c.textBaseline = 'alphabetic'; c.letterSpacing = '0px';
+  c.setTransform(sc, 0, 0, sc, 0, 0); c.textBaseline = 'alphabetic'; c.letterSpacing = '0px';
   c.fillStyle = N.bg; c.fillRect(0, 0, W, H);
   return c;
 }
@@ -124,19 +124,21 @@ function gameBug(c, t1, t2, s1, s2, ours) {
   font(c, '600', 13, FONT.num); txt(c, window._cardDate(), xs[4] + dw / 2, cy + mid(c, '0'), N.tx2, 'center');
 }
 // 지표 띠: 줄마다 네 칸(가는 선으로 나눔) · 라벨 위 · 값 아래. 값은 한 기준선 · 한 크기(가장 긴 값에 맞춤). hi = 첫 줄의 주황 값 칸
+// 라벨: 영문은 Oswald 자간, 한글(팀 타율 · 안타 …)은 Noto 자간 없이. 줄 높이 72 미만이면 값은 24 까지
 function strip(c, x, y, w, rh, rows, hi) {
   panel(c, x, y, w, rh * rows.length);
   const cw = w / 4;
-  let z = 30;
-  rows.forEach(r => r.forEach(v => { z = Math.min(z, fitFont(c, v[1], '700', 30, FONT.num, cw - PAD * 2, 16)); }));
+  let z = rh < 72 ? 24 : 30;
+  rows.forEach(r => r.forEach(v => { z = Math.min(z, fitFont(c, v[1], '700', z, FONT.num, cw - PAD * 2, 16)); }));
   rows.forEach((r, j) => {
     const ry = y + rh * j;
     if (j) rule(c, x + PAD, ry, w - PAD * 2, L2);
     r.forEach((v, i) => {
       const cx = x + cw * i;
       if (i) vrule(c, cx, ry + 12, rh - 24, L3);
-      font(c, '600', 11, FONT.num); spacing(c, 1.5); txt(c, v[0], cx + PAD, ry + 22, N.tx3); spacing(c, 0);
-      font(c, '700', z, FONT.num); txt(c, v[1], cx + PAD, ry + rh - 14, v[1] === '-' ? N.tx3 : !j && i === hi ? N.acc : N.tx);
+      const kr = /[가-힣]/.test(v[0]);
+      font(c, kr ? '500' : '600', 11, kr ? FONT.kr : FONT.num); spacing(c, kr ? 0 : 1.5); txt(c, v[0], cx + PAD, ry + 20, N.tx3); spacing(c, 0);
+      font(c, '700', z, FONT.num); txt(c, v[1], cx + PAD, ry + rh - 13, v[1] === '-' ? N.tx3 : !j && i === hi ? N.acc : N.tx);
     });
   });
 }
@@ -214,13 +216,13 @@ function field(c, cx, cy, S, abs, mode) {
     });
 }
 // 스프레이 칸: 머리(제목 · 범례) · 칸에 꽉 차는 구장 (S = 높이 · 폭 중 작은 쪽, 폭에 걸리면 세로 가운데)
-function sprayPanel(c, y, h, t, abs, mode) {
-  panel(c, X, y, CW, h);
-  head(c, y, t);
-  legend(c, W - X - PAD, y + 26);
-  const st = stadium(), k = Math.max(st.lfDist, st.rfDist) / st.cfDist, top = y + 40 + 24, bot = y + h - PAD - 4;
-  const Sh = bot - top, S = Math.min(Sh, (CW / 2 - PAD - 32) / (k * Math.SQRT1_2));   // 32 = 폴 옆 거리 글자
-  field(c, W / 2, bot - (Sh - S) / 2, S, abs, mode);
+// x · w 를 주면 그 자리(GAME REPORT 피드의 왼쪽 칸), t 가 없으면 머리 없이 구장만
+function sprayPanel(c, y, h, t, abs, mode, x = X, w = CW) {
+  panel(c, x, y, w, h);
+  if (t) { head(c, y, t); legend(c, x + w - PAD, y + 26); }
+  const st = stadium(), k = Math.max(st.lfDist, st.rfDist) / st.cfDist, top = y + (t ? 40 + 24 : PAD + 14), bot = y + h - PAD - 4;
+  const Sh = bot - top, S = Math.min(Sh, (w / 2 - PAD - 32) / (k * Math.SQRT1_2));   // 32 = 폴 옆 거리 글자
+  field(c, x + w / 2, bot - (Sh - S) / 2, S, abs, mode);
 }
 
 // ── 타석 칸 ───────────────────────────────────────────
@@ -399,15 +401,16 @@ function team(cv) {
 }
 
 // ── 시즌 성적 카드 (저장된 전체 경기 집계) ─────────────────────
-// 당겨 · 센터 · 밀어 비율: 세 칸(라벨 + 숫자) + 한 줄 막대 (가장 큰 쪽 주황)
+// 당겨 · 센터 · 밀어 비율: 세 칸(라벨 + 숫자) + 한 줄 막대 (가장 큰 쪽 주황). 방향 있는 타구가 없으면 0% · 빈 막대(GAME REPORT)
 function dirPanel(c, y, h, dabs) {
-  const tot = dabs.length, pull = dabs.filter(window._isPull).length, ctr = dabs.filter(window._isCtr).length, oppo = tot - pull - ctr;
-  const n = [pull, ctr, oppo], pct = n.map(v => Math.round(v / tot * 100)), max = Math.max.apply(null, pct);
+  const tot = dabs.length || 1, pull = dabs.filter(window._isPull).length, ctr = dabs.filter(window._isCtr).length, oppo = dabs.length - pull - ctr;
+  const n = [pull, ctr, oppo], pct = n.map(v => Math.round(v / tot * 100)), max = Math.max.apply(null, pct) || -1;
   panel(c, X, y, CW, h);
   const ix = X + PAD, iw = CW - PAD * 2;
   ['당겨', '센터', '밀어'].forEach((l, i) => {
     runs(c, [[l, '500', 12, FONT.kr, N.tx3, 8], [pct[i] + '%', '700', 22, FONT.num, pct[i] === max ? N.acc : N.tx]], ix + iw / 3 * i, y + 34, 'left');
   });
+  if (!dabs.length) { c.fillStyle = N.line; c.fillRect(ix, y + h - PAD - 6, iw, 6); }
   let bx = ix;
   n.forEach((v, i) => {
     const w = iw * v / tot;
@@ -464,6 +467,117 @@ function season(cv) {
   sprayPanel(c, sy, sh, 'SEASON SPRAY', allAbs, 'dot');
   footer(c, H);
 }
+
+// ── GAME REPORT 공유 이미지 (스토리 1080×1920 · 피드 1080×1080) ─────────────
+// 공유 이미지 모듈이라 여기서 그린다 — 카드의 구장 · 지표 띠 · 방향 막대를 그대로 쓴다. core.js pgExport 를 바꿔 낀다(모달 버튼 onclick)
+//  · 계산은 core pgExport 와 같다: 팀 타율 = 안타 / (볼넷 · 사구 · 희생 뺀 타석, 0 이면 1) · 안타 · 타점 · 삼진 · 방향(_isPull · _isCtr) · 타구 = AS.abs 전부
+//  · 코멘트는 모달의 #pgAITxt 글 그대로. 모달 안 작은 그림(core _pgDrawMini)은 손대지 않는다
+
+// 결과 버그(스토리): 머리 띠 FINAL · 두 팀 줄(이름 + 큰 점수). 이긴 쪽 = 주황 띠 · 밝게, 진 쪽 흐리게, 비기면 둘 다 보통. 높이 반환
+function finalBug(c, y, th, ta, hs, as) {
+  const hh = 28, rh = 64, sw = 96, h = hh + rh * 2, sx = X + CW - sw, rows = [[th, hs, as], [ta, as, hs]];
+  c.save(); rr(c, X, y, CW, h, RAD); c.clip();
+  c.fillStyle = N.panel; c.fillRect(X, y, CW, h);
+  c.fillStyle = N.bg2; c.fillRect(X, y, CW, hh);
+  c.fillStyle = N.panel2; c.fillRect(sx, y + hh, sw, rh * 2);
+  rows.forEach((r, i) => { if (r[1] > r[2]) { c.fillStyle = N.acc; c.fillRect(X, y + hh + rh * i, 3, rh); } });
+  c.restore();
+  rr(c, X, y, CW, h, RAD); c.strokeStyle = N.line2; c.lineWidth = L1; c.stroke();
+  rule(c, X, y + hh, CW, L2); rule(c, X, y + hh + rh, CW, L2); vrule(c, sx, y, h, L3);
+  font(c, '600', 11, FONT.num); spacing(c, 2); txt(c, 'FINAL', X + PAD, y + 19, N.tx2); spacing(c, 0);
+  font(c, '500', 11, FONT.kr); txt(c, '득점', sx + sw / 2, y + 19, N.tx3, 'center');
+  rows.forEach((r, i) => {
+    const cy = y + hh + rh * i + rh / 2, col = r[1] < r[2] ? N.tx2 : N.tx;
+    fitFont(c, r[0], '900', 28, FONT.kr, sx - X - PAD * 2, 12); txt(c, r[0], X + PAD, cy + mid(c, r[0]), col);
+    font(c, '700', 48, FONT.num); txt(c, String(r[1]), sx + sw / 2, cy + mid(c, '0'), col, 'center');
+  });
+  return h;
+}
+// 한 줄 버그(피드): [홈 이름 | 홈 점수 | 원정 점수 | 원정 이름] — 점수가 가운데서 마주 본다. 이긴 쪽 바깥 끝에 주황 띠
+function lineBug(c, y, th, ta, hs, as) {
+  const h = 56, sw = 64, tw = (CW - sw * 2) / 2, mx = X + CW / 2, cy = y + h / 2;
+  c.save(); rr(c, X, y, CW, h, RAD); c.clip();
+  c.fillStyle = N.panel; c.fillRect(X, y, CW, h);
+  c.fillStyle = N.panel2; c.fillRect(mx - sw, y, sw * 2, h);
+  c.fillStyle = N.acc;
+  if (hs > as) c.fillRect(X, y, 3, h);
+  if (as > hs) c.fillRect(X + CW - 3, y, 3, h);
+  c.restore();
+  rr(c, X, y, CW, h, RAD); c.strokeStyle = N.line2; c.lineWidth = L1; c.stroke();
+  [mx - sw, mx, mx + sw].forEach(x => vrule(c, x, y, h, L3));
+  [[th, hs, as, X + PAD, 'left', mx - sw / 2], [ta, as, hs, X + CW - PAD, 'right', mx + sw / 2]].forEach(r => {
+    const col = r[1] < r[2] ? N.tx2 : N.tx;
+    fitFont(c, r[0], '900', 18, FONT.kr, tw - PAD * 2, 10); txt(c, r[0], r[3], cy + mid(c, r[0]), col, r[4]);
+    font(c, '700', 32, FONT.num); txt(c, String(r[1]), r[5], cy + mid(c, '0'), col, 'center');
+  });
+}
+// 코멘트 줄 나누기 (띄어쓰기 단위 — core _pgWrapText 와 같은 방식)
+function wrap(c, t, maxW) {
+  const out = [];
+  let line = '';
+  t.split(' ').forEach(w => { const s = line ? line + ' ' + w : w; if (line && c.measureText(s).width > maxW) { out.push(line); line = w; } else line = s; });
+  if (line) out.push(line);
+  return out;
+}
+// 코멘트 칸: 조용한 본문(Noto 500 · 흐린 글자 · 줄 간격 = 글자 + 8). h 를 주면 그 안에 들어가게 글자를 줄이고 세로 가운데,
+// h 가 0 이면 줄 수만큼의 높이. y 를 주면 그린다. 칸 높이 반환
+function note(c, x, y, w, h, t, size) {
+  let z = size, lines;
+  for (;;) {
+    font(c, '500', z, FONT.kr); lines = wrap(c, t, w - PAD * 2);
+    if (!h || z <= 10 || (lines.length - 1) * (z + 8) + z <= h - PAD * 2) break;
+    z -= .5;
+  }
+  const bh = (lines.length - 1) * (z + 8) + z, hh = h || bh + PAD * 2 + 2;
+  if (y != null) {
+    panel(c, x, y, w, hh);
+    font(c, '500', z, FONT.kr);
+    lines.forEach((l, i) => txt(c, l, x + PAD, y + (hh - bh) / 2 + z * .88 + i * (z + 8), N.tx2));
+  }
+  return hh;
+}
+// 스토리: 머리 줄 · 결과 버그 · 지표 띠 · 방향 막대 · 스프레이(남는 높이 전부) · 코멘트
+// 피드: 머리 줄 · 한 줄 버그 · 지표 띠 · 방향 막대 · [구장 | 코멘트]
+function gameReport(cv, sc, H, mode) {
+  const c = begin(cv, H, sc), AS = window.AS, abs = AS.abs, bot = H - FOOT - G;
+  const oab = abs.filter(a => !window._NOAB.includes(a.res)).length || 1;
+  const h = abs.filter(a => window._HITS.includes(a.res)).length;
+  const k = abs.filter(a => a.res === '삼진').length;
+  const rbi = abs.reduce((s, a) => s + (a.rbi || 0), 0);
+  const stats = [['팀 타율', (h / oab).toFixed(3).replace('0.', '.')], ['안타', String(h)], ['타점', String(rbi)], ['삼진', String(k)]];
+  const th = $('tHome').value || '홈팀', ta = $('tAway').value || '원정팀', dabs = abs.filter(a => a.deg != null);
+  const memo = (($('pgAITxt') || {}).textContent || '').trim();
+  font(c, '600', 11, FONT.num); spacing(c, 2); txt(c, 'GAME REPORT', X, 40, N.tx2); spacing(c, 0);
+  font(c, '500', 12, FONT.kr); txt(c, window._pgDate(), W - X, 40, N.tx2, 'right');
+  if (mode === 'story') {
+    const ty = 56 + finalBug(c, 56, th, ta, AS.hs, AS.as) + G, sy = ty + (72 + G) * 2;
+    strip(c, X, ty, CW, 72, [stats], 0);
+    dirPanel(c, ty + 72 + G, 72, dabs);
+    let ny = bot + G;
+    if (memo) { ny = bot - note(c, X, null, CW, 0, memo, 14); note(c, X, ny, CW, 0, memo, 14); }
+    sprayPanel(c, sy, ny - G - sy, 'SPRAY CHART', abs, 'dot');
+  } else {
+    lineBug(c, 56, th, ta, AS.hs, AS.as);
+    strip(c, X, 128, CW, 60, [stats], 0);
+    dirPanel(c, 204, 72, dabs);
+    const y = 292, nw = memo ? 204 : 0;
+    sprayPanel(c, y, bot - y, null, abs, 'dot', X, CW - (nw && nw + G));
+    if (memo) note(c, X + CW - nw, y, nw, bot - y, memo, 13);
+  }
+  footer(c, H);
+}
+// 먼저 작은 캔버스(1배)에 그려 빠진 글꼴 묶음을 받고(drawWithFonts), 내보낼 캔버스에는 한 번만 그린다 → 저장 · 공유(core _downloadCanvas)
+window.pgExport = function (Wpx, Hpx, mode) {
+  window.showToast('이미지 생성 중...', false, true);
+  setTimeout(() => {
+    const H = Math.round(Hpx * W / Wpx), warm = document.createElement('canvas'), cv = document.createElement('canvas');
+    drawWithFonts(warm, () => gameReport(warm, 1, H, mode)).then(() => {
+      gameReport(cv, Wpx / W, H, mode);
+      window._downloadCanvas(cv, 'spraylab_' + mode + '_' + Date.now() + '.png');
+      window.showToast('이미지 저장 완료 ✓', false);
+    });
+  }, 80);
+};
 
 // ── core 의 _drawCard 바꿔 끼우기 ─────────────────────────────
 // 빠진 웹폰트 묶음을 받은 뒤 다시 그린다(drawWithFonts). 그 사이 종류 · 선수를 바꿨으면 늦게 온 다시 그리기는 건너뛴다

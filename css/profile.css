@@ -257,6 +257,8 @@
 }
 /* ── 게임원 통산 (gocareer.js) — 타자 탭 [시즌] 맨 아래 ── */
 .go-cr-meta { margin: 0 0 8px; font-size: 12px; color: var(--an-ink2); }
+.go-cr-ss { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--an-line); }
+.go-cr-sub { margin: 0; font-size: 13px; font-weight: 700; color: var(--an-ink); }
 .go-cr-h { margin: 10px 0 6px; font-size: 12px; font-weight: 700; color: var(--an-ink2); }
 .go-cr-paste { margin-top: 10px; }
 .go-cr-paste summary { cursor: pointer; padding: 6px 0; font: 700 12px var(--font); color: var(--an-accent); }

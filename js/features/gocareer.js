@@ -5,6 +5,8 @@
 //     경기 키를 훑는 코드(d.abs 배열 확인)에 걸리지 않게 p 한 겹으로 감싼다
 //   · 붙여넣은 이름이 이 선수와 다르면 저장하지 않는다(이름 줄이 없으면 확인 없이 저장)
 //   · 타자 · 투수 중 한쪽만 붙여넣으면 그쪽만 바꾸고 다른 쪽은 남긴다
+//   · 팀 기록통계(타자랭킹 · 투수랭킹) 페이지를 붙여넣으면 = parseGameOneTeam — 표에 있는 선수 전원을 이름으로 ss: { at, bat, pit } 에 넣는다.
+//     그 팀 · 그 시즌 경기만이라 통산(bat · pit)과 따로 두고 따로 보여 준다
 
 const KEY = 'sl_go_career';
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -32,17 +34,29 @@ function _pit(p) {
     <h4 class="go-cr-h">투수</h4>
     ${_dl([['경기', _i(p.g)], ['승-패-세', `${_i(p.w)}-${_i(p.l)}-${_i(p.sv)}`], ['이닝', _ip(p.outs)], ['방어율', _f2(p.era)], ['WHIP', _f2(p.whip)], ['탈삼진', _i(p.k)], ['볼넷', _i(p.bb)], ['피안타율', _f3(p.avg)]])}`;
 }
+// 팀 기록 페이지에서 받은 시즌 기록 — 통산과 따로(그 팀 · 그 시즌 경기만이라)
+function _ss(s) {
+  const d = new Date(s.at);
+  return `
+    <div class="go-cr-ss">
+      <p class="go-cr-sub">게임원 팀 시즌 기록 · ${d.getMonth() + 1}월 ${d.getDate()}일 붙여넣음</p>
+      ${s.bat ? _bat(s.bat) : ''}
+      ${s.pit ? _pit(s.pit) : ''}
+      <div class="an-note">게임원 팀 기록통계 숫자예요. 통산이 아니라 붙여넣은 시즌 · 그 팀 경기만이에요.</div>
+    </div>`;
+}
 
-// 통산을 붙여넣은 선수 이름 — 타자 › 시즌 칩에 SprayLab 기록 없는 선수도 띄운다
+// 통산 · 팀 기록을 붙여넣은 선수 이름 — 타자 › 시즌 칩에 SprayLab 기록 없는 선수도 띄운다
 export function goCareerNames() {
   const a = _all();
-  return Object.keys(a).filter(n => a[n] && (a[n].bat || a[n].pit));
+  return Object.keys(a).filter(n => a[n] && (a[n].bat || a[n].pit || a[n].ss));
 }
 
 // name = SprayLab 선수 이름('' = 새 선수 추가: 이름은 붙여넣은 글에서) · games · pa = SprayLab 기록(비교 안내용)
 export function goCareerCard(name, games, pa) {
   const c = _all()[name];
   const has = !!(name && c && (c.bat || c.pit));
+  const s = name && c && c.ss && (c.ss.bat || c.ss.pit) ? c.ss : null;
   const add = !name;
   const d = has && c.at ? new Date(c.at) : null;
   const meta = has ? [c.hand, c.bg, c.school].filter(Boolean).map(_esc).join(' · ') : '';
@@ -57,13 +71,15 @@ export function goCareerCard(name, games, pa) {
         <div class="go-cr-acts go-cr-send"><button type="button" class="go-cr-qrbtn" aria-expanded="false" onclick="goCareerQR(this)">📱 폰으로 보내기 (QR)</button></div>
         <div class="go-cr-qr" hidden></div>`
       : `<div class="an-note">${add ? 'SprayLab에 타석 기록이 없는 선수도 게임원 선수 페이지를 붙여넣으면 통산을 볼 수 있어요. 이름은 붙여넣은 글에서 읽어요.' : '게임원에 이 선수 개인 기록이 있으면 붙여넣어 리그 통산을 같이 볼 수 있어요.'}</div>`}
+      ${s ? _ss(s) : ''}
       <details class="go-cr-paste"${add ? ' open' : ''}>
         <summary>${has ? '게임원 기록 다시 붙여넣기' : '게임원 기록 붙여넣기'}</summary>
         <p class="go-cr-how">크롬 · 사파리로 게임원 선수 페이지를 열고, 이름부터 투수기록 끝까지 길게 눌러 복사한 뒤 아래에 붙여넣으세요. 게임원 <b>앱</b>은 글자 복사가 안 돼요.</p>
+        <p class="go-cr-how"><b>팀 전원 한 번에:</b> 게임원 팀 페이지 › 기록통계 › 타자랭킹(투수랭킹)에서 전체 선택 → 복사해 붙여넣으세요. 그 시즌 · 그 팀 경기만이라 통산과 따로 보여요.</p>
         <textarea class="go-cr-ta" rows="5" aria-label="게임원 선수 페이지 붙여넣기" placeholder="${_esc(name || '선수 이름')}&#10;우투우타&#10;타자기록&#10;경기수 …"></textarea>
         <div class="go-cr-acts">
           <button type="button" class="go-cr-save" onclick="goCareerSave(this)">저장</button>
-          ${has ? '<button type="button" class="go-cr-del" onclick="goCareerClear(this)">지우기</button>' : ''}
+          ${has || s ? '<button type="button" class="go-cr-del" onclick="goCareerClear(this)">지우기</button>' : ''}
         </div>
         <p class="go-cr-msg" role="status"></p>
       </details>
@@ -77,17 +93,34 @@ function _showChip() {
   if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
+// 팀 기록 페이지: 표에 있는 선수 전원을 이름으로 — 통산(bat · pit)은 그대로 두고 ss 에만. 타자 · 투수 표를 따로 붙여도 다른 쪽은 남긴다
+function _saveTeam(box, t, msg) {
+  const all = _all(), at = Date.now(), rows = [['bat', t.bat], ['pit', t.pit]];
+  rows.forEach(([k, list]) => list.forEach(r => {
+    if (/^__/.test(r.name)) return;
+    const o = all[r.name] || (all[r.name] = {});
+    o.ss = Object.assign({}, o.ss, { at, [k]: r });
+  }));
+  try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
+  if (window.showToast) window.showToast(`게임원 팀 기록 저장 — 타자 ${t.bat.length}명 · 투수 ${t.pit.length}명`, false);
+  // 새 칩이 생기므로 타자 화면을 다시 그린다(새 선수 칸이면 표 첫 선수를 연다)
+  if (window.selectBatterSeason) { window.selectBatterSeason(box.dataset.name || (t.bat[0] || t.pit[0]).name); _showChip(); }
+  else _redraw(box);
+}
+
 export function goCareerSave(btn) {
-  const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-msg');
-  const r = window.SLGameOne && window.SLGameOne.parseGameOneCareer(box.querySelector('textarea').value);
+  const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-msg'), text = box.querySelector('textarea').value;
+  const t = window.SLGameOne && window.SLGameOne.parseGameOneTeam(text);
+  if (t && t.bat.length + t.pit.length) { _saveTeam(box, t, msg); return; }
+  const r = window.SLGameOne && window.SLGameOne.parseGameOneCareer(text);
   const n = o => (o ? Object.keys(o).length : 0);
-  if (!r || n(r.bat) + n(r.pit) < 3) { msg.textContent = '게임원 선수 기록을 찾지 못했어요. 선수 페이지에서 이름부터 기록 끝까지(경기수 …) 복사해 주세요. 한 경기 박스스코어 표는 기록 탭의 「게임원 가져오기」에 넣어요.'; return; }
+  if (!r || n(r.bat) + n(r.pit) < 3) { msg.textContent = '게임원 선수 기록을 찾지 못했어요. 선수 페이지에서 이름부터 기록 끝까지(경기수 …), 팀 기록통계 페이지는 전체 선택해 복사해 주세요. 한 경기 박스스코어 표는 기록 탭의 「게임원 가져오기」에 넣어요.'; return; }
   const add = !box.dataset.name, name = add ? String(r.name || '').trim() : box.dataset.name;
   if (!name) { msg.textContent = '붙여넣은 글에서 선수 이름을 찾지 못했어요. 선수 이름 줄부터 복사해 주세요.'; return; }
   if (!add && r.name && _nm(r.name) !== _nm(name)) { msg.textContent = `붙여넣은 기록은 「${r.name}」 선수예요. ${name} 선수 페이지를 복사해 주세요.`; return; }
   const all = _all(), old = all[name] || {};
   // 타자 · 투수를 따로 붙여넣어도 앞서 저장한 쪽은 남긴다(새로 붙인 쪽만 바꾼다)
-  all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null };
+  all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null, ss: old.ss };
   try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
   // 새 선수는 타자 › 시즌에서 그 선수 칩을 골라 연다
   if (add && window.selectBatterSeason) { window.selectBatterSeason(name); _showChip(); }
@@ -160,6 +193,7 @@ export function goCareerFromLink() {
   } catch (e) {}
   if (!c) { toast('게임원 통산 QR을 읽지 못했어요. PC에서 QR을 다시 띄워 찍어 주세요.'); return; }
   const all = _all();
+  c.rec.ss = (all[c.key] || {}).ss;   // 폰에서 붙여넣은 팀 시즌 기록은 남긴다(QR 은 통산만 옮긴다)
   all[c.key] = c.rec;
   try { _put(all); } catch (e) { toast('저장 공간이 부족해 저장하지 못했어요.'); return; }
   const lp = document.getElementById('landing-page');

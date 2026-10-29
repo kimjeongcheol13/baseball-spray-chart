@@ -1,2 +1,4 @@
 # 실명 데이터 등 로컬 전용 파일 (예: 경기 내보내기 JSON) — 절대 커밋하지 않는다
 local/
+# Netlify CLI 배포 때 생기는 작업 폴더(netlify.toml 참고)
+.netlify/

@@ -479,13 +479,15 @@
       seen[id] = 1;
       out[side].push(row);
     });
-    // 한 팀에 같은 이름이 둘(번호 다름)이면 누구 기록인지 몰라 뺀다 — 저장은 이름으로 한다
+    // 한 팀에 같은 이름이 둘(번호 다름)이면 「이름 #번호」로 나눈다 — 저장은 이름으로 한다(코치 대시보드도 같은 이름은 번호로 나눈다).
+    // 번호가 없으면 누구 기록인지 몰라 뺀다. 중계(netlify/gameone_extract.mjs rosterKeys)의 통산도 같은 규칙
     ['bat', 'pit'].forEach(function (side) {
       var n = {};
       out[side].forEach(function (r) { n[r.name] = (n[r.name] || 0) + 1; });
       out[side] = out[side].filter(function (r) {
         if (n[r.name] < 2) return true;
-        out.warnings.push(r.name + '(' + r.number + '): 같은 이름 선수가 둘이라 뺌');
+        if (r.number) { r.name += ' #' + r.number; return true; }
+        out.warnings.push(r.name + '(): 같은 이름 선수가 둘인데 번호가 없어 뺌');
         return false;
       });
     });

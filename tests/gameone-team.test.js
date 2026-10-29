@@ -84,12 +84,16 @@
     eq([both.bat.length, both.pit.length], [7, 4], '한 칸에 이어 붙여도');
   });
 
-  test('파서: 선수 페이지 · 박스스코어 표는 0명 · 공백 구분도 · 같은 이름 둘은 빼고 · 숫자 아닌 칸은 경고', function () {
+  test('파서: 선수 페이지 · 박스스코어 표는 0명 · 공백 구분도 · 같은 이름 둘은 「이름 #번호」(번호 없으면 뺌) · 숫자 아닌 칸은 경고', function () {
     eq([P(CAREER).bat.length, P('').bat.length, P(null).pit.length], [0, 0, 0], '선수 페이지 · 빈 입력');
     eq(P('선수\t결과\t이닝\t타자\n김영석(18)\t승\t2 ⅓\t17\t14\t8\t0\t0\t1\t2\t0\t2\t0\t0\t4\t2\t0\t6.01\t6.01').pit.length, 0, '박스스코어 투수 표');
     eq(P(BAT_ROWS.replace(/\t/g, ' ')).bat.length, 7, '탭 대신 공백');
     var dup = P(BAT_ROWS + '\n3\t홍길동(55)' + BAT_ROWS.split('\n')[1].slice(BAT_ROWS.split('\n')[1].indexOf(')') + 1));
-    ok(dup.bat.length === 6 && !dup.bat.some(function (b) { return b.name === '홍길동'; }) && dup.warnings.length === 2, '홍길동(20) · 홍길동(55) 둘 다 뺌 — ' + dup.warnings.join(' / '));
+    var nm = function (r) { return r.bat.map(function (b) { return b.name; }); };
+    ok(dup.bat.length === 8 && nm(dup).indexOf('홍길동 #20') >= 0 && nm(dup).indexOf('홍길동 #55') >= 0 && nm(dup).indexOf('홍길동') < 0 && !dup.warnings.length,
+      '홍길동(20) · 홍길동(55) → 「홍길동 #20」 · 「홍길동 #55」 — ' + nm(dup).join(',') + ' / ' + dup.warnings.join(' / '));
+    var noNum = P(BAT_ROWS + '\n3\t홍길동()' + BAT_ROWS.split('\n')[1].slice(BAT_ROWS.split('\n')[1].indexOf(')') + 1));
+    ok(noNum.bat.length === 7 && nm(noNum).indexOf('홍길동 #20') >= 0 && nm(noNum).indexOf('홍길동') < 0 && noNum.warnings.length === 1, '같은 이름인데 번호가 없는 쪽은 누군지 몰라 뺌 — ' + nm(noNum).join(',') + ' / ' + noNum.warnings.join(' / '));
     var bad = P(PIT_ROWS.replace('18.1', '18.x'));
     ok(bad.pit.length === 3 && /장보고/.test(bad.warnings[0]), '이닝을 못 읽으면 그 줄만 경고');
   });
@@ -200,7 +204,12 @@
     eq([X.season(PAGES.hit), X.title(PAGES.hit)], [2026, '테스트팀'], '시즌 · 팀 이름');
     eq(X.roster(LIST_HTML).map(function (p) { return p.name + p.number + ':' + p.code; }), ['김호인97:KHI0000000001', '임꺽정14:LKJ0000000001', '심청10:SC00000000001', '홍길동20:HGD0000000001', '홍길동55:HGD0000000002'], '선수단');
     DATA = X.teamData(window.SLGameOne, PAGES, 1790000000000);
-    eq(Object.keys(DATA.players).sort(), ['김호인', '임꺽정'], '0경기(심청) · 같은 이름 둘(홍길동)은 통산에서 뺀다');
+    eq(Object.keys(DATA.players).sort(), ['김호인', '임꺽정', '홍길동 #20', '홍길동 #55'], '0경기(심청)는 뺀다 · 같은 이름 둘(홍길동)은 「이름 #번호」');
+    eq([DATA.players['홍길동 #20'].bat.g, DATA.players['홍길동 #55'].bat.g], [5, 9], '동명이인 통산은 선수 코드대로(20번 5경기 · 55번 9경기)');
+    eq(DATA.bat.filter(function (r) { return /홍길동/.test(r.name); }).map(function (r) { return r.name + ':' + r.g; }), ['홍길동 #20:4'],
+      '시즌 표엔 한 명뿐이어도 선수단에 같은 이름이 둘이면 「홍길동 #20」(통산과 같은 칩)');
+    eq(X.rosterKeys([{ name: '갑', number: '', code: 'A' }, { name: '갑', number: '', code: 'B' }, { name: '을', number: '1', code: 'C' }]).map(function (p) { return p.key; }), ['을'],
+      '번호 없는 동명이인은 통산을 받지 않는다');
     eq([DATA.players['임꺽정'].bat.g, DATA.players['임꺽정'].pit], [30, null], '투수 0경기 칸은 뺀다(카드에 투수 0 이 안 뜨게)');
     var k = DATA.players['김호인'];
     eq([k.hand, k.school, k.bat.g, k.bat.ops, k.pit.g, k.pit.outs, k.pit.era], ['우투우타', '대산고등학교', 66, 1.842, 20, 67, 5.33], '김호인 통산 — 투수 999(주석)는 안 읽음');
@@ -225,17 +234,27 @@
     done();
     await T.sleep(150);
     var s = stored();
-    eq([s['김호인'].bat.g, s['김호인'].auto, s['김호인'].ss.bat.g, s['김호인'].ss.team, s['김호인'].ss.season, s['홍길동'].bat, s['홍길동'].ss.bat.g, s['허균'].ss.pit.era],
-      [66, 1, 14, '테스트팀', 2026, undefined, 4, 12.32], '통산 · 팀 시즌');
+    eq([s['김호인'].bat.g, s['김호인'].auto, s['김호인'].ss.bat.g, s['김호인'].ss.team, s['김호인'].ss.season, s['홍길동 #20'].bat.g, s['홍길동 #20'].ss.bat.g, s['홍길동 #55'].bat.g, s['홍길동 #55'].ss, s['홍길동'], s['허균'].ss.pit.era],
+      [66, 1, 14, '테스트팀', 2026, 5, 4, 9, undefined, undefined, 12.32], '통산 · 팀 시즌 (동명이인은 「홍길동 #20」 · 「홍길동 #55」)');
     ok(!('number' in s['김호인'].ss.bat) && !('name' in s['김호인'].ss.bat), '숫자 칸만 남김');
     eq(JSON.parse(localStorage.getItem('sl_go_team')), { club: '14797', season: '2026', team: '테스트팀', at: 1790000000000 }, 'sl_go_team');
-    ok(toastTxt().indexOf('테스트팀 — 통산 2명 · 시즌 타자 7명 · 투수 4명') >= 0, '알림 — ' + toastTxt());
-    ok(NAMES.every(function (n) { return chipOf(n).length === 1; }), '칩 9개');
-    eq(card().dataset.name, '홍길동', '표 첫 선수를 연다');
+    ok(toastTxt().indexOf('테스트팀 — 통산 4명 · 시즌 타자 7명 · 투수 4명') >= 0, '알림 — ' + toastTxt());
+    ok(NAMES.slice(1).concat(['홍길동 #20', '홍길동 #55']).every(function (n) { return chipOf(n).length === 1; }) && !chipOf('홍길동').length, '칩 10개(홍길동 → #20 · #55)');
+    eq(card().dataset.name, '홍길동 #20', '표 첫 선수를 연다');
     open('김호인');
     c = card();
     ok(/불러옴$/.test(c.querySelector('.an-hd-note').textContent), '통산 머리 — ' + c.querySelector('.an-hd-note').textContent);
     ok(/^게임원 팀 시즌 기록 · 테스트팀 2026시즌 · \d+월 \d+일 불러옴$/.test(c.querySelector('.go-cr-ss .go-cr-sub').textContent), '팀 시즌 머리 — ' + c.querySelector('.go-cr-ss .go-cr-sub').textContent);
+  });
+
+  test('동명이인 카드 「홍길동 #20」: 게임원 선수 페이지(이름 「홍길동」)를 붙여넣으면 저장 · 다른 이름은 막는다', function () {
+    open('홍길동 #20');
+    paste(CAREER.replace('김호인', '홍길동'));
+    press('.go-cr-save');
+    eq(stored()['홍길동 #20'].bat.g, 68, '「홍길동」 페이지 → 「홍길동 #20」에 저장');
+    paste(CAREER.replace('김호인', '임꺽정').replace('경기수68', '경기수70'));
+    press('.go-cr-save');
+    ok(stored()['홍길동 #20'].bat.g === 68 && /「임꺽정」 선수예요/.test(card().textContent), '다른 이름은 막음');
   });
 
   test('다시 가져오기: 지난 팀 주소를 미리 채움 · 받은 것보다 나중에 붙여넣은 통산은 남기고 · 새로 받으면 바뀐다 · 저절로 받지 않는다', async function () {
@@ -319,9 +338,9 @@
     eq(await goTeamFromLink(), true, '링크로 열림');
     ok(location.search.indexOf('goteam') < 0, '주소에서 지움(새로고침해도 다시 안 받음)');
     ok(RELAY.test(calls[0]) && /\?club=14797&t=\d+$/.test(calls[0]), '중계 주소 — ' + calls[0]);
-    eq([JSON.parse(localStorage.getItem('sl_go_team')).club, Object.keys(stored()).length, stored()['김호인'].bat.g], ['14797', 9, 66], '9명 · 통산');
-    ok(toastTxt().indexOf('테스트팀 — 통산 2명') >= 0, '알림 — ' + toastTxt());
-    ok(document.getElementById('batterView').offsetParent !== null && card().dataset.name === '홍길동', '타자 › 시즌 전체 · 표 첫 선수 카드');
+    eq([JSON.parse(localStorage.getItem('sl_go_team')).club, Object.keys(stored()).length, stored()['김호인'].bat.g], ['14797', 10, 66], '10명 · 통산');
+    ok(toastTxt().indexOf('테스트팀 — 통산 4명') >= 0, '알림 — ' + toastTxt());
+    ok(document.getElementById('batterView').offsetParent !== null && card().dataset.name === '홍길동 #20', '타자 › 시즌 전체 · 표 첫 선수 카드');
     go('abc');
     await goTeamFromLink();
     ok(/팀 번호가 잘못됐어요/.test(syncMsg()) && JSON.parse(localStorage.getItem('sl_go_team')).club === '14797', '잘못된 번호 — 「＋」 카드에 안내 — ' + syncMsg());

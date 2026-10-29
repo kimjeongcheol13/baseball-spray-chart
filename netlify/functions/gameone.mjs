@@ -7,7 +7,7 @@
 //  · 배포는 netlify.toml 주석 참고(CLI 로만)
 import https from 'node:https';
 import G from '../../js/gameone.js';
-import { rankRows, roster, uniqueRoster, careerRec, teamData } from '../gameone_extract.mjs';
+import { rankRows, roster, rosterKeys, careerRec, teamData } from '../gameone_extract.mjs';
 
 const APP = 'https://kimjeongcheol13.github.io';
 const UA = 'SprayLab/1.0 (+https://kimjeongcheol13.github.io/baseball-spray-chart/)';
@@ -33,7 +33,7 @@ async function team(a, club, season) {
   const q = `club_idx=${club}${season ? `&season=${season}` : ''}`;
   const [hit, pit, list] = await Promise.all([get(a, `/club/info/ranking/hitter?${q}`), get(a, `/club/info/ranking/pitcher?${q}`), get(a, `/club/info/player?club_idx=${club}`)]);
   const careers = {};
-  await Promise.all(uniqueRoster(roster(list)).map(p => get(a, `/locker/record/sum?group_code=${p.code}`).then(h => { careers[p.code] = h; }, () => {})));
+  await Promise.all(rosterKeys(roster(list)).map(p => get(a, `/locker/record/sum?group_code=${p.code}`).then(h => { careers[p.code] = h; }, () => {})));
   return teamData(G, { hit, pit, list, careers }, Date.now());
 }
 

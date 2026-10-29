@@ -2,7 +2,7 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=25';
+import './features/profile.js?v=26';
 import './features/compare.js?v=13';
 import './features/scouting.js?v=26';
 import './features/heatmap.js?v=3';
@@ -12,7 +12,7 @@ import './features/perf.js?v=2';
 import './features/team.js?v=21';
 import './features/teamgames.js?v=2';
 import './features/pitcher.js?v=46';
-import './features/batter.js?v=35';
+import './features/batter.js?v=36';
 import './features/spray.js?v=6';
 import './features/shell.js?v=16';
 import './features/record.js?v=14';

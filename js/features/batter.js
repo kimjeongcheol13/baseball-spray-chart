@@ -5,7 +5,8 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=9';
 import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=27';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=25';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=26';
+import { goCareerNames, goCareerCard } from './gocareer.js?v=3';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -13,6 +14,7 @@ let _pinned = false;    // 사용자가 다른 타자를 골랐으면 true (기�
 let _spray = 'today';   // today | season
 let _scope = null;      // game | season (null = 라인업이 있으면 이번 경기, 비어 있으면 시즌 전체)
 let _plot = 'today';
+let _goAdd = false;     // 시즌 전체에서 「＋ 게임원 통산」 붙여넣기 칸을 보는 중
 
 const SHORT = { __proto__: null,
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
@@ -45,6 +47,7 @@ export function openBatterView() {
 
 export function setBatterView(k, v) {
   const live = window.AS && window.AS.batter;
+  _goAdd = k === 'goadd';
   if (k === 'sel') { _sel = v || null; _pinned = !live || live.name !== _sel; }
   if (k === 'live') { _pinned = false; }
   if (k === 'side') { _side = v === 'away' ? 'away' : 'home'; _pinned = true; _sel = null; }   // 다른 팀을 보면 기록 중 타자를 따라가지 않음
@@ -89,8 +92,10 @@ function _render() {
   const scope = _scope || (lineup.length ? 'game' : 'season');
   const data = buildData();
   const season = data.players.filter(p => p.pa > 0);
+  // 게임원 통산만 붙여넣은 선수(SprayLab 타석 없음)도 시즌 칩에 — 카드만 보여 준다
+  const goOnly = scope === 'season' ? goCareerNames().filter(n => !season.some(p => p.name === n)) : [];
   if (scope === 'season') {
-    if (!season.find(p => p.name === _sel)) _sel = ((live && season.find(p => p.name === live.name)) || season[0] || {}).name || null;
+    if (!season.find(p => p.name === _sel) && !goOnly.includes(_sel)) _sel = ((live && season.find(p => p.name === live.name)) || season[0] || {}).name || goOnly[0] || null;
   } else if (!_sel && lineup.length) _sel = lineup[0].name;
 
   const seg = (k, cur, opts) => `<div class="an-seg" role="tablist">${opts.map(([val, l]) => `<button role="tab" class="${cur === val ? 'on' : ''}" aria-selected="${cur === val}" onclick="setBatterView('${k}','${val}')">${l}</button>`).join('')}</div>`;
@@ -114,10 +119,15 @@ function _render() {
       ${_pinned && live ? `<button type="button" class="bt-live-btn" onclick="setBatterView('live')">● 기록 중인 타자(${_esc(live.name)})로</button>` : ''}
     </div>
     ${scope === 'season'
-      ? (season.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="시즌 타자">${playerChips(season, _sel, 'selectBatterSeason')}</div>` : '')
+      ? (season.length || goOnly.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="시즌 타자">${playerChips(season.concat(goOnly.map(name => ({ name }))), _goAdd ? null : _sel, 'selectBatterSeason')}</div>` : '')
+        + `<button type="button" class="bt-link-pill" onclick="setBatterView('goadd')">＋ 게임원 통산 붙여넣기 · SprayLab 기록 없는 선수도</button>`
       : (lineup.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="타순">${chips}</div>` : '')}
     ${AS.currentPitcher ? `<button type="button" class="bt-link-pill" onclick="shellOpenAnalysis('pitcher')">⚾ ${_esc(AS.currentPitcher.name)} 투구 기록 중 · ${(AS.currentPitcher.pitches || []).length}구</button>` : ''}`;
 
+  if (scope === 'season' && (_goAdd || goOnly.includes(_sel))) {
+    v.innerHTML = head + `<div class="bt-result">${goCareerCard(_goAdd ? '' : _sel, 0, 0)}</div>`;
+    return;
+  }
   if (scope === 'season' && !season.length) {
     v.innerHTML = head + emptyState('아직 기록된 타자가 없어요', '기록 탭에서 타석 결과를 입력하고 경기를 저장하면 시즌 기록이 쌓여요.');
     return;

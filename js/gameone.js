@@ -441,14 +441,14 @@
       var map = sec === 'bat' ? CAREER_BAT : CAREER_PIT;
       b.items.forEach(function (it) { if (it[0] in map) (out[sec] || (out[sec] = {}))[map[it[0]]] = it[1]; });
     });
-    // 머리 부분: 이름은 '우투우타' 줄 바로 위(앞에 메뉴 글자가 딸려 와도) · 없으면 첫 줄
+    // 머리 부분: 이름은 '우투우타' 줄 바로 위(앞에 메뉴 글자가 딸려 와도) · 없으면 첫 줄 · '우투우타' · '비선출'부터 붙이면 이름 없음
     var hi = -1;
     head.forEach(function (l, i) {
       if (/^[우좌양]투[우좌양]타$/.test(l)) { if (hi < 0) hi = i; out.hand = out.hand || l; }
       else if (/^비?선출$/.test(l)) out.bg = out.bg || l;
       else if (/(학교|고|대)$/.test(l) && !out.school && i > 0) out.school = l.slice(0, 30);
     });
-    out.name = String((hi > 0 ? head[hi - 1] : head[0]) || '').replace(/\s*[(#].*$/, '').slice(0, 20);
+    out.name = String((hi > 0 ? head[hi - 1] : hi < 0 && !/^비?선출$/.test(head[0]) ? head[0] : '') || '').replace(/\s*[(#].*$/, '').slice(0, 20);
     return out;
   }
 

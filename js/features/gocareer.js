@@ -7,12 +7,13 @@
 //   · 타자 · 투수 중 한쪽만 붙여넣으면 그쪽만 바꾸고 다른 쪽은 남긴다
 //   · 팀 기록통계(타자랭킹 · 투수랭킹) 페이지를 붙여넣으면 = parseGameOneTeam — 표에 있는 선수 전원을 이름으로 ss: { at, bat, pit } 에 넣는다.
 //     그 팀 · 그 시즌 경기만이라 통산(bat · pit)과 따로 두고 따로 보여 준다
-//   · 게임원 팀 연결(매일 자동): GitHub 이 매일 새벽 받아 둔 팀 데이터(.github/workflows/gameone-sync.yml → gameone-data 브랜치 <팀 번호>.json)를
-//     앱을 열 때 읽어 새것이면 같은 자리(bat · pit · ss)에 넣는다(auto 표시). 팀 번호 = sl_go_team { club, team, at }
+//   · 게임원 주소로 가져오기: 팀 페이지 주소(club_idx=) → 팀 선수 전원 통산 + 그 시즌 팀 기록, 선수 페이지 주소(group_code=) → 그 선수 통산.
+//     앱은 게임원을 직접 못 읽어(CORS · 옛 보안 연결) 넣는 그때 중계(netlify/functions/gameone.mjs)가 대신 읽는다. 같은 자리(bat · pit · ss)에 넣고
+//     auto 표시(「불러옴」). 마지막으로 가져온 팀 = sl_go_team { club, season, team, at } — 다음에 칸에 미리 채워 둔다
 
 const KEY = 'sl_go_career';
 const TEAM = 'sl_go_team';
-const DATA = club => `https://raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/gameone-data/${club}.json`;
+const RELAY = 'https://spraylab-gameone.netlify.app/api/gameone';
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const _nm = s => String(s || '').replace(/\s+/g, '');
 const _i = v => (v == null ? '—' : String(v));
@@ -54,18 +55,16 @@ function _ss(s) {
     </div>`;
 }
 
-// 게임원 팀 연결 칸(「＋」 새 선수 카드 맨 위) — 주소를 넣으면 그 팀 데이터를 받고, 다음부터는 앱을 열 때 저절로
+// 게임원 주소 칸(「＋」 새 선수 카드 맨 위) — 팀 · 선수 페이지 주소를 넣고 「가져오기」. 마지막 팀 주소를 미리 채워 둔다(다시 누르면 새 기록)
 function _sync() {
   const t = _team();
   return `
     <div class="go-cr-sync">
-      <p class="go-cr-sub">게임원 팀 연결 · 매일 자동</p>
-      <p class="go-cr-how">${t && t.at ? `${_esc(t.team || '팀')}(팀 번호 ${t.club}) 연결됨 · ${_md(t.at)} 기록. 앱을 열 때 새 기록이 있으면 저절로 바뀌어요.`
-        : t ? `팀 번호 ${t.club} 연결됨 · 아직 받은 기록이 없어요. 매일 받는 팀 목록에 들어가면 저절로 들어와요.`
-        : '게임원 팀 페이지 주소를 넣으면 팀 선수 전원의 통산과 이번 시즌 팀 기록을 불러오고, 그다음부터는 매일 저절로 새로 받아요.'}</p>
+      <p class="go-cr-sub">게임원 주소로 가져오기</p>
+      <p class="go-cr-how">게임원 <b>팀</b> 페이지 주소를 넣으면 팀 선수 전원의 통산과 그 시즌 팀 기록을, <b>선수</b> 페이지 주소를 넣으면 그 선수 통산을 바로 가져와요.${t && t.at ? ` 마지막으로 가져온 팀: ${_esc(t.team || `팀 번호 ${t.club}`)} · ${_md(t.at)}` : ''}</p>
       <div class="go-cr-acts">
-        <input type="url" class="go-cr-club" aria-label="게임원 팀 페이지 주소" placeholder="https://www.gameone.kr/club/?club_idx=…" value="${t ? `https://www.gameone.kr/club/?club_idx=${t.club}` : ''}">
-        <button type="button" class="go-cr-conn" onclick="goTeamConnect(this)">${t ? '다시 받기' : '연결'}</button>
+        <input type="url" class="go-cr-club" aria-label="게임원 팀 또는 선수 페이지 주소" placeholder="https://www.gameone.kr/club/?club_idx=…" value="${t ? `https://www.gameone.kr/club/?club_idx=${t.club}${t.season ? `&amp;season=${t.season}` : ''}` : ''}">
+        <button type="button" class="go-cr-conn" onclick="goTeamConnect(this)">가져오기</button>
       </div>
       <p class="go-cr-msg go-cr-sync-msg" role="status"></p>
     </div>`;
@@ -136,17 +135,25 @@ function _saveTeam(box, t, msg) {
 
 export function goCareerSave(btn) {
   const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-msg'), text = box.querySelector('textarea').value;
+  const u = _goUrl(text);
+  if (u) { _fromUrl(box, u, msg, btn); return; }   // 글 대신 게임원 주소(링크)를 붙여넣었으면 가져온다
   const t = window.SLGameOne && window.SLGameOne.parseGameOneTeam(text);
   if (t && t.bat.length + t.pit.length) { _saveTeam(box, t, msg); return; }
   const r = window.SLGameOne && window.SLGameOne.parseGameOneCareer(text);
   const n = o => (o ? Object.keys(o).length : 0);
   if (!r || n(r.bat) + n(r.pit) < 3) { msg.textContent = '게임원 선수 기록을 찾지 못했어요. 선수 페이지에서 이름부터 기록 끝까지(경기수 …), 팀 기록통계 페이지는 전체 선택해 복사해 주세요. 한 경기 박스스코어 표는 기록 탭의 「게임원 가져오기」에 넣어요.'; return; }
+  _saveCareer(box, r, msg, false);
+}
+
+// 통산 한 사람 저장(붙여넣기 · 선수 주소로 가져오기 같이). auto = 주소로 가져옴(「불러옴」)
+function _saveCareer(box, r, msg, auto) {
   const add = !box.dataset.name, name = add ? String(r.name || '').trim() : box.dataset.name;
   if (!name) { msg.textContent = '붙여넣은 글에서 선수 이름을 찾지 못했어요. 선수 이름 줄부터 복사해 주세요.'; return; }
-  if (!add && r.name && _nm(r.name) !== _nm(name)) { msg.textContent = `붙여넣은 기록은 「${r.name}」 선수예요. ${name} 선수 페이지를 복사해 주세요.`; return; }
+  if (!add && r.name && _nm(r.name) !== _nm(name)) { msg.textContent = `${auto ? '이 주소는' : '붙여넣은 기록은'} 「${r.name}」 선수예요. ${name} 선수 페이지를 ${auto ? '넣어' : '복사해'} 주세요.`; return; }
   const all = _all(), old = all[name] || {};
   // 타자 · 투수를 따로 붙여넣어도 앞서 저장한 쪽은 남긴다(새로 붙인 쪽만 바꾼다)
   all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null, ss: old.ss };
+  if (auto) all[name].auto = 1;
   try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
   // 새 선수는 타자 › 시즌에서 그 선수 칩을 골라 연다
   if (add && window.selectBatterSeason) { window.selectBatterSeason(name); _showChip(); }
@@ -251,48 +258,57 @@ function _applyTeam(d) {
   return { car: Object.keys(d.players || {}).length, bat: Object.keys(by).filter(n => by[n].bat).length, pit: Object.keys(by).filter(n => by[n].pit).length, first: Object.keys(by)[0] };
 }
 
-// 연결한 팀의 오늘 데이터를 받아 넣는다. 돌려주는 값: { status }(못 받음) · { same } · { car, bat, pit, first }
-export async function goTeamPull(force) {
-  const t = _team();
-  if (!t) return null;
-  let d;
-  try {
-    const r = await fetch(`${DATA(t.club)}?t=${Date.now()}`);   // ?t= — sw.js 가 GET 을 캐시해 어제 파일을 먼저 주지 않게
-    if (!r.ok) return { status: r.status };
-    d = await r.json();
-  } catch (e) { return { status: 0 }; }
-  if (!d || d.v !== 1 || !(+d.at > 0)) return { status: 0 };
-  if (!force && +d.at === +t.at) return { same: 1 };
-  let n;
-  try { n = _applyTeam(d); } catch (e) { return { status: 0 }; }
-  localStorage.setItem(TEAM, JSON.stringify({ club: t.club, team: String(d.team || '').slice(0, 40), at: +d.at }));
-  return n;
+// 게임원 주소 → { club, season } · { player } · null. 팀 번호만 넣어도 된다. 여러 줄 · 긴 글(복사한 페이지 속 주소)은 주소로 보지 않는다
+function _goUrl(v) {
+  v = String(v || '').trim();
+  if (/\n/.test(v) || v.length > 400) return null;
+  const p = /group_code=([0-9A-Z]{10,40})/.exec(v), c = /club_idx=(\d{1,7})/.exec(v) || /^(\d{1,7})$/.exec(v), s = /[?&]season=(\d{4})/.exec(v);
+  return p ? { player: p[1] } : c ? { club: c[1], season: s ? s[1] : '' } : null;
 }
 
-// 팀 번호를 연결하고 바로 받는다(「연결」 · ?goteam= 링크). 못 받으면 { msg }
-async function _connect(club) {
-  const old = _team();
-  if (!old || old.club !== club) localStorage.setItem(TEAM, JSON.stringify({ club }));
-  const r = await goTeamPull(true);
-  if (r.status === 404) return { msg: `팀 번호 ${club} 연결해 두었어요. 이 팀은 아직 매일 받는 팀 목록에 없어요 — 목록에 들어가면 다음 날부터 저절로 들어와요.` };
-  if (r.status != null) return { msg: '불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.' };
-  const t = _team();
-  if (window.showToast) window.showToast(`${t.team || '게임원 팀'} — 통산 ${r.car}명 · 시즌 타자 ${r.bat}명 · 투수 ${r.pit}명 불러옴`, false);
+// 중계(RELAY)에서 받는다. 못 받으면 { status } — 404 = 게임원에 그 기록이 없음
+//   &t= — sw.js 가 GET 을 캐시해 지난번 응답을 먼저 주지 않게
+async function _relay(q) {
+  try { const r = await fetch(`${RELAY}?${q}&t=${Date.now()}`); return r.ok ? await r.json() : { status: r.status }; } catch (e) { return { status: 0 }; }
+}
+const _NET = '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.';
+
+// 팀을 지금 게임원에서 받아 넣는다(「가져오기」 · ?goteam= 링크). 돌려주는 값: { msg }(못 받음) · { car, bat, pit, first }
+async function _pullTeam(club, season) {
+  const d = await _relay(`club=${club}${season ? `&season=${season}` : ''}`);
+  if (d.status === 404) return { msg: `게임원에서 팀 번호 ${club} 기록을 찾지 못했어요. 팀 페이지 주소를 확인해 주세요.` };
+  if (d.status != null || d.v !== 1 || !(+d.at > 0)) return { msg: _NET };
+  let r;
+  try { r = _applyTeam(d); } catch (e) { return { msg: '저장 공간이 부족해 저장하지 못했어요.' }; }
+  const team = String(d.team || '').slice(0, 40);
+  try { localStorage.setItem(TEAM, JSON.stringify({ club, season: season || '', team, at: +d.at })); } catch (e) {}
+  if (window.showToast) window.showToast(`${team || '게임원 팀'} — 통산 ${r.car}명 · 시즌 타자 ${r.bat}명 · 투수 ${r.pit}명 불러옴`, false);
   return r;
 }
 
-// 「연결」 · 「다시 받기」: 주소(club_idx=숫자) 또는 팀 번호만 넣어도 된다
-export async function goTeamConnect(btn) {
-  const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-sync-msg');
-  const v = box.querySelector('.go-cr-club').value, m = /club_idx=(\d{1,7})/.exec(v) || /^\s*(\d{1,7})\s*$/.exec(v);
-  if (!m) { msg.textContent = '게임원 팀 페이지 주소를 넣어 주세요. 주소에 club_idx=숫자 가 있어야 해요.'; return; }
+// 주소로 가져오기(주소 칸 「가져오기」 · 붙여넣기 칸에 주소). 팀이면 표 첫 선수(또는 보던 선수)를, 선수면 그 선수를 연다
+async function _fromUrl(box, u, msg, btn) {
   btn.disabled = true;
-  msg.textContent = '불러오는 중…';
-  const r = await _connect(m[1]);
+  msg.textContent = u.club ? '게임원에서 팀 선수 전원을 가져오는 중… (10초쯤 걸려요)' : '게임원에서 가져오는 중…';
+  if (u.player) {
+    const d = await _relay(`player=${u.player}`), c = d.status == null && _clean(Object.assign({}, d, { k: d.name }));
+    btn.disabled = false;
+    if (c) _saveCareer(box, c.rec, msg, true);
+    else msg.textContent = d.status === 404 || d.status == null ? '게임원에서 이 선수 기록을 찾지 못했어요. 선수 페이지 주소를 확인해 주세요.' : _NET;
+    return;
+  }
+  const r = await _pullTeam(u.club, u.season);
   btn.disabled = false;
   if (r.msg) { msg.textContent = r.msg; return; }
   if (window.selectBatterSeason && (box.dataset.name || r.first)) { window.selectBatterSeason(box.dataset.name || r.first); _showChip(); }
   else _redraw(box);
+}
+
+// 주소 칸 「가져오기」: 팀 · 선수 페이지 주소 또는 팀 번호
+export function goTeamConnect(btn) {
+  const box = btn.closest('#goCareer'), msg = box.querySelector('.go-cr-sync-msg'), u = _goUrl(box.querySelector('.go-cr-club').value);
+  if (!u) { msg.textContent = '게임원 팀 또는 선수 페이지 주소를 넣어 주세요. 주소에 club_idx= 또는 group_code= 가 있어야 해요.'; return; }
+  return _fromUrl(box, u, msg, btn);
 }
 
 // 팀 연결 링크(?goteam=팀 번호): 열면 연결 · 받기까지 하고 분석 › 타자 › 시즌 전체를 연다(기기마다 한 번이면 된다)
@@ -308,20 +324,13 @@ export async function goTeamFromLink() {
   if (lp && lp.offsetParent !== null && typeof window.showApp === 'function') window.showApp();   // 데스크톱 랜딩이 떠 있으면
   if (window.shellOpenAnalysis) window.shellOpenAnalysis('batter');
   if (window.setBatterView) window.setBatterView('scope', 'season');
-  const r = /^\d{1,7}$/.test(club) ? await _connect(club) : { msg: '게임원 팀 연결 링크의 팀 번호가 잘못됐어요. 아래에 팀 페이지 주소를 넣어 주세요.' };
+  const r = /^\d{1,7}$/.test(club) ? await _pullTeam(club, '') : { msg: '게임원 팀 링크의 팀 번호가 잘못됐어요. 아래에 팀 페이지 주소를 넣어 주세요.' };
   if (!r.msg && r.first && window.selectBatterSeason) { window.selectBatterSeason(r.first); _showChip(); return true; }
-  // 못 받았으면 「＋」 카드를 열어 팀 연결 칸에 이유를 보여 준다
+  // 못 받았으면 「＋」 카드를 열어 주소 칸에 이유를 보여 준다
   if (window.setBatterView) window.setBatterView('goadd');
   const msg = document.querySelector('#goCareer .go-cr-sync-msg');
   if (msg) msg.textContent = r.msg || '';
   return true;
-}
-
-// 앱을 열 때: 연결한 팀이 있으면 조용히 받아 두고, 통산 카드가 떠 있으면 다시 그린다
-async function _autoPull() {
-  const r = await goTeamPull(false);
-  const box = r && r.car != null && document.getElementById('goCareer');
-  if (box) _redraw(box);
 }
 
 if (typeof window !== 'undefined') {
@@ -330,9 +339,8 @@ if (typeof window !== 'undefined') {
   window.goCareerQR = goCareerQR;
   window.goCareerFromLink = goCareerFromLink;
   window.goTeamConnect = goTeamConnect;
-  window.goTeamPull = goTeamPull;
   window.goTeamFromLink = goTeamFromLink;
-  // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게. 팀 연결 링크로 열었으면 그게 받기까지 한다
-  const run = () => setTimeout(() => { goCareerFromLink(); goTeamFromLink().then(on => { if (!on) _autoPull(); }); }, 0);
+  // 다른 시작 처리(DOMContentLoaded)가 끝난 뒤 — gameoneimport ?go= 와 같게
+  const run = () => setTimeout(() => { goCareerFromLink(); goTeamFromLink(); }, 0);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 }

@@ -1,5 +1,5 @@
 // 게임원 HTML → 붙여넣기와 같은 평문 · 앱이 저장하는 JSON — js/gameone.js 의 parseGameOneTeam · parseGameOneCareer 가 그대로 읽는다.
-// gameone_sync.mjs(매일 GitHub Actions)와 브라우저 테스트(tests/gameone-team.test.js)가 같이 쓴다. 실제 페이지 모양은 2026-10-29 에 확인했다.
+// 게임원 중계 함수(netlify/functions/gameone.mjs)와 브라우저 테스트(tests/gameone-team.test.js)가 같이 쓴다. 실제 페이지 모양은 2026-10-29 에 확인했다.
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' };
 const txt = s => s.replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m, k) => ENT[k]).replace(/\s+/g, ' ').trim();
@@ -42,21 +42,25 @@ export function career(html) {
   return lines.join('\n');
 }
 
+// 선수 통산 페이지 하나 → { name, hand, bg, school, bat, pit } · 기록이 없으면 null
+//   0경기 쪽은 뺀다 — 투수를 안 하는 선수도 HTML 에 0 으로 찬 투수 칸이 있어 카드에 투수 0 이 뜬다(게임원 화면은 숨김)
+export function careerRec(G, html) {
+  const c = G.parseGameOneCareer(career(html));
+  const bat = c.bat && c.bat.g ? c.bat : null, pit = c.pit && c.pit.g ? c.pit : null;
+  return bat || pit ? { name: c.name || '', hand: c.hand, bg: c.bg, school: c.school, bat, pit } : null;
+}
+
+// 선수단에 같은 이름이 둘이면 통산을 받지 않는다(저장이 이름 기준이라)
+export const uniqueRoster = ro => ro.filter(p => ro.filter(q => q.name === p.name).length === 1);
+
 // 받은 페이지들 → 앱(js/features/gocareer.js)이 그대로 넣는 JSON. G = js/gameone.js
 //   pages = { hit, pit, list, careers: { [선수 코드]: 통산 HTML } }
 //   → { v, at, team, season, bat: [팀 시즌 타자 줄], pit: [팀 시즌 투수 줄], players: { [이름]: { hand, bg, school, bat, pit } } }
-//   게임원 기록이 없는 선수(0경기) · 선수단에 같은 이름이 둘인 선수는 통산에서 뺀다(저장이 이름 기준이라)
 export function teamData(G, { hit, pit, list, careers }, at) {
-  const t = G.parseGameOneTeam(rankRows(hit) + '\n' + rankRows(pit));
-  const ro = roster(list), seen = {}, players = {};
-  ro.forEach(p => { seen[p.name] = (seen[p.name] || 0) + 1; });
-  for (const p of ro) {
-    if (seen[p.name] > 1 || !careers[p.code]) continue;
-    const c = G.parseGameOneCareer(career(careers[p.code]));
-    // 0경기 쪽은 뺀다 — 투수를 안 하는 선수도 HTML 에 0 으로 찬 투수 칸이 있어 카드에 투수 0 이 뜬다(게임원 화면은 숨김)
-    const bat = c.bat && c.bat.g ? c.bat : null, pit = c.pit && c.pit.g ? c.pit : null;
-    if (!bat && !pit) continue;
-    players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat, pit };
+  const t = G.parseGameOneTeam(rankRows(hit) + '\n' + rankRows(pit)), players = {};
+  for (const p of uniqueRoster(roster(list))) {
+    const c = careers[p.code] && careerRec(G, careers[p.code]);
+    if (c) players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat: c.bat, pit: c.pit };
   }
   return { v: 1, at, team: title(hit), season: season(hit), bat: t.bat, pit: t.pit, players };
 }

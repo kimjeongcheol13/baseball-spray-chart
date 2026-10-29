@@ -1,0 +1,6 @@
+# SprayLab 게임원 중계(Netlify) — 앱은 GitHub Pages 그대로이고, Netlify 에는 netlify/functions/gameone.mjs 함수 하나만 올린다.
+# 배포는 CLI 로만: npx netlify-cli deploy --prod (중계 코드를 바꿨을 때만)
+#   저장소를 Netlify 에 연결해 자동 배포하면 main 머지마다 배포가 되는데, 무료 플랜은 배포 한 번에 15 크레딧(한 달 300)이라 쓰지 않는다
+[build]
+  publish = "netlify/public"
+  functions = "netlify/functions"

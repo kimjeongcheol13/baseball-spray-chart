@@ -225,3 +225,46 @@ body.sb.sb-night:not(.high-contrast) :is(#analysisView, #settingsView) :is(.an-c
 
 /* 필드 카드 머리의 부제(팀 · 이닝) — 고대비(종이)에서도 */
 .sb-field-hd h2 small { margin-left: 8px; font-size: .8em; color: var(--ink-soft); }
+
+/* ── GAME REPORT 창 (#pgReport, 경기 끝 · 공유 줄) — 저장 이미지(statcard.js)와 같은 톤 ──
+   · 종이 테마(paper.css)의 굵은 잉크 테두리 · 자간 넓은 라벨 · 세 색 방향 막대를 옅은 선 · 조용한 라벨 · 큰 숫자(Oswald)로
+   · 방향 막대는 가장 큰 칸만 강조색(.max — statcard.js 가 창 안 작은 구장을 그릴 때 붙인다) */
+body.sb.sb-night:not(.high-contrast) #pgReport { background: var(--paper); }
+body.sb.sb-night:not(.high-contrast) #pgCard { background: var(--paper); border-left: 1px solid var(--n-line); border-right: 1px solid var(--n-line); }
+body.sb.sb-night:not(.high-contrast) #pgReport :is(.pg-hdr-close, .pg-sb, .pg-mini-wrap, .pg-ins, .pg-ai, .pg-save, .pg-sh-btn) { border-radius: 6px !important; }
+body.sb.sb-night:not(.high-contrast) .pg-hdr { margin-bottom: 16px; padding: 48px 20px 24px; background: var(--paper); border-bottom: 1px solid var(--n-line); }
+body.sb.sb-night:not(.high-contrast) .pg-hdr-close { top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: none; color: var(--n-ink2); }
+body.sb.sb-night:not(.high-contrast) .pg-badge-gold { padding: 0; border: 0; background: none; font: 600 12px/1 'Oswald', sans-serif; letter-spacing: .16em; color: var(--n-pink); }
+body.sb.sb-night:not(.high-contrast) .pg-teams { margin-bottom: 8px; font: 700 15px var(--f-body); color: var(--n-ink2); }
+body.sb.sb-night:not(.high-contrast) .pg-score { margin-bottom: 8px; font: 700 64px/1 'Oswald', sans-serif; letter-spacing: 0; color: var(--ink); }
+body.sb.sb-night:not(.high-contrast) .pg-date { font: 500 12px var(--f-body); letter-spacing: 0; color: var(--n-ink3); }
+body.sb.sb-night:not(.high-contrast) .pg-sec { padding: 0 16px; margin-bottom: 16px; }
+body.sb.sb-night:not(.high-contrast) .pg-sec-lbl { font: 700 12px var(--f-body); letter-spacing: 0; color: var(--n-ink3); }
+body.sb.sb-night:not(.high-contrast) .pg-sec-lbl::after { height: 1px; background: var(--n-line); }
+body.sb.sb-night:not(.high-contrast) .pg-sg { gap: 8px; }
+body.sb.sb-night:not(.high-contrast) :is(.pg-sb, .pg-ins, .pg-ai, .pg-mini-wrap) { border: 1px solid var(--n-line); background: var(--paper-2); }
+body.sb.sb-night:not(.high-contrast) .pg-sb { padding: 12px 4px; }
+body.sb.sb-night:not(.high-contrast) .pg-sv { font: 600 26px/1 'Oswald', sans-serif; color: var(--ink); }
+body.sb.sb-night:not(.high-contrast) .pg-sl { margin-top: 6px; font: 500 11px var(--f-body); letter-spacing: 0; color: var(--n-ink3); }
+body.sb.sb-night:not(.high-contrast) .pg-dir { height: 8px; margin-bottom: 8px; border: 0; gap: 2px; }
+body.sb.sb-night:not(.high-contrast) #pgReport :is(.pg-dp, .pg-dc, .pg-do) { border-radius: 4px !important; background: rgba(255, 255, 255, .16); }
+body.sb.sb-night:not(.high-contrast) #pgReport :is(.pg-dp, .pg-dc, .pg-do).max { background: var(--n-pink); }
+body.sb.sb-night:not(.high-contrast) .pg-dl { font: 500 12px var(--f-body); color: var(--n-ink3); }
+body.sb.sb-night:not(.high-contrast) .pg-mid { gap: 8px; padding: 0 16px; margin-bottom: 16px; }
+body.sb.sb-night:not(.high-contrast) .pg-insights { gap: 8px; }
+body.sb.sb-night:not(.high-contrast) .pg-ins { padding: 10px 12px; border-left-width: 2px; }
+body.sb.sb-night:not(.high-contrast) .pg-ins-lbl { margin-bottom: 4px; font: 600 11px/1 'Oswald', sans-serif; letter-spacing: .12em; }
+body.sb.sb-night:not(.high-contrast) .pg-ins.hot { border-left-color: var(--n-pink); }
+body.sb.sb-night:not(.high-contrast) .pg-ins.hot .pg-ins-lbl { color: var(--n-pink); }
+body.sb.sb-night:not(.high-contrast) .pg-ins.weak { border-left-color: var(--pen-blue); }
+body.sb.sb-night:not(.high-contrast) .pg-ins.weak .pg-ins-lbl { color: var(--pen-blue); }
+body.sb.sb-night:not(.high-contrast) .pg-ins.mvp { border-left-color: #FFD84A; }
+body.sb.sb-night:not(.high-contrast) .pg-ins.mvp .pg-ins-lbl { color: #FFD84A; }
+body.sb.sb-night:not(.high-contrast) .pg-ins-val { font: 700 13px/1.5 var(--f-body); color: var(--ink); }
+body.sb.sb-night:not(.high-contrast) .pg-ai { margin: 0 16px 16px; padding: 12px 16px; }
+body.sb.sb-night:not(.high-contrast) .pg-ai-lbl { margin-bottom: 6px; font: 700 12px var(--f-body); letter-spacing: 0; color: var(--n-ink3); }
+body.sb.sb-night:not(.high-contrast) .pg-ai-txt { font: 500 14px/1.7 var(--f-body); color: var(--n-ink2); }
+body.sb.sb-night:not(.high-contrast) .pg-save { width: calc(100% - 32px); min-height: 48px; margin: 0 16px 8px; padding: 0 14px; border: 0; background: var(--ink); color: var(--paper); font: 700 15px var(--f-body); }
+body.sb.sb-night:not(.high-contrast) .pg-share-row { gap: 8px; padding: 0 16px 8px; }
+body.sb.sb-night:not(.high-contrast) .pg-sh-btn { min-height: 48px; border: 1px solid var(--n-line); background: none; color: var(--n-ink2); font: 700 13px var(--f-body); }
+body.sb.sb-night:not(.high-contrast) .pg-sh-btn.acc { border-color: var(--n-pink); background: none; color: var(--n-pink); }

@@ -198,20 +198,23 @@ function field(c, cx, cy, S, abs, mode) {
   c.beginPath(); c.moveTo(cx, cy + 1.5); c.lineTo(cx + 3, cy - 1); c.lineTo(cx + 3, cy - 3.5); c.lineTo(cx - 3, cy - 3.5); c.lineTo(cx - 3, cy - 1); c.closePath(); c.fill();
   c.restore();
   if (!mode) return;   // 빈 상태 그림: 거리 · 타구 없이
-  // 거리 글자: 펜스(폴 바깥 · 중앙 위) · 거리 호(왼쪽 파울라인 바깥)
-  font(c, '500', 10, FONT.num);
-  const ct = pt(2 * Q, S + 8);
-  txt(c, st.lfDist + 'm', lp[0] - 6, lp[1] + 4, N.tx3, 'right');
-  txt(c, st.cfDist + 'm', ct[0], ct[1], N.tx3, 'center');
-  txt(c, st.rfDist + 'm', rp[0] + 6, rp[1] + 4, N.tx3, 'left');
-  dists.forEach(d => { const p = pt(Q, d * m); txt(c, d + 'm', p[0] - 6, p[1] + 3, N.tx3, 'right'); });
+  // 거리 글자: 펜스(폴 바깥 · 중앙 위) · 거리 호(왼쪽 파울라인 바깥) — 작은 구장(mini, GAME REPORT 창)은 빼고 점만
+  if (mode !== 'mini') {
+    font(c, '500', 10, FONT.num);
+    const ct = pt(2 * Q, S + 8);
+    txt(c, st.lfDist + 'm', lp[0] - 6, lp[1] + 4, N.tx3, 'right');
+    txt(c, st.cfDist + 'm', ct[0], ct[1], N.tx3, 'center');
+    txt(c, st.rfDist + 'm', rp[0] + 6, rp[1] + 4, N.tx3, 'left');
+    dists.forEach(d => { const p = pt(Q, d * m); txt(c, d + 'm', p[0] - 6, p[1] + 3, N.tx3, 'right'); });
+  }
   // 점: 아웃 먼저, 홈런을 맨 위에
   const order = ['out', 'bb', 'hit', 'xbh', 'hr'];
   abs.map((a, i) => ({ a, i, k: kind(a.res) })).filter(p => p.a.x != null && p.a.y != null)
     .sort((p, q) => order.indexOf(p.k) - order.indexOf(q.k))
     .forEach(p => {
       const xy = window._semiToCone(g, p.a.x, p.a.y, p.a.fa, p.a.ov);
-      if (mode === 'dot') mark(c, xy[0], xy[1], p.k === 'out' ? 3.5 : 4.5, p.k);
+      if (mode === 'mini') mark(c, xy[0], xy[1], p.k === 'out' ? 2.5 : 3, p.k);
+      else if (mode === 'dot') mark(c, xy[0], xy[1], p.k === 'out' ? 3.5 : 4.5, p.k);
       else mark(c, xy[0], xy[1], 10, p.k, p.i + 1);   // 번호 = 타석 칸 번호
     });
 }
@@ -471,7 +474,7 @@ function season(cv) {
 // ── GAME REPORT 공유 이미지 (스토리 1080×1920 · 피드 1080×1080) ─────────────
 // 공유 이미지 모듈이라 여기서 그린다 — 카드의 구장 · 지표 띠 · 방향 막대를 그대로 쓴다. core.js pgExport 를 바꿔 낀다(모달 버튼 onclick)
 //  · 계산은 core pgExport 와 같다: 팀 타율 = 안타 / (볼넷 · 사구 · 희생 뺀 타석, 0 이면 1) · 안타 · 타점 · 삼진 · 방향(_isPull · _isCtr) · 타구 = AS.abs 전부
-//  · 코멘트는 모달의 #pgAITxt 글 그대로. 모달 안 작은 그림(core _pgDrawMini)은 손대지 않는다
+//  · 코멘트는 모달의 #pgAITxt 글 그대로. 모달 안 작은 그림(_pgDrawMini)은 아래 pgMini 가 같은 선 구장으로
 
 // 결과 버그(스토리): 머리 띠 FINAL · 두 팀 줄(이름 + 큰 점수). 이긴 쪽 = 주황 띠 · 밝게, 진 쪽 흐리게, 비기면 둘 다 보통. 높이 반환
 function finalBug(c, y, th, ta, hs, as) {
@@ -578,6 +581,31 @@ window.pgExport = function (Wpx, Hpx, mode) {
     });
   }, 80);
 };
+// GAME REPORT 창 안 작은 구장(108px) — core _pgDrawMini 를 바꿔 낀다: 저장 이미지와 같은 선 구장, 거리 글자 없이 점만
+//  · 고대비(밝은 종이 창)에서는 흰 선이 안 보이므로 그 전 그림 그대로 (scorebook.js 의 종이 필드)
+//  · core 가 _pgBuild 바로 뒤에 부르므로 여기서 방향 막대의 가장 큰 칸에 .max (저장 이미지 방향 칸과 같은 강조 · css/night.css)
+//  · scorebook.js 가 setTimeout 0 에서 이 함수를 종이 필드로 감싸므로 그 뒤에 바꿔 끼우고, _sb 로 다시 감싸지 않게 한다
+setTimeout(() => {
+  const prev = window._pgDrawMini;
+  const mini = function (id, S) {
+    const b = document.body, cv = $(id);
+    if (!cv || !b.classList.contains('sb-night') || b.classList.contains('high-contrast')) return prev.apply(this, arguments);
+    pgMini(cv, S);
+  };
+  mini._sb = true;
+  window._pgDrawMini = mini;
+}, 0);
+function pgMini(cv, S) {
+  const r = window.devicePixelRatio || 1, c = cv.getContext('2d'), st = stadium(), k = Math.max(st.lfDist, st.rfDist) / st.cfDist;
+  cv.width = cv.height = Math.round(S * r); cv.style.width = cv.style.height = S + 'px';
+  c.setTransform(r, 0, 0, r, 0, 0);
+  const P = 8, R = Math.min(S - P * 2, (S / 2 - P) / (k * Math.SQRT1_2));
+  field(c, S / 2, S - P - (S - P * 2 - R) / 2, R, window.AS.abs, 'mini');
+  const d = window.AS.abs.filter(a => a.deg != null), n = [d.filter(window._isPull).length, d.filter(window._isCtr).length];
+  n.push(d.length - n[0] - n[1]);
+  const mx = Math.max.apply(null, n);
+  ['pgDP', 'pgDC', 'pgDO'].forEach((s, i) => { const e = $(s); if (e) e.classList.toggle('max', d.length > 0 && n[i] === mx); });
+}
 
 // ── core 의 _drawCard 바꿔 끼우기 ─────────────────────────────
 // 빠진 웹폰트 묶음을 받은 뒤 다시 그린다(drawWithFonts). 그 사이 종류 · 선수를 바꿨으면 늦게 온 다시 그리기는 건너뛴다

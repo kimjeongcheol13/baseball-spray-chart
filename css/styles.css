@@ -540,6 +540,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-low{color:var(--yellow)}
 .go-warn{margin-top:2px;color:var(--red)}
 .go-note{margin-top:6px;color:var(--text3)}
+.go-prev .btn.go-fill{display:flex;justify-content:center;width:100%;min-height:44px;margin:6px 0 4px}   /* 뒤쪽 .btn{min-height:36px} · 모바일 .btn.btn-ghost 보다 앞서게 */
 .go-ta-s{min-height:60px}
 .go-ls-wrap{overflow-x:auto;margin:2px 0 8px}
 .go-ls{border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums;color:var(--text2)}

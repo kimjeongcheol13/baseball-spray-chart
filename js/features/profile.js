@@ -3,7 +3,7 @@ import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, fmt, sampleBadge, josa, emptyState, sprayFigure, trendChart, pitchTable, playerChips } from './batdata.js?v=9';
 import { hotColdFigure } from './zonefig.js?v=7';
 import { mixFigure } from './mixfig.js?v=5';
-import { goCareerCard } from './gocareer.js?v=1';
+import { goCareerCard } from './gocareer.js?v=2';
 
 let _sel = null;        // 선택된 선수 이름
 let _trendKey = 'avg';  // 경기별 흐름 지표: avg | ops

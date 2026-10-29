@@ -392,36 +392,54 @@
   // ── 선수 개인 통산 페이지 ──
   // 게임원 선수 페이지(이름 · 우투우타 · 비선출 · 학교 / 타자기록 / 투수기록)를 복사한 평문.
   // 한 줄에 '경기수68' · '* 경기수 68' · '경기수: 68' 처럼 오거나, 이름 줄 다음 줄에 값만 와도 읽는다.
+  // '타자기록' · '투수기록' 줄이 없어도 된다(투수 칸만 복사한 붙여넣기, 2026-10-29): '경기수' 줄마다 묶음을 나누고,
+  //   묶음 안에서 한쪽에만 있는 이름(타율 · OPS … / 방어율 · 이닝 …)이 많은 쪽으로 정한다
   // 게임원 숫자를 그대로 옮긴다(다시 계산하지 않음) — 방어율 · 탈삼진율은 게임원의 7이닝 기준.
   // → { name, hand, bg, school, bat: {…} | null, pit: {…} | null } — 모르는 줄은 건너뛴다
   var CAREER_BAT = { '경기수': 'g', '타율': 'avg', '타석': 'pa', '타수': 'ab', '득점': 'r', '총안타': 'h', '1루타': 's1', '2루타': 's2', '3루타': 's3', '홈런': 'hr', '루타': 'tb', '타점': 'rbi', '도루': 'sb', '도루자': 'cs', '희타': 'sh', '희비': 'sf', '볼넷': 'bb', '고의4구': 'ibb', '사구': 'hbp', '삼진': 'k', '병살': 'gdp', '장타율': 'slg', '출루율': 'obp', '도루성공률': 'sbPct', '멀티히트': 'multi', 'OPS': 'ops', 'BB/K': 'bbk', '장타/안타': 'xbhH' };
   var CAREER_PIT = { '경기수': 'g', '방어율': 'era', '승': 'w', '패': 'l', '세': 'sv', '홀드': 'hld', '승률': 'wpct', '타자': 'tbf', '타수': 'ab', '투구수': 'np', '이닝': 'outs', '피안타': 'h', '피홈런': 'hr', '희타': 'sh', '희비': 'sf', '볼넷': 'bb', '고의4구': 'ibb', '사구': 'hbp', '탈삼진': 'k', '폭투': 'wp', '보크': 'bk', '실점': 'r', '자책점': 'er', 'WHIP': 'whip', '피안타율': 'avg', '탈삼진율': 'k7' };
+  var CAREER_ALL = Object.keys(Object.assign({}, CAREER_BAT, CAREER_PIT)).sort(function (a, b) { return b.length - a.length; });
   var CAREER_VAL = /^[:：]?\s*(-|\d[\d,]*(?:\.\d+)?)$/;
   var CAREER_IP = /^[:：]?\s*(\d+)\s*(⅓|⅔|1\/3|2\/3)?$/;
-  function careerLabels(map) { return Object.keys(map).sort(function (a, b) { return b.length - a.length; }); }
+  function careerVal(label, raw) {   // → [값] | null (값을 못 읽으면 null)
+    if (label === '이닝') { var m = CAREER_IP.exec(raw); return m ? [+m[1] * 3 + (m[2] ? (m[2] === '⅔' || m[2] === '2/3' ? 2 : 1) : 0)] : null; }
+    var n = CAREER_VAL.exec(raw); return n ? [n[1] === '-' ? null : +n[1].replace(/,/g, '')] : null;
+  }
   function parseGameOneCareer(text) {
     var lines = String(text == null ? '' : text).split(/\r\n|\r|\n/).map(function (l) { return l.replace(/^\s*[*•·\-]\s*/, '').trim(); }).filter(Boolean);
     var out = { name: '', hand: '', bg: '', school: '', bat: null, pit: null };
-    var head = [], sec = null, map = null, labels = null, pending = null;
-    function put(label, raw) {
-      var key = map[label], v;
-      if (key === 'outs') { var m = CAREER_IP.exec(raw); if (!m) return false; v = +m[1] * 3 + (m[2] ? (m[2] === '⅔' || m[2] === '2/3' ? 2 : 1) : 0); }
-      else { var n = CAREER_VAL.exec(raw); if (!n) return false; v = n[1] === '-' ? null : +n[1].replace(/,/g, ''); }
-      (out[sec] || (out[sec] = {}))[key] = v;
+    var head = [], blocks = [], cur = null, forced = null, pending = null, started = false;
+    function add(label, raw) {
+      var r = careerVal(label, raw);
+      if (!r) return false;
+      if (!cur || (label === '경기수' && cur.items.length)) blocks.push(cur = { sec: forced, items: [] });
+      cur.items.push([label, r[0]]);
+      started = true;
       return true;
     }
     lines.forEach(function (l) {
-      if (/^타자\s*기록$/.test(l)) { sec = 'bat'; map = CAREER_BAT; labels = careerLabels(map); pending = null; return; }
-      if (/^투수\s*기록$/.test(l)) { sec = 'pit'; map = CAREER_PIT; labels = careerLabels(map); pending = null; return; }
-      if (!sec) { head.push(l); return; }
-      if (pending && put(pending, l)) { pending = null; return; }
+      var h = /^(타자|투수)\s*기록$/.exec(l);
+      if (h) { forced = h[1] === '타자' ? 'bat' : 'pit'; cur = null; pending = null; started = true; return; }
+      if (pending && add(pending, l)) { pending = null; return; }
       pending = null;
-      for (var i = 0; i < labels.length; i++) {
-        if (l.indexOf(labels[i]) !== 0) continue;
-        var rest = l.slice(labels[i].length).trim();
-        if (!rest) { pending = labels[i]; return; }
-        if (put(labels[i], rest)) return;
+      for (var i = 0; i < CAREER_ALL.length; i++) {
+        if (l.indexOf(CAREER_ALL[i]) !== 0) continue;
+        var rest = l.slice(CAREER_ALL[i].length).trim();
+        if (!rest) { pending = CAREER_ALL[i]; return; }
+        if (add(CAREER_ALL[i], rest)) return;
       }
+      if (!started) head.push(l);
+    });
+    blocks.forEach(function (b) {
+      var sec = b.sec;
+      if (!sec) {   // 머리글 없는 묶음: 한쪽에만 있는 이름 수로 정한다(같으면 모름 → 버림)
+        var nb = 0, np = 0;
+        b.items.forEach(function (it) { var inB = it[0] in CAREER_BAT, inP = it[0] in CAREER_PIT; if (inB && !inP) nb++; else if (inP && !inB) np++; });
+        sec = nb > np ? 'bat' : np > nb ? 'pit' : null;
+      }
+      if (!sec) return;
+      var map = sec === 'bat' ? CAREER_BAT : CAREER_PIT;
+      b.items.forEach(function (it) { if (it[0] in map) (out[sec] || (out[sec] = {}))[map[it[0]]] = it[1]; });
     });
     // 머리 부분: 이름은 '우투우타' 줄 바로 위(앞에 메뉴 글자가 딸려 와도) · 없으면 첫 줄
     var hi = -1;

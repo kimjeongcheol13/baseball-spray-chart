@@ -4,6 +4,7 @@
 //   · 저장 = sl_go_career { p: { [SprayLab 선수 이름]: { at, name, hand, bg, school, bat, pit } } }
 //     경기 키를 훑는 코드(d.abs 배열 확인)에 걸리지 않게 p 한 겹으로 감싼다
 //   · 붙여넣은 이름이 이 선수와 다르면 저장하지 않는다(이름 줄이 없으면 확인 없이 저장)
+//   · 타자 · 투수 중 한쪽만 붙여넣으면 그쪽만 바꾸고 다른 쪽은 남긴다
 
 const KEY = 'sl_go_career';
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -66,10 +67,11 @@ export function goCareerSave(btn) {
   const box = btn.closest('#goCareer'), name = box.dataset.name, msg = box.querySelector('.go-cr-msg');
   const r = window.SLGameOne && window.SLGameOne.parseGameOneCareer(box.querySelector('textarea').value);
   const n = o => (o ? Object.keys(o).length : 0);
-  if (!r || n(r.bat) + n(r.pit) < 3) { msg.textContent = '게임원 선수 기록을 찾지 못했어요. 「타자기록」 · 「투수기록」 글자까지 같이 복사해 주세요.'; return; }
+  if (!r || n(r.bat) + n(r.pit) < 3) { msg.textContent = '게임원 선수 기록을 찾지 못했어요. 선수 페이지에서 이름부터 기록 끝까지(경기수 …) 복사해 주세요. 한 경기 박스스코어 표는 기록 탭의 「게임원 가져오기」에 넣어요.'; return; }
   if (r.name && _nm(r.name) !== _nm(name)) { msg.textContent = `붙여넣은 기록은 「${r.name}」 선수예요. ${name} 선수 페이지를 복사해 주세요.`; return; }
-  const all = _all();
-  all[name] = { at: Date.now(), name: r.name, hand: r.hand, bg: r.bg, school: r.school, bat: r.bat, pit: r.pit };
+  const all = _all(), old = all[name] || {};
+  // 타자 · 투수를 따로 붙여넣어도 앞서 저장한 쪽은 남긴다(새로 붙인 쪽만 바꾼다)
+  all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null };
   try { _put(all); } catch (e) { msg.textContent = '저장 공간이 부족해 저장하지 못했어요.'; return; }
   _redraw(box);
 }

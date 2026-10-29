@@ -11,6 +11,8 @@
     '투수기록', '', '* 경기수11', '* 방어율5.33', '* 승1', '* 패0', '* 세0', '* 홀드0', '* 승률1.000', '* 타자112', '* 타수89', '* 투구수156',
     '* 이닝22 ⅓', '* 피안타22', '* 피홈런2', '* 희타0', '* 희비0', '* 볼넷21', '* 고의4구0', '* 사구2', '* 탈삼진34', '* 폭투4', '* 보크0',
     '* 실점26', '* 자책점17', '* WHIP1.93', '* 피안타율0.247', '* 탈삼진율10.66'].join('\n');
+  // 실제 붙여넣기 2(2026-10-29): 투수 칸만, '투수기록' 줄 없이
+  var PIT_ONLY = ['김호인', '우투우타', '비선출', '대산고등학교', ''].concat(SAMPLE.split('\n').slice(SAMPLE.split('\n').indexOf('투수기록') + 1)).join('\n');
   var KEY = 'sl_1790000950001';
   function P() { return window.SLGameOne.parseGameOneCareer.apply(null, arguments); }
   function card() { return document.getElementById('goCareer'); }
@@ -56,6 +58,15 @@
     eq([P('').bat, P(null).pit], [null, null], '빈 입력');
   });
 
+  test('파서: 머리글(타자기록 · 투수기록) 없이 — 투수 칸만 · 둘 다 · 양쪽에 다 있는 이름만이면 버림', function () {
+    var b = P(SAMPLE), p = P(PIT_ONLY);
+    eq([p.name, p.hand, p.school, p.bat, p.pit], ['김호인', '우투우타', '대산고등학교', null, b.pit], '투수 칸만(실제 붙여넣기 2)');
+    var both = P(SAMPLE.replace(/^(타자|투수)기록$/mg, ''));
+    eq([both.name, both.bat, both.pit], [b.name, b.bat, b.pit], '둘 다 머리글 없이 = 경기수 줄로 나눔');
+    eq([P('홍길동\n경기수3\n볼넷2\n사구1').bat, P('홍길동\n경기수3\n볼넷2').pit], [null, null], '타자인지 투수인지 모름');
+    eq(P('세종고등학교\n경기수3\n승1').name, '세종고등학교', "'세' · '승'으로 시작하는 머리 줄도 머리로");
+  });
+
   test('카드: 분석 탭 › 타자 › 시즌 맨 아래 · 처음엔 안내 + 붙여넣기(접힘)', async function () {
     localStorage.removeItem('sl_go_career');
     var abs = ['안타', '삼진', '홈런'].map(function (res, i) { return { id: i + 1, bid: 77, bname: '김호인', bnum: '7', res: res, inn: (i + 1) + '회' }; })
@@ -80,6 +91,10 @@
     paste('안녕하세요');
     press('.go-cr-save');
     ok(card().querySelector('.go-cr-msg').textContent.indexOf('찾지 못했어요') >= 0, '기록 아님');
+    // 한 경기 박스스코어 투수 표(2026-10-29 실제 붙여넣기)는 가져오기로 안내
+    paste('적시타\n선수\t결과\t이닝\t타자\t타수\t피안타\t피홈런\t희타\t희비\t볼넷\t사구\t삼진\t폭투\t보크\t실점\t자책점\t투구수\t방어율\t시즌\n김영석(18)\t승\t2 ⅓\t17\t14\t8\t0\t0\t1\t2\t0\t2\t0\t0\t4\t2\t0\t6.01\t6.01');
+    press('.go-cr-save');
+    ok(card().querySelector('.go-cr-msg').textContent.indexOf('게임원 가져오기') >= 0, '박스스코어 표 → 가져오기 안내');
     eq(localStorage.getItem('sl_go_career'), null, '저장 안 함');
   });
 
@@ -97,6 +112,14 @@
     ok(!card().querySelector('.pf-counts') && card().dataset.name === '다른선수', '다른 선수는 빈 카드');
     open('김호인');
     eq(cells().length, 24, '다시 열어도 그대로');
+  });
+
+  test('투수 칸만 다시 붙여넣으면(머리글 없이) 투수만 바꾸고 타자는 남긴다', function () {
+    paste(PIT_ONLY.replace('경기수11', '경기수12'));
+    press('.go-cr-save');
+    var s = stored()['김호인'];
+    eq([s.bat && s.bat.g, s.pit && s.pit.g, s.school], [68, 12, '대산고등학교'], '타자 68 그대로 · 투수 12');
+    eq([cells().length, cells()[0], cells()[16]], [24, '경기 68', '경기 12'], '카드');
   });
 
   test('지우기 → 저장에서 빠지고 빈 카드', function () {

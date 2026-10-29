@@ -452,8 +452,48 @@
     return out;
   }
 
+  // ── 팀 기록통계 › 타자랭킹 · 투수랭킹 (팀 선수 전원 한 번에) ──
+  // 게임원 팀 페이지를 크롬에서 전체 선택 → 복사한 평문(2026-10-29, 실제 팀 페이지로 확인). 고른 시즌 · 그 팀 경기만이다(통산 아님).
+  //   붙여넣은 글에 시즌 연도 · 팀 이름은 없다. 타자 · 투수는 따로 페이지 — 한 칸에 이어 붙여도 된다
+  //   줄 = '순위 이름(번호) 숫자…' 탭 구분. 머리 줄은 「도실 (도루자)」처럼 끊겨 오므로 칸 수로 가른다(순위 · 이름 빼고 타자 28칸 · 투수 26칸)
+  //   화면 고정 칸 때문에 같은 표가 두 번 복사된다 → 같은 이름(번호)은 한 번만. 규정 미달 표도 같은 모양이라 같이 읽는다
+  //   투수 이닝 '18.1' = 18⅓ (방어율 = 자책점 × 7 ÷ 이닝 으로 확인). 칸 이름은 parseGameOneCareer 와 같다(카드가 같은 함수로 그린다)
+  // → { bat: [{ name, number, g, avg, … }], pit: [{ name, number, g, era, outs, … }], warnings }
+  var TEAM_BAT = ['avg', 'g', 'pa', 'ab', 'r', 'h', 's1', 's2', 's3', 'hr', 'tb', 'rbi', 'sb', 'cs', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'k', 'gdp', 'slg', 'obp', 'sbPct', 'multi', 'ops', 'bbk', 'xbhH'];
+  var TEAM_PIT = ['era', 'g', 'w', 'l', 'sv', 'hld', 'wpct', 'tbf', 'ab', 'np', 'outs', 'h', 'hr', 'sh', 'sf', 'bb', 'ibb', 'hbp', 'k', 'wp', 'bk', 'r', 'er', 'whip', 'avg', 'k7'];
+  function parseGameOneTeam(text) {
+    var out = { bat: [], pit: [], warnings: [] }, seen = {};
+    String(text == null ? '' : text).split(/\r\n|\r|\n/).forEach(function (line, k) {
+      var cells = line.indexOf('\t') >= 0 ? line.split('\t').map(function (c) { return c.trim(); }) : line.trim().split(/\s+/);
+      var m = /^\d+$/.test(cells[0]) && NAME_RE.exec(cells[1] || '');
+      if (!m) return;
+      var keys = cells.length === 2 + TEAM_BAT.length ? TEAM_BAT : cells.length === 2 + TEAM_PIT.length ? TEAM_PIT : null, row = { name: m[1].slice(0, 20), number: m[2] }, bad = !keys;
+      (keys || []).forEach(function (key, j) {
+        var v = cells[2 + j], ip = key === 'outs' && /^(\d+)\.([012])$/.exec(v);
+        row[key] = ip ? +ip[1] * 3 + +ip[2] : key === 'outs' ? _outs(v) : v === '-' ? null : /^\d+(\.\d+)?$/.test(v) ? +v : NaN;
+        if (key === 'outs' ? row[key] == null : row[key] !== row[key]) bad = true;   // NaN
+      });
+      if (bad) { out.warnings.push((k + 1) + '행 ' + m[1] + ': 팀 기록 줄로 읽지 못함 — ' + line.trim().slice(0, 40)); return; }
+      var side = keys === TEAM_BAT ? 'bat' : 'pit', id = side + ' ' + m[1] + '(' + m[2] + ')';
+      if (seen[id]) return;
+      seen[id] = 1;
+      out[side].push(row);
+    });
+    // 한 팀에 같은 이름이 둘(번호 다름)이면 누구 기록인지 몰라 뺀다 — 저장은 이름으로 한다
+    ['bat', 'pit'].forEach(function (side) {
+      var n = {};
+      out[side].forEach(function (r) { n[r.name] = (n[r.name] || 0) + 1; });
+      out[side] = out[side].filter(function (r) {
+        if (n[r.name] < 2) return true;
+        out.warnings.push(r.name + '(' + r.number + '): 같은 이름 선수가 둘이라 뺌');
+        return false;
+      });
+    });
+    return out;
+  }
+
   var api = {
-    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, parseGameOneInfo: parseGameOneInfo, parseGameOneCareer: parseGameOneCareer, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
+    parseGameOne: parseGameOne, parseGameOneScoreboard: parseGameOneScoreboard, splitGameOnePage: splitGameOnePage, parseGameOnePitchers: parseGameOnePitchers, parseGameOneInfo: parseGameOneInfo, parseGameOneCareer: parseGameOneCareer, parseGameOneTeam: parseGameOneTeam, toStoredCoords: toStoredCoords, classifyToken: classifyToken,
     PREFIX: PREFIX, SUFFIX: SUFFIX, NON_BATTED: NON_BATTED, FIELDER_DEPTH: FIELDER_DEPTH, FENCE_DEPTH: FENCE_DEPTH
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

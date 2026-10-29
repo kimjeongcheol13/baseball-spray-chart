@@ -1,0 +1,40 @@
+name: GameOne sync
+
+# 게임원 팀 기록(시즌 타자 · 투수 랭킹 + 선수단 전원 통산)을 매일 받아 gameone-data 브랜치에 <팀 번호>.json 으로 둔다.
+# 앱(js/features/gocareer.js)은 raw.githubusercontent.com 에서 읽는다(그 주소는 다른 사이트에서 읽기를 허락한다).
+# 받을 팀 = .github/scripts/gameone_teams.json · 받는 방법 = .github/scripts/gameone_sync.mjs
+on:
+  schedule:
+    - cron: '7 19 * * *'   # 매일 19:07 UTC (04:07 KST)
+  workflow_dispatch:       # 팀을 새로 넣었을 때 바로 돌리기
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gameone-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 어제 데이터 깔기 (오늘 실패한 팀은 어제 파일이 남는다)
+        run: |
+          mkdir -p out
+          if git fetch --depth=1 origin gameone-data; then git archive FETCH_HEAD | tar -x -C out; fi
+
+      - name: 게임원에서 받기
+        run: node .github/scripts/gameone_sync.mjs out
+
+      - name: gameone-data 브랜치에 올리기 (커밋 하나로 덮어쓴다 — 지난 기록이 쌓이지 않게)
+        run: |
+          cd out
+          git init -q -b gameone-data
+          git add -A
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q --allow-empty -m "gameone data $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gameone-data

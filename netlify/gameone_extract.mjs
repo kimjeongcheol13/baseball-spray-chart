@@ -50,17 +50,20 @@ export function careerRec(G, html) {
   return bat || pit ? { name: c.name || '', hand: c.hand, bg: c.bg, school: c.school, bat, pit } : null;
 }
 
-// 선수단에 같은 이름이 둘이면 통산을 받지 않는다(저장이 이름 기준이라)
-export const uniqueRoster = ro => ro.filter(p => ro.filter(q => q.name === p.name).length === 1);
+// 선수단 → 저장 이름(key). 같은 이름이 둘이면 「이름 #번호」로 나눈다(저장이 이름 기준이라 · parseGameOneTeam 과 같은 규칙). 번호가 없으면 통산을 받지 않는다
+export const rosterKeys = ro => ro.flatMap(p => ro.filter(q => q.name === p.name).length < 2 ? [{ ...p, key: p.name }] : p.number ? [{ ...p, key: `${p.name} #${p.number}` }] : []);
 
 // 받은 페이지들 → 앱(js/features/gocareer.js)이 그대로 넣는 JSON. G = js/gameone.js
 //   pages = { hit, pit, list, careers: { [선수 코드]: 통산 HTML } }
-//   → { v, at, team, season, bat: [팀 시즌 타자 줄], pit: [팀 시즌 투수 줄], players: { [이름]: { hand, bg, school, bat, pit } } }
+//   → { v, at, team, season, bat: [팀 시즌 타자 줄], pit: [팀 시즌 투수 줄], players: { [이름 · 동명이인은 이름 #번호]: { hand, bg, school, bat, pit } } }
 export function teamData(G, { hit, pit, list, careers }, at) {
-  const t = G.parseGameOneTeam(rankRows(hit) + '\n' + rankRows(pit)), players = {};
-  for (const p of uniqueRoster(roster(list))) {
+  const t = G.parseGameOneTeam(rankRows(hit) + '\n' + rankRows(pit)), players = {}, ro = roster(list);
+  for (const p of rosterKeys(ro)) {
     const c = careers[p.code] && careerRec(G, careers[p.code]);
-    if (c) players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat: c.bat, pit: c.pit };
+    if (c) players[p.key] = { hand: c.hand, bg: c.bg, school: c.school, bat: c.bat, pit: c.pit };
   }
-  return { v: 1, at, team: title(hit), season: season(hit), bat: t.bat, pit: t.pit, players };
+  // 시즌 표에 한 명만 나와도 선수단에 같은 이름이 둘이면 「이름 #번호」로 — 그 선수의 통산과 시즌이 한 칩에 모이게
+  const dup = new Set(ro.filter(p => ro.filter(q => q.name === p.name).length > 1).map(p => p.name));
+  const fix = r => (dup.has(r.name) && r.number ? { ...r, name: `${r.name} #${r.number}` } : r);
+  return { v: 1, at, team: title(hit), season: season(hit), bat: t.bat.map(fix), pit: t.pit.map(fix), players };
 }

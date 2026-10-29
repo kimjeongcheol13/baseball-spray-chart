@@ -149,7 +149,8 @@ export function goCareerSave(btn) {
 function _saveCareer(box, r, msg, auto) {
   const add = !box.dataset.name, name = add ? String(r.name || '').trim() : box.dataset.name;
   if (!name) { msg.textContent = '붙여넣은 글에서 선수 이름을 찾지 못했어요. 선수 이름 줄부터 복사해 주세요.'; return; }
-  if (!add && r.name && _nm(r.name) !== _nm(name)) { msg.textContent = `${auto ? '이 주소는' : '붙여넣은 기록은'} 「${r.name}」 선수예요. ${name} 선수 페이지를 ${auto ? '넣어' : '복사해'} 주세요.`; return; }
+  // 동명이인 「김철수 #7」 카드 = 게임원 이름 「김철수」 (번호는 팀 기록에서 나눈 것)
+  if (!add && r.name && _nm(r.name) !== _nm(name).replace(/#\d+$/, '')) { msg.textContent = `${auto ? '이 주소는' : '붙여넣은 기록은'} 「${r.name}」 선수예요. ${name} 선수 페이지를 ${auto ? '넣어' : '복사해'} 주세요.`; return; }
   const all = _all(), old = all[name] || {};
   // 타자 · 투수를 따로 붙여넣어도 앞서 저장한 쪽은 남긴다(새로 붙인 쪽만 바꾼다)
   all[name] = { at: Date.now(), name: r.name || old.name || '', hand: r.hand || old.hand || '', bg: r.bg || old.bg || '', school: r.school || old.school || '', bat: r.bat || old.bat || null, pit: r.pit || old.pit || null, ss: old.ss };

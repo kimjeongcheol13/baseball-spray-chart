@@ -5,8 +5,8 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=9';
 import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=27';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=27';
-import { goCareerNames, goCareerCard } from './gocareer.js?v=4';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=28';
+import { goCareerNames, goCareerCard } from './gocareer.js?v=5';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
 let _sel = null;        // 보고 있는 타자 이름
@@ -120,7 +120,7 @@ function _render() {
     </div>
     ${scope === 'season'
       ? (season.length || goOnly.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="시즌 타자">${playerChips(season.concat(goOnly.map(name => ({ name }))), _goAdd ? null : _sel, 'selectBatterSeason')}</div>` : '')
-        + `<button type="button" class="bt-link-pill" onclick="setBatterView('goadd')">＋ 게임원 통산 붙여넣기 · SprayLab 기록 없는 선수도</button>`
+        + `<button type="button" class="bt-link-pill" onclick="setBatterView('goadd')">＋ 게임원 통산 · 팀 기록 붙여넣기 · SprayLab 기록 없는 선수도</button>`
       : (lineup.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="타순">${chips}</div>` : '')}
     ${AS.currentPitcher ? `<button type="button" class="bt-link-pill" onclick="shellOpenAnalysis('pitcher')">⚾ ${_esc(AS.currentPitcher.name)} 투구 기록 중 · ${(AS.currentPitcher.pitches || []).length}구</button>` : ''}`;
 

@@ -1,0 +1,60 @@
+// 게임원 HTML → 붙여넣기와 같은 평문 · 앱이 저장하는 JSON — js/gameone.js 의 parseGameOneTeam · parseGameOneCareer 가 그대로 읽는다.
+// gameone_sync.mjs(매일 GitHub Actions)와 브라우저 테스트(tests/gameone-team.test.js)가 같이 쓴다. 실제 페이지 모양은 2026-10-29 에 확인했다.
+
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' };
+const txt = s => s.replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m, k) => ENT[k]).replace(/\s+/g, ' ').trim();
+const noComments = html => html.replace(/<!--[\s\S]*?-->/g, '');
+
+// 팀 기록통계 › 타자랭킹 · 투수랭킹: <tbody> 의 줄마다 칸 글자를 탭으로 → '순위\t이름(번호)\t숫자…'
+// 주석 처리된 칸(<!--<td>1.000</td>--> 대타 타율 등)이 있어 주석부터 지운다 — 화면 복사 글과 칸 수가 같아진다(타자 30 · 투수 28)
+export function rankRows(html) {
+  const out = [];
+  for (const body of noComments(html).match(/<tbody[\s\S]*?<\/tbody>/g) || []) {
+    for (const tr of body.match(/<tr[\s\S]*?<\/tr>/g) || []) out.push((tr.match(/<t[hd][^>]*>[\s\S]*?<\/t[hd]>/g) || []).map(txt).join('\t'));
+  }
+  return out.join('\n');
+}
+
+// 고른 시즌(<option value="2026" selected>) · 팀 이름(<title>)
+export const season = html => +((/<option value="(\d{4})"\s*selected/.exec(html) || [])[1]) || null;
+export const title = html => txt((/<title>([\s\S]*?)<\/title>/.exec(html) || ['', ''])[1]);
+
+// 선수단: <img … group_code="코드"> 뒤의 <span class="rank">…</span> 이름(번호). 다음 선수 코드를 넘어가지 않는다
+export function roster(html) {
+  const out = [], re = /group_code="([0-9A-Z]{10,40})"(?:(?!group_code=)[\s\S])*?<span class="rank">[\s\S]*?<\/span>([^<]*)/g;
+  for (const m of noComments(html).matchAll(re)) {
+    const n = /^(.*\S)\s*\((\d*)\)$/.exec(txt(m[2]));
+    if (n) out.push({ name: n[1].slice(0, 20), number: n[2], code: m[1] });
+  }
+  return out;
+}
+
+// 선수 통산(locker/record/sum): 머리(이름 · 투타 · 출신 · 학교) + 타자기록 · 투수기록의 <span class="title">이름</span><span class="score">값</span>.
+// 투수 칸은 화면에서 숨겨져 있어 복사엔 빠지지만 HTML 에는 있다
+export function career(html) {
+  html = noComments(html);
+  const head = /font-size:18px[^>]*>([\s\S]*?)<div class="player_info_detail"/.exec(html);
+  const lines = head ? head[1].split(/<[^>]*>/).map(txt).filter(Boolean) : [];
+  const pairs = s => [...s.matchAll(/<span class="title">([^<]*)<\/span>\s*<span class="score">([^<]*)<\/span>/g)].map(m => txt(m[1]) + ' ' + txt(m[2]));
+  const b = html.indexOf('hitter_section'), p = html.indexOf('pitcher_section');
+  if (b >= 0) lines.push('타자기록', ...pairs(html.slice(b, p > b ? p : undefined)));
+  if (p >= 0) lines.push('투수기록', ...pairs(html.slice(p)));
+  return lines.join('\n');
+}
+
+// 받은 페이지들 → 앱(js/features/gocareer.js)이 그대로 넣는 JSON. G = js/gameone.js
+//   pages = { hit, pit, list, careers: { [선수 코드]: 통산 HTML } }
+//   → { v, at, team, season, bat: [팀 시즌 타자 줄], pit: [팀 시즌 투수 줄], players: { [이름]: { hand, bg, school, bat, pit } } }
+//   게임원 기록이 없는 선수(0경기) · 선수단에 같은 이름이 둘인 선수는 통산에서 뺀다(저장이 이름 기준이라)
+export function teamData(G, { hit, pit, list, careers }, at) {
+  const t = G.parseGameOneTeam(rankRows(hit) + '\n' + rankRows(pit));
+  const ro = roster(list), seen = {}, players = {};
+  ro.forEach(p => { seen[p.name] = (seen[p.name] || 0) + 1; });
+  for (const p of ro) {
+    if (seen[p.name] > 1 || !careers[p.code]) continue;
+    const c = G.parseGameOneCareer(career(careers[p.code]));
+    if (!((c.bat && c.bat.g) || (c.pit && c.pit.g))) continue;
+    players[p.name] = { hand: c.hand, bg: c.bg, school: c.school, bat: c.bat, pit: c.pit };
+  }
+  return { v: 1, at, team: title(hit), season: season(hit), bat: t.bat, pit: t.pit, players };
+}

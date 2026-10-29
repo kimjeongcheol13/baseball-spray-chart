@@ -1,16 +1,26 @@
 /* ═══════════════════════════════════════════════════════════
-   선수 리포트 (js/features/report.js) — 종이 스코어북 토큰(paper.css) 톤
+   선수 리포트 (js/features/report.js) · 리그 기록지 · 오더지 창 (.rp) — 앱 야간 화면(night.css)과 같은 톤
+   · 검은 바탕 · 옅은 1px 선 · Noto Sans KR · 고른 칸은 흰 바탕(앱 탭과 같음) · 그림자 · 손글씨 · 명조 없음
+   · 하얀 문서 그림(리포트 · 기록지 · 오더지)은 어두운 뷰어 위에 놓인 종이처럼 보인다
+   · 고대비(야외, body.high-contrast)를 켜면 같은 모양의 밝은 색으로 (아래 토큰)
    · 랜딩에서도 열리므로 body.sb 없이도 보이게 값을 직접 둔다
    ═══════════════════════════════════════════════════════════ */
+.rp, .card-preview-ov {
+  --rp-paper: #0B0D12; --rp-paper2: #12151C; --rp-ink: #FFFFFF; --rp-ink2: rgba(255, 255, 255, .76); --rp-soft: rgba(255, 255, 255, .5);
+  --rp-rule: rgba(255, 255, 255, .12); --rp-red: #FF6B74; --rp-blue: #7AA2F7; --rp-hl-soft: rgba(255, 107, 116, .12);
+}
 .rp {
-  --rp-paper: #F3EDDF; --rp-paper2: #FBF7EE; --rp-ink: #1F2A23; --rp-soft: #55605A; --rp-rule: #C9BFA9;
-  --rp-red: #C8322B; --rp-blue: #2C4F8A; --rp-hl-soft: #FFF4C2;
   position: fixed; inset: 0; z-index: 9500;
   display: flex; justify-content: center;
-  background: rgba(31, 42, 35, .55);
+  background: rgba(0, 0, 0, .6);
   color: var(--rp-ink);
-  font-family: 'Gowun Batang', 'Nanum Myeongjo', serif; font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 500;
   word-break: keep-all;
+}
+/* 고대비(야외): 같은 모양 · 밝은 색 */
+body.high-contrast :is(.rp, .card-preview-ov) {
+  --rp-paper: #FFFFFF; --rp-paper2: #F2F3F5; --rp-ink: #0B0D12; --rp-ink2: rgba(11, 13, 18, .8); --rp-soft: rgba(11, 13, 18, .6);
+  --rp-rule: rgba(11, 13, 18, .2); --rp-red: #C8102E; --rp-blue: #1D4ED8; --rp-hl-soft: rgba(200, 16, 46, .1);
 }
 .rp[hidden], .rp [hidden] { display: none !important; }
 html.rp-open, html.rp-open body { overflow: hidden; }
@@ -19,81 +29,84 @@ html.rp-open, html.rp-open body { overflow: hidden; }
   display: flex; flex-direction: column;
   width: 100%; max-width: 560px; height: 100%;
   background: var(--rp-paper);
-  border-left: 2px solid var(--rp-ink); border-right: 2px solid var(--rp-ink);
+  border-left: 1px solid var(--rp-rule); border-right: 1px solid var(--rp-rule);
 }
 .rp-hd {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 8px 8px 8px 20px;
-  background: var(--rp-paper2);
-  border-bottom: 3px solid var(--rp-ink);
+  min-height: 60px; padding: 8px 8px 8px 20px;
+  background: var(--rp-paper);
+  border-bottom: 1px solid var(--rp-rule);
 }
-.rp-hd h2 { margin: 0; font: 400 24px 'Black Han Sans', sans-serif; letter-spacing: .01em; }
+.rp-hd h2 { margin: 0; font: 800 18px 'Noto Sans KR', sans-serif; letter-spacing: 0; }
 .rp-x {
   width: 44px; height: 44px; flex: 0 0 44px;
-  border: 0; background: none; color: var(--rp-ink); font-size: 20px; cursor: pointer;
+  border: 0; border-radius: 4px; background: none; color: var(--rp-ink2); font-size: 18px; cursor: pointer;
 }
+.rp-x:hover { background: var(--rp-paper2); color: var(--rp-ink); }
 .rp-x:focus-visible, .rp-btn:focus-visible, .rp-seg button:focus-visible, .rp-link:focus-visible,
-.rp-select:focus-visible, .rp-cmt:focus-visible { outline: 3px solid var(--rp-blue); outline-offset: 2px; }
+.rp-select:focus-visible, .rp-cmt:focus-visible { outline: 2px solid var(--rp-red); outline-offset: 2px; }
 
 .rp-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px 24px; }
-.rp-field { margin-bottom: 18px; }
-.rp-field > label, .rp-lbl { display: block; margin-bottom: 8px; font-size: 15px; }
-.rp-field small { font-weight: 700; color: var(--rp-soft); }
-.rp-help { display: block; margin-top: 6px; font-size: 12px; line-height: 1.5; color: var(--rp-soft); font-weight: 700; }
+.rp-field { margin-bottom: 20px; }
+.rp-field > label, .rp-lbl { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--rp-ink2); }
+.rp-field small { font-weight: 500; color: var(--rp-soft); }
+.rp-help { display: block; margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--rp-soft); font-weight: 500; }
 
 .rp-select, .rp-cmt {
   width: 100%; box-sizing: border-box;
-  border: 1.5px solid var(--rp-ink); border-radius: 0;
+  border: 1px solid var(--rp-rule); border-radius: 6px;
   background: var(--rp-paper2); color: var(--rp-ink);
-  font: 700 16px 'Gowun Batang', 'Nanum Myeongjo', serif;   /* 16px: iOS 확대 방지 */
+  font: 500 16px 'Noto Sans KR', sans-serif;   /* 16px: iOS 확대 방지 */
 }
 .rp-select { min-height: 48px; padding: 0 12px; }
+.rp-select option { background: var(--rp-paper2); color: var(--rp-ink); }
 .rp-cmt { padding: 10px 12px; line-height: 1.6; resize: none; }
+.rp-cmt::placeholder { color: var(--rp-soft); }
 
-.rp-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.rp-seg { display: flex; flex-wrap: wrap; gap: 8px; }
 .rp-seg button {
   flex: 1 1 auto; min-width: 72px; min-height: 44px; padding: 0 10px;
-  border: 1.5px solid var(--rp-ink); border-radius: 0;
-  background: var(--rp-paper2); color: var(--rp-ink);
-  font: 700 14px 'Gowun Batang', 'Nanum Myeongjo', serif; cursor: pointer;
+  border: 1px solid var(--rp-rule); border-radius: 4px;
+  background: none; color: var(--rp-ink2);
+  font: 700 14px 'Noto Sans KR', sans-serif; cursor: pointer;
 }
-.rp-seg button.on { background: var(--rp-ink); color: var(--rp-paper2); }
+.rp-seg button.on { border-color: var(--rp-ink); background: var(--rp-ink); color: var(--rp-paper); }
 
 .rp-prev { margin: 8px 0 0; }
 .rp-prev-box {
-  position: relative; aspect-ratio: 9 / 16; max-width: 420px; margin: 0 auto;
-  border: 2px solid var(--rp-ink); background: var(--rp-paper2);
+  position: relative; aspect-ratio: 9 / 16; max-width: 420px; margin: 0 auto; overflow: hidden;
+  border: 1px solid var(--rp-rule); border-radius: 6px; background: var(--rp-paper2);
 }
 .rp-prev-box img { display: block; width: 100%; height: 100%; object-fit: contain; -webkit-touch-callout: default; }
 .rp-prev-box img:not([src]), .rp-prev-box img[src=""] { visibility: hidden; }
 .rp-loading {
   position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center;
-  background: rgba(251, 247, 238, .85); font-size: 14px; color: var(--rp-soft);
+  background: var(--rp-paper2); font-size: 14px; color: var(--rp-soft);
 }
 .rp-loading[hidden] { display: none; }
 .rp-prev figcaption { max-width: 420px; margin: 8px auto 0; text-align: center; }
 
 .rp-act {
   display: flex; gap: 8px;
-  padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
-  background: var(--rp-paper2); border-top: 2px solid var(--rp-ink);
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--rp-paper); border-top: 1px solid var(--rp-rule);
 }
 .rp-act[hidden] { display: none; }
 .rp-btn {
   flex: 1; min-height: 48px; padding: 0 14px;
-  border: 2px solid var(--rp-ink); border-radius: 0;
-  background: var(--rp-paper2); color: var(--rp-ink);
-  font: 700 15px 'Gowun Batang', 'Nanum Myeongjo', serif; cursor: pointer;
+  border: 1px solid var(--rp-rule); border-radius: 6px;
+  background: none; color: var(--rp-ink);
+  font: 700 15px 'Noto Sans KR', sans-serif; cursor: pointer;
 }
-.rp-btn.primary { flex: 1.4; background: var(--rp-ink); color: var(--rp-paper2); box-shadow: 4px 4px 0 var(--rp-red); }
-.rp-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
+.rp-btn.primary { flex: 1.4; border-color: var(--rp-ink); background: var(--rp-ink); color: var(--rp-paper); }
+.rp-btn:disabled { opacity: .4; cursor: default; }
 
 .rp-sample-note {
   margin-bottom: 16px; padding: 10px 12px;
-  border: 1.5px solid var(--rp-red); background: var(--rp-paper2);
+  border-radius: 6px; background: var(--rp-hl-soft);
   font-size: 13px; line-height: 1.6;
 }
-.rp-sample-note b { margin-right: 6px; padding: 1px 6px; border: 1.5px solid var(--rp-red); color: var(--rp-red); font: 600 11px 'IBM Plex Mono', monospace; letter-spacing: .15em; }
+.rp-sample-note b { margin-right: 6px; padding: 2px 6px; border-radius: 3px; background: var(--rp-red); color: var(--rp-paper); font: 700 11px 'Noto Sans KR', sans-serif; }
 .rp-link {
   display: inline-flex; align-items: center; min-height: 44px; padding: 0; margin-left: 2px;
   border: 0; background: none; color: var(--rp-blue); text-decoration: underline;
@@ -101,9 +114,48 @@ html.rp-open, html.rp-open body { overflow: hidden; }
 }
 .rp-empty { display: grid; gap: 10px; justify-items: center; padding: 48px 8px; text-align: center; }
 .rp-empty[hidden] { display: none; }
-.rp-empty b { font-size: 17px; }
+.rp-empty b { font-size: 17px; font-weight: 800; }
 .rp-empty span { font-size: 13px; color: var(--rp-soft); line-height: 1.6; }
 .rp-empty .rp-btn { flex: none; min-width: 200px; margin-top: 8px; }
+
+/* ── 성적 카드 미리보기 창 (index.html #cardPreviewOv · 바탕 모양은 styles.css) — 위 .rp 창과 같은 칸 · 버튼 ── */
+.card-preview-ov { background: rgba(0, 0, 0, .6); }
+.card-preview-box {
+  gap: 12px; padding: 16px;
+  border: 1px solid var(--rp-rule); border-radius: 8px; box-shadow: none;
+  background: var(--rp-paper); color: var(--rp-ink);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.card-preview-tabs { gap: 8px; }
+.cpt-btn {
+  min-height: 44px; padding: 0 10px;
+  border: 1px solid var(--rp-rule); border-radius: 4px;
+  background: none; color: var(--rp-ink2);
+  font: 700 14px 'Noto Sans KR', sans-serif;
+}
+.cpt-btn.on { border-color: var(--rp-ink); background: var(--rp-ink); color: var(--rp-paper); }
+.card-player-sel {
+  min-height: 48px; padding: 0 12px;
+  border: 1px solid var(--rp-rule); border-radius: 6px;
+  background: var(--rp-paper2); color: var(--rp-ink);
+  font: 500 16px 'Noto Sans KR', sans-serif;
+}
+.card-player-sel option { background: var(--rp-paper2); color: var(--rp-ink); }
+.card-preview-canvas { outline: 0; border-radius: 6px; background: var(--rp-paper2); }
+.card-dl-btn {
+  min-height: 48px; padding: 0 14px; margin: 0;
+  border: 1px solid var(--rp-ink); border-radius: 6px; box-shadow: none;
+  background: var(--rp-ink); color: var(--rp-paper);
+  font: 700 15px 'Noto Sans KR', sans-serif;
+}
+.card-dl-btn:active { transform: none; box-shadow: none; opacity: .85; }
+.card-cancel-btn {
+  min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--rp-rule); border-radius: 6px;
+  color: var(--rp-ink2);
+  font: 700 14px 'Noto Sans KR', sans-serif;
+}
+:is(.cpt-btn, .card-dl-btn, .card-cancel-btn, .card-player-sel):focus-visible { outline: 2px solid var(--rp-red); outline-offset: 2px; }
 
 @media (max-width: 720px) {
   .rp-panel { max-width: none; border-left: 0; border-right: 0; }
@@ -160,12 +212,12 @@ body.sb .slm .slm-item[onclick^="openPlayerReport"] { --mi: url("data:image/svg+
 /* ═══ 리그 기록지 (js/features/scoresheet.js) — 선수 리포트 창(.rp)을 그대로 쓰고 미리보기만 A4 세로 ═══ */
 .ss .rp-panel { max-width: 860px; }
 .ss-prev { margin: 0; }
-.ss-prev img { display: block; width: 100%; height: auto; border: 2px solid var(--rp-ink); background: #fff; -webkit-touch-callout: default; }
+.ss-prev img { display: block; width: 100%; height: auto; border-radius: 4px; background: #fff; -webkit-touch-callout: default; }
 .ss-prev img:not([src]) { aspect-ratio: 794 / 1123; visibility: hidden; }
 .ss-prev figcaption { margin-top: 8px; text-align: center; }
 /* 타석이 없을 때 (#ssEmpty): 창을 안내 크기로 줄여 화면 가운데에 — scoresheet.js 가 #ssView 에 .ss-none 을 붙인다 */
 #ssView.ss-none { align-items: center; padding: 16px; }
-#ssView.ss-none .rp-panel { height: auto; max-width: 380px; border: 2px solid var(--rp-ink); }
+#ssView.ss-none .rp-panel { height: auto; max-width: 380px; border: 1px solid var(--rp-rule); border-radius: 8px; }
 #ssView.ss-none .rp-body { flex: none; padding: 12px 24px 32px; }
 #ssEmpty { gap: 6px; padding: 8px 0 0; font-family: 'Noto Sans KR', sans-serif; }
 #ssEmpty .ss-empty-ic {

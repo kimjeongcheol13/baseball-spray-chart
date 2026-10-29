@@ -33,7 +33,7 @@ import './features/runners.js?v=11';         // 주자 · 득점 · 주루 플�
 import './features/fielding.js?v=2';         // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정 · 번호판으로 고치기
 import './features/scoresheet.js?v=5';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
 import './features/ordersheet.js?v=3';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
-import './features/statcard.js?v=2';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
+import './features/statcard.js?v=3';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
 
 import './features/anahelp.js?v=5';
 import './features/anahelp.js?v=5';

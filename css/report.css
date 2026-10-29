@@ -163,6 +163,18 @@ body.sb .slm .slm-item[onclick^="openPlayerReport"] { --mi: url("data:image/svg+
 .ss-prev img { display: block; width: 100%; height: auto; border: 2px solid var(--rp-ink); background: #fff; -webkit-touch-callout: default; }
 .ss-prev img:not([src]) { aspect-ratio: 794 / 1123; visibility: hidden; }
 .ss-prev figcaption { margin-top: 8px; text-align: center; }
+/* 타석이 없을 때 (#ssEmpty): 창을 안내 크기로 줄여 화면 가운데에 — scoresheet.js 가 #ssView 에 .ss-none 을 붙인다 */
+#ssView.ss-none { align-items: center; padding: 16px; }
+#ssView.ss-none .rp-panel { height: auto; max-width: 380px; border: 2px solid var(--rp-ink); }
+#ssView.ss-none .rp-body { flex: none; padding: 12px 24px 32px; }
+#ssEmpty { gap: 6px; padding: 8px 0 0; font-family: 'Noto Sans KR', sans-serif; }
+#ssEmpty .ss-empty-ic {
+  box-sizing: border-box; width: 64px; height: 64px; padding: 16px; margin-bottom: 8px;
+  border-radius: 50%; background: var(--rp-paper2); color: var(--rp-ink);
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+#ssEmpty b { font-size: 17px; font-weight: 900; }
+#ssEmpty span { max-width: 20em; font-size: 14px; font-weight: 500; }
 body.sb .slm .slm-item[onclick^="openScoresheet"] { --mi: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 4h12v17H6z%22/%3E%3Cpath d=%22M9.5 2.5h5v3h-5zM6 10h12M6 15h12M10.5 5.5V21%22/%3E%3C/svg%3E"); }
 
 /* 인쇄 / PDF: 기록지 이미지 한 장만 */

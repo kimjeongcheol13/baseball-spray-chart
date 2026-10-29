@@ -2,7 +2,7 @@
 //  · 순수 함수는 앱이 올린 같은 모듈 인스턴스로 부르고, 경기 운영 모드 득점은 실제 recOther 로 적어 확인한다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/scoresheet.js?v=4';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/scoresheet.js?v=5';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes'];
   var GK = ['active', 'inning', 'half', 'first', 'outs', 'batterIdx', 'bases', 'runners'];
 
@@ -54,6 +54,9 @@
     eq(c({ res: '안타', dir: 'LF', x: null }), '안타', '방향만 있고 탭 좌표가 없으면 방향 없이');
     eq(['삼진', '볼넷', '사구', '희타', '희비', '병살', '실책', '야수선택'].map(function (r) { return t(r); }), ['삼진', '4구', '사구', '희번', '희플', '병살', '실책', '야선'], '그 밖의 결과');
     eq([t('타격방해'), c(null), c({})], ['타격방해', '', ''], '모르는 결과 · 빈 값');
+    var r = function (res, dir) { var code = t(res, dir); return m.reach({ code: code, hit: ['안타', '내야안타', '2루타', '3루타', '홈런'].includes(res), walk: res === '볼넷' || res === '사구' }); };   // 칸 다이아몬드: 타자가 간 베이스
+    eq(['안타', '내야안타', '2루타', '3루타', '홈런', '볼넷', '사구', '실책', '야수선택', '삼진', '플라이 아웃'].map(function (x) { return r(x, 'LC'); }), [1, 1, 2, 3, 4, 1, 1, 1, 1, 0, 0], '다이아몬드 길 (방향 있음)');
+    eq(['2루타', '3루타', '홈런'].map(function (x) { return r(x); }), [2, 3, 4], '다이아몬드 길 (방향 없음)');
   });
 
   test('기록지: 타순 — 지금 주전 순서 · 교체(대타)는 나간 선수 아래 · 라인업에 없는 타자는 맨 아래 · 타석 없는 후보와 상대 팀은 빠진다', async function () {
@@ -136,7 +139,7 @@
       $('tHome').value = '홈팀'; $('tAway').value = '원정팀';
       openScoresheet();
       ok(!$('ssView').hidden, '창 열림'); ok(document.documentElement.classList.contains('rp-open'), '뒤 화면 스크롤 잠금');
-      ok($('ssEmpty').hidden && !$('ssAct').hidden, '안내 숨김 · 버튼 보임');
+      ok($('ssEmpty').hidden && !$('ssAct').hidden && !$('ssView').classList.contains('ss-none'), '안내 숨김 · 버튼 보임');
       await waitImg();
       eq([$('ssImg').naturalWidth, $('ssImg').naturalHeight], [1588, 2246], 'A4 세로 2배 (794 × 1123)');
       ok(!$('ssSave').disabled && !$('ssPrint').disabled, '그린 뒤 버튼 켜짐');
@@ -159,6 +162,8 @@
       AS.abs = [];
       openScoresheet();
       ok(!$('ssEmpty').hidden && $('ssAct').hidden && $('ssPrev').hidden, '타석이 없으면 안내만');
+      var pr2 = $('ssView').querySelector('.rp-panel').getBoundingClientRect();
+      ok($('ssView').classList.contains('ss-none') && pr2.height < innerHeight * 0.8, '안내만 있을 때 창은 안내 크기 (빈 큰 판 아님): ' + Math.round(pr2.height) + ' / ' + innerHeight);
       $('ssView').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       ok($('ssView').hidden, 'Esc 로 닫기');
     });

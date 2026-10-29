@@ -198,6 +198,70 @@
     } finally { window.removeEventListener('error', onerr); window.closePlayerReport(); }
   });
 
+  // 리포트 캔버스(1080×1920)에 그린 글자 상자를 모은다 — 바탕을 다시 칠하면(글꼴을 받고 다시 그리기) 처음부터 다시 모은다
+  async function reportBoxes(open) {
+    var P = CanvasRenderingContext2D.prototype, ft = P.fillText, fr = P.fillRect, out = [];
+    var mine = function (cx) { return cx.canvas.width === 1080 && cx.canvas.height === 1920; };
+    P.fillRect = function (x, y, w, h) { if (mine(this) && !x && !y && w === 1080 && h === 1920) out = []; return fr.apply(this, arguments); };
+    P.fillText = function (t, x, y) {
+      if (mine(this) && String(t).trim()) {
+        var m = this.measureText(t), a = this.textAlign, l = a === 'center' ? x - m.width / 2 : (a === 'right' || a === 'end') ? x - m.width : x;
+        out.push({ k: String(t).trim(), f: this.font, l: l, r: l + m.width, t: y - m.actualBoundingBoxAscent, b: y + m.actualBoundingBoxDescent });
+      }
+      return ft.apply(this, arguments);
+    };
+    try {
+      await open();
+      var ready = false;
+      for (var i = 0; i < 60 && !ready; i++) { await sleep(250); ready = !document.getElementById('rpSave').disabled; }
+      ok(ready, '리포트가 그려지지 않음');
+    } finally { P.fillText = ft; P.fillRect = fr; window.closePlayerReport(); }
+    return out;
+  }
+  function checkBoxes(bx, what) {
+    ok(bx.length >= 60, what + ' 글자를 다 모으지 못함: ' + bx.length);
+    var fam = bx.filter(function (b) { return !/px "?(Noto Sans KR|Oswald)"?,/.test(b.f); }).map(function (b) { return b.k + ' ← ' + b.f; });   // 첫 글꼴만 본다 (뒤는 받기 전 대체 글꼴)
+    eq(fam, [], what + ' 글꼴은 Noto Sans KR · Oswald 둘만');
+    var bad = [];
+    bx.forEach(function (b, i) {
+      if (b.l < 0 || b.t < 0 || b.r > 1080 || b.b > 1920) bad.push('밖: ' + b.k);
+      bx.slice(i + 1).forEach(function (o) {
+        if (Math.min(b.r, o.r) - Math.max(b.l, o.l) > 0.5 && Math.min(b.b, o.b) - Math.max(b.t, o.t) > 0.5) bad.push('겹침: ' + b.k + ' / ' + o.k);
+      });
+    });
+    eq(bad, [], what + ' 글자가 겹치거나 이미지 밖으로 나감');
+  }
+
+  test('리포트 그림(새 디자인): 글꼴은 Noto Sans KR · Oswald 둘만, 글자끼리 겹치거나 밖으로 나가지 않는다 — 샘플 · 긴 이름(6자) + 긴 팀명 + 코멘트 3줄', async function () {
+    checkBoxes(await reportBoxes(function () { window.openPlayerReport({ sample: true }); }), '샘플');
+    var $ = function (id) { return document.getElementById(id); };
+    var keep = { abs: AS.abs, th: $('tHome').value, cmt: localStorage.getItem('sl_report_cmt') };
+    var R = ['안타', '2루타', '플라이 아웃', '삼진', '볼넷', '땅볼 아웃', '홈런', '안타'], Z = ['내각 높음', '중앙 중간', '외각 낮음', '볼 외', '볼 위', '중앙 낮음', '내각 중간', '외각 높음'];
+    try {
+      AS.abs = (keep.abs || []).concat(R.map(function (r, i) {
+        var deg = 20 + i * 20, ang = deg * Math.PI / 180 - Math.PI, d = r === '삼진' || r === '볼넷' ? null : 0.3 + i * 0.07;
+        return { id: 'rpLong' + i, bid: 'rpLong', bname: '남궁민수민수', bnum: '99', team: 'home', res: r, zone: Z[i], inn: (i + 1) + '회말', rbi: 0, pitches: [],
+          x: d == null ? null : 0.5 + Math.cos(ang) * d, y: d == null ? null : 1 + Math.sin(ang) * d, deg: d == null ? null : deg, dir: d == null ? null : 'CF' };
+      }));
+      $('tHome').value = '서울 드래곤즈 야구단';
+      var bx = await reportBoxes(async function () {
+        window.openPlayerReport({ name: '남궁민수민수' });
+        for (var i = 0; i < 40 && $('rpSave').disabled; i++) await sleep(250);
+        var c = $('rpCmt');
+        c.value = '바깥쪽 변화구에 방망이가 먼저 나가요. 타이밍을 늦추고 가운데로 밀어 치는 연습을 이번 주 내내 합니다. 좋은 타구가 많아요!';
+        c.dispatchEvent(new Event('input'));
+        await sleep(400);
+      });
+      ok(bx.some(function (b) { return b.k === '남궁민수민수'; }), '긴 이름이 줄지 않고 그대로');
+      ok(bx.some(function (b) { return b.k === '서울 드래곤즈 야구단'; }), '긴 팀명이 그대로');
+      ok(bx.filter(function (b) { return /타이밍|이번 주|타구가/.test(b.k); }).length >= 2, '코멘트가 여러 줄로');
+      checkBoxes(bx, '긴 이름');
+    } finally {
+      AS.abs = keep.abs; $('tHome').value = keep.th;
+      if (keep.cmt == null) localStorage.removeItem('sl_report_cmt'); else localStorage.setItem('sl_report_cmt', keep.cmt);
+    }
+  });
+
   test('인쇄 CSS: 샘플 모드 배지가 body 에 준 48px 위 패딩을 인쇄할 때 0 으로 되돌린다 (남아 있으면 이미지가 밀려 2쪽이 된다) — 규칙 존재 확인', async function () {
     var css = await (await fetch('/css/report.css?v=2')).text();
     var print = css.slice(css.indexOf('@media print'));

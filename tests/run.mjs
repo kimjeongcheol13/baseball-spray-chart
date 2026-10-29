@@ -5,6 +5,7 @@
 //    파일은 JOBS 개(기본 2)씩 동시에 돈다(JOBS=1 이면 하나씩. 크롬을 많이 띄울수록 빨라지지 않는다 — 부하가 큰 컴퓨터에서 4개는 2개보다 느렸다). 앱의 타이머(디바운스 3초 · 10초 등)는 그대로 기다린다 — 시계를 건너뛰지 않는다
 //  · 브라우저는 127.0.0.1 외 모든 호스트 이름 해석 차단(--host-resolver-rules) → 스텁되지 않은 요청은 실서버에 닿을 수 없다(fail-closed). 외부 요청 0건 검사는 모든 파일 페이지에서 돈다
 //  · fail-closed: 어떤 파일이든 예산 초과 · 결과 없음 · 하네스 오류 · 등록된 테스트 0개 · 강제 종료면 이유를 출력하고 종료 코드 1. 테스트가 하나라도 실패해도 1
+//    (강제 종료만은 그 파일을 한 번 다시 돌려 보고 판단한다 — 아래 「한 번 다시」)
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -126,7 +127,7 @@ async function runFile(file) {
     → 이 파일의 sleep 을 줄이거나 파일을 나누세요(BUDGET_MS 를 늘리기 전에). 한 테스트가 끝나지 않고 멈춘 경우엔 그 테스트를 확인` };
     }
     const log = err.split('\n').filter((l) => /CONSOLE/.test(l)).slice(-10).join('\n') || '(없음)';
-    return { file, fail: `결과를 읽지 못했다(브라우저 종료 코드 ${code}${killed ? `, 실제 시간 ${WALL_MS / 1000}초 초과로 강제 종료` : ''}). 콘솔 로그:\n${log}` };
+    return { file, killed, fail: `결과를 읽지 못했다(브라우저 종료 코드 ${code}${killed ? `, 실제 시간 ${WALL_MS / 1000}초 초과로 강제 종료` : ''}). 콘솔 로그:\n${log}` };
   }
   let payload;
   try { payload = JSON.parse(Buffer.from(m[1], 'base64').toString('utf8')); } catch (e) { return { file, fail: '결과를 해석하지 못했다: ' + e.message }; }
@@ -138,11 +139,17 @@ async function runFile(file) {
 }
 
 // 파일을 JOBS 개씩 동시에 돌린다(결과는 파일 순서로 모은다)
+// 결과 없이 실제 시간 상한으로 강제 종료된 파일만 한 번 다시 돈다 — 헤드리스 크롬이 결과를 보내기 전에 가끔 멈춘다(파일은 매번 다르고, 다시 돌리면 통과).
+// 다시 돌린 사실은 보고에 남기고, 두 번 다 멈추면 그대로 실패다
 const jobs = Math.max(1, Number(process.env.JOBS) || Math.min(2, files.length));
 const outcomes = new Array(files.length);
 let next = 0;
 await Promise.all(Array.from({ length: Math.min(jobs, files.length) }, async () => {
-  while (next < files.length) { const i = next++; outcomes[i] = await runFile(files[i]); }
+  while (next < files.length) {
+    const i = next++;
+    outcomes[i] = await runFile(files[i]);
+    if (outcomes[i].killed) outcomes[i] = Object.assign(await runFile(files[i]), { retried: true });
+  }
 }));
 server.close();
 
@@ -151,9 +158,10 @@ const sec = (ms) => Math.round(ms / 1000);
 let passed = 0, failed = 0, broken = 0, sumVms = 0, maxVms = 0, maxFile = '';
 const shared = new Map();   // 하네스 자체 점검: 이름 → 모든 파일 페이지의 결과를 합친 것(하나라도 실패하면 실패)
 for (const o of outcomes) {
-  if (o.fail) { broken++; console.log(`── ${o.file}  ✘ 실행하지 못함`); console.log('  ' + o.fail.split('\n').join('\n  ')); continue; }
+  if (o.fail) { broken++; console.log(`── ${o.file}  ✘ 실행하지 못함${o.retried ? '(한 번 다시 돌려도)' : ''}`); console.log('  ' + o.fail.split('\n').join('\n  ')); continue; }
   const own = o.results.filter((r) => !r.shared);
   console.log(`── ${o.file}  (${own.length}개 · 가상 시간 ${sec(o.vms)}s / 예산 ${BUDGET_MS / 1000}s)`);
+  if (o.retried) console.log(`  ↻ 처음엔 결과 없이 실제 시간 ${WALL_MS / 1000}초 초과로 강제 종료 — 한 번 다시 돌린 결과`);
   if (o.vms > BUDGET_MS * WARN_RATIO) console.log(`  ⚠ 예산의 ${Math.round(WARN_RATIO * 100)}% 를 넘었다 — 곧 예산 초과가 된다`);
   sumVms += o.vms;
   if (o.vms > maxVms) { maxVms = o.vms; maxFile = o.file; }

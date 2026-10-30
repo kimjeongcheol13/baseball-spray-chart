@@ -84,7 +84,7 @@ function scan() {
   const items = [], sec = _shown('analysisView') && document.querySelector('#anaBody .ana-sec.on'), set = _shown('settingsView');
   if (sec) {
     sec.querySelectorAll('.an-card figure.an-spray').forEach((f) => { const s = f.querySelector(':scope > svg'); if (s) items.push({ fig: s, tag: 'spray-field-3d', data: () => sprayData(f) }); });
-    sec.querySelectorAll('.an-card svg.pc-plot').forEach((s) => items.push({ fig: s, tag: 'pitch-zone-3d', data: () => zoneData(s) }));
+    sec.querySelectorAll('.an-card svg.pc-plot:not(.pc-rp-zone)').forEach((s) => items.push({ fig: s, tag: 'pitch-zone-3d', data: () => zoneData(s) }));   // 타석 리플레이 존은 번호 공(<g>)이라 3D 가 못 읽는다 — 2D 그대로
     sec.querySelectorAll('.an-card .sc-zone[data-view]').forEach((z) => items.push({ fig: z, tag: 'pitch-zone-3d', data: () => gridData(z) }));
   }
   const st = set && set.querySelector('#stStad .st-prev > svg');

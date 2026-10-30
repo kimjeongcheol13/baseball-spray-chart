@@ -642,7 +642,7 @@ class SprayField3D extends HTMLElement {
 if (!customElements.get('spray-field-3d')) customElements.define('spray-field-3d', SprayField3D);
 
 // ── 투구 코스 3D (<pitch-zone-3d>) — 분석 › 투수 '코스'(위치 · 분포 · 피안타) · 타자 '본 공 위치'의 3D 보기 ──
-//   위치: el.update({ pts: [{ x, y, k, on }], cols: { k: '#색' }, pick, picking, sel })
+//   위치: el.update({ pts: [{ x, y, k, on, n }], cols: { k: '#색' }, pick, picking, sel }) — n = 타석 리플레이의 던진 순서(공 위 번호)
 //     x,y = 2D 그림 좌표(가로 0~100 · 세로 0~120, 존 x 22~78 · y 18~102) · k = 2D 점의 종류(strike · ball · hit …), 색은 2D 와 같은 값
 //     pick = 투수 코스처럼 구역을 고를 수 있는 그림 → 그림 안을 끌면(누르면) 'zonepick' 이벤트(detail { a: [x, y], b: [x, y] }, 2D 와 같은 좌표)
 //     picking · on · sel = 2D 에서 지금 고른 구역(pitcher.js 가 그린 것) — 구역 밖 공은 흐리게, 구역은 흰 테두리
@@ -847,6 +847,12 @@ class PitchZone3D extends SprayField3D {
       list.forEach((p, i) => { const [x, y] = zoneAt(p.x, p.y); im.setMatrixAt(i, m4.makeTranslation(x, y, 0)); });
       g.add(im);
     }));
+    // 타석 리플레이: 공 위에 던진 순서 번호(2D 처럼 어두운 글자)
+    this._pts.forEach((p) => {
+      if (!p.n) return;
+      const [x, y] = zoneAt(p.x, p.y), s = label(String(p.n), { fg: '#0a111e', scale: 0.0014 });
+      s.position.set(x, y, 0.04); g.add(s);
+    });
     if (box) g.add(selMesh(box));
   }
   // 분포 = 칸 투구 수 / 가장 많은 칸 · 피안타 = 피안타 / 투구 (3구 미만은 2D 처럼 색 없음)

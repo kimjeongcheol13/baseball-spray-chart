@@ -570,6 +570,18 @@ function _say(t, bad) {
   const m = $('goUrlMsg');
   if (m) { m.textContent = t; m.classList.toggle('bad', !!bad); }
 }
+// 박스스코어 주소에도 팀 번호(club_idx)가 있다 — 한 경기를 받은 뒤(그 경기 기록이 없을 때도) 안내 줄 밑에 그 팀 시즌 목록 버튼을 붙인다.
+// 누르면 팀 주소를 넣은 것과 같다(_fetchSeason). 다음 _say 가 안내를 바꾸면 버튼도 사라진다
+function _seasonBtn(q) {
+  const c = /(?:^|&)club=(\d+)/.exec(q), m = $('goUrlMsg');
+  if (!c || !m) return;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'btn btn-ghost go-season-open';
+  b.textContent = '이 팀 시즌 경기 목록 보기';
+  b.onclick = () => _fetchSeason(`list=1&club=${c[1]}`);
+  m.appendChild(b);
+}
 export async function fetchGameOneBox() {
   const btn = $('goUrlBtn'), url = ($('goUrl') || {}).value, q = gameOneBoxQuery(url);
   if (!q) {
@@ -584,11 +596,13 @@ export async function fetchGameOneBox() {
   if (btn) btn.disabled = false;
   if (d.status != null || d.v !== 1 || typeof d.text !== 'string') {
     _say(d.status === 404 ? '게임원에 이 경기 타자 기록이 없어요. 주소가 맞는지, 경기 기록이 올라왔는지 확인해 주세요.' : '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.', true);
+    if (d.status === 404) _seasonBtn(q);
     return;
   }
   ['goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
   $('goScore').value = _linkText = d.text;
   _say('가져왔어요 — 아래 미리보기를 확인하고 「새 경기로 저장」을 누르세요.');
+  _seasonBtn(q);
   _schedule();
 }
 

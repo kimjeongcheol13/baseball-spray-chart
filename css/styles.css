@@ -592,6 +592,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-season .btn.go-season-go:disabled{opacity:.45;cursor:progress}
 .go-season-msg{margin-top:6px}
 .go-season-msg:empty{display:none}
+.go-season-y{display:flex;gap:6px;margin:0 0 8px}
+.go-season-yb{flex:1;min-width:0;min-height:44px;padding:0 6px;border:1px solid var(--border2);border-radius:8px;background:var(--bg-raised);color:var(--text);font-family:var(--font);font-size:13px;font-variant-numeric:tabular-nums;cursor:pointer}
+.go-season-yb[aria-pressed="true"],.go-season-yb.on{border-color:var(--blue);background:var(--blue-dim);color:var(--text);font-weight:700;box-shadow:inset 0 0 0 1px var(--blue)}   /* .gf-mode 눌림과 같은 모양 */
+.go-season-yb:disabled{opacity:.45;cursor:progress}
+.go-season-ymsg{margin:0 0 8px}
 /* 첫 화면(기록 0) 필드 아래 — 샘플 버튼(.sl-sample-start) 아래에 같은 크기 · 테두리만 */
 .go-start{display:block;box-sizing:border-box;min-height:44px;margin:8px auto 0;padding:0 20px;border:1.5px solid var(--blue);border-radius:2px;background:transparent;color:var(--blue);font:700 15px var(--font);cursor:pointer}
 .go-start[hidden]{display:none}
@@ -636,6 +641,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-btns .btn:disabled{opacity:.45;cursor:not-allowed}
 @media (max-width:720px){
   .go-inp,.go-ta{font-size:16px}   /* iOS: 16px 미만 입력칸은 포커스 때 화면이 확대된다 */
+  select.go-season-yb{font-size:16px}   /* 「이전」 시즌 고르기도 같은 이유 */
   .go-btns #goSave{flex:2;white-space:normal;line-height:1.25;text-align:center}   /* "그래도 새 경기로 저장 (N타석)"이 좁은 폰에서 버튼 밖으로 넘치지 않게 — 넘치면 두 줄 */
 }
 .hit-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}

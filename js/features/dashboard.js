@@ -130,6 +130,23 @@ function _zoneCounts(list) {
   return c;
 }
 
+// 구역별 내야 · 외야: 내야 = 필드 그림의 내야 흙(scorebook.js sbPaint.field — 마운드 중심 29m, 베이스 거리에 비례) 안에 그려지는 타구
+//   그림과 같은 좌표(_semiToCone)로 판정 → 흙 위에 보이는 점이 내야로 세어짐 · 펜스 밖 홈런 · 외야석 타구는 외야
+function _zoneDepth(list) {
+  const c = ZONES.map(() => ({ inf: 0, of: 0 }));
+  if (typeof _fieldGeo !== 'function') return c;
+  const g = _fieldGeo(100), st = g.st, baseM = st.base || 27.43;
+  const md = _conePt(g, 2 * _FQ, (st.mound || 18.44) * g.m), ifR = 29 * baseM / 27.43 * g.m;
+  list.forEach(a => {
+    if (a.x == null || a.y == null) return;
+    const i = _zoneIdx(a);
+    if (i < 0) return;
+    const q = _semiToCone(g, a.x, a.y, a.fa, a.ov);
+    c[i][Math.hypot(q[0] - md[0], q[1] - md[1]) < ifR ? 'inf' : 'of']++;
+  });
+  return c;
+}
+
 let _fieldList = [];
 function _paintScreenField() {
   const cv = $('adField');
@@ -381,4 +398,4 @@ if (typeof window !== 'undefined') {
 
 // 팀 탭(team.js)도 같은 5구역 방향도 · 구역 경계 · 타석 결과 막대를 쓴다 (분석 서브탭 7→5: 종합 → 팀)
 //   import로 가져오면 모듈 실행 순서가 바뀌어(spray.js보다 먼저) openSprayView 덮어쓰기 순서가 달라지므로 window로 넘긴다
-if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, resultBar: _bar, estKey: _estKey };
+if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, zoneDepth: _zoneDepth, resultBar: _bar, estKey: _estKey };

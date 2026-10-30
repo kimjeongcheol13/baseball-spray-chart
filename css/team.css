@@ -290,8 +290,9 @@
 #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-etc { background: var(--rule); }
 /* 5구역 방향도: 넓은 화면에서도 방향도 · 범례 · 비율 띠가 같은 폭(최대 540px) */
 .tm-dir .an-hd .sb-mini { margin-left: auto; }
-.tm-dir .ad-field-box, .tm-dir .ad-legend, .tm-dir .ad-band { width: 100%; max-width: 540px; box-sizing: border-box; margin-left: auto; margin-right: auto; }
+.tm-dir .ad-field-box, .tm-dir .ad-legend, .tm-dir .ad-band, .tm-dir .ad-depth { width: 100%; max-width: 540px; box-sizing: border-box; margin-left: auto; margin-right: auto; }
 .tm-dir .ad-band { margin-bottom: 0; }
+.tm-dir .ad-depth { margin-top: 10px; margin-bottom: 0; }
 
 /* ═══════════════════════════════════════════
    팀장용 "팀 경기" 창 (js/features/teamgames.js)

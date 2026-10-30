@@ -212,6 +212,8 @@
 .pc-pf-key .k-ball { background: none; border: 1.5px solid var(--an-ink2); }
 .pc-pf-key .k-hit { border-radius: 1px; transform: rotate(45deg) scale(.9); }
 .pc-pf-save { display: block; width: 100%; min-height: 44px; margin-top: 12px; }   /* 모양은 .sc-act */
+/* ── 투수 리포트 이미지 버튼 (맨 위 카드 바로 아래) ── */
+.pc-rep-save { display: block; width: 100%; min-height: 44px; margin: 0; }   /* 모양은 .sc-act · 위아래 간격은 .pc 의 gap */
 
 /* ── 카운트별 구종: 카운트 상황마다 구종 비율 막대(색 = 구종) ── */
 .pc-cm-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 40px; align-items: center; column-gap: 10px; padding: 7px 0; }

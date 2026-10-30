@@ -161,6 +161,7 @@ function _stats(P) {
   const S = _calc(P.apps);
   return `
     ${_hero(P, S)}
+    ${_reportBtn(P, S)}
     ${_warnCard(S)}
     ${_insights(P, S)}
     <div class="pc-2col">
@@ -719,9 +720,11 @@ const _pfKind = p => { const c = _cls(p); return c === 'ball' || c === 'hit' ? c
 const _pfOrder = { ball: 0, on: 1, hit: 2 };   // 피안타가 위에 보이게
 const _pfDots = xy => xy.slice().sort((a, b) => _pfOrder[_pfKind(a)] - _pfOrder[_pfKind(b)]);
 
+// 구종 구성 순서(미기록 제외) + 그 구종의 위치가 있는 공 — 카드 · 이미지 · 투수 리포트가 같이 쓴다
+const _pfRows = S => _byPitch(S).filter(r => r.pt !== '미기록')
+  .map(r => ({ ...r, xy: S.pitches.filter(p => p.pt === r.pt && _hasXY(p)) })).filter(r => r.xy.length);
 function _profileCard(P, S) {
-  const rows = _byPitch(S).filter(r => r.pt !== '미기록')
-    .map(r => ({ ...r, xy: S.pitches.filter(p => p.pt === r.pt && _hasXY(p)) })).filter(r => r.xy.length);
+  const rows = _pfRows(S);
   _pf = rows.length ? { P, S, rows } : null;
   if (!rows.length) return '';
   const miss = S.n - rows.reduce((t, r) => t + r.xy.length, 0);
@@ -747,6 +750,26 @@ function _profileCard(P, S) {
     </section>`;
 }
 
+// 작은 존 + 점 (구종별 위치 이미지 · 투수 리포트가 같이 쓴다) — (ox, oy) = 존 viewBox(100×120) 왼쪽 위 · s = 배율
+function _pfZoneDraw(c, xy, col, ox, oy, s) {
+  const zx = v => ox + v * s, zy = v => oy + v * s;
+  c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(zx(22), zy(18), 56 * s, 84 * s);
+  c.strokeStyle = N.line2; c.lineWidth = 1; c.beginPath();
+  [40.7, 59.3].forEach(v => { c.moveTo(zx(v), zy(18)); c.lineTo(zx(v), zy(102)); });
+  [46, 74].forEach(v => { c.moveTo(zx(22), zy(v)); c.lineTo(zx(78), zy(v)); });
+  c.stroke();
+  c.strokeStyle = N.tx2; c.lineWidth = 1.5; c.strokeRect(zx(22), zy(18), 56 * s, 84 * s);
+  c.strokeStyle = N.tx3; c.beginPath(); c.moveTo(zx(42), zy(114)); c.lineTo(zx(58), zy(114)); c.lineTo(zx(56), zy(118)); c.lineTo(zx(44), zy(118)); c.closePath(); c.stroke();
+  const d = Math.max(4, 3.4 * s);
+  _pfDots(xy).forEach(p => {
+    const k = _pfKind(p), x = zx(p.zoneX * 100), y = zy(p.zoneY * 120);
+    c.beginPath();
+    if (k === 'hit') { c.moveTo(x, y - d * 1.25); c.lineTo(x + d * 1.25, y); c.lineTo(x, y + d * 1.25); c.lineTo(x - d * 1.25, y); c.closePath(); }
+    else c.arc(x, y, k === 'ball' ? d - 1 : d, 0, Math.PI * 2);
+    if (k === 'ball') { c.strokeStyle = col; c.lineWidth = 2; c.stroke(); return; }
+    c.fillStyle = col; c.fill(); c.strokeStyle = k === 'hit' ? N.tx : N.bg2; c.lineWidth = k === 'hit' ? 1.5 : 1; c.stroke();
+  });
+}
 // 이미지: 리플레이와 같은 540×675(2배 저장) NIGHT · 많이 던진 구종 6개까지 (1~2개 = 한 줄 · 4개 = 2×2 · 나머지 3열)
 const PF_MAX = 6;
 function _profileImg(cv, sc) {
@@ -775,23 +798,7 @@ function _profileImg(cv, sc) {
     font(c, '500', 12, FONT.num); txt(use, bx + tw - 12, by + 28, N.tx2, 'right');
     fitFont(c, r.pt, '800', 16, FONT.kr, tw - 44 - c.measureText(use).width, 9); txt(r.pt, bx + 29, by + 29, N.tx);
     const s = Math.min((tw - 24) / 100, (th - 76) / 120), ox = bx + (tw - 100 * s) / 2, oy = by + 40;
-    const zx = v => ox + v * s, zy = v => oy + v * s;
-    c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(zx(22), zy(18), 56 * s, 84 * s);
-    c.strokeStyle = N.line2; c.lineWidth = 1; c.beginPath();
-    [40.7, 59.3].forEach(v => { c.moveTo(zx(v), zy(18)); c.lineTo(zx(v), zy(102)); });
-    [46, 74].forEach(v => { c.moveTo(zx(22), zy(v)); c.lineTo(zx(78), zy(v)); });
-    c.stroke();
-    c.strokeStyle = N.tx2; c.lineWidth = 1.5; c.strokeRect(zx(22), zy(18), 56 * s, 84 * s);
-    c.strokeStyle = N.tx3; c.beginPath(); c.moveTo(zx(42), zy(114)); c.lineTo(zx(58), zy(114)); c.lineTo(zx(56), zy(118)); c.lineTo(zx(44), zy(118)); c.closePath(); c.stroke();
-    const d = Math.max(4, 3.4 * s);
-    _pfDots(r.xy).forEach(p => {
-      const k = _pfKind(p), x = zx(p.zoneX * 100), y = zy(p.zoneY * 120);
-      c.beginPath();
-      if (k === 'hit') { c.moveTo(x, y - d * 1.25); c.lineTo(x + d * 1.25, y); c.lineTo(x, y + d * 1.25); c.lineTo(x - d * 1.25, y); c.closePath(); }
-      else c.arc(x, y, k === 'ball' ? d - 1 : d, 0, Math.PI * 2);
-      if (k === 'ball') { c.strokeStyle = col; c.lineWidth = 2; c.stroke(); return; }
-      c.fillStyle = col; c.fill(); c.strokeStyle = k === 'hit' ? N.tx : N.bg2; c.lineWidth = k === 'hit' ? 1.5 : 1; c.stroke();
-    });
+    _pfZoneDraw(c, r.xy, col, ox, oy, s);
     const st = `S% ${pct(r.s / r.n)} · 삼진 ${r.k} · 피안타 ${r.h}`;
     fitFont(c, st, '600', 12, FONT.kr, tw - 16, 8); txt(st, bx + tw / 2, by + th - 14, N.tx2, 'center');
   });
@@ -828,13 +835,19 @@ const CM_ROWS = [
   ['그 밖', '0-1 1-1', c => c.b <= c.s && c.s < 2 && (c.b || c.s)],
   ['2스트라이크', '0-2 1-2 2-2 3-2', c => c.s >= 2],
 ];
-function _countMixCard(S) {
-  if (!S.pitches.some(p => p.pt)) return '';
+// 줄마다 { l, d, n, segs: [{ pt, n }] } — 카드와 투수 리포트가 같이 쓴다
+function _cmData(S) {
   const order = _byPitch(S).map(r => r.pt);   // 구종 구성 표와 같은 순서 · 같은 색
   const xs = S.pas.flatMap(pa => pa.pitches.map((p, k) => ({ pt: p.pt || '미기록', c: countOf(pa.pitches.slice(0, k)) })));
-  const rows = CM_ROWS.map(([l, d, f]) => {
+  return { order, rows: CM_ROWS.map(([l, d, f]) => {
     const sel = xs.filter(x => f(x.c)), n = sel.length;
-    const segs = order.map(pt => ({ pt, n: sel.filter(x => x.pt === pt).length })).filter(g => g.n);
+    return { l, d, n, segs: order.map(pt => ({ pt, n: sel.filter(x => x.pt === pt).length })).filter(g => g.n) };
+  }) };
+}
+function _countMixCard(S) {
+  if (!S.pitches.some(p => p.pt)) return '';
+  const { order, rows: data } = _cmData(S);
+  const rows = data.map(({ l, d, n, segs }) => {
     const say = segs.map(g => `${g.pt} ${Math.round(g.n / n * 100)}%`).join(', ');
     const bar = segs.map(g => {   // 칸이 좁으면 % 글자는 CSS(@container)가 숨기고 title 로만
       const r = Math.round(g.n / n * 100);
@@ -854,6 +867,114 @@ function _countMixCard(S) {
       <ul class="pc-cm-key">${order.map(pt => `<li style="--pt:${_ptCol(pt)}">${_esc(pt)}</li>`).join('')}</ul>
       <div class="an-hd-note pc-note">아래 네 줄을 더하면 전체 · 공이 적은 줄은 비율이 크게 흔들려요</div>
     </section>`;
+}
+
+// ── 투수 리포트 이미지 ───────────────────────────────────────
+// 경기 전 공유용 한 장: 핵심 숫자 · 카운트별 구종 · 구종별 위치(많이 던진 4개) — 위 카드들과 같은 계산(_calc · _cmData · _pfRows)
+//  · 리플레이 · 구종별 위치와 같은 540×675(2배 저장) NIGHT · 기록된 것만 (구속 · 무브먼트 없음)
+let _rep = null;      // 지금 그려진 투수 { P, S } — 리포트 저장이 쓴다
+const REP_MAX = 4;
+function _reportBtn(P, S) {
+  _rep = { P, S };
+  return `<button type="button" class="sc-act pc-rep-save" onclick="savePitcherReport()">투수 리포트 이미지로 저장 (인스타 피드 1080×1350)</button>`;
+}
+function _reportImg(cv, sc) {
+  const { P, S } = _rep, X = 24, FOOT = 48, W = RP_W, H = RP_H;
+  cv.width = W * sc; cv.height = H * sc;
+  const c = cv.getContext('2d');
+  c.setTransform(sc, 0, 0, sc, 0, 0); c.textBaseline = 'alphabetic';
+  c.fillStyle = N.bg; c.fillRect(0, 0, W, H);
+  const txt = (t, x, y, col, al) => { c.fillStyle = col; c.textAlign = al || 'left'; c.fillText(t, x, y); };
+  const box = (x, y, w, h) => { rr(c, x, y, w, h, 6); c.fillStyle = N.bg2; c.fill(); c.strokeStyle = N.line; c.lineWidth = 1.5; c.stroke(); };
+  const sec = (t, y, note) => {
+    font(c, '800', 14, FONT.kr); txt(t, X, y, N.tx);
+    if (note) { font(c, '500', 10.5, FONT.kr); txt(note, W - X, y, N.tx3, 'right'); }
+    c.fillStyle = N.line; c.fillRect(X, y + 8, W - X * 2, 1);
+  };
+
+  // 머리: PITCHER REPORT · 경기(시즌) → 투수(크게) → 등번호 · 투구 · 이닝 · 상대 타석
+  font(c, '600', 11, FONT.num); spacing(c, 2); txt('PITCHER REPORT', X, 44, N.tx2); spacing(c, 0);
+  const a0 = P.apps[0];
+  font(c, '500', 12, FONT.kr); txt(_scope === 'game' ? (a0 && !a0.current ? _short(a0) : '이번 경기') : `시즌 ${P.apps.length}경기`, W - X, 44, N.tx2, 'right');
+  fitFont(c, P.name, '900', 40, FONT.kr, W - X * 2, 20); txt(P.name, X, 96, N.tx);
+  font(c, '500', 14, FONT.kr); txt([P.num ? '#' + P.num : '', `${S.n}구`, `${ipTxt(S.outs)}이닝`, `상대 ${S.pa}타석`].filter(Boolean).join(' · '), X, 124, N.tx2);
+
+  // 핵심 숫자 5칸 (투구 분석 맨 위 카드와 같은 값)
+  const K = [['스트라이크%', pct(S.sPct)], ['초구 S%', pct(S.fsPct)], ['삼진%', pct(S.kRate)], ['볼넷%', pct(S.bbRate)], ['피안타율', S.ab ? f3(S.avg) : '—']];
+  const kg = 8, kw = (W - X * 2 - kg * 4) / 5, ky = 140;
+  K.forEach(([l, v], i) => {
+    const kx = X + i * (kw + kg);
+    box(kx, ky, kw, 54);
+    font(c, '500', 10.5, FONT.kr); txt(l, kx + kw / 2, ky + 19, N.tx2, 'center');
+    fitFont(c, v, '800', 20, FONT.num, kw - 12, 10); txt(v, kx + kw / 2, ky + 44, N.tx, 'center');
+  });
+
+  // 카운트별 구종: 줄마다 구종 비율 막대 (칸이 30px 이상이면 % 글자)
+  const { order, rows } = _cmData(S);
+  sec('카운트별 구종', 224, '던지기 직전 볼-스트라이크 · 아래 네 줄 합 = 전체');
+  const LW = 96, NW = 34, bx = X + LW, bw = W - X - NW - bx;
+  rows.forEach((r, i) => {
+    const y = 240 + i * 30;
+    font(c, '700', 12, FONT.kr); txt(r.l, X, y + 13, N.tx);
+    fitFont(c, r.d, '500', 9.5, FONT.num, LW - 8, 7); txt(r.d, X, y + 25, N.tx3);
+    font(c, '500', 11, FONT.num); txt(`${r.n}구`, W - X, y + 19, N.tx2, 'right');
+    rr(c, bx, y + 4, bw, 20, 4); c.fillStyle = N.bg2; c.fill();
+    if (!r.n) return;
+    c.save(); rr(c, bx, y + 4, bw, 20, 4); c.clip();
+    let x = bx;
+    r.segs.forEach((g, j) => {
+      const w = g.n / r.n * bw;
+      c.fillStyle = _ptCol(g.pt); c.fillRect(x, y + 4, w - (j < r.segs.length - 1 ? 2 : 0), 20);
+      if (w >= 30) { font(c, '800', 10.5, FONT.num); txt(Math.round(g.n / r.n * 100) + '%', x + w / 2 - 1, y + 18, '#0a111e', 'center'); }
+      x += w;
+    });
+    c.restore();
+  });
+  font(c, '500', 11, FONT.kr);
+  let lx = X;
+  for (const pt of order) {   // 범례: 구종 구성 순서 · 줄이 넘치면 거기까지
+    const w = 14 + c.measureText(pt).width;
+    if (lx + w > W - X) break;
+    c.beginPath(); c.arc(lx + 4, 400, 4, 0, Math.PI * 2); c.fillStyle = _ptCol(pt); c.fill();
+    txt(pt, lx + 12, 404, N.tx2); lx += w + 14;
+  }
+
+  // 구종별 위치: 많이 던진 4개 구종 · 칸 크기는 4칸 기준 고정, 적으면 가운데로
+  const pf = _pfRows(S), list = pf.slice(0, REP_MAX);
+  sec(`구종별 위치${pf.length > REP_MAX ? ` · 많이 던진 ${REP_MAX}개` : ''}`, 434, '● 스트라이크·파울·아웃   ○ 볼   ◆ 피안타');
+  const G = 10, tw = (W - X * 2 - G * (REP_MAX - 1)) / REP_MAX, ty = 450, th = H - FOOT - 12 - ty;
+  if (!list.length) { font(c, '500', 13, FONT.kr); txt('위치와 구종이 같이 기록된 공이 없어요', W / 2, ty + th / 2, N.tx3, 'center'); }
+  const tx0 = (W - (list.length * tw + (list.length - 1) * G)) / 2;
+  list.forEach((r, i) => {
+    const tx = tx0 + i * (tw + G), col = _ptCol(r.pt);
+    box(tx, ty, tw, th);
+    c.beginPath(); c.arc(tx + 12, ty + 15, 4, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+    const use = Math.round(r.n / S.n * 100) + '%';
+    font(c, '500', 10.5, FONT.num); txt(use, tx + tw - 8, ty + 19, N.tx2, 'right');
+    fitFont(c, r.pt, '800', 12.5, FONT.kr, tw - 30 - c.measureText(use).width, 8); txt(r.pt, tx + 21, ty + 19, N.tx);
+    const s = Math.min((tw - 16) / 100, (th - 58) / 120);
+    _pfZoneDraw(c, r.xy, col, tx + (tw - 100 * s) / 2, ty + 24, s);
+    font(c, '600', 10.5, FONT.kr); txt(`S% ${pct(r.s / r.n)}`, tx + tw / 2, ty + th - 20, N.tx2, 'center');
+    const kh = `삼진 ${r.k} · 피안타 ${r.h}`;
+    fitFont(c, kh, '500', 10.5, FONT.kr, tw - 10, 7); txt(kh, tx + tw / 2, ty + th - 7, N.tx3, 'center');
+  });
+
+  // 꼬리: 로고 · 계정
+  c.fillStyle = N.bg2; c.fillRect(0, H - FOOT, W, FOOT);
+  c.fillStyle = N.line; c.fillRect(0, H - FOOT - .75, W, 1.5);
+  wordmark(c, X, H - FOOT + 29, 13, N.tx, N.acc);
+  font(c, '500', 12, FONT.num); txt('@spraylab2026', W - X, H - FOOT + 29, N.tx2, 'right');
+}
+
+export function savePitcherReport() {
+  if (!_rep) return;
+  window.showToast('이미지 생성 중...', false, true);
+  const warm = document.createElement('canvas'), cv = document.createElement('canvas');
+  return drawWithFonts(warm, () => _reportImg(warm, 1)).then(() => {
+    _reportImg(cv, 2);
+    window._downloadCanvas(cv, 'spraylab_pitcherreport_' + Date.now() + '.png');
+    window.showToast('이미지 저장 완료 ✓', false);
+  });
 }
 
 // ── 카운트 운영 · 투구수 구간 ────────────────────────────────
@@ -1004,4 +1125,5 @@ if (typeof window !== 'undefined') {
   window.setReplay = setReplay;
   window.saveReplayImage = saveReplayImage;
   window.saveProfileImage = saveProfileImage;
+  window.savePitcherReport = savePitcherReport;
 }

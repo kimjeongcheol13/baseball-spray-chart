@@ -1,0 +1,190 @@
+/* ═══════════════════════════════════════════════════════════
+   SprayLab — 분석 화면 새 디자인 (어두운 카드형 · 2026-10 시안 E)
+   · night.css 다음에 로드해 분석 화면(#analysisView)만 덮어쓴다 — 이 파일을 빼면 지금 화면으로 돌아감
+   · 고대비(야외, body.high-contrast)는 건드리지 않는다 (밝은 종이 그대로)
+   · 원칙: 둥근 카드 하나에 이야기 하나 · 숫자는 크게(Oswald) · 글자는 13px 아래로 안 내림 · 누르는 곳은 44px 이상
+   · 폰 · 컴퓨터 둘 다 적용 (사용자 결정 10-30) — 넓은 화면에서는 카드 두 줄 배치
+   ═══════════════════════════════════════════════════════════ */
+
+html body.sb.sb-night:not(.high-contrast) #analysisView {
+  --v-bg: #0A0C11;
+  --v-card: #141822;
+  --v-card2: #1C212C;
+  --v-line: rgba(255, 255, 255, .08);
+  --v-ink: #F4F6FA;
+  --v-ink2: rgba(244, 246, 250, .74);
+  --v-ink3: rgba(244, 246, 250, .52);
+  --v-acc: #FF5A36;
+  --v-hi: #F6C343;
+  --v-good: #35D49E;
+  --v-bad: #FF6B74;
+  --v-blue: #7CB0FF;
+  --v-num: 'Oswald', 'Noto Sans KR', sans-serif;
+  --v-r: 20px;
+  /* analysis.css · batter.css 가 쓰는 토큰도 같은 색으로 */
+  --an-card: var(--v-card);
+  --an-raised: var(--v-card2);
+  --an-line: var(--v-line);
+  --an-ink: var(--v-ink);
+  --an-ink2: var(--v-ink2);
+  --an-ink3: var(--v-ink3);
+  background: var(--v-bg);
+  color: var(--v-ink);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* ── 위 머리 · 하위 탭 ───────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sb-vhdr { background: var(--v-bg); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-meta-m { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ana-subnav { background: var(--v-bg); border-bottom: 1px solid var(--v-line); padding: 10px 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ana-subnav-inner { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ana-sub {
+  min-height: 44px; padding: 0 16px; border: 0 !important; border-radius: 999px !important;
+  background: transparent; color: var(--v-ink2); font: 700 15px 'Noto Sans KR', sans-serif;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .ana-sub.on { background: var(--v-ink); color: var(--v-bg); }
+
+/* 종이 테마(paper.css)가 분석 화면 모든 요소의 모서리를 0 !important 로 만든다 → 여기서 쓰는 모서리는 전부 !important */
+
+/* ── 고르기: 세그먼트 · 선수 칩 ───────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-seg {
+  display: inline-flex; gap: 2px; padding: 3px; border: 0; border-radius: 999px !important; background: var(--v-card);
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-seg button {
+  min-height: 44px; padding: 0 16px; border: 0 !important; border-radius: 999px !important;
+  background: transparent; color: var(--v-ink2); font: 700 14px 'Noto Sans KR', sans-serif;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-seg button.on { background: var(--v-ink); color: var(--v-bg); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .an-seg { background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-ctrls { gap: 8px; margin-bottom: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pick { gap: 8px; padding-bottom: 4px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip) {
+  height: auto; min-height: 48px; padding: 0 16px; gap: 6px; align-items: center; line-height: 1.2;
+  border: 0; border-radius: 16px !important; background: var(--v-card); color: var(--v-ink2);
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip) em { font: 600 13px var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip) b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip) small { font: 500 13px var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-chip span { font: 500 13px var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip).on { background: var(--v-ink); color: var(--v-bg); }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip).on :is(em, small, span) { color: rgba(10, 12, 17, .6); }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-chip, .an-chip).on b { color: var(--v-bg); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-chip.live i { box-shadow: 0 0 0 2px var(--v-card); }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.bt-link-pill, .bt-live-btn) {
+  min-height: 44px; padding: 0 18px; border-radius: 999px !important; font: 700 13px 'Noto Sans KR', sans-serif;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-link-pill { border: 1px solid var(--v-line); background: transparent; color: var(--v-ink2); }
+
+/* ── 카드 ────────────────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, [class$="-hero"], .an-empty) {
+  border-width: 0 !important; border-radius: var(--v-r) !important;
+  background: var(--v-card) !important; padding: 22px 20px;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-hd {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px;
+  margin: 0 0 16px; padding: 0; border: 0 !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-hd h3, .an-card h3) {
+  font: 800 19px/1.25 'Noto Sans KR', sans-serif; letter-spacing: -.02em; color: var(--v-ink);
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-hd-note { font-size: 13px; line-height: 1.5; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-note { padding: 18px 6px; font-size: 14px; line-height: 1.65; color: var(--v-ink2); text-align: center; }
+
+/* 결과 칩 (안타 · 사구 · 삼진 …): 테두리 없는 알약 */
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i[class^="r-"] {
+  padding: 4px 10px; border: 0 !important; border-radius: 999px !important;
+  font: 700 13px/1.2 'Noto Sans KR', sans-serif; font-style: normal;
+  background: rgba(255, 255, 255, .07); color: var(--v-ink2);
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-1b { background: rgba(255, 107, 116, .16) !important; color: #FF9AA1 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-xbh { background: rgba(246, 195, 67, .18) !important; color: var(--v-hi) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-hr { background: var(--v-bad) !important; color: #fff !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-bb { background: rgba(124, 176, 255, .16) !important; color: var(--v-blue) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-k { background: rgba(255, 255, 255, .07) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-out { background: rgba(255, 255, 255, .07) !important; color: var(--v-ink2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-badge { padding: 4px 10px; border-radius: 999px !important; font-size: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .pf-tag {
+  padding: 4px 10px; border: 0 !important; border-radius: 999px !important;
+  background: rgba(124, 176, 255, .14) !important; color: var(--v-blue) !important; font-size: 12px; font-weight: 700;
+}
+
+/* ── 타자: 맨 위 카드 ─────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-hero {
+  gap: 16px 12px; padding: 24px 22px 20px;
+  background: radial-gradient(120% 110% at 100% 0%, rgba(255, 90, 54, .18), transparent 58%), var(--v-card) !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-hero.is-live { box-shadow: inset 0 0 0 2px var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-eyebrow { font: 700 13px 'Noto Sans KR', sans-serif; letter-spacing: .04em; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-name { margin-top: 6px; font-size: 34px; font-weight: 900; letter-spacing: -.03em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-meta { margin-top: 4px; font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-hero .pf-tags { margin-top: 12px; gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-season small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-season > b { margin-top: 2px; font: 600 64px/1 var(--v-num); letter-spacing: -.01em; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-season span { margin-top: 6px; font: 500 15px var(--v-num); color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-wplus { margin-top: 6px; font-size: 13px; font-style: normal; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-wplus b { font: 600 18px var(--v-num); color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-today {
+  gap: 10px 12px; padding: 14px 16px; border: 0 !important; border-radius: 14px !important; background: var(--v-card2) !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-today small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-today b { font-size: 17px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-today-chips { gap: 5px; }
+
+/* ── 흐름 비교 표: 숫자 크게, 오늘 줄 강조 ───────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t thead th { padding: 0 2px 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border: 0 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t :is(tbody th, td) { padding: 13px 2px; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t tbody th { font: 700 14px 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t td { font: 500 16px var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t tbody tr:first-child :is(th, td, td b) { color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form { padding: 5px 12px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-note { margin-top: 10px; font-size: 13px; }
+
+/* ── 오늘 타석 ───────────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pas > li { grid-template-columns: 30px 1fr; gap: 12px; padding: 14px 0; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pa-n { width: 30px; height: 30px; border: 0 !important; background: var(--v-card2) !important; font: 600 15px var(--v-num); color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pa-top { gap: 10px; align-items: center; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pa-top small { font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq-none { display: none; }   /* '투구 기록 없음'이 타석마다 반복 → 숨김 (공 칩이 있으면 그대로 보임) */
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq { gap: 5px; margin-top: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq span { padding: 5px 9px; border: 0 !important; border-radius: 10px !important; background: var(--v-card2) !important; font-size: 13px; }
+
+/* ── 그림 카드(본 공 위치 · 타구 방향) · 요약 ────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-2col { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-spray-key { gap: 6px 14px; font-size: 13px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-spray :is(table, th, td) { font-size: 13px; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-spray td { font: 500 17px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-insight ul { gap: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-insight li { padding-left: 18px; font-size: 15.5px; line-height: 1.65; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-insight li::before { top: .62em; width: 7px; height: 7px; border-radius: 50% !important; background: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-insight b { color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-warn {
+  margin-top: 16px; padding: 14px 16px; border: 0 !important; border-radius: 14px !important;
+  background: rgba(255, 107, 116, .1) !important; color: var(--v-ink2) !important; font-size: 13.5px; line-height: 1.6;
+}
+
+/* ── 아래 버튼들 ─────────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-act {
+  min-height: 64px; border: 0 !important; border-radius: 18px !important; background: var(--v-card) !important; padding: 12px 18px; gap: 12px;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-act b { font-size: 16px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-act small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-act-ic { width: 40px; height: 40px; border-radius: 12px !important; background: var(--v-card2) !important; border: 0 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-xlsx button { min-height: 48px; border: 0 !important; border-radius: 999px !important; background: var(--v-card) !important; color: var(--v-ink) !important; font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-xlsx small { font-size: 13px; line-height: 1.5; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .pf-report-btn { min-height: 52px; border: 0 !important; border-radius: 999px !important; background: var(--v-acc) !important; color: #fff !important; font-size: 15px; font-weight: 800; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .pf-report-btn small { color: rgba(255, 255, 255, .8) !important; font-size: 13px; }
+
+/* ── 넓은 화면: 카드 두 줄 ───────────────────────────────── */
+@media (min-width: 980px) {
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 1120px; align-items: start;
+  }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result > :not(.an-card),
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result > .an-insight { grid-column: 1 / -1; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-ctrls,
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pick { max-width: 1120px; margin-left: auto; margin-right: auto; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-name { font-size: 40px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-season > b { font-size: 80px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .bt-form-t td { font-size: 20px; }
+}

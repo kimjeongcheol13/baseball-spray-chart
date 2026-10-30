@@ -756,7 +756,7 @@ class PitchZone3D extends SprayField3D {
       this._hint.textContent = zoneDrag === 'turn' ? '끌면 돌리기 · 공을 누르면 그 공 · 두 번 누르면 가까이' : '끌면 구역 고르기 · 두 손가락 확대·이동 · 공 두 번 누르면 가까이';
     }
     if (this._modeBar) {
-      this._modeBar.hidden = !pick;
+      this._modeBar.style.display = pick ? 'flex' : 'none';   // hidden 은 인라인 display: flex 에 져서 고를 수 없는 그림에도 보였다
       this._modeBar.querySelectorAll('button').forEach((b) => {
         const on = b.dataset.m === zoneDrag;
         b.setAttribute('aria-pressed', String(on));

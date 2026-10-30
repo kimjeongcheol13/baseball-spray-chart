@@ -123,6 +123,13 @@
       eq(z._pts.map(function (o) { return [o.x, o.y, o.k, o.n]; }), [[q[0][0], q[0][1], '#4b8cf5', 1], [q[1][0], q[1][1], '#a78bfa', 2]], '바꾼 타석 (직구 파랑 · 커브 보라)');
       eq([z._sel.x0, z._sel.y0, z._sel.tap], [q[1][0], q[1][1], true], '고리 = 타석을 끝낸 2구');
 
+      // 고르기 · 돌리기 버튼은 구역을 고를 수 있는 코스(#pcPlot)에만 — 예전엔 인라인 display: flex 가 hidden 을 이겨 리플레이에도 보였다
+      setPitcherView('zone', 'plot');
+      var pz3 = null;
+      for (i = 0; i < 50 && !(pz3 && pz3._pick); i++) { await T.sleep(100); pz3 = document.querySelector('#pcPlot + .an-3d-box pitch-zone-3d'); }
+      z = z3();
+      eq([getComputedStyle(z._modeBar).display, pz3 && getComputedStyle(pz3._modeBar).display], ['none', 'flex'], '고르기 · 돌리기: 리플레이 없음 · 코스 있음');
+
       // 장면에 넣는 물체: 공마다 번호 글자(스프라이트) 하나
       var got = [];
       z._balls({ add: function (o) { got.push(o); } });

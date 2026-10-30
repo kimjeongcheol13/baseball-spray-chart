@@ -168,6 +168,7 @@ function _stats(P) {
       ${_zoneCard(S, P)}
     </div>
     ${_profileCard(P, S)}
+    ${_countMixCard(S)}
     ${_replayCard(P)}
     <div class="pc-2col">
       ${_countCard(S)}
@@ -815,6 +816,44 @@ export function saveProfileImage() {
     window._downloadCanvas(cv, 'spraylab_pitchprofile_' + Date.now() + '.png');
     window.showToast('이미지 저장 완료 ✓', false);
   });
+}
+
+// ── 카운트별 구종 ────────────────────────────────────────────
+// 그 공을 던지기 직전 볼-스트라이크(countOf)로 나눈다 · 네 줄은 겹치지 않고 더하면 전체
+// '볼이 많을 때' · '2스트라이크'는 코스에서 고른 공 카드의 '카운트'와 같은 기준
+const CM_ROWS = [
+  ['전체', '모든 공', () => true],
+  ['초구', '0-0', c => !c.b && !c.s],
+  ['볼이 많을 때', '1-0 2-0 3-0 2-1 3-1', c => c.b > c.s && c.s < 2],
+  ['그 밖', '0-1 1-1', c => c.b <= c.s && c.s < 2 && (c.b || c.s)],
+  ['2스트라이크', '0-2 1-2 2-2 3-2', c => c.s >= 2],
+];
+function _countMixCard(S) {
+  if (!S.pitches.some(p => p.pt)) return '';
+  const order = _byPitch(S).map(r => r.pt);   // 구종 구성 표와 같은 순서 · 같은 색
+  const xs = S.pas.flatMap(pa => pa.pitches.map((p, k) => ({ pt: p.pt || '미기록', c: countOf(pa.pitches.slice(0, k)) })));
+  const rows = CM_ROWS.map(([l, d, f]) => {
+    const sel = xs.filter(x => f(x.c)), n = sel.length;
+    const segs = order.map(pt => ({ pt, n: sel.filter(x => x.pt === pt).length })).filter(g => g.n);
+    const say = segs.map(g => `${g.pt} ${Math.round(g.n / n * 100)}%`).join(', ');
+    const bar = segs.map(g => {   // 칸이 좁으면 % 글자는 CSS(@container)가 숨기고 title 로만
+      const r = Math.round(g.n / n * 100);
+      return `<i style="--pt:${_ptCol(g.pt)};flex:${g.n}" title="${_esc(g.pt)} ${g.n}구 · ${r}%"><span>${r}%</span></i>`;
+    }).join('');
+    return `
+      <div class="pc-cm-row" role="img" aria-label="${_esc(l)} ${n}구${say ? ': ' + _esc(say) : ''}">
+        <div class="pc-cm-l"><b>${l}</b><small>${d.split(' ').map(t => `<span>${t}</span>`).join(' ')}</small></div>
+        <div class="pc-cm-bar${n ? '' : ' is-empty'}">${n ? bar : '—'}</div>
+        <em>${n}구</em>
+      </div>`;
+  }).join('');
+  return `
+    <section class="an-card pc-cm" id="pcCountMix">
+      <header class="an-hd"><h3>카운트별 구종</h3><span class="an-hd-note">던지기 직전 볼-스트라이크 기준</span></header>
+      ${rows}
+      <ul class="pc-cm-key">${order.map(pt => `<li style="--pt:${_ptCol(pt)}">${_esc(pt)}</li>`).join('')}</ul>
+      <div class="an-hd-note pc-note">아래 네 줄을 더하면 전체 · 공이 적은 줄은 비율이 크게 흔들려요</div>
+    </section>`;
 }
 
 // ── 카운트 운영 · 투구수 구간 ────────────────────────────────

@@ -213,6 +213,22 @@
 .pc-pf-key .k-hit { border-radius: 1px; transform: rotate(45deg) scale(.9); }
 .pc-pf-save { display: block; width: 100%; min-height: 44px; margin-top: 12px; }   /* 모양은 .sc-act */
 
+/* ── 카운트별 구종: 카운트 상황마다 구종 비율 막대(색 = 구종) ── */
+.pc-cm-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 40px; align-items: center; column-gap: 10px; padding: 7px 0; }
+.pc-cm-row + .pc-cm-row { border-top: 1px solid var(--an-line); }
+.pc-cm-l { display: flex; flex-direction: column; min-width: 0; }
+.pc-cm-l b { font-size: 12.5px; font-weight: 800; color: var(--an-ink); }
+.pc-cm-l small { font-size: 10px; color: var(--an-ink3); word-break: keep-all; }
+.pc-cm-l small span { white-space: nowrap; }   /* 3-1 이 3- / 1 로 끊기지 않게 */
+.pc-cm-bar { display: flex; gap: 2px; height: 22px; border-radius: 5px; overflow: hidden; background: var(--an-raised); }
+.pc-cm-bar i { display: grid; place-items: center; min-width: 3px; container-type: inline-size; background: var(--pt); color: #0a111e; font-style: normal; font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+@container (max-width: 29.98px) { .pc-cm-bar i span { display: none; } }   /* 글자가 안 들어가는 칸 */
+.pc-cm-bar.is-empty { align-items: center; padding-left: 8px; font-size: 11px; color: var(--an-ink3); }
+.pc-cm-row em { font: 500 10px var(--mono); font-style: normal; color: var(--an-ink3); text-align: right; }
+.pc-cm-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 11px; color: var(--an-ink2); }
+.pc-cm-key li { display: inline-flex; align-items: center; gap: 5px; }
+.pc-cm-key li::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pt); }
+
 /* ── 카운트 운영 ── */
 .pc-cnts { display: flex; flex-direction: column; }
 .pc-cnt { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 12px; padding: 9px 0; }
@@ -295,6 +311,7 @@
 /* ── 모바일 터치 타겟 44×44px 이상 (분석/투구 기록 전환 + 기존 투구 입력 패널) ── */
 @media (max-width: 720px) {
   .pc-rp-body { grid-template-columns: minmax(0, 1fr); }
+  .pc-cm-row { grid-template-columns: 84px minmax(0, 1fr) 34px; column-gap: 8px; }
   .pc-mode .an-seg button { height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .inp { min-height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .btn { min-width: 44px; min-height: 44px; }

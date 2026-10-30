@@ -1,13 +1,14 @@
 // 게임원 중계 — 앱(GitHub Pages)이 게임원 주소를 넣으면 그때 이 함수가 게임원을 대신 읽어 JSON 으로 돌려준다(Netlify Functions)
 //   GET /api/gameone?club=팀번호[&season=2026] → 팀 시즌 타자 · 투수 + 선수단 전원 통산 (gameone_extract.mjs teamData 와 같은 모양)
 //   GET /api/gameone?player=선수코드          → 그 선수 통산 { v, at, name, hand, bg, school, bat, pit }
+//   GET /api/gameone?game=경기번호&club=팀번호 | &lig=리그번호 → 그 경기 박스스코어를 통째 복사한 것과 같은 평문 { v, text } (앱 가져오기 칸에 넣는다)
 //  · 앱이 직접 못 읽는 이유: 게임원은 CORS 헤더가 없고, 옛 보안 연결(DHE · 작은 키)만 받아 Supabase(Deno)도 못 붙는다.
 //    Node 는 이 연결에만 SECLEVEL=0 으로 받는다. 공개 기록 페이지를 읽기만 하고 보내는 것은 없다.
-//  · 정해 둔 게임원 페이지 4개만 · 숫자 · 코드 모양을 확인한 값만 부른다(아무 주소나 대신 여는 중계가 되지 않게)
+//  · 정해 둔 게임원 페이지 6개만 · 숫자 · 코드 모양을 확인한 값만 부른다(아무 주소나 대신 여는 중계가 되지 않게)
 //  · 배포는 netlify.toml 주석 참고(CLI 로만)
 import https from 'node:https';
 import G from '../../js/gameone.js';
-import { rankRows, roster, rosterKeys, careerRec, teamData } from '../gameone_extract.mjs';
+import { rankRows, roster, rosterKeys, careerRec, teamData, boxText } from '../gameone_extract.mjs';
 
 const APP = 'https://kimjeongcheol13.github.io';
 const UA = 'SprayLab/1.0 (+https://kimjeongcheol13.github.io/baseball-spray-chart/)';
@@ -37,14 +38,28 @@ async function team(a, club, season) {
   return teamData(G, { hit, pit, list, careers }, Date.now());
 }
 
+// 경기 박스스코어 → 평문. 선수 줄이 하나도 없으면(기록을 아직 안 올린 경기 · 몰수 경기) null
+async function box(a, game, club, lig) {
+  const text = boxText(await get(a, club ? `/club/info/schedule/boxscore?club_idx=${club}&game_idx=${game}` : `/league/schedule/content/boxscore?lig_idx=${lig}&game_idx=${game}`));
+  const sp = G.splitGameOnePage(text);
+  return sp && sp.tables.some(t => G.parseGameOne(t.text).players.length) ? text : null;
+}
+
 export default async req => {
   const u = new URL(req.url), club = u.searchParams.get('club') || '', player = u.searchParams.get('player') || '', season = u.searchParams.get('season') || '';
+  const game = u.searchParams.get('game') || '', lig = u.searchParams.get('lig') || '';
   const out = (o, status = 200) => new Response(JSON.stringify(o), {
     status,
     headers: { 'Access-Control-Allow-Origin': APP, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': status === 200 ? 'public, max-age=300' : 'no-store' }
   });
   const a = newAgent();
   try {
+    if (game) {   // 팀 주소(club=)보다 먼저 — 경기 주소에도 club_idx 가 있다
+      const byClub = /^\d{1,7}$/.test(club) && !lig, byLig = /^\d{1,7}$/.test(lig) && !club;   // 둘 중 하나만
+      if (!/^\d{1,9}$/.test(game) || !(byClub || byLig)) return out({ error: 'bad request' }, 400);
+      const text = await box(a, game, byClub ? club : '', lig);
+      return text ? out({ v: 1, text }) : out({ error: 'empty' }, 404);
+    }
     if (/^\d{1,7}$/.test(club) && /^(\d{4})?$/.test(season)) {
       const d = await team(a, club, season);
       return d.bat.length + d.pit.length + Object.keys(d.players).length ? out(d) : out({ error: 'empty' }, 404);

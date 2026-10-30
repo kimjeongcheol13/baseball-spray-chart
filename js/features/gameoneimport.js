@@ -36,6 +36,9 @@
 //     저장 직후 「타구 위치 확인」(gameonefix.js)을 한 번 연다 — 필드를 탭하거나 점을 끌어 옮기면 좌표 · 방향 · 거리가 바뀌고 estimated = false.
 //     estimated 가 없는 예전 기록 · 직접 찍은 기록 = 직접 입력으로 본다. 통계 계산은 estimated 와 무관
 //     - 링크 · 첫 화면 버튼으로 열면 '복사하는 방법'을 펼쳐 둔다(처음 쓰는 사람). 열기 이벤트에 from = 'tile'(데이터 관리) | 'link'(?go=1) | 'empty'(첫 화면 버튼)
+//   · 주소로 가져오기 (2026-10-30): 박스스코어 주소(game_idx= + club_idx= 또는 lig_idx=)를 넣고 「가져오기」 → 그때 중계(netlify/functions/gameone.mjs ?game=)가
+//     페이지를 통째 복사한 것과 같은 평문을 돌려준다 → 점수표 칸에 넣으면 통째 붙여넣기와 같은 길(_autoSplit)로 나눠 미리보기. 저장은 사용자가 누른다.
+//     앱을 열 때 저절로 받지 않는다. 저장 이벤트 paste = 'link'
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -395,6 +398,7 @@ function _lsTable(ls, g) {
 // 박스스코어 페이지를 통째로 붙여넣었으면(휴대폰 '전체 선택 → 복사') 이닝별 점수표 · 원정 · 홈 칸으로 나눠 채운다 (splitGameOnePage).
 // 페이지 위 타자 표 = 점수표 윗줄 팀 = 원정(초) — 따로 붙여넣을 때와 같은 규칙. 나눈 결과가 칸에 보여서 사용자가 확인 · 고칠 수 있다
 let _splitNote = '', _usedSplit = false;   // _usedSplit = 지난 저장 뒤 통째 붙여넣기를 나눈 적이 있다(사용 기록용)
+let _linkText = '', _usedLink = false;     // 주소로 받은 평문 · 지난 저장 뒤 그 평문을 나눈 적이 있다(사용 기록용)
 // 통째 붙여넣기를 나눌 때 경기 날짜 · 원정 · 홈 칸도 채운다(2026-10-21). 비었거나 지난번에 자동으로 채운 칸(data-auto)만 — 사용자가 직접 고치면
 // 그 칸의 표시를 지워(input 이벤트, 아래 시작 처리) 고친 값이 우선. 구장은 입력칸이 없어 저장할 때 경기 정보(info.venue)로만 넣는다
 let _venue = '';
@@ -411,7 +415,8 @@ function _autoSplit() {
     if (sp.score) $('goScore').value = sp.score; else if (id === 'goScore') $('goScore').value = '';
     if ($('goPitch') && (sp.pitch || id === 'goPitch')) $('goPitch').value = sp.pitch;
     $('goAway').value = sp.tables[0].text; $('goHome').value = sp.tables[1].text;
-    _usedSplit = true;
+    const linked = !!_linkText && src === _linkText;
+    if (linked) _usedLink = true; else _usedSplit = true;
     // 팀 이름 = 점수표 첫 열(윗줄 원정 · 아랫줄 홈), 점수표가 없으면 타자 표 위 팀 이름 줄 · 날짜 · 구장 = 페이지 위 경기 정보 줄('리그 / 10.07(20:00) / 구장')
     const sb = sp.score ? _P().parseGameOneScoreboard(sp.score) : null;
     const names = sb && sb.teams.length >= 2 ? [sb.teams[0].name, sb.teams[1].name] : [sp.tables[0].name, sp.tables[1].name];
@@ -420,7 +425,7 @@ function _autoSplit() {
     const dated = !!ymd && _autoFill('goDate', ymd);
     _venue = info && info.venue ? info.venue.trim().slice(0, 20) : '';
     const nm = (t, d) => (t.name ? `${d}(${t.name})` : d);
-    _splitNote = `박스스코어 페이지를 통째로 붙여넣어 ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표${sp.pitch ? ' · 투수 표' : ''}로 나눴습니다`
+    _splitNote = `${linked ? '게임원 주소에서 가져온 박스스코어를' : '박스스코어 페이지를 통째로 붙여넣어'} ${sp.score ? '이닝별 점수표 · ' : ''}${nm(sp.tables[0], '원정')} · ${nm(sp.tables[1], '홈')} 타자 표${sp.pitch ? ' · 투수 표' : ''}로 나눴습니다`
       + (sp.tables.length > 2 ? ` — 타자 표가 ${sp.tables.length}개라 앞의 2개만 씁니다` : '') + '. 메뉴 · 요약 글자는 쓰지 않습니다'
       + (dated || _venue ? ` · 경기 정보 줄에서 ${[dated ? `날짜 ${+ymd.slice(5, 7)}월 ${+ymd.slice(8)}일` : '', _venue ? `구장 ${_venue}` : ''].filter(Boolean).join(' · ')}을 넣었습니다` : '');
     return;
@@ -524,22 +529,53 @@ export function saveGameOneImport() {
   if (window.openGameOneFix) window.openGameOneFix(g.key);   // 타구 점이 있으면 「타구 위치 확인」을 불러오기 목록 위에 한 번 연다(나중에 할게로 넘길 수 있음)
   const skipped = R.away.skipped.length + R.home.skipped.length, L = R.pitch && R.pitch.linked;
   _track('gameone_import', {
-    pa: g.abs.length, paste: _usedSplit ? 'page' : 'tables', scoreboard: R.ls ? 1 : 0,
+    pa: g.abs.length, paste: _usedLink ? 'link' : _usedSplit ? 'page' : 'tables', scoreboard: R.ls ? 1 : 0,
     pitch: !L ? 'none' : L.away && L.home ? 'linked' : L.away || L.home ? 'partial' : 'saved', skipped, warned: iss.length ? 1 : 0,
   });
-  _usedSplit = false;
+  _usedSplit = _usedLink = false;
   _syncStart();
   toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
 }
 
 function _resetInputs() {
-  ['goScore', 'goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  ['goScore', 'goAway', 'goHome', 'goPitch', 'goUrl'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  _linkText = '';
+  _say('');
   // 자동으로 채운 팀 이름 · 날짜는 이 경기 것 — 다음 경기 표를 따로 붙여넣을 때 남지 않게 비우고(날짜는 오늘로) 구장도 지운다. 사용자가 고친 값은 그대로
   ['goTa', 'goTh'].forEach(id => { const t = $(id); if (t && t.dataset.auto === '1') { t.value = ''; delete t.dataset.auto; } });
   const dt = $('goDate');
   if (dt && dt.dataset.auto === '1') dt.value = _today();
   _venue = '';
   _preview();
+}
+
+// ── 주소로 가져오기 ── 중계 주소 · 시간 붙이기(sw.js 가 GET 을 캐시해서)는 gocareer.js _relay 와 같다
+const RELAY = 'https://spraylab-gameone.netlify.app/api/gameone';
+// 게임원 박스스코어 주소 → 중계 질의('game=…&club=…' | 'game=…&lig=…') | ''. 팀 페이지 · 리그 페이지 박스스코어 둘 다(주소에 game_idx= 가 있어야 한다)
+export function gameOneBoxQuery(v) {
+  const s = String(v || ''), g = /[?&]game_idx=(\d{1,9})(?!\d)/.exec(s), c = /[?&]club_idx=(\d{1,7})(?!\d)/.exec(s), l = /[?&]lig_idx=(\d{1,7})(?!\d)/.exec(s);
+  return g && (c || l) ? `game=${g[1]}&${c ? `club=${c[1]}` : `lig=${l[1]}`}` : '';
+}
+function _say(t, bad) {
+  const m = $('goUrlMsg');
+  if (m) { m.textContent = t; m.classList.toggle('bad', !!bad); }
+}
+export async function fetchGameOneBox() {
+  const btn = $('goUrlBtn'), q = gameOneBoxQuery(($('goUrl') || {}).value);
+  if (!q) { _say('게임원 박스스코어 주소를 넣어 주세요. 주소에 game_idx= 와 club_idx=(또는 리그 페이지의 lig_idx=)가 있어야 해요.', true); return; }
+  if (btn) btn.disabled = true;
+  _say('게임원에서 가져오는 중…');
+  let d;
+  try { const r = await fetch(`${RELAY}?${q}&t=${Date.now()}`); d = r.ok ? await r.json() : { status: r.status }; } catch (e) { d = { status: 0 }; }
+  if (btn) btn.disabled = false;
+  if (d.status != null || d.v !== 1 || typeof d.text !== 'string') {
+    _say(d.status === 404 ? '게임원에 이 경기 타자 기록이 없어요. 주소가 맞는지, 경기 기록이 올라왔는지 확인해 주세요.' : '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.', true);
+    return;
+  }
+  ['goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
+  $('goScore').value = _linkText = d.text;
+  _say('가져왔어요 — 아래 미리보기를 확인하고 「새 경기로 저장」을 누르세요.');
+  _schedule();
 }
 
 // 같은 경기마다 타점 채우기 계획. 지금 열린 경기(_curSaveKey)면 화면의 AS.abs 를 고친다(gameonefix.js 와 같은 방식)
@@ -612,12 +648,13 @@ function _openFromLink() {
 }
 
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame, findSameGames, planRbiFill, gameOneInfoDate, _openFromLink, _syncStart };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames, planRbiFill, gameOneInfoDate, gameOneBoxQuery, _openFromLink, _syncStart };
   // 원정 · 홈 · 날짜 칸을 사용자가 직접 고치면 자동 표시를 지운다 — 다음 통째 붙여넣기가 덮지 않는다(_autoFill). 값을 코드로 넣을 때는 input 이벤트가 없다
   ['goTa', 'goTh', 'goDate'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { delete el.dataset.auto; }); });
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
   window.fillGameOneRbi = fillGameOneRbi;
+  window.fetchGameOneBox = fetchGameOneBox;
   window.gameOnePreview = _schedule;
   const orig = window.updateFieldTapHint;   // core.js(defer)가 먼저 정한다
   if (typeof orig === 'function' && !orig._go) {

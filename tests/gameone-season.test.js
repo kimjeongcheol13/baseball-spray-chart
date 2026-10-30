@@ -37,10 +37,11 @@
     { game: null, md: '10-04', time: '', lig: '가상대회', venue: '나구장', away: '가팀', as: null, home: '마팀', hs: null, note: '' },
     { game: 105, md: '09-27', time: '16:00', lig: '가상리그', venue: '나구장', away: '가팀', as: 5, home: '바팀', hs: 1, note: '콜드승' }
   ] };
-  var calls = [], realFetch = window.fetch, OLD = 'sl_test_season_old', KEEP = null;
+  var calls = [], realFetch = window.fetch, OLD = 'sl_test_season_old', KEEP = null, fail105 = 0;
   function fakeFetch(u) {
     u = String(u); calls.push({ u: u, t: Date.now() });
     var q = u.split('?')[1] || '';
+    if (/^game=105&/.test(q) && fail105-- > 0) return Promise.reject(new TypeError('Failed to fetch'));   // Netlify 429(CORS 머리 없음)는 브라우저에서 이렇게 보인다
     if (/^list=1/.test(q)) return Promise.resolve(new Response(JSON.stringify(LIST)));
     if (/^game=101&/.test(q)) return Promise.resolve(new Response(JSON.stringify({ v: 1, text: BOX })));
     return Promise.resolve(new Response(JSON.stringify({ error: 'empty' }), { status: 404 }));
@@ -127,6 +128,22 @@
     ok(/창을 닫아 멈췄어요/.test($('goSeasonMsg').textContent), '안내 — ' + $('goSeasonMsg').textContent);
     openGameOneImport();
     ok($('goSeason').hidden, '다시 열면 접힘');
+    closeOverlay('goOverlay');
+  });
+
+  test('호출 제한(연결 오류로 보임) → 1분 쉬고 한 번 더', async function () {
+    openGameOneImport();
+    type('goUrl', 'https://www.gameone.kr/club/?club_idx=14797');
+    $('goUrlBtn').click();
+    await T.sleep(300);
+    fail105 = 1;
+    var n = gameCalls().length;
+    $('goSeasonGo').click();
+    await T.sleep(75000);
+    var gc = gameCalls().slice(n);
+    eq(gc.map(function (c) { return /game=105&/.test(c.u); }), [true, true], '같은 경기 두 번');
+    ok(gc[1].t - gc[0].t >= 60000, '사이 1분 — ' + (gc[1].t - gc[0].t));
+    eq(rows()[4], '☐기록 없음', '다시 받은 답(404)으로 표시 — 못 받음 아님');
     closeOverlay('goOverlay');
   });
 

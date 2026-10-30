@@ -691,7 +691,7 @@ export async function saveGameOneSeason() {
     await _wait(Math.max(0, GAP - (Date.now() - _lastCall)));
     if (!open()) { g.st = ''; break; }
     let d = await _relay(`game=${g.game}&club=${S.club}`);
-    if (d.status === 429 && open()) {   // 다른 창 · 직전 가져오기가 제한을 먼저 썼다 — 1분 쉬고 한 번 더
+    if ((d.status === 429 || d.status === 0) && open()) {   // 다른 창 · 직전 가져오기가 제한을 먼저 썼다 — 1분 쉬고 한 번 더. Netlify 429 엔 CORS 머리가 없어 브라우저엔 연결 오류(0)로 보인다
       _seasonRender(`게임원 중계가 잠시 쉬어야 해요 — 1분 뒤 이어서 받아요 (${k + 1}/${pick.length})`);
       await _wait(61000);
       if (open()) d = await _relay(`game=${g.game}&club=${S.club}`);

@@ -169,6 +169,31 @@
 .pc-flow-p.cur.pq-ball { background: var(--an-line); color: var(--an-ink); }
 .pc-flow-p.todo { color: var(--an-ink3); }
 .pc-pick-more { width: 100%; min-height: 44px; margin-top: 8px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-card); color: var(--an-ink); font-size: 12px; font-weight: 700; cursor: pointer; }
+.pc-rp-go { min-height: 44px; margin-top: 8px; padding: 0 12px; border: 1px solid var(--an-line); border-radius: 8px; background: none; color: var(--an-accent); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* ── 타석 리플레이: 존 위 번호 공(색 = 구종) + 공 목록 ── */
+.pc-rp-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 6px; margin-bottom: 12px; }
+.pc-rp-step, .pc-rp-sel { height: 44px; border: 1px solid var(--an-line); border-radius: 10px; background: var(--an-raised); color: var(--an-ink); font-family: inherit; }
+.pc-rp-step { font-size: 22px; font-weight: 700; line-height: 1; cursor: pointer; }
+.pc-rp-step:disabled { opacity: .35; cursor: default; }
+.pc-rp-sel { min-width: 0; padding: 0 10px; font-size: 13px; font-weight: 600; }
+.pc-rp-hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.pc-rp-hd b { font-size: 18px; font-weight: 900; color: var(--an-ink); }
+.pc-rp-hd small { font-size: 11px; color: var(--an-ink3); }
+.pc-rp-hd em { margin-left: auto; font-style: normal; font-size: 15px; font-weight: 800; color: var(--pq, var(--an-ink2)); }
+.pc-rp-body { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: center; }
+.pc-rp-zone .rp-ball circle { fill: var(--pt); stroke: var(--an-card); stroke-width: .8; }
+.pc-rp-zone .rp-ball.last circle { stroke: var(--an-ink); stroke-width: 1.2; }
+.pc-rp-zone .rp-ball text { font-size: 6.2px; font-weight: 800; fill: #0a111e; pointer-events: none; }
+.pc-rp-seq { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pc-rp-seq li { display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--an-raised); font-size: 12.5px; }
+.pc-rp-seq li.last { box-shadow: inset 0 0 0 1px var(--an-ink2); }
+.pc-rp-seq b { color: var(--an-ink); white-space: nowrap; }
+.pc-rp-seq span { overflow: hidden; color: var(--an-ink2); text-overflow: ellipsis; white-space: nowrap; }
+.pc-rp-seq small { color: var(--an-ink3); }
+.pc-rp-seq em { font-style: normal; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--an-ink3); }
+.rp-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--pt); color: #0a111e; font-style: normal; font-size: 11px; font-weight: 800; }
+.pc-rp-save { display: block; width: 100%; min-height: 44px; margin-top: 12px; }   /* 모양은 .sc-act (분석 엑셀 받기와 같은 버튼) */
 
 /* ── 카운트 운영 ── */
 .pc-cnts { display: flex; flex-direction: column; }
@@ -251,6 +276,7 @@
 
 /* ── 모바일 터치 타겟 44×44px 이상 (분석/투구 기록 전환 + 기존 투구 입력 패널) ── */
 @media (max-width: 720px) {
+  .pc-rp-body { grid-template-columns: minmax(0, 1fr); }
   .pc-mode .an-seg button { height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .inp { min-height: 44px; }
   #anaSecPitcher.pc-input #pnl-pitcher .btn { min-width: 44px; min-height: 44px; }

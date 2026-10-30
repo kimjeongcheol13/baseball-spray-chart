@@ -566,6 +566,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-shot-btns .go-shot-b{flex:1;justify-content:center;min-height:44px}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 */
 .go-shot-btns .go-shot-b:disabled{opacity:.45;cursor:progress}
 .go-shot .go-shot-how{margin:8px 0 0;background:transparent}
+.go-link{display:flex;gap:8px;align-items:flex-end}
+.go-link .go-f{flex:1;min-width:0}
+.go-link .go-link-b{min-height:44px;margin-bottom:8px;justify-content:center}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 · 입력칸 아래 여백과 맞춤 */
+.go-link .go-link-b:disabled{opacity:.45;cursor:progress}
+.go-link+.go-shot-msg{margin:0 0 10px}
 .go-shot-msg{margin-top:8px}
 .go-shot-msg:empty{display:none}
 .go-shot-msg.bad{color:var(--red)}

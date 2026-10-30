@@ -50,6 +50,20 @@ export function careerRec(G, html) {
   return bat || pit ? { name: c.name || '', hand: c.hand, bg: c.bg, school: c.school, bat, pit } : null;
 }
 
+// 경기 박스스코어(팀 club/info/schedule/boxscore · 리그 league/schedule/content/boxscore, 2026-10-30 확인 — 두 페이지 모양이 같다)
+//   → 페이지를 통째 복사한 것과 같은 평문. 앱 가져오기 칸에 그대로 넣으면 splitGameOnePage 가 점수표 · 원정 · 홈 · 투수 표로 나눈다.
+//   경기 정보 줄(<caption> '리그 / 10.25(11:00) / 구장') · 팀 이름(<h3>) · 표 줄마다 칸 글자를 탭으로.
+//   첫 칸의 span(타순 · 위치 · 이름)은 붙인다 — 화면 복사와 같은 '1二홍길동(51)'.
+//   숨긴 10~12회 칸도 넣는다(화면 복사엔 빠진다) — 연장 이닝 기록까지 들어간다
+export function boxText(html) {
+  const s = noComments(html).replace(/<script[\s\S]*?<\/script>/g, ''), i = s.indexOf('scon_boxscore');
+  if (i < 0) return '';
+  const cell = c => txt(c.replace(/>\s+</g, '><'));
+  return [...s.slice(i).matchAll(/<caption[^>]*>([\s\S]*?)<\/caption>|<h3[^>]*>([\s\S]*?)<\/h3>|<tr[^>]*>([\s\S]*?)<\/tr>/g)]
+    .map(m => (m[3] != null ? (m[3].match(/<t[hd][^>]*>[\s\S]*?<\/t[hd]>/g) || []).map(cell).join('\t') : txt(m[1] != null ? m[1] : m[2])))
+    .join('\n');
+}
+
 // 선수단 → 저장 이름(key). 같은 이름이 둘이면 「이름 #번호」로 나눈다(저장이 이름 기준이라 · parseGameOneTeam 과 같은 규칙). 번호가 없으면 통산을 받지 않는다
 export const rosterKeys = ro => ro.flatMap(p => ro.filter(q => q.name === p.name).length < 2 ? [{ ...p, key: p.name }] : p.number ? [{ ...p, key: `${p.name} #${p.number}` }] : []);
 

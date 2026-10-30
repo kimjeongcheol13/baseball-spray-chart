@@ -82,7 +82,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=91">
+<link rel="stylesheet" href="css/styles.css?v=92">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=14">
 <link rel="stylesheet" href="css/analysis.css?v=12">
@@ -1691,7 +1691,13 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
       <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-sub">게임원 박스스코어를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 돼서, 앱 화면은 아래 「스크린샷으로 채우기」를 쓰세요.</div>
+    <div class="modal-sub">게임원 박스스코어 <b>주소</b>를 넣거나 표를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 돼서, 앱 화면은 아래 「스크린샷으로 채우기」를 쓰세요.</div>
+    <!-- 🔗 게임원 주소로 가져오기 (gameoneimport.js fetchGameOneBox) — 중계가 박스스코어를 읽어 아래 칸을 채운다 -->
+    <div class="go-link">
+      <label class="go-f"><span>게임원 박스스코어 주소 <small>넣고 「가져오기」만 누르면 돼요</small></span><input id="goUrl" class="go-inp" type="url" inputmode="url" spellcheck="false" placeholder="https://www.gameone.kr/club/info/schedule/boxscore?club_idx=…&amp;game_idx=…" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameOneBox()}"></label>
+      <button type="button" class="btn btn-ghost go-link-b" id="goUrlBtn" onclick="fetchGameOneBox()">가져오기</button>
+    </div>
+    <div id="goUrlMsg" class="go-shot-msg" aria-live="polite"></div>
     <details class="go-how">
       <summary>복사하는 방법</summary>
       <ol>
@@ -2471,7 +2477,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=243"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=13"></script>
-<script type="module" src="js/app.js?v=183"></script>
+<script type="module" src="js/app.js?v=185"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

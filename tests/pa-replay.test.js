@@ -88,4 +88,33 @@
       $('app-page').style.display = S.ap;
     }
   });
+
+  // 3D 보기(ana3d.js)는 코스 그림(svg.pc-plot)만 3D 로 바꾼다 — 리플레이 존을 바꾸면 번호 공이 빠진 빈 3D 존이 됐다
+  test('3D 보기여도 리플레이는 2D 번호 공 그대로', async function () {
+    var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    try {
+      AS.pitchers = [{ id: 'rp3', name: '삼디투수', num: '12', role: null, pitches: [
+        pz('직구', '볼', '다타자', 0.30, 0.30), pz('커브', '삼진', '다타자', 0.60, 0.60)
+      ] }];
+      AS.currentPitcher = AS.pitchers[0];
+      shellNav('analysis', 'pitcher');
+      setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '삼디투수');
+      setPitcherView('zone', 'plot');
+      window.ana3dView('3d');
+      var box = null;
+      for (var i = 0; i < 50 && !box; i++) { await T.sleep(100); box = document.querySelector('#pcPlot + .an-3d-box'); }
+      ok(box, '코스 카드는 3D 로 바뀜');
+      var rp = $('pcReplay');
+      ok(!rp.classList.contains('an-is-3d') && !rp.querySelector('.an-3d-seg, .an-3d-box'), '리플레이 카드엔 2D | 3D 없음');
+      ok(getComputedStyle(rp.querySelector('svg.pc-rp-zone')).display !== 'none', '리플레이 존이 보임');
+      eq(all('#pcReplay .rp-ball text', function (el) { return el.textContent; }), ['1', '2'], '번호 공');
+    } finally {
+      window.ana3dView('2d');
+      try { localStorage.removeItem('sl_ana_3d'); } catch (e) {}
+      AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;
+      setPitcherView('scope', 'season');
+      try { shellNav('record'); } catch (e) {}
+      $('app-page').style.display = S.ap;
+    }
+  });
 })();

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>SprayLab social</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;600;700&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; background: var(--bg); }
+  body.reel { height: 1920px; }
+  body { font-family: 'Noto Sans KR', sans-serif; color: var(--tx); position: relative; }
+  .deco { position: absolute; inset: 0; background: var(--deco); }
+  em { font-style: normal; color: var(--hl); }
+  .num { font-family: Oswald; font-weight: 700; }
+  /* 피드 공통 */
+  .top { position: absolute; left: 80px; right: 80px; top: 76px; display: flex; justify-content: space-between; align-items: center; }
+  .chip { border: 2px solid var(--line); border-radius: 999px; padding: 10px 22px; font-size: 26px; font-weight: 700; color: var(--tx2); }
+  .pg { font: 600 28px/1 Oswald; letter-spacing: .06em; color: var(--tx3); }
+  .h1 { position: absolute; left: 80px; right: 80px; top: 196px; font-size: 100px; line-height: 1.16; font-weight: 900; letter-spacing: -.045em; }
+  .sub { position: absolute; left: 80px; right: 80px; top: 450px; font-size: 34px; font-weight: 500; color: var(--tx2); }
+  .h1[style*="font-size:8"] + .sub, .h1[style*="font-size:9"] + .sub { top: 430px; }
+  .vis { position: absolute; left: 80px; right: 80px; }
+  .foot { position: absolute; left: 80px; right: 80px; bottom: 62px; display: flex; justify-content: space-between; align-items: center; }
+  .foot .nx { font-size: 26px; font-weight: 700; color: var(--tx2); }
+  .tag { position: absolute; right: 80px; bottom: 116px; font-size: 20px; font-weight: 700; color: var(--tx3); border: 1.5px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+  .rtag { right: 150px; bottom: auto; top: 250px; font-size: 28px; padding: 6px 14px; }
+  /* 비교 */
+  .cmp { display: flex; align-items: flex-end; }
+  .cmp .col { flex: 1; }
+  .cmp .l { font-size: 34px; font-weight: 700; color: var(--tx2); }
+  .cmp .v { font: 700 180px/1 Oswald; color: var(--tx3); margin-top: 10px; opacity: .8; }
+  .cmp .hl .l { color: var(--tx); }
+  .cmp .hl .v { font-size: 250px; color: var(--hl); opacity: 1; text-shadow: 0 0 60px color-mix(in srgb, var(--hl) 40%, transparent); }
+  .cmp .v i { font-style: normal; font-size: .42em; margin-left: 4px; }
+  .cmp .arrow { width: 130px; flex: none; padding-bottom: 70px; }
+  /* 쌓은 막대 */
+  .stk { display: flex; flex-direction: column; gap: 24px; }
+  .sr { display: grid; grid-template-columns: 220px 1fr; align-items: center; }
+  .sl { font-size: 30px; font-weight: 900; }
+  .sl small { display: block; margin-top: 6px; font: 500 21px/1.2 'Noto Sans KR'; color: var(--tx3); }
+  .st { display: flex; height: 70px; border-radius: 10px; overflow: hidden; gap: 4px; }
+  .st i { display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 24px; font-weight: 900; white-space: nowrap; overflow: hidden; }
+  .stk.narrow { width: 470px; } .stk.narrow .sr { grid-template-columns: 1fr; gap: 10px; }
+  .keys { display: flex; gap: 28px; margin-top: 40px; font-size: 26px; font-weight: 700; color: var(--tx2); }
+  .keys i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 10px; vertical-align: -1px; }
+  /* 가로 막대 */
+  .bl { display: flex; flex-direction: column; gap: 30px; }
+  .bl.sm { gap: 8px; }
+  .bt { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .bt span { font-size: 32px; font-weight: 900; }
+  .bt small { margin-left: 14px; font-size: 22px; font-weight: 500; color: var(--tx3); }
+  .bt b { font: 700 56px/1 Oswald; color: var(--tx2); }
+  .bg2 { height: 30px; border-radius: 8px; background: var(--mute); overflow: hidden; }
+  .bg2 s { display: block; height: 100%; background: var(--tx3); border-radius: 8px; }
+  .br.hi .bt b { color: var(--hl); } .br.hi .bg2 s { background: var(--hl); }
+  .bl.sm .bt { margin-bottom: 5px; } .bl.sm .bt span { font-size: 25px; } .bl.sm .bt b { font-size: 32px; } .bl.sm .bg2 { height: 13px; }
+  /* 표 */
+  .tb { width: 100%; border-collapse: collapse; }
+  .tb th { font-size: 22px; font-weight: 700; color: var(--tx3); text-align: right; padding: 12px 0; border-bottom: 2px solid var(--line); }
+  .tb td { font: 600 34px/1 Oswald; text-align: right; padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--tx2); }
+  .tb th:first-child, .tb td:first-child { text-align: left; }
+  .tb td:first-child { font: 900 28px/1 'Noto Sans KR'; color: var(--tx); }
+  .tb tr.hi td { color: var(--tx); } .tb tr.hi td b { color: var(--hl); }
+  .tb td b { font-weight: 700; color: var(--tx); }
+  /* 큰 숫자 */
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .nums.v { grid-template-columns: 1fr; gap: 34px; }
+  .nums b { display: block; font: 700 96px/1 Oswald; }
+  .nums b i { font-style: normal; font-size: 44px; color: var(--tx2); margin-left: 2px; }
+  .nums span { display: block; margin-top: 10px; font-size: 26px; font-weight: 700; color: var(--tx2); }
+  .leg { display: flex; gap: 26px; justify-content: center; margin-top: 14px; font-size: 22px; font-weight: 700; color: var(--tx2); }
+  .leg i { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; vertical-align: -1px; }
+  .leg i.o { border: 2.5px solid; }
+  .zl { font-size: 30px; font-weight: 900; margin-bottom: 8px; } .zv { margin-top: 14px; font-size: 28px; color: var(--tx2); font-weight: 700; } .zv b { font: 700 44px Oswald; color: var(--tx); }
+  .mini4 { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .mini4 > div { background: var(--card); border: 1.5px solid var(--line); border-radius: 22px; height: 300px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .mini4 .nums { grid-template-columns: 1fr 1fr; padding: 0 20px; } .mini4 .nums b { font-size: 84px; }
+  /* 마지막 장 */
+  .steps { position: absolute; left: 80px; right: 80px; top: 520px; display: flex; flex-direction: column; gap: 26px; }
+  .steps div { display: flex; align-items: center; gap: 28px; font-size: 36px; font-weight: 700; }
+  .steps b { flex: none; width: 74px; height: 74px; border-radius: 50%; background: var(--acc); color: var(--on); display: flex; align-items: center; justify-content: center; font: 700 40px Oswald; }
+  .ctabox { position: absolute; left: 80px; right: 80px; top: 920px; padding: 48px 50px; border-radius: 28px; background: var(--card); border: 2px solid var(--line); }
+  .ctabox .url { margin-top: 22px; font: 600 32px/1.3 Oswald; color: var(--tx); letter-spacing: .01em; }
+  .ctabox .free { margin-top: 12px; font-size: 28px; color: var(--tx2); font-weight: 500; }
+  /* 리포트: 중계 그래픽 */
+  .plate { display: inline-block; background: var(--acc); transform: skewX(-14deg); padding: 10px 26px; }
+  .plate span { display: inline-block; transform: skewX(14deg); font: 700 30px/1 Oswald; letter-spacing: .08em; color: var(--on); }
+  .rb-num { position: absolute; right: -30px; top: 70px; font: 700 520px/1 Oswald; color: transparent; -webkit-text-stroke: 3px rgba(255,255,255,.07); }
+  .rb-top { position: absolute; left: 72px; right: 72px; top: 64px; display: flex; justify-content: space-between; align-items: center; }
+  .rb-game { font: 600 30px/1 Oswald; letter-spacing: .04em; color: var(--tx2); } .rb-game b { color: var(--tx); font-weight: 600; }
+  .rb-name { position: absolute; left: 72px; top: 170px; font-weight: 900; font-size: 150px; line-height: 1; letter-spacing: -.04em; }
+  .rb-name small { font: 700 64px/1 Oswald; color: var(--acc); letter-spacing: 0; margin-left: 18px; vertical-align: 52px; }
+  .rb-sub { position: absolute; left: 72px; top: 346px; font-size: 34px; font-weight: 500; color: var(--tx2); } .rb-sub b { color: var(--tx); font-weight: 700; }
+  .rb-main { position: absolute; left: 72px; right: 72px; top: 440px; display: flex; gap: 40px; }
+  .rb-zone { width: 450px; flex: none; }
+  .rb-lab, .lab { font: 600 24px/1 Oswald; letter-spacing: .16em; color: var(--tx3); margin-bottom: 16px; }
+  .rb-leg { margin-top: 6px; font-size: 20px; color: var(--tx3); font-weight: 500; }
+  .rb-ars { flex: 1; display: flex; flex-direction: column; gap: 12px; padding-top: 40px; }
+  .rb-row { position: relative; padding: 14px 22px 14px 30px; background: linear-gradient(90deg, rgba(255,255,255,.075), rgba(255,255,255,.02)); }
+  .rb-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: var(--c); }
+  .rb-row .t { display: flex; justify-content: space-between; align-items: baseline; }
+  .rb-row .pt { font-size: 36px; font-weight: 900; } .rb-row .use { font: 700 60px/1 Oswald; color: var(--c); } .rb-row .use i { font-style: normal; font-size: 32px; }
+  .rb-row .meta { margin-top: 4px; font-size: 22px; font-weight: 500; color: var(--tx2); }
+  .rb-bug { position: absolute; left: 72px; right: 72px; top: 1100px; height: 128px; display: flex; background: rgba(6,13,28,.7); border-top: 4px solid var(--acc); }
+  .rb-bug div { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 30px; border-right: 2px solid rgba(255,255,255,.08); }
+  .rb-bug div:last-child { border-right: 0; }
+  .rb-bug b { font: 700 74px/1 Oswald; } .rb-bug b i { font-style: normal; font-size: 38px; color: var(--tx2); }
+  .rb-bug span { margin-top: 8px; font-size: 24px; font-weight: 700; color: var(--tx2); }
+  .rb .foot, .rc .foot { left: 72px; right: 72px; bottom: 34px; } .rb .tag { right: 72px; bottom: auto; top: 118px; }
+  /* 리포트: 깔끔한 표 */
+  .rc { position: absolute; inset: 0; padding: 64px 64px 0; }
+  .rc-eb { display: flex; justify-content: space-between; font: 600 24px/1 Oswald; letter-spacing: .14em; color: var(--tx3); } .rc-eb b { color: var(--acc); font-weight: 600; }
+  .rc-hd { margin-top: 26px; display: flex; align-items: flex-end; gap: 22px; } .rc-hd h1 { font-size: 86px; font-weight: 900; letter-spacing: -.045em; line-height: 1; } .rc-hd span { font: 600 56px/1 Oswald; color: var(--tx3); padding-bottom: 6px; }
+  .rc-meta { margin-top: 14px; font-size: 30px; color: var(--tx2); font-weight: 500; }
+  .rc-kpi { margin-top: 34px; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card); border: 1.5px solid var(--line); border-radius: 22px; }
+  .rc-kpi div { padding: 22px 30px; border-right: 1.5px solid var(--line); } .rc-kpi div:last-child { border-right: 0; }
+  .rc-kpi b { display: block; font: 600 66px/1 Oswald; } .rc-kpi b i { font-style: normal; font-size: 36px; color: var(--tx3); }
+  .rc-kpi span { display: block; margin-top: 10px; font-size: 24px; font-weight: 700; color: var(--tx2); }
+  .rc-card { margin-top: 22px; background: var(--card); border: 1.5px solid var(--line); border-radius: 22px; padding: 26px 30px; }
+  .rc-card h2 { font-size: 28px; font-weight: 900; display: flex; justify-content: space-between; align-items: baseline; } .rc-card h2 small { font-size: 21px; font-weight: 500; color: var(--tx3); }
+  .rc table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .rc th { font-size: 20px; font-weight: 700; color: var(--tx3); text-align: right; padding: 10px 0; border-bottom: 1.5px solid var(--line); }
+  .rc th:first-child, .rc td:first-child { text-align: left; }
+  .rc td { font: 600 34px/1 Oswald; text-align: right; padding: 11px 0; border-bottom: 1px solid var(--line); } .rc tr:last-child td { border-bottom: 0; }
+  .rc td.pt { font: 900 30px/1 'Noto Sans KR'; } .rc td.pt i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; background: var(--c); margin-right: 14px; vertical-align: 2px; }
+  .rc td.use { width: 330px; } .rc .ub { display: flex; align-items: center; justify-content: flex-end; gap: 14px; } .rc .ub s { display: block; height: 14px; border-radius: 7px; background: var(--c); }
+  .rc-zones { display: grid; gap: 14px; margin-top: 18px; } .rc-zones div { text-align: center; } .rc-zones svg { margin: 0 auto; }
+  .rc-zones p { font-size: 22px; font-weight: 900; margin-bottom: 4px; } .rc-zones p i { display: inline-block; width: 13px; height: 13px; border-radius: 50%; background: var(--c); margin-right: 8px; }
+  .rc .tag { right: 64px; bottom: auto; top: 158px; }
+  /* 릴스 */
+  .sc { position: absolute; inset: 0; } .abs { position: absolute; }
+  .big { font-weight: 900; letter-spacing: -.045em; line-height: 1.1; }
+  .reel .plate { padding: 14px 34px; } .reel .plate span { font-size: 44px; }
+  .reel .lab { font-size: 34px; }
+  .cnt { display: flex; gap: 34px; font: 700 46px/1 Oswald; color: var(--tx2); align-items: center; }
+  .cnt i { display: inline-block; width: 34px; height: 34px; border-radius: 50%; border: 4px solid #33476A; margin-left: 10px; vertical-align: -4px; }
+  .cnt i.b { background: #2dd4a0; border-color: #2dd4a0; } .cnt i.s { background: #f6c23e; border-color: #f6c23e; }
+  .cap { font-size: 62px; font-weight: 900; letter-spacing: -.03em; text-align: center; }
+  .kk { font: 700 520px/1 Oswald; color: var(--acc); text-shadow: 0 0 90px color-mix(in srgb, var(--acc) 60%, transparent); }
+  .arow { position: relative; height: 150px; margin-bottom: 26px; }
+  .arow .pt { position: absolute; left: 0; top: 0; font-size: 50px; font-weight: 900; } .arow .v { position: absolute; right: 0; top: -12px; font-size: 84px; }
+  .arow .tr { position: absolute; left: 0; right: 0; top: 86px; height: 40px; background: var(--mute); } .arow .tr s { display: block; height: 100%; }
+  .rnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; } .rnums .num { font-size: 116px; line-height: 1; } .rnums span { display: block; margin-top: 12px; font-size: 36px; font-weight: 700; color: var(--tx2); }
+  .dir3 { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; } .dir3 .num { font-size: 110px; line-height: 1; } .dir3 span { display: block; margin-top: 10px; font-size: 38px; font-weight: 700; color: var(--tx2); }
+  .wipe { position: absolute; top: -200px; bottom: -200px; width: 1700px; background: var(--acc); transform: skewX(-14deg); z-index: 9; }
+</style></head>
+<body>
+<div class="deco"></div><div id="root"></div>
+<script src="data.js"></script><script src="kit.js"></script><script src="slides.js"></script><script src="singles.js"></script><script src="items.js"></script><script src="reels.js"></script>
+<script>
+  // ?id=c1&s=0 → 피드 한 장 · ?id=r1 → 릴스 (window.seek)
+  const q = new URLSearchParams(location.search), it = ITEMS.find(x => x.id === q.get('id'));
+  K.useTheme(it.theme);
+  if (it.format === 'reel') {
+    document.body.classList.add('reel');
+    const R = REELS[it.reel](it, SUBJ[it.subject], SUBJ.CELL);
+    document.getElementById('root').innerHTML = R.html;
+    window.seek = R.seek; window.DUR = R.dur; window.COVER_T = R.coverT;
+    R.seek(0);
+  } else {
+    document.getElementById('root').innerHTML = it.slides()[+(q.get('s') || 0)];
+  }
+  window.META = ITEMS.map(x => ({ id: x.id, format: x.format, theme: x.theme, type: x.type, topic: x.topic, hook: x.hook, facts: x.facts, n: x.slides ? x.slides().length : 0 }));
+</script>
+</body></html>

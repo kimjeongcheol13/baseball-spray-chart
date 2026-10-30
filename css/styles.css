@@ -574,6 +574,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-shot-msg{margin-top:8px}
 .go-shot-msg:empty{display:none}
 .go-shot-msg.bad{color:var(--red)}
+.go-shot-msg .btn.go-season-open{display:flex;justify-content:center;width:100%;min-height:44px;margin-top:6px;font-size:13px}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 */
 .go-ok{margin-top:2px;color:var(--green)}
 /* 시즌 한 번에 (gameoneimport.js _seasonRender) — 경기 줄마다 체크 · 날짜 · 점수 · 상태, 줄 높이 44px */
 .go-season{margin:0 0 12px;padding:10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg-raised);font-size:11px;line-height:1.5;color:var(--text2)}

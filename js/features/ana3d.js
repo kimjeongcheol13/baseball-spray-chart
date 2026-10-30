@@ -3,6 +3,7 @@
 //   그림은 각 탭이 지금처럼 2D 로 그린다. 이 모듈은 그 카드 머리에 2D | 3D 를 붙이고, 3D 면 2D 그림을 숨기고 바로 뒤에 3D 요소를 둔다
 //   3D 에 넘기는 값은 그려진 2D 에서 읽는다: 타구 = 점 위치를 저장 좌표로 되돌림(core _coneToSemi 와 같은 식, 홈런은 펜스 밖까지)
 //   · 코스 = 그림 좌표 그대로 + 2D 점 색(--pz-*) + 지금 고른 구역(.on · .picking · .pz-sel) · 분포 · 피안타 = 칸의 data-n · data-h · 글자
+//   · 타석 리플레이 = 공 자리 + 구종 색(--pt) + 던진 순서 번호 + 마지막 공 고리
 //   · 구장 규격 = 지금 구장 거리(core _fieldGeo().st)
 //   투수 코스 3D 에서 끌어 고른 구역은 2D 와 같은 pitcher.js 로 넘긴다(setPitchPick({ a, b })) → 2D 가 다시 그린 것을 3D 가 읽는다
 //   고른 보기는 이 기기에 기억(sl_ana_3d) — 모든 카드가 같이 바뀐다. three.js(spray3d.js)는 3D 를 처음 켤 때만 불러온다
@@ -55,10 +56,19 @@ export function zoneData(svg) {
     pts.push({ x: p[0], y: p[1], k, on: el.classList.contains('on') });
     if (!cols[k]) cols[k] = cs.getPropertyValue('--pz-' + k).trim() || '#ffffff';
   });
+  // 타석 리플레이(pitcher.js _replayCard): 공 = <g class="rp-ball" style="--pt:구종 색"> 안 원 + 던진 순서 글자
+  //  → k · 색 = 구종 색 · n = 번호 · 타석을 끝낸 공(.last)은 2D 처럼 고리(탭 고리와 같은 모양)
+  let last = null;
+  svg.querySelectorAll(':scope > g.rp-ball').forEach((g) => {
+    const p = _xy(g.querySelector('circle')), k = g.style.getPropertyValue('--pt').trim() || '#ffffff';
+    pts.push({ x: p[0], y: p[1], k, on: false, n: +g.querySelector('text').textContent });
+    cols[k] = k;
+    if (g.classList.contains('last')) last = { x0: p[0], y0: p[1], x1: p[0], y1: p[1], tap: true };
+  });
   // 고른 구역(pitcher.js _showBox 가 그린 사각형 — 탭이면 둥근 모서리)
   const r = svg.querySelector('.pz-sel'), at = (n) => +r.getAttribute(n) || 0;
   const sel = r && r.style.display !== 'none' && at('width') > 0
-    ? { x0: at('x'), y0: at('y'), x1: at('x') + at('width'), y1: at('y') + at('height'), tap: at('rx') > 0 } : null;
+    ? { x0: at('x'), y0: at('y'), x1: at('x') + at('width'), y1: at('y') + at('height'), tap: at('rx') > 0 } : last;
   return { pts, cols, pick: svg.id === 'pcPlot', picking: svg.classList.contains('picking'), sel };
 }
 
@@ -84,7 +94,7 @@ function scan() {
   const items = [], sec = _shown('analysisView') && document.querySelector('#anaBody .ana-sec.on'), set = _shown('settingsView');
   if (sec) {
     sec.querySelectorAll('.an-card figure.an-spray').forEach((f) => { const s = f.querySelector(':scope > svg'); if (s) items.push({ fig: s, tag: 'spray-field-3d', data: () => sprayData(f) }); });
-    sec.querySelectorAll('.an-card svg.pc-plot:not(.pc-rp-zone)').forEach((s) => items.push({ fig: s, tag: 'pitch-zone-3d', data: () => zoneData(s) }));   // 타석 리플레이 존은 번호 공(<g>)이라 3D 가 못 읽는다 — 2D 그대로
+    sec.querySelectorAll('.an-card svg.pc-plot').forEach((s) => items.push({ fig: s, tag: 'pitch-zone-3d', data: () => zoneData(s) }));
     sec.querySelectorAll('.an-card .sc-zone[data-view]').forEach((z) => items.push({ fig: z, tag: 'pitch-zone-3d', data: () => gridData(z) }));
   }
   const st = set && set.querySelector('#stStad .st-prev > svg');
@@ -122,7 +132,7 @@ function scan() {
   Object.values(pool).flat().forEach((el) => { if (!used.has(el) && el.isConnected) el.remove(); });   // 안 쓰는 장면은 떼어 그리기를 멈춘다
   if (on && !ready && !loading && items.length) {
     loading = true;
-    import('./spray3d.js?v=9').then(() => { loading = false; ready = true; scan(); }).catch(() => {
+    import('./spray3d.js?v=10').then(() => { loading = false; ready = true; scan(); }).catch(() => {
       loading = false; on = false; scan();   // 2D 로 되돌린다(기억한 값은 그대로 — 다음에 열 때 다시 시도)
       if (window.showToast) window.showToast('3D 보기를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.', false);
     });

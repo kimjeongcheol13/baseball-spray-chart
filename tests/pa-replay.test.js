@@ -89,25 +89,51 @@
     }
   });
 
-  // 3D 보기(ana3d.js)는 코스 그림(svg.pc-plot)만 3D 로 바꾼다 — 리플레이 존을 바꾸면 번호 공이 빠진 빈 3D 존이 됐다
-  test('3D 보기여도 리플레이는 2D 번호 공 그대로', async function () {
+  // 3D 보기(ana3d.js → spray3d.js <pitch-zone-3d>): 리플레이도 3D — 공 자리 · 구종 색 · 던진 순서 번호 · 마지막 공 고리
+  //  (예전엔 번호 공 <g> 를 못 읽어 빈 3D 존이 됐다) · 하네스 크롬은 GPU 가 없어 넘긴 데이터와 만든 물체만 본다
+  test('3D 보기: 리플레이도 3D — 구종 색 · 번호 · 마지막 공 고리 · 타석 바꾸면 따라감', async function () {
     var S = { pitchers: AS.pitchers, cp: AS.currentPitcher, ap: $('app-page').style.display };
+    var z3 = function () { return document.querySelector('#pcReplay pitch-zone-3d'); };
+    var xy = function () { return all('#pcReplay .rp-ball circle', function (c) { return [+c.getAttribute('cx'), +c.getAttribute('cy')]; }); };
     try {
       AS.pitchers = [{ id: 'rp3', name: '삼디투수', num: '12', role: null, pitches: [
-        pz('직구', '볼', '다타자', 0.30, 0.30), pz('커브', '삼진', '다타자', 0.60, 0.60)
+        pz('직구', '볼', '다타자', 0.30, 0.30), pz('커브', '삼진', '다타자', 0.60, 0.60),
+        pz('슬라이더', '안타', '라타자', 0.70, 0.50)
       ] }];
       AS.currentPitcher = AS.pitchers[0];
       shellNav('analysis', 'pitcher');
       setPitcherView('mode', 'stats'); setPitcherView('scope', 'game'); setPitcherView('sel', '삼디투수');
-      setPitcherView('zone', 'plot');
       window.ana3dView('3d');
-      var box = null;
-      for (var i = 0; i < 50 && !box; i++) { await T.sleep(100); box = document.querySelector('#pcPlot + .an-3d-box'); }
-      ok(box, '코스 카드는 3D 로 바뀜');
+      var z = null;
+      for (var i = 0; i < 50 && !(z && z._pts); i++) { await T.sleep(100); z = z3(); }
+      ok(z && z._pts, '리플레이 3D 요소');
       var rp = $('pcReplay');
-      ok(!rp.classList.contains('an-is-3d') && !rp.querySelector('.an-3d-seg, .an-3d-box'), '리플레이 카드엔 2D | 3D 없음');
-      ok(getComputedStyle(rp.querySelector('svg.pc-rp-zone')).display !== 'none', '리플레이 존이 보임');
-      eq(all('#pcReplay .rp-ball text', function (el) { return el.textContent; }), ['1', '2'], '번호 공');
+      ok(rp.classList.contains('an-is-3d') && getComputedStyle(rp.querySelector('svg.pc-rp-zone')).display === 'none', '2D 존 대신 3D');
+      eq(all('#pcReplay .an-3d-seg button', function (b) { return b.textContent + ':' + b.getAttribute('aria-pressed'); }), ['2D:false', '3D:true'], '머리 버튼');
+
+      // 처음 = 라타자(공 1개)
+      var p = xy()[0];
+      eq([z._pts, z._cols, z._pick, z._sel], [[{ x: p[0], y: p[1], k: '#f6c23e', on: false, n: 1 }], { '#f6c23e': '#f6c23e' }, false,
+        { x0: p[0], y0: p[1], x1: p[0], y1: p[1], tap: true }], '공 자리 · 구종 색 · 번호 · 마지막 공 고리');
+
+      // ‹ → 다타자: 3D 도 그 타석으로
+      document.querySelector('#pcReplay .pc-rp-prev').click();
+      await T.sleep(0);
+      z = z3(); var q = xy();
+      eq(z._pts.map(function (o) { return [o.x, o.y, o.k, o.n]; }), [[q[0][0], q[0][1], '#4b8cf5', 1], [q[1][0], q[1][1], '#a78bfa', 2]], '바꾼 타석 (직구 파랑 · 커브 보라)');
+      eq([z._sel.x0, z._sel.y0, z._sel.tap], [q[1][0], q[1][1], true], '고리 = 타석을 끝낸 2구');
+
+      // 고르기 · 돌리기 버튼은 구역을 고를 수 있는 코스(#pcPlot)에만 — 예전엔 인라인 display: flex 가 hidden 을 이겨 리플레이에도 보였다
+      setPitcherView('zone', 'plot');
+      var pz3 = null;
+      for (i = 0; i < 50 && !(pz3 && pz3._pick); i++) { await T.sleep(100); pz3 = document.querySelector('#pcPlot + .an-3d-box pitch-zone-3d'); }
+      z = z3();
+      eq([getComputedStyle(z._modeBar).display, pz3 && getComputedStyle(pz3._modeBar).display], ['none', 'flex'], '고르기 · 돌리기: 리플레이 없음 · 코스 있음');
+
+      // 장면에 넣는 물체: 공마다 번호 글자(스프라이트) 하나
+      var got = [];
+      z._balls({ add: function (o) { got.push(o); } });
+      eq(got.filter(function (o) { return o.isSprite; }).length, 2, '번호 글자 2개');
     } finally {
       window.ana3dView('2d');
       try { localStorage.removeItem('sl_ana_3d'); } catch (e) {}

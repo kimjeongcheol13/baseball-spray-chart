@@ -201,14 +201,7 @@ function _dirCard(T) {
   const band = zt
     ? K.ZONES.map((z, i) => `<div class="ad-band-c${zc[i] === Math.max(...zc) ? ' top' : ''}" style="flex:${Math.max(zc[i], zt * 0.08)}" title="${z.full} ${zc[i]}개"><b>${z.l}</b><span>${Math.round(zc[i] / zt * 100)}%</span></div>`).join('')
     : '<p class="ad-none">방향이 기록된 타구가 없어요. 기록 탭 필드에서 타구 위치를 누르면 쌓여요.</p>';
-  // 구역별 내야 · 외야 타구 수 (필드 숫자 = 두 줄의 합)
-  const zd = zt && K.zoneDepth ? K.zoneDepth(list) : null;
-  const depth = zd
-    ? `<table class="ad-depth" aria-label="구역별 내야·외야 타구 수">
-        <thead><tr><th scope="col">깊이</th>${K.ZONES.map(z => `<th scope="col" title="${z.full}">${z.l}</th>`).join('')}</tr></thead>
-        <tbody>${[['inf', '내야'], ['of', '외야']].map(([k, l]) => `<tr><th scope="row">${l}</th>${zd.map(d => `<td${d[k] ? '' : ' class="z"'}>${d[k]}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>`
-    : '';
+  const depth = K.depthTable ? K.depthTable(list) : '';   // 구역별 내야 · 외야 타구 수 (필드 숫자 = 두 줄의 합)
   return `
     <section class="an-card ad-field tm-dir">
       <header class="an-hd"><h3>팀 타구 방향</h3>

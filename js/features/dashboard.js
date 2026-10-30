@@ -146,6 +146,15 @@ function _zoneDepth(list) {
   });
   return c;
 }
+// 그 표 (팀 타구 방향 · 타자 타구 방향 카드) — 두 줄의 합 = 구역별 타구 수 · 방향 있는 타구가 없으면 빈 글
+function _depthTable(list) {
+  const zd = _zoneDepth(list);
+  if (!zd.some(d => d.inf + d.of)) return '';
+  return `<table class="ad-depth" aria-label="구역별 내야·외야 타구 수">
+      <thead><tr><th scope="col">깊이</th>${ZONES.map(z => `<th scope="col" title="${z.full}">${z.l}</th>`).join('')}</tr></thead>
+      <tbody>${[['inf', '내야'], ['of', '외야']].map(([k, l]) => `<tr><th scope="row">${l}</th>${zd.map(d => `<td${d[k] ? '' : ' class="z"'}>${d[k]}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+}
 
 let _fieldList = [];
 function _paintScreenField() {
@@ -398,4 +407,4 @@ if (typeof window !== 'undefined') {
 
 // 팀 탭(team.js)도 같은 5구역 방향도 · 구역 경계 · 타석 결과 막대를 쓴다 (분석 서브탭 7→5: 종합 → 팀)
 //   import로 가져오면 모듈 실행 순서가 바뀌어(spray.js보다 먼저) openSprayView 덮어쓰기 순서가 달라지므로 window로 넘긴다
-if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, zoneDepth: _zoneDepth, resultBar: _bar, estKey: _estKey };
+if (typeof window !== 'undefined') window.slDash = { drawField: drawDashField, ZONES, zoneCounts: _zoneCounts, zoneDepth: _zoneDepth, depthTable: _depthTable, resultBar: _bar, estKey: _estKey };

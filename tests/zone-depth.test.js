@@ -5,7 +5,7 @@
   var ABS = [
     { bname: '가', bnum: 1, team: 'home', inning: 1, res: '땅볼 아웃', x: 0.5, y: 0.75 },   // 중 · 흙
     { bname: '나', bnum: 2, team: 'home', inning: 1, res: '홈런', x: 0.5, y: 0.0 },        // 중 · 펜스 너머
-    { bname: '다', bnum: 3, team: 'home', inning: 1, res: '뜬공 아웃', x: 0.3, y: 0.5 },   // 좌중 · 외야
+    { bname: '가', bnum: 1, team: 'home', inning: 3, res: '뜬공 아웃', x: 0.3, y: 0.5 },   // 좌중 · 외야
     { bname: '라', bnum: 4, team: 'home', inning: 2, res: '안타', x: 0.35, y: 0.8 },       // 좌 · 흙
     { bname: '마', bnum: 5, team: 'home', inning: 2, res: '2루타', x: 0.8, y: 0.4 },       // 우중 · 외야
     { bname: '바', bnum: 6, team: 'home', inning: 2, res: '삼진' }                         // 위치 없음
@@ -36,6 +36,23 @@
     eq(cells('.tm-dir .ad-depth tbody tr:first-child > *'), ['내야', '1', '0', '1', '0', '0'], '내야 줄');
     eq(cells('.tm-dir .ad-depth tbody tr:last-child > *'), ['외야', '0', '1', '1', '1', '0'], '외야 줄');
     eq(document.querySelectorAll('.tm-dir .ad-depth td.z').length, 5, '0 칸 흐리게');
+  });
+
+  test('타자 탭 타구 방향 카드: 그 타자 타구만 같은 표 · 방향 막대 아래', async function () {
+    shellOpenAnalysis('batter');
+    await T.sleep(50);
+    setBatterView('side', 'home'); setBatterView('scope', 'game'); setBatterView('sel', '가');
+    await T.sleep(50);
+    var t = document.querySelector('#batterView .ad-depth');
+    ok(t, '표 없음');
+    ok(t.previousElementSibling && t.previousElementSibling.classList.contains('bt-spray'), '스프레이 그림 바로 아래');
+    eq(cells('#batterView .ad-depth tbody tr:first-child > *'), ['내야', '0', '0', '1', '0', '0'], '내야 줄');
+    eq(cells('#batterView .ad-depth tbody tr:last-child > *'), ['외야', '0', '1', '0', '0', '0'], '외야 줄');
+    setBatterView('sel', '바');
+    await T.sleep(50);
+    ok(!document.querySelector('#batterView .ad-depth'), '방향 없는 타자인데 표가 남음');
+    shellOpenAnalysis('team');
+    await T.sleep(50);
   });
 
   test('방향 있는 타구가 없으면 표도 없음', async function () {

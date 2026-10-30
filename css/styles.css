@@ -619,6 +619,11 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .gf-st{margin-left:auto;padding:1px 8px;border-radius:10px;font-style:normal;font-size:11px;font-weight:700}
 .gf-est{border:1.5px dashed var(--text3);color:var(--text2)}
 .gf-moved{border:1.5px solid var(--blue);color:var(--blue)}
+/* 이어서 하기 — 지금 경기(날짜 · 팀 · 점수) · 남은 경기 수 (gameonefix.js) — 새 요소 */
+.gf-game{margin:8px 0 0;padding:6px 10px;border-radius:8px;background:var(--bg-raised);line-height:1.35}
+.gf-game:empty{display:none}
+.gf-game b{display:block;font-size:14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gf-game small{display:block;font-size:12px;color:var(--text3)}
 /* 탭으로 찍기 — 지금 찍을 공 안내 · 건너뛰기 (js/features/gameonefix.js) */
 .gf-target{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:8px 10px;border:1.5px solid var(--sl-amber,#f6c23e);border-radius:8px;background:var(--bg-raised)}
 .gf-tg{flex:1;min-width:0;font-size:13px;line-height:1.4;color:var(--text)}

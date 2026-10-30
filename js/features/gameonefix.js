@@ -14,6 +14,9 @@
 //  · 분석 탭은 대략 위치를 점선으로 그린다 — 팀 방향도(dashboard.js drawDashField → team.js) · 타자 · 스카우트 스프레이 차트(batdata.js sprayFigure).
 //    그 옆 '위치 확인'이 이 화면을 다시 연다(gameOneFixFrom).
 //    GA4 gameone_fix = 닫을 때 숫자만(이름 없음)
+//  · 이어서 하기(2026-10-30): 시즌 한 번에 가져오면 대략 위치 경기가 여럿이다. 위에 지금 경기(날짜 · 팀 · 점수)를 보이고,
+//    대략 위치가 남은 다른 경기가 있으면 「다 봤어요」 자리가 「다음 경기 ▶」 — 이 경기를 닫고(옮긴 점 cloudSave) 다음 경기를 연다.
+//    다음 = 대략 위치가 남은 저장 경기 중 저장이 늦은 순(gameOneFixFrom 과 같은 순서). 이번에 연 경기는 다시 고르지 않는다(_seen)
 
 const $ = id => document.getElementById(id);
 const _esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -25,8 +28,17 @@ const _has = a => !!a && typeof a.x === 'number' && typeof a.y === 'number' && i
 const _track = (name, params) => { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); } catch (e) {} };
 
 let S = null;   // 열려 있는 동안의 상태
+let _seen = new Set();   // 이어서 하기: 이번에 연 경기 키
 
 function _curKey() { try { return typeof _curSaveKey !== 'undefined' ? _curSaveKey : null; } catch (e) { return null; } }
+const _hasEst = list => (list || []).some(a => a && a.estimated === true);
+// 대략 위치가 남은 다른 저장 경기 — 저장이 늦은 순. key 의 경기 · 이번에 연 경기는 뺀다
+function _estGames(key) {
+  if (!window.SLGames) return [];
+  return window.SLGames.loadGames({ withCurrent: false })
+    .filter(x => _hasEst(x.abs) && !x.copies.includes(key) && !x.copies.some(k => _seen.has(k)))
+    .sort((p, q) => q.ms - p.ms);
+}
 function _read(key) {
   try { const d = JSON.parse(localStorage.getItem(key)); return d && typeof d === 'object' && Array.isArray(d.abs) ? d : null; } catch (e) { return null; }
 }
@@ -37,14 +49,17 @@ function _wallFt(stadium) {
   return { LF: lf, LC: Math.round((lf + cf) / 2), CF: cf, RC: Math.round((cf + rf) / 2), RF: rf };
 }
 
-// key = 저장 경기 키. 타구 점이 하나도 없으면 열지 않는다(false)
-export function openGameOneFix(key) {
+// key = 저장 경기 키. 타구 점이 하나도 없으면 열지 않는다(false). cont = 「다음 경기」로 이어서 연 것(_seen 을 이어 간다)
+export function openGameOneFix(key, cont) {
   if (typeof key !== 'string' || !key || !window.sbPaint || typeof _fieldGeo !== 'function') return false;
   const live = key === _curKey();
   const game = live ? window.AS : _read(key);
   if (!game || !Array.isArray(game.abs)) return false;
   const pts = game.abs.filter(_has);
   if (!pts.length) return false;
+  if (cont !== true) _seen = new Set();
+  _seen.add(key);
+  const rest = _estGames(key);
   const batters = [], by = Object.create(null);   // 경기 순서대로 처음 나온 타자 순
   pts.forEach(a => {
     const k = String(a.bid != null ? a.bid : a.bname);
@@ -52,7 +67,7 @@ export function openGameOneFix(key) {
     by[k].abs.push(a);
   });
   S = { key, live, game, pts, batters, i: 0, all: false, moved: new Set(), drag: null, tap: null, view: [], geo: null, target: null, taps: 0, msg: '',
-    est0: pts.filter(a => a.estimated === true).length, wall: _wallFt(game.stadium || '') };
+    est0: pts.filter(a => a.estimated === true).length, wall: _wallFt(game.stadium || ''), next: rest.length ? rest[0].key : null, left: rest.length };
   // 처음 찍을 공 = 경기 순서로 첫 대략 위치 공. 그 타자부터 보여 준다
   S.target = _order().find(a => a.estimated === true) || null;
   if (S.target) S.i = Math.max(0, _batterOf(S.target));
@@ -91,9 +106,19 @@ function _targetHtml() {
     + `<small>${S.msg ? _esc(S.msg) : '실제로 떨어진 자리를 탭하세요'}${left ? ` · 남은 대략 ${left}개` : ''}</small>`;
 }
 
+// 지금 경기 — 10.25 가팀 8 : 4 나팀 + 남은 경기 수
+function _gameHtml() {
+  const g = S.game, d = /^\d{4}-(\d{2})-(\d{2})/.exec((g.info && g.info.date) || '');
+  const sc = typeof g.as === 'number' && typeof g.hs === 'number' ? ` ${g.as} : ${g.hs} ` : ' vs ';
+  return `<b>${d ? `${+d[1]}.${+d[2]} ` : ''}${_esc(_teamLbl('away'))}${sc}${_esc(_teamLbl('home'))}</b>`
+    + (S.left ? `<small>대략 위치가 남은 경기 ${S.left}개 더</small>` : '');
+}
+
 function _render() {
   if (!S) return;
   const b = S.batters[S.i], n = S.batters.length;
+  if ($('gfGame')) $('gfGame').innerHTML = _gameHtml();
+  if ($('gfDone')) $('gfDone').textContent = S.next ? '다음 경기 ▶' : '다 봤어요';
   $('gfWho').innerHTML = S.all
     ? `<b>전체 ${S.pts.length}개</b><small>대략 ${_estN(S.pts)} · 옮김 ${S.moved.size}</small>`
     : `<b>${_esc(b.name)}${b.num != null && b.num !== '' ? ` <span>#${_esc(b.num)}</span>` : ''}</b><small>${_esc(_teamLbl(b.team))} · ${S.i + 1}/${n}명 · 대략 ${_estN(b.abs)}</small>`;
@@ -265,6 +290,13 @@ export function gameOneFixClose(action) {
   _track('gameone_fix', { action: action === 'done' ? 'done' : 'later', pts: s.pts.length, est: s.est0, moved: s.moved.size, left: _estN(s.pts), tap: s.taps });
 }
 
+// 「다 봤어요」 버튼 — 다음 경기가 있으면 이 경기를 닫고(done) 다음 경기를 맨 위부터 연다
+export function gameOneFixNext() {
+  const next = S && S.next;
+  gameOneFixClose('done');
+  if (next && openGameOneFix(next, true)) { const m = document.querySelector('#goFixOverlay .gf-modal'); if (m) m.scrollTop = 0; }
+}
+
 // 분석 탭 '위치 확인'(팀 방향도 범례 · 타자 · 스카우트 스프레이 차트): scope 'game' = 지금 열린 경기만,
 // 그 밖('auto') = 지금 열린 경기에 대략 위치가 있으면 그 경기, 없으면 대략 위치가 남은 가장 최근 저장 경기
 export function gameOneFixFrom(scope) {
@@ -284,6 +316,7 @@ if (typeof window !== 'undefined') {
   window.gameOneFixStep = gameOneFixStep;
   window.gameOneFixAll = gameOneFixAll;
   window.gameOneFixClose = gameOneFixClose;
+  window.gameOneFixNext = gameOneFixNext;
   window.gameOneFixFrom = gameOneFixFrom;
   window.gameOneFixSkip = gameOneFixSkip;
   window.SLGameOneFix = { open: openGameOneFix, state: () => S, view: () => (S ? S.view.map(v => ({ a: v.a, x: v.x, y: v.y, n: v.n })) : []) };

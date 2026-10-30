@@ -167,6 +167,7 @@ function _stats(P) {
       ${_mixCard(S)}
       ${_zoneCard(S, P)}
     </div>
+    ${_profileCard(P, S)}
     ${_replayCard(P)}
     <div class="pc-2col">
       ${_countCard(S)}
@@ -707,6 +708,115 @@ export function saveReplayImage() {
   });
 }
 
+// ── 구종별 위치 ──────────────────────────────────────────────
+// 구종마다 작은 존 하나: 점 = 그 구종을 던진 자리(색 = 구종 · 속 빈 고리 = 볼 · 마름모 = 피안타) + 구종 구성 표와 같은 숫자(_byPitch)
+//  · 많이 던진 구종부터 · 위치가 하나도 없는 구종 · 구종 미기록 공은 빠진다(안내) · 이미지로 저장(리플레이와 같은 규격)
+//  · 구속 · 무브먼트 · 회전은 기록하지 않으므로 그리지 않는다
+let _pf = null;       // 지금 그려진 카드 { P, S, rows } — 이미지 저장이 쓴다
+const PF_ZONE = '<rect class="pz-box" x="22" y="18" width="56" height="84" rx="1"/><path class="pz-grid" d="M40.7 18v84M59.3 18v84M22 46h56M22 74h56"/><path class="pz-plate" d="M42 114h16l-2 4h-12z"/>';
+const _pfKind = p => { const c = _cls(p); return c === 'ball' || c === 'hit' ? c : 'on'; };
+const _pfOrder = { ball: 0, on: 1, hit: 2 };   // 피안타가 위에 보이게
+const _pfDots = xy => xy.slice().sort((a, b) => _pfOrder[_pfKind(a)] - _pfOrder[_pfKind(b)]);
+
+function _profileCard(P, S) {
+  const rows = _byPitch(S).filter(r => r.pt !== '미기록')
+    .map(r => ({ ...r, xy: S.pitches.filter(p => p.pt === r.pt && _hasXY(p)) })).filter(r => r.xy.length);
+  _pf = rows.length ? { P, S, rows } : null;
+  if (!rows.length) return '';
+  const miss = S.n - rows.reduce((t, r) => t + r.xy.length, 0);
+  const dot = p => {
+    const k = _pfKind(p), x = (p.zoneX * 100).toFixed(1), y = (p.zoneY * 120).toFixed(1);
+    const tip = `<title>${_esc(_resTxt(p))}${p.batter ? ' · ' + _esc(p.batter) : ''}</title>`;
+    return k === 'hit' ? `<path class="pf-hit" d="M${x} ${+y - 4.2}l4.2 4.2-4.2 4.2-4.2-4.2z">${tip}</path>` : `<circle class="pf-${k}" cx="${x}" cy="${y}" r="3.4">${tip}</circle>`;
+  };
+  const tiles = rows.map(r => `
+        <figure class="pc-pf-tile" style="--pt:${_ptCol(r.pt)}">
+          <figcaption><b>${_esc(r.pt)}</b><span>${Math.round(r.n / S.n * 100)}% · ${r.n}구</span></figcaption>
+          <svg class="pc-pf-zone" viewBox="0 0 100 120" role="img" aria-label="${_esc(r.pt)} 위치 ${r.xy.length}구">${PF_ZONE}${_pfDots(r.xy).map(dot).join('')}</svg>
+          <small><span>S% ${pct(r.s / r.n)}</span><span>삼진 ${r.k}</span><span>피안타 ${r.h}</span></small>
+        </figure>`).join('');
+  return `
+    <section class="an-card pc-pf" id="pcProfile">
+      <header class="an-hd"><h3>구종별 위치</h3><span class="an-hd-note">많이 던진 구종부터 · 포수 쪽에서 본 위치</span></header>
+      <div class="pc-pf-grid">${tiles}
+      </div>
+      <div class="pc-pf-key"><span><i class="k-on"></i>스트라이크·파울·아웃</span><span><i class="k-ball"></i>볼</span><span><i class="k-hit"></i>피안타</span></div>
+      <div class="an-hd-note pc-note">숫자는 구종 구성 표와 같아요${miss ? ` · 위치나 구종이 없는 공 ${miss}개는 점에서 빠짐` : ''}</div>
+      <button type="button" class="sc-act pc-pf-save" onclick="saveProfileImage()">이미지로 저장 (인스타 피드 1080×1350)</button>
+    </section>`;
+}
+
+// 이미지: 리플레이와 같은 540×675(2배 저장) NIGHT · 많이 던진 구종 6개까지 (1~2개 = 한 줄 · 4개 = 2×2 · 나머지 3열)
+const PF_MAX = 6;
+function _profileImg(cv, sc) {
+  const { P, S, rows } = _pf, list = rows.slice(0, PF_MAX), X = 24, FOOT = 48, W = RP_W, H = RP_H;
+  cv.width = W * sc; cv.height = H * sc;
+  const c = cv.getContext('2d');
+  c.setTransform(sc, 0, 0, sc, 0, 0); c.textBaseline = 'alphabetic';
+  c.fillStyle = N.bg; c.fillRect(0, 0, W, H);
+  const txt = (t, x, y, col, al) => { c.fillStyle = col; c.textAlign = al || 'left'; c.fillText(t, x, y); };
+
+  // 머리: PITCH PROFILE · 경기(시즌) → 투수(크게) → 투구 수 · 구종 수
+  font(c, '600', 11, FONT.num); spacing(c, 2); txt('PITCH PROFILE', X, 44, N.tx2); spacing(c, 0);
+  const a0 = P.apps[0];
+  font(c, '500', 12, FONT.kr); txt(_scope === 'game' ? (a0 && !a0.current ? _short(a0) : '이번 경기') : `시즌 ${P.apps.length}경기`, W - X, 44, N.tx2, 'right');
+  fitFont(c, P.name, '900', 40, FONT.kr, W - X * 2, 20); txt(P.name, X, 96, N.tx);
+  font(c, '500', 14, FONT.kr); txt(`${S.n}구 · 구종 ${rows.length}개 · 포수 쪽에서 본 위치`, X, 124, N.tx2);
+
+  // 칸: 구종 이름 · 비율 → 존 + 점 → S% · 삼진 · 피안타
+  const n = list.length, cols = n <= 2 ? n : n === 4 ? 2 : 3, nr = Math.ceil(n / cols), G = 12;
+  const y0 = 144, y1 = H - FOOT - 40, tw = (W - X * 2 - G * (cols - 1)) / cols, th = (y1 - y0 - G * (nr - 1)) / nr;
+  list.forEach((r, i) => {
+    const bx = X + (i % cols) * (tw + G), by = y0 + Math.floor(i / cols) * (th + G), col = _ptCol(r.pt);
+    rr(c, bx, by, tw, th, 6); c.fillStyle = N.bg2; c.fill(); c.strokeStyle = N.line; c.lineWidth = 1.5; c.stroke();
+    c.beginPath(); c.arc(bx + 18, by + 23, 5, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+    const use = `${Math.round(r.n / S.n * 100)}% · ${r.n}구`;
+    font(c, '500', 12, FONT.num); txt(use, bx + tw - 12, by + 28, N.tx2, 'right');
+    fitFont(c, r.pt, '800', 16, FONT.kr, tw - 44 - c.measureText(use).width, 9); txt(r.pt, bx + 29, by + 29, N.tx);
+    const s = Math.min((tw - 24) / 100, (th - 76) / 120), ox = bx + (tw - 100 * s) / 2, oy = by + 40;
+    const zx = v => ox + v * s, zy = v => oy + v * s;
+    c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(zx(22), zy(18), 56 * s, 84 * s);
+    c.strokeStyle = N.line2; c.lineWidth = 1; c.beginPath();
+    [40.7, 59.3].forEach(v => { c.moveTo(zx(v), zy(18)); c.lineTo(zx(v), zy(102)); });
+    [46, 74].forEach(v => { c.moveTo(zx(22), zy(v)); c.lineTo(zx(78), zy(v)); });
+    c.stroke();
+    c.strokeStyle = N.tx2; c.lineWidth = 1.5; c.strokeRect(zx(22), zy(18), 56 * s, 84 * s);
+    c.strokeStyle = N.tx3; c.beginPath(); c.moveTo(zx(42), zy(114)); c.lineTo(zx(58), zy(114)); c.lineTo(zx(56), zy(118)); c.lineTo(zx(44), zy(118)); c.closePath(); c.stroke();
+    const d = Math.max(4, 3.4 * s);
+    _pfDots(r.xy).forEach(p => {
+      const k = _pfKind(p), x = zx(p.zoneX * 100), y = zy(p.zoneY * 120);
+      c.beginPath();
+      if (k === 'hit') { c.moveTo(x, y - d * 1.25); c.lineTo(x + d * 1.25, y); c.lineTo(x, y + d * 1.25); c.lineTo(x - d * 1.25, y); c.closePath(); }
+      else c.arc(x, y, k === 'ball' ? d - 1 : d, 0, Math.PI * 2);
+      if (k === 'ball') { c.strokeStyle = col; c.lineWidth = 2; c.stroke(); return; }
+      c.fillStyle = col; c.fill(); c.strokeStyle = k === 'hit' ? N.tx : N.bg2; c.lineWidth = k === 'hit' ? 1.5 : 1; c.stroke();
+    });
+    const st = `S% ${pct(r.s / r.n)} · 삼진 ${r.k} · 피안타 ${r.h}`;
+    fitFont(c, st, '600', 12, FONT.kr, tw - 16, 8); txt(st, bx + tw / 2, by + th - 14, N.tx2, 'center');
+  });
+
+  // 기호 설명 (+ 구종이 더 있으면 몇 개만 실었는지)
+  font(c, '500', 11, FONT.kr);
+  txt(`● 스트라이크·파울·아웃   ○ 볼   ◆ 피안타${rows.length > PF_MAX ? ` · 많이 던진 ${PF_MAX}개 구종` : ''}`, W / 2, H - FOOT - 16, N.tx3, 'center');
+
+  // 꼬리: 로고 · 계정
+  c.fillStyle = N.bg2; c.fillRect(0, H - FOOT, W, FOOT);
+  c.fillStyle = N.line; c.fillRect(0, H - FOOT - .75, W, 1.5);
+  wordmark(c, X, H - FOOT + 29, 13, N.tx, N.acc);
+  font(c, '500', 12, FONT.num); txt('@spraylab2026', W - X, H - FOOT + 29, N.tx2, 'right');
+}
+
+export function saveProfileImage() {
+  if (!_pf) return;
+  window.showToast('이미지 생성 중...', false, true);
+  const warm = document.createElement('canvas'), cv = document.createElement('canvas');
+  return drawWithFonts(warm, () => _profileImg(warm, 1)).then(() => {
+    _profileImg(cv, 2);
+    window._downloadCanvas(cv, 'spraylab_pitchprofile_' + Date.now() + '.png');
+    window.showToast('이미지 저장 완료 ✓', false);
+  });
+}
+
 // ── 카운트 운영 · 투구수 구간 ────────────────────────────────
 function _countCard(S) {
   const k2 = S.twoS.filter(_isDone);
@@ -854,4 +964,5 @@ if (typeof window !== 'undefined') {
   window.setPitchPick = setPitchPick;
   window.setReplay = setReplay;
   window.saveReplayImage = saveReplayImage;
+  window.saveProfileImage = saveProfileImage;
 }

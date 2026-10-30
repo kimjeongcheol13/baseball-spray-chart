@@ -75,10 +75,10 @@
 
 /* ── 투구 위치 ── */
 .pc-plot { display: block; width: 100%; max-width: 260px; height: auto; margin: 0 auto; }
-.pc-plot .pz-box { fill: rgba(75, 140, 245, .06); stroke: var(--an-ink2); stroke-width: .8; }
-.pc-plot .pz-grid { fill: none; stroke: var(--an-line); stroke-width: .5; }
+.pc-plot .pz-box, .pc-pf-zone .pz-box { fill: rgba(75, 140, 245, .06); stroke: var(--an-ink2); stroke-width: .8; }
+.pc-plot .pz-grid, .pc-pf-zone .pz-grid { fill: none; stroke: var(--an-line); stroke-width: .5; }
 .pc-plot-ax { display: flex; justify-content: space-between; max-width: 260px; margin: 0 auto 4px; font-size: 10px; font-weight: 700; color: var(--an-ink3); }
-.pc-plot .pz-plate { fill: none; stroke: var(--an-ink3); stroke-width: .6; }
+.pc-plot .pz-plate, .pc-pf-zone .pz-plate { fill: none; stroke: var(--an-ink3); stroke-width: .6; }
 .pc-plot .pz-strike { fill: var(--pz-strike); stroke: var(--an-card); stroke-width: .6; }
 .pc-plot .pz-out { fill: var(--pz-out); stroke: var(--an-card); stroke-width: .6; }
 .pc-plot .pz-k { fill: var(--pz-k); stroke: var(--an-card); stroke-width: .6; }
@@ -194,6 +194,24 @@
 .pc-rp-seq em { font-style: normal; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--an-ink3); }
 .rp-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--pt); color: #0a111e; font-style: normal; font-size: 11px; font-weight: 800; }
 .pc-rp-save { display: block; width: 100%; min-height: 44px; margin-top: 12px; }   /* 모양은 .sc-act (분석 엑셀 받기와 같은 버튼) */
+/* ── 구종별 위치: 구종마다 작은 존(점 색 = 구종 · 고리 = 볼 · 마름모 = 피안타) ── */
+.pc-pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.pc-pf-tile { margin: 0; padding: 10px 10px 8px; border-radius: 10px; background: var(--an-raised); }
+.pc-pf-tile figcaption { display: flex; align-items: center; gap: 6px; }
+.pc-pf-tile figcaption b { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; font-size: 14px; font-weight: 800; color: var(--an-ink); white-space: nowrap; }
+.pc-pf-tile figcaption b::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--pt); }
+.pc-pf-tile figcaption span { margin-left: auto; font-size: 11px; color: var(--an-ink3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pc-pf-zone { display: block; width: 100%; max-width: 180px; height: auto; margin: 4px auto; }
+.pc-pf-zone .pf-on { fill: var(--pt); stroke: var(--an-card); stroke-width: .6; }
+.pc-pf-zone .pf-ball { fill: none; stroke: var(--pt); stroke-width: 1.1; }
+.pc-pf-zone .pf-hit { fill: var(--pt); stroke: var(--an-ink); stroke-width: .8; }
+.pc-pf-tile small { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px; font-size: 11px; color: var(--an-ink2); font-variant-numeric: tabular-nums; }
+.pc-pf-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin-top: 10px; font-size: 10px; color: var(--an-ink2); }
+.pc-pf-key span { display: inline-flex; align-items: center; gap: 4px; }
+.pc-pf-key i { width: 8px; height: 8px; border-radius: 50%; background: var(--an-ink2); }
+.pc-pf-key .k-ball { background: none; border: 1.5px solid var(--an-ink2); }
+.pc-pf-key .k-hit { border-radius: 1px; transform: rotate(45deg) scale(.9); }
+.pc-pf-save { display: block; width: 100%; min-height: 44px; margin-top: 12px; }   /* 모양은 .sc-act */
 
 /* ── 카운트 운영 ── */
 .pc-cnts { display: flex; flex-direction: column; }

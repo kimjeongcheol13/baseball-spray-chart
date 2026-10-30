@@ -570,7 +570,7 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-link .go-f{flex:1;min-width:0}
 .go-link .go-link-b{min-height:44px;margin-bottom:8px;justify-content:center}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 · 입력칸 아래 여백과 맞춤 */
 .go-link .go-link-b:disabled{opacity:.45;cursor:progress}
-.go-link+.go-shot-msg{margin:0 0 10px}
+.go-link+.go-shot-msg{margin:0 0 10px;font-size:11px;line-height:1.55;color:var(--text2)}
 .go-shot-msg{margin-top:8px}
 .go-shot-msg:empty{display:none}
 .go-shot-msg.bad{color:var(--red)}

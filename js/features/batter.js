@@ -289,6 +289,7 @@ function _sprayCard(P, today, seasonView) {
     <section class="an-card">
       <header class="an-hd"><h3>타구 방향</h3>${seg}</header>
       <div class="bt-spray">${sprayFigure({ name: P.name, abs, st: calcStats(abs) })}</div>
+      ${window.slDash && window.slDash.depthTable ? window.slDash.depthTable(abs) : ''}
       ${seasonView && _spray === 'season' ? profileDirTable(P) : ''}
       <div class="an-spray-key">
         <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>

@@ -687,6 +687,13 @@ body.sb #analysisView .ad-who-b.on { background: var(--highlight-soft); box-shad
 .ad-band-c span { font: 600 15px/1 var(--f-num); color: var(--ink); }
 .ad-none { margin: 0; padding: 12px; font: 700 12px/1.6 var(--f-body); color: var(--ink-soft); }
 .ad-band .ad-none { padding: 8px 10px; }
+/* 구역별 내야 · 외야 타구 수 (dashboard.js _zoneDepth) — 비율 띠 아래, 같은 종이 칸 */
+.ad-depth { width: calc(100% - 24px); margin: 0 12px 12px; border-collapse: collapse; table-layout: fixed; border: 1.5px solid var(--ink); background: var(--paper-2); }
+.ad-depth th, .ad-depth td { padding: 6px 2px; border: 1px solid var(--ink); text-align: center; }
+.ad-depth th { font: 700 11px/1 var(--f-body); color: var(--ink-soft); white-space: nowrap; }
+.ad-depth thead th:first-child, .ad-depth tbody th { width: 3.4em; }
+.ad-depth td { font: 600 15px/1 var(--f-num); color: var(--ink); }
+.ad-depth td.z { color: var(--ink-soft); opacity: .45; }
 
 .ad-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ad-bs-wrap { overflow-x: auto; }

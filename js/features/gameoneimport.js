@@ -567,19 +567,21 @@ export function gameOneBoxQuery(v) {
   return g && (c || l) ? `game=${g[1]}&${c ? `club=${c[1]}` : `lig=${l[1]}`}` : '';
 }
 function _say(t, bad) {
-  const m = $('goUrlMsg');
+  const m = $('goUrlMsg'), x = $('goPrevMore');
   if (m) { m.textContent = t; m.classList.toggle('bad', !!bad); }
+  if (x) x.textContent = '';   // 미리보기 밑 시즌 목록 버튼도 새 안내와 함께 지운다
 }
-// 박스스코어 주소에도 팀 번호(club_idx)가 있다 — 한 경기를 받은 뒤(그 경기 기록이 없을 때도) 안내 줄 밑에 그 팀 시즌 목록 버튼을 붙인다.
-// 누르면 팀 주소를 넣은 것과 같다(_fetchSeason). 다음 _say 가 안내를 바꾸면 버튼도 사라진다
-function _seasonBtn(q) {
-  const c = /(?:^|&)club=(\d+)/.exec(q), m = $('goUrlMsg');
+const _toView = id => { const el = $(id); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+// 박스스코어 주소에도 팀 번호(club_idx)가 있다 — 한 경기를 받은 뒤엔 미리보기 밑(host = #goPrevMore, 화면이 그리로 내려가서), 그 경기 기록이 없을 땐
+// 안내 줄 밑에 그 팀 시즌 목록 버튼을 붙인다. 누르면 주소 칸으로 올라가 팀 주소를 넣은 것과 같이 받는다(_fetchSeason). 다음 _say 가 버튼을 지운다
+function _seasonBtn(q, host) {
+  const c = /(?:^|&)club=(\d+)/.exec(q), m = host || $('goUrlMsg');
   if (!c || !m) return;
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'btn btn-ghost go-season-open';
   b.textContent = '이 팀 시즌 경기 목록 보기';
-  b.onclick = () => _fetchSeason(`list=1&club=${c[1]}`);
+  b.onclick = () => { _toView('goUrl'); _fetchSeason(`list=1&club=${c[1]}`); };
   m.appendChild(b);
 }
 export async function fetchGameOneBox() {
@@ -602,8 +604,9 @@ export async function fetchGameOneBox() {
   ['goAway', 'goHome', 'goPitch'].forEach(id => { const t = $(id); if (t) t.value = ''; });
   $('goScore').value = _linkText = d.text;
   _say('가져왔어요 — 아래 미리보기를 확인하고 「새 경기로 저장」을 누르세요.');
-  _seasonBtn(q);
-  _schedule();
+  clearTimeout(_timer); _splitNote = ''; _preview();   // _schedule 과 같되 바로 그린다 — 미리보기 · 「새 경기로 저장」은 사진 · 표 칸 아래라 폰에서는 화면 밖이어서 그리로 내린다
+  _seasonBtn(q, $('goPrevMore'));
+  _toView('goPrev');
 }
 
 // 중계 부르기 → 받은 JSON | { status }(0 = 연결 실패). 부른 때를 적어 둔다 — 시즌 한 번에 받기가 호출 제한(1분 10번)에 맞춰 띄운다

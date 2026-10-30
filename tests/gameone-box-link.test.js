@@ -168,8 +168,10 @@
     } finally { window.fetch = realFetch; }
   });
 
-  test('박스스코어 주소 → 한 경기 뒤 「이 팀 시즌 경기 목록 보기」 → 그 팀 시즌 목록(팀 주소와 같음) · 기록 없는 경기도 · 리그 박스스코어는 없음', async function () {
+  test('박스스코어 주소 → 한 경기 뒤 미리보기로 내려감 · 그 밑 「이 팀 시즌 경기 목록 보기」 → 주소 칸으로 올라가 그 팀 시즌 목록 · 기록 없는 경기는 안내 밑 · 리그 박스스코어는 없음', async function () {
     window.fetch = fakeFetch;
+    var seen = [], realSiv = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (o) { seen.push(this.id); return realSiv.call(this, o); };
     try {
       fresh();
       calls.length = 0;
@@ -177,29 +179,31 @@
       type('goUrl', 'https://www.gameone.kr/club/info/schedule/boxscore?club_idx=14797&game_idx=1722796');
       $('goUrlBtn').click();
       await T.sleep(400);
-      var b = $('goUrlMsg').querySelector('.go-season-open');
-      ok(b && b.textContent === '이 팀 시즌 경기 목록 보기' && b.offsetHeight >= 44 && /가져왔어요/.test(msg()), '한 경기 받은 뒤 버튼 — ' + msg());
+      var b = $('goPrevMore').querySelector('.go-season-open');
+      ok(b && b.textContent === '이 팀 시즌 경기 목록 보기' && b.offsetHeight >= 44 && /가져왔어요/.test(msg()) && !$('goUrlMsg').querySelector('.go-season-open'), '한 경기 받은 뒤 버튼 = 미리보기 밑 — ' + msg());
+      eq([seen.slice(-1)[0], $('goPrev').textContent.indexOf('가팀 4 : 3 나팀') >= 0, !$('goSave').disabled], ['goPrev', true, true], '그린 미리보기로 내려감 · 저장 버튼 켜짐');
+      ok(b.compareDocumentPosition($('goSave')) & Node.DOCUMENT_POSITION_PRECEDING, '버튼은 「새 경기로 저장」 밑');
       reply = json({ v: 1, team: '가팀', season: 2026, more: false, games: [{ game: 101, md: '10-24', time: '11:00', lig: '가상리그', venue: '가상구장', away: '가팀', as: 9, home: '다팀', hs: 3, note: '' }] });
       b.click();
       await T.sleep(400);
       ok(/\?list=1&club=14797&t=\d+$/.test(calls[calls.length - 1]), '목록 질의 — ' + calls[calls.length - 1]);
       ok(!$('goSeason').hidden && /가팀 2026시즌 · 1경기/.test($('goSeason').textContent) && $('goSeason').querySelectorAll('.go-season-yb').length === 4, '시즌 목록 · 시즌 버튼 — ' + $('goSeason').textContent.slice(0, 40));
-      eq([msg(), !!$('goUrlMsg').querySelector('.go-season-open'), $('goScore').value.indexOf('Team') === 0], ['', false, true], '안내 줄 비움(버튼도) · 받은 한 경기는 칸에 그대로');
+      eq([msg(), $('goPrevMore').textContent, seen.indexOf('goUrl') >= 0, $('goScore').value.indexOf('Team') === 0], ['', '', true, true], '주소 칸으로 올라감 · 안내 줄 · 미리보기 밑 버튼 비움 · 받은 한 경기는 칸에 그대로');
       reply = json({ error: 'empty' }, 404);
       type('goUrl', 'https://www.gameone.kr/club/info/schedule/boxscore?club_idx=14797&game_idx=1718831');
       $('goUrlBtn').click();
       await T.sleep(200);
-      ok(/타자 기록이 없어요/.test(msg()) && !!$('goUrlMsg').querySelector('.go-season-open'), '기록 없는 경기도 버튼 — ' + msg());
+      ok(/타자 기록이 없어요/.test(msg()) && !!$('goUrlMsg').querySelector('.go-season-open') && !$('goPrevMore').querySelector('.go-season-open'), '기록 없는 경기 — 버튼은 안내 밑 — ' + msg());
       reply = function () { return Promise.reject(new TypeError('Failed to fetch')); };
       $('goUrlBtn').click();
       await T.sleep(200);
-      ok(/가져오지 못했어요/.test(msg()) && !$('goUrlMsg').querySelector('.go-season-open'), '연결 실패면 버튼 없음');
+      ok(/가져오지 못했어요/.test(msg()) && !$('goUrlMsg').querySelector('.go-season-open') && !$('goPrevMore').querySelector('.go-season-open'), '연결 실패면 버튼 없음');
       reply = json({ v: 1, text: TEXT });
       type('goUrl', 'https://www.gameone.kr/league/schedule/boxscore?lig_idx=10875&game_idx=1693698');
       $('goUrlBtn').click();
       await T.sleep(400);
-      ok(/가져왔어요/.test(msg()) && !$('goUrlMsg').querySelector('.go-season-open'), '리그 박스스코어(팀 번호 없음) — 버튼 없음');
+      ok(/가져왔어요/.test(msg()) && !$('goUrlMsg').querySelector('.go-season-open') && !$('goPrevMore').querySelector('.go-season-open') && seen.slice(-1)[0] === 'goPrev', '리그 박스스코어(팀 번호 없음) — 버튼 없음 · 그래도 미리보기로 내려감');
       closeOverlay('goOverlay');
-    } finally { window.fetch = realFetch; }
+    } finally { window.fetch = realFetch; Element.prototype.scrollIntoView = realSiv; }
   });
 })();

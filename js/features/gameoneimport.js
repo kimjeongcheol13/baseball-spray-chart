@@ -606,7 +606,7 @@ async function _relay(q) {
 //   · 중계 호출 제한(1분 10번)에 맞춰 부르는 사이를 6.5초 띄운다 — 18경기면 2분쯤. 429 면 1분 쉬고 한 번 더. 창을 닫으면 멈춘다(받은 경기까지는 저장됨)
 //   · 타구 위치 확인(gameonefix.js)은 열지 않는다 — 대략 위치는 분석 탭 「위치 확인」에서 나중에
 const GAP = 6500;
-let _season = null;   // { club, team, season, more, games: [{ …목록 줄, date, dup, on, st }], busy }
+let _season = null;   // { club, team, season, base, more, games: [{ …목록 줄, date, dup, on, st }], busy, loading }
 export function gameOneSeasonQuery(v) {
   const s = String(v || ''), c = /[?&]club_idx=(\d{1,7})(?!\d)/.exec(s), y = /[?&]season=(\d{4})(?!\d)/.exec(s);
   return c && !/[?&]game_idx=/.test(s) ? `list=1&club=${c[1]}${y ? `&season=${y[1]}` : ''}` : '';
@@ -615,6 +615,19 @@ const _cut = s => String(s || '').trim().slice(0, 20);
 // 목록 줄 → 같은 경기가 이미 저장돼 있나(가짜 경기로 findSameGames)
 function _seasonDup(r) {
   return r.as != null && r.hs != null && !!r.date && findSameGames({ th: _cut(r.home), ta: _cut(r.away), hs: r.hs, as: r.as, info: { date: r.date } }, _savedGames()).length > 0;
+}
+// 받은 목록 → _season. base = 시즌 버튼 맨 앞 해(처음 받은 시즌과 올해 중 늦은 해 — 다른 시즌으로 바꿔도 그대로 둔다)
+function _seasonSet(d, club, base) {
+  _saved.raw = null;
+  const games = d.games.map(r => {
+    const date = d.season && /^\d{2}-\d{2}$/.test(r.md) ? `${d.season}-${r.md}` : '';
+    const g = Object.assign({}, r, { date, st: '' });
+    g.dup = _seasonDup(g);
+    g.on = !!g.game && !g.dup && g.as != null && g.hs != null && !/몰수/.test(g.note || '');
+    if (g.dup) g.st = '저장됨'; else if (!g.game) g.st = '박스스코어 없음'; else if (/몰수/.test(g.note || '')) g.st = '몰수'; else if (g.as == null || g.hs == null) g.st = '점수 없음';
+    return g;
+  });
+  _season = { club, team: String(d.team || ''), season: d.season, base: base || Math.max(+d.season || 0, new Date().getFullYear()), more: !!d.more, games, busy: false, loading: 0 };
 }
 async function _fetchSeason(q) {
   const btn = $('goUrlBtn');
@@ -627,38 +640,51 @@ async function _fetchSeason(q) {
     _say(d.status === 404 ? '게임원에 이 팀 경기 결과가 없어요. 주소의 팀(club_idx)과 시즌을 확인해 주세요.' : '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.', true);
     return;
   }
-  _saved.raw = null;
-  const games = d.games.map(r => {
-    const date = d.season && /^\d{2}-\d{2}$/.test(r.md) ? `${d.season}-${r.md}` : '';
-    const g = Object.assign({}, r, { date, st: '' });
-    g.dup = _seasonDup(g);
-    g.on = !!g.game && !g.dup && g.as != null && g.hs != null && !/몰수/.test(g.note || '');
-    if (g.dup) g.st = '저장됨'; else if (!g.game) g.st = '박스스코어 없음'; else if (/몰수/.test(g.note || '')) g.st = '몰수'; else if (g.as == null || g.hs == null) g.st = '점수 없음';
-    return g;
-  });
-  _season = { club: /club=(\d+)/.exec(q)[1], team: String(d.team || ''), season: d.season, more: !!d.more, games, busy: false };
+  _seasonSet(d, /club=(\d+)/.exec(q)[1]);
   _say('');
   _seasonRender();
 }
-function _seasonRender(msg) {
+// 시즌 버튼: 같은 팀으로 그 시즌 목록을 다시 받는다. 경기가 없으면(중계 404 · 게임원이 다른 시즌을 돌려줌) 지금 목록은 두고 버튼 아래에 알린다
+export async function gameOneSeasonYear(y) {
+  const S = _season;
+  if (!S || S.busy || S.loading) return;
+  y = +y;
+  if (!y || y === S.season) { _seasonRender(); return; }   // 「이전」 칸을 비우면 고른 시즌 표시로 되돌린다
+  S.loading = y;
+  _seasonRender('', `${y}시즌 경기 목록을 가져오는 중…`);
+  const d = await _relay(`list=1&club=${S.club}&season=${y}`);
+  if (_season !== S) return;   // 그사이 다른 팀 주소를 넣었거나 창을 새로 열었다
+  S.loading = 0;
+  const ok = d.status == null && d.v === 1 && Array.isArray(d.games);
+  if (!ok || +d.season !== y) { _seasonRender('', ok || d.status === 404 ? `${y}시즌에는 게임원 경기 결과가 없어요` : '게임원에서 가져오지 못했어요. 잠시 뒤 다시 눌러 주세요.'); return; }
+  _seasonSet(d, S.club, S.base);
+  _seasonRender();
+}
+function _seasonRender(msg, ymsg) {
   const box = $('goSeason'), S = _season;
   if (!box) return;
   if (!S) { box.hidden = true; box.innerHTML = ''; return; }
   const n = S.games.filter(g => g.on).length, dup = S.games.filter(g => g.dup).length;
+  const ys = [];
+  for (let y = S.base; y >= 2003; y--) ys.push(y);   // 게임원 시즌 고르기는 2003년부터
+  const cur = S.loading || S.season, off = S.busy || S.loading ? 'disabled' : '', old = ys.slice(3);
   box.hidden = false;
   box.innerHTML = `<div class="go-season-h"><b>${_esc(S.team || '팀')}</b> ${S.season ? S.season + '시즌 · ' : ''}${S.games.length}경기`
     + `<small>${dup ? `이미 저장된 ${dup}경기는 꺼 뒀어요 · ` : ''}고른 경기를 차례로 받아 새 경기로 저장해요${S.more ? ' · 앞의 90경기까지만 보여요' : ''}</small></div>`
+    + `<div class="go-season-y" role="group" aria-label="시즌 고르기">${ys.slice(0, 3).map(y => `<button type="button" class="go-season-yb" aria-pressed="${y === cur}" ${off} onclick="gameOneSeasonYear(${y})">${y}</button>`).join('')}`
+    + (old.length ? `<select class="go-season-yb${old.includes(cur) ? ' on' : ''}" aria-label="이전 시즌" ${off} onchange="gameOneSeasonYear(this.value)"><option value="">이전</option>${old.map(y => `<option value="${y}" ${y === cur ? 'selected' : ''}>${y}</option>`).join('')}</select>` : '')
+    + `</div>${ymsg ? `<div class="go-season-msg go-season-ymsg">${_esc(ymsg)}</div>` : ''}`
     + `<ul class="go-season-list">${S.games.map((g, i) => `<li class="${g.st === '저장함' ? 'ok' : ''}"><label>`
       + `<input type="checkbox" ${g.on ? 'checked' : ''} ${!g.game || S.busy || g.st === '저장함' ? 'disabled' : ''} onchange="gameOneSeasonPick(${i}, this.checked)">`
       + `<span class="go-season-d">${+g.md.slice(0, 2)}.${+g.md.slice(3)}</span>`
       + `<span class="go-season-t">${_esc(g.away)} <b>${g.as == null ? '' : g.as}</b> : <b>${g.hs == null ? '' : g.hs}</b> ${_esc(g.home)}<small>${_esc([g.lig, g.note].filter(Boolean).join(' · '))}</small></span>`
       + `${g.st ? `<em class="go-season-st">${_esc(g.st)}</em>` : ''}</label></li>`).join('')}</ul>`
-    + `<button type="button" class="btn btn-primary go-season-go" id="goSeasonGo" onclick="saveGameOneSeason()" ${!n || S.busy ? 'disabled' : ''}>${S.busy ? '받는 중…' : `고른 ${n}경기 저장`}</button>`
+    + `<button type="button" class="btn btn-primary go-season-go" id="goSeasonGo" onclick="saveGameOneSeason()" ${!n || S.busy || S.loading ? 'disabled' : ''}>${S.busy ? '받는 중…' : `고른 ${n}경기 저장`}</button>`
     + `<div class="go-season-msg" id="goSeasonMsg" aria-live="polite">${_esc(msg || '')}</div>`;
 }
 export function gameOneSeasonPick(i, on) {
   const g = _season && _season.games[i];
-  if (!g || _season.busy) return;
+  if (!g || _season.busy || _season.loading) return;
   g.on = !!on;
   const b = $('goSeasonGo'), n = _season.games.filter(x => x.on).length;
   if (b) { b.disabled = !n; b.textContent = `고른 ${n}경기 저장`; }
@@ -679,7 +705,7 @@ const _wait = ms => new Promise(res => setTimeout(res, ms));
 const _left = s => (s >= 60 ? `${Math.floor(s / 60)}분 ` : '') + `${s % 60}초`;
 export async function saveGameOneSeason() {
   const S = _season;
-  if (!S || S.busy) return;
+  if (!S || S.busy || S.loading) return;
   const pick = S.games.filter(g => g.on);
   if (!pick.length) return;
   const open = () => { const o = $('goOverlay'); return !!o && o.classList.contains('show'); };
@@ -798,6 +824,7 @@ if (typeof window !== 'undefined') {
   window.fillGameOneRbi = fillGameOneRbi;
   window.fetchGameOneBox = fetchGameOneBox;
   window.gameOneSeasonPick = gameOneSeasonPick;
+  window.gameOneSeasonYear = gameOneSeasonYear;
   window.saveGameOneSeason = saveGameOneSeason;
   window.gameOnePreview = _schedule;
   const orig = window.updateFieldTapHint;   // core.js(defer)가 먼저 정한다

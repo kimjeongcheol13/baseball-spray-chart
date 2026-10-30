@@ -37,11 +37,19 @@
     { game: null, md: '10-04', time: '', lig: '가상대회', venue: '나구장', away: '가팀', as: null, home: '마팀', hs: null, note: '' },
     { game: 105, md: '09-27', time: '16:00', lig: '가상리그', venue: '나구장', away: '가팀', as: 5, home: '바팀', hs: 1, note: '콜드승' }
   ] };
+  // 2025시즌 목록: 202 는 저장된 경기(2026-10-18 다팀 1 : 2 가팀)와 월일 · 팀 · 점수가 같지만 해가 달라 다른 경기
+  var LIST25 = { v: 1, team: '가팀', season: 2025, more: false, games: [
+    { game: 201, md: '08-10', time: '09:00', lig: '가상리그', venue: '가상구장', away: '가팀', as: 3, home: '사팀', hs: 2, note: '' },
+    { game: 202, md: '10-18', time: '11:00', lig: '가상리그', venue: '가상구장', away: '다팀', as: 1, home: '가팀', hs: 2, note: '' }
+  ] };
   var calls = [], realFetch = window.fetch, OLD = 'sl_test_season_old', KEEP = null, fail105 = 0;
   function fakeFetch(u) {
     u = String(u); calls.push({ u: u, t: Date.now() });
     var q = u.split('?')[1] || '';
     if (/^game=105&/.test(q) && fail105-- > 0) return Promise.reject(new TypeError('Failed to fetch'));   // Netlify 429(CORS 머리 없음)는 브라우저에서 이렇게 보인다
+    var y = /^list=1&club=\d+&season=(\d{4})&/.exec(q);   // 2025 = 목록 · 2019 = 게임원이 다른 시즌(2026)을 돌려줌 · 그 밖(2026 빼고) = 경기 없음(404)
+    if (y && y[1] === '2025') return Promise.resolve(new Response(JSON.stringify(LIST25)));
+    if (y && y[1] !== '2026' && y[1] !== '2019') return Promise.resolve(new Response(JSON.stringify({ error: 'empty' }), { status: 404 }));
     if (/^list=1/.test(q)) return Promise.resolve(new Response(JSON.stringify(LIST)));
     if (/^game=101&/.test(q)) return Promise.resolve(new Response(JSON.stringify({ v: 1, text: BOX })));
     return Promise.resolve(new Response(JSON.stringify({ error: 'empty' }), { status: 404 }));
@@ -144,6 +152,40 @@
     eq(gc.map(function (c) { return /game=105&/.test(c.u); }), [true, true], '같은 경기 두 번');
     ok(gc[1].t - gc[0].t >= 60000, '사이 1분 — ' + (gc[1].t - gc[0].t));
     eq(rows()[4], '☐기록 없음', '다시 받은 답(404)으로 표시 — 못 받음 아님');
+    closeOverlay('goOverlay');
+  });
+
+  test('시즌 버튼: 올해부터 세 시즌 + 「이전」 · 누르면 그 시즌 목록 · 경기 없는 시즌은 목록을 두고 알림', async function () {
+    openGameOneImport();
+    type('goUrl', 'https://www.gameone.kr/club/?club_idx=14797');
+    $('goUrlBtn').click();
+    await T.sleep(300);
+    var box = $('goSeason'), Y = Math.max(2026, new Date().getFullYear());
+    var yb = function () { return [].map.call(box.querySelectorAll('button.go-season-yb'), function (b) { return b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : ''); }); };
+    var btn = function (y) { return [].filter.call(box.querySelectorAll('button.go-season-yb'), function (b) { return b.textContent === String(y); })[0]; };
+    var head = function () { return box.querySelector('.go-season-h').firstChild.textContent + box.querySelector('.go-season-h').childNodes[1].textContent; };
+    var sel = box.querySelector('select.go-season-yb');
+    eq(yb(), [Y, Y - 1, Y - 2].map(function (y) { return y + (y === 2026 ? '*' : ''); }), '버튼 — 지금 시즌 눌림');
+    eq([sel.value, sel.options[1].value, sel.options[sel.options.length - 1].value], ['', String(Y - 3), '2003'], '「이전」 = 그 앞 시즌부터 2003');
+    ok([].every.call(box.querySelectorAll('.go-season-yb'), function (b) { return b.offsetHeight >= 44; }), '높이 44px');
+    var n = calls.length;
+    btn(2025).click();
+    eq([btn(2025).getAttribute('aria-pressed'), btn(2025).disabled, box.querySelector('select.go-season-yb').disabled, $('goSeasonGo').disabled, box.querySelector('.go-season-ymsg').textContent],
+      ['true', true, true, true, '2025시즌 경기 목록을 가져오는 중…'], '받는 동안 — 누른 시즌 표시 · 잠금');
+    await T.sleep(300);
+    ok(/\?list=1&club=14797&season=2025&t=\d+$/.test(calls[n].u), '질의 — ' + calls[n].u);
+    eq([head(), yb().filter(function (s) { return /\*$/.test(s); }), rows(), $('goSeasonGo').textContent, !!box.querySelector('.go-season-ymsg')],
+      ['가팀 2025시즌 · 2경기', ['2025*'], ['☑', '☑'], '고른 2경기 저장', false], '2025시즌 목록 — 날짜 해가 달라 저장된 경기와 다름');
+    btn(2024).click();
+    await T.sleep(300);
+    eq([head(), yb().filter(function (s) { return /\*$/.test(s); }), rows(), box.querySelector('.go-season-ymsg').textContent, $('goSeasonGo').disabled],
+      ['가팀 2025시즌 · 2경기', ['2025*'], ['☑', '☑'], '2024시즌에는 게임원 경기 결과가 없어요', false], '경기 없는 시즌(404) — 목록 그대로');
+    sel = box.querySelector('select.go-season-yb'); sel.value = '2019'; sel.dispatchEvent(new Event('change'));
+    await T.sleep(300);
+    eq([head(), box.querySelector('select.go-season-yb').value, box.querySelector('.go-season-ymsg').textContent], ['가팀 2025시즌 · 2경기', '', '2019시즌에는 게임원 경기 결과가 없어요'], '게임원이 다른 시즌을 돌려주면 — 없음');
+    btn(2026).click();
+    await T.sleep(300);
+    eq([head(), rows()[1]], ['가팀 2026시즌 · 5경기', '☐저장됨'], '다시 2026');
     closeOverlay('goOverlay');
   });
 

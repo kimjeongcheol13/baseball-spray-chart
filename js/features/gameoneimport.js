@@ -32,6 +32,7 @@
 //       공유 링크 · 가져오기 링크 · 로그인 돌아오기(game · gid · team · import · code · #share=)와 같이 오면 열지 않는다(그쪽이 먼저)
 //     - 기록이 하나도 없는 첫 화면(저장 경기 0 · 기록 중 타석 0) 필드 아래 「게임원 기록 가져오기」(#goStart). 샘플 버튼과 같은 방식으로
 //       첫 사용 말풍선(updateFieldTapHint)이 갱신될 때 다시 판단한다(core.js 는 고치지 않는다)
+//     - ☰ 메뉴 경기 › 「📥 게임원 가져오기」(2026-10-30) — 저장 경기가 생기면 첫 화면 버튼이 숨어서, 데이터 관리 세 단계 말고 메뉴 한 번
 //   · 보정 (2026-10-19): 타구 점마다 estimated = 파서 confidence 'low'(안 · 플 · 땅처럼 폭이 넓은 결과 · R · 미확인 토큰 섞임 등).
 //     저장 직후 「타구 위치 확인」(gameonefix.js)을 한 번 연다 — 필드를 탭하거나 점을 끌어 옮기면 좌표 · 방향 · 거리가 바뀌고 estimated = false.
 //     estimated 가 없는 예전 기록 · 직접 찍은 기록 = 직접 입력으로 본다. 통계 계산은 estimated 와 무관
@@ -501,7 +502,7 @@ export function openGameOneImport(from) {
   const how = fresh && document.querySelector('#goOverlay details.go-how');
   if (how) how.open = true;   // 링크 · 첫 화면으로 온 사람은 처음 쓰는 사람 — 복사 방법을 펼쳐 둔다
   if (window.openOverlay) window.openOverlay('goOverlay');
-  _track('gameone_import_open', { from: fresh ? from : 'tile' });
+  _track('gameone_import_open', { from: fresh || from === 'menu' ? from : 'tile' });   // menu = ☰ 메뉴 「게임원 가져오기」(2026-10-30)
   setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
 }
 

@@ -74,4 +74,20 @@
       ok(window.SLGameOneImport._openFromLink() === false && location.search === '?go=0', 'go=1 이 아니면 아무것도 안 한다');
     } finally { history.replaceState(null, '', HREF); closeOverlay('goOverlay'); }
   });
+
+  test('☰ 메뉴 경기 › 게임원 가져오기 (저장 경기가 있어 첫 화면 버튼이 숨어도) → 입력창(from menu · 복사 방법 접힘) · 데이터 관리 타일 이름', async function () {
+    ok($('goStart').hidden, '첫 화면 버튼은 숨어 있다');
+    shellMenu(true);
+    var b = document.querySelector('#slMenu .slm-item[onclick^="openGameOneImport"]');
+    ok(b && b.offsetParent !== null && b.getBoundingClientRect().height >= 44, '메뉴에 보임 · 44px — ' + (b && b.getBoundingClientRect().height));
+    ok(b.previousElementSibling.getAttribute('onclick') === 'openLoad()' && /게임원 가져오기/.test(b.textContent) && /시즌/.test(b.textContent), '불러오기 바로 아래 — ' + b.textContent);
+    document.querySelector('#goOverlay details.go-how').open = false;
+    var ev = await spy(async function () { b.click(); await T.sleep(50); });
+    ok(opened() && !document.querySelector('#goOverlay details.go-how').open, '입력창 열림 · 복사 방법 접힘');
+    ok(!$('slMenu').classList.contains('open'), '메뉴 닫힘');
+    eq(ev, [['gameone_import_open', { from: 'menu' }]], '이벤트');
+    closeOverlay('goOverlay');
+    var tile = document.querySelector('#dataSettingsOverlay .go-tile');
+    ok(/게임원 가져오기/.test(tile.textContent) && /팀 주소/.test(tile.textContent), '타일 — ' + tile.textContent);
+  });
 })();

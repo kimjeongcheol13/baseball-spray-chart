@@ -3,6 +3,7 @@ import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=9';
 import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=27';
 import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=9';
+import { FONT, NIGHT as N, font, fitFont, spacing, rr, wordmark, drawWithFonts } from './imgkit.js?v=1';
 
 const ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
 const BUCKETS = [[1, 25], [26, 50], [51, 75], [76, 999]];
@@ -46,6 +47,7 @@ export function setPitcherView(k, v) {
   if (k === 'sel') _sel = v || null;
   if (k === 'zone') _zoneView = ['plot', 'hits', 'count'].includes(v) ? v : 'plot';
   if (k !== 'mode') { _box = null; _boxAll = false; }   // 다른 투수·범위·보기로 바꾸면 고른 구역은 비운다
+  if (k === 'scope' || k === 'sel') _replay = null;      // 다른 투수·범위면 리플레이는 다시 가장 최근 타석
   openPitcherView();
 }
 
@@ -165,6 +167,7 @@ function _stats(P) {
       ${_mixCard(S)}
       ${_zoneCard(S, P)}
     </div>
+    ${_replayCard(P)}
     <div class="pc-2col">
       ${_countCard(S)}
       ${_bucketCard(P)}
@@ -365,10 +368,10 @@ function _pitchCtx(apps) {
       return o <= 2 ? o : null;   // 3 이상 = 기록이 어긋났다 — 추정하지 않는다
     };
     let no = 0;
-    groupPA(a.pitches).forEach(pa => {
+    groupPA(a.pitches).forEach((pa, pi) => {
       pa.pitches.forEach((p, k) => {
         const c = countOf(pa.pitches.slice(0, k));
-        m.set(p, { a, ai, no: ++no, pa, k, b: Math.min(3, c.b), s: Math.min(2, c.s), oc: outsBefore(p) });
+        m.set(p, { a, ai, pi, no: ++no, pa, k, b: Math.min(3, c.b), s: Math.min(2, c.s), oc: outsBefore(p) });
       });
     });
   });
@@ -529,6 +532,7 @@ function _pitchCard(p, c) {
       <div class="pc-pc-meta">${meta.map(_esc).join(' · ')}</div>
       ${_scoreboard(p, c)}
       ${flow}
+      ${c.pi != null ? `<button type="button" class="pc-rp-go" onclick="setReplay('${c.ai}:${c.pi}',null,1)">이 타석 리플레이 ›</button>` : ''}
     </li>`;
 }
 
@@ -556,6 +560,151 @@ export function setPitchPick(cmd) {
   if (cmd === 'clear') _box = null;
   if (cmd === 'all') _boxAll = true;
   _applyPick(false);
+}
+
+// ── 타석 리플레이 ────────────────────────────────────────────
+// 한 타석의 공을 존 위에 던진 순서(1 · 2 · 3 …)로 찍고 색은 구종. 옆에는 공 하나씩(구종 · 결과 · 던지기 직전 카운트) · 이미지로 저장(NIGHT)
+//  · 위치가 없는 공은 목록에만 ('위치 없음'). 궤적 · 구속 · 무브먼트는 기록하지 않으므로 그리지 않는다
+const PT_COL = { __proto__: null, '직구': '#4b8cf5', '커터': '#7c8898', '커브': '#a78bfa', '슬라이더': '#f6c23e', '체인지업': '#2dd4a0', '포크볼': '#fb923c' };   // 타자 분석 '투구 순서'(core.js ptColors)와 같은 색
+const _ptCol = pt => PT_COL[pt] || '#c3cad6';
+const _hasXY = p => p.zoneX != null && p.zoneY != null;
+let _replay = null;   // 고른 타석 'ai:pi' = 등판 ai 의 pi 번째 타석 (null = 위치가 찍힌 가장 최근 타석)
+let _rp = null;       // 지금 그려진 리플레이 { P, it } — 이미지 저장이 쓴다
+
+// 등판 · 타석 순서 그대로(오래된 것부터). 공 카드의 _pitchCtx(ai · pi)와 같은 번호
+const _replayList = P => P.apps.flatMap((a, ai) => groupPA(a.pitches).map((pa, pi) => ({ key: ai + ':' + pi, a, pa })));
+const _paInn = pa => (pa.pitches.find(p => p.inning) || {}).inning;
+const _paRes = pa => (pa.end ? (END_LABEL[pa.end] || pa.end) + (pa.nk ? '(낫아웃)' : '') : '결과 없음');
+const _cntTxt = (pa, k) => { const c = countOf(pa.pitches.slice(0, k)); return Math.min(3, c.b) + '-' + Math.min(2, c.s); };
+const _isLast = (pa, k) => !!pa.end && k === pa.pitches.length - 1;
+
+function _replayCard(P) {
+  const list = _replayList(P);
+  if (!list.length) return '';
+  let i = list.findIndex(x => x.key === _replay);
+  if (i < 0) { i = list.map(x => x.pa.pitches.some(_hasXY)).lastIndexOf(true); if (i < 0) i = list.length - 1; }
+  const it = list[i], pa = it.pa, last = pa.pitches[pa.pitches.length - 1];
+  _rp = { P, it };
+  const optTxt = x => `${_scope === 'season' ? _short(x.a) + ' · ' : ''}${_innTxt(_paInn(x.pa))} ${x.pa.batter || '타자 미기록'} · ${_paRes(x.pa)} · ${x.pa.pitches.length}구`;
+  const opts = list.map((x, j) => `<option value="${x.key}"${j === i ? ' selected' : ''}>${_esc(optTxt(x))}</option>`).reverse().join('');   // 최근 타석이 위
+  const step = (x, cls, label, ch) => `<button type="button" class="pc-rp-step ${cls}" aria-label="${label}"${x ? ` onclick="setReplay('${x.key}','.${cls}')"` : ' disabled'}>${ch}</button>`;
+  const balls = pa.pitches.map((p, k) => [p, k]).filter(([p]) => _hasXY(p)).map(([p, k]) => {
+    const x = (p.zoneX * 100).toFixed(1), y = (p.zoneY * 120).toFixed(1);
+    return `<g class="rp-ball${_isLast(pa, k) ? ' last' : ''}" style="--pt:${_ptCol(p.pt)}"><title>${k + 1}구 ${_esc(p.pt || '구종 미기록')} · ${_esc(_resTxt(p))}</title><circle cx="${x}" cy="${y}" r="5.4"/><text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central">${k + 1}</text></g>`;
+  }).join('');
+  const rows = pa.pitches.map((p, k) => `
+        <li${_isLast(pa, k) ? ' class="last"' : ''}><i class="rp-n" style="--pt:${_ptCol(p.pt)}">${k + 1}</i><b>${_esc(p.pt || '구종 미기록')}</b><span>${_esc(_resTxt(p))}${_hasXY(p) ? '' : '<small> · 위치 없음</small>'}</span><em title="던지기 직전 볼-스트라이크">${_cntTxt(pa, k)}</em></li>`).join('');
+  const noXY = pa.pitches.filter(p => !_hasXY(p)).length;
+  return `
+    <section class="an-card pc-rp" id="pcReplay">
+      <header class="an-hd"><h3>타석 리플레이</h3><span class="an-hd-note">숫자 = 던진 순서 · 색 = 구종</span></header>
+      <div class="pc-rp-nav">
+        ${step(list[i - 1], 'pc-rp-prev', '이전 타석', '‹')}
+        <select class="pc-rp-sel" aria-label="타석 고르기" onchange="setReplay(this.value,'.pc-rp-sel')">${opts}</select>
+        ${step(list[i + 1], 'pc-rp-next', '다음 타석', '›')}
+      </div>
+      <div class="pc-rp-hd"><b>${_esc(pa.batter || '타자 미기록')}</b><small>${_esc([_innTxt(_paInn(pa)), `${pa.pitches.length}구`].filter(Boolean).join(' · '))}</small><em${pa.end ? ` class="pq-${_cls(last)}"` : ''}>${_esc(_paRes(pa))}</em></div>
+      <div class="pc-rp-body">
+        <svg class="pc-plot pc-rp-zone" viewBox="0 0 100 120" role="img" aria-label="${_esc(`${pa.batter || '타자'} 타석 투구 위치 ${pa.pitches.length - noXY}구`)}">
+          <rect class="pz-box" x="22" y="18" width="56" height="84" rx="1"/>
+          <path class="pz-grid" d="M40.7 18v84M59.3 18v84M22 46h56M22 74h56"/>
+          <path class="pz-plate" d="M42 114h16l-2 4h-12z"/>
+          ${balls}
+        </svg>
+        <ol class="pc-rp-seq">${rows}
+        </ol>
+      </div>
+      <div class="an-hd-note pc-note">포수 쪽에서 본 위치${noXY ? ` · 위치가 없는 공 ${noXY}개는 목록에만` : ''}</div>
+      <button type="button" class="sc-act pc-rp-save" onclick="saveReplayImage()">이미지로 저장 (인스타 피드 1080×1350)</button>
+    </section>`;
+}
+
+// 리플레이 칸만 다시 그린다 (화면 전체를 다시 그리면 고른 select · 버튼에서 포커스가 빠진다). scroll = 공 카드에서 넘어올 때
+export function setReplay(key, focus, scroll) {
+  _replay = key;
+  const el = document.getElementById('pcReplay');
+  if (!el || !_rp) return;
+  el.outerHTML = _replayCard(_rp.P);
+  const card = document.getElementById('pcReplay'), f = focus && card.querySelector(focus);
+  if (f) (f.disabled ? card.querySelector('.pc-rp-sel') : f).focus();   // 끝 타석이라 ‹ · › 가 꺼졌으면 select 로
+  if (scroll && card.scrollIntoView) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+// 이미지: 1080×1350(인스타 피드 4:5) — 성적 카드와 같은 NIGHT 색 · 두 글꼴 · 꼬리 로고 (statcard.js 와 같은 규격: 여백 24 · 칸 안 16 · 꼬리 48)
+const RP_W = 540, RP_H = 675;
+function _replayImg(cv, sc) {
+  const { P, it } = _rp, pa = it.pa, n = pa.pitches.length, X = 24, FOOT = 48;
+  cv.width = RP_W * sc; cv.height = RP_H * sc;
+  const c = cv.getContext('2d');
+  c.setTransform(sc, 0, 0, sc, 0, 0); c.textBaseline = 'alphabetic';
+  c.fillStyle = N.bg; c.fillRect(0, 0, RP_W, RP_H);
+  const txt = (t, x, y, col, al) => { c.fillStyle = col; c.textAlign = al || 'left'; c.fillText(t, x, y); };
+  const num = (t, x, y, size, col) => { font(c, '700', size, FONT.num); c.textBaseline = 'middle'; txt(t, x, y + size * .04, col, 'center'); c.textBaseline = 'alphabetic'; };
+
+  // 머리: AT-BAT REPLAY · 경기 → 타자(크게) · 타석 결과 → 이닝 · 투수 · 투구 수
+  font(c, '600', 11, FONT.num); spacing(c, 2); txt('AT-BAT REPLAY', X, 44, N.tx2); spacing(c, 0);
+  if (!it.a.current) { font(c, '500', 12, FONT.kr); txt(_short(it.a), RP_W - X, 44, N.tx2, 'right'); }
+  const res = _paRes(pa), resCol = !pa.end ? N.tx3 : pa.end === '홈런' ? N.hr : HIT_ENDS.includes(pa.end) ? N.acc : pa.end === '볼넷' || pa.end === '사구' ? N.bb : N.tx;
+  fitFont(c, res, '900', 24, FONT.kr, 200, 14);
+  const rw = c.measureText(res).width;
+  txt(res, RP_W - X, 96, resCol, 'right');
+  const who = pa.batter || '타자 미기록';
+  fitFont(c, who, '900', 40, FONT.kr, RP_W - X * 2 - rw - 16, 20); txt(who, X, 96, N.tx);
+  font(c, '500', 14, FONT.kr);
+  txt([_innTxt(_paInn(pa)), '투수 ' + P.name, n + '구'].filter(Boolean).join(' · '), X, 124, N.tx2);
+
+  // 칸: 왼쪽 존(포수 쪽에서 본 위치) · 오른쪽 공 목록
+  const y0 = 144, y1 = RP_H - FOOT - 16, h = y1 - y0, ZW = 300;
+  rr(c, X, y0, RP_W - X * 2, h, 6); c.fillStyle = N.bg2; c.fill(); c.strokeStyle = N.line; c.lineWidth = 1.5; c.stroke();
+  const s = Math.min((ZW - 32) / 100, (h - 56) / 120), ox = X + 16 + (ZW - 32 - 100 * s) / 2, oy = y0 + (h - 120 * s - 24) / 2;
+  const zx = v => ox + v * s, zy = v => oy + v * s;
+  c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(zx(22), zy(18), 56 * s, 84 * s);
+  c.strokeStyle = N.line2; c.lineWidth = 1; c.beginPath();
+  [40.7, 59.3].forEach(v => { c.moveTo(zx(v), zy(18)); c.lineTo(zx(v), zy(102)); });
+  [46, 74].forEach(v => { c.moveTo(zx(22), zy(v)); c.lineTo(zx(78), zy(v)); });
+  c.stroke();
+  c.strokeStyle = N.tx2; c.lineWidth = 1.5; c.strokeRect(zx(22), zy(18), 56 * s, 84 * s);
+  c.strokeStyle = N.tx3; c.beginPath(); c.moveTo(zx(42), zy(114)); c.lineTo(zx(58), zy(114)); c.lineTo(zx(56), zy(118)); c.lineTo(zx(44), zy(118)); c.closePath(); c.stroke();
+  font(c, '500', 11, FONT.kr); txt('포수 쪽에서 본 위치', zx(50), zy(120) + 20, N.tx3, 'center');
+  pa.pitches.forEach((p, k) => {
+    if (!_hasXY(p)) return;
+    const x = zx(p.zoneX * 100), y = zy(p.zoneY * 120), r = 13;
+    if (_isLast(pa, k)) { c.beginPath(); c.arc(x, y, r + 4, 0, Math.PI * 2); c.strokeStyle = N.tx; c.lineWidth = 2; c.stroke(); }
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = _ptCol(p.pt); c.fill(); c.strokeStyle = N.bg2; c.lineWidth = 2; c.stroke();
+    num(String(k + 1), x, y, 14, N.bg);
+  });
+
+  // 공 목록: 번호 원(구종 색) · 구종 / 결과 두 줄 · 던지기 직전 카운트. 공이 많으면 줄 높이 · 글자를 같이 줄인다
+  const lx = X + ZW + 4, lw = RP_W - X - 16 - lx, rh = Math.min(44, (h - 32) / n), k1 = Math.min(1, rh / 40);
+  let ry = y0 + (h - rh * n) / 2 + rh / 2;
+  pa.pitches.forEach((p, k) => {
+    const r = 11 * k1, tx = lx + r * 2 + 8, cw = 30;
+    c.beginPath(); c.arc(lx + r, ry, r, 0, Math.PI * 2); c.fillStyle = _ptCol(p.pt); c.fill();
+    num(String(k + 1), lx + r, ry, 12 * k1, N.bg);
+    font(c, '500', 13 * k1, FONT.num); txt(_cntTxt(pa, k), lx + lw, ry - 2 * k1, N.tx3, 'right');
+    fitFont(c, p.pt || '구종 미기록', '700', 15 * k1, FONT.kr, lw - (tx - lx) - cw, 7); txt(p.pt || '구종 미기록', tx, ry - 2 * k1, N.tx);
+    const rt = _resTxt(p) + (_hasXY(p) ? '' : ' · 위치 없음');
+    fitFont(c, rt, '500', 12 * k1, FONT.kr, lw - (tx - lx), 6); txt(rt, tx, ry + 14 * k1, _isLast(pa, k) ? resCol : N.tx2);
+    ry += rh;
+  });
+
+  // 꼬리: 로고 · 계정
+  c.fillStyle = N.bg2; c.fillRect(0, RP_H - FOOT, RP_W, FOOT);
+  c.fillStyle = N.line; c.fillRect(0, RP_H - FOOT - .75, RP_W, 1.5);
+  wordmark(c, X, RP_H - FOOT + 29, 13, N.tx, N.acc);
+  font(c, '500', 12, FONT.num); txt('@spraylab2026', RP_W - X, RP_H - FOOT + 29, N.tx2, 'right');
+}
+
+// 작은 캔버스(1배)에 먼저 그려 빠진 글꼴 묶음을 받고(drawWithFonts), 내보낼 2배 캔버스에 한 번 그린다 → 저장 · 공유(core _downloadCanvas)
+export function saveReplayImage() {
+  if (!_rp) return;
+  window.showToast('이미지 생성 중...', false, true);
+  const warm = document.createElement('canvas'), cv = document.createElement('canvas');
+  return drawWithFonts(warm, () => _replayImg(warm, 1)).then(() => {
+    _replayImg(cv, 2);
+    window._downloadCanvas(cv, 'spraylab_replay_' + Date.now() + '.png');
+    window.showToast('이미지 저장 완료 ✓', false);
+  });
 }
 
 // ── 카운트 운영 · 투구수 구간 ────────────────────────────────
@@ -703,4 +852,6 @@ if (typeof window !== 'undefined') {
   window.setPitcherView = setPitcherView;
   window.exportPitcherExcel = exportPitcherExcel;
   window.setPitchPick = setPitchPick;
+  window.setReplay = setReplay;
+  window.saveReplayImage = saveReplayImage;
 }

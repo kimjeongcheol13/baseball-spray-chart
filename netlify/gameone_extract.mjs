@@ -64,6 +64,31 @@ export function boxText(html) {
     .join('\n');
 }
 
+// 팀 일정 › 경기결과(club/info/schedule/result, 2026-10-30 확인) 한 쪽(15경기) → { season, pages, games }
+//   줄마다 '10월25일(일) 13:30' · 분류(리그 · 대회) · 구장 · team1 = 원정(박스스코어 점수표 윗줄) · team2 = 홈 의 이름 · 점수 · 콜드승 · 몰수승 · BOX SCORE 링크(game_idx)
+//   pages = 아래 쪽 번호(page=N) 중 가장 큰 것. 날짜에 연도가 없어 앱이 season 을 붙인다
+export function schedule(html) {
+  const s = noComments(html), games = [];
+  for (const tr of s.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []) {
+    const d = /<td><strong>(\d{1,2})월\s*(\d{1,2})일<\/strong>([^<]*)<\/td>/.exec(tr);
+    if (!d) continue;
+    const td = (tr.match(/<td[^>]*>[\s\S]*?<\/td>/g) || []).map(txt);
+    const side = [...tr.matchAll(/<div class="team[12][^"]*">([\s\S]*?)<span class="score">([^<]*)<\/span>/g)].map(m => ({
+      name: txt((/<span class="team_name">([\s\S]*?)<\/span>/.exec(m[1]) || ['', ''])[1]),
+      r: /^\d+$/.test(m[2].trim()) ? +m[2].trim() : null,
+      note: txt((/<span class="exp_win">([\s\S]*?)<\/span>/.exec(m[1]) || ['', ''])[1]),
+    }));
+    if (side.length !== 2) continue;
+    const g = /schedule\/boxscore\?club_idx=\d+&(?:amp;)?game_idx=(\d{1,9})/.exec(tr), t = /(\d{1,2}:\d{2})/.exec(d[3]);
+    games.push({
+      game: g ? +g[1] : null, md: `${d[1].padStart(2, '0')}-${d[2].padStart(2, '0')}`, time: t ? t[1] : '', lig: td[1] || '', venue: td[2] || '',
+      away: side[0].name, as: side[0].r, home: side[1].name, hs: side[1].r, note: side[0].note || side[1].note,
+    });
+  }
+  const pages = Math.max(1, ...[...s.matchAll(/[?&]page=(\d{1,3})(?!\d)/g)].map(m => +m[1]));
+  return { season: season(html), pages, games };
+}
+
 // 선수단 → 저장 이름(key). 같은 이름이 둘이면 「이름 #번호」로 나눈다(저장이 이름 기준이라 · parseGameOneTeam 과 같은 규칙). 번호가 없으면 통산을 받지 않는다
 export const rosterKeys = ro => ro.flatMap(p => ro.filter(q => q.name === p.name).length < 2 ? [{ ...p, key: p.name }] : p.number ? [{ ...p, key: `${p.name} #${p.number}` }] : []);
 

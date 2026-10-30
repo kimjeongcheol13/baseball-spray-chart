@@ -39,6 +39,7 @@
 //   · 주소로 가져오기 (2026-10-30): 박스스코어 주소(game_idx= + club_idx= 또는 lig_idx=)를 넣고 「가져오기」 → 그때 중계(netlify/functions/gameone.mjs ?game=)가
 //     페이지를 통째 복사한 것과 같은 평문을 돌려준다 → 점수표 칸에 넣으면 통째 붙여넣기와 같은 길(_autoSplit)로 나눠 미리보기. 저장은 사용자가 누른다.
 //     앱을 열 때 저절로 받지 않는다. 저장 이벤트 paste = 'link'
+//   · 시즌 한 번에 (2026-10-30): 같은 칸에 팀 주소(club_idx=, game_idx 없음)를 넣으면 그 시즌 경기결과 목록 → 골라서 차례로 저장(아래 「시즌 한 번에」)
 
 // 게임원 수비위치 → 앱 포지션 (lineup pos). 실제 30경기(2026-10-19)에서 나온 표기는 一 二 三 유 좌 중 우 포 투 지 미 11개뿐.
 // 미 = 수비하지 않은 대타 → 빈 칸. 1 · 2 · 3 · 지명 · DH 는 처음 받은 예시 형식(탭 3칸)용으로 남겨 둔다
@@ -493,6 +494,8 @@ export function openGameOneImport(from) {
   const dt = $('goDate');
   if (dt && !dt.value) { dt.value = _today(); dt.dataset.auto = '1'; }   // 기본값(오늘)도 자동 값 — 페이지 경기 정보 줄의 날짜가 덮는다
   _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
+  if (_season && !_season.busy) _season = null;   // 지난번 시즌 목록은 접는다(받는 중에 닫았다 다시 열면 그대로 이어서 보인다)
+  _seasonRender();
   _preview();
   const fresh = from === 'link' || from === 'empty';
   const how = fresh && document.querySelector('#goOverlay details.go-how');
@@ -513,16 +516,7 @@ export function saveGameOneImport() {
   _saved.raw = null;
   const iss = _issues(R, findSameGames(g, _savedGames()));
   if (iss.length && !confirm(iss.map(i => '· ' + i.text).join('\n') + '\n\n그래도 새 경기로 저장할까요?')) return;
-  const label = g.th + ' ' + g.hs + ':' + g.as + ' ' + g.ta + ' (' + g.d + ')';
-  let saves;
-  try { saves = JSON.parse(localStorage.getItem('sl_saves') || '[]'); } catch (e) { saves = []; }
-  if (!Array.isArray(saves)) saves = [];
-  try {
-    localStorage.setItem(g.key, JSON.stringify(g));
-    saves.push({ key: g.key, label, ts: g.ts });
-    localStorage.setItem('sl_saves', JSON.stringify(saves));
-  } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
-  if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
+  if (!_store(g)) { toast('저장 공간이 부족해 저장하지 못했습니다'); return; }
   _resetInputs();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
   if (window.openLoad) window.openLoad();
@@ -535,6 +529,21 @@ export function saveGameOneImport() {
   _usedSplit = _usedLink = false;
   _syncStart();
   toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
+}
+
+// 새 경기로 저장(sl_<타임스탬프> 키 · sl_saves 항목 · cloudSave) — 한 경기 저장 · 시즌 한 번에 저장이 같이 쓴다. 저장 공간이 모자라면 false
+function _store(g) {
+  const label = g.th + ' ' + g.hs + ':' + g.as + ' ' + g.ta + ' (' + g.d + ')';
+  let saves;
+  try { saves = JSON.parse(localStorage.getItem('sl_saves') || '[]'); } catch (e) { saves = []; }
+  if (!Array.isArray(saves)) saves = [];
+  try {
+    localStorage.setItem(g.key, JSON.stringify(g));
+    saves.push({ key: g.key, label, ts: g.ts });
+    localStorage.setItem('sl_saves', JSON.stringify(saves));
+  } catch (e) { try { localStorage.removeItem(g.key); } catch (e2) {} return false; }
+  if (window.cloudSave) window.cloudSave(g.key, g, label, g.ts);
+  return true;
 }
 
 function _resetInputs() {
@@ -561,12 +570,16 @@ function _say(t, bad) {
   if (m) { m.textContent = t; m.classList.toggle('bad', !!bad); }
 }
 export async function fetchGameOneBox() {
-  const btn = $('goUrlBtn'), q = gameOneBoxQuery(($('goUrl') || {}).value);
-  if (!q) { _say('게임원 박스스코어 주소를 넣어 주세요. 주소에 game_idx= 와 club_idx=(또는 리그 페이지의 lig_idx=)가 있어야 해요.', true); return; }
+  const btn = $('goUrlBtn'), url = ($('goUrl') || {}).value, q = gameOneBoxQuery(url);
+  if (!q) {
+    const sq = gameOneSeasonQuery(url);
+    if (sq) return _fetchSeason(sq);
+    _say('게임원 박스스코어 주소나 팀 경기결과 주소를 넣어 주세요. 주소에 game_idx= 와 club_idx=(리그 박스스코어는 lig_idx=)가 있거나, 팀 주소의 club_idx= 가 있어야 해요.', true);
+    return;
+  }
   if (btn) btn.disabled = true;
   _say('게임원에서 가져오는 중…');
-  let d;
-  try { const r = await fetch(`${RELAY}?${q}&t=${Date.now()}`); d = r.ok ? await r.json() : { status: r.status }; } catch (e) { d = { status: 0 }; }
+  const d = await _relay(q);
   if (btn) btn.disabled = false;
   if (d.status != null || d.v !== 1 || typeof d.text !== 'string') {
     _say(d.status === 404 ? '게임원에 이 경기 타자 기록이 없어요. 주소가 맞는지, 경기 기록이 올라왔는지 확인해 주세요.' : '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.', true);
@@ -576,6 +589,134 @@ export async function fetchGameOneBox() {
   $('goScore').value = _linkText = d.text;
   _say('가져왔어요 — 아래 미리보기를 확인하고 「새 경기로 저장」을 누르세요.');
   _schedule();
+}
+
+// 중계 부르기 → 받은 JSON | { status }(0 = 연결 실패). 부른 때를 적어 둔다 — 시즌 한 번에 받기가 호출 제한(1분 10번)에 맞춰 띄운다
+let _lastCall = 0;
+async function _relay(q) {
+  _lastCall = Date.now();
+  try { const r = await fetch(`${RELAY}?${q}&t=${Date.now()}`); return r.ok ? await r.json() : { status: r.status }; } catch (e) { return { status: 0 }; }
+}
+
+// ── 시즌 한 번에 (2026-10-30) ── 팀 주소(club_idx= · game_idx 없음, 예: 팀 › 일정 › 경기결과) → 중계 ?list=1 → 그 시즌 경기 목록에서 골라
+//   한 경기씩 ?game= 으로 받아 바로 새 경기로 저장한다(경기마다 미리보기 없이 — 받는 길 · 나누기 · 저장은 한 경기 가져오기와 같다).
+//   · 이미 저장된 경기(findSameGames: 날짜 · 팀 · 점수)는 처음부터 꺼 두고, 받은 뒤에도 다시 확인해 건너뛴다 · 몰수 · 점수 없음 · 박스스코어 없는 경기도 꺼 둔다
+//   · 날짜 = 목록의 월일 + 시즌(박스스코어 정보 줄에는 연도가 없다) · 팀 이름 = 박스스코어 점수표(한 경기 가져오기와 같아 같은 경기 찾기가 맞는다)
+//   · 중계 호출 제한(1분 10번)에 맞춰 부르는 사이를 6.5초 띄운다 — 18경기면 2분쯤. 429 면 1분 쉬고 한 번 더. 창을 닫으면 멈춘다(받은 경기까지는 저장됨)
+//   · 타구 위치 확인(gameonefix.js)은 열지 않는다 — 대략 위치는 분석 탭 「위치 확인」에서 나중에
+const GAP = 6500;
+let _season = null;   // { club, team, season, more, games: [{ …목록 줄, date, dup, on, st }], busy }
+export function gameOneSeasonQuery(v) {
+  const s = String(v || ''), c = /[?&]club_idx=(\d{1,7})(?!\d)/.exec(s), y = /[?&]season=(\d{4})(?!\d)/.exec(s);
+  return c && !/[?&]game_idx=/.test(s) ? `list=1&club=${c[1]}${y ? `&season=${y[1]}` : ''}` : '';
+}
+const _cut = s => String(s || '').trim().slice(0, 20);
+// 목록 줄 → 같은 경기가 이미 저장돼 있나(가짜 경기로 findSameGames)
+function _seasonDup(r) {
+  return r.as != null && r.hs != null && !!r.date && findSameGames({ th: _cut(r.home), ta: _cut(r.away), hs: r.hs, as: r.as, info: { date: r.date } }, _savedGames()).length > 0;
+}
+async function _fetchSeason(q) {
+  const btn = $('goUrlBtn');
+  if (_season && _season.busy) return;
+  if (btn) btn.disabled = true;
+  _say('게임원에서 시즌 경기 목록을 가져오는 중…');
+  const d = await _relay(q);
+  if (btn) btn.disabled = false;
+  if (d.status != null || d.v !== 1 || !Array.isArray(d.games)) {
+    _say(d.status === 404 ? '게임원에 이 팀 경기 결과가 없어요. 주소의 팀(club_idx)과 시즌을 확인해 주세요.' : '게임원에서 가져오지 못했어요. 인터넷 연결을 확인하고 잠시 뒤 다시 눌러 주세요.', true);
+    return;
+  }
+  _saved.raw = null;
+  const games = d.games.map(r => {
+    const date = d.season && /^\d{2}-\d{2}$/.test(r.md) ? `${d.season}-${r.md}` : '';
+    const g = Object.assign({}, r, { date, st: '' });
+    g.dup = _seasonDup(g);
+    g.on = !!g.game && !g.dup && g.as != null && g.hs != null && !/몰수/.test(g.note || '');
+    if (g.dup) g.st = '저장됨'; else if (!g.game) g.st = '박스스코어 없음'; else if (/몰수/.test(g.note || '')) g.st = '몰수'; else if (g.as == null || g.hs == null) g.st = '점수 없음';
+    return g;
+  });
+  _season = { club: /club=(\d+)/.exec(q)[1], team: String(d.team || ''), season: d.season, more: !!d.more, games, busy: false };
+  _say('');
+  _seasonRender();
+}
+function _seasonRender(msg) {
+  const box = $('goSeason'), S = _season;
+  if (!box) return;
+  if (!S) { box.hidden = true; box.innerHTML = ''; return; }
+  const n = S.games.filter(g => g.on).length, dup = S.games.filter(g => g.dup).length;
+  box.hidden = false;
+  box.innerHTML = `<div class="go-season-h"><b>${_esc(S.team || '팀')}</b> ${S.season ? S.season + '시즌 · ' : ''}${S.games.length}경기`
+    + `<small>${dup ? `이미 저장된 ${dup}경기는 꺼 뒀어요 · ` : ''}고른 경기를 차례로 받아 새 경기로 저장해요${S.more ? ' · 앞의 90경기까지만 보여요' : ''}</small></div>`
+    + `<ul class="go-season-list">${S.games.map((g, i) => `<li class="${g.st === '저장함' ? 'ok' : ''}"><label>`
+      + `<input type="checkbox" ${g.on ? 'checked' : ''} ${!g.game || S.busy || g.st === '저장함' ? 'disabled' : ''} onchange="gameOneSeasonPick(${i}, this.checked)">`
+      + `<span class="go-season-d">${+g.md.slice(0, 2)}.${+g.md.slice(3)}</span>`
+      + `<span class="go-season-t">${_esc(g.away)} <b>${g.as == null ? '' : g.as}</b> : <b>${g.hs == null ? '' : g.hs}</b> ${_esc(g.home)}<small>${_esc([g.lig, g.note].filter(Boolean).join(' · '))}</small></span>`
+      + `${g.st ? `<em class="go-season-st">${_esc(g.st)}</em>` : ''}</label></li>`).join('')}</ul>`
+    + `<button type="button" class="btn btn-primary go-season-go" id="goSeasonGo" onclick="saveGameOneSeason()" ${!n || S.busy ? 'disabled' : ''}>${S.busy ? '받는 중…' : `고른 ${n}경기 저장`}</button>`
+    + `<div class="go-season-msg" id="goSeasonMsg" aria-live="polite">${_esc(msg || '')}</div>`;
+}
+export function gameOneSeasonPick(i, on) {
+  const g = _season && _season.games[i];
+  if (!g || _season.busy) return;
+  g.on = !!on;
+  const b = $('goSeasonGo'), n = _season.games.filter(x => x.on).length;
+  if (b) { b.disabled = !n; b.textContent = `고른 ${n}경기 저장`; }
+}
+// 받은 평문 → 경기(_autoSplit 과 같은 규칙, 날짜는 목록) | null
+function _seasonGame(text, r, now) {
+  const sp = _P().splitGameOnePage(text);
+  if (!sp) return null;
+  const sb = sp.score ? _P().parseGameOneScoreboard(sp.score) : null;
+  const names = sb && sb.teams.length >= 2 ? [sb.teams[0].name, sb.teams[1].name] : [sp.tables[0].name, sp.tables[1].name];
+  const info = _P().parseGameOneInfo ? _P().parseGameOneInfo(text) : null;
+  return buildGameOneGame({
+    scoreText: sp.score || '', awayText: sp.tables[0].text, homeText: sp.tables[1].text, pitchText: sp.pitch || '',
+    ta: _cut(names[0]), th: _cut(names[1]), date: r.date, venue: info && info.venue ? info.venue : '', now, stadium: (window.AS || {}).stadium || '',
+  }).game;
+}
+const _wait = ms => new Promise(res => setTimeout(res, ms));
+const _left = s => (s >= 60 ? `${Math.floor(s / 60)}분 ` : '') + `${s % 60}초`;
+export async function saveGameOneSeason() {
+  const S = _season;
+  if (!S || S.busy) return;
+  const pick = S.games.filter(g => g.on);
+  if (!pick.length) return;
+  const open = () => { const o = $('goOverlay'); return !!o && o.classList.contains('show'); };
+  S.busy = true;
+  let saved = 0, skipped = 0, failed = 0, full = false, lastKey = 0;
+  for (let k = 0; k < pick.length && open(); k++) {
+    const g = pick[k];
+    g.st = '받는 중';
+    _seasonRender(`${k + 1}/${pick.length} 받는 중 — ${+g.md.slice(0, 2)}.${+g.md.slice(3)} ${g.away} : ${g.home} · 남은 시간 약 ${_left(Math.round((pick.length - k) * GAP / 1000))}`);
+    await _wait(Math.max(0, GAP - (Date.now() - _lastCall)));
+    if (!open()) { g.st = ''; break; }
+    let d = await _relay(`game=${g.game}&club=${S.club}`);
+    if ((d.status === 429 || d.status === 0) && open()) {   // 다른 창 · 직전 가져오기가 제한을 먼저 썼다 — 1분 쉬고 한 번 더. Netlify 429 엔 CORS 머리가 없어 브라우저엔 연결 오류(0)로 보인다
+      _seasonRender(`게임원 중계가 잠시 쉬어야 해요 — 1분 뒤 이어서 받아요 (${k + 1}/${pick.length})`);
+      await _wait(61000);
+      if (open()) d = await _relay(`game=${g.game}&club=${S.club}`);
+    }
+    g.on = false;
+    if (d.status != null || d.v !== 1 || typeof d.text !== 'string') { g.st = d.status === 404 ? '기록 없음' : '못 받음'; d.status === 404 ? skipped++ : failed++; continue; }
+    let game = null;
+    try { game = _seasonGame(d.text, g, Math.max(Date.now(), lastKey + 1)); } catch (e) {}
+    if (!game || !game.abs.length || (typeof _gameDataOk === 'function' && !_gameDataOk(game))) { g.st = '읽지 못함'; failed++; continue; }
+    _saved.raw = null;
+    if (findSameGames(game, _savedGames()).length) { g.st = '저장됨'; g.dup = true; skipped++; continue; }
+    if (!_store(game)) { g.st = '저장 공간 부족'; failed++; full = true; break; }
+    lastKey = game.ts;
+    g.st = '저장함'; saved++;
+  }
+  pick.forEach(g => { if (g.st === '받는 중') g.st = ''; });
+  S.busy = false;
+  _saved.raw = null;
+  _syncStart();
+  const stopped = pick.some(g => g.on);
+  _track('gameone_season', { picked: pick.length, saved, skipped, failed, stopped: stopped ? 1 : 0 });
+  const msg = `${saved}경기를 새 경기로 저장했어요` + (skipped ? ` · 건너뜀 ${skipped}(이미 저장 · 기록 없음)` : '') + (failed ? ` · 못 받음 ${failed}` : '')
+    + (full ? ' — 저장 공간이 부족해 멈췄어요' : stopped ? ' — 창을 닫아 멈췄어요' : '') + (saved ? '. 「불러오기」에서 볼 수 있어요' : '');
+  _seasonRender(msg);
+  if (window.showToast) window.showToast(msg, false);
 }
 
 // 같은 경기마다 타점 채우기 계획. 지금 열린 경기(_curSaveKey)면 화면의 AS.abs 를 고친다(gameonefix.js 와 같은 방식)
@@ -648,13 +789,15 @@ function _openFromLink() {
 }
 
 if (typeof window !== 'undefined') {
-  window.SLGameOneImport = { buildGameOneGame, findSameGames, planRbiFill, gameOneInfoDate, gameOneBoxQuery, _openFromLink, _syncStart };
+  window.SLGameOneImport = { buildGameOneGame, findSameGames, planRbiFill, gameOneInfoDate, gameOneBoxQuery, gameOneSeasonQuery, _openFromLink, _syncStart };
   // 원정 · 홈 · 날짜 칸을 사용자가 직접 고치면 자동 표시를 지운다 — 다음 통째 붙여넣기가 덮지 않는다(_autoFill). 값을 코드로 넣을 때는 input 이벤트가 없다
   ['goTa', 'goTh', 'goDate'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { delete el.dataset.auto; }); });
   window.openGameOneImport = openGameOneImport;
   window.saveGameOneImport = saveGameOneImport;
   window.fillGameOneRbi = fillGameOneRbi;
   window.fetchGameOneBox = fetchGameOneBox;
+  window.gameOneSeasonPick = gameOneSeasonPick;
+  window.saveGameOneSeason = saveGameOneSeason;
   window.gameOnePreview = _schedule;
   const orig = window.updateFieldTapHint;   // core.js(defer)가 먼저 정한다
   if (typeof orig === 'function' && !orig._go) {

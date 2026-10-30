@@ -148,9 +148,9 @@
     try {
       fresh();
       calls.length = 0;
-      type('goUrl', 'https://www.gameone.kr/club/?club_idx=14797');
+      type('goUrl', 'https://www.gameone.kr/club/info/schedule/boxscore?game_idx=1722796');   // 팀 주소(club_idx 만)는 시즌 목록 — gameone-season.test.js
       $('goUrlBtn').click();
-      ok(calls.length === 0 && /game_idx=/.test(msg()) && $('goUrlMsg').classList.contains('bad'), '팀 페이지 주소 — ' + msg());
+      ok(calls.length === 0 && /game_idx=/.test(msg()) && $('goUrlMsg').classList.contains('bad'), '팀 · 리그 번호 없는 주소 — ' + msg());
       type('goUrl', 'https://www.gameone.kr/club/info/schedule/boxscore?club_idx=14797&game_idx=1718831');
       reply = json({ error: 'empty' }, 404);
       $('goUrlBtn').click();

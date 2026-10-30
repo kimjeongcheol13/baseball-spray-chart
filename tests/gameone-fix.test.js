@@ -239,4 +239,31 @@
     eq(r.ev, [{ action: 'done', pts: 4, est: 3, moved: 3, left: 0, tap: 3 }], 'GA4 tap 3');
     closeOverlay('loadOverlay');
   });
+
+  // 이어서 하기(2026-10-30): 시즌 한 번에 가져온 경기들 — 대략 위치가 남은 다른 경기가 있으면 「다음 경기 ▶」
+  test('이어서 하기: 지금 경기 줄(날짜 · 팀 · 점수 · 남은 경기) · 다음 경기 ▶ = 저장이 늦은 순 · 연 경기는 다시 안 고름 · 마지막은 다 봤어요', function () {
+    gameOneFixClose('later');
+    var K = ['sl_1790001000001', 'sl_1790001000002', 'sl_1790001000003'], keep = localStorage.getItem('sl_saves');
+    K.forEach(function (k, i) {
+      localStorage.setItem(k, JSON.stringify({ key: k, ts: 1790001000001 + i, ta: '갑' + i, th: '을' + i, as: i + 1, hs: 0, info: { date: '2026-09-0' + (i + 1) },
+        abs: [{ id: 9100 + i, bid: 9100 + i, bname: '이어' + i, res: '안타', x: 0.3, y: 0.5, deg: 40, dir: 'LF', estimated: true }], home_lineup: [], away_lineup: [], zoneHistory: {} }));
+    });
+    localStorage.setItem('sl_saves', JSON.stringify(JSON.parse(keep).concat(K.map(function (k, i) { return { key: k, label: '이어' + i, ts: 1790001000001 + i }; }))));
+    try {
+      ok(openGameOneFix(K[0]) && F().state().key === K[0], '첫 경기');
+      eq([$('gfGame').querySelector('b').textContent, $('gfGame').querySelector('small').textContent, $('gfDone').textContent],
+        ['9.1 갑0 1 : 0 을0', '대략 위치가 남은 경기 2개 더', '다음 경기 ▶'], '지금 경기 · 남은 경기 · 버튼');
+      var r = spy(function () { $('gfDone').click(); });
+      eq([r.ev.length && r.ev[0].action, shown(), F().state().key, F().state().left, $('gfDone').textContent], ['done', true, K[2], 1, '다음 경기 ▶'], '다음 = 저장이 늦은 경기');
+      $('gfDone').click();
+      eq([F().state().key, F().state().left, $('gfDone').textContent, $('gfGame').querySelector('small')], [K[1], 0, '다 봤어요', null], '마지막(처음 연 경기는 대략이 남아도 다시 안 고름)');
+      $('gfDone').click();
+      ok(!shown(), '다 봤어요 = 닫힘');
+      ok(openGameOneFix(K[1]) && F().state().left === 2, '새로 열면 처음부터(연 경기 기억 지움)');
+      gameOneFixClose('later');
+    } finally {
+      K.forEach(function (k) { localStorage.removeItem(k); });
+      localStorage.setItem('sl_saves', keep);
+    }
+  });
 })();

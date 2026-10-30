@@ -2,13 +2,14 @@
 //   GET /api/gameone?club=팀번호[&season=2026] → 팀 시즌 타자 · 투수 + 선수단 전원 통산 (gameone_extract.mjs teamData 와 같은 모양)
 //   GET /api/gameone?player=선수코드          → 그 선수 통산 { v, at, name, hand, bg, school, bat, pit }
 //   GET /api/gameone?game=경기번호&club=팀번호 | &lig=리그번호 → 그 경기 박스스코어를 통째 복사한 것과 같은 평문 { v, text } (앱 가져오기 칸에 넣는다)
+//   GET /api/gameone?list=1&club=팀번호[&season=2026] → 그 시즌 경기결과 목록 { v, team, season, games, more } (앱이 골라서 한 경기씩 ?game= 으로 받는다)
 //  · 앱이 직접 못 읽는 이유: 게임원은 CORS 헤더가 없고, 옛 보안 연결(DHE · 작은 키)만 받아 Supabase(Deno)도 못 붙는다.
 //    Node 는 이 연결에만 SECLEVEL=0 으로 받는다. 공개 기록 페이지를 읽기만 하고 보내는 것은 없다.
 //  · 정해 둔 게임원 페이지 6개만 · 숫자 · 코드 모양을 확인한 값만 부른다(아무 주소나 대신 여는 중계가 되지 않게)
 //  · 배포는 netlify.toml 주석 참고(CLI 로만)
 import https from 'node:https';
 import G from '../../js/gameone.js';
-import { rankRows, roster, rosterKeys, careerRec, teamData, boxText } from '../gameone_extract.mjs';
+import { rankRows, roster, rosterKeys, careerRec, teamData, boxText, schedule, title } from '../gameone_extract.mjs';
 
 const APP = 'https://kimjeongcheol13.github.io';
 const UA = 'SprayLab/1.0 (+https://kimjeongcheol13.github.io/baseball-spray-chart/)';
@@ -45,6 +46,15 @@ async function box(a, game, club, lig) {
   return sp && sp.tables.some(t => G.parseGameOne(t.text).players.length) ? text : null;
 }
 
+// 시즌 경기결과 목록: 첫 쪽에서 시즌(안 주면 게임원이 고른 시즌) · 쪽 수를 읽고 나머지 쪽을 같이 받는다. 6쪽(90경기)까지
+const MAX_PAGES = 6;
+async function games(a, club, season) {
+  const url = (y, p) => `/club/info/schedule/result?${y ? `season=${y}&` : ''}club_idx=${club}${p > 1 ? `&page=${p}` : ''}`;
+  const first = await get(a, url(season, 1)), s = schedule(first), y = s.season || season;
+  const rest = await Promise.all(Array.from({ length: Math.min(s.pages, MAX_PAGES) - 1 }, (_, i) => get(a, url(y, i + 2)).then(schedule)));
+  return { v: 1, team: title(first), season: y ? +y : null, games: s.games.concat(...rest.map(r => r.games)), more: s.pages > MAX_PAGES };
+}
+
 export default async req => {
   const u = new URL(req.url), club = u.searchParams.get('club') || '', player = u.searchParams.get('player') || '', season = u.searchParams.get('season') || '';
   const game = u.searchParams.get('game') || '', lig = u.searchParams.get('lig') || '';
@@ -59,6 +69,11 @@ export default async req => {
       if (!/^\d{1,9}$/.test(game) || !(byClub || byLig)) return out({ error: 'bad request' }, 400);
       const text = await box(a, game, byClub ? club : '', lig);
       return text ? out({ v: 1, text }) : out({ error: 'empty' }, 404);
+    }
+    if (u.searchParams.get('list') === '1') {   // 팀 시즌(club=)보다 먼저 — 목록도 club= 을 쓴다
+      if (!/^\d{1,7}$/.test(club) || !/^(\d{4})?$/.test(season)) return out({ error: 'bad request' }, 400);
+      const d = await games(a, club, season);
+      return d.games.length ? out(d) : out({ error: 'empty' }, 404);
     }
     if (/^\d{1,7}$/.test(club) && /^(\d{4})?$/.test(season)) {
       const d = await team(a, club, season);

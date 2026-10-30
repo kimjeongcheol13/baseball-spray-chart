@@ -575,6 +575,23 @@ footer{background:var(--card);border-top:1px solid var(--border);padding:40px 5%
 .go-shot-msg:empty{display:none}
 .go-shot-msg.bad{color:var(--red)}
 .go-ok{margin-top:2px;color:var(--green)}
+/* 시즌 한 번에 (gameoneimport.js _seasonRender) — 경기 줄마다 체크 · 날짜 · 점수 · 상태, 줄 높이 44px */
+.go-season{margin:0 0 12px;padding:10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg-raised);font-size:11px;line-height:1.5;color:var(--text2)}
+.go-season-h{margin-bottom:6px;font-size:12px;color:var(--text)}
+.go-season-h small{display:block;font-size:11px;color:var(--text3)}
+.go-season-list{list-style:none;margin:0 0 8px;padding:0;max-height:300px;overflow-y:auto;border-top:1px solid var(--border2)}
+.go-season-list li{border-bottom:1px solid var(--border2)}
+.go-season-list label{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 2px;cursor:pointer}
+.go-season-list input{flex:none;width:18px;height:18px;margin:0;accent-color:var(--blue)}
+.go-season-d{flex:none;width:36px;font-variant-numeric:tabular-nums;color:var(--text3)}
+.go-season-t{flex:1;min-width:0;color:var(--text)}
+.go-season-t small{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--text3)}
+.go-season-st{flex:none;font-style:normal;color:var(--text3)}
+.go-season-list li.ok .go-season-st{color:var(--green)}
+.go-season .btn.go-season-go{display:flex;justify-content:center;width:100%;min-height:44px}   /* 뒤쪽 .btn{min-height:36px} 보다 앞서게 */
+.go-season .btn.go-season-go:disabled{opacity:.45;cursor:progress}
+.go-season-msg{margin-top:6px}
+.go-season-msg:empty{display:none}
 /* 첫 화면(기록 0) 필드 아래 — 샘플 버튼(.sl-sample-start) 아래에 같은 크기 · 테두리만 */
 .go-start{display:block;box-sizing:border-box;min-height:44px;margin:8px auto 0;padding:0 20px;border:1.5px solid var(--blue);border-radius:2px;background:transparent;color:var(--blue);font:700 15px var(--font);cursor:pointer}
 .go-start[hidden]{display:none}

@@ -176,6 +176,8 @@
 
 .bt-spray .an-spray figcaption { display: none; }
 .bt-spray .an-spray svg { max-width: 360px; margin: 0 auto; }
+/* 구역별 내야 · 외야 표(dashboard.js depthTable) — 위 당김 · 센터 · 밀어 막대와 같은 폭 */
+.bt-spray + .ad-depth { width: 100%; box-sizing: border-box; margin: 12px 0 0; }
 
 .bt-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 

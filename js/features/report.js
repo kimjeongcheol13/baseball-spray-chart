@@ -6,17 +6,17 @@
 import { buildData, calcStats, f3, pct, sampleBadge } from './batdata.js?v=9';
 import { zoneOf } from './zonefig.js?v=7';
 import { HITS, ZONES_9 } from '../constants.js';
-import { FONT, PAPER as P, font, fitFont, spacing, rr, wordmark, drawWithFonts } from './imgkit.js?v=1';
+import { FONT, DARK as D, font, fitFont, rr, wordmark, drawWithFonts, dCard, dPill, tint } from './imgkit.js?v=3';
 
 const CMT_KEY = 'sl_report_cmt';
 const CMT_MAX = 80;           // 코멘트 최대 글자 (3줄 안쪽)
 const RANGES = [1, 3, 5, 10, 0];   // 최근 N경기 · 0 = 전체
 const DEF_RANGE = 5;
 
-// 캔버스 — 인쇄도 하는 흰 종이(PAPER). 글꼴은 둘만: 한글 = Noto Sans KR · 숫자/영문 라벨 = Oswald
-const W = 1080, H = 1920, M = 60, CW = W - M * 2;
+// 캔버스 — 어두운 카드형(imgkit DARK · 분석 화면 · 성적 카드와 같은 색). 글꼴은 둘만: 한글 = Noto Sans KR · 숫자/영문 라벨 = Oswald
+const W = 1080, H = 1920, X = 40, CW = W - X * 2, PAD = 32;   // 카드 바깥 여백 · 카드 안 여백
+const FIELD = 'rgba(255,255,255,0.035)', ZONE_LINE = 'rgba(244,246,250,0.6)';   // 구장 페어 지역 · 존 테두리
 const KR = FONT.kr, NUM = FONT.num;
-const PW = (CW - 40) / 2, FW = PW;   // 그림 두 칸의 폭(사이 40) · 그 안 그림 폭(1배)
 const MIN_AB = 3;   // 코스 칸 색칠 최소 타수 — zonefig.js(분석 · 스카우트 탭)와 같은 값
 const ZONE_BALL = ['볼 위', '볼 아래', '볼 내', '볼 외'];
 
@@ -251,64 +251,33 @@ function _wrap(ctx, text, max) {
 
 const _rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
 const _mix = (a, b, t) => { const A = _rgb(a), B = _rgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
-// 코스 칸 색: 이 선수 타율보다 낮으면 파랑 · 높으면 강조색 쪽 (기준과 폭은 zonefig.js 와 같다 — 색만 종이 팔레트)
+// 코스 칸 색: 이 선수 타율보다 낮으면 파랑 · 높으면 주황 쪽 (기준과 폭은 zonefig.js 와 같다 — 색만 어두운 카드 팔레트)
 function _heat(avg, base) {
   const t = Math.max(-1, Math.min(1, (avg - base) / Math.max(0.15, base)));
-  return _mix(P.bg, t < 0 ? P.bb : P.acc, Math.abs(t) * 0.5);
+  return _mix(D.card, t < 0 ? D.bb : D.acc, Math.abs(t) * 0.45);
 }
 
-// 선은 세 가지만: 구역 = 2px 먹 · 줄 = 1px 회색 · 칸 안 = 1px 옅은 회색. 픽셀에 맞춰 칠해 또렷하게
-const LINE = { sec: [2, P.ink], row: [1, P.rule], hair: [1, P.rule2] };
-const _hr = (c, x, y, w, k) => { c.fillStyle = LINE[k][1]; c.fillRect(Math.round(x), Math.round(y), Math.round(w), LINE[k][0]); };
-const _vr = (c, x, y, h, k) => { c.fillStyle = LINE[k][1]; c.fillRect(Math.round(x), Math.round(y), LINE[k][0], Math.round(h)); };
-
-// 구역 머리: 2px 선 · 작은 영문 라벨(Oswald 자간) · 한글 제목 · 오른쪽 개수 — 높이 HEAD
-const HEAD = 80;
-function _head(c, x, y, w, en, ko, meta) {
-  _hr(c, x, y, w, 'sec');
-  spacing(c, 2.5); _t(c, en, x, y + 30, '500', 15, NUM, P.ink3); spacing(c, 0);
-  _t(c, ko, x, y + 64, '700', 28, KR, P.ink);
-  if (meta) _t(c, meta, x + w, y + 64, '500', 17, KR, P.ink3, 'right');
+// 카드: imgkit 카드(540 기준 · 모서리 20)를 2배로 — 이 이미지는 1080 그대로 그린다(글자 26px 이상 = 성적 카드 13px × 2)
+const _card = (c, x, y, w, h, glow) => { c.save(); c.scale(2, 2); dCard(c, x / 2, y / 2, w / 2, h / 2, glow); c.restore(); };
+// 카드 머리: 제목(왼쪽) · 설명(오른쪽, 흐리게) — y = 기준선
+function _title(c, t, x, y, meta, right) {
+  _t(c, t, x, y, '700', 30, KR, D.tx);
+  if (meta) _t(c, meta, right, y, '500', 26, KR, D.tx3, 'right');
 }
 
-// 비율 막대 + 아래 범례 줄. 막대 안에는 글자를 쓰지 않고, 범례는 늘 같은 자리(폭의 1/3씩): ■ 이름 개수 %
-// items = [[이름, 개수 | null(기록 안 함 → 이름만 옅게), 색]] · 합이 0이면 옅은 빈 막대 + 안내
-const BAR = 16, BAR_H = BAR + 36;   // 막대 높이 · 막대 + 범례 줄 높이
-function _pbar(c, x, y, w, items, empty) {
-  const tot = items.reduce((t, it) => t + (it[1] || 0), 0);
-  if (!tot) {
-    c.fillStyle = P.fill; c.fillRect(x, y, w, BAR);
-    _t(c, empty, x, y + BAR + 28, '500', 16, KR, P.ink3);
-    return;
-  }
-  let acc = 0;
-  items.forEach(([, n, col]) => {
-    if (!n) return;
-    const x0 = Math.round(x + w * acc / tot), x1 = Math.round(x + w * (acc += n) / tot);
-    c.fillStyle = col; c.fillRect(x0, y, x1 - x0, BAR);
-    if (x1 < x + w) { c.fillStyle = P.bg; c.fillRect(x1 - 1, y, 2, BAR); }   // 칸 사이 흰 틈
-  });
-  items.forEach(([l, n, col], i) => {
-    const lx = x + w * i / 3, ly = y + BAR + 28;
-    if (n == null) { _t(c, l, lx, ly, '500', 16, KR, P.ink3); return; }
-    c.fillStyle = col; c.fillRect(lx, ly - 11, 10, 10);
-    _runs(c, [[l + ' ', '500', 16, KR, P.ink2], [String(n), '600', 18, NUM, P.ink], ['  ' + Math.round(n / tot * 100) + '%', '500', 16, NUM, P.ink3]], lx + 16, ly);
-  });
-}
-
-// 타구 기호 (성적 카드와 같은 Statcast 식): 색 점 + 바탕색 테 1.5px · 아웃 = 회색 빈 고리 · 홈런 = 조금 큰 점 + 바깥 가는 고리
+// 타구 기호 (성적 카드와 같은 Statcast 식): 색 점 + 카드색 테 · 아웃 = 회색 빈 고리 · 홈런 = 조금 큰 점 + 바깥 가는 고리
 // (게임원에서 가져온 대략 위치도 예전 이미지처럼 같은 기호 — 이미지에는 점선 설명 자리가 없다)
-const MARK = { '1b': P.acc, xbh: P.xbh, hr: P.hr }, TAU = Math.PI * 2;
+const MARK = { '1b': D.hit, xbh: D.xbh, hr: D.hr }, TAU = Math.PI * 2;
 function _mark(c, t, x, y) {
-  let r = t === 'out' ? 6 : 7;
-  if (t === 'hr') { r *= 1.12; c.beginPath(); c.arc(x, y, r + 3, 0, TAU); c.strokeStyle = P.hr; c.lineWidth = 1; c.stroke(); }
-  c.beginPath(); c.arc(x, y, r + 1.5, 0, TAU); c.fillStyle = P.bg; c.fill();
+  let r = t === 'out' ? 7 : 9;
+  if (t === 'hr') { r *= 1.12; c.beginPath(); c.arc(x, y, r + 4, 0, TAU); c.strokeStyle = D.hr; c.lineWidth = 1.5; c.stroke(); }
+  c.beginPath(); c.arc(x, y, r + 2, 0, TAU); c.fillStyle = D.card; c.fill();
   c.beginPath();
-  if (t === 'out') { c.arc(x, y, r - 0.75, 0, TAU); c.strokeStyle = P.out; c.lineWidth = 1.5; c.stroke(); }
+  if (t === 'out') { c.arc(x, y, r - 1, 0, TAU); c.strokeStyle = D.out; c.lineWidth = 2; c.stroke(); }
   else { c.arc(x, y, r, 0, TAU); c.fillStyle = MARK[t]; c.fill(); }
 }
 
-// ── 타구 방향 그림 ────────────────────────────────────────────
+// ── 타구 위치 그림 ────────────────────────────────────────────
 // 저장 좌표 → 필드 비율(core.js _fieldPos — 분석 탭 스프레이와 같은 변환 · 구장 펜스 모양) → 이 상자 px
 // 각도를 파울라인 바로 안쪽으로 (batdata sprayFigure 와 같은 이유: deg 0 의 반올림 오차)
 const _fpAt = (fp, deg, dist) => {
@@ -326,13 +295,13 @@ function _fieldBox() {
   }
   return b;
 }
-const FPAD = 18;   // 양옆 = 폴 바깥 거리 글자 자리
+const FPAD = 40;   // 양옆 = 폴 바깥 거리 글자 자리
 const _fieldH = w => { const b = _fieldBox(); return b ? (w - FPAD * 2) * (b.y1 - b.y0) / (b.x1 - b.x0) : w * 0.9; };
-// 선으로만 그린 구장 (성적 카드와 같은 모양 · 종이 색): 옅은 페어 지역 · 내야 잔디 호 · 거리 점선 호 · 다이아몬드 · 파울라인 · 펜스
+// 선으로만 그린 구장 (성적 카드와 같은 모양): 옅은 페어 지역 · 내야 잔디 호 · 거리 점선 호 · 다이아몬드 · 파울라인 · 펜스
 function _field(c, abs, x, y, w) {
   const fp = window._fieldPos, bx = _fieldBox();
   if (!bx) return;
-  const k = (w - FPAD * 2) / (bx.x1 - bx.x0), h = _fieldH(w);
+  const k = (w - FPAD * 2) / (bx.x1 - bx.x0);
   const px = p => [x + FPAD + (p[0] - bx.x0) * k, y + (p[1] - bx.y0) * k];
   const at = (deg, dist) => px(_fpAt(fp, deg, dist));
   const path = (pts, close) => { c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); if (close) c.closePath(); };
@@ -349,27 +318,27 @@ function _field(c, abs, x, y, w) {
   // 거리 호: 30m(작은 구장 20m) 마다, 짧은 쪽 폴보다 반 칸 안쪽까지 (성적 카드와 같은 규칙)
   const step = cfD >= 100 ? 30 : 20, dists = [], short = Math.min(st.lfDist || cfD, st.rfDist || cfD);
   for (let d = step; d < short - step / 2; d += step) dists.push(d);
-  path([hm, ...fence], true); c.fillStyle = P.fill; c.fill();
+  path([hm, ...fence], true); c.fillStyle = FIELD; c.fill();
   c.save(); path([hm, ...fence], true); c.clip();
-  c.strokeStyle = P.rule; c.lineWidth = 1;
+  c.strokeStyle = D.line2; c.lineWidth = 1.5;
   const md = on(up, (st.mound || 18.44) * ppm);
   c.beginPath(); c.arc(md[0], md[1], 29 * bm / 27.43 * ppm, 0, TAU); c.stroke();   // 내야 잔디 경계 (마운드 중심 29m)
-  c.setLineDash([3, 4]);
+  c.setLineDash([4, 6]);
   dists.forEach(d => { c.beginPath(); c.arc(hm[0], hm[1], d * ppm, 0, TAU); c.stroke(); });
   c.setLineDash([]);
   c.restore();
-  path(bs); c.strokeStyle = P.rule; c.lineWidth = 1; c.stroke();
-  path([lp, hm, rp]); c.strokeStyle = P.ink2; c.stroke();
-  path(fence); c.strokeStyle = P.ink3; c.lineWidth = 1.5; c.stroke();
+  path(bs); c.strokeStyle = D.line2; c.lineWidth = 1.5; c.stroke();
+  path([lp, hm, rp]); c.strokeStyle = D.tx3; c.lineWidth = 2; c.stroke();
+  path(fence); c.stroke();
   // 베이스(45° 돌린 작은 네모) · 홈(오각형)
-  c.fillStyle = P.ink2;
-  bs.forEach(p => { path([[p[0], p[1] - 3.5], [p[0] + 3.5, p[1]], [p[0], p[1] + 3.5], [p[0] - 3.5, p[1]]], true); c.fill(); });
-  path([[hm[0], hm[1] + 2], [hm[0] + 3.5, hm[1] - 1], [hm[0] + 3.5, hm[1] - 4], [hm[0] - 3.5, hm[1] - 4], [hm[0] - 3.5, hm[1] - 1]], true); c.fill();
+  c.fillStyle = D.tx;
+  bs.forEach(p => { path([[p[0], p[1] - 5], [p[0] + 5, p[1]], [p[0], p[1] + 5], [p[0] - 5, p[1]]], true); c.fill(); });
+  path([[hm[0], hm[1] + 3], [hm[0] + 5, hm[1] - 1], [hm[0] + 5, hm[1] - 6], [hm[0] - 5, hm[1] - 6], [hm[0] - 5, hm[1] - 1]], true); c.fill();
   // 거리 글자: 펜스(폴 바깥 · 중앙 위) · 거리 호(왼쪽 파울라인 바깥) — 타구 점과 겹치지 않는 자리
   if (st.cfDist) {
-    const ct = on(up, cfD * ppm + 6), lab = (t, p, al) => _t(c, t + 'm', p[0], p[1], '500', 13, NUM, P.ink3, al);
-    lab(st.lfDist, [lp[0] - 6, lp[1] + 4], 'right'); lab(cfD, ct, 'center'); lab(st.rfDist, [rp[0] + 6, rp[1] + 4], 'left');
-    dists.forEach(d => { const p = on(uL, d * ppm); lab(d, [p[0] - 6, p[1] + 3], 'right'); });
+    const ct = on(up, cfD * ppm + 10), lab = (t, p, al) => _t(c, t + 'm', p[0], p[1], '500', 26, NUM, D.tx3, al);
+    lab(st.lfDist, [lp[0] - 8, lp[1] + 9], 'right'); lab(cfD, ct, 'center'); lab(st.rfDist, [rp[0] + 8, rp[1] + 9], 'left');
+    dists.forEach(d => { const p = on(uL, d * ppm); lab(d, [p[0] - 8, p[1] + 8], 'right'); });
   }
   // 타구 (아웃 → 단타 → 장타 → 홈런 순으로 위에 쌓는다)
   const order = { out: 0, '1b': 1, xbh: 2, hr: 3 };
@@ -378,257 +347,231 @@ function _field(c, abs, x, y, w) {
     .sort((p, q) => order[p.t] - order[q.t])
     .forEach(({ a, t }) => { const p = px(fp(a)); _mark(c, t, p[0], p[1]); });
   if (!pts.length) {
-    // 안내 글자 자리만 부채꼴 색으로 덮어 선과 겹치지 않게 (펜스와 거리 호 사이)
-    const ty = hm[1] + (cf[1] - hm[1]) * 0.74;
-    font(c, '700', 20, KR);
-    const tw = c.measureText('타구 위치 기록이 없어요').width + 24;
-    c.fillStyle = P.fill; c.fillRect(hm[0] - tw / 2, ty - 24, tw, 34);
-    _t(c, '타구 위치 기록이 없어요', hm[0], ty, '700', 20, KR, P.ink2, 'center');
+    // 안내 글자 자리만 카드색으로 덮어 선과 겹치지 않게 (펜스와 거리 호 사이)
+    const ty = hm[1] + (cf[1] - hm[1]) * 0.56, msg = '타구 위치 기록이 없어요';
+    const z = fitFont(c, msg, '700', 26, KR, w - FPAD * 2 - 24, 20), tw = c.measureText(msg).width + 24;
+    c.fillStyle = D.card; c.fillRect(hm[0] - tw / 2, ty - 30, tw, 42); c.fillStyle = FIELD; c.fillRect(hm[0] - tw / 2, ty - 30, tw, 42);
+    _t(c, msg, hm[0], ty, '700', z, KR, D.tx2, 'center');
   }
 }
-// 범례 한 줄: ● 단타 ● 2·3루타 ● 홈런 ○ 아웃
-function _legend(c, x, y) {
-  [['1b', '단타'], ['xbh', '2·3루타'], ['hr', '홈런'], ['out', '아웃']].forEach(([t, l]) => {
-    _mark(c, t, x + 11, y - 6);
-    _t(c, l, x + 28, y, '500', 16, KR, P.ink2);
-    x += 28 + c.measureText(l).width + 24;
+// 기호 설명 한 줄(가운데): ● 단타 ● 장타 ◎ 홈런 ○ 아웃
+function _legend(c, cx, y) {
+  const L = [['1b', '단타'], ['xbh', '장타'], ['hr', '홈런'], ['out', '아웃']];
+  font(c, '500', 26, KR);
+  let x = cx - (L.reduce((n, [, l]) => n + 30 + c.measureText(l).width, 0) + 26 * (L.length - 1)) / 2;
+  L.forEach(([t, l]) => {
+    _mark(c, t, x + 11, y - 9);
+    _t(c, l, x + 30, y, '500', 26, KR, D.tx2);
+    x += 30 + c.measureText(l).width + 26;
   });
 }
 
 // ── 코스별 타율 (스트라이크존 9칸 + 바깥 볼 4칸) ─────────────────
 // 칸 숫자 · 색 기준은 zonefig.js hotColdFigure 와 같다: 칸마다 calcStats · 색 = 이 선수 타율 대비 · MIN_AB 타수 미만은 색 없음
-function _zoneGeo(w) {
-  const side = Math.round(w * 0.11), g = 8, ax = 28, band = Math.round(w * 0.1);
-  const cw = Math.round((w - 2 * (side + g)) / 3), ch = Math.round(cw * 0.9);
+// 칸 높이는 카드에 남는 높이로 (72~112) · 칸 안 = 타율 + 안타/타수 (타석 수는 머리 오른쪽 합계로)
+function _zoneGeo(w, h) {
+  const side = 56, g = 6, ax = 40, band = 46, cw = Math.floor((w - 2 * (side + g)) / 3);
+  const ch = Math.round(Math.max(72, Math.min(112, (h - ax - band * 2 - g * 2) / 3)));
   return { side, g, ax, band, cw, ch, h: ax + band * 2 + g * 2 + ch * 3 };
 }
-const _zoneH = w => _zoneGeo(w).h;
-function _zone(c, zs, base, x, y, w) {
-  const { side, g, ax, band, cw, ch, h } = _zoneGeo(w);
+function _zone(c, zs, base, x, y, w, h) {
+  const { side, g, ax, band, cw, ch } = _zoneGeo(w, h);
   x = Math.round(x); y = Math.round(y);
-  const gx = x + side + g, gy = y + ax + band + g, zw = cw * 3, zh = ch * 3, sz = w / FW;
+  const gx = x + side + g, gy = y + ax + band + g, zw = cw * 3, zh = ch * 3;
   const zoned = Object.values(zs).reduce((n, s) => n + s.pa, 0);
-  ['내각', '중앙', '외각'].forEach((t, i) => _t(c, t, gx + cw * (i + 0.5), y + 16, '500', 16, KR, P.ink2, 'center'));
+  ['내각', '중앙', '외각'].forEach((t, i) => _t(c, t, gx + cw * (i + 0.5), y + 28, '500', 26, KR, D.tx2, 'center'));
   const balls = [['볼 위', gx, y + ax, zw, band], ['볼 아래', gx, gy + zh + g, zw, band], ['볼 내', x, gy, side, zh], ['볼 외', gx + zw + g, gy, side, zh]];
   const grid = () => {
-    for (let i = 1; i < 3; i++) { _vr(c, gx + cw * i, gy, zh, 'hair'); _hr(c, gx, gy + ch * i, zw, 'hair'); }
-    _hr(c, gx, gy, zw, 'sec'); _hr(c, gx, gy + zh - 2, zw, 'sec'); _vr(c, gx, gy, zh, 'sec'); _vr(c, gx + zw - 2, gy, zh, 'sec');
+    c.fillStyle = D.line;
+    for (let i = 1; i < 3; i++) { c.fillRect(gx + cw * i - 1, gy, 2, zh); c.fillRect(gx, gy + ch * i - 1, zw, 2); }
+    c.strokeStyle = ZONE_LINE; c.lineWidth = 2; c.strokeRect(gx + 1, gy + 1, zw - 2, zh - 2);
   };
   if (!zoned) {
     // 빈 상태: 옅은 칸 + 가운데 안내
-    c.fillStyle = P.zebra; balls.forEach(b => c.fillRect(b[1], b[2], b[3], b[4]));
+    c.fillStyle = D.card2; balls.forEach(b => c.fillRect(b[1], b[2], b[3], b[4]));
     grid();
-    c.fillStyle = P.bg; c.fillRect(gx + 2, gy + ch + 1, zw - 4, ch - 1);
-    _t(c, '코스(존) 기록이 없어요', gx + zw / 2, gy + zh / 2 - 2, '700', 20, KR, P.ink2, 'center');
-    _t(c, '코스를 기록하면 칸이 채워져요', gx + zw / 2, gy + zh / 2 + 26, '500', 16, KR, P.ink3, 'center');
-    return h;
+    c.fillStyle = D.card; c.fillRect(gx + 2, gy + ch + 1, zw - 4, ch - 2);
+    const m1 = '코스 기록이 없어요', m2 = '코스를 기록하면 채워져요';
+    _t(c, m1, gx + zw / 2, gy + zh / 2 - 4, '700', fitFont(c, m1, '700', 28, KR, zw - 8, 20), KR, D.tx2, 'center');
+    _t(c, m2, gx + zw / 2, gy + zh / 2 + 32, '500', fitFont(c, m2, '500', 26, KR, zw - 8, 18), KR, D.tx3, 'center');
+    return;
   }
-  // 바깥 볼 칸: 옅은 바탕만 · 기록이 있을 때만 숫자
+  // 바깥 볼 칸: 옅은 바탕(3타수 이상이면 색) · 기록이 있을 때만 숫자. 옆 칸은 좁아서 글자를 세로로 쌓는다
   balls.forEach(([z, bx, by, bw, bh]) => {
-    const s = zs[z], on = s.ab >= MIN_AB, cx = bx + bw / 2, cy = by + bh / 2, vert = bw < bh;
-    c.fillStyle = on ? _heat(s.avg, base) : P.zebra; c.fillRect(bx, by, bw, bh);
-    if (!s.pa) { _t(c, z, cx, cy + 6, '500', 15, KR, P.ink3, 'center'); return; }
-    const main = s.ab ? f3(s.avg) : '—';
-    if (!vert) {
-      _runs(c, [[z + '   ', '500', 15, KR, P.ink2], [main, '600', 20 * sz, NUM, P.ink], [`   ${s.h}/${s.ab} · ${s.pa}타석`, '500', 15, KR, P.ink2]], cx, cy + 7, 'center');
-    } else {
-      _t(c, z, cx, cy - 34, '500', 15, KR, P.ink2, 'center');
-      _t(c, main, cx, cy + 2, '600', 20 * sz, NUM, P.ink, 'center');
-      _t(c, `${s.h}/${s.ab}`, cx, cy + 26, '500', 16, NUM, P.ink2, 'center');
-      _t(c, `${s.pa}타석`, cx, cy + 46, '500', 14, KR, P.ink2, 'center');
+    const s = zs[z], cx = bx + bw / 2, cy = by + bh / 2;
+    c.fillStyle = s.ab >= MIN_AB ? _heat(s.avg, base) : D.card2; c.fillRect(bx, by, bw, bh);
+    const main = s.ab ? f3(s.avg) : '—', hab = `${s.h}/${s.ab}`;
+    if (bw > bh) {
+      if (!s.pa) return _t(c, z, cx, cy + 9, '500', 26, KR, D.tx3, 'center');
+      return _runs(c, [[z + '  ', '500', 26, KR, D.tx2], [main, '700', 30, NUM, D.tx], ['  ' + hab, '500', 26, NUM, D.tx2]], cx, cy + 10, 'center');
     }
+    z.split(' ').forEach((ch1, i) => _t(c, ch1, cx, cy - 58 + i * 30, '500', 26, KR, s.pa ? D.tx2 : D.tx3, 'center'));
+    if (!s.pa) return;
+    _t(c, main, cx, cy + 22, '700', fitFont(c, main, '700', 30, NUM, bw - 8, 20), NUM, D.tx, 'center');
+    _t(c, hab, cx, cy + 56, '500', fitFont(c, hab, '500', 26, NUM, bw - 8, 18), NUM, D.tx2, 'center');
   });
   // 9칸: 타율은 가장 넓은 값 기준 오른쪽 맞춤 → 같은 열에서 소수점이 한 줄에 선다
-  const vz = 30 * sz, vals = ZONES_9.map(z => (zs[z].ab ? f3(zs[z].avg) : '—'));
-  font(c, '600', vz, NUM);
+  const vals = ZONES_9.map(z => (zs[z].ab ? f3(zs[z].avg) : '—'));
+  const vz = Math.min(...vals.map(v => fitFont(c, v, '700', ch >= 84 ? 40 : 34, NUM, cw - 14, 26)));
+  font(c, '700', vz, NUM);
   const half = Math.max(...vals.map(v => c.measureText(v).width)) / 2;
   ZONES_9.forEach((z, i) => {
     const s = zs[z], on = s.ab >= MIN_AB, cx = gx + cw * (i % 3), cy = gy + ch * Math.floor(i / 3);
     if (on) { c.fillStyle = _heat(s.avg, base); c.fillRect(cx, cy, cw, ch); }
-    if (!s.pa) { _t(c, '—', cx + cw / 2, cy + ch / 2 + 8, '500', 22 * sz, NUM, P.rule, 'center'); return; }
-    _t(c, vals[i], cx + cw / 2 + half, cy + ch * 0.52, '600', vz, NUM, on ? P.ink : P.ink2, 'right');
-    _t(c, `${s.h}/${s.ab} · ${s.pa}타석`, cx + cw / 2, cy + ch * 0.8, '500', 15 * Math.max(sz, 0.9), KR, P.ink2, 'center');
+    if (!s.pa) return _t(c, '—', cx + cw / 2, cy + ch / 2 + 10, '500', 30, NUM, D.tx3, 'center');
+    _t(c, vals[i], cx + cw / 2 + half, cy + ch * 0.55, '700', vz, NUM, on ? D.tx : D.tx2, 'right');
+    _t(c, `${s.h}/${s.ab}`, cx + cw / 2, cy + ch * 0.9, '500', 26, NUM, D.tx2, 'center');
   });
   grid();
-  return h;
+}
+
+// 비율 세 칸(방향 · 타구 유형): 머리(제목 · 기준) → [이름 비율%] 세 칸(가장 큰 값은 주황) → 막대
+// items = [[이름, 개수 | null(기록 안 함 → '—')]] · 합이 0이면 옅은 빈 막대 + 안내
+function _split(c, x, y, w, title, meta, items, empty) {
+  _title(c, title, x, y + 30, meta, x + w);
+  const tot = items.reduce((t, it) => t + (it[1] || 0), 0), by = y + 106;
+  rr(c, x, by, w, 12, 6); c.fillStyle = D.card2; c.fill();
+  if (!tot) return _t(c, empty, x, y + 82, '500', 26, KR, D.tx3);
+  const pc = items.map(it => (it[1] == null ? null : Math.round(it[1] / tot * 100))), max = Math.max(...pc.map(v => v || 0));
+  const lab = it => it[0] + ' ';
+  font(c, '500', 26, KR);
+  const lw = items.map(it => c.measureText(lab(it)).width);
+  const vz = Math.min(...items.map((it, i) => fitFont(c, pc[i] == null ? '—' : pc[i] + '%', '700', 40, NUM, w / 3 - 16 - lw[i], 26)));
+  items.forEach((it, i) => _runs(c, [[lab(it), '500', 26, KR, D.tx2], [pc[i] == null ? '—' : pc[i] + '%', '700', vz, NUM, pc[i] == null ? D.tx3 : pc[i] === max ? D.acc : D.tx]], x + w / 3 * i, y + 84));
+  let bx = x;
+  items.forEach((it, i) => {
+    if (!it[1]) return;
+    const bw = w * it[1] / tot;
+    rr(c, bx, by, Math.max(bw - (bx + bw < x + w - 1 ? 4 : 0), 12), 12, 6); c.fillStyle = pc[i] === max ? D.acc : D.line2; c.fill();
+    bx += bw;
+  });
 }
 
 // ── 한 장 그리기 ──────────────────────────────────────────────
-// 위에서부터: 머리(로고 · 이름 · 팀 · 기간 · 표본 안내) → 기록(큰 숫자 4칸 · 기록 줄 · wOBA 줄 · 요약) → 타구 방향 | 코스별 타율 → 타구 유형 → 코치 코멘트 → 바닥
-// 왼쪽 끝은 모두 M 한 줄. 블록 사이 간격은 8의 배수 · 남는 높이는 간격 → 그림 칸에, 모자라면 그림을 줄인다 (빈 띠가 생기지 않게)
+// 위에서부터: 제목 줄 → 맨 위 카드(팀 · 이름 · 기간 · 표본 안내 · 요약) → 큰 숫자 4칸 → 기록 한 줄(6칸) → 타구 위치 | 코스별 타율 → 방향 | 타구 유형 → 코치 코멘트 → 꼬리
+// 카드 사이 24 (남으면 넓히고, 코멘트 3줄 + 표본 안내로 모자라면 16) · 그림 두 카드가 남는 높이를 받는다(540~620)
 function _draw(c, R) {
-  const s = R.st, smp = sampleBadge(s.pa), fy = H - 112;   // fy = 바닥 선
-  c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
+  const s = R.st, smp = sampleBadge(s.pa), IX = X + PAD, IW = CW - PAD * 2, END = H - 92;   // END = 꼬리 위 마지막 카드 끝
+  c.fillStyle = D.bg; c.fillRect(0, 0, W, H);
 
-  // 1. 머리: 로고 · PLAYER REPORT (· 샘플 표시)
-  wordmark(c, M, 70, 28, P.ink, P.acc);
-  spacing(c, 4);
-  font(c, '600', 20, NUM);
-  const lbW = c.measureText('PLAYER REPORT').width;
-  _t(c, 'PLAYER REPORT', W - M + 4, 68, '600', 20, NUM, P.ink2, 'right');
-  spacing(c, 0);
-  if (R.sample) {
-    const parts = [['SAMPLE', '600', 16, NUM, P.acc], [' · 가상 선수', '700', 16, KR, P.acc]];
-    const pw = parts.reduce((n, p) => { font(c, p[1], p[2], p[3]); return n + c.measureText(p[0]).width; }, 0) + 24;
-    const px = W - M - lbW - 24 - pw;
-    rr(c, px + 0.5, 46.5, pw, 30, 15); c.strokeStyle = P.acc; c.lineWidth = 1; c.stroke();
-    _runs(c, parts, px + 12.5, 67);
-  }
-  _hr(c, M, 96, CW, 'sec');
-
-  // 이름 + 등번호 (긴 이름은 줄여서 한 줄)
-  const nameY = 208;
-  let numZ = 0, numW = 0;
-  if (R.num) { numZ = 72; font(c, '600', numZ, NUM); numW = c.measureText('#' + R.num).width + 24; }
-  const nz = fitFont(c, R.name, '900', 104, KR, CW - numW, 60);
-  const name = _clip(c, R.name, CW - numW);
-  _t(c, name, M, nameY, '900', nz, KR, P.ink);
-  font(c, '900', nz, KR);
-  const nw = c.measureText(name).width;
-  if (R.num) _t(c, '#' + R.num, M + nw + 24, nameY, '600', Math.min(numZ, nz * 0.8), NUM, P.acc);
-  let y = nameY;
-  // 팀 · 포지션 (포지션은 라인업에 적었을 때만)
-  if (R.team || R.pos) {
-    y += 48;
-    font(c, '700', 28, KR);
-    const pos = R.pos ? '  ·  ' + R.pos : '';
-    const team = _clip(c, R.team || '', CW - c.measureText(pos).width);
-    _runs(c, [[team, '700', 28, KR, P.ink], [team ? pos : R.pos, '700', 28, KR, P.ink2]], M, y);
-  }
-  // 기간 · 날짜 · 경기 수 (한 줄 글자)
-  y += 40;
-  const dot = ['   ·   ', '500', 20, KR, P.ink3];
-  _runs(c, [[R.rangeLabel, '700', 22, KR, P.ink], dot, ...(R.dates ? [[R.dates, '500', 22, NUM, P.ink2], dot] : []),
-    [`${R.games}경기 ${s.pa}타석`, '500', 22, KR, P.ink2]], M, y);
-  // 표본 안내 (조용한 한 줄)
-  if (smp) {
-    y += 32;
-    c.beginPath(); c.arc(M + 8, y - 6, 8, 0, Math.PI * 2); c.fillStyle = P.ink3; c.fill();
-    _t(c, '!', M + 8, y - 1, '700', 12, NUM, P.bg, 'center');
-    _runs(c, [[smp.cls === 'low' ? '표본이 매우 적어 참고용이에요' : '표본이 적어 참고용이에요', '500', 18, KR, P.ink2],
-      [`  ·  ${s.pa}타석 기준`, '500', 18, KR, P.ink3]], M + 24, y);
-  }
-  const headEnd = y + 8;
+  // 1. 제목 줄 (카드 밖): 주황 제목 · 오른쪽 만든 날
+  _t(c, '선수 리포트', X, 76, '700', 32, KR, D.acc);
+  _t(c, _ymd(Date.now(), true), W - X, 76, '500', 30, NUM, D.tx2, 'right');
 
   // 2. 높이 나누기
   const cmt = String(R.cmt || '').trim();
-  font(c, '500', 28, KR);
-  let lines = cmt ? _wrap(c, cmt, CW) : [];
+  font(c, '500', 30, KR);
+  let lines = cmt ? _wrap(c, cmt, IW) : [];
   if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/.$/, '…'); }
-  const STATS = 408, TYPE = HEAD + BAR_H + 8, cmtH = lines.length ? HEAD + lines.length * 44 : 0;
+  const div = smp ? 318 : 276, HERO = div + 92, KH = 152, SH = 128, BH = 160, CMH = lines.length ? 96 + lines.length * 46 : 0;
+  const nGap = 5 + (CMH ? 1 : 0), fixed = 112 + HERO + KH + SH + BH + CMH;
+  let gap = 24, chartH = END - fixed - nGap * gap;
+  if (chartH < 540) { gap = 16; chartH = END - fixed - nGap * gap; }
+  if (chartH > 620) { gap += Math.min(24, Math.floor((chartH - 620) / nGap)); chartH = END - fixed - nGap * gap; }
+
+  // 3. 맨 위 카드(주황 빛): 팀 · 포지션 (+ 샘플 꼬리표) → 이름 + 등번호 → 기간 · 날짜 · 경기 수 → (표본 안내) → 요약
+  const hy = 112;
+  _card(c, X, hy, CW, HERO, true);
+  const pw = R.sample ? dPill(c, '샘플 · 가상 선수', X + CW - PAD, hy + 56, D.acc, tint(D.acc, 0.16), 'right', 26) + 16 : 0;
+  if (R.team || R.pos) {
+    font(c, '700', 30, KR);
+    const pos = R.pos ? '  ·  ' + R.pos : '';
+    const team = _clip(c, R.team || '', IW - pw - c.measureText(pos).width);
+    _runs(c, [[team, '700', 30, KR, D.tx], [team ? pos : R.pos, '700', 30, KR, D.tx2]], IX, hy + 66);
+  }
+  let numW = 0;
+  if (R.num) { font(c, '700', 76, NUM); numW = c.measureText('#' + R.num).width + 24; }
+  const nz = fitFont(c, R.name, '900', 116, KR, IW - numW, 60);
+  const name = _clip(c, R.name, IW - numW);
+  _t(c, name, IX, hy + 190, '900', nz, KR, D.tx);
+  font(c, '900', nz, KR);
+  if (R.num) _t(c, '#' + R.num, IX + c.measureText(name).width + 24, hy + 190, '700', Math.min(76, nz * 0.7), NUM, D.acc);
+  const dot = ['  ·  ', '500', 28, KR, D.tx3];
+  _runs(c, [[R.rangeLabel, '700', 28, KR, D.tx], dot, ...(R.dates ? [[R.dates, '500', 28, NUM, D.tx2], dot] : []),
+    [`${R.games}경기 ${s.pa}타석`, '500', 28, KR, D.tx2]], IX, hy + 248);
+  if (smp) _runs(c, [[smp.cls === 'low' ? '표본이 매우 적어 참고용이에요' : '표본이 적어 참고용이에요', '500', 26, KR, D.tx2], [`  ·  ${s.pa}타석 기준`, '500', 26, KR, D.tx3]], IX, hy + 292);
+  // 요약 (규칙 기반 · AI 아님) — 근거는 오른쪽에 흐리게, 자리가 모자라면 뺀다
+  c.fillStyle = D.line; c.fillRect(IX, hy + div, IW, 2);
+  _t(c, '요약', IX, hy + div + 56, '700', 26, KR, D.acc);
+  font(c, '700', 32, KR);
+  const sumT = _clip(c, R.sum.text, IW - 80), sw0 = c.measureText(sumT).width;
+  _t(c, sumT, IX + 80, hy + div + 57, '700', 32, KR, D.tx);
+  font(c, '500', 26, KR);
+  if (R.sum.detail && IX + 80 + sw0 + 32 + c.measureText(R.sum.detail).width <= IX + IW) _t(c, R.sum.detail, IX + IW, hy + div + 56, '500', 26, KR, D.tx3, 'right');
+  let y = hy + HERO + gap;
+
+  // 4. 큰 숫자 4칸 — 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—' · 네 칸이 같은 크기
+  const tiles = [['타율', s.avg, s.ab], ['출루율', s.obp, s.pa], ['장타율', s.slg, s.ab], ['OPS', s.ops, s.pa]];
+  const tg = 20, tw = (CW - tg * 3) / 4, vals = tiles.map(([, v, n]) => (n ? f3(v) : '—'));
+  const vz = Math.min(...vals.map(v => fitFont(c, v, '700', 64, NUM, tw - 56, 40)));
+  tiles.forEach(([l], i) => {
+    const tx = X + i * (tw + tg);
+    rr(c, tx, y, tw, KH, 32); c.fillStyle = D.card; c.fill();
+    _t(c, l, tx + 28, y + 52, '500', 28, KR, D.tx2);
+    _t(c, vals[i], tx + 28, y + KH - 28, '700', vz, NUM, vals[i] === '—' ? D.tx3 : i === 3 ? D.acc : D.tx);
+  });
+  y += KH + gap;
+
+  // 5. 기록 한 줄 (6칸): wOBA · 안타 · 홈런 · 타점 · 볼넷% · 삼진%
+  _card(c, X, y, CW, SH);
+  const row = [['wOBA', s.pa ? f3(s.woba) : '—'], ['안타', s.h], ['홈런', s.hr], ['타점', s.rbi], ['볼넷%', s.pa ? pct(s.bbRate) : '—'], ['삼진%', s.pa ? pct(s.kRate) : '—']];
+  row.forEach(([l, v], i) => {
+    const cx = X + CW / row.length * (i + 0.5);
+    _t(c, l, cx, y + 50, '500', 26, KR, D.tx2, 'center');
+    _t(c, String(v), cx, y + 104, '700', 46, NUM, v === '—' ? D.tx3 : D.tx, 'center');
+  });
+  y += SH + gap;
+
+  // 6. 그림 두 카드: 타구 위치 | 코스별 타율 — 같은 높이
+  const PW = (CW - 24) / 2, x2 = X + PW + 24;
+  const nPts = R.abs.filter(a => a.x != null && a.y != null).length;
   const zs = Object.create(null);
   [...ZONES_9, ...ZONE_BALL].forEach(z => { zs[z] = calcStats(R.abs.filter(a => zoneOf(a) === z)); });
-  const LEFT = 16 + 24 + 32 + BAR_H * 2 + 16, LEG = 32 + 84;   // 그림 아래: 범례 줄 · 막대 2개 | 색 단계 · 읽는 법 2줄
-  const chartH = sc => HEAD + 8 + Math.max(_fieldH(FW * sc) + LEFT, _zoneH(FW * sc) + LEG);
-  const nGap = 4 + (cmtH ? 1 : 0);
-  const room = fy - headEnd - STATS - TYPE - cmtH;
-  let gap = 24, sc = 1;
-  while (room - chartH(sc) - nGap * gap < 0 && sc > 0.7) sc -= 0.01;
-  while (room - chartH(sc) - nGap * gap < 0 && gap > 8) gap -= 8;
-  gap += Math.max(0, Math.floor((room - chartH(sc) - nGap * gap) / nGap / 8) * 8);
-  const chH = Math.max(chartH(sc), room - nGap * gap);   // 8의 배수로 자른 나머지는 그림 칸이 받는다
-  y = headEnd + gap;
-
-  // 3. 기록: 큰 숫자 4칸 — 타율·장타율은 타수가 0이면(볼넷·사구·희생만) 계산할 수 없으므로 '—'
-  // 숫자는 네 칸이 같은 기준선 · 같은 크기 · 가장 넓은 값 기준 오른쪽 맞춤(소수점 자리가 같다)
-  _hr(c, M, y, CW, 'sec');
-  const tiles = [['타율', 'AVG', s.avg, s.ab], ['출루율', 'OBP', s.obp, s.pa], ['장타율', 'SLG', s.slg, s.ab], ['OPS', '', s.ops, s.pa]];
-  const tw = CW / 4, vals = tiles.map(([, , v, n]) => (n ? f3(v) : '—'));
-  const vz = Math.min(...vals.map(v => fitFont(c, v, '600', 92, NUM, tw - 48, 50)));
-  font(c, '600', vz, NUM);
-  const vw = Math.max(...vals.map(v => c.measureText(v).width));
-  tiles.forEach(([l, en], i) => {
-    const x = M + i * tw;
-    if (i) _vr(c, x - 24, y + 16, 120, 'hair');
-    _runs(c, [[l, '700', 20, KR, P.ink2], ...(en ? [['  ' + en, '500', 15, NUM, P.ink3]] : [])], x, y + 34);
-    _t(c, vals[i], x + vw, y + 124, '600', vz, NUM, i === 3 ? P.acc : P.ink, 'right');
-  });
-  // 기록 줄 (색 점 = 이미지 공통 색: 안타 · 장타 · 홈런 · 볼넷 · 아웃) — 값은 이름 아래 가운데
-  const sy = y + 144;
-  _hr(c, M, sy, CW, 'row');
-  const cnt = [['타석', s.pa], ['안타', s.h, P.acc], ['2루타', s.s2, P.xbh], ['3루타', s.s3, P.xbh], ['홈런', s.hr, P.hr], ['타점', s.rbi], ['볼넷', s.bb, P.bb], ['삼진', s.k, P.out]];
-  const cw = CW / cnt.length;
-  cnt.forEach(([l, v, dc], i) => {
-    const x = M + i * cw, cx = x + cw / 2;
-    if (i) _vr(c, x, sy + 16, 72, 'hair');
-    font(c, '500', 18, KR);
-    const lw = c.measureText(l).width + (dc ? 14 : 0);
-    if (dc) { c.beginPath(); c.arc(cx - lw / 2 + 4, sy + 26, 4, 0, Math.PI * 2); c.fillStyle = dc; c.fill(); }
-    _t(c, l, cx - lw / 2 + (dc ? 14 : 0), sy + 32, '500', 18, KR, P.ink2);
-    _t(c, String(v), cx, sy + 80, '600', 44, NUM, P.ink, 'center');
-  });
-  // wOBA · 삼진% · 볼넷% + 설명
-  const my = sy + 104;
-  _hr(c, M, my, CW, 'row');
-  const sep = ['      ', '500', 16, KR, P.ink3];
-  _runs(c, [['wOBA  ', '500', 18, NUM, P.ink3], [s.pa ? f3(s.woba) : '—', '600', 30, NUM, P.ink], sep,
-    ['삼진%  ', '500', 18, KR, P.ink3], [s.pa ? pct(s.kRate) : '—', '600', 30, NUM, P.ink], sep,
-    ['볼넷%  ', '500', 18, KR, P.ink3], [s.pa ? pct(s.bbRate) : '—', '600', 30, NUM, P.ink]], M, my + 44);
-  _t(c, 'wOBA = 볼넷·단타·장타의 가치를 한 숫자로 합친 출루 지표', M, my + 76, '500', 16, KR, P.ink3);
-  // 한 줄 요약 (규칙 기반 · AI 아님) — 근거 개수는 오른쪽에 작게, 자리가 모자라면 뺀다
-  const uy = my + 96;
-  _hr(c, M, uy, CW, 'row');
-  _t(c, '요약', M, uy + 42, '700', 18, KR, P.acc);
-  font(c, '700', 26, KR);
-  const sumT = _clip(c, R.sum.text, CW - 64);
-  _t(c, sumT, M + 64, uy + 42, '700', 26, KR, P.ink);
-  const sw0 = c.measureText(sumT).width;
-  font(c, '500', 16, KR);
-  if (R.sum.detail && M + 64 + sw0 + 32 + c.measureText(R.sum.detail).width <= W - M) _t(c, R.sum.detail, W - M, uy + 41, '500', 16, KR, P.ink3, 'right');
-  y += STATS + gap;
-
-  // 4. 그림 2칸: 타구 방향 | 코스별 타율 — 그림 · 범례는 위, 막대 · 읽는 법은 칸 아래쪽에 맞춘다
-  const x1 = M, x2 = M + PW + 40, top = y + HEAD + 8, bot = y + chH;
-  const nPts = R.abs.filter(a => a.x != null && a.y != null).length;
   const zoned = Object.values(zs).reduce((n, z) => n + z.pa, 0);
-  _head(c, x1, y, PW, 'BATTED BALL DIRECTION', '타구 방향', `타구 ${nPts}개`);
-  _head(c, x2, y, PW, 'ZONE', '코스별 타율', zoned ? `코스 기록 ${zoned}/${s.pa}타석` : '');
-  // 두 칸 높이는 같다 → 낮은 쪽 그림은 남는 높이만큼 키운다 (칸 폭까지)
-  const ffw = Math.min(FW, FW * sc * (bot - top - LEFT) / _fieldH(FW * sc)), zfw = Math.min(FW, FW * sc * (bot - top - LEG) / _zoneH(FW * sc));
-  _field(c, R.abs, x1 + (PW - ffw) / 2, top, ffw);
-  _legend(c, x1, top + _fieldH(ffw) + 40);   // 범례는 그림 바로 밑, 막대는 칸 바닥 (오른쪽 읽는 법과 같은 줄)
-  // 당김·센터·밀어(타자 기준) · 좌·중·우(필드 기준 — 좌·우타에 따라 뒤집히지 않는 방향)
-  let by = bot - BAR_H * 2 - 16;
-  _pbar(c, x1, by, PW, s.dn ? [['당김', s.pull, P.ink], ['센터', s.center, P.ink2], ['밀어', s.oppo, P.ink3]] : [], '방향 기록 없음');
-  by += BAR_H + 16;
-  const dsp = R.dirs;
-  _pbar(c, x1, by, PW, dsp.n ? [['좌', dsp.left, P.ink], ['중', dsp.center, P.ink2], ['우', dsp.right, P.ink3]] : [], '필드 기준 좌·중·우 기록 없음');
-  _zone(c, zs, s.avg, x2 + (PW - zfw) / 2, zoned ? top : top + (bot - top - _zoneH(zfw)) / 2, zfw);   // 기록이 없으면 칸 가운데에
-  // 색 단계 · 읽는 법 (그라데이션 대신 5칸)
+  _card(c, X, y, PW, chartH); _card(c, x2, y, PW, chartH);
+  _title(c, '타구 위치', X + PAD, y + 58, `타구 ${nPts}개`, X + PW - PAD);
+  _title(c, '코스별 타율', x2 + PAD, y + 58, zoned ? `코스 ${zoned}/${s.pa}타석` : '', x2 + PW - PAD);
+  // 구장: 카드 폭에 맞추고(높이가 모자라면 줄임) 머리와 기호 설명 사이 가운데에
+  const ft = y + 116, fb = y + chartH - PAD - 46;
+  let fw = PW - 40;
+  if (_fieldH(fw) > fb - ft) fw = FPAD * 2 + (fw - FPAD * 2) * (fb - ft) / _fieldH(fw);
+  _field(c, R.abs, X + (PW - fw) / 2, ft + (fb - ft - _fieldH(fw)) / 2, fw);
+  _legend(c, X + PW / 2, y + chartH - PAD);
+  // 코스: 머리 아래 ~ 색 단계 줄 위 (칸 높이는 남는 만큼 · 가운데)
+  const zt = y + 84, zb = y + chartH - PAD - (zoned ? 44 : 0), zg = _zoneGeo(PW - PAD * 2, zb - zt);
+  _zone(c, zs, s.avg, x2 + PAD, zt + (zb - zt - zg.h) / 2, PW - PAD * 2, zb - zt);
   if (zoned) {
-    const ly = bot - 84;
-    _t(c, '약함', x2, ly + 12, '700', 16, KR, P.bb);
-    font(c, '700', 16, KR);
-    const gx = x2 + c.measureText('약함').width + 12;
-    [-1, -0.5, 0, 0.5, 1].forEach((t, i) => { c.fillStyle = _mix(P.bg, t < 0 ? P.bb : P.acc, Math.abs(t) * 0.5); c.fillRect(gx + i * 32, ly, 32, 14); });
-    _hr(c, gx, ly, 160, 'hair'); _hr(c, gx, ly + 13, 160, 'hair');
-    _t(c, '강함', gx + 160 + 12, ly + 12, '700', 16, KR, P.acc);
-    const n1 = `칸 숫자 = 그 코스 타율 · ${MIN_AB}타수 미만은 색 없음`, n2 = `색 = 이 선수 타율(${s.ab ? f3(s.avg) : '—'}) 대비`;
-    _t(c, n1, x2, ly + 50, '500', fitFont(c, n1, '500', 16, KR, PW, 13), KR, P.ink3);
-    _t(c, n2, x2, ly + 78, '500', 16, KR, P.ink3);
+    // 색 단계 (그라데이션 대신 5칸) · 기준 타율
+    const ly = y + chartH - PAD;
+    _t(c, '약함', x2 + PAD, ly, '700', 26, KR, D.bb);
+    const gx = x2 + PAD + c.measureText('약함').width + 12;
+    [-1, -0.5, 0, 0.5, 1].forEach((t, i) => { c.fillStyle = _mix(D.card, t < 0 ? D.bb : D.acc, Math.abs(t) * 0.45); c.fillRect(gx + i * 28, ly - 19, 28, 18); });
+    c.strokeStyle = D.line2; c.lineWidth = 1; c.strokeRect(gx + 0.5, ly - 18.5, 140, 17);
+    _t(c, '강함', gx + 152, ly, '700', 26, KR, D.acc);
+    _t(c, `기준 ${s.ab ? f3(s.avg) : '—'}`, x2 + PW - PAD, ly, '500', 26, NUM, D.tx3, 'right');
   }
-  y += chH + gap;
+  y += chartH + gap;
 
-  // 5. 타구 유형: 입력한 타구 유형이 있으면 그것으로, 없으면 아웃 타구(땅볼·플라이)만으로. 안타는 짐작해서 넣지 않는다
-  const tm = R.types;
-  _head(c, M, y, CW, 'BATTED BALL TYPE', '타구 유형', tm.n ? (tm.basis === 'launch' ? `입력 ${tm.n}개 기준` : `아웃 타구 ${tm.n}개 기준`) : '');
-  _pbar(c, M, y + HEAD + 8, CW, tm.n >= MIN_TYPE
-    ? [['땅볼', tm.ground, P.ink], tm.line != null ? ['라인드라이브', tm.line, P.ink2] : ['라인드라이브 미입력', null], ['뜬공', tm.fly, P.ink3]] : [],
-    tm.basis === 'launch' || !tm.n ? '타구 유형 기록이 적어요' : `아웃 타구 ${tm.n}개 — 유형 기록이 적어요`);
-  y += TYPE + gap;
+  // 7. 방향(당김·센터·밀어 — 타자 기준) | 타구 유형(입력한 유형이 있으면 그것으로, 없으면 아웃 타구만 — 안타는 짐작해서 넣지 않는다)
+  _card(c, X, y, CW, BH);
+  const hw = (IW - 64) / 2, tm = R.types;
+  _split(c, IX, y + PAD, hw, '방향', s.dn ? `타구 ${s.dn}개` : '', s.dn ? [['당김', s.pull], ['센터', s.center], ['밀어', s.oppo]] : [], '방향 기록 없음');
+  c.fillStyle = D.line; c.fillRect(X + CW / 2 - 1, y + PAD, 2, BH - PAD * 2);
+  _split(c, IX + hw + 64, y + PAD, hw, '타구 유형', tm.n ? (tm.basis === 'launch' ? `입력 ${tm.n}개 기준` : `아웃 타구 ${tm.n}개 기준`) : '',
+    tm.n >= MIN_TYPE ? [['땅볼', tm.ground], ['라이너', tm.line], ['뜬공', tm.fly]] : [],
+    tm.basis === 'launch' || !tm.n ? '타구 유형 기록이 적어요' : '유형 기록이 적어요');
+  y += BH + gap;
 
-  // 6. 코치 코멘트 (3줄까지)
-  if (cmtH) {
-    _head(c, M, y, CW, "COACH'S NOTE", '코치 코멘트');
-    lines.forEach((l, i) => _t(c, l, M, y + HEAD + 30 + i * 44, '500', 28, KR, P.ink));
+  // 8. 코치 코멘트 (3줄까지)
+  if (CMH) {
+    _card(c, X, y, CW, CMH);
+    _title(c, '코치 코멘트', IX, y + 58);
+    lines.forEach((l, i) => _t(c, l, IX, y + 112 + i * 46, '500', 30, KR, D.tx));
   }
 
-  // 7. 바닥: 로고 · 주소 / 생성일 (· 샘플 표시)
-  _hr(c, M, fy, CW, 'row');
-  wordmark(c, M, fy + 48, 24, P.ink, P.acc);
-  _runs(c, [['생성  ', '500', 18, KR, P.ink3], [_ymd(Date.now(), true), '500', 20, NUM, P.ink2]], W - M, fy + 47, 'right');
-  _t(c, 'kimjeongcheol13.github.io/baseball-spray-chart', M, fy + 80, '500', 16, KR, P.ink3);
-  if (R.sample) _t(c, '샘플 · 실제 기록 아님', W - M, fy + 80, '700', 16, KR, P.acc, 'right');
+  // 9. 꼬리: 로고 · 계정 (다른 저장 이미지와 같다)
+  wordmark(c, X, H - 40, 30, D.tx, D.acc);
+  _t(c, '@spraylab2026', W - X, H - 40, '500', 30, NUM, D.tx3, 'right');
 }
 
 // ── 상태 · 화면 ───────────────────────────────────────────────

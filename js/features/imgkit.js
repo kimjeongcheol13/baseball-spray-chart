@@ -20,6 +20,17 @@ export const NIGHT = {
   grass: '#11301F', grass2: '#163C27', dirt: '#3B2D21', chalk: 'rgba(255,255,255,0.6)', arc: 'rgba(255,255,255,0.14)',
 };
 
+// 공유 이미지 — 어두운 카드형 (분석 화면 css/v2.css 의 --v-* 와 같은 값). 성적 카드 · GAME REPORT 부터 하나씩 NIGHT 에서 옮긴다
+export const DARK = {
+  bg: '#0A0C11', card: '#141822', card2: '#1C212C', line: 'rgba(255,255,255,0.08)', line2: 'rgba(255,255,255,0.16)',
+  tx: '#F4F6FA', tx2: 'rgba(244,246,250,0.74)', tx3: 'rgba(244,246,250,0.52)',
+  acc: '#FF5A36', good: '#35D49E', bad: '#FF6B74',
+  hit: '#FF5A36', xbh: '#FF9F43', hr: '#F6C343', bb: '#7CB0FF', out: '#8C95A8',   // 결과 색 (분석 화면 결과 구성 막대와 같은 순서)
+};
+
+// '#RRGGBB' → 옅은 바탕(꼬리표 · 칩)
+export const tint = (hex, a) => 'rgba(' + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(',') + ',' + a + ')';
+
 // 인쇄 이미지 — 흰 종이 (흑백 인쇄에서도 읽히게 색은 강조에만)
 export const PAPER = {
   bg: '#FFFFFF', ink: '#0F172A', ink2: '#475569', ink3: '#94A3B8',
@@ -59,6 +70,29 @@ export function wordmark(c, x, y, size, color, acc) {
   spacing(c, 0);
   c.restore();
   return w;
+}
+
+// ── 어두운 카드형 부품 (DARK — 성적 카드 · 투수 이미지가 같이 쓴다) ──
+// 카드: 둥근 네모(테두리 없음, 모서리 20). glow = 오른쪽 위 주황 빛(맨 위 카드 — 분석 화면 첫 카드와 같다)
+export function dCard(c, x, y, w, h, glow, fill) {
+  rr(c, x, y, w, h, 20); c.fillStyle = fill || DARK.card; c.fill();
+  if (!glow) return;
+  const g = c.createRadialGradient(x + w, y, 0, x + w, y, Math.hypot(w, h) * .6);
+  g.addColorStop(0, 'rgba(255,90,54,0.2)'); g.addColorStop(1, 'rgba(255,90,54,0)');
+  c.fillStyle = g; c.fill();
+}
+// 둥근 꼬리표(멀티히트 · 승 · 카운트): x = align 쪽 끝('center' 면 가운데) · cy = 가운데. 폭 반환
+export function dPill(c, t, x, cy, fg, bg, align, size = 14, family = FONT.kr) {
+  font(c, '700', size, family);
+  const m = c.measureText(t), w = m.width + size * 1.6, h = size * 2, lx = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
+  rr(c, lx, cy - h / 2, w, h, h / 2); c.fillStyle = bg; c.fill();
+  c.fillStyle = fg; c.textAlign = 'center'; c.fillText(t, lx + w / 2, cy + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+  return w;
+}
+// 꼬리: 로고(왼쪽, 한 번) · 계정(오른쪽). 띠 · 선 없이 바탕 위에. y = 기준선
+export function dFoot(c, W, y, X) {
+  wordmark(c, X, y, 15, DARK.tx, DARK.acc);
+  font(c, '500', 15, FONT.num); c.fillStyle = DARK.tx3; c.textAlign = 'right'; c.fillText('@spraylab2026', W - X, y);
 }
 
 // draw() 는 같은 캔버스에 처음부터 다 그리는 동기 함수 (cv.width 를 다시 맞추는 것부터)

@@ -131,6 +131,8 @@
   background: var(--an-ink3);
 }
 .an-insight b { color: var(--an-ink); font-weight: 800; }
+/* 문장 아래 근거 숫자 — 결론은 크게, 숫자는 작고 흐리게 */
+.an-insight li .an-ev { display: block; margin-top: 1px; font-size: .88em; font-weight: 500; line-height: 1.45; color: var(--an-ink3); font-variant-numeric: tabular-nums; }
 .an-warn {
   margin-top: 10px;
   padding: 8px 10px;

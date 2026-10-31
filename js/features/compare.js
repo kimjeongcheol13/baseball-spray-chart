@@ -248,46 +248,40 @@ function _insights(A, B, pool) {
   const a = A.st, b = B.st;
   const na = _esc(A.name), nb = _esc(B.name);
   const out = [];
+  // 한 줄 = 결론 문장 + 그 아래 작은 근거 숫자 (A vs B 순서)
+  const ln = (t, ev) => out.push(`${t}<small class="an-ev">${ev}</small>`);
 
+  // 공격 기여 — 전체 평균 지수(100 기준)는 따로 줄을 만들지 않고 근거에 붙인다
   const dw = a.woba - b.woba;
-  if (Math.abs(dw) < 0.015) out.push(`종합 생산성은 <b>거의 같아요</b> (wOBA ${f3(a.woba)} vs ${f3(b.woba)}).`);
-  else {
-    const P = dw > 0 ? A : B;
-    out.push(`종합 생산성은 <b>${_esc(P.name)}</b>${_j(P.name, '이', '가')} ${Math.abs(dw) >= 0.05 ? '확실히' : '조금'} 앞서요 (wOBA ${f3(a.woba)} vs ${f3(b.woba)}).`);
-  }
+  const idx = pool.pa >= 30 && pool.woba > 0 ? ` · 전체 평균 100 기준 ${Math.round(a.woba / pool.woba * 100)} vs ${Math.round(b.woba / pool.woba * 100)}` : '';
+  const P = dw > 0 ? A : B;
+  ln(Math.abs(dw) < 0.015 ? '두 선수의 공격 기여는 <b>거의 같아요</b>.' : `<b>${_esc(P.name)}</b>${_j(P.name, '이', '가')} 공격 기여에서 <b>${Math.abs(dw) >= 0.05 ? '확실히' : '조금'} 앞서요</b>.`, `wOBA ${f3(a.woba)} vs ${f3(b.woba)}${idx}`);
 
   // 각자 가장 크게 앞서는 영역 (척도가 달라서 영역별 기준 폭으로 나눠 비교)
   const areas = [
-    { n: '컨택', k: 'avg', u: 0.05 },
-    { n: '출루', k: 'obp', u: 0.05 },
-    { n: '파워', k: 'iso', u: 0.05 },
-    { n: '선구안', k: 'bbRate', u: 0.03 },
-    { n: '삼진 억제', k: 'kRate', u: 0.05, lower: true },
+    { n: '컨택', l: '타율', k: 'avg', u: 0.05 },
+    { n: '출루', l: '출루율', k: 'obp', u: 0.05 },
+    { n: '장타', l: 'ISO', k: 'iso', u: 0.05 },
+    { n: '선구안', l: '볼넷', k: 'bbRate', u: 0.03 },
+    { n: '삼진 억제', l: '삼진', k: 'kRate', u: 0.05, lower: true },
   ].map(x => ({ ...x, d: ((a[x.k] - b[x.k]) * (x.lower ? -1 : 1)) / x.u }));
   const bestA = areas.filter(x => x.d >= 1).sort((x, y) => y.d - x.d)[0];
   const bestB = areas.filter(x => x.d <= -1).sort((x, y) => x.d - y.d)[0];
-  const show = x => (x.k === 'bbRate' || x.k === 'kRate' ? `${pct(a[x.k])} vs ${pct(b[x.k])}` : `${f3(a[x.k])} vs ${f3(b[x.k])}`);
-  if (bestA && bestB) out.push(`<b>${na}</b>${_j(A.name, '은', '는')} ${bestA.n}(${show(bestA)}), <b>${nb}</b>${_j(B.name, '은', '는')} ${bestB.n}(${show(bestB)})에서 강점을 보여요.`);
-  else if (bestA) out.push(`<b>${na}</b>${_j(A.name, '이', '가')} 특히 ${bestA.n}에서 앞서요 (${show(bestA)}).`);
-  else if (bestB) out.push(`<b>${nb}</b>${_j(B.name, '이', '가')} 특히 ${bestB.n}에서 앞서요 (${show(bestB)}).`);
+  const show = x => `${x.l} ${x.k === 'bbRate' || x.k === 'kRate' ? `${pct(a[x.k])} vs ${pct(b[x.k])}` : `${f3(a[x.k])} vs ${f3(b[x.k])}`}`;
+  if (bestA && bestB) ln(`<b>${na}</b>${_j(A.name, '은', '는')} ${bestA.n}, <b>${nb}</b>${_j(B.name, '은', '는')} ${bestB.n}${_j(bestB.n, '이', '가')} 강점이에요.`, `${show(bestA)} · ${show(bestB)}`);
+  else if (bestA || bestB) {
+    const [x, nm, raw] = bestA ? [bestA, na, A.name] : [bestB, nb, B.name];
+    ln(`<b>${nm}</b>${_j(raw, '은', '는')} 특히 <b>${x.n}</b>에서 앞서요.`, show(x));
+  }
 
-  // 타구 방향 성향
+  // 타구 방향 성향 — 타구 15개 이상, 한 방향 55% 이상이면 쏠림. 둘 다 고르면 말하지 않는다
   const lean = s => {
-    if (s.dn < 3) return null;
-    const p = s.pull / s.dn, o = s.oppo / s.dn, c = s.center / s.dn;
-    if (p >= 0.5) return `당겨치기 ${Math.round(p * 100)}%`;
-    if (o >= 0.4) return `밀어치기 ${Math.round(o * 100)}%`;
-    if (c >= 0.5) return `센터 ${Math.round(c * 100)}%`;
-    return '전방향 고르게';
+    if (s.dn < 15) return null;
+    const [w, c, t] = [['당겨치기', s.pull, '당겨 치는 편'], ['센터', s.center, '가운데로 보내는 편'], ['밀어치기', s.oppo, '밀어 치는 편']].sort((x, y) => y[1] - x[1])[0];
+    return c / s.dn >= 0.55 ? { t, ev: `${w} ${Math.round(c / s.dn * 100)}%` } : { t: '고르게 보내는 편', ev: '고르게', even: true };
   };
   const la = lean(a), lb = lean(b);
-  if (la && lb) out.push(`타구 방향: ${na} <b>${la}</b> · ${nb} <b>${lb}</b>.`);
-
-  // 전체 평균 대비
-  if (pool.pa >= 30 && pool.woba > 0) {
-    const idx = s => Math.round(s.woba / pool.woba * 100);
-    out.push(`내 기록 전체 평균 wOBA(${f3(pool.woba)})를 100으로 두면 ${na} <b>${idx(a)}</b>, ${nb} <b>${idx(b)}</b>예요.`);
-  }
+  if (la && lb && !(la.even && lb.even)) ln(`타구는 <b>${na}</b>${_j(A.name, '은', '는')} ${la.t}, <b>${nb}</b>${_j(B.name, '은', '는')} ${lb.t}이에요.`, `${na} ${la.ev} · ${nb} ${lb.ev}`);
 
   const minPa = Math.min(a.pa, b.pa);
   const warn = minPa < 30

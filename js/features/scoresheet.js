@@ -6,7 +6,7 @@
 //  · 이미지 저장 = core.js _downloadCanvas · 인쇄 / PDF = 이 그림 한 장만 (body.ss-printing · css/report.css)
 //  · 창은 선수 리포트(.rp) 모양을 그대로 쓴다. 진입: ☰ 메뉴 · 그 밖의 기능(setup.js) · 경기종료 뒤 GAME REPORT 공유 줄(#pgReport — 버튼 추가)
 import { HITS } from '../constants.js';
-import { FONT, PAPER, font, fitFont, spacing, rr, wordmark, drawWithFonts } from './imgkit.js?v=1';
+import { FONT, PAPER, font, fitFont, rr, wordmark, drawWithFonts } from './imgkit.js?v=3';
 
 const $ = id => document.getElementById(id);
 const teamOf = a => (a && a.team === 'away' ? 'away' : 'home');
@@ -123,11 +123,12 @@ export function sheetData(g) {
 //    아웃 순번(1 · 2 · 3)은 적지 않는다 — 타석 순서가 줄을 건너 남아 있지 않고 주자 아웃(견제사 · 도루자 · 병살의 주자)은 칸에 없어 틀린 번호가 된다
 //  · 이닝별 점수의 팀 · 이닝 · R H E 세로줄 = 팀 표의 선수 · 이닝 · 합계 세로줄. 팀 표는 9줄이 안 되면 빈 줄(손으로 적는다), 타석이 없는 팀은 띠에 '타석 기록 없음'
 //  · 선 굵기는 셋만: 테두리 · 구역 2 / 줄 1 / 칸 안 가는 선 0.5. 안쪽 여백 12 · 사이 8 · 16. 숫자는 일의 자리를 세로로 맞춘다
+//  · 글자는 인쇄에서 읽히게 11.5 이상(약어 줄이 길면 그 줄만 10 까지) · 영문 장식 이름표(SCORE SHEET)는 없다
 //  · 색 · 글꼴은 imgkit.js 의 PAPER · FONT 만 — 칸 글자: 안타 = acc, 4구 · 사구 = bb, 그 밖 = out. 득점 마름모 = acc
 const W = 794, H0 = 1123, SCALE = 2, X = 32, CW = W - X * 2, P = 12;
 const TOT = ['타수', '안타', '타점', '득점', '4구', '사구', '삼진', '도루'];
-const SLOT = 28, NAME = 148, JN = 26, TW = 24, MINR = 9;   // JN: 선수 칸 안 등번호 자리 (오른쪽 맞춤)
-const BOX = 48, LT = 120, LBAND = 24, LROW = 28, TOP = 216, FOOT = 152, BAND = 24, HEAD = 20, GAP = 16, LX = 40, LSTEP = 16;
+const SLOT = 28, NAME = 124, JN = 28, TW = 28, MINR = 9;   // JN: 선수 칸 안 등번호 자리 (오른쪽 맞춤)
+const BOX = 48, LT = 120, LBAND = 26, LROW = 30, TOP = 222, FOOT = 172, BAND = 26, HEAD = 22, GAP = 16, LX = 44, LSTEP = 16;
 const HEAVY = [2, PAPER.ink], ROW = [1, PAPER.rule], HAIR = [0.5, PAPER.rule];   // 선 굵기 셋 [굵기, 색]
 const snap = v => Math.round(v * 2) / 2;   // 2배 PNG 에서 선이 두 픽셀에 번지지 않게
 
@@ -159,8 +160,8 @@ export function drawSheet(cv, d) {
   // 칸 상자: 위에 작은 이름(조용히), 아래에 값 (값이 없으면 손으로 적는 빈칸)
   const field = (lbl, val, x, y, w, isNum) => {
     c.strokeStyle = ROW[1]; c.lineWidth = ROW[0]; rr(c, x + 0.5, y + 0.5, w - 1, BOX - 1, 6); c.stroke();
-    font(c, '500', 10, FONT.kr); text(lbl, x + P, y + 17, PAPER.ink2);
-    if (val) { fitFont(c, val, isNum ? '600' : '700', isNum ? 17 : 15, isNum ? FONT.num : FONT.kr, w - P * 2, 10); text(val, x + P, y + 38, PAPER.ink); }
+    font(c, '500', 12, FONT.kr); text(lbl, x + P, y + 18, PAPER.ink2);
+    if (val) { fitFont(c, val, isNum ? '600' : '700', isNum ? 19 : 17, isNum ? FONT.num : FONT.kr, w - P * 2, 11); text(val, x + P, y + 40, PAPER.ink); }
   };
   // 마름모 (x, y) 가운데 · r 반지름. b = 간 베이스, run = 홈인 — 옅은 마름모 위에 간 길만 굵게 / 홈인은 옅게 칠하고 테두리 (안의 약어가 보이게 · 흑백 인쇄에서도 회색 칸 + 테두리)
   //  box = 안에 쓸 약어의 상자 [x, y, w, h] — 약어가 마름모 밖으로 넘치면 선은 그 상자를 비켜 간다 (글자에서 1 띄움)
@@ -180,9 +181,8 @@ export function drawSheet(cv, d) {
 
   // 머리: 로고 · 문서 이름 / 제목 + 대회 · 경기일 · 구장 (상자 왼쪽 = 이닝 칸 왼쪽)
   const IX = X + SLOT + NAME, TX = W - X - TW * TOT.length, iw = (TX - IX) / n, RW = (W - X - TX) / 3;
-  wordmark(c, X, 42, 13, PAPER.ink, PAPER.acc);
-  font(c, '600', 11, FONT.num); spacing(c, 2.2); text('SCORE SHEET', W - X + 2.2, 42, PAPER.ink2, 'right'); spacing(c, 0);
-  fitFont(c, '경기 기록지', '900', 30, FONT.kr, IX - X - 8, 20); text('경기 기록지', X - 1, 90, PAPER.ink);
+  wordmark(c, X, 40, 14, PAPER.ink, PAPER.acc);
+  fitFont(c, '경기 기록지', '900', 32, FONT.kr, IX - X - 8, 20); text('경기 기록지', X - 1, 92, PAPER.ink);
   const bw = (W - X - IX - 16) / 3;
   [['대회', ''], ['경기일', d.date, 1], ['구장', d.venue]].forEach((f, i) => field(f[0], f[1], IX + (bw + 8) * i, 56, bw, f[2]));
 
@@ -192,31 +192,28 @@ export function drawSheet(cv, d) {
   c.fillStyle = PAPER.band; c.fillRect(X, LT, CW, LBAND);
   c.fillStyle = PAPER.fill; c.fillRect(TX, LT + LBAND, W - X - TX, LB - LT - LBAND);
   c.restore();
-  font(c, '500', 10, FONT.kr); text('팀', X + P, LT + 16, PAPER.rule);
-  font(c, '600', 11, FONT.num);
-  for (let k = 0; k < n; k++) num(k + 1, IX + iw * (k + 0.5), LT + 16.5, PAPER.bg);
-  ['R', 'H', 'E'].forEach((s, j) => text(s, TX + RW * (j + 0.5), LT + 16.5, PAPER.bg, 'center'));
+  font(c, '500', 12, FONT.kr); text('팀', X + P, LT + 18, PAPER.rule);
+  font(c, '600', 13, FONT.num);
+  for (let k = 0; k < n; k++) num(k + 1, IX + iw * (k + 0.5), LT + 18, PAPER.bg);
+  ['R', 'H', 'E'].forEach((s, j) => text(s, TX + RW * (j + 0.5), LT + 18, PAPER.bg, 'center'));
   d.teams.forEach((t, i) => {
-    const y = LT + LBAND + LROW * i, cy = y + LROW / 2 + 5;
+    const y = LT + LBAND + LROW * i, cy = y + LROW / 2 + 6;
     if (i) hl(X, W - X, y, ROW);
-    font(c, '500', 10, FONT.kr); text(t.side, X + P, cy - 0.5, PAPER.ink2);
-    fitFont(c, t.name, '700', 14, FONT.kr, IX - X - P * 2 - 30, 8); text(t.name, X + P + 30, cy, PAPER.ink);
-    font(c, '600', 15, FONT.num);
+    font(c, '500', 12, FONT.kr); text(t.side, X + P, cy - 0.5, PAPER.ink2);
+    fitFont(c, t.name, '700', 16, FONT.kr, IX - X - P * 2 - 32, 10); text(t.name, X + P + 32, cy, PAPER.ink);
+    font(c, '600', 17, FONT.num);
     t.line.forEach((v, k) => num(v, IX + iw * (k + 0.5), cy + 0.5, PAPER.ink));
-    font(c, '700', 17, FONT.num); num(t.r, TX + RW * 0.5, cy + 1, PAPER.ink);
-    font(c, '600', 15, FONT.num); num(t.h, TX + RW * 1.5, cy + 0.5, PAPER.ink); num(t.e, TX + RW * 2.5, cy + 0.5, PAPER.ink);
+    font(c, '700', 19, FONT.num); num(t.r, TX + RW * 0.5, cy + 1, PAPER.ink);
+    font(c, '600', 17, FONT.num); num(t.h, TX + RW * 1.5, cy + 0.5, PAPER.ink); num(t.e, TX + RW * 2.5, cy + 0.5, PAPER.ink);
   });
   for (let k = 1; k < n; k++) vl(IX + iw * k, LT + LBAND, LB, HAIR);
   vl(TX + RW, LT + LBAND, LB, HAIR); vl(TX + RW * 2, LT + LBAND, LB, HAIR);
   vl(IX, LT + LBAND, LB, HEAVY); vl(TX, LT + LBAND, LB, HEAVY);
   frame(X, LT, CW, LB - LT);
 
-  // 칸 = 기록지처럼 큰 마름모 하나 (높이 = 줄 높이의 84% · 정사각형을 45° 돌린 것), 약어는 마름모 안 가운데에서 조금 아래
-  //  · 글자 크기는 한 장에 하나: 약어 줄 높이에서 마름모 안쪽 폭(굵은 선에서 1 띄움)에 맞추고 8.5 아래로는 줄이지 않는다 — 더 긴 약어는 마름모 밖으로 넘치되 칸 안에서
-  const dr = Math.max(4, Math.min(rh * 0.42, iw / 2 - 2)), TO = 0.07;   // 반지름 · 글자 가운데를 내리는 비율
-  const inw = (r, f) => 2 * (r - r * TO - f * 0.41 - 2.83);   // 반지름 r · 글자 f 일 때 글자 줄의 마름모 안쪽 폭 (2.83 = 굵은 선 반 + 1 을 45° 로)
-  let cf = Math.min(10.5, dr * 0.8);
-  all.forEach(rows => rows.forEach(r => (r.cells || []).forEach(cs => { if (cs.length === 1) cf = Math.min(cf, fitFont(c, cs[0].code, '700', cf, FONT.kr, inw(dr, cf), 8.5)); })));
+  // 칸 = 기록지처럼 큰 마름모 하나 (높이 = 줄 높이의 84% · 정사각형을 45° 돌린 것), 약어는 마름모 가운데에서 조금 아래
+  //  · 글자 크기는 한 장에 하나(CF) — 인쇄에서 읽히는 크기가 먼저라 마름모보다 넓으면 넘치고, 선이 글자 상자를 비켜 간다 · 칸 경계를 넘을 때만 줄인다
+  const dr = Math.max(4, Math.min(rh * 0.42, iw / 2 - 2)), TO = 0.07, CF = 11.5;   // 반지름 · 글자 가운데를 내리는 비율 · 칸 글자 크기
 
   // 팀마다: 띠 · 머리 줄 · 선수 줄(한 줄 걸러 옅은 바탕) · 합계
   let y = TOP;
@@ -230,65 +227,64 @@ export function drawSheet(cv, d) {
     c.restore();
 
     // 띠: 원정 · 팀 이름 (· 타석 기록 없음) / 선공 · 득점 3 — 팀 이름은 이닝별 점수의 팀 이름과 같은 세로줄
-    font(c, '700', 15, FONT.num); const rw = c.measureText(String(t.r)).width;
-    text(String(t.r), W - X - P, y + 17.5, PAPER.bg, 'right');
-    font(c, '500', 10, FONT.kr); const side = (t.first ? '선공' : '후공') + ' · 득점 ', sdw = c.measureText(side).width;
-    text(side, W - X - P - rw, y + 16, PAPER.rule, 'right');
-    text(t.side, X + P, y + 16, PAPER.rule);
-    const nx = X + P + 30, note = '타석 기록 없음 · 빈 줄은 손으로';
-    font(c, '700', 10, FONT.kr); const pw = t.rows.length ? 0 : c.measureText(note).width + 16;
-    fitFont(c, t.name, '700', 13, FONT.kr, W - X - P - rw - sdw - 16 - nx - (pw ? pw + 8 : 0), 9); text(t.name, nx, y + 16.5, PAPER.bg);
+    font(c, '700', 17, FONT.num); const rw = c.measureText(String(t.r)).width;
+    text(String(t.r), W - X - P, y + 19, PAPER.bg, 'right');
+    font(c, '500', 12, FONT.kr); const side = (t.first ? '선공' : '후공') + ' · 득점 ', sdw = c.measureText(side).width;
+    text(side, W - X - P - rw, y + 18, PAPER.rule, 'right');
+    text(t.side, X + P, y + 18, PAPER.rule);
+    const nx = X + P + 32, note = '타석 기록 없음 · 빈 줄은 손으로';
+    font(c, '700', 12, FONT.kr); const pw = t.rows.length ? 0 : c.measureText(note).width + 18;
+    fitFont(c, t.name, '700', 15, FONT.kr, W - X - P - rw - sdw - 16 - nx - (pw ? pw + 8 : 0), 10); text(t.name, nx, y + 18.5, PAPER.bg);
     if (pw) {   // 상태를 알리는 알약 — 이 팀 타석이 하나도 없다
       const px = nx + c.measureText(t.name).width + 8;
-      c.fillStyle = PAPER.ink2; rr(c, px, y + 4, pw, 16, 8); c.fill();
-      font(c, '700', 10, FONT.kr); text(note, px + pw / 2, y + 15.5, PAPER.bg, 'center');
+      c.fillStyle = PAPER.ink2; rr(c, px, y + 4, pw, 18, 9); c.fill();
+      font(c, '700', 12, FONT.kr); text(note, px + pw / 2, y + 17.5, PAPER.bg, 'center');
     }
 
     // 머리 줄 (이름표는 작고 옅게)
-    const hy = y + BAND + 14;
-    font(c, '500', 10, FONT.kr);
+    const hy = y + BAND + 15.5;
+    font(c, '500', 12, FONT.kr);
     text('타순', X + SLOT / 2, hy, PAPER.ink2, 'center'); text('선수', X + SLOT + JN + 6, hy, PAPER.ink2);
     TOT.forEach((s, j) => text(s, TX + TW * (j + 0.5), hy, PAPER.ink2, 'center'));
-    font(c, '600', 10, FONT.num);
+    font(c, '600', 12, FONT.num);
     text('#', X + SLOT + JN, hy, PAPER.ink2, 'right');
     for (let k = 0; k < n; k++) num(k + 1, IX + iw * (k + 0.5), hy, PAPER.ink2);
 
     // 선수 줄: 타순 · 등번호 · 이름 · 이닝 칸(마름모 + 약어 · 오른쪽 위 타점) · 합계
     rows.forEach((r, i) => {
-      const top = R0 + i * rh, cy = top + rh / 2 + 4.5, my = top + rh / 2;
+      const top = R0 + i * rh, cy = top + rh / 2 + 5, my = top + rh / 2;
       if (i) hl(X, W - X, top, r.slot != null ? ROW : HAIR);   // 교체로 들어온 선수 줄 위는 가는 선 (같은 타순)
       for (let k = 0; k < n; k++) if (r.blank || !r.cells[k].length) diamond(IX + iw * (k + 0.5), my, dr, 0, false);
-      if (r.slot != null) { font(c, '600', 13, FONT.num); num(r.slot, X + SLOT / 2, cy + 0.5, r.blank ? PAPER.ink3 : PAPER.ink); }
+      if (r.slot != null) { font(c, '600', 15, FONT.num); num(r.slot, X + SLOT / 2, cy + 0.5, r.blank ? PAPER.ink3 : PAPER.ink); }
       if (r.blank) return;
       let room = NAME - JN - 6 - P;
       if (r.tag) {
-        font(c, '500', 9, FONT.kr); const tw = c.measureText(r.tag).width;
+        font(c, '500', 11.5, FONT.kr); const tw = c.measureText(r.tag).width;
         text(r.tag, IX - 8, cy - 0.5, PAPER.ink2, 'right'); room -= tw + 6;
       }
-      if (r.p.num !== '' && r.p.num != null) { font(c, '500', 11, FONT.num); text(String(r.p.num), X + SLOT + JN, cy, PAPER.ink2, 'right'); }
-      fitFont(c, r.p.name, '700', 12.5, FONT.kr, room, 8); text(r.p.name, X + SLOT + JN + 6, cy, PAPER.ink);
+      if (r.p.num !== '' && r.p.num != null) { font(c, '500', 13, FONT.num); text(String(r.p.num), X + SLOT + JN, cy, PAPER.ink2, 'right'); }
+      fitFont(c, r.p.name, '700', 14.5, FONT.kr, room, 10); text(r.p.name, X + SLOT + JN + 6, cy, PAPER.ink);
       r.cells.forEach((cs, k) => {
         const sw = iw / cs.length;   // 한 이닝에 두 번 나오면 칸을 나눈다
         cs.forEach((p, j) => {
           const cx = IX + iw * k + sw * (j + 0.5), b = reach(p), pr = Math.min(dr, sw / 2 - 2);
-          const f = fitFont(c, p.code, '700', cf, FONT.kr, inw(pr, cf), 8.5);
-          if (c.measureText(p.code).width > sw - 4) fitFont(c, p.code, '700', f, FONT.kr, sw - 4, 5);   // 넘쳐도 칸 경계는 넘지 않게
+          fitFont(c, p.code, '700', CF, FONT.kr, sw - 6, 7);   // 넘쳐도 칸 경계는 넘지 않게 (한 이닝 두 타석 · 긴 약어만 줄어든다)
           const m = c.measureText(p.code), bl = my + pr * TO + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;   // 실제 글자 상자의 가운데를 마름모 가운데(조금 아래)에
           diamond(cx, my, pr, b, p.scored || b === 4, [cx - m.width / 2 - 1, bl - m.actualBoundingBoxAscent - 1, m.width + 2, m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + 2]);
           text(p.code, cx, bl, p.hit ? PAPER.acc : p.walk ? PAPER.bb : PAPER.out, 'center');
         });
         const rbi = cs.reduce((s, p) => s + p.rbi, 0);
-        if (rbi) { font(c, '600', 9, FONT.num); text(String(rbi), IX + iw * (k + 1) - 3, top + 10, PAPER.acc, 'right'); }
+        if (rbi) { font(c, '600', 11.5, FONT.num); text(String(rbi), IX + iw * (k + 1) - 3, top + 11.5, PAPER.acc, 'right'); }
       });
-      font(c, '500', 13, FONT.num);
+      font(c, '500', 15, FONT.num);
       r.tot.forEach((v, j) => num(v, TX + TW * (j + 0.5), cy + 0.5, PAPER.ink));
     });
 
     // 합계 줄: 이닝 칸에는 그 이닝 득점 (이닝별 점수와 같은 값)
-    const tcy = ty + (y1 - ty) / 2 + 4.5;
-    font(c, '700', 11, FONT.kr); text('합계', X + SLOT + JN + 6, tcy, PAPER.ink);
-    font(c, '600', 12, FONT.num); t.line.forEach((v, k) => num(v, IX + iw * (k + 0.5), tcy + 0.5, PAPER.ink2));
-    font(c, '700', 13, FONT.num); t.tot.forEach((v, j) => num(v, TX + TW * (j + 0.5), tcy + 0.5, PAPER.ink));
+    const tcy = ty + (y1 - ty) / 2 + 5;
+    font(c, '700', 13, FONT.kr); text('합계', X + SLOT + JN + 6, tcy, PAPER.ink);
+    font(c, '600', 14, FONT.num); t.line.forEach((v, k) => num(v, IX + iw * (k + 0.5), tcy + 0.5, PAPER.ink2));
+    font(c, '700', 15, FONT.num); t.tot.forEach((v, j) => num(v, TX + TW * (j + 0.5), tcy + 0.5, PAPER.ink));
 
     // 선: 머리 줄 아래 = 줄, 칸 사이 = 가는 선, 선수 | 이닝 | 합계 · 합계 줄 위 = 구역
     hl(X, W - X, R0, ROW);
@@ -301,25 +297,26 @@ export function drawSheet(cv, d) {
     y = y1 + GAP;
   });
 
-  // 발 (아래 끝): 약어 세 줄(사이 16) · 서명 상자(마지막 약어 줄과 서명 이름 사이 33). 약어는 [이름] + 설명 (설명이 길면 줄인 크기로)
+  // 발 (아래 끝): 약어 네 줄(사이 16) · 서명 상자(마지막 약어 줄과 서명 이름 사이 34). 약어는 [이름] + 설명 (설명이 길면 그 줄만 10 까지 줄인 크기로)
   const SY = H - 32 - BOX, L3 = SY - LSTEP;
   const legend = (lbl, parts, ly) => {   // parts = [글자, 색] 또는 [null, 그리기(x, ly), 폭]
-    font(c, '700', 10, FONT.kr); text(lbl, X, ly, PAPER.ink2);
+    font(c, '700', 11.5, FONT.kr); text(lbl, X, ly, PAPER.ink2);
     const x0 = X + LX, wide = () => parts.reduce((s, p) => s + (p[0] == null ? p[2] : c.measureText(p[0]).width), 0);
-    let z = 10;
-    for (font(c, '500', z, FONT.kr); z > 7 && wide() > W - X - x0; ) { z -= 0.25; font(c, '500', z, FONT.kr); }
+    let z = 11.5;
+    for (font(c, '500', z, FONT.kr); z > 10 && wide() > W - X - x0; ) { z -= 0.25; font(c, '500', z, FONT.kr); }
     let x = x0;
     parts.forEach(p => { if (p[0] == null) p[1](x, ly); else text(p[0], x, ly, p[1]); x += p[0] == null ? p[2] : c.measureText(p[0]).width; });
   };
-  const g = PAPER.ink2, ico = (b, run) => [null, (x, ly) => diamond(x + 6, ly - 3.5, 6, b, run), 16];   // 칸과 같은 마름모 (득점 = 옅게 칠함 + 테두리)
-  legend('칸', [['좌 · 좌중 · 중 · 우중 · 우 = 타구 방향    안 안타 · 2 2루타 · 3 3루타 · 홈 홈런 · 비 뜬공 · 4구 볼넷 · 희번 희생번트 · 희플 희생플라이 · 야선 야수선택', g]], L3 - LSTEP * 2);
-  legend('표시', [ico(0, true), ['득점   ', g], ico(1, false), ['굵은 선 = 타자가 간 베이스 · 오른쪽 위 숫자 = 타점 · 글자색 ', g], ['안타', PAPER.acc], [' · ', g], ['4구 · 사구', PAPER.bb],
-    [' · E = 실책으로 내보낸 타자 수 · 득점 · 도루 빈칸 = 경기 운영 모드로 적지 않은 경기', g]], L3 - LSTEP);
+  const g = PAPER.ink2, ico = (b, run) => [null, (x, ly) => diamond(x + 7, ly - 4, 7, b, run), 19];   // 칸과 같은 마름모 (득점 = 옅게 칠함 + 테두리)
+  legend('방향', [['좌 · 좌중 · 중 · 우중 · 우 = 타구 방향 (좌중안 = 좌중간 안타)    E = 실책으로 내보낸 타자 수', g]], L3 - LSTEP * 3);
+  legend('칸', [['안 안타 · 2 2루타 · 3 3루타 · 홈 홈런 · 비 뜬공 · 4구 볼넷 · 희번 희생번트 · 희플 희생플라이 · 야선 야수선택', g]], L3 - LSTEP * 2);
+  legend('표시', [ico(0, true), ['득점  ', g], ico(1, false), ['타자가 간 베이스 · 위 숫자 타점 · 글자색 ', g], ['안타', PAPER.acc], [' · ', g], ['4구 · 사구', PAPER.bb],
+    [' · 득점 · 도루 빈칸 = 경기 운영 모드로 적지 않은 경기', g]], L3 - LSTEP);
   legend('수비', [['1 투수 · 2 포수 · 3 1루 · 4 2루 · 5 3루 · 6 유격 · 7 좌익 · 8 중견 · 9 우익    6-3 유격수 땅볼 1루 송구 · 3U 1루수 혼자 · F8 중견수 뜬공 · L6 유격수 직선타', g]], L3);
   const sw2 = (W - X - IX - 8) / 2;   // 서명 상자 왼쪽도 제목 · 이닝 칸 세로줄에
   [['기록원', X, IX - X - 8], ['원정 감독', IX, sw2], ['홈 감독', IX + sw2 + 8, sw2]].forEach(([s, x, w]) => {
     field(s, '', x, SY, w);
-    font(c, '500', 10, FONT.kr); text('(서명)', x + w - P, SY + BOX - 10, PAPER.ink3, 'right');
+    font(c, '500', 12, FONT.kr); text('(서명)', x + w - P, SY + BOX - 10, PAPER.ink3, 'right');
   });
   return c;
 }

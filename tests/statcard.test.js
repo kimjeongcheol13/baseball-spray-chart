@@ -77,7 +77,7 @@
       eq(window._cardType, 'personal', '처음엔 개인 카드');
       check(cv, 1080, 1920, '개인');
       eq(badFonts(calls), [], '개인 카드 글꼴');
-      ['김테스트', '미래팀', '테스트팀', 'HOME RUN', '좌전 안타', '중월 홈런', '삼진', '볼넷', 'SPRAY CHART', '.667', '@spraylab2026'].forEach(function (t) {
+      ['김테스트', '미래팀', '테스트팀', '홈런', '좌전 안타', '중월 홈런', '삼진', '볼넷', '타구 위치', '타석', '.667', '@spraylab2026'].forEach(function (t) {
         ok(has(calls, t), '개인 카드에 「' + t + '」 없음 — ' + text(calls).slice(0, 400));
       });
       ok(/3\|타수\|2\|안타\|1\|홈런\|2\|타점\|1\|볼넷/.test(text(calls)), '한 줄 성적 3타수 2안타 1홈런 2타점 1볼넷');
@@ -88,7 +88,7 @@
       calls = await drawn(async function () { switchCardType('team', $('cptTeam')); await window._drawCard(); });
       check(cv, 1080, 1080, '팀');
       eq(badFonts(calls), [], '팀 카드 글꼴');
-      ['테스트팀', '미래팀', 'GAME RECORD', '팀 기록', 'TOP HITTERS', '김테스트', '5', '3'].forEach(function (t) { ok(has(calls, t), '팀 카드에 「' + t + '」 없음'); });
+      ['테스트팀', '미래팀', '팀 기록', '오늘의 타자', '김테스트', '5', '3'].forEach(function (t) { ok(has(calls, t), '팀 카드에 「' + t + '」 없음'); });
       ok(has(calls, _cardDate()), '팀 카드에 날짜 없음');
       eq($('cardPlayerSel').style.display, 'none', '팀 카드에선 선수 고르기 숨김');
 
@@ -96,7 +96,7 @@
       check(cv, 1080, 1920, '시즌');
       eq(badFonts(calls), [], '시즌 카드 글꼴');
       ok(/1\|승\|1\|무\|1\|패/.test(text(calls)), '전적 1승 1무 1패 (테스트팀이 낀 3경기만)');
-      ['SEASON RECORD', 'SEASON SPRAY', '.500', 'wOBA'].forEach(function (t) { ok(has(calls, t), '시즌 카드에 「' + t + '」 없음'); });
+      ['시즌 기록', '시즌 타구', '.500', 'wOBA'].forEach(function (t) { ok(has(calls, t), '시즌 카드에 「' + t + '」 없음'); });
       ok(has(calls, '3') && has(calls, '경기'), '경기 수');
     });
   });
@@ -149,7 +149,7 @@
           check(r.cv, W, H, mode);
           eq(badFonts(r.calls), [], mode + ' 글꼴');
           // 팀 타율 = 안타 2 / (볼넷 뺀 3타석) · 안타 2 · 타점 2 · 삼진 1
-          ['GAME REPORT', _pgDate(), '테스트팀', '미래팀', '7', '12', '팀 타율', '.667', '삼진', '@spraylab2026'].forEach(function (t) {
+          ['경기 리포트', _pgDate(), '테스트팀', '미래팀', '7', '12', '팀 타율', '.667', '삼진', '@spraylab2026'].forEach(function (t) {
             ok(has(r.calls, t), mode + ' 이미지에 「' + t + '」 없음 — ' + text(r.calls).slice(0, 300));
           });
           var all = ' ' + text(r.calls).replace(/\|/g, ' ') + ' ';

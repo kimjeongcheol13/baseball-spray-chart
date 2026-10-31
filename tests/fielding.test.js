@@ -138,14 +138,14 @@
   });
 
   test('리그 기록지 칸: 수비 기록이 있으면 그것(6-3 · F8 · L6) · 없으면 예전 약어', async function () {
-    var m = await import('/js/features/scoresheet.js?v=5');
+    var m = await import('/js/features/scoresheet.js?v=6');
     var c = function (res, fp) { return m.cellCode({ res: res, fp: fp, x: .3, dir: 'LC' }); };
     eq([c('땅볼 아웃', '6-3'), c('플라이 아웃', 'F8'), c('라인드라이브 아웃', 'L6'), c('땅볼 아웃', '3U')], ['6-3', 'F8', 'L6', '3U'], '수비 기록');
     eq([c('땅볼 아웃'), c('플라이 아웃')], ['땅볼', '좌중비'], '수비 기록 없는 예전 타석');
   });
 
   test('리그 기록지 맨 아래: 약어 세 줄(수비 줄 포함) 다음 서명 줄 — 간격은 예전 두 줄일 때와 같고 그림 안에 들어간다', async function () {
-    var m = await import('/js/features/scoresheet.js?v=5');
+    var m = await import('/js/features/scoresheet.js?v=6');
     var d = m.sheetData({ abs: [{ id: 1, bid: 'k1', bname: '김유격', bnum: '6', team: 'away', inn: '1회초', res: '땅볼 아웃', fp: '6-3' }],
       away_lineup: [{ id: 'k1', name: '김유격', num: '6' }], home_lineup: [], info: null, hs: 0, as: 0, th: '', ta: '' });
     var cv = document.createElement('canvas'), at = {}, fill = CanvasRenderingContext2D.prototype.fillText;

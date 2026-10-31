@@ -2,17 +2,17 @@
 // Imports new feature modules and initializes the Savant navigation
 
 import './features/games.js?v=1';
-import './features/profile.js?v=31';
-import './features/compare.js?v=13';
+import './features/profile.js?v=32';
+import './features/compare.js?v=14';
 import './features/scouting.js?v=26';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=4';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
-import './features/team.js?v=23';
+import './features/team.js?v=24';
 import './features/teamgames.js?v=2';
-import './features/pitcher.js?v=50';
-import './features/batter.js?v=42';
+import './features/pitcher.js?v=52';
+import './features/batter.js?v=43';
 import './features/spray.js?v=6';
 import './features/shell.js?v=16';
 import './features/record.js?v=14';
@@ -20,7 +20,7 @@ import './features/settings.js?v=3';
 import './features/scorebook.js?v=33';
 import './features/dashboard.js?v=14';
 import './features/setup.js?v=10';
-import './features/report.js?v=8';
+import './features/report.js?v=9';
 import './features/anahelp.js?v=5';
 import './features/firstrun.js?v=8';
 import './features/tabloop.js?v=1';
@@ -31,9 +31,9 @@ import './features/gameoneocr.js?v=5';     // 게임원 앱 스크린샷으로 �
 import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPitcherView 를 감싼다
 import './features/runners.js?v=11';         // 주자 · 득점 · 주루 플레이 · 타순 · 교체 · 되돌리기 — shell.js(위) 다음 (undoLast · gfAfterRecord 를 바깥에서 감싼다)
 import './features/fielding.js?v=2';         // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정 · 번호판으로 고치기
-import './features/scoresheet.js?v=5';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
-import './features/ordersheet.js?v=3';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
-import './features/statcard.js?v=3';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
+import './features/scoresheet.js?v=6';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
+import './features/ordersheet.js?v=4';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
+import './features/statcard.js?v=5';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
 
 import './features/anahelp.js?v=5';
 import './features/anahelp.js?v=5';

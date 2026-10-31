@@ -4,7 +4,7 @@
 //  · 창 · 그리기 · 이미지 저장 · 인쇄는 리그 기록지(scoresheet.js)와 같은 식 (.rp.ss 창 · core.js _downloadCanvas · body.os-printing · css/report.css)
 //  · 진입: ☰ 메뉴 내보내기 · 그 밖의 기능(setup.js) 라인업 · 팀
 
-import { FONT, PAPER, font, fitFont, spacing, rr, wordmark, drawWithFonts } from './imgkit.js?v=1';
+import { FONT, PAPER, font, fitFont, rr, wordmark, drawWithFonts } from './imgkit.js?v=3';
 
 const $ = id => document.getElementById(id);
 // 수비 위치 → 기록지 번호 (6-4-3 의 그 번호)
@@ -29,12 +29,13 @@ export function orderData(g) {
 
 // ── 그리기 (논리 794 × 1123 = A4 세로 · 2배 PNG. 선수가 아주 많으면 세로만 늘린다) ──
 //  · 머리(로고 · 제목 + 팀 칸 / 대회 · 경기일 · 구장) / 표 둘(주전 · 후보) / 발(위치 번호 · 서명 상자). 발은 아래 끝에 붙이고, 줄 높이를 늘려 표가 발까지 닿게 한다
-//  · 상자 · 표 · 서명의 세로줄을 맞춘다: 왼쪽 끝 · 선수명 칸 왼쪽(= 팀 상자 왼쪽). 수비 위치는 번호 칸 + 이름 (프로 오더지처럼 '6  유격')
+//  · 상자 · 표 · 서명의 세로줄을 맞춘다: 왼쪽 끝 · 선수명 칸 왼쪽(= 팀 상자 왼쪽). 수비 위치는 번호 + 이름 (프로 오더지처럼 '6  유격' · 칸 안 세로선 없이)
+//  · 글자는 인쇄에서 읽히게 12.5 이상 (이름표 12.5~13 · 값 16~20) · 영문 장식 이름표(LINEUP CARD 등)는 없다
 //  · 리그 기록지(scoresheet.js)와 같은 틀: 선 굵기 셋(테두리 2 / 줄 1 / 칸 사이 가는 선 0.5), 안쪽 여백 12 · 사이 8 · 16, 숫자는 일의 자리를 세로로 맞춘다
 //  · 색 · 글꼴은 imgkit.js 의 PAPER · FONT 만
 const W = 794, H0 = 1123, SCALE = 2, X = 32, CW = W - X * 2, P = 12;
 const COLS = [['타순', 56], ['수비 위치', 128], ['선수명', 0], ['등번호', 80], ['교체 · 비고', 216]];   // 0 = 나머지 폭 · 교체 · 비고는 손으로 적는 칸
-const BOX = 48, TOP = 176, FOOT = 120, BAND = 24, HEAD = 24, GAP = 16, PN = 36;   // PN: 수비 위치 안 번호 칸 폭
+const BOX = 56, TOP = 192, FOOT = 136, BAND = 30, HEAD = 28, GAP = 16, PN = 36;   // PN: 수비 위치 안 번호 자리 폭
 const HEAVY = [2, PAPER.ink], ROW = [1, PAPER.rule], HAIR = [0.5, PAPER.rule];   // 선 굵기 셋 [굵기, 색]
 const snap = v => Math.round(v * 2) / 2;   // 2배 PNG 에서 선이 두 픽셀에 번지지 않게
 
@@ -54,8 +55,8 @@ export function drawOrder(cv, d) {
   // 칸 상자: 위에 작은 이름(조용히), 아래에 값 (값이 없으면 손으로 적는 빈칸)
   const field = (lbl, val, x, y, w, isNum) => {
     c.strokeStyle = ROW[1]; c.lineWidth = ROW[0]; rr(c, x + 0.5, y + 0.5, w - 1, BOX - 1, 6); c.stroke();
-    font(c, '500', 10, FONT.kr); text(lbl, x + P, y + 17, PAPER.ink2);
-    if (val) { fitFont(c, val, isNum ? '600' : '700', isNum ? 17 : 16, isNum ? FONT.num : FONT.kr, w - P * 2, 10); text(val, x + P, y + 38, PAPER.ink); }
+    font(c, '500', 12.5, FONT.kr); text(lbl, x + P, y + 20, PAPER.ink2);
+    if (val) { fitFont(c, val, isNum ? '600' : '700', isNum ? 20 : 19, isNum ? FONT.num : FONT.kr, w - P * 2, 12); text(val, x + P, y + 45, PAPER.ink); }
   };
   const rest = CW - COLS.reduce((s, k) => s + k[1], 0), xs = [X];
   COLS.forEach((k, i) => xs.push(xs[i] + (k[1] || rest)));
@@ -64,16 +65,15 @@ export function drawOrder(cv, d) {
   const half = (W - X - xs[2] - 8) / 2, grid3 = [[X, xs[2] - X - 8], [xs[2], half], [xs[2] + half + 8, half]];
 
   // 머리: 로고 · 문서 이름 / 제목(오더지 + 홈·원정) · 팀 · 상대 팀 / 대회 · 경기일 · 구장
-  wordmark(c, X, 42, 13, PAPER.ink, PAPER.acc);
-  font(c, '600', 11, FONT.num); spacing(c, 2.2); text('LINEUP CARD', W - X + 2.2, 42, PAPER.ink2, 'right'); spacing(c, 0);
-  font(c, '900', 30, FONT.kr); text('오더지', X - 1, 90, PAPER.ink);
-  text(d.side, X + c.measureText('오더지').width + 8, 90, PAPER.ink3);
+  wordmark(c, X, 40, 14, PAPER.ink, PAPER.acc);
+  font(c, '900', 34, FONT.kr); text('오더지', X - 1, 98, PAPER.ink);
+  text(d.side, X + c.measureText('오더지').width + 8, 98, PAPER.ink3);
   field('팀 (' + d.side + ')', d.name, grid3[1][0], 56, half);
   field('상대 팀', d.opp, grid3[2][0], 56, half);
-  [['대회', ''], ['경기일', d.date, 1], ['구장', d.venue]].forEach((f, i) => field(f[0], f[1], grid3[i][0], 112, grid3[i][1], f[2]));
+  [['대회', ''], ['경기일', d.date, 1], ['구장', d.venue]].forEach((f, i) => field(f[0], f[1], grid3[i][0], 120, grid3[i][1], f[2]));
 
   // 표: 어두운 띠 · 옅은 머리 줄 · 선수 줄(한 줄 걸러 옅은 바탕) — 타순 번호는 주전 표만
-  const table = (y0, title, en, rows, numbered) => {
+  const table = (y0, title, rows, numbered) => {
     const R0 = y0 + BAND + HEAD, ry = i => snap(R0 + i * rh), y1 = ry(rows.length);
     c.save(); rr(c, X, y0, CW, y1 - y0, 6); c.clip();
     c.fillStyle = PAPER.band; c.fillRect(X, y0, CW, BAND);
@@ -81,51 +81,49 @@ export function drawOrder(cv, d) {
     c.fillStyle = PAPER.zebra;
     rows.forEach((r, i) => { if (i % 2) c.fillRect(X, ry(i), CW, ry(i + 1) - ry(i)); });
     c.restore();
-    font(c, '700', 13, FONT.kr); text(title, X + P, y0 + 16.5, PAPER.bg);
+    font(c, '700', 16, FONT.kr); text(title, X + P, y0 + 20.5, PAPER.bg);
     if (numbered && !rows.some(r => r.name)) {   // 상태를 알리는 알약 — 라인업이 비었다 (기록지의 '타석 기록 없음'과 같은 모양)
       const note = '라인업 없음 · 빈 줄은 손으로', px = X + P + c.measureText(title).width + 8;
-      font(c, '700', 10, FONT.kr); const pw = c.measureText(note).width + 16;
-      c.fillStyle = PAPER.ink2; rr(c, px, y0 + 4, pw, 16, 8); c.fill();
-      text(note, px + pw / 2, y0 + 15.5, PAPER.bg, 'center');
+      font(c, '700', 12.5, FONT.kr); const pw = c.measureText(note).width + 20;
+      c.fillStyle = PAPER.ink2; rr(c, px, y0 + 5, pw, 20, 10); c.fill();
+      text(note, px + pw / 2, y0 + 19.5, PAPER.bg, 'center');
     }
-    font(c, '600', 10, FONT.num); spacing(c, 1.6); text(en, W - X - P + 1.6, y0 + 16, PAPER.ink3, 'right'); spacing(c, 0);
     // 머리 줄 (이름표는 작고 옅게): 숫자 칸은 가운데, 글자 칸은 왼쪽 여백 12
-    const hy = y0 + BAND + 16;
-    font(c, '500', 10.5, FONT.kr);
+    const hy = y0 + BAND + 19;
+    font(c, '500', 13, FONT.kr);
     text('타순', mid(0), hy, PAPER.ink2, 'center'); text('등번호', mid(3), hy, PAPER.ink2, 'center');
     [1, 2, 4].forEach(i => text(COLS[i][0], xs[i] + P, hy, PAPER.ink2));
     rows.forEach((r, i) => {
-      const cy = R0 + i * rh + rh / 2 + 6;
+      const cy = R0 + i * rh + rh / 2 + 7;
       if (i) hl(X, W - X, R0 + i * rh, ROW);
-      if (numbered) { font(c, '600', 18, FONT.num); num(i + 1, mid(0), cy + 1, PAPER.ink); }
+      if (numbered) { font(c, '600', 21, FONT.num); num(i + 1, mid(0), cy + 1, PAPER.ink); }
       const m = /^(.*) \((\d)\)$/.exec(r.pos), ps = m ? m[1] : r.pos;   // '유격 (6)' → 번호 칸 6 · 이름 유격 ('DH' 는 이름만)
-      if (m) { font(c, '600', 17, FONT.num); num(m[2], xs[1] + PN / 2, cy + 1, PAPER.ink); }
-      if (ps) { fitFont(c, ps, '700', 14, FONT.kr, xs[2] - xs[1] - PN - P * 2, 9); text(ps, xs[1] + PN + P, cy, PAPER.ink); }
-      if (r.name) { fitFont(c, r.name, '700', 17, FONT.kr, xs[3] - xs[2] - P * 2, 10); text(r.name, xs[2] + P, cy, PAPER.ink); }
-      if (r.num) { fitFont(c, r.num, '600', 18, FONT.num, xs[4] - xs[3] - P * 2, 10); num(r.num, mid(3), cy + 1, PAPER.ink); }
+      if (m) { font(c, '600', 20, FONT.num); num(m[2], xs[1] + PN / 2, cy + 1, PAPER.ink); }
+      if (ps) { fitFont(c, ps, '700', 17, FONT.kr, xs[2] - xs[1] - PN - P, 11); text(ps, xs[1] + PN + 4, cy, PAPER.ink); }
+      if (r.name) { fitFont(c, r.name, '700', 21, FONT.kr, xs[3] - xs[2] - P * 2, 12); text(r.name, xs[2] + P, cy, PAPER.ink); }
+      if (r.num) { fitFont(c, r.num, '600', 21, FONT.num, xs[4] - xs[3] - P * 2, 12); num(r.num, mid(3), cy + 1, PAPER.ink); }
     });
     hl(X, W - X, R0, ROW);
     for (let i = 1; i < COLS.length; i++) vl(xs[i], y0 + BAND, y1, HAIR);
-    vl(xs[1] + PN, R0, y1, HAIR);
     c.strokeStyle = HEAVY[1]; c.lineWidth = HEAVY[0]; rr(c, X, y0, CW, y1 - y0, 6); c.stroke();
     return y1;
   };
-  const y = table(TOP, '선발 타순', 'STARTING LINEUP', d.starters, true);
-  table(y + GAP, '후보 선수', 'BENCH', d.bench, false);
+  const y = table(TOP, '선발 타순', d.starters, true);
+  table(y + GAP, '후보 선수', d.bench, false);
 
   // 발 (아래 끝): 수비 위치 번호 · 서명 상자
-  const SY = H - 32 - BOX, LY = SY - 16;
-  font(c, '500', 10, FONT.kr); text('수비 위치 번호', X, LY, PAPER.ink2);
+  const SY = H - 32 - BOX, LY = SY - 18;
+  font(c, '500', 12.5, FONT.kr); text('수비 위치 번호', X, LY, PAPER.ink2);
   let lx = X + c.measureText('수비 위치 번호').width + P;
   ['투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익'].forEach((s, i) => {
-    font(c, '600', 11, FONT.num); text(String(i + 1), lx, LY, PAPER.ink); lx += c.measureText(String(i + 1)).width + 3;
-    font(c, '500', 10, FONT.kr); text(s, lx, LY, PAPER.ink2); lx += c.measureText(s).width + P;
+    font(c, '600', 14, FONT.num); text(String(i + 1), lx, LY, PAPER.ink); lx += c.measureText(String(i + 1)).width + 3;
+    font(c, '500', 12.5, FONT.kr); text(s, lx, LY, PAPER.ink2); lx += c.measureText(s).width + 11;
   });
-  font(c, '500', 10, FONT.kr); text('빈칸은 손으로 적어 주세요', W - X, LY, PAPER.ink3, 'right');
+  font(c, '500', 12.5, FONT.kr); text('빈칸은 손으로 적어 주세요', W - X, LY, PAPER.ink3, 'right');
   ['감독', '주장', '기록원 확인'].forEach((s, i) => {
     const [x, w] = grid3[i];
     field(s, '', x, SY, w);
-    font(c, '500', 10, FONT.kr); text('(서명)', x + w - P, SY + BOX - 10, PAPER.ink3, 'right');
+    font(c, '500', 12.5, FONT.kr); text('(서명)', x + w - P, SY + BOX - 11, PAPER.ink3, 'right');
   });
   return c;
 }

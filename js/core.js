@@ -7999,7 +7999,7 @@ function showGameSummary(){
     +'<div class="gs-stat"><div class="gs-val">'+_escHtml(rbi)+'</div><div class="gs-lbl">타점</div></div>'
     +'<div class="gs-stat"><div class="gs-val">'+k+'</div><div class="gs-lbl">삼진</div></div>'
     +'</div>'
-    +(mvpEntry?'<div class="gs-highlight"><div class="gs-hl-text">🏆 오늘의 MVP<br><b>'+_escHtml(mvpText)+'</b></div></div>':'')
+    +(mvpEntry?'<div class="gs-highlight"><div class="gs-hl-text">🏆 오늘의 선수<br><b>'+_escHtml(mvpText)+'</b></div></div>':'')
     +'<div class="gs-btn-row">'
     +'<button class="gs-btn-ok" onclick="closeGameSummary()">확인</button>'
     +'<button class="gs-btn-share" onclick="closeGameSummary();exportShareCard()">📊 카드 공유</button>'
@@ -8279,7 +8279,7 @@ function gfShowEndCard(){
 
   card.innerHTML=
     '<div class="gfe-header">'
-    +'<div class="gfe-badge">GAME OVER</div>'
+    +'<div class="gfe-badge">경기 종료</div>'
     +'<div class="gfe-title">'+_escHtml(th)+' vs '+_escHtml(ta)+'</div>'
     +'<div class="gfe-score">'+_escHtml(AS.hs)+' : '+_escHtml(AS.as)+'</div>'
     +'<div class="gfe-teams">'+_escHtml(date)+'</div>'
@@ -8295,7 +8295,7 @@ function gfShowEndCard(){
     +'</div>'
     +(mvp
       ?'<div class="gfe-mvp">'
-        +'<div class="gfe-mvp-ttl">🏆 오늘의 MVP</div>'
+        +'<div class="gfe-mvp-ttl">🏆 오늘의 선수</div>'
         +'<div class="gfe-mvp-name">'+_escHtml(mvp.name)+'</div>'
         +'<div class="gfe-mvp-stat">'+mvp.h+'안타 · '+_escHtml(mvp.rbi)+'타점'+(mvp.hr>0?' · '+mvp.hr+'홈런':'')+'</div>'
         +'</div>'
@@ -8491,7 +8491,7 @@ function _pgBuild(){
     var r=g.list.filter(function(a){return _HITS.includes(a.res);}).length/g.list.length;
     if(r>hotR){hotR=r;hotZ={name:g.name,rate:r,n:g.list.length};}
   });
-  if(hotZ&&hotR>=0.38)ins.push({cls:'hot',lbl:'🔥 HOT ZONE',val:hotZ.name+' '+Math.round(hotR*100)+'% 안타율 ('+hotZ.n+'타구)'});
+  if(hotZ&&hotR>=0.38)ins.push({cls:'hot',lbl:'🔥 잘된 곳',val:hotZ.name+' '+Math.round(hotR*100)+'% 안타율 ('+hotZ.n+'타구)'});
 
   // WEAKNESS
   var weakZ=null,weakR=-1;
@@ -8502,8 +8502,8 @@ function _pgBuild(){
     if(r>weakR&&r>=0.70){weakR=r;weakZ={name:g.name,rate:r};}
   });
   var kRate=abs.length?k/abs.length:0;
-  if(weakZ)ins.push({cls:'weak',lbl:'⚠ WEAKNESS',val:weakZ.name+' 아웃률 '+Math.round(weakZ.rate*100)+'% — 공략 포인트 조정 포인트'});
-  else if(kRate>=0.6&&k>=3)ins.push({cls:'weak',lbl:'⚠ WEAKNESS',val:'삼진률 '+Math.round(kRate*100)+'% — 컨택 비율을 높일 여지가 있습니다'});
+  if(weakZ)ins.push({cls:'weak',lbl:'⚠ 약점',val:weakZ.name+' 아웃률 '+Math.round(weakZ.rate*100)+'% — 공략 포인트 조정 포인트'});
+  else if(kRate>=0.6&&k>=3)ins.push({cls:'weak',lbl:'⚠ 약점',val:'삼진률 '+Math.round(kRate*100)+'% — 컨택 비율을 높일 여지가 있습니다'});
 
   // MVP (안타×1 + 2루타×1 추가 + 3루타×2 추가 + 홈런×3 추가 + 타점×1)
   var mvpMap=Object.create(null);
@@ -8518,7 +8518,7 @@ function _pgBuild(){
   var mvpArr=Object.values(mvpMap).sort(function(a,b){return b.score-a.score;});
   if(mvpArr.length&&mvpArr[0].h>0){
     var m=mvpArr[0];
-    ins.push({cls:'mvp',lbl:'🏆 MVP',val:_escHtml(m.name)+' — '+m.h+'안타 '+_escHtml(m.rbi)+'타점'+(m.hr?' '+m.hr+'홈런':'')});
+    ins.push({cls:'mvp',lbl:'🏆 오늘의 선수',val:_escHtml(m.name)+' — '+m.h+'안타 '+_escHtml(m.rbi)+'타점'+(m.hr?' '+m.hr+'홈런':'')});
   }
 
   var insEl=document.getElementById('pgInsights');

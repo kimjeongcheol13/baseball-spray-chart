@@ -20,6 +20,14 @@ export const NIGHT = {
   grass: '#11301F', grass2: '#163C27', dirt: '#3B2D21', chalk: 'rgba(255,255,255,0.6)', arc: 'rgba(255,255,255,0.14)',
 };
 
+// 공유 이미지 — 어두운 카드형 (분석 화면 css/v2.css 의 --v-* 와 같은 값). 성적 카드 · GAME REPORT 부터 하나씩 NIGHT 에서 옮긴다
+export const DARK = {
+  bg: '#0A0C11', card: '#141822', card2: '#1C212C', line: 'rgba(255,255,255,0.08)', line2: 'rgba(255,255,255,0.16)',
+  tx: '#F4F6FA', tx2: 'rgba(244,246,250,0.74)', tx3: 'rgba(244,246,250,0.52)',
+  acc: '#FF5A36', good: '#35D49E', bad: '#FF6B74',
+  hit: '#FF5A36', xbh: '#FF9F43', hr: '#F6C343', bb: '#7CB0FF', out: '#8C95A8',   // 결과 색 (분석 화면 결과 구성 막대와 같은 순서)
+};
+
 // 인쇄 이미지 — 흰 종이 (흑백 인쇄에서도 읽히게 색은 강조에만)
 export const PAPER = {
   bg: '#FFFFFF', ink: '#0F172A', ink2: '#475569', ink3: '#94A3B8',

@@ -274,17 +274,17 @@ function _infoHtml() {
   const gf = _gfOn();
   return `<header class="sb-card-hd"><h2>경기 정보</h2></header>
     <div class="st-form">
-      <label class="st-f"${H('날짜', '경기 날짜입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>DATE · 날짜</span><input type="date" class="st-u" value="${esc(i.date || _today())}" onchange="stSetInfo('date',this.value)"></label>
-      <label class="st-f"${H('구장', '경기한 구장 이름(최대 20자)입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>BALLPARK · 구장</span><input type="text" class="st-u" value="${esc(i.venue)}" maxlength="20" placeholder="예: 목동 보조구장" onchange="stSetInfo('venue',this.value)"></label>
+      <label class="st-f"${H('날짜', '경기 날짜입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>날짜</span><input type="date" class="st-u" value="${esc(i.date || _today())}" onchange="stSetInfo('date',this.value)"></label>
+      <label class="st-f"${H('구장', '경기한 구장 이름(최대 20자)입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>구장</span><input type="text" class="st-u" value="${esc(i.venue)}" maxlength="20" placeholder="예: 목동 보조구장" onchange="stSetInfo('venue',this.value)"></label>
       <div class="st-2">
-        <label class="st-f"${H('내 팀', '우리 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>MY TEAM · 내 팀</span><input type="text" class="st-u" value="${esc(th)}" maxlength="6" placeholder="내 팀" oninput="stTeamName('home',this.value)"></label>
-        <label class="st-f"${H('상대팀', '상대 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>OPPONENT · 상대팀</span><input type="text" class="st-u" value="${esc(ta)}" maxlength="6" placeholder="원정팀" oninput="stTeamName('away',this.value)"></label>
+        <label class="st-f"${H('내 팀', '우리 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>내 팀</span><input type="text" class="st-u" value="${esc(th)}" maxlength="6" placeholder="내 팀" oninput="stTeamName('home',this.value)"></label>
+        <label class="st-f"${H('상대팀', '상대 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>상대팀</span><input type="text" class="st-u" value="${esc(ta)}" maxlength="6" placeholder="원정팀" oninput="stTeamName('away',this.value)"></label>
       </div>
-      <fieldset class="st-f st-side"${H('홈 / 원정', '내 팀이 <b>홈(말 공격)</b>인지 <b>원정(초 공격)</b>인지 고릅니다.')}><legend>HOME / AWAY · 내 팀은</legend>
+      <fieldset class="st-f st-side"${H('홈 / 원정', '내 팀이 <b>홈(말 공격)</b>인지 <b>원정(초 공격)</b>인지 고릅니다.')}><legend>내 팀은</legend>
         <label><input type="radio" name="stSide" value="home"${i.side !== 'away' ? ' checked' : ''} onchange="stSetInfo('side','home')">홈 <small>(말 공격)</small></label>
         <label><input type="radio" name="stSide" value="away"${i.side === 'away' ? ' checked' : ''} onchange="stSetInfo('side','away')">원정 <small>(초 공격)</small></label>
       </fieldset>
-      <div class="st-f"${H('이닝', '정규 이닝 수(5 · 7 · 9회)입니다. 기록 탭 점수판의 이닝 칸 수가 바뀝니다.')}><span id="stInnLbl">INNINGS · 이닝</span>
+      <div class="st-f"${H('이닝', '정규 이닝 수(5 · 7 · 9회)입니다. 기록 탭 점수판의 이닝 칸 수가 바뀝니다.')}><span id="stInnLbl">이닝</span>
         <div class="sb-seg st-inn" role="group" aria-labelledby="stInnLbl">${[5, 7, 9].map(n => `<button type="button" aria-pressed="${i.innings === n}" onclick="stSetInfo('innings',${n})">${n}회</button>`).join('')}</div>
       </div>
     </div>
@@ -331,12 +331,12 @@ function _luHtml() {
     rows.push(p
       ? `<li class="st-row${p.isStarter === false ? ' bench' : ''}" data-id="${esc(String(p.id))}" data-i="${i}"><span class="n">${i + 1}</span>
           <input class="st-in nm" data-f="name" value="${esc(p.name)}" maxlength="8" aria-label="${lbl} 이름">
-          <input class="st-in pos" data-f="pos" value="${esc(p.pos || '')}" maxlength="4" list="stPosList" placeholder="POS" aria-label="${lbl} 포지션">
+          <input class="st-in pos" data-f="pos" value="${esc(p.pos || '')}" maxlength="4" list="stPosList" placeholder="수비" aria-label="${lbl} 포지션">
           ${bhSel(p.bh, lbl)}
           <button type="button" class="st-drag" aria-label="${lbl} ${esc(p.name)} 순서 바꾸기 (끌거나 ↑↓ 키)">${ICON.grip}</button></li>`
       : `<li class="st-row empty"><span class="n">${i + 1}</span>
           <input class="st-in nm" data-f="name" value="" maxlength="8" placeholder="이름" aria-label="${lbl} 이름 (입력하면 추가)">
-          <input class="st-in pos" data-f="pos" value="" maxlength="4" list="stPosList" placeholder="POS" aria-label="${lbl} 포지션">
+          <input class="st-in pos" data-f="pos" value="" maxlength="4" list="stPosList" placeholder="수비" aria-label="${lbl} 포지션">
           ${bhSel('', lbl)}
           <span class="st-drag ph" aria-hidden="true"></span></li>`);
   }
@@ -345,7 +345,7 @@ function _luHtml() {
         <button type="button" aria-pressed="${team === 'home'}" onclick="stTeam('home')">${esc(th)}</button>
         <button type="button" aria-pressed="${team === 'away'}" onclick="stTeam('away')">${esc(ta)}</button>
       </div></header>
-    <div class="st-lu-h" aria-hidden="true"><span>타순</span><span>이름</span><span>POS</span><span>타석</span><span></span></div>
+    <div class="st-lu-h" aria-hidden="true"><span>타순</span><span>이름</span><span>수비</span><span>타석</span><span></span></div>
     <ol class="st-lu-list">${rows.join('')}</ol>
     <datalist id="stPosList">${['투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익', 'DH'].map(x => `<option value="${x}">`).join('')}</datalist>
     <footer class="st-lu-ft">
@@ -365,7 +365,7 @@ function _stadHtml() {
   return `<header class="sb-card-hd"><h2>구장 규격</h2></header>
     <div class="st-pres" role="radiogroup" aria-label="구장 규격"${H('구장 고르기', '자주 쓰는 구장 규격입니다. 숫자는 <b>좌 · 중 · 우</b> 펜스 거리(m)입니다.')}>${PRESETS.map(item).join('')}</div>
     <div class="st-prev">${_preview()}</div>
-    <div class="st-dists"${H('펜스 거리', '거리를 바꾸면 <b>직접 입력</b>으로 저장되고 기록 탭 필드에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.')}>${inp('lf', 'LF', st.lfDist)}${inp('cf', 'CF', st.cfDist)}${inp('rf', 'RF', st.rfDist)}</div>
+    <div class="st-dists"${H('펜스 거리', '거리를 바꾸면 <b>직접 입력</b>으로 저장되고 기록 탭 필드에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.')}>${inp('lf', '좌', st.lfDist)}${inp('cf', '중', st.cfDist)}${inp('rf', '우', st.rfDist)}</div>
     <p class="st-note">거리를 바꾸면 '직접 입력'으로 저장되고, 기록 탭 필드 펜스와 타구 추정 비거리에 바로 반영됩니다. 홈런 여부는 기록할 때 직접 고릅니다.</p>`;
 }
 

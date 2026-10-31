@@ -1,12 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
    SprayLab — 분석 화면 새 디자인 (어두운 카드형 · 2026-10 시안 E)
-   · night.css 다음에 로드해 분석 화면(#analysisView)만 덮어쓴다 — 이 파일을 빼면 지금 화면으로 돌아감
+   · night.css 다음에 로드해 분석 화면(#analysisView) · 아래 메뉴바 · 경기설정(#settingsView)을 덮어쓴다 — 이 파일을 빼면 지금 화면으로 돌아감
    · 고대비(야외, body.high-contrast)는 건드리지 않는다 (밝은 종이 그대로)
    · 원칙: 둥근 카드 하나에 이야기 하나 · 숫자는 크게(Oswald) · 글자는 13px 아래로 안 내림 · 누르는 곳은 44px 이상
    · 폰 · 컴퓨터 둘 다 적용 (사용자 결정 10-30) — 넓은 화면에서는 카드 두 줄 배치
    ═══════════════════════════════════════════════════════════ */
 
-html body.sb.sb-night:not(.high-contrast) #analysisView {
+html body.sb.sb-night:not(.high-contrast) #analysisView,
+html body.sb.sb-night:not(.high-contrast) #settingsView {
   --v-bg: #0A0C11;
   --v-card: #141822;
   --v-card2: #1C212C;
@@ -741,4 +742,97 @@ html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .
 @media (max-width: 720px) {
   /* 하단 탭 위에 고정된 입력 묶음 (pitcher.css) — 바탕을 화면색으로, 위 경계를 부드럽게 */
   html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock { padding: 10px 12px 6px; background: var(--v-bg); border-top: 1px solid var(--v-line); box-shadow: 0 -10px 24px rgba(0, 0, 0, .35); }
+}
+
+
+/* ═══ 경기설정 탭 (#settingsView · setup.js) ═══════════════════
+   사용자 결정 11-01: 분석 화면과 같은 카드형 · 칸 제목은 한글만 · 고른 것은 흰 바탕 · 그 밖의 기능은 목록 그대로 + 둥근 아이콘. 폰 · 컴퓨터 둘 다
+   · 토큰은 맨 위 #analysisView 규칙에서 같이 받는다 · 칸 순서 · 버튼 동작은 그대로
+   · night.css 가 #settingsView * 테두리 색을 !important 로 덮음 → 강조 테두리 색은 !important */
+html body.sb.sb-night:not(.high-contrast) #settingsView.savant-view { background: var(--v-bg) !important; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-vhdr { background: var(--v-bg); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-hbtn .sb-mini { padding: 0 16px; background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-hbtn .st-go { background: var(--v-acc); color: #fff; }
+
+/* 카드 · 카드 제목 */
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-card { background: var(--v-card); border: 0; border-radius: var(--v-r); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-card-hd { min-height: 0; padding: 18px 12px 4px 14px; border-bottom: 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-card-hd h2 { font: 800 19px/1.2 'Noto Sans KR', sans-serif; letter-spacing: -.3px; color: var(--v-ink); }
+
+/* 칸 제목 (한글만 · 13px) */
+html body.sb.sb-night:not(.high-contrast) #settingsView :is(.st-f > span, .st-f > legend, .st-d span, .st-lu-h, .st-sync b) { font: 700 13px/1.2 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+
+/* 입력칸 · 고르기 */
+/* :is() 는 가장 센 것(.st-d input)의 특이도를 가져 → 높이 · 여백은 칸마다 따로 */
+html body.sb.sb-night:not(.high-contrast) #settingsView :is(.st-u, .st-in, .st-d input) { background: var(--v-card2); border: 1px solid transparent; border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-u { min-height: 48px; padding: 0 14px; font: 600 16px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-in { min-height: 44px; padding: 0 10px; font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-in.pos { letter-spacing: 0; text-transform: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row.empty .st-in { border-style: dashed; border-color: var(--v-line) !important; background: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView :is(.st-u, .st-in, .st-d input):focus { border-width: 1px; border-color: var(--v-acc) !important; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-d input { min-height: 48px; padding: 0 30px 0 14px; font: 600 22px/1 var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-d em { right: 12px; bottom: 15px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-side input { accent-color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-side small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-seg { padding: 3px; gap: 2px; background: var(--v-card2); border-radius: 12px; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-seg button { min-height: 44px; padding: 0 14px; background: none; border: 0; border-radius: 10px; color: var(--v-ink2); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-seg button[aria-pressed="true"] { background: #fff; color: #0A0C11; }
+
+/* 경기 운영 · 데이터 버튼 */
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-btn { min-height: 48px; background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .sb-btn.on { background: #fff; color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-danger { background: rgba(255, 107, 116, .12) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-file:focus-within { outline-color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-gf { padding-top: 14px; border-top: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #settingsView :is(.st-gf p, .st-note, .stx-r .st-note) { font: 500 13px/1.55 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-data .st-note { color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-meta { font: 500 13px/1.3 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-sync { padding: 6px 6px 6px 14px; word-break: keep-all; background: var(--v-card2); border-left: 0; border-radius: 12px; font: 600 13px/1.4 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-sync b { flex: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-sync .sb-mini { padding: 0 14px; background: var(--v-card); border: 0; border-radius: 10px; color: var(--v-ink); font-size: 13px; }
+
+/* 타순표 */
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-lu-h { border-bottom: 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row { border-bottom: 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row .n { font: 600 18px/1 var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row.empty .n { color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row.bench .n::after { font-size: 12px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row.dragging { background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-row.drop-to { box-shadow: inset 0 3px 0 var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-drag:not(.ph) { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-drag:not(.ph):is(:hover, :focus-visible) { color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-lu-ft .sb-btn { border: 1px dashed var(--v-line); background: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-lu-ft .sb-mini { padding: 0 14px; background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink2); font-size: 13px; }
+
+/* 구장 규격 — 고른 구장 = 흰 바탕 */
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pres { gap: 2px; padding: 6px 10px 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre { min-height: 48px; padding: 0 12px; background: none; border: 0; border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre:hover:not(.on) { background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre span { font: 500 14px var(--v-num); letter-spacing: .5px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre.on { background: #fff; color: #0A0C11; box-shadow: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-pre.on span { color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-prev { border-top: 0; border-left: 0; }
+
+/* 그 밖의 기능 — 목록 그대로, 둥근 아이콘 · 줄마다 긋던 선 대신 간격 · 묶음 색은 v2 색으로 */
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div { padding: 8px 10px 14px; border: 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div:nth-child(1) { --mc: #FF7A5C; --mc-soft: rgba(255, 90, 54, .14); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div:nth-child(2) { --mc: #5FE3B5; --mc-soft: rgba(53, 212, 158, .13); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div:nth-child(3) { --mc: var(--v-blue); --mc-soft: rgba(124, 176, 255, .13); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div:nth-child(4) { --mc: var(--v-hi); --mc-soft: rgba(246, 195, 67, .13); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more h3 { margin: 4px 10px 6px; font: 700 13px/1.2 'Noto Sans KR', sans-serif; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b { min-height: 56px; padding: 6px 10px; border: 0; border-radius: 14px; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b:hover { background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b:hover b { text-decoration: none; }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-i { flex-basis: 40px; width: 40px; height: 40px; background: var(--mc-soft); border: 0; border-radius: 12px; color: var(--mc); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b:hover .st-more-i { background: var(--mc-soft); color: var(--mc); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b b { font: 700 15px 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b small { font: 500 13px 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+
+@media (max-width: 720px) {
+  /* 하단 탭 위에 붙은 「저장하고 기록 시작」 둘레 띠를 화면색으로 · 기능 묶음 사이 선 */
+  html body.sb.sb-night:not(.high-contrast) #settingsView .st-hbtn .st-go { box-shadow: 0 0 0 8px var(--v-bg), -12px 0 0 8px var(--v-bg), 12px 0 0 8px var(--v-bg); }
+  html body.sb.sb-night:not(.high-contrast) #settingsView .st-more > div + div { border-top: 1px solid var(--v-line); }
+  /* 타순표 칸이 좁다(수비 62 · 타석 70px) → 안쪽 여백을 줄여 「수비」 · 「우타」가 잘리지 않게 */
+  html body.sb.sb-night:not(.high-contrast) #settingsView .st-in { padding: 0 6px; }
 }

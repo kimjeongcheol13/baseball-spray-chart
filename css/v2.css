@@ -590,6 +590,22 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-meta, html body.
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl { font-size: 13px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl :is(th, td) { border-color: var(--v-line) !important; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl thead th { background: var(--v-card2) !important; }
+/* ── 그래프 · 옆으로 밀리는 줄 (10-31 팀 탭 점검) ─────────────── */
+/* 그래프 글씨: viewBox 320 이 폰 폭(약 310px)에 맞춰 줄면 8px 글씨가 7.7px → 13 단위 (폰에서 약 13px) */
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-trend :is(.t-ax, .t-end) { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-legend .an-legend-note { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-run-lbl.w { fill: var(--v-good); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-run-lbl.l { fill: var(--v-bad); }
+/* 타구 방향 비율 칸: 같은 너비 (아래 내야/외야 표와 칸이 맞음) — 비율은 숫자 · 강조 칸으로 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c { flex: 1 1 0 !important; }
+/* 옆으로 밀리는 표 · 버튼 줄: 오른쪽 끝을 흐리게 = 더 있다는 표시 (선수 칩 줄 .an-pick 과 같은 방식) · 끝까지 밀면 마지막 칸이 흐림 밖으로 */
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.tm-roster-wrap, .tm-ldr-tabs) {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster-wrap { padding-right: 36px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-tabs::after { content: ''; flex: 0 0 26px; }
+
 /* ── 넓은 화면: 카드 두 줄 ───────────────────────────────── */
 @media (min-width: 980px) {
   html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result {

@@ -91,18 +91,18 @@ html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-hd h3, .an-card 
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-hd-note { font-size: 13px; line-height: 1.5; color: var(--v-ink3); }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-note { padding: 18px 6px; font-size: 14px; line-height: 1.65; color: var(--v-ink2); text-align: center; }
 
-/* 결과 칩 (안타 · 사구 · 삼진 …): 테두리 없는 알약 */
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i[class^="r-"] {
+/* 결과 칩 (안타 · 사구 · 삼진 …): 테두리 없는 알약 — 타석 결과 막대 · 범례(.ad-bar)의 같은 이름 칸은 제외 */
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *)[class^="r-"] {
   padding: 4px 10px; border: 0 !important; border-radius: 999px !important;
   font: 700 13px/1.2 'Noto Sans KR', sans-serif; font-style: normal;
   background: rgba(255, 255, 255, .07); color: var(--v-ink2);
 }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-1b { background: rgba(255, 107, 116, .16) !important; color: #FF9AA1 !important; }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-xbh { background: rgba(246, 195, 67, .18) !important; color: var(--v-hi) !important; }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-hr { background: var(--v-bad) !important; color: #fff !important; }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-bb { background: rgba(124, 176, 255, .16) !important; color: var(--v-blue) !important; }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-k { background: rgba(255, 255, 255, .07) !important; color: var(--v-bad) !important; }
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i.r-out { background: rgba(255, 255, 255, .07) !important; color: var(--v-ink2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-1b { background: rgba(255, 107, 116, .16) !important; color: #FF9AA1 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-xbh { background: rgba(246, 195, 67, .18) !important; color: var(--v-hi) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-hr { background: var(--v-bad) !important; color: #fff !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-bb { background: rgba(124, 176, 255, .16) !important; color: var(--v-blue) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-k { background: rgba(255, 255, 255, .07) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.an-card, .an-rchips) i:not(.ad-bar *, .ad-bar-lg *).r-out { background: rgba(255, 255, 255, .07) !important; color: var(--v-ink2) !important; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-badge { padding: 4px 10px; border-radius: 999px !important; font-size: 12px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .pf-tag {
   padding: 4px 10px; border: 0 !important; border-radius: 999px !important;
@@ -281,6 +281,125 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .pc-live-kpis b { font: 
 html body.sb.sb-night:not(.high-contrast) #analysisView .pc-live-empty { font-size: 14px; }
 @media (max-width: 599px) { html body.sb.sb-night:not(.high-contrast) #analysisView .pc-live-kpis { grid-template-columns: repeat(3, 1fr); row-gap: 12px; } }   /* 여섯 칸이면 '스트라이크'가 두 줄 */
 
+/* ── 팀 탭 ───────────────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ctrls { gap: 8px; margin-bottom: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-scope-note { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-hero {
+  gap: 16px 12px; padding: 24px 22px 20px;
+  background: radial-gradient(120% 110% at 0% 0%, color-mix(in srgb, var(--tm-c, #FF5A36) 26%, transparent), transparent 60%), var(--v-card) !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-badge { width: 56px; height: 56px; border: 0 !important; border-radius: 16px !important; background: var(--tm-c, var(--v-acc)) !important; color: #fff !important; font-size: 24px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-name { font-size: 30px; letter-spacing: -.03em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-meta { margin-top: 4px; font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main { gap: 2px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main b { font: 600 48px/1 var(--v-num); letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main small { margin-right: 8px; font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main span { font: 600 36px/1 var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec > small { margin-top: 4px; font: 500 14px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-flow { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-flow small { margin-right: 6px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-flow i { width: 36px; height: 30px; border: 0 !important; border-radius: 999px !important; background: rgba(255, 255, 255, .07); font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-flow i.w { background: rgba(53, 212, 158, .16) !important; color: var(--v-good) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-flow i.l { background: rgba(255, 107, 116, .16) !important; color: var(--v-bad) !important; }
+/* 팀 지표 9칸: 둥근 칸 · 큰 숫자 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpis { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi { gap: 4px; padding: 16px 6px 14px; border: 0 !important; border-radius: 16px !important; background: var(--v-card) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi span { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi b { font: 600 26px/1.1 var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi small { font: 500 13px var(--v-num); color: var(--v-ink3); }
+
+/* 타석 결과 막대: 둥근 띠 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-bar { height: 16px; border: 0 !important; border-radius: 999px !important; overflow: hidden; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-bar i + i { border-left: 2px solid var(--v-card) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-bar-lg { gap: 8px 16px; font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-bar-lg i { width: 12px; height: 12px; border: 0 !important; border-radius: 50% !important; }
+/* 종이 색(--paper-2 등)은 어두운 바탕에서 안 보임 → 어두운 화면용 색 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-hit { background: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-k { background: var(--v-ink) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-go { background: #C98B5B !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-fo { background: var(--v-good) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-bb { background: var(--v-blue) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar :is(.ad-bar, .ad-bar-lg) i.r-etc { background: rgba(255, 255, 255, .28) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-bar-lg b { font: 600 16px var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-resbar .ad-warn { border-color: var(--v-line) !important; font-size: 13px; }
+
+/* 리더보드 · 경기 결과 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-tabs { gap: 6px; margin-bottom: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-tabs button { height: 44px; padding: 0 16px; border: 0 !important; border-radius: 999px !important; background: var(--v-card2) !important; color: var(--v-ink2); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-tabs button.on { background: var(--v-ink) !important; color: var(--v-bg) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr li { grid-template-columns: 30px minmax(0, 1.2fr) 1fr 64px; gap: 12px; padding: 12px 0; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rank { width: 30px; height: 30px; border: 0 !important; border-radius: 50% !important; background: var(--v-card2) !important; font: 600 15px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rank.r1 { background: var(--v-hi) !important; color: #1a1300 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rank.r2 { background: #B8C0CC !important; color: #12151b !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rank.r3 { background: #C98B5B !important; color: #1a0f05 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-who b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-who small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.tm-ldr-bar, .tm-ldr-bar i) { height: 10px; border-radius: 999px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-bar i { background: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-v { font: 600 20px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-games li { grid-template-columns: 36px 1fr auto; gap: 12px; padding: 14px 0; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-res { width: 36px; height: 36px; border: 0 !important; border-radius: 50% !important; background: var(--v-card2) !important; font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-res.w { background: rgba(53, 212, 158, .16) !important; color: var(--v-good) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-res.l { background: rgba(255, 107, 116, .16) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-g-main b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-g-main small { font-size: 13px; line-height: 1.5; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-g-main .tm-star { color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-score { font: 600 30px/1 var(--v-num); letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-score i { margin: 0 4px; }
+
+/* 선수별 기록 표 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster thead th { font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster thead button { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster :is(tbody th, td, tfoot th) { padding: 12px 8px; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster td { font: 500 16px var(--v-num); color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster td.lead { color: var(--v-ink); font-weight: 600; }   /* 동률이면 한 열이 다 1위 → 노랑은 너무 시끄러움 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster tbody th b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster tbody th small { font: 500 13px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster tfoot th { font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster tfoot td { color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-roster .tm-sticky { background: var(--v-card) !important; }
+
+/* 득점·실점 · 이닝별 · 카운트별 · 구종별 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-sw { width: 12px; height: 12px; border-radius: 50% !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-legend { gap: 6px 16px; font-size: 13px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inns { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn { gap: 4px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn-bar { max-width: 30px; height: 96px; border-radius: 999px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn-bar i { border-radius: 999px !important; background: var(--v-blue) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn b { font: 600 13px var(--v-num); letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-inn em { font: 500 13px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-sub { margin-top: 2px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-pitch thead th { padding: 0 6px 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-pitch :is(tbody th, td) { padding: 12px 6px; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-pitch tbody th { font: 700 15px 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-pitch td b { font: 600 20px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-pitch td small { font: 500 13px var(--v-num); }
+
+/* 타구 방향 (팀 · 타자 같은 부품): 상세 필터 · 비율 띠 · 내야/외야 표 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-field .sb-mini { min-height: 44px; padding: 0 16px; gap: 6px; border: 0 !important; border-radius: 999px !important; background: var(--v-card2) !important; color: var(--v-ink) !important; font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-field .sb-mini.on { background: var(--v-ink) !important; color: var(--v-bg) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-field-box.ad-3d { border: 0 !important; border-radius: 16px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-legend { font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band { gap: 4px; border: 0 !important; min-height: 56px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c { gap: 4px; padding: 8px 2px; border: 0 !important; border-radius: 12px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c.top { background: rgba(255, 90, 54, .2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c b { font: 700 13px 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c span { font: 600 20px var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-band-c.top span { color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-depth { border: 0 !important; border-collapse: separate; border-spacing: 4px; background: transparent !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-depth :is(th, td) { padding: 10px 2px; border: 0 !important; border-radius: 10px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-depth th { font: 700 13px 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .ad-depth td { background: var(--v-card2) !important; font: 600 18px var(--v-num); color: var(--v-ink); }
+
+/* 내보내기 · 팀 관리: 폰은 한 줄에 하나 (두 칸이면 이름이 세 줄로 깨짐) */
+@media (max-width: 599px) {
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-acts { grid-template-columns: 1fr; }
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .tm-act { grid-template-columns: 40px 1fr; gap: 2px 14px; align-content: center; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .tm-act small { white-space: normal; }
+
 /* ── 넓은 화면: 카드 두 줄 ───────────────────────────────── */
 @media (min-width: 980px) {
   html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result {
@@ -303,4 +422,16 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .pc-live-empty { font-si
   html body.sb.sb-night:not(.high-contrast) #analysisView .pc-name { font-size: 40px; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .pc-ip b { font-size: 80px; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .pc-kpi b { font-size: 30px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start;
+  }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result > :not(.an-card),
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result > :is(.an-insight, .tm-resbar),
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result > .an-card:has(.tm-roster, .tm-acts) { grid-column: 1 / -1; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-acts { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-2col { gap: 18px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpis { grid-template-columns: repeat(9, 1fr); }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-name { font-size: 36px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main b { font-size: 60px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi b { font-size: 28px; }
 }

@@ -6,8 +6,8 @@
    · 폰 · 컴퓨터 둘 다 적용 (사용자 결정 10-30) — 넓은 화면에서는 카드 두 줄 배치
    ═══════════════════════════════════════════════════════════ */
 
-html body.sb.sb-night:not(.high-contrast) #analysisView,
-html body.sb.sb-night:not(.high-contrast) #settingsView {
+/* 색 토큰 — 분석 · 경기설정 · 팝업 창(body 바로 아래)이 함께 쓴다 */
+html body.sb.sb-night:not(.high-contrast) {
   --v-bg: #0A0C11;
   --v-card: #141822;
   --v-card2: #1C212C;
@@ -22,6 +22,9 @@ html body.sb.sb-night:not(.high-contrast) #settingsView {
   --v-blue: #7CB0FF;
   --v-num: 'Oswald', 'Noto Sans KR', sans-serif;
   --v-r: 20px;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView,
+html body.sb.sb-night:not(.high-contrast) #settingsView {
   /* analysis.css · batter.css 가 쓰는 토큰도 같은 색으로 */
   --an-card: var(--v-card);
   --an-raised: var(--v-card2);
@@ -836,3 +839,82 @@ html body.sb.sb-night:not(.high-contrast) #settingsView .st-more-b small { font:
   /* 타순표 칸이 좁다(수비 62 · 타석 70px) → 안쪽 여백을 줄여 「수비」 · 「우타」가 잘리지 않게 */
   html body.sb.sb-night:not(.high-contrast) #settingsView .st-in { padding: 0 6px; }
 }
+
+
+/* ═══ 팝업 창 공통 ════════════════════════════════════════════
+   사용자 결정 11-01: 창 20여 개 전부 한 번에 · 뜨는 위치(아래 · 가운데 · 서랍 · 전체 화면)는 그대로 · 주 버튼은 주황 · 글씨 13px 이상
+   · paper.css '창 공통' 규칙이 창 안 모든 요소 모서리를 0 !important (특이도 1,2,2) → 여기 모서리는 ids + !important 로 덮는다
+   · 창 바깥(어두운 막)과 열고 닫는 동작은 그대로 */
+html body.sb.sb-night:not(.high-contrast) :is(#lineupDrawer, #gameWizard, #saveMethodSheet, #loadOverlay, #pgReport, #goOverlay, #goFixOverlay, #helpModal, #fieldFeedbackModal, #dataSettingsOverlay, #ocrModal, #shareQROv, #qrOv, #scoutIntroSheet, #cardPreviewOv, #teamGamesModal, #playerProfileOverlay, #gfEndOv, #newGameGuard, #loginModal, #profileModal, #cloudOverlay, #teamCreateModal, #editRecOverlay, #mobMoreSheet, #mobPlayerModal, #mabMoreModal, .rp) :is(button, .btn, input, select, textarea):not([class*="dot"]) { border-radius: 12px !important; }
+html body.sb.sb-night:not(.high-contrast) :is(#lineupDrawer, #gameWizard, #saveMethodSheet, #loadOverlay, #goOverlay, #goFixOverlay, #helpModal, #fieldFeedbackModal, #dataSettingsOverlay, #ocrModal, #shareQROv, #qrOv, #scoutIntroSheet, #cardPreviewOv, #teamGamesModal, #playerProfileOverlay, #gfEndOv, #newGameGuard, #loginModal, #profileModal, #cloudOverlay, #teamCreateModal, #editRecOverlay, #mobMoreSheet, #mobPlayerModal, #mabMoreModal) :is(button, .btn) { min-height: 44px; }
+html body.sb.sb-night:not(.high-contrast) :is(#lineupDrawer, #gameWizard, #loadOverlay, #goOverlay, #goFixOverlay, #fieldFeedbackModal, #dataSettingsOverlay, #playerProfileOverlay, #loginModal, #profileModal, #cloudOverlay, #teamCreateModal, #editRecOverlay, #mobPlayerModal) :is(input:is([type="text"], [type="date"], [type="number"], [type="email"], [type="url"], [type="search"], :not([type])), textarea, select) { background: var(--v-card2) !important; border: 1px solid transparent !important; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) :is(#lineupDrawer, #gameWizard, #loadOverlay, #goOverlay, #goFixOverlay, #fieldFeedbackModal, #dataSettingsOverlay, #playerProfileOverlay, #loginModal, #profileModal, #cloudOverlay, #teamCreateModal, #editRecOverlay, #mobPlayerModal) :is(input, textarea, select):focus { border-color: var(--v-acc) !important; outline: none; }
+
+/* 창 틀: 가운데 창 = 네 모서리 · 아래 시트 = 위 두 모서리 · 왼쪽 서랍 = 오른쪽 두 모서리 · 전체 화면(경기 리포트 · 이미지 창)은 그대로 */
+html body.sb.sb-night:not(.high-contrast) :is(#loadOverlay, #goOverlay, #goFixOverlay, #dataSettingsOverlay, #teamGamesModal, #playerProfileOverlay, #cloudOverlay, #editRecOverlay, #loginModal, #profileModal) .modal,
+html body.sb.sb-night:not(.high-contrast) #gameWizard .gw-card,
+html body.sb.sb-night:not(.high-contrast) #cardPreviewOv .card-preview-box,
+html body.sb.sb-night:not(.high-contrast) #shareQROv .share-qr-box,
+html body.sb.sb-night:not(.high-contrast) :is(#newGameGuard, #teamCreateModal, #qrOv) > div,
+html body.sb.sb-night:not(.high-contrast) #gfEndOv #gfeCard { background: var(--v-card) !important; border: 0 !important; border-radius: var(--v-r) !important; box-shadow: 0 24px 60px rgba(0, 0, 0, .5) !important; }
+html body.sb.sb-night:not(.high-contrast) #saveMethodSheet,
+html body.sb.sb-night:not(.high-contrast) #helpModal .hm-sheet,
+html body.sb.sb-night:not(.high-contrast) #fieldFeedbackModal .ffm-sheet,
+html body.sb.sb-night:not(.high-contrast) #scoutIntroSheet,
+html body.sb.sb-night:not(.high-contrast) :is(#mobMoreSheet, #mobPlayerModal, #mabMoreModal) > div { background: var(--v-card) !important; border: 0 !important; border-radius: var(--v-r) var(--v-r) 0 0 !important; }
+html body.sb.sb-night:not(.high-contrast) #ocrModal > div { background: var(--v-card) !important; border: 0 !important; border-radius: var(--v-r) !important; }
+html body.sb.sb-night:not(.high-contrast) #lineupDrawer { background: var(--v-card) !important; border: 0 !important; border-radius: 0 var(--v-r) var(--v-r) 0 !important; }
+html body.sb.sb-night:not(.high-contrast) :is(#saveMethodSheet > div:first-child, #scoutIntroSheet .scout-intro-handle, #helpModal .hm-handle) { border-radius: 3px !important; }
+
+/* 창 안 묶음 카드 · 줄 */
+html body.sb.sb-night:not(.high-contrast) :is(#loadOverlay .load-card, #dataSettingsOverlay .dm-tile, #lineupDrawer .player-row, #goOverlay :is(.go-shot, .go-how, .go-prev), #scoutIntroSheet :is(.scout-intro-rows, .scout-intro-flow), #saveMethodSheet > div[onclick], #shareQROv .share-qr-url, #pgReport :is(.pg-sg > *, .pg-ins, .pg-ai, .pg-mini, .pg-map)) { border-radius: 14px !important; }
+html body.sb.sb-night:not(.high-contrast) :is(#loadOverlay .load-card, #dataSettingsOverlay .dm-tile, #lineupDrawer .player-row, #saveMethodSheet > div[onclick]) { background: var(--v-card2) !important; border: 0 !important; }
+
+/* 주 버튼 = 주황 (기록 시작 · 전송 · 이미지 저장 · 경기 저장 · 확인) */
+html body.sb.sb-night:not(.high-contrast) :is(#gameWizard .gw-btn-start, #fieldFeedbackModal .ffm-send, #cardPreviewOv .card-dl-btn, .rp .rp-btn.primary, #pgReport .pg-save, #scoutIntroSheet .scout-intro-confirm) { background: var(--v-acc) !important; border-color: var(--v-acc) !important; color: #fff !important; }
+/* 보조 버튼 = 채운 회색 (테두리 대신) */
+html body.sb.sb-night:not(.high-contrast) :is(#loadOverlay .btn, #goOverlay .btn, #playerProfileOverlay .btn, #gameWizard :is(.gw-load-recent, .gw-btn-cancel), #fieldFeedbackModal :is(.ffm-cancel, .ffm-tag), #cardPreviewOv .card-cancel-btn, #pgReport .pg-sh-btn) { background: var(--v-card2) !important; border-color: transparent !important; color: var(--v-ink) !important; }
+html body.sb.sb-night:not(.high-contrast) #fieldFeedbackModal .ffm-tag:is(.on, .active, [aria-pressed="true"]) { background: #fff !important; color: #0A0C11 !important; }
+
+/* 글씨 13px 이상 — 인라인 8~12px 과 창마다 작은 글씨 클래스 */
+html body.sb.sb-night:not(.high-contrast) :is(#lineupDrawer, #gameWizard, #saveMethodSheet, #loadOverlay, #pgReport, #goOverlay, #goFixOverlay, #helpModal, #fieldFeedbackModal, #dataSettingsOverlay, #ocrModal, #shareQROv, #qrOv, #scoutIntroSheet, #cardPreviewOv, #teamGamesModal, #playerProfileOverlay, #gfEndOv, #newGameGuard, #loginModal, #profileModal, #cloudOverlay, #teamCreateModal, #editRecOverlay) :is([style*="font-size:8"], [style*="font-size:9"], [style*="font-size:10"], [style*="font-size:11"], [style*="font-size:12"], [style*="font-size: 8"], [style*="font-size: 9"], [style*="font-size: 10"], [style*="font-size: 11"], [style*="font-size: 12"]) { font-size: 13px !important; }
+html body.sb.sb-night:not(.high-contrast) :is(
+  #lineupDrawer :is(.ld-sub, .pnl-title, .p-num, .p-avatar, .p-name, .bh-badge, .p-mini, .starter-btn, .lineup-alt-input-btn, .mobile-detail-toggle),
+  #gameWizard :is(.mobile-gw-hint, .gw-sub, .gw-label, .gw-load-recent),
+  #loadOverlay :is(.btn, .load-sync-hint *, .lc-title, .lc-meta, .lc-hint),
+  #pgReport :is(.pg-badge-gold, .pg-date, .pg-sec-lbl, .pg-sl, .pg-dl span, #pgDlPull, #pgDlCtr, #pgDlOppo, .pg-ins-lbl, .pg-ai-lbl),
+  #goOverlay :is(.modal-sub, .modal-sub b, .go-f > span, small, .btn, .go-how *, .go-shot-h, .go-shot-h *, .go-empty),
+  #helpModal :is(.hm-header-count, .hm-ch-sub, .hm-tour-btn-sub),
+  #fieldFeedbackModal .ffm-tag,
+  #dataSettingsOverlay :is(.modal-sub, .dm-lbl, .dm-lbl span, .dm-tile b, .dm-tile small, .dm-link, .dm-links span),
+  #shareQROv :is(.share-qr-sub, .share-qr-url, .share-qr-note),
+  #scoutIntroSheet :is(.scout-intro-sub, .scout-intro-row-label, .scout-intro-row-desc, .scout-intro-flow-step),
+  .rp .rp-help,
+  #playerProfileOverlay :is(th, td, .btn),
+  #gfEndOv :is(.gfe-badge, .gfe-teams, .gfe-sl, .gfe-mvp-ttl, .gfe-mvp-stat),
+  #newGameGuard .gw-sub,
+  #loginModal :is(.login-sub, .login-divider span, .btn-magic, .btn),
+  #teamCreateModal :is(.tcm-sub, .tcm-label),
+  #cloudOverlay .btn,
+  #editRecOverlay :is(.modal-sub, .sec-lbl, .btn)
+) { font-size: 13px !important; letter-spacing: 0 !important; }
+html body.sb.sb-night:not(.high-contrast) #helpModal .hm-new { font-size: 11px !important; }   /* 'NEW' 딱지 — 글자 3개짜리 표시라 예외 */
+/* 경기 리포트 · 잘된 곳 · 약점 · 오늘의 선수 · 경기 종료 (영어 → 한글, core.js · index.html) — 영문용 Oswald 자간을 한글용으로 */
+html body.sb.sb-night:not(.high-contrast) #pgReport :is(.pg-badge-gold, .pg-ins-lbl), html body.sb.sb-night:not(.high-contrast) #gfEndOv :is(.gfe-badge, .gfe-mvp-ttl) { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; text-transform: none !important; }
+
+/* 라인업 서랍: 「주전」 표시 버튼 19px → 44px (누르는 곳) */
+html body.sb.sb-night:not(.high-contrast) #lineupDrawer .starter-btn { min-width: 52px; padding: 0 10px; }
+/* 공유 QR: 긴 주소가 창을 화면 위로 밀어 올리던 것 → 주소 칸 높이를 묶고 안에서 스크롤 */
+html body.sb.sb-night:not(.high-contrast) #shareQROv .share-qr-url { max-height: 96px; overflow-y: auto; word-break: break-all; }
+
+/* 남은 창: 빨간 주 버튼 → 주황 · 테두리만 있던 보조 버튼 → 채운 회색 (팀 코드 · 기록 수정 · 새 경기 확인 · 로그인 · 팀 만들기 · 공유 · 경기 종료) */
+html body.sb.sb-night:not(.high-contrast) :is(#cloudOverlay .btn-primary, #editRecOverlay .btn-primary, #newGameGuard .gw-btn-start, #loginModal .btn-magic, #teamCreateModal .tcm-btn-ok, #shareQROv .share-qr-copy, #gfEndOv .gfe-btn-save) { background: var(--v-acc) !important; border-color: var(--v-acc) !important; color: #fff !important; }
+html body.sb.sb-night:not(.high-contrast) :is(#cloudOverlay .btn-ghost, #editRecOverlay .btn-ghost, #loginModal :is(.btn-ghost, .btn-google), #profileModal .btn-ghost, #newGameGuard .gw-btn-cancel, #teamCreateModal .tcm-btn-cancel, #shareQROv .share-qr-close, #gfEndOv .gfe-btn-close) { background: var(--v-card2) !important; border: 0 !important; color: var(--v-ink) !important; }
+html body.sb.sb-night:not(.high-contrast) #cloudOverlay #cloudConnStatus { background: var(--v-card2) !important; border-radius: 12px !important; }
+/* 경기 종료 카드 안쪽: 종이용 검은 선 · 네모 칸 → v2 칸 (경기 리포트 제목처럼 「경기 종료」는 주황 글씨) */
+html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-badge { background: none !important; color: var(--v-acc) !important; padding: 0; }
+html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-divider { height: 1px; background: var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #gfEndOv :is(.gfe-stat, .gfe-comment) { background: var(--v-card2) !important; border: 0 !important; border-radius: 14px !important; }
+html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-mvp { background: rgba(255, 90, 54, .12) !important; border: 0 !important; border-radius: 14px !important; }
+html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-mvp-ttl { color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #shareQROv .share-qr-sub { color: var(--v-ink3) !important; }

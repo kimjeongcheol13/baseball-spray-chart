@@ -652,3 +652,93 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .tm-ldr-tabs::after { co
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-rec-main b { font-size: 60px; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpi b { font-size: 28px; }
 }
+
+
+/* ═══ 아래 메뉴바 (기록 · 분석 · 경기설정) ═══════════════════
+   사용자 결정 11-01: 아이콘 + 글자, 고른 탭은 주황 + 위 짧은 막대. 폰 · 컴퓨터 둘 다
+   · 높이는 shell.css --nav-h(54px) 그대로 — 투구 입력 묶음 · 토스트 등 고정 요소가 이 높이에 맞춰 있다
+   · paper.css 가 아이콘을 숨기고 ::before 도 display none !important → 여기서 되살린다 */
+html body.sb.sb-night:not(.high-contrast) #savantNav.savant-nav { justify-content: flex-start !important; align-items: stretch !important; gap: 4px !important; padding: 0 24px env(safe-area-inset-bottom, 0px) !important; background: #0A0C11 !important; border-top: 1px solid rgba(255, 255, 255, .08) !important; }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn { position: relative; flex: 0 0 auto; min-width: 104px; max-width: none; height: auto; min-height: 0; margin: 0; padding: 0 16px !important; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; border-radius: 0; color: rgba(244, 246, 250, .52); font: 700 13px/1 'Noto Sans KR', sans-serif; font-size: 13px !important; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn svg { display: block; flex: 0 0 auto; stroke: currentColor; }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn:hover:not(.active) { color: rgba(244, 246, 250, .8); }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn.active { height: auto; background: none; color: #FF5A36; }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn.active::before { content: ''; display: block !important; position: absolute; top: -1px; left: 50%; width: 32px; height: 3px; margin-left: -16px; border-radius: 0 0 3px 3px; background: #FF5A36; }
+html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn:focus-visible { outline: 2px solid #FF5A36; outline-offset: -6px; border-radius: 12px; }
+@media (max-width: 720px) {
+  html body.sb.sb-night:not(.high-contrast) #savantNav.savant-nav { justify-content: center !important; gap: 0 !important; padding: 0 8px env(safe-area-inset-bottom, 0px) !important; }
+  html body.sb.sb-night:not(.high-contrast) #savantNav .savant-nav-btn { flex: 1 1 0; min-width: 0; padding: 0 4px !important; }
+}
+
+/* ═══ 투구 기록 입력 (분석 › 투수 › 투구 기록) ═══════════════
+   사용자 결정 11-01: 카드형 + 큰 버튼. 버튼 동작 · 배치는 그대로, 모양만
+   · paper.css:612 가 #analysisView 모든 요소 모서리를 0 !important 로 → 모서리는 !important (볼카운트 점이 네모로 보이던 이유)
+   · 색: 볼 초록 · 스트라이크 노랑 · 파울 회색 · 안타 주황 · 출루·희생 파랑 · 아웃·삼진 회색 (볼카운트 점과 같은 계열)
+   · 8~11px 인라인 글씨는 13px 로 */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .stat-card { padding: 20px; margin-bottom: 12px; background: var(--v-card) !important; border: 0 !important; border-radius: var(--v-r) !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .sc-title { margin-bottom: 14px; font-size: 17px; font-weight: 800; letter-spacing: -.2px; color: var(--v-ink) !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher :is(div[style*="font-size:8px"], div[style*="font-size:9px"], div[style*="font-size:10px"], div[style*="font-size:11px"], span[style*="font-size:9px"], span[style*="font-size:10px"]) { font-size: 13px !important; color: var(--v-ink3) !important; letter-spacing: 0 !important; text-transform: none !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher #currentPitcherLabel { font-size: 15px; color: var(--v-acc) !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .inp { min-height: 44px; padding: 0 14px; background: var(--v-card2) !important; border: 1px solid var(--v-line) !important; border-radius: 12px !important; color: var(--v-ink) !important; font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .inp:focus { border-color: var(--v-acc) !important; outline: none; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .btn { min-height: 44px; background: var(--v-card2); border: 1px solid var(--v-line); border-radius: 12px !important; color: var(--v-ink); font-weight: 700; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .btn-primary { background: var(--v-acc) !important; border-color: var(--v-acc) !important; color: #fff !important; }
+/* 테두리 색은 night.css 가 * { border-color … !important } 로 덮으므로 강조 테두리는 !important */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .chip { min-height: 44px; background: var(--v-card2) !important; border: 1px solid var(--v-line); border-radius: 12px !important; color: var(--v-ink2) !important; font-size: 14px !important; font-weight: 700; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .chip.on { background: var(--v-ink) !important; border-color: var(--v-ink) !important; color: #0A0C11 !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag { min-height: 44px; padding: 0 14px; background: var(--v-card2); border: 1px solid var(--v-line); border-right: 0; border-radius: 12px 0 0 12px !important; color: var(--v-ink); font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag.on { background: rgba(255, 90, 54, .16); border-color: var(--v-acc) !important; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag span { font-size: 13px !important; color: var(--v-ink2) !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag-x { background: var(--v-card2); border: 1px solid var(--v-line); border-left: 0; border-radius: 0 12px 12px 0 !important; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitcher-tag.on + .pitcher-tag-x { border-color: var(--v-acc) !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher #pitcherZoneCanvas { border-radius: 10px !important; }
+
+/* 볼카운트 · 타석 상태 (core.js renderPitchCount) */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt { padding: 14px 16px; background: var(--v-card2); border: 0; border-radius: 16px !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-who { font-size: 17px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-dots { gap: 14px; font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-dots .grp { gap: 5px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-dots i { width: 16px; height: 16px; border: 2px solid rgba(244, 246, 250, .28); border-radius: 50% !important; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-state { font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-state.end { color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-prev { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-warn { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-act button { background: var(--v-card); border-color: var(--v-line); border-radius: 12px !important; font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pcnt-nop:not([hidden]) { background: var(--v-card2); border-radius: 12px !important; }
+
+/* 투구 · 타석 결과 버튼 (core.js renderPitchButtons) — 왼쪽 굵은 색 테두리 대신 색 바탕 */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pt-result-chips { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .ptr-btn { min-height: 48px; background: var(--v-card2); border: 0 !important; border-radius: 12px !important; color: var(--v-ink); font: 700 15px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .ptr-btn:active { transform: scale(.97); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher :is(.ptr-ball, .ptr-end-bb) { background: rgba(53, 212, 158, .14); color: #5FE3B5; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .ptr-strike { background: rgba(246, 195, 67, .14); color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher :is(.ptr-foul, .ptr-end-out, .ptr-end-k) { background: var(--v-card2); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .ptr-end-hit { background: rgba(255, 90, 54, .16); color: #FF7A5C; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher :is(.ptr-end-on, .ptr-end-sac) { background: rgba(124, 176, 255, .14); color: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pend-lbl { margin: 14px 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--v-ink3); }
+
+/* 폰: 빠른 입력 줄 · 구종 묶음 · 구종·코스 펼치기 · 타격결과 펼침 */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn { background: var(--v-card2); border: 0 !important; border-radius: 14px !important; color: var(--v-ink); font: 800 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn small { opacity: 1; font-size: 12px; font-weight: 600; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn-strike { background: rgba(246, 195, 67, .16); color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn-ball { background: rgba(53, 212, 158, .16); color: #5FE3B5; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-qbtn-result { background: rgba(255, 90, 54, .18); color: #FF7A5C; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-grp { min-height: 52px; background: var(--v-card2); border: 1px solid var(--v-line); border-radius: 12px !important; color: var(--v-ink); font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-grp small { font-size: 12px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-grp.on { background: var(--v-ink); border-color: var(--v-ink) !important; color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-grp.on small { color: rgba(10, 12, 17, .6); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-collapse-toggle { min-height: 44px; background: var(--v-card2); border: 0 !important; border-radius: 12px !important; color: var(--v-ink2); font-size: 14px; font-weight: 700; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .mobile-pitch-result-panel { background: var(--v-card); border: 0; border-radius: 16px !important; }
+
+/* 최근 투구 로그 · 되돌리기 */
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-log-hdr { margin: 14px 0 8px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-undo-btn { min-height: 44px; padding: 0 14px; background: var(--v-card2); border: 1px solid var(--v-line); border-radius: 12px !important; color: var(--v-ink2); font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-entry { padding: 8px 12px; background: var(--v-card2) !important; border: 0 !important; border-radius: 12px !important; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pe-bat { font-size: 12px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-del { border-radius: 10px !important; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .link-badge-status { border-radius: 12px !important; font-size: 13px; }
+
+@media (max-width: 720px) {
+  /* 하단 탭 위에 고정된 입력 묶음 (pitcher.css) — 바탕을 화면색으로, 위 경계를 부드럽게 */
+  html body.sb.sb-night:not(.high-contrast) #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock { padding: 10px 12px 6px; background: var(--v-bg); border-top: 1px solid var(--v-line); box-shadow: 0 -10px 24px rgba(0, 0, 0, .35); }
+}

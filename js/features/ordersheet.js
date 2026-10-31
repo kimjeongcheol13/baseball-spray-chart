@@ -9,6 +9,14 @@ import { FONT, PAPER, font, fitFont, rr, wordmark, drawWithFonts } from './imgki
 const $ = id => document.getElementById(id);
 // 수비 위치 → 기록지 번호 (6-4-3 의 그 번호)
 const POSN = { __proto__: null, '투수': 1, '포수': 2, '1루': 3, '2루': 4, '3루': 5, '유격': 6, '좌익': 7, '중견': 8, '우익': 9 };
+// 경기설정 칸에 직접 친 수비 위치(4글자까지) → 위 이름. 그림에만 쓰고 저장 값은 그대로 둔다 ('유격수' 처럼 끝의 '수' 는 posName 이 뗀다)
+const ALIAS = { __proto__: null, '1': '투수', '2': '포수', '3': '1루', '4': '2루', '5': '3루', '6': '유격', '7': '좌익', '8': '중견', '9': '우익',
+  P: '투수', C: '포수', '1B': '1루', '2B': '2루', '3B': '3루', SS: '유격', LF: '좌익', CF: '중견', RF: '우익', DH: 'DH',
+  '투': '투수', '포': '포수', '유': '유격', '좌': '좌익', '중': '중견', '우': '우익', '지': 'DH', '지명': 'DH', '지명타자': 'DH' };
+const posName = s => {
+  const t = String(s).replace(/\s/g, ''), u = t.toUpperCase();
+  return POSN[t] ? t : ALIAS[u] || (t.endsWith('수') && POSN[t.slice(0, -1)] ? t.slice(0, -1) : t);
+};
 
 // ── 그릴 내용 한 벌 ───────────────────────────────────────────
 // g = { team: 'home' | 'away', home_lineup, away_lineup, th, ta, date, venue }
@@ -16,7 +24,7 @@ export function orderData(g) {
   const team = g.team === 'away' ? 'away' : 'home';
   const src = team === 'home' ? g.home_lineup : g.away_lineup;
   const lu = (Array.isArray(src) ? src : []).filter(p => p && p.name != null);
-  const row = p => ({ name: String(p.name), num: p.num != null && p.num !== '' ? String(p.num) : '', pos: p.pos ? p.pos + (POSN[p.pos] ? ' (' + POSN[p.pos] + ')' : '') : '' });
+  const row = p => { const ps = p.pos ? posName(p.pos) : ''; return { name: String(p.name), num: p.num != null && p.num !== '' ? String(p.num) : '', pos: ps ? ps + (POSN[ps] ? ' (' + POSN[ps] + ')' : '') : '' }; };
   const blank = n => Array.from({ length: Math.max(0, n) }, () => ({ name: '', num: '', pos: '' }));
   const starters = lu.filter(p => p.isStarter !== false).map(row), bench = lu.filter(p => p.isStarter === false).map(row);
   return {

@@ -1,7 +1,7 @@
 // 오더지 (js/features/ordersheet.js) — 주전 타순 · 후보 · 빈 줄 · 수비 위치 번호 · 팀 이름 · 창(팀 고르기 · 이미지 · 인쇄 · 닫기 · 그림을 누른 뒤 Esc) · 진입 버튼
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var MOD = '/js/features/ordersheet.js?v=4';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
+  var MOD = '/js/features/ordersheet.js?v=5';   // js/app.js 가 import 하는 것과 같은 주소여야 같은 인스턴스다
   var P = function (id, name, num, pos, bench) { return { id: id, name: name, num: num, pos: pos || '', bh: '', isStarter: !bench }; };
 
   async function isolated(fn) {
@@ -33,6 +33,15 @@
     eq(m.orderData({ team: 'home', home_lineup: many }).starters.length, 11, '10명 넘는 주전은 그대로');
     var e = m.orderData({ team: 'home', home_lineup: null });
     eq([e.starters.length, e.bench.length, e.name], [9, 5, ''], '라인업이 비어도 빈 양식');
+  });
+
+  test('오더지: 경기설정 칸에 직접 친 수비 위치(SS · 유격수 · 6 · cf · 지명 …)도 번호 + 이름 · 모르는 글자는 그대로 · 저장 값은 그대로', async function () {
+    var m = await import(MOD);
+    var typed = ['SS', '유격수', '6', 'cf', '중견수', '1B', '1루수', ' 포 ', '지명', 'p', '투수', 'X9', ''];
+    var lu = typed.map(function (s, i) { return P(i, 'p' + i, '', s); });
+    eq(m.orderData({ team: 'home', home_lineup: lu }).starters.map(function (r) { return r.pos; }),
+      ['유격 (6)', '유격 (6)', '유격 (6)', '중견 (8)', '중견 (8)', '1루 (3)', '1루 (3)', '포수 (2)', 'DH', '투수 (1)', '투수 (1)', 'X9', ''], '그림에 쓰는 값');
+    eq(lu.map(function (p) { return p.pos; }), typed, '라인업에 저장된 값은 그대로');
   });
 
   test('오더지 창: 처음엔 보고 있던 팀 · 홈/원정 고르기 · A4 그림 · 이미지 저장 · 인쇄(그림 한 장만) · 닫기 · 그림을 누른 뒤 Esc', async function () {

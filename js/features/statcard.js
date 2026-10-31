@@ -7,7 +7,7 @@
 //  · 크기는 그대로: 개인 · 시즌 540×960(9:16), 팀 540×540(1:1) → 2배 PNG (#cardPreviewCanvas)
 //  · core 는 _drawCard 를 전역 이름으로 부른다(열기 · 종류 바꾸기 · 선수 바꾸기 · 글꼴 로드 뒤) → window._drawCard 를 바꾸면 모두 새 그림
 
-import { FONT, DARK as D, font, fitFont, rr, wordmark, drawWithFonts } from './imgkit.js?v=2';
+import { FONT, DARK as D, font, fitFont, rr, drawWithFonts, dCard as card, dPill as pill, dFoot, tint } from './imgkit.js?v=3';
 import { WOBA_W } from '../constants.js';
 
 const $ = id => document.getElementById(id);
@@ -31,8 +31,6 @@ const FPR = ['땅볼 아웃', '플라이 아웃', '라인드라이브 아웃'];
 const code = a => (FPR.indexOf(a.res) !== -1 && a.fp) || CODE[a.res] || '';
 const fmt = v => window._cardFmt(v);
 const stadium = () => window.STADIUMS[window.AS.stadium] || window.STADIUMS.standard;
-// '#RRGGBB' → 옅은 바탕(꼬리표 · 약어 칩)
-const tint = (hex, a) => 'rgba(' + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(',') + ',' + a + ')';
 
 const txt = (c, t, x, y, color, align) => { c.fillStyle = color; c.textAlign = align || 'left'; c.fillText(t, x, y); };
 // 글자를 세로 가운데에 놓을 기준선 보정 (번호 원 · 칩)
@@ -76,30 +74,12 @@ function begin(cv, H, sc = SCALE) {
   c.fillStyle = D.bg; c.fillRect(0, 0, W, H);
   return c;
 }
-// 꼬리: 로고(왼쪽, 카드에 한 번) · 계정(오른쪽). 띠 · 선 없이 바탕 위에
-function footer(c, H) {
-  wordmark(c, X, H - 19, 15, D.tx, D.acc);
-  font(c, '500', 15, FONT.num); txt(c, '@spraylab2026', W - X, H - 19, D.tx3, 'right');
-}
+// 꼬리: 로고(왼쪽, 카드에 한 번) · 계정(오른쪽). 띠 · 선 없이 바탕 위에 (imgkit dFoot)
+const footer = (c, H) => dFoot(c, W, H - 19, X);
 
 // ── 부품 ─────────────────────────────────────────────
-// 카드: 둥근 네모(테두리 없음). glow = 오른쪽 위 주황 빛(맨 위 카드 — 분석 화면 첫 카드와 같다)
-function card(c, x, y, w, h, glow) {
-  rr(c, x, y, w, h, R); c.fillStyle = D.card; c.fill();
-  if (!glow) return;
-  const g = c.createRadialGradient(x + w, y, 0, x + w, y, Math.hypot(w, h) * .6);
-  g.addColorStop(0, 'rgba(255,90,54,0.2)'); g.addColorStop(1, 'rgba(255,90,54,0)');
-  c.fillStyle = g; c.fill();
-}
+// 카드 · 꼬리표 · 옅은 바탕은 imgkit (dCard · dPill · tint)
 const title = (c, t, x, y) => { font(c, '700', 18, FONT.kr); txt(c, t, x, y, D.tx); };
-// 둥근 꼬리표(멀티히트 · 승 · 타석 없음): x = align 쪽 끝('center' 면 가운데) · cy = 가운데. 폭 반환
-function pill(c, t, x, cy, fg, bg, align) {
-  font(c, '700', 14, FONT.kr);
-  const w = c.measureText(t).width + 22, h = 28, lx = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
-  rr(c, lx, cy - h / 2, w, h, h / 2); c.fillStyle = bg; c.fill();
-  txt(c, t, lx + w / 2, cy + mid(c, t), fg, 'center');
-  return w;
-}
 // 맨 위 줄 오른쪽 날짜 (숫자만이면 Oswald, '2026년 10월 29일' 은 한글 글꼴)
 function date(c, t) { font(c, '500', 16, /[가-힣]/.test(t) ? FONT.kr : FONT.num); txt(c, t, W - X, TL, D.tx2, 'right'); return c.measureText(t).width; }
 // 맨 위 줄: 주황 제목 + 날짜 (팀 · 시즌 · GAME REPORT)

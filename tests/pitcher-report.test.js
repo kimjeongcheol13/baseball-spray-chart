@@ -36,10 +36,10 @@
       ok(cv, '저장 캔버스');
       eq([cv.width, cv.height], [1080, 1350], '인스타 피드 4:5');
       ok(/^spraylab_pitcherreport_\d+\.png$/.test(name), '파일 이름 ' + name);
-      // 막대: x = (24 + 96 + 6) × 2 · 전체 줄 y = (240 + 14) × 2 · 2스트라이크 줄 y = (240 + 4 × 30 + 14) × 2
+      // 막대: x = (20 + 18 + 92 + 6) × 2 · 전체 줄 y = (226 + 42 + 13) × 2 · 2스트라이크 줄 y = (226 + 42 + 4 × 26 + 13) × 2
       var close = function (a, b) { return Math.abs(a[0] - b[0]) < 8 && Math.abs(a[1] - b[1]) < 8 && Math.abs(a[2] - b[2]) < 8; };
-      ok(close(px(cv, 252, 508), [75, 140, 245]), '전체 줄 첫 칸 = 직구 파랑 ' + px(cv, 252, 508));
-      ok(close(px(cv, 252, 748), [246, 194, 62]), '2스트라이크 줄 = 슬라이더 노랑 ' + px(cv, 252, 748));
+      ok(close(px(cv, 272, 562), [75, 140, 245]), '전체 줄 첫 칸 = 직구 파랑 ' + px(cv, 272, 562));
+      ok(close(px(cv, 272, 770), [246, 194, 62]), '2스트라이크 줄 = 슬라이더 노랑 ' + px(cv, 272, 770));
       ok(near(cv, [167, 139, 250]) > 300, '커브 보라 (막대 · 범례 · 점) ' + near(cv, [167, 139, 250]));
 
       // 위치가 없는 투수: 리포트는 그대로 저장 (위치 칸만 안내 문구)
@@ -47,7 +47,7 @@
       open([pz('가타자', '직구', '볼', null, null), pz('가타자', '직구', '볼넷', null, null)]);
       await savePitcherReport();
       ok(cv && cv.width === 1080, '위치 없는 투수도 저장');
-      ok(close(px(cv, 252, 508), [75, 140, 245]), '막대는 그대로');
+      ok(close(px(cv, 272, 562), [75, 140, 245]), '막대는 그대로');
     } finally {
       window._downloadCanvas = S.dl;
       AS.pitchers = S.pitchers; AS.currentPitcher = S.cp;

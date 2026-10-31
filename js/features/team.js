@@ -1,7 +1,7 @@
 // 팀 대시보드 — 우리 팀 시즌 성적 · 선수 순위 · 경기 결과 · 흐름 · 이닝/구종/방향
 //   예전 '종합' 서브탭 내용도 여기로: 5구역 타구 방향도 + 상세 필터 · BABIP · 타석 결과 막대 · 표본 경고
 import { HITS, esc as _esc } from '../constants.js';
-import { buildData, calcStats, f3, pct, fmt, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
+import { buildData, calcStats, f3, pct, fmt, josa as _j, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -522,6 +522,9 @@ function _insights(T, S) {
   const out = [];
   const q = T.players.filter(p => p.st.pa >= QUAL_PA);
 
+  // 한 줄 = 결론 문장 + 그 아래 작은 근거 숫자. 평범한 값(이닝별 차이 작음 · 보통 2스트라이크)은 말하지 않는다
+  const ln = (t, ev) => out.push(`${t}<small class="an-ev">${ev}</small>`);
+
   if (!S.live) {
     const res = S.games.map(_result).filter(Boolean);
     if (res.length >= 4) {
@@ -529,33 +532,40 @@ function _insights(T, S) {
       const w = r5.filter(r => r.r === 'W').length, l = r5.filter(r => r.r === 'L').length;
       const recent = calcStats(T.perGame.filter(g => !g.current).slice(-5).flatMap(g => g.mine));
       const d = recent.ops - s.ops;
-      out.push(`최근 ${r5.length}경기 <b>${w}승 ${l}패</b>, 팀 OPS ${f3(recent.ops)} — ${Math.abs(d) < 0.05 ? '시즌과 비슷한 흐름' : d > 0 ? '<b>시즌보다 좋은 타격감</b>' : '<b>시즌보다 주춤</b>'} (시즌 ${f3(s.ops)}).`);
+      ln(`최근 ${r5.length}경기 <b>${w}승 ${l}패</b>, ${Math.abs(d) < 0.05 ? '타격은 시즌과 비슷해요' : d > 0 ? '<b>타격감이 시즌보다 좋아요</b>' : '<b>방망이가 시즌보다 식었어요</b>'}.`, `최근 ${r5.length}경기 OPS ${f3(recent.ops)} · 시즌 ${f3(s.ops)}`);
     }
   }
 
   const best = q.slice().sort((a, b) => b.st.woba - a.st.woba)[0];
-  if (best && q.length >= 2) out.push(`팀 최고 타자는 <b>${_esc(best.name)}</b> (wOBA ${f3(best.st.woba)}, ${best.st.pa}타석).`);
+  if (best && q.length >= 2) ln(`팀 최고 타자는 <b>${_esc(best.name)}</b>${_j(best.name, '이에요', '예요')}.`, `wOBA ${f3(best.st.woba)} · ${best.st.pa}타석`);
 
+  // 팀 타격 성향 — 한 줄에 하나씩, 두 줄까지
   const traits = [];
   if (s.pa >= 30) {
-    if (s.bbRate >= 0.1) traits.push(`볼넷을 잘 얻어요 (볼넷 ${pct(s.bbRate)})`);
-    if (s.kRate >= 0.25) traits.push(`삼진이 많은 편이에요 (삼진 ${pct(s.kRate)})`);
-    else if (s.kRate <= 0.1) traits.push(`삼진을 잘 안 당해요 (삼진 ${pct(s.kRate)})`);
-    if (s.iso >= 0.15) traits.push(`장타력이 있어요 (ISO ${f3(s.iso)})`);
-    if (s.dn >= 15 && s.pull / s.dn >= 0.5) traits.push(`당겨치는 타구가 많아요 (${Math.round(s.pull / s.dn * 100)}%)`);
+    if (s.bbRate >= 0.1) traits.push(['<b>볼넷을 잘 얻어내는</b> 팀이에요.', `볼넷 ${pct(s.bbRate)}`]);
+    if (s.kRate >= 0.25) traits.push(['<b>삼진이 많은</b> 편이에요.', `삼진 ${pct(s.kRate)}`]);
+    else if (s.kRate <= 0.1) traits.push(['<b>삼진을 잘 안 당하는</b> 팀이에요.', `삼진 ${pct(s.kRate)}`]);
+    if (s.iso >= 0.15) traits.push(['<b>장타력</b>이 있는 팀이에요.', `ISO ${f3(s.iso)}`]);
+    if (s.dn >= 15 && s.pull / s.dn >= 0.5) traits.push(['<b>당겨 치는 타구</b>가 많아요.', `타구 ${s.dn}개 중 당겨치기 ${Math.round(s.pull / s.dn * 100)}%`]);
   }
-  if (traits.length) out.push(`팀 타격 성향: ${traits.join(' · ')}.`);
+  traits.slice(0, 2).forEach(([t, ev]) => ln(t, ev));
 
-  const groups = [['경기 초반(1~3회)', 1, 3], ['중반(4~6회)', 4, 6], ['후반(7회~)', 7, 10]]
-    .map(([l, a, b]) => ({ l, st: calcStats(T.abs.filter(x => { const n = _innOf(x); return n != null && n >= a && n <= b; })) }))
+  // 이닝대별 — 가장 잘 친 때와 못 친 때의 OPS 차이가 0.15 이상일 때만
+  const groups = [['초반', '1~3회', 1, 3], ['중반', '4~6회', 4, 6], ['후반', '7회~', 7, 10]]
+    .map(([n, r, a, b]) => ({ n, r, st: calcStats(T.abs.filter(x => { const k = _innOf(x); return k != null && k >= a && k <= b; })) }))
     .filter(g => g.st.pa >= 10);
   if (groups.length >= 2) {
     groups.sort((a, b) => b.st.ops - a.st.ops);
-    out.push(`<b>${groups[0].l}</b>에 가장 잘 쳐요 (OPS ${f3(groups[0].st.ops)} · ${groups[groups.length - 1].l} ${f3(groups[groups.length - 1].st.ops)}).`);
+    const hi = groups[0], lo = groups[groups.length - 1];
+    if (hi.st.ops - lo.st.ops >= 0.15) ln(`경기 <b>${hi.n}</b>에 가장 잘 쳐요.`, `${hi.r} OPS ${f3(hi.st.ops)} · ${lo.r} ${f3(lo.st.ops)}`);
   }
 
+  // 2스트라이크: 타율 .200 미만이거나 삼진 40% 이상이면 약점, 타율 .280 이상이면 강점
   const two = calcStats(T.abs.filter(a => a.count && a.count.s >= 2));
-  if (two.pa >= 10) out.push(`2스트라이크 이후 팀 타율 <b>${two.ab ? f3(two.avg) : '—'}</b>, 삼진 ${pct(two.kRate)} (${two.pa}타석).`);
+  if (two.pa >= 10) {
+    const t = (two.ab && two.avg < 0.2) || two.kRate >= 0.4 ? '2스트라이크에 몰리면 <b>많이 무너져요</b>.' : two.ab && two.avg >= 0.28 ? '2스트라이크에서도 <b>잘 버텨요</b>.' : '';
+    if (t) ln(t, `2스트라이크 ${two.pa}타석 · 타율 ${two.ab ? f3(two.avg) : '—'} · 삼진 ${pct(two.kRate)}`);
+  }
 
   const warn = s.pa < 50 ? `<p class="an-warn">⚠ 팀 전체 ${s.pa}타석 — 경기가 더 쌓이면 흐름이 더 정확해져요.</p>` : '';
   if (!out.length && !warn) return '';

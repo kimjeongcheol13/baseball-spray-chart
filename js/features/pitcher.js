@@ -1029,30 +1029,33 @@ function _appsCard(P) {
 }
 
 // ── 분석 요약 ────────────────────────────────────────────────
+// 한 줄 = 결론 문장 + 그 아래 작은 근거 숫자. 평범한 값(보통 제구 · 보통 2스트라이크 마무리)은 말하지 않는다
+const _ln = (t, ev) => `${t}<small class="an-ev">${ev}</small>`;
 function _insights(P, S) {
   const out = [];
-  if (S.n >= 20) {
-    const tone = S.sPct >= 0.62 ? '<b>제구가 안정적</b>이에요' : S.sPct < 0.55 ? '<b>볼이 많은 편</b>이에요' : '제구는 보통 수준이에요';
-    out.push(`스트라이크 ${pct(S.sPct)}, 초구 스트라이크 ${pct(S.fsPct)} — ${tone}.`);
+  if (S.n >= 20 && (S.sPct >= 0.62 || S.sPct < 0.55)) {
+    out.push(_ln(S.sPct >= 0.62 ? '제구가 <b>안정적</b>이에요.' : '<b>볼이 많은</b> 편이에요.', `스트라이크 ${pct(S.sPct)} · 초구 스트라이크 ${pct(S.fsPct)}`));
   }
-  if (S.pas.length >= 8 && S.r3b >= 0.25) out.push(`타자 <b>${Math.round(S.r3b * 100)}%</b>에게 3볼까지 몰렸어요 — 초반 카운트 싸움이 과제예요.`);
+  if (S.pas.length >= 8 && S.r3b >= 0.25) out.push(_ln('<b>3볼까지 가는 타석</b>이 많아요 — 초반 카운트 싸움이 과제예요.', `3볼까지 간 타석 ${pct(S.r3b)} · 상대 ${S.pas.length}타석`));
   const k2 = S.twoS.filter(_isDone);
   if (k2.length >= 5) {
-    const conv = k2.filter(x => x.end === '삼진').length / k2.length;
-    out.push(`2스트라이크를 잡은 타석의 <b>${Math.round(conv * 100)}%</b>를 삼진으로 끝냈어요 (${k2.length}타석).`);
+    const k = k2.filter(x => x.end === '삼진').length, conv = k / k2.length;
+    const t = conv >= 0.5 ? '2스트라이크를 잡으면 <b>삼진으로 잘 끝내요</b>.' : conv < 0.2 ? '2스트라이크를 잡고도 <b>마무리가 아쉬워요</b>.' : '';
+    if (t) out.push(_ln(t, `2스트라이크 ${k2.length}타석 중 삼진 ${k}`));
   }
   const mix = _byPitch(S).filter(r => r.pt !== '미기록');
   const kPitch = mix.slice().sort((a, b) => b.k - a.k)[0];
-  if (kPitch && kPitch.k >= 2) out.push(`결정구는 <b>${_esc(kPitch.pt)}</b> — 삼진 ${kPitch.k}개 중 ${Math.round(kPitch.k / Math.max(1, S.k) * 100)}%.`);
+  if (kPitch && kPitch.k >= 2) out.push(_ln(`결정구는 <b>${_esc(kPitch.pt)}</b>${josa(kPitch.pt, '이에요', '예요')}.`, `삼진 ${Math.max(S.k, kPitch.k)}개 중 ${kPitch.k}개`));
   const hitPitch = mix.filter(r => r.bip >= 3).sort((a, b) => b.h / b.bip - a.h / a.bip)[0];
-  if (hitPitch && hitPitch.h / hitPitch.bip >= 0.4) out.push(`<b>${_esc(hitPitch.pt)}</b>${josa(hitPitch.pt, '은', '는')} 맞으면 안타가 되는 비율이 높아요 (인플레이 ${hitPitch.bip}개 중 안타 ${hitPitch.h}).`);
+  if (hitPitch && hitPitch.h / hitPitch.bip >= 0.4) out.push(_ln(`<b>${_esc(hitPitch.pt)}</b>${josa(hitPitch.pt, '은', '는')} 맞으면 <b>안타가 많이 나와요</b>.`, `인플레이 ${hitPitch.bip}개 중 안타 ${hitPitch.h}개`));
   // 투구 수에 따른 제구 변화
   const early = P.apps.flatMap(a => a.pitches.slice(0, 25)), late = P.apps.flatMap(a => a.pitches.slice(50));
   if (early.length >= 15 && late.length >= 15) {
     const sp = l => l.filter(isStrikePitch).length / l.length;
     const d = sp(late) - sp(early);
-    if (d <= -0.1) out.push(`50구 이후 스트라이크%가 <b>${Math.round(-d * 100)}%p 떨어져요</b> (${pct(sp(early))} → ${pct(sp(late))}) — 교체 타이밍 참고.`);
-    else if (Math.abs(d) < 0.05) out.push(`50구가 넘어도 제구가 유지돼요 (${pct(sp(early))} → ${pct(sp(late))}).`);
+    const ev = `스트라이크 1~25구 ${pct(sp(early))} → 51구~ ${pct(sp(late))}`;
+    if (d <= -0.1) out.push(_ln('50구가 넘으면 <b>제구가 흔들려요</b> — 교체 타이밍 참고.', ev));
+    else if (Math.abs(d) < 0.05) out.push(_ln('50구가 넘어도 <b>제구가 유지돼요</b>.', ev));
   }
   const warn = S.pa < 15 ? `<p class="an-warn">⚠ 상대 ${S.pa}타석 · ${S.n}구 기록 — 표본이 적어서 참고용이에요.</p>` : '';
   if (!out.length && !warn) return '';

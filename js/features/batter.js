@@ -5,7 +5,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, playerData, calcStats, f3, pct, josa, emptyState, sprayFigure, playerChips } from './batdata.js?v=9';
 import { exportBatterXlsx, xlsxButton } from './xlsxreport.js?v=27';
-import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=31';
+import { profileHeroBits, profileInsights, profileDirTable, profileSeasonHtml, onProfileChange } from './profile.js?v=32';
 import { goCareerNames, goCareerCard } from './gocareer.js?v=8';
 
 let _side = null;       // home | away (null = 기록 중인 팀)
@@ -304,15 +304,18 @@ function _memoCard(P, data) {
   const s = P.st;
   if (!s.pa) return '';
   const { out, warn } = profileInsights(P, data);
+  // 문장 + 작은 근거 (profile.js _ln 과 같은 모양) — 초구 승부는 타율 .400 이상 / .150 미만일 때만
+  const ln = (t, ev) => `${t}<small class="an-ev">${ev}</small>`;
   const first = P.abs.filter(a => a.pitches && a.pitches.length === 1);
   if (first.length >= 3) {
     const c = calcStats(first);
-    out.push(`초구에 승부한 타석 ${c.pa}번 — 타율 <b>${c.ab ? f3(c.avg) : '—'}</b>.`);
+    const t = c.ab >= 3 && c.avg >= 0.4 ? '초구부터 쳐서 <b>좋은 결과</b>를 내요.' : c.ab >= 3 && c.avg < 0.15 ? '초구 승부는 <b>결과가 좋지 않아요</b>.' : '';
+    if (t) out.push(ln(t, `초구 승부 ${c.pa}타석 · 타율 ${f3(c.avg)}`));
   }
   const pts = Object.entries(P.pitch).filter(([, st]) => st.ab >= 3).sort((a, b) => b[1].avg - a[1].avg);
   if (pts.length >= 2) {
     const [bn, bs] = pts[0], [wn, ws] = pts[pts.length - 1];
-    if (bs.avg - ws.avg >= 0.15) out.push(`<b>${_esc(bn)}</b>에 강하고(${f3(bs.avg)}), <b>${_esc(wn)}</b>에 약해요(${f3(ws.avg)}).`);
+    if (bs.avg - ws.avg >= 0.15) out.push(ln(`<b>${_esc(bn)}</b>에 강하고, <b>${_esc(wn)}</b>에 약해요.`, `타율 ${_esc(bn)} ${f3(bs.avg)} · ${_esc(wn)} ${f3(ws.avg)}`));
   }
   if (!out.length && !warn) return '';
   return `

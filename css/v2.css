@@ -400,6 +400,196 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .ad-depth td { backgroun
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .tm-act { grid-template-columns: 40px 1fr; gap: 2px 14px; align-content: center; background: var(--v-card2) !important; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .tm-act small { white-space: normal; }
 
+/* ── 비교 탭 ───────────────────────────────────────────────── */
+/* A = 파랑 · B = 빨강 (원래 짝 그대로, 어두운 바탕에서 밝게) */
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp { --ca: var(--v-blue); --cb: var(--v-bad); --ca-soft: rgba(124, 176, 255, .2); --cb-soft: rgba(255, 107, 116, .18); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-result { gap: 14px; }
+/* 선수 고르기: 둥근 칸 · A/B 동그라미 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick { gap: 8px; margin-bottom: 16px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-slot { min-height: 52px; border: 0 !important; border-radius: 16px !important; background: var(--v-card) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-tag { display: grid; place-items: center; flex: none; width: 26px; height: 26px; margin-left: 12px; padding: 0; border-radius: 50% !important; font: 700 13px var(--v-num); color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-slot.a .cmp-pick-tag { background: var(--ca); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-slot.b .cmp-pick-tag { background: var(--cb); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-slot select { height: 52px; padding-left: 10px; font: 700 15px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick-slot select option { background: var(--v-card); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-swap { width: 48px; height: 48px; border: 0 !important; border-radius: 50% !important; background: var(--v-card) !important; color: var(--v-ink2); }
+/* 맞대결 맨 위 카드: 양쪽 색이 번짐 · 큰 숫자 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-hero {
+  gap: 6px 10px; padding: 24px 20px 20px;
+  background: radial-gradient(90% 120% at 0% 0%, var(--ca-soft), transparent 60%), radial-gradient(90% 120% at 100% 0%, var(--cb-soft), transparent 60%), var(--v-card) !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-name { gap: 8px; font-size: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-meta { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-big { margin-top: 10px; font: 600 clamp(44px, 13vw, 64px)/.95 var(--v-num); letter-spacing: -.01em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-big small { margin-top: 6px; font: 600 13px var(--v-num); letter-spacing: .08em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-slash { font: 500 15px var(--v-num); color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-side .an-badge { margin-top: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-vs { font: 600 20px var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally { margin-top: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-lbl { margin-bottom: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-lbl b { font: 600 34px/1 var(--v-num); letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-lbl span { font-size: 13px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-bar { gap: 3px; height: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-bar i { border-radius: 999px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-tally-bar .t { background: rgba(255, 255, 255, .16); }
+/* 지표 맞대결: 굵은 막대 · 숫자 크게 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-legend { gap: 6px 16px; margin: 0 0 14px; font-size: 13px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-key { width: 12px; height: 12px; border-radius: 50% !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-key.avg { width: 3px; height: 14px; border-radius: 2px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-group + .cmp-group { border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-gtitle { margin-bottom: 4px; font-size: 13px; letter-spacing: .04em; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-gdesc { margin-top: 8px; font-size: 13px; line-height: 1.55; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-duel { grid-template-columns: 84px 1fr 58px; gap: 12px; padding: 10px 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-duel + .cmp-duel { border-top: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-lbl { gap: 2px; font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-lbl small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-track { gap: 5px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-bar { height: 18px; background: linear-gradient(var(--v-card2), var(--v-card2)) no-repeat center / 100% 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-bar i { height: 12px; border-radius: 999px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-track em { width: 3px; border-radius: 2px !important; background: var(--v-ink); opacity: .7; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-vals { gap: 5px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-vals b { height: 18px; font: 500 15px/18px var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-duel:is(.win-a, .win-b) .cmp-vals :is(.a, .b) { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-duel.win-a .cmp-vals .a, html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-duel.win-b .cmp-vals .b { font-weight: 600; font-size: 17px; color: var(--v-ink); }
+/* 누적 기록 표 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-count thead th { padding-bottom: 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-count :is(th, td) { padding: 12px 4px; border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-count td { font: 500 16px var(--v-num); }
+
+/* 타석 결과 구성 (비교 · 타자 시즌 같은 부품): 안타 = 노랑→주황→빨강 · 볼넷·사구 = 초록 · 삼진 = 회색 · 범타 = 어두운 칸 */
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.cmp, .pf) { --mx0: #F6C343; --mx1: #FF9F43; --mx2: #FF5A36; --mx3: #35D49E; --mx4: #8C95A8; --mx5: #2F3644; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbars { gap: 12px; margin-bottom: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixwho { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixwho b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixwho small { font: 500 13px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbar { gap: 2px; height: 30px; border-radius: 999px !important; overflow: hidden; background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbar i { font: 600 13px var(--v-num) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbars :is(.mx0, .mx1, .mx2, .mx3, .mx4) { color: #0A0C11 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbars .mx5 { color: var(--v-ink2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixrow.ref .an-mixbar { height: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixkey { width: 12px; height: 12px; margin-bottom: 6px; border-radius: 50% !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl thead th { vertical-align: top; padding-bottom: 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink2); border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl :is(th, td) { padding: 12px 4px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl td { font: 500 16px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl td small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl tbody tr + tr > * { border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl-who { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixnote { margin-top: 10px; font-size: 13px; }
+
+/* 타구 방향 그림 (비교 · 타자 · 스카우트 같은 부품): 이름 · 방향 띠 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-spray-row { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-spray figcaption { gap: 6px; margin-bottom: 8px; font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-spray figcaption span { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-dir { gap: 3px; height: 26px; margin-top: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-dir i { border-radius: 999px !important; font: 600 13px var(--v-num); color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-dir-lbl { margin-top: 6px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-dir-none { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-legend { font-size: 13px; }
+
+/* ── 스카우트 탭 ───────────────────────────────────────────── */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc { --sc-atk: var(--v-blue); --sc-avd: var(--v-bad); --sc-fld: var(--v-good); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-result { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView #scoutInfoBanner { margin-bottom: 14px; padding: 6px 6px 6px 18px; border: 0 !important; border-radius: 16px !important; background: var(--v-card) !important; color: var(--v-ink2); font-size: 14px; line-height: 1.55; }
+html body.sb.sb-night:not(.high-contrast) #analysisView #scoutInfoBanner strong { color: var(--v-ink); }
+/* 맨 위 카드: 이름 크게 · 위협도 칸 · 지표 5칸 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-hero {
+  gap: 16px 12px; padding: 24px 20px 20px;
+  background: radial-gradient(120% 110% at 0% 0%, rgba(255, 90, 54, .16), transparent 58%), var(--v-card) !important;
+}
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-eyebrow { font: 700 13px 'Noto Sans KR', sans-serif; letter-spacing: .04em; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-name { margin-top: 6px; font-size: 32px; font-weight: 900; letter-spacing: -.03em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-meta { margin: 4px 0 10px; font-size: 14px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat { gap: 4px; min-width: 120px; padding: 14px 16px; border: 0 !important; border-radius: 16px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat small { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat b { font-size: 22px; letter-spacing: -.02em; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat span { font-size: 13px; line-height: 1.45; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.high { background: rgba(255, 107, 116, .14) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.high b { color: var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.mid { background: rgba(246, 195, 67, .12) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.mid b { color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.easy { background: rgba(124, 176, 255, .14) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat.easy b { color: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-kpis { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-kpi { gap: 4px; padding: 14px 2px 12px; border: 0 !important; border-radius: 14px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-kpi span { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-kpi b { font: 600 22px/1.1 var(--v-num); }
+/* 공략 포인트: 둥근 줄 · 아이콘 칸 · 태그 알약 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan li { grid-template-columns: 40px 1fr auto; gap: 12px; padding: 14px 14px 14px 12px; border: 0 !important; border-radius: 16px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan-ic { width: 40px; height: 40px; border: 0 !important; border-radius: 12px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan li div { gap: 4px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan li b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan li div span { font-size: 13.5px; line-height: 1.5; word-break: keep-all; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan li em { padding: 5px 10px; border: 0 !important; border-radius: 999px !important; font-size: 12px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan-attack :is(.sc-plan-ic, em) { background: rgba(124, 176, 255, .16) !important; color: var(--v-blue) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan-avoid :is(.sc-plan-ic, em) { background: rgba(255, 107, 116, .16) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-plan-field :is(.sc-plan-ic, em) { background: rgba(53, 212, 158, .16) !important; color: var(--v-good) !important; }
+/* 코스별 결과: 둥근 칸 · 숫자 크게 (칸 색은 scouting.js 의 밝은 팔레트 → 글자는 어둡게) */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-2col { gap: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone { grid-template-columns: 44px 1fr; gap: 8px; max-width: 340px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-top, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-side { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-grid { gap: 4px; padding: 0; border: 0 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zc { gap: 2px; border-radius: 12px !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zc:not(.thin) { color: #0A0C11 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zc.thin { border: 0 !important; background: var(--v-card2) !important; color: var(--v-ink3) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zc b { font: 600 19px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zc small { font: 500 13px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key { gap: 10px; margin-top: 14px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key i { width: 100px; height: 10px; border: 0 !important; border-radius: 999px !important; background: linear-gradient(90deg, rgb(137, 155, 183), rgb(251, 247, 238), rgb(223, 139, 131)) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key .k-lo { color: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key .k-hi { color: var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-note { margin-top: 10px; }
+/* 구종별 결과 표 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt thead th { padding: 0 4px 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt :is(th, td) { padding: 12px 4px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt tbody th { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt td { font: 500 16px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt td b { font-weight: 600; font-size: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt tbody tr + tr > * { border-color: var(--v-line) !important; }
+/* 카운트별 결과: 둥근 칸 · 타율 크게 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-counts { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count { padding: 16px 14px; border: 0 !important; border-radius: 16px !important; background: var(--v-card2) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count-hd { gap: 2px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count-hd b { font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count-hd small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count-v { margin: 10px 0; font: 600 36px/1 var(--v-num); letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count-v small { margin-left: 6px; font: 500 13px 'Noto Sans KR', sans-serif; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count dl { gap: 6px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count dt { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-count dd { font: 500 15px var(--v-num); }
+/* 타구 방향 · 수비 위치 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-spray { gap: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-batted { gap: 18px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-bl { margin-bottom: 8px; font-size: 14px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-bl small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-dir3 div { gap: 4px; padding: 12px 4px; border-radius: 14px !important; background: var(--v-card2) !important; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-dir3 b { font: 600 20px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-dir3 small { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-gofo { gap: 3px; height: 30px; border-radius: 999px !important; overflow: hidden; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-gofo i { border: 0 !important; border-radius: 0 !important; font: 700 13px 'Noto Sans KR', sans-serif; color: #0A0C11 !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-gofo .go { background: #C98B5B !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-gofo .fo { background: var(--v-good) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-gofo-note { margin-top: 6px; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-ft { font: 600 26px var(--v-num); }
+/* 최근 타석 · 이번 경기 투구 기록 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-recent li { gap: 12px; padding: 12px 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-recent li + li { border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-recent li i { min-width: 60px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-recent li span { font-size: 14px; word-break: keep-all; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix-row { grid-template-columns: 76px 1fr 72px; gap: 12px; font-size: 15px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix-bar { height: 12px; border-radius: 999px !important; background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix-bar i { border-radius: 999px !important; background: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix-row b { font: 600 17px var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-mix-row b small { font: 500 13px var(--v-num); }
+/* 아래 버튼 · 칼럼 */
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-actions { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-act-col.sc-act { background: var(--v-acc) !important; color: #fff !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col { padding: 24px 20px 20px; border: 0 !important; border-radius: var(--v-r) !important; background: var(--v-card) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-meta, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-ft small, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-brand, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-key, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-fig figcaption { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl :is(th, td) { border-color: var(--v-line) !important; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl thead th { background: var(--v-card2) !important; }
 /* ── 넓은 화면: 카드 두 줄 ───────────────────────────────── */
 @media (min-width: 980px) {
   html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result {
@@ -429,6 +619,17 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .an-card .tm-act small {
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result > :is(.an-insight, .tm-resbar),
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-result > .an-card:has(.tm-roster, .tm-acts) { grid-column: 1 / -1; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-acts { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-pick { max-width: 640px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-result {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start;
+  }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-result > :not(:has(.an-spray-row, .an-seg)) { grid-column: 1 / -1; }   /* 타구 방향 · 누적 흐름만 나란히 */
+  html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-name { font-size: 22px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-big { font-size: 80px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .sc-result, html body.sb.sb-night:not(.high-contrast) #analysisView .sc-2col { gap: 18px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .sc-name { font-size: 40px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .sc-threat { min-width: 200px; }
+  html body.sb.sb-night:not(.high-contrast) #analysisView .sc-kpi b { font-size: 26px; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-2col { gap: 18px; }
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-kpis { grid-template-columns: repeat(9, 1fr); }
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-name { font-size: 36px; }

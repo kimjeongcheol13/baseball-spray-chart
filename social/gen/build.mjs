@@ -2,7 +2,7 @@
 //   node social/gen/build.mjs            → 전부
 //   node social/gen/build.mjs c1 r2      → 고른 것만 (manifest 는 항상 전체로 다시 씀)
 //   --fast                               → 릴스는 표지만 (영상 생략, 확인용)
-// 필요: Chrome, ffmpeg (PATH)
+// 필요: Chrome, ffmpeg (PATH). 음성이 있는 릴스(says)는 edge-tts 7.3.1+ — 다른 것이 PATH 앞에 있으면 EDGE_TTS=<edge-tts 경로>
 import { spawn, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url)), POOL = join(HERE, '..', 'pool'), PAGE = pathToFileURL(join(HERE, 'page.html')).href;
 const args = process.argv.slice(2), FAST = args.includes('--fast'), ONLY = args.filter(a => !a.startsWith('--'));
 const CHROME = process.env.CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(existsSync);
-const PORT = 9353, FPS = 30;
+const PORT = 9353, FPS = 30, TTS = process.env.EDGE_TTS || 'edge-tts', VOICE = 'ko-KR-InJoonNeural';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const prof = mkdtempSync(join(tmpdir(), 'slg-'));
@@ -41,7 +41,26 @@ async function open(c, q, w, h) {
   await c.ev('document.fonts.ready.then(() => true)');
   await sleep(200);
 }
-const shot = async (c, w, h, fmt = 'jpeg') => Buffer.from((await c.send('Page.captureScreenshot', { format: fmt, quality: fmt === 'jpeg' ? 92 : undefined, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } })).data, 'base64');
+// 음성: 문장마다 mp3 → 길이(초)
+function speak(dir, says, voice) {
+  return says.map((t, i) => {
+    const f = join(dir, `v${i}.mp3`);
+    const r = spawnSync(TTS, ['--voice', voice || VOICE, '--rate=+8%', '--text', t, '--write-media', f], { encoding: 'utf8' });
+    if (r.status !== 0 || !existsSync(f)) throw new Error('edge-tts failed: ' + t + ' ' + (r.stderr || r.error || '').toString().slice(-300));
+    const d = +spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).stdout;
+    if (!(d > 0)) throw new Error('no audio: ' + t);
+    return { f, d };
+  });
+}
+// 가끔 headless Chrome 이 찍기 응답을 영영 안 준다(11-01 r1 162번째 장면에서 35분 멈춤) → 20초 넘으면 다시 찍는다
+const shot = async (c, w, h, fmt = 'jpeg') => {
+  for (let k = 0; k < 3; k++) {
+    const r = await Promise.race([c.send('Page.captureScreenshot', { format: fmt, quality: fmt === 'jpeg' ? 92 : undefined, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }), sleep(20000).then(() => null)]);
+    if (r) return Buffer.from(r.data, 'base64');
+    console.log('찍기 응답 없음 → 다시', k + 1);
+  }
+  throw new Error('captureScreenshot: 3번 다 응답 없음');
+};
 
 try {
   mkdirSync(POOL, { recursive: true });
@@ -51,9 +70,13 @@ try {
   const out = [];
   for (const m of META) {
     const files = [], rec = { ...m };
-    delete rec.n; delete rec.theme;
+    delete rec.n; delete rec.theme; delete rec.voice; if (!rec.says) delete rec.says;
     if (m.format === 'reel') {
-      await open(c, `?id=${m.id}`, 1080, 1920);
+      // 음성이 있으면 장면 길이 = 음성 길이 + 쉼 (첫 화면 2.6초 이상, 마지막 화면은 끝까지 보이게 +1.6초)
+      const vdir = m.says && !FAST && (!ONLY.length || ONLY.includes(m.id)) ? mkdtempSync(join(tmpdir(), 'slv-')) : null;
+      const voice = vdir ? speak(vdir, m.says, m.voice) : null;
+      const durs = voice && voice.map((v, i) => +(i === 0 ? Math.max(2.6, v.d + .7) : i === voice.length - 1 ? v.d + 1.9 : Math.max(2.2, v.d + .55)).toFixed(2));
+      await open(c, `?id=${m.id}${durs ? '&d=' + durs.join(',') : ''}`, 1080, 1920);
       const dur = await c.ev('window.DUR'), cover = await c.ev('window.COVER_T');
       rec.seconds = Math.round(dur * 10) / 10;
       rec.cover = `${m.id}_cover.jpg`;
@@ -63,8 +86,14 @@ try {
         if (!FAST) {
           const dir = mkdtempSync(join(tmpdir(), 'slf-')), N = Math.round(dur * FPS);
           for (let f = 0; f < N; f++) { await c.ev(`window.seek(${f / FPS})`); writeFileSync(join(dir, String(f).padStart(5, '0') + '.jpg'), await shot(c, 1080, 1920)); }
-          const r = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', join(dir, '%05d.jpg'), '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'medium', '-movflags', '+faststart', join(POOL, m.id + '.mp4')], { stdio: 'inherit' });
+          // 음성: 장면이 시작하고 0.15초 뒤(첫 문장은 0.3초)에 문장을 하나씩 얹는다
+          const at = [];
+          if (voice) { const cues = await c.ev('window.CUES'); if (cues.length !== voice.length) throw new Error(`${m.id}: says ${voice.length} ≠ 구간 ${cues.length}`); cues.forEach((t, i) => at.push(Math.round((t + (i ? .15 : .3)) * 1000))); }
+          const ain = voice ? voice.flatMap(v => ['-i', v.f]) : [];
+          const mix = voice ? ['-filter_complex', voice.map((_, i) => `[${i + 1}]adelay=${at[i]}:all=1[a${i}]`).join(';') + ';' + voice.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${voice.length}:normalize=0,apad[a]`, '-map', '0:v', '-map', '[a]', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : [];
+          const r = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', join(dir, '%05d.jpg'), ...ain, ...mix, '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'medium', '-movflags', '+faststart', join(POOL, m.id + '.mp4')], { stdio: 'inherit' });
           rmSync(dir, { recursive: true, force: true });
+          if (vdir) rmSync(vdir, { recursive: true, force: true });
           if (r.status !== 0) throw new Error('ffmpeg failed: ' + m.id);
         }
         console.log('reel', m.id, rec.seconds + 's');

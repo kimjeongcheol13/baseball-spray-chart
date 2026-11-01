@@ -7,6 +7,9 @@
       deco: 'radial-gradient(760px 700px at 30% 62%, rgba(75,140,245,.2), transparent 70%), radial-gradient(600px 400px at 100% 6%, rgba(255,90,54,.15), transparent 70%), repeating-linear-gradient(-58deg, rgba(255,255,255,.022) 0 2px, transparent 2px 26px), linear-gradient(180deg, #0B1832 0%, #060D1C 60%)' },
     paper: { dark: 0, bg: '#F4F3EE', tx: '#121417', tx2: '#5F646C', tx3: '#9A9EA5', acc: '#E04A22', hl: '#E04A22', mute: '#E4E2DB', line: '#E4E2DB', on: '#FFFFFF', card: '#FFFFFF',
       deco: 'radial-gradient(900px 600px at 100% 0, rgba(224,74,34,.06), transparent 70%)' },
+    // 앱 새 디자인(css/v2.css)과 같은 색: 어두운 카드 · 주황 강조
+    v2: { dark: 1, bg: '#0A0C11', tx: '#F4F6FA', tx2: 'rgba(244,246,250,.74)', tx3: 'rgba(244,246,250,.52)', acc: '#FF5A36', hl: '#FF5A36', mute: '#1C212C', line: 'rgba(255,255,255,.08)', on: '#FFFFFF', card: '#141822',
+      deco: 'radial-gradient(900px 760px at 100% 0, rgba(255,90,54,.13), transparent 70%), radial-gradient(700px 600px at 0 100%, rgba(124,176,255,.06), transparent 70%)' },
     sun: { dark: 1, bg: '#120D06', tx: '#FFF7EA', tx2: '#C9B89A', tx3: '#7A6A50', acc: '#FFB020', hl: '#FFB020', mute: '#2A2114', line: 'rgba(255,240,210,.14)', on: '#1A1204',
       deco: 'radial-gradient(800px 700px at 80% 70%, rgba(255,176,32,.16), transparent 70%), radial-gradient(500px 400px at 0 0, rgba(255,90,54,.08), transparent 70%)' },
   };

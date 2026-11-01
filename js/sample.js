@@ -281,6 +281,41 @@
     return ps;
   }
 
+  // 샘플팀 타자가 본 공 (타자 탭 공 칩 · 본 공 위치 · 초구 승부) — 기록 탭이 타석에 저장하는 currentPitches 모양 (투수 탭 연동 때처럼 result 포함)
+  // 타석 결과 · 카운트(a.count = 마지막 공 직전) · 구종 · 코스는 그대로 두고 거기에 맞는 공 순서를 만든다 (볼넷 · 사구만 코스가 마지막 공의 존 밖 칸으로)
+  var COL = ['내각', '중앙', '외각'], ROW = ['높음', '중간', '낮음'];
+  function spot(R, zone) {   // 칸 이름 → 그 칸 안의 좌표 (core.js _getZoneFromPos 의 반대)
+    var w = zone.split(' '), c = COL.indexOf(w[0]), r = ROW.indexOf(w[1]);
+    return { x: +(.22 + (c + .15 + R() * .7) * .56 / 3).toFixed(3), y: +(.15 + (r + .15 + R() * .7) * .7 / 3).toFixed(3) };
+  }
+  function ballSpot(R, hbp) {   // 존 밖 (사구는 몸쪽)
+    var t = hbp ? 0 : R(), x, y;
+    if (t < .3) { x = .03 + R() * .16; y = .15 + R() * .7; }
+    else if (t < .6) { x = .81 + R() * .16; y = .15 + R() * .7; }
+    else if (t < .75) { x = .25 + R() * .5; y = .03 + R() * .1; }
+    else { x = .25 + R() * .5; y = .87 + R() * .1; }
+    return { x: +x.toFixed(3), y: +y.toFixed(3) };
+  }
+  function addSeq(R, a) {
+    var c = a.count, seq = [], i, j, t;
+    for (i = 0; i < c.b; i++) seq.push('볼');
+    for (i = 0; i < c.s; i++) { t = R(); seq.push(t < .35 ? '루킹' : t < .6 ? '헛스윙' : '파울'); }
+    for (i = seq.length - 1; i > 0; i--) { j = Math.floor(R() * (i + 1)); t = seq[i]; seq[i] = seq[j]; seq[j] = t; }
+    if (c.s === 2) for (t = R(); t < .5; t += .35) seq.push('파울');   // 2스트라이크 뒤 파울로 버티기
+    seq.push(a.res === '삼진' ? (R() < .6 ? '헛스윙' : '루킹') : a.res === '볼넷' ? '볼' : a.res === '사구' ? '사구' : '타격됨');
+    var b = 0, st = 0;
+    a.pitches = seq.map(function (k, n) {
+      var fin = n === seq.length - 1, at, zone;
+      if (k === '볼' || k === '사구' || (k === '헛스윙' && !fin && R() < .4)) { at = ballSpot(R, k === '사구'); zone = zoneOf(at.x, at.y); }
+      else { zone = fin ? a.zone : ZONES[Math.floor(R() * 9)]; at = spot(R, zone); }
+      var q = { zone: zone, pt: fin ? a.pt : PITCH[Math.floor(R() * PITCH.length)], x: at.x, y: at.y, balls: b, strikes: st, outs: 0, pitcher: '', ts: a.ts,
+        result: fin ? (LEGACY[a.res] || (a.res === '내야안타' ? '안타' : '아웃')) : k === '볼' || k === '파울' ? k : '스트라이크' };
+      if (k === '볼') b++; else if (k !== '파울' || st < 2) st++;
+      return q;
+    });
+    if (a.res === '볼넷' || a.res === '사구') a.zone = a.pitches[a.pitches.length - 1].zone;
+  }
+
   function buildGames() {
     var games = [], now = Date.now(), day = 864e5;
     OPP.forEach(function (op, gi) {
@@ -290,11 +325,12 @@
       var ds = p2(dt.getFullYear() % 100) + p2(dt.getMonth() + 1) + p2(dt.getDate());
       var key = 'sl_' + TEAM + 'vs' + op[0] + '_' + ds + '_s' + p2(gi + 1);   // 끝 칸은 3글자까지 (core.js _SAVE_KEY_RE)
       var lineup = BAT.map(function (b, i) { return { id: (gi + 1) * 100 + i + 1, name: b[0], num: b[1], pos: '', bh: b[2], isStarter: true }; });
-      var total = op[3], abs = [], rbi = 0;
+      var total = op[3], abs = [], rbi = 0, R2 = rng(SEED + 9000 + gi * 101);   // R2 = 타자가 본 공 (타석 시드와 따로)
       for (var n = 0; n < total; n++) {
         var bi = n % 9, inn = Math.min(7, 1 + Math.floor(n * 7 / total)) + '회말';
         var a = buildAtBat(R, BAT[bi], lineup[bi].id, ts, n, inn);
         a.ts = ('0' + (13 + Math.floor(n / 14))).slice(-2) + ':' + ('0' + ((n * 4) % 60)).slice(-2);
+        addSeq(R2, a);
         if (a.res === '홈런') a.rbi = 1 + (R() < .4 ? 1 : 0);
         else if (a.res === '2루타' || a.res === '3루타') a.rbi = R() < .5 ? 1 : 0;
         else if (a.res === '안타') a.rbi = R() < .3 ? 1 : 0;

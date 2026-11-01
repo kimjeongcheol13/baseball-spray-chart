@@ -338,7 +338,7 @@ function _lsHtml() {
   const lsOf = t => (ls && Array.isArray(ls[t]) ? ls[t] : []);
   const lsCell = (t, n) => { const v = lsOf(t)[n - 1]; return typeof v === 'number' && isFinite(v) ? String(v) : v === 'X' ? 'X' : ''; };
   const cols = Array.from({ length: Math.max(info.innings || 9, cur.n || 0, lsOf('away').length, lsOf('home').length) }, (_, i) => i + 1);
-  const head = `<tr><th scope="col" class="t">TEAM</th>${cols.map(n => `<th scope="col"${cur.n === n ? ' class="cur"' : ''}>${n}</th>`).join('')}<th scope="col" class="r">R</th><th scope="col">H</th><th scope="col">E</th></tr>`;
+  const head = `<tr><th scope="col" class="t">팀</th>${cols.map(n => `<th scope="col"${cur.n === n ? ' class="cur"' : ''}>${n}</th>`).join('')}<th scope="col" class="r">R</th><th scope="col">H</th><th scope="col">E</th></tr>`;
   const row = (name, t, runs) => `<tr><th scope="row" class="t">${esc(name)}</th>${cols.map(n => `<td${cur.n === n ? ' class="cur"' : ''}>${lsCell(t, n)}</td>`).join('')}`
     + `<td class="r">${esc(runs)}</td><td>${hits(t)}</td><td class="e" aria-label="실책 기록 안 함">–</td></tr>`;
   // R 칸은 44px 터치 타겟이 안 나와서 점수 수정은 옆 버튼으로 (기존 스코어 수정 팝오버)
@@ -351,7 +351,7 @@ function _lsHtml() {
 function _innHtml() {
   const cur = _inn();
   const big = cur.n ? `${cur.n}회` : esc(cur.v || '—');
-  const small = cur.n ? (cur.top ? 'TOP·초' : 'BOT·말') : 'EXTRA';
+  const small = cur.n ? (cur.top ? '초' : '말') : '연장';
   return `<div class="sb-inn" role="group" aria-label="이닝">
       <button type="button" class="sb-inn-b" onclick="recStepInning(-1)" aria-label="이전 이닝">${ICON.prev}</button>
       <div class="sb-inn-v" aria-live="polite"><b>${big}</b><small>${small}</small></div>
@@ -403,7 +403,7 @@ function _nowInfo() {
 
 function _nowHtml() {
   const x = _nowInfo();
-  return `<small class="sb-eyebrow">NOW BATTING</small>`
+  return `<small class="sb-eyebrow">지금 타자</small>`
     + (x ? `<b class="sb-now-nm">${esc(x.name)}</b><span class="sb-now-meta">${x.order ? x.order + '번 · ' : ''}${x.pa}타석째</span>`
       : `<b class="sb-now-nm empty">타자 미선택</b><span class="sb-now-meta">타순표에서 타자 행을 누르세요</span>`)
     + `<button type="button" class="sb-btn" onclick="sbEditLineup()">라인업 편집</button>`;
@@ -411,7 +411,7 @@ function _nowHtml() {
 
 function _nowBarHtml() {
   const x = _nowInfo();
-  return `<small class="sb-eyebrow">NOW BATTING</small>`
+  return `<small class="sb-eyebrow">지금 타자</small>`
     + (x ? `<b>${x.order ? x.order + '번 ' : ''}${esc(x.name)}</b><span>${x.pa}타석째</span>` : '<b class="empty">타자 미선택</b>')
     + `<em>타순표 ${ICON.down}</em>`;
 }
@@ -596,7 +596,7 @@ function _sideHtml() {
   const list = all.slice(-12).reverse();
   return `
     <section class="sb-card sb-count" aria-label="볼카운트">
-      <div class="sb-card-hd"><h2>COUNT</h2><button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
+      <div class="sb-card-hd"><h2>볼카운트</h2><button type="button" class="sb-mini" onclick="resetCount()">초기화</button></div>
       <div class="sb-cnt">
         <button type="button" class="sb-cg b" onclick="chCount('b')" title="볼 +1 · 4개째에 볼넷 기록" aria-label="볼 ${b}, 누르면 ${b >= 3 ? '볼넷 기록' : '+1'}"><span>B</span>${dots(b, 3)}</button>
         <button type="button" class="sb-cg s" onclick="chCount('s')" title="스트라이크 +1 · 3개째에 삼진 기록" aria-label="스트라이크 ${s}, 누르면 ${s >= 2 ? '삼진 기록' : '+1'}"><span>S</span>${dots(s, 2)}</button>

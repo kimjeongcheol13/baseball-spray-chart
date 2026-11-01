@@ -106,6 +106,35 @@
     } finally { restore(); REAL.clear(); }
   });
 
+  test('샘플 모드: 경기마다 샘플팀 투수 투구(v2) — 앱의 투구 계산으로 읽으면 모든 타석이 정상으로 끝나고 7이닝 21아웃', async function () {
+    try {
+      fresh(); await enterAndReopen();
+      var PC = await import('/js/features/pitchcalc.js');
+      var names = {}, n = 0;
+      JSON.parse(localStorage.getItem('sl_saves')).forEach(function (s) {
+        var g = JSON.parse(localStorage.getItem(s.key)), outs = 0;
+        ok(g.pitchers.length >= 2, '투수 수: ' + s.key);
+        g.pitchers.forEach(function (p) {
+          names[p.name] = 1;
+          ok(p.id && p.num && ['SP', 'RP'].indexOf(p.role) >= 0 && p.pitches.length, '투수 필드: ' + p.name);
+          eq(PC.isNewerData(p.pitches), false, '새 버전 데이터로 읽힘');
+          p.pitches.forEach(function (q) {
+            n++;
+            ok(q.v === 2 && q.pa && q.bid && q.batter && q.pt && /^[1-7]회초$/.test(q.inning), '투구 필드: ' + JSON.stringify(q));
+            ok(q.zoneX >= 0 && q.zoneX <= 1 && q.zoneY >= 0 && q.zoneY <= 1 && q.zone, '코스 좌표');
+          });
+          PC.groupPA(p.pitches).forEach(function (x) {
+            ok(x.end && !x.abnormal, '끝나지 않았거나 불가능한 카운트의 타석: ' + p.name + ' ' + x.pa);
+            outs += PC.outsOfPA(x);
+          });
+        });
+        eq(outs, 21, '경기 아웃 수: ' + s.key);
+      });
+      eq(Object.keys(names).sort(), ['배동훈', '서준호', '임재원'], '투수 이름');
+      ok(n > 1000 && n < 1700, '전체 투구 수: ' + n);
+    } finally { restore(); REAL.clear(); }
+  });
+
   test('샘플 모드: key(i) · length · for…in · Object.keys · 프로퍼티 접근이 모두 같은 키 목록을 보여준다 (접두사 · 플래그 숨김)', async function () {
     try {
       fresh(); await enterAndReopen();

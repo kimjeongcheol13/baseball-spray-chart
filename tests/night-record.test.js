@@ -30,6 +30,16 @@
     eq([t.paper, t.ink, t.bg], ['#E9ECF1', '#FFFFFF', '#12151C'], '캔버스 색');
   });
 
+  test('타구 상세 카드: 안타류 결과 글씨 = 필드 기호 빨강(--pen-red), 아웃은 그대로', function () {
+    var probe = document.createElement('i');
+    probe.style.color = 'var(--pen-red)'; document.body.appendChild(probe);
+    var red = getComputedStyle(probe).color; probe.remove();
+    var col = function (res) { window.showHitDetail({ res: res, x: 0.5, y: 0.3, team: 'home' }, 100, 200); return getComputedStyle(document.querySelector('#hitDetailCard .hdc-res')).color; };
+    eq([col('2루타'), col('홈런')], [red, red], '안타류');
+    ok(col('플라이 아웃') !== red, '아웃까지 빨강');
+    window.closeHitDetail();
+  });
+
   test('분석 · 경기설정도 밤 — 카드 · 머리 테두리는 흰 잉크가 아니라 옅은 선', async function () {
     shellNav('analysis', 'team');
     await T.sleep(50);

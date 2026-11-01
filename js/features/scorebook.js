@@ -790,6 +790,17 @@ function _hook() {
     w._sb = true;
     window._gfDrawMini = w;
   }
+  // 타구 상세 카드(core showHitDetail) 결과 글씨: 안타류는 필드 기호와 같은 빨강 (예전 청록·파랑 표가 남아 있었음). 아웃은 그대로 회색
+  const hd = window.showHitDetail;
+  if (typeof hd === 'function' && !hd._sb) {
+    const w = function (ab) {
+      const r = hd.apply(this, arguments), t = ab && HITS.includes(ab.res) && document.querySelector('#hitDetailCard .hdc-res');
+      if (t) t.style.color = 'var(--pen-red)';
+      return r;
+    };
+    w._sb = true;
+    window.showHitDetail = w;
+  }
   // 기록 직후 필드를 2.5초 접고 미니 스프레이를 띄우던 효과(데스크톱): 새 배치에선 필드 카드가 비어 보여서 끔
   // (모바일은 record.js가 이미 끔) — 방금 기록은 필드의 형광펜 링과 오른쪽 타석 기록에서 바로 보인다
   const mini = window._showMiniSprayAfterRecord;

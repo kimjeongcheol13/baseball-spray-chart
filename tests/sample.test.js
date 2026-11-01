@@ -135,6 +135,30 @@
     } finally { restore(); REAL.clear(); }
   });
 
+  test('샘플 모드: 샘플팀 타석마다 본 공 순서 — 공마다 그 직전 카운트가 맞고, 마지막 공 = 타석의 카운트 · 구종 · 코스 (볼넷 · 사구는 존 밖)', async function () {
+    try {
+      fresh(); await enterAndReopen();
+      var n = 0, first = 0;
+      JSON.parse(localStorage.getItem('sl_saves')).forEach(function (s) {
+        JSON.parse(localStorage.getItem(s.key)).abs.forEach(function (a) {
+          var ps = a.pitches, b = 0, st = 0, L = ps[ps.length - 1], tag = s.key + ' ' + a.bname + ' ' + a.res;
+          ok(ps.length >= 1, '공 없음: ' + tag);
+          ps.forEach(function (p, i) {
+            ok(p.balls === b && p.strikes === st, '카운트 어긋남: ' + tag + ' ' + (i + 1) + '구');
+            ok(p.pt && p.zone && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1, '공 필드: ' + tag);
+            if (i < ps.length - 1) { ok(['볼', '스트라이크', '파울'].indexOf(p.result) >= 0, '중간 공 결과: ' + p.result); if (p.result === '볼') b++; else if (p.result !== '파울' || st < 2) st++; }
+          });
+          ok(b <= 3 && st <= 2, '타석이 끝나기 전에 볼넷 · 삼진 카운트: ' + tag);
+          eq([L.balls, L.strikes, L.pt, L.zone], [a.count.b, a.count.s, a.pt, a.zone], '마지막 공 = 타석 기록: ' + tag);
+          if (a.res === '볼넷' || a.res === '사구') ok(L.x < .22 || L.x > .78 || L.y < .15 || L.y > .85, '볼넷 · 사구 마지막 공이 존 안: ' + tag);
+          n += ps.length; if (ps.length === 1) first++;
+        });
+      });
+      ok(n > 1400 && n < 2000, '전체 본 공: ' + n);
+      ok(first >= 20, '초구 승부 타석: ' + first);
+    } finally { restore(); REAL.clear(); }
+  });
+
   test('샘플 모드: key(i) · length · for…in · Object.keys · 프로퍼티 접근이 모두 같은 키 목록을 보여준다 (접두사 · 플래그 숨김)', async function () {
     try {
       fresh(); await enterAndReopen();

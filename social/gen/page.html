@@ -140,6 +140,23 @@
   .arow .tr { position: absolute; left: 0; right: 0; top: 86px; height: 40px; background: var(--mute); } .arow .tr s { display: block; height: 100%; }
   .rnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; } .rnums .num { font-size: 116px; line-height: 1; } .rnums span { display: block; margin-top: 12px; font-size: 36px; font-weight: 700; color: var(--tx2); }
   .dir3 { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; } .dir3 .num { font-size: 110px; line-height: 1; } .dir3 span { display: block; margin-top: 10px; font-size: 38px; font-weight: 700; color: var(--tx2); }
+  /* 앱 화면 (v2) — 잘라 낸 앱 화면 · 둥근 꼬리표 · 자막 */
+  [data-theme=v2] .chip { border: 0; background: #1C212C; }
+  [data-theme=v2] .plate, [data-theme=v2] .plate span { transform: none; }
+  [data-theme=v2] .plate { border-radius: 999px; background: rgba(255,90,54,.14); padding: 12px 30px; }
+  [data-theme=v2] .plate span { font: 800 38px/1 'Noto Sans KR'; letter-spacing: -.02em; color: var(--acc); }
+  [data-theme=v2] .lab { font-family: 'Noto Sans KR'; font-weight: 800; letter-spacing: 0; color: var(--acc); }
+  [data-theme=v2] .wipe { display: none !important; }
+  .ph { position: relative; flex: none; overflow: hidden; border-radius: 28px; background: var(--card); box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 2px var(--line); }
+  .mini4.app { gap: 20px; }
+  .ph img { position: absolute; display: block; max-width: none; }
+  .ph .tag { right: 18px; top: 18px; bottom: auto; background: rgba(10,12,17,.78); color: var(--tx2); }
+  .ah1 { position: absolute; left: 80px; right: 80px; top: 168px; font-size: 80px; line-height: 1.16; font-weight: 900; letter-spacing: -.045em; }
+  .asub { position: absolute; left: 80px; right: 80px; top: 372px; font-size: 32px; font-weight: 500; color: var(--tx2); }
+  .avis { position: absolute; left: 80px; right: 80px; top: 466px; display: flex; justify-content: center; }
+  .pill { display: inline-block; padding: 12px 30px; border-radius: 999px; background: rgba(255,90,54,.14); color: var(--acc); font-size: 38px; font-weight: 800; letter-spacing: -.02em; }
+  .subt { position: absolute; left: 90px; right: 150px; top: 1352px; text-align: center; line-height: 1.55; }
+  .subt span { background: rgba(10,12,17,.85); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 6px 20px; border-radius: 14px; font-size: 46px; font-weight: 800; letter-spacing: -.02em; }
   .wipe { position: absolute; top: -200px; bottom: -200px; width: 1700px; background: var(--acc); transform: skewX(-14deg); z-index: 9; }
 </style></head>
 <body>
@@ -151,13 +168,14 @@
   K.useTheme(it.theme);
   if (it.format === 'reel') {
     document.body.classList.add('reel');
+    if (q.get('d')) it.durs = q.get('d').split(',').map(Number);   // 장면 길이 = 음성 길이 (build.mjs 가 넘긴다)
     const R = REELS[it.reel](it, SUBJ[it.subject], SUBJ.CELL);
     document.getElementById('root').innerHTML = R.html;
-    window.seek = R.seek; window.DUR = R.dur; window.COVER_T = R.coverT;
+    window.seek = R.seek; window.DUR = R.dur; window.COVER_T = R.coverT; window.CUES = R.cues || [0];
     R.seek(0);
   } else {
     document.getElementById('root').innerHTML = it.slides()[+(q.get('s') || 0)];
   }
-  window.META = ITEMS.map(x => ({ id: x.id, format: x.format, theme: x.theme, type: x.type, topic: x.topic, hook: x.hook, facts: x.facts, n: x.slides ? x.slides().length : 0 }));
+  window.META = ITEMS.map(x => ({ id: x.id, format: x.format, theme: x.theme, type: x.type, topic: x.topic, hook: x.hook, facts: x.facts, says: x.says || null, voice: x.voice || null, n: x.slides ? x.slides().length : 0 }));
 </script>
 </body></html>

@@ -2,7 +2,6 @@
 // 숫자는 전부 data.js 의 가짜 데이터에서 계산한다. 사람 이름 대신 별명·등번호만 쓴다.
 (() => {
   const { G, S, K } = window;
-  const sum = xs => xs.reduce((a, b) => a + b, 0);
 
   // ── 등장인물 (가짜) ───────────────────────────────────
   const P1 = G.pitcher(217, {
@@ -11,32 +10,133 @@
     mix: c => (!c.b && !c.s) ? [['직구', 6], ['슬라이더', 1.5], ['커브', 2]] : c.s === 2 ? [['슬라이더', 6], ['직구', 2], ['커브', 1.5], ['체인지업', 1]]
       : c.b > c.s ? [['직구', 7], ['체인지업', 2], ['슬라이더', 1]] : [['직구', 4], ['슬라이더', 3], ['커브', 2], ['체인지업', 1]],
   });
-  const P2 = G.pitcher(70, {
-    name: '베테랑', num: 21, team: '샘플 블루스', opp: 'vs 샘플 이글스', date: '10.19', pa: 27, fatigue: .35, spread: .5,
-    aim: { '직구': [.5, .4], '포크볼': [.5, .85], '커브': [.45, .8] },
-    mix: c => c.s === 2 ? [['포크볼', 5], ['직구', 3], ['커브', 2]] : [['직구', 6], ['커브', 2], ['포크볼', 1.5]],
-  });
-  const B1 = G.batter(172, { name: '캡틴', num: 7, hand: 'R', pa: 72, pull: .64, gb: .55, hot: Array(9).fill(1) });
   const B2 = G.batter(533, { name: '거포', num: 24, hand: 'R', pa: 110, pull: .42, gb: .42, hot: [1.5, 1.2, 1, 1.3, 1.1, .9, 1, .8, .3] });
   const B3 = G.batter(143, { name: '막내', num: 11, hand: 'L', pa: 80, pull: .5, gb: .45, hot: Array(9).fill(1), first: 1.7, firstSwing: .75 });
-  const TEAM = G.team(500, [
-    { l: '#2 유격수', pull: .45, gb: .5, hand: 'R' }, { l: '#5 2루수', pull: .4, gb: .55, hand: 'L' }, { l: '#7 중견수', pull: .5, gb: .45, hand: 'R' },
-    { l: '#10 포수', pull: .6, gb: .4, hand: 'R', power: .7 }, { l: '#13 1루수', pull: .65, gb: .35, hand: 'R', power: .8 }, { l: '#19 좌익수', pull: .55, gb: .45, hand: 'L' },
-    { l: '#24 3루수', pull: .6, gb: .5, hand: 'R' }, { l: '#27 우익수', pull: .5, gb: .5, hand: 'L' }, { l: '#33 지명', pull: .55, gb: .45, hand: 'R' },
-  ]);
 
   const sl1 = { a: P1.share(P1.m0, '슬라이더'), b: P1.share(P1.m2, '슬라이더') };
   const sl2S = P1.ps.filter(p => p.pt === '슬라이더' && p.c.s === 2), low2S = sl2S.filter(p => p.y > .6).length, out2S = sl2S.filter(p => !(p.x > .25 && p.x < .75 && p.y > .18 && p.y < .82)).length;
   const times = (a, b) => (b / a).toFixed(1).replace(/\.0$/, '');
-  const dirName = h => h === 'L' ? ['밀어친', '가운데', '당겨친'] : ['당겨친', '가운데', '밀어친'];
   const b2w = B2.grid[8], b2h = B2.grid.reduce((m, g, i) => g.v > B2.grid[m].v ? i : m, 0);
   const CELL = ['몸쪽 높은', '가운데 높은', '바깥쪽 높은', '몸쪽 가운데', '한가운데', '바깥쪽 가운데', '몸쪽 낮은', '가운데 낮은', '바깥쪽 낮은'];
-  const obpRank = [...TEAM].sort((a, b) => b.obpV - a.obpV), slgRank = [...TEAM].sort((a, b) => b.slgV - a.slgV);
-  const bk = P2.buckets, sOf = xs => G.pct(xs.filter(p => p.kind !== 'ball').length, xs.length), early = sOf(P2.ps.slice(0, 50)), late = sOf(P2.ps.slice(50));
+  const fullPA = P1.fullK[1] || P1.fullK[0], lastP = fullPA.at(-1);
+
+  // ── 앱 기능 소개 — 앱 화면은 shots/ (node social/gen/appshots.mjs 가 샘플 모드로 찍는다) ──
+  // S.shot(이름, [x, y, w, h]) — 앱 화면은 CSS px(폭 390) 단위, 저장 이미지는 그림 픽셀 단위
+  const nx = '넘겨서 더 보기 →';
+  // 릴스 장면: 꼬리표 · 앱 화면 · 훑는 칸 a → b · 자막(= 음성)
+  const TOUR = [
+    { l: '경기 중', shot: 'rec', a: [0, 200, 390], b: [0, 300, 390], say: ['경기 중에는 타구가 떨어진 곳을', '한 번 누르면 됩니다'] },
+    { l: '경기 리포트', shot: 'report', a: [0, 40, 390], b: [0, 330, 390], say: ['경기가 끝나면 리포트가 바로 나옵니다', '점수, 팀 타격, 타구 방향까지'] },
+    { l: '선수 카드', shot: 'card', a: [0, 0, 1080], b: [0, 620, 1080], say: ['선수마다 카드 한 장', '단톡방에 바로 보내세요'] },
+    { l: '리그 기록지', shot: 'sheet', a: [0, 0, 820], b: [0, 0, 1588], say: ['리그 기록지도 A4 한 장으로', '인쇄까지 됩니다'] },
+    { l: '선수 분석', shot: 'bat', a: [0, 360, 390], b: [0, 2300, 390], say: ['기록이 쌓이면', '선수마다 시즌 성적이 정리됩니다'] },
+  ];
+  const SCOUT = [
+    { l: '상대 타자 리포트', shot: 'scout', a: [0, 300, 390], b: [0, 340, 390], say: ['상대 타자를 고르면', '위협도와 성적이 한눈에'] },
+    { l: '공략 포인트', shot: 'scout', a: [0, 600, 390], b: [0, 650, 390], say: ['공략 포인트를 먼저 알려 줍니다', '결정구, 조심할 카운트까지'] },
+    { l: '코스별 결과', shot: 'scout', a: [0, 1100, 390], b: [0, 1140, 390], say: ['코스별 결과를 보고', '어디로 던질지 정하고'] },
+    { l: '수비 위치', shot: 'scout', a: [0, 2540, 390], b: [0, 2640, 390], say: ['타구 방향을 보고', '수비 위치까지 정하세요'] },
+  ];
+  const says = (first, sc, last) => [first, ...sc.map(x => x.say.join(' ') + '.'), last];
 
   window.ITEMS = [
     {
-      id: 'c1', format: 'carousel', theme: 'field', type: 'B', topic: '카운트별 구종 — 2스트라이크 결정구',
+      id: 'c1', format: 'carousel', theme: 'v2', type: 'F', topic: '경기 하나 기록하면 나오는 다섯 가지',
+      hook: '경기 하나 기록하면 이게 다 나옵니다',
+      facts: ['경기 리포트(점수 · 팀 타격 · 타구 방향 · 오늘의 선수)', '리그 기록지 A4 한 장(인쇄 가능)', '오더지(타순 · 수비 위치 · 등번호)', '선수별 시즌 분석', '선수 카드 이미지(단톡방 공유)'],
+      slides: () => [
+        S.app({ chip: 'SprayLab 사용법', page: '1 / 7', h1: '경기 하나 기록하면<br><em>이게 다</em> 나옵니다', sub: '리포트 · 기록지 · 오더지 · 선수 분석 · 선수 카드', vis: S.shot('report', [0, 40, 390, 306]), next: nx }),
+        S.app({ chip: '① 경기 리포트', page: '2 / 7', h1: '경기가 끝나면<br>리포트가 바로', sub: '점수 · 팀 타격 · 타구 방향 · 오늘의 선수', vis: S.shot('report', [0, 355, 390, 300]), next: nx }),
+        S.app({ chip: '② 리그 기록지', page: '3 / 7', h1: '종이 기록지 그대로<br>A4 한 장', sub: '타석마다 결과 · 이닝별 점수 · 인쇄까지', vis: S.shot('sheet', [0, 0, 1588, 1270]), next: nx }),
+        S.app({ chip: '③ 오더지', page: '4 / 7', h1: '라인업만 넣으면<br>오더지 완성', sub: '타순 · 수비 위치 · 등번호 · 후보 선수', vis: S.shot('order', [0, 0, 1588, 1270]), next: nx }),
+        S.app({ chip: '④ 선수 분석', page: '5 / 7', h1: '타자마다<br>시즌 성적이 쌓입니다', sub: '타율 · 출루율 · wOBA · 오늘 기록', vis: S.shot('bat', [0, 360, 390, 300]), next: nx }),
+        S.app({ chip: '⑤ 선수 카드', page: '6 / 7', h1: '선수마다<br>카드 한 장', sub: '단톡방에 이미지로 바로 공유', vis: S.shot('card', [0, 0, 1080, 1320], 560), next: nx }),
+        S.cta({ chip: 'SprayLab', page: '7 / 7', h1: '기록은 탭,<br>정리는 자동', steps: ['경기 중에 타구를 탭 한 번', '경기가 끝나면 리포트 · 기록지가 자동으로', '단톡방에 이미지로 바로 공유'] }),
+      ],
+    },
+    {
+      id: 'r1', format: 'reel', theme: 'v2', type: 'F', topic: '경기 끝나면 리포트가 자동으로 — 앱 화면 둘러보기', reel: 'app',
+      hook: '경기 끝나면 리포트가 자동으로', chip: 'SprayLab 사용법', hookHtml: '경기 끝나면<br>리포트가<br><em>자동으로</em>', sub: '탭 몇 번이면 정리 끝', introShot: ['report', [0, 40, 390, 172]],
+      endHtml: '기록은 탭 몇 번,<br>정리는 <em>SprayLab</em>',
+      facts: ['경기 중: 타구가 떨어진 곳을 한 번 탭', '경기 리포트 · 선수 카드 · 리그 기록지 · 선수 분석이 자동으로', '음성: AI 목소리'],
+      scenes: TOUR, says: says('경기 끝나면 리포트가 자동으로 나옵니다.', TOUR, '기록은 탭 몇 번, 정리는 스프레이랩. 기본 무료입니다.'),
+    },
+    {
+      id: 'i1', format: 'image', theme: 'v2', type: 'F', topic: '경기 끝나면 선수마다 카드 한 장',
+      hook: '오늘 경기, 선수마다 카드 한 장',
+      facts: ['경기가 끝나면 선수별 카드 이미지(타석 · 타율 · 출루율 · 장타율 · OPS · 타구 위치 · 타석 결과)', '단톡방 · 스토리에 바로 공유'],
+      slides: () => [S.app({ chip: '선수 카드', h1: '오늘 경기,<br>선수마다 <em>카드 한 장</em>', sub: '타석 결과 · 타구 위치 · 오늘 성적', vis: S.shot('card', [0, 0, 1080, 1320], 560) })],
+    },
+    {
+      id: 'c2', format: 'carousel', theme: 'v2', type: 'F', topic: '기록 화면 한 장으로 경기 기록 끝',
+      hook: '경기 기록, 화면 한 장이면 끝',
+      facts: ['타구가 떨어진 곳을 탭 → 결과 선택', '점수판 · 이닝 · 안타 수 자동', '볼 · 스트라이크 · 아웃도 같은 화면'],
+      slides: () => [
+        S.app({ chip: 'SprayLab 사용법', page: '1 / 5', h1: '경기 기록,<br>화면 <em>한 장</em>이면 끝', sub: '점수판 · 타순 · 타구 · 볼카운트', vis: S.shot('rec', [0, 40, 390, 306]), next: nx }),
+        S.app({ chip: '① 타구', page: '2 / 5', h1: '타구가 떨어진 곳을<br>한 번 누르면 끝', sub: '안타 · 장타 · 홈런 · 아웃이 차트에 쌓입니다', vis: S.shot('rec', [0, 285, 390, 306]), next: nx }),
+        S.app({ chip: '② 점수판', page: '3 / 5', h1: '이닝 · 점수 · 안타는<br>알아서 올라갑니다', sub: '경기 운영을 켜면 타순 · 아웃 · 이닝도 자동', vis: S.shot('rec', [0, 50, 390, 215]), next: nx }),
+        S.app({ chip: '③ 볼카운트', page: '4 / 5', h1: '볼 · 스트라이크 · 아웃도<br>같은 화면에서', sub: '타자를 고르면 이번 경기 지표도 바로', vis: S.shot('rec', [0, 590, 390, 210]), next: nx }),
+        S.cta({ chip: 'SprayLab', page: '5 / 5', h1: '오늘 경기부터<br>바로 써 보세요', steps: ['타석에 선 타자를 고르고', '타구가 떨어진 곳을 탭', '결과를 고르면 나머지는 자동'] }),
+      ],
+    },
+    {
+      id: 'r2', format: 'reel', theme: 'v2', type: 'D', topic: '한 경기 → 다섯 경기 → 시즌, 기록이 쌓이는 모습',
+      hook: `1경기 ${Math.round(B3.bip.length / 14)}개, 14경기면?`, reel: 'season', subject: 'B3', chip: '기록이 쌓이면',
+      says: ['한 경기 타구는 몇 개 안 됩니다.', '한 경기, 다섯 경기, 그리고 시즌 열네 경기. 쌓일수록 습관이 보입니다.', '기록은 탭 몇 번, 남는 건 한 시즌. 스프레이랩.'],
+      facts: [`가상의 좌타자 '막내' 시즌 ${B3.pa}타석`, `인플레이 타구 ${B3.bip.length}개가 쌓이는 과정`, '기록은 경기마다 탭 몇 번'],
+    },
+    {
+      id: 'i2', format: 'image', theme: 'v2', type: 'C', topic: '경기 전 단톡방에 올리는 투수 리포트 한 장 (앱에서 저장한 그대로)',
+      hook: '상대 투수, 이 한 장이면 정리 끝',
+      facts: ['투수 분석 → 「투수 리포트 이미지로 저장」 한 번', '스트라이크% · 초구 S% · 삼진% · 볼넷% · 피안타율', '카운트별 구종 · 구종별 위치', '가상의 투수 · 예시 데이터'],
+      slides: () => [`<img src="shots/pitrep.jpg" style="position:absolute;inset:0;width:1080px;height:1350px"><div class="tag" style="bottom:30px;right:auto;left:50%;transform:translateX(-50%)">예시 데이터</div>`],
+    },
+    {
+      id: 'c3', format: 'carousel', theme: 'v2', type: 'F', topic: '분석 탭 둘러보기 — 타자 · 투수 · 팀',
+      hook: '기록이 쌓이면 분석은 알아서',
+      facts: ['타자: 성적을 문장으로 정리(이런 타자예요)', '투수: 분석 요약 · 구종 구성 · 결정구', '팀: 리더보드 · 경기 결과', '분석 엑셀 · 이미지 저장'],
+      slides: () => [
+        S.app({ chip: 'SprayLab 분석', page: '1 / 5', h1: '기록이 쌓이면<br>분석은 <em>알아서</em>', sub: '타자 · 투수 · 팀 · 비교 · 스카우트', vis: S.shot('team', [0, 320, 390, 306]), next: nx }),
+        S.app({ chip: '① 타자', page: '2 / 5', h1: '이 타자는<br>어떤 타자인가', sub: '숫자를 문장으로 정리해 줍니다', vis: S.shot('bat', [0, 2300, 390, 306]), next: nx }),
+        S.app({ chip: '② 투수', page: '3 / 5', h1: '제구 · 결정구 ·<br>맞으면 위험한 공', sub: '투구를 기록하면 투수 분석이 나옵니다', vis: S.shot('pit', [0, 1076, 390, 306]), next: nx }),
+        S.app({ chip: '③ 팀', page: '4 / 5', h1: '팀 리더보드와<br>경기 결과', sub: 'OPS · wOBA · 타율 순위', vis: S.shot('team', [0, 1385, 390, 306]), next: nx }),
+        S.cta({ chip: 'SprayLab', page: '5 / 5', h1: '분석은<br>기록만 하면 자동', steps: ['경기마다 타석 결과를 탭', '타자 · 투수 · 팀 분석이 자동으로', '분석 엑셀 · 이미지로 내보내기'] }),
+      ],
+    },
+    {
+      id: 'r3', format: 'reel', theme: 'v2', type: 'F', topic: '상대 타자 공략, 경기 전 1분 — 스카우트 탭', reel: 'app',
+      hook: '상대 타자 공략, 1분이면', chip: '스카우트', hookHtml: '상대 타자<br>공략,<br><em>1분</em>이면', sub: '경기 전 준비는 스카우트 탭에서', introShot: ['scout', [0, 314, 390, 282], 740],
+      endHtml: '상대 분석,<br>경기 전 <em>1분</em>',
+      facts: ['스카우트 탭: 상대 타자 공략 리포트(위협도 · 성적)', '공략 포인트(결정구 후보 · 주의할 카운트)', '코스별 결과 9칸 · 구종별 · 카운트별', '타구 방향 · 수비 위치', '음성: AI 목소리'],
+      scenes: SCOUT, says: says('상대 타자 공략, 경기 전에 일 분이면 됩니다.', SCOUT, '상대 분석은 스카우트 탭에서. 스프레이랩.'),
+    },
+    {
+      id: 'c4', format: 'carousel', theme: 'v2', type: 'F', topic: '게임원 기록 그대로 가져오기',
+      hook: '게임원 기록, 그대로 가져오기',
+      facts: ['☰ 메뉴 → 게임원 가져오기', '박스스코어 주소(한 경기) · 팀 주소(시즌 경기 한 번에)', '앱 화면은 스크린샷으로 채우기(사진은 휴대폰 밖으로 안 나감)', '가져온 경기는 바로 분석에'],
+      slides: () => [
+        S.app({ chip: '게임원 가져오기', page: '1 / 5', h1: '게임원 기록,<br><em>그대로</em> 가져오기', sub: '주소만 붙여넣으면 새 경기로 저장', vis: S.shot('goimport', [0, 40, 390, 306], 920, false), next: nx }),
+        S.app({ chip: '① 주소 붙여넣기', page: '2 / 5', h1: '박스스코어 주소를<br>넣고 「가져오기」', sub: '한 경기 주소도, 팀 시즌 주소도', vis: S.shot('goimport', [0, 195, 390, 170], 920, false), next: nx }),
+        S.app({ chip: '② 앱 화면이라면', page: '3 / 5', h1: '휴대폰 앱 화면은<br>스크린샷으로', sub: '사진은 휴대폰 밖으로 나가지 않아요', vis: S.shot('goimport', [0, 370, 390, 172], 920, false), next: nx }),
+        S.app({ chip: '③ 바로 분석', page: '4 / 5', h1: '가져온 경기는<br>바로 분석에', sub: '타자 · 투수 · 팀 성적에 그대로 쌓입니다', vis: S.shot('team', [0, 1730, 390, 306]), next: nx }),
+        S.cta({ chip: 'SprayLab', page: '5 / 5', h1: '지난 경기도<br>한 번에', steps: ['☰ 메뉴 → 게임원 가져오기', '주소를 붙여넣고 「가져오기」', '시즌 경기도 한 번에 저장'] }),
+      ],
+    },
+    {
+      id: 'i3', format: 'image', theme: 'v2', type: 'B', topic: '코스별 타율 9칸 — 약점 코스',
+      hook: `${CELL[8]} 공 타율 ${b2w.avg}`,
+      slides: () => [S.cover({ chip: '타자 데이터 · 코스별 타율', h1: `${CELL[8]} 공<br>타율 <em>${b2w.avg}</em>`, h1Style: 'font-size:96px', sub: `가상의 우타자 '거포' · ${B2.pa}타석 · 포수 시점`, visTop: 520,
+        vis: `<div style="display:flex;justify-content:center">${K.grid9(B2.grid, { s: 180, gap: 10, mark: 8 })}</div><div class="leg" style="margin-top:22px"><span>칸마다 안타/타수</span><span style="color:#4b8cf5">■ 차가움</span><span style="color:#FF5A36">■ 뜨거움</span></div>` })],
+      facts: [`가상의 우타자 '거포' ${B2.pa}타석`, `${CELL[8]} 코스 타율 ${b2w.avg} (${b2w.h}/${b2w.ab})`, `가장 강한 코스: ${CELL[b2h]} ${B2.grid[b2h].avg}`, `전체 타율 ${B2.all.avg}`],
+    },
+    {
+      id: 'r4', format: 'reel', theme: 'v2', type: 'B', topic: '풀카운트 승부 한 타석 — 공 하나씩 다시 보기',
+      hook: '풀카운트, 마지막 공은?', reel: 'pa', subject: 'P1', pa: fullPA, chip: '공 하나씩 다시 보기',
+      says: ['풀카운트 승부, 마지막 공은 뭐였을까요?', `공 하나씩 다시 봅니다. 마지막 공은 ${lastP.pt}, ${lastP.res === '삼진' ? '헛스윙 삼진' : lastP.res}.`, `이날 가장 많이 던진 공, ${P1.types[0].pt} ${P1.types[0].use}퍼센트.`, '공 하나씩 찍어 두면, 이 화면이 남습니다.'],
+      facts: [`가상의 투수 '에이스' 풀카운트 승부 ${fullPA.length}구`, `순서: ${fullPA.map(p => `${p.pt} ${p.res}`).join(' → ')}`, `마지막은 ${lastP.pt} ${lastP.res}`],
+    },
+    {
+      id: 'c5', format: 'carousel', theme: 'v2', type: 'B', topic: '카운트별 구종 — 2스트라이크 결정구',
       hook: '2스트라이크가 되면 던지는 공이 바뀐다',
       facts: [`가상의 투수 '에이스'(#17) 한 경기 ${P1.n}구`, `초구에 슬라이더 비율 ${sl1.a}%`, `2스트라이크에서 슬라이더 비율 ${sl1.b}% (${P1.m2.n}구 중)`, `2스트라이크 슬라이더 ${sl2S.length}구 중 삼진 ${sl2S.filter(p => p.res === '삼진').length}개`],
       slides: () => [
@@ -54,110 +154,17 @@
       ],
     },
     {
-      id: 'r1', format: 'reel', theme: 'night', type: 'B', topic: '풀카운트 승부 한 타석 — 공 하나씩 다시 보기',
-      hook: '풀카운트, 마지막 공은?', reel: 'pa', subject: 'P1', pa: P1.fullK[1] || P1.fullK[0],
-      facts: [`가상의 투수 '에이스' 풀카운트 승부 ${(P1.fullK[1] || P1.fullK[0]).length}구`, `순서: ${(P1.fullK[1] || P1.fullK[0]).map(p => `${p.pt} ${p.res}`).join(' → ')}`, '마지막은 슬라이더 헛스윙 삼진'],
-    },
-    {
-      id: 'i1', format: 'image', theme: 'night', type: 'C', topic: '경기 전 단톡방에 올리는 투수 리포트 한 장',
-      hook: '상대 팀 에이스, 이 한 장이면 정리 끝', slides: () => [window.R1.broadcast(P1)],
-      facts: [`가상의 투수 '에이스' ${P1.ip}이닝 ${P1.n}구`, `스트라이크 ${P1.sPct}% · 초구 스트라이크 ${P1.fsPct}%`, `삼진 ${P1.K} · 볼넷 ${P1.BB}`, `구종 비율: ${P1.types.map(t => `${t.pt} ${t.use}%`).join(', ')}`],
-    },
-    {
-      id: 'c2', format: 'carousel', theme: 'field', type: 'A', topic: '고르게 친다고 생각했는데 타구가 한쪽으로 쏠림',
-      hook: '저는 제가 고르게 치는 줄 알았습니다',
-      facts: [`가상의 우타자 '캡틴' 인플레이 타구 ${B1.bip.length}개`, `당겨친 타구 ${B1.dirs[0].p}% · 가운데 ${B1.dirs[1].p}% · 밀어친 타구 ${B1.dirs[2].p}%`, `당겨친 타구 중 땅볼 ${B1.dirs[0].gb}%`, `타율 ${B1.all.avg}`],
+      id: 'c6', format: 'carousel', theme: 'v2', type: 'D', topic: '기능 총정리 + 기본 무료 안내',
+      hook: '사회인야구 기록, 이거 하나로',
+      facts: ['타구 · 볼카운트 기록(스프레이 차트)', '경기 리포트 · 선수 카드 이미지', '리그 기록지 · 오더지', '타자 · 투수 · 팀 분석 · 스카우트', '게임원 기록 가져오기', '기본 무료 · 설치 없이 웹에서'],
       slides: () => [
-        S.cover({ chip: '타자 데이터 · 타구 방향', page: '1 / 4', h1: `타구 <em>${B1.dirs[0].p}%</em>가<br>왼쪽으로 갔습니다`, sub: '저는 제가 고르게 치는 줄 알았거든요', visTop: 560,
-          vis: `<div style="display:flex;justify-content:center">${K.field(B1.bip, { w: 820, r: 1.9, sectors: [[-45, -15, 'rgba(45,212,160,.16)']] })}</div>`, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '타자 데이터 · 타구 방향', page: '2 / 4', h1: `인플레이 타구 ${B1.bip.length}개`, h1Style: 'font-size:88px', sub: `우타자 · ${B1.pa}타석 · 타율 ${B1.all.avg}`, visTop: 500,
-          vis: `<div style="display:flex;justify-content:center">${K.field(B1.bip, { w: 620, r: 2.1 })}</div>${S.legendRes()}<div style="margin-top:30px">${S.nums(B1.dirs.map((d, i) => [d.p, dirName('R')[i] + ' 타구', '%']))}</div>`, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '타자 데이터 · 타구 종류', page: '3 / 4', h1: `당겨친 타구는<br>땅볼이 <em>${B1.dirs[0].gb}%</em>`, h1Style: 'font-size:92px', sub: '방향마다 땅볼 비율', visTop: 620,
-          vis: S.bars(B1.dirs.map((d, i) => ({ l: dirName('R')[i] + ' 타구', sub: `${d.n}개 중 안타 ${d.h}`, v: d.gb / 100, t: d.gb + '%', hi: i === 0 }))), next: '넘겨서 더 보기 →' }),
-        S.cta({ chip: 'SprayLab', page: '4 / 4', steps: ['타구가 떨어진 곳을 탭 한 번', '방향 · 땅볼 비율이 자동으로', '시즌이 쌓이면 습관이 보입니다'] }),
-      ],
-    },
-    {
-      id: 'r2', format: 'reel', theme: 'field', type: 'B', topic: '한 타자의 타구가 하나씩 떨어지는 스프레이 차트',
-      hook: `타구 ${B1.bip.length}개, 어디로 갔을까?`, reel: 'spray', subject: 'B1',
-      facts: [`가상의 우타자 '캡틴' 인플레이 타구 ${B1.bip.length}개`, `당겨친 타구 ${B1.dirs[0].p}%`, `가운데 ${B1.dirs[1].p}% · 밀어친 타구 ${B1.dirs[2].p}%`],
-    },
-    {
-      id: 'i2', format: 'image', theme: 'paper', type: 'B', topic: '코스별 타율 9칸 — 약점 코스',
-      hook: `${CELL[8]} 공 타율 ${b2w.avg}`,
-      slides: () => [S.cover({ chip: '타자 데이터 · 코스별 타율', h1: `${CELL[8]} 공<br>타율 <em>${b2w.avg}</em>`, h1Style: 'font-size:96px', sub: `가상의 우타자 '거포' · ${B2.pa}타석 · 포수 시점`, visTop: 520,
-        vis: `<div style="display:flex;justify-content:center">${K.grid9(B2.grid, { s: 180, gap: 10, mark: 8 })}</div><div class="leg" style="margin-top:22px"><span>칸마다 안타/타수</span><span style="color:#4b8cf5">■ 차가움</span><span style="color:#FF5A36">■ 뜨거움</span></div>` })],
-      facts: [`가상의 우타자 '거포' ${B2.pa}타석`, `${CELL[8]} 코스 타율 ${b2w.avg} (${b2w.h}/${b2w.ab})`, `가장 강한 코스: ${CELL[b2h]} ${B2.grid[b2h].avg}`, `전체 타율 ${B2.all.avg}`],
-    },
-    {
-      id: 'c3', format: 'carousel', theme: 'paper', type: 'C', topic: '라인업 짤 때 감 대신 출루율·장타율 보기',
-      hook: '라인업, 감 말고 출루율부터',
-      facts: ['가상의 팀 9명, 한 사람당 48타석', `출루율 1·2위: ${obpRank[0].l} ${obpRank[0].b.obp}, ${obpRank[1].l} ${obpRank[1].b.obp}`, `장타율 1위: ${slgRank[0].l} ${slgRank[0].b.slg}`],
-      slides: () => [
-        S.cover({ chip: '팀 데이터 · 라인업', page: '1 / 4', h1: '라인업,<br>감 말고 <em>출루율</em>부터', sub: '주말마다 타순 정할 때 꺼내 보는 숫자', visTop: 600,
-          vis: S.bars(obpRank.map((t, i) => ({ l: t.l, v: (t.obpV - .25) / .2, t: t.b.obp, hi: i < 2 }))).replace('class="bl"', 'class="bl sm"'), visTop: 560, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '팀 데이터 · 라인업', page: '2 / 4', h1: '한눈에 보는 9명', h1Style: 'font-size:88px', sub: '출루율 높은 순 · 한 사람당 48타석', visTop: 520,
-          vis: S.table(['선수', '타율', '출루율', '장타율', '삼진%'], obpRank.map(t => [t.l, t.b.all.avg, `<b>${t.b.obp}</b>`, t.b.slg, t.b.kPct + '%']), [0, 1]), next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '팀 데이터 · 라인업', page: '3 / 4', h1: `중심 타선은<br><em>장타율</em>로`, h1Style: 'font-size:92px', sub: '장타율 높은 순 · 3·4·5번 후보', visTop: 600,
-          vis: S.bars(slgRank.map((t, i) => ({ l: t.l, v: (t.slgV - .18) / .2, t: t.b.slg, hi: i < 3 }))).replace('class="bl"', 'class="bl sm"'), visTop: 560, next: '넘겨서 더 보기 →' }),
-        S.cta({ chip: 'SprayLab', page: '4 / 4', h1: '기록만 하면<br>표는 알아서', steps: ['경기마다 타석 결과를 탭', '출루율 · 장타율 · 삼진%가 선수별로', '라인업 카드도 이미지로 바로'] }),
-      ],
-    },
-    {
-      id: 'r3', format: 'reel', theme: 'night', type: 'B', topic: '9칸 코스별 타율을 한 칸씩 공개하며 약점 찾기',
-      hook: '9칸 중에 약점은 어디?', reel: 'grid', subject: 'B2',
-      facts: [`가상의 우타자 '거포' ${B2.pa}타석`, `약점: ${CELL[8]} 공 타율 ${b2w.avg}`, `강점: ${CELL[b2h]} 공 타율 ${B2.grid[b2h].avg}`],
-    },
-    {
-      id: 'c4', format: 'carousel', theme: 'sun', type: 'B', topic: '초구를 쳤을 때 vs 2스트라이크까지 갔을 때 타율',
-      hook: '초구는 무조건 본다는 분들께',
-      facts: [`가상의 좌타자 '막내' ${B3.pa}타석`, `초구를 쳐서 끝난 타석 타율 ${B3.first.avg} (${B3.first.h}/${B3.first.ab})`, `2스트라이크까지 간 타석 타율 ${B3.twoS.avg} (${B3.twoS.h}/${B3.twoS.ab})`, `전체 타율 ${B3.all.avg}`],
-      slides: () => [
-        S.cover({ chip: '타자 데이터 · 카운트별 타율', page: '1 / 3', h1: `초구를 치면<br>타율 <em>${B3.first.avg}</em>`, sub: '초구는 무조건 지켜본다는 분들께', visTop: 640,
-          vis: S.compare({ l: '2스트라이크까지 가면', v: B3.twoS.avg }, { l: '초구를 쳤을 때', v: B3.first.avg }), next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '타자 데이터 · 카운트별 타율', page: '2 / 3', h1: '카운트가 불리할수록<br>타율이 내려갑니다', h1Style: 'font-size:84px', sub: `타석이 끝난 카운트 기준 · ${B3.pa}타석`, visTop: 600,
-          vis: S.bars([['초구', B3.first], ['볼이 많을 때', B3.ahead], ['1스트라이크 불리', B3.behind], ['2스트라이크', B3.twoS]].map(([l, x], i) => ({ l, sub: `${x.h}/${x.ab}`, v: x.v / .5, t: x.avg, hi: i === 0 }))), next: '넘겨서 더 보기 →' }),
-        S.cta({ chip: 'SprayLab', page: '3 / 3', steps: ['타석마다 볼·스트라이크를 탭', '카운트별 타율이 자동으로', '내가 언제 잘 치는지 숫자로'] }),
-      ],
-    },
-    {
-      id: 'i3', format: 'image', theme: 'paper', type: 'C', topic: '투수 리포트 — 깔끔한 표 버전',
-      hook: '구종 · 비율 · 위치를 한 장에', slides: () => [window.R1.clean(P2)],
-      facts: [`가상의 투수 '베테랑'(#21) ${P2.ip}이닝 ${P2.n}구`, `구종: ${P2.types.map(t => `${t.pt} ${t.use}%`).join(', ')}`, `스트라이크 ${P2.sPct}% · 삼진 ${P2.K}`],
-    },
-    {
-      id: 'r4', format: 'reel', theme: 'sun', type: 'D', topic: '한 경기 → 다섯 경기 → 시즌, 기록이 쌓이는 모습',
-      hook: `1경기 ${Math.round(B3.bip.length / 14)}개, 14경기면?`, reel: 'season', subject: 'B3',
-      facts: [`가상의 좌타자 '막내' 시즌 ${B3.pa}타석`, `인플레이 타구 ${B3.bip.length}개가 쌓이는 과정`, '기록은 경기마다 탭 몇 번'],
-    },
-    {
-      id: 'c5', format: 'carousel', theme: 'night', type: 'C', topic: '투구수가 늘면 떨어지는 스트라이크% — 교체 타이밍',
-      hook: '교체 타이밍, 투구수 구간으로 보기',
-      facts: [`가상의 투수 '베테랑' ${P2.n}구`, `구간별 스트라이크%: ${bk.map(b => `${b.l} ${b.s}%`).join(', ')}`, `50구까지 스트라이크 ${early}% → 51구부터 ${late}%`],
-      slides: () => [
-        S.cover({ chip: '투수 데이터 · 교체 타이밍', page: '1 / 3', h1: `50구를 넘기면<br>스트라이크 <em>${early}% → ${late}%</em>`, h1Style: 'font-size:90px', sub: '투구수 구간별 스트라이크% (볼이 아닌 공)', visTop: 620,
-          vis: S.bars(bk.map((b, i) => ({ l: b.l, sub: `${b.n}구`, v: b.s / 100, t: b.s + '%', hi: i === bk.length - 1 }))), next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '투수 데이터 · 교체 타이밍', page: '2 / 3', h1: '공이 점점<br>존을 벗어납니다', h1Style: 'font-size:92px', sub: '처음 25구 vs 76구부터 · 포수 시점', visTop: 560,
-          vis: `<div style="display:flex;gap:40px;justify-content:center">${[[P2.ps.slice(0, 25), bk[0]], [P2.ps.slice(75), bk.at(-1)]].map(([xs, b]) => `<div style="text-align:center"><div class="zl">${b.l}</div>${K.zone(xs, { w: 400, r: 3.2, glow: true })}<div class="zv">스트라이크 <b>${b.s}%</b></div></div>`).join('')}</div>`, next: '넘겨서 더 보기 →' }),
-        S.cta({ chip: 'SprayLab', page: '3 / 3', h1: '교체 타이밍,<br>숫자로 정하기', steps: ['투구마다 위치를 탭', '투구수 구간별 스트라이크%가 자동으로', '다음 경기 투수 운영에 그대로'] }),
-      ],
-    },
-    {
-      id: 'c6', format: 'carousel', theme: 'field', type: 'D', topic: '기록 하나로 나오는 것들 — 기능 소개',
-      hook: '탭 몇 번 하면 이런 게 나옵니다',
-      facts: ['스프레이 차트(타구 방향)', '코스별 타율 9칸', '카운트별 구종 · 구종별 위치(투수)', '팀 단톡방용 리포트 이미지'],
-      slides: () => [
-        S.cover({ chip: 'SprayLab · 기능', page: '1 / 5', h1: '탭 몇 번이면<br><em>이런 게</em> 나옵니다', sub: '사회인야구 기록 앱 SprayLab', visTop: 610,
-          vis: `<div class="mini4">${[K.field(B1.bip.slice(0, 30), { w: 400, r: 2.2 }), K.grid9(B2.grid, { s: 74, gap: 5 }), K.zone(P1.ps.slice(0, 50), { w: 230, r: 3 }), S.nums([[P1.sPct, '스트라이크', '%'], [P1.K, '삼진', '']])].map(x => `<div>${x}</div>`).join('')}</div>`, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '1 · 스프레이 차트', page: '2 / 5', h1: '타구가 간 곳이<br>그대로 남습니다', h1Style: 'font-size:90px', sub: '방향 · 거리 · 결과까지', visTop: 520,
-          vis: `<div style="display:flex;justify-content:center">${K.field(B3.bip, { w: 820, r: 1.9 })}</div>${S.legendRes()}`, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '2 · 코스별 타율', page: '3 / 5', h1: '어느 코스에<br>강한지 9칸으로', h1Style: 'font-size:90px', sub: '포수 시점 · 칸마다 안타/타수', visTop: 540,
-          vis: `<div style="display:flex;justify-content:center">${K.grid9(B2.grid, { s: 180, gap: 10 })}</div>`, next: '넘겨서 더 보기 →' }),
-        S.cover({ chip: '3 · 투구 분석', page: '4 / 5', h1: '투수는 구종 ·<br>위치 · 카운트까지', h1Style: 'font-size:90px', sub: '상대 투수 분석도 같은 화면에서', visTop: 560,
-          vis: `<div style="display:flex;gap:50px;align-items:center;justify-content:center">${K.zone(P1.ps, { w: 420, r: 2.4, glow: true })}<div>${S.stack([{ l: '초구', ...P1.m0 }, { l: '2스트라이크', ...P1.m2 }]).replace('class="stk"', 'class="stk narrow"')}</div></div>`, next: '넘겨서 더 보기 →' }),
-        S.cta({ chip: 'SprayLab', page: '5 / 5', h1: '기록은 탭,<br>분석은 자동' }),
+        S.app({ chip: 'SprayLab', page: '1 / 3', h1: '사회인야구 기록,<br><em>이거 하나로</em>', sub: '설치 없이 웹에서 · 기본 무료',
+          vis: `<div class="mini4 app">${[['rec', [0, 285, 390, 306]], ['report', [0, 40, 390, 306]], ['bat', [0, 360, 390, 306]], ['scout', [0, 300, 390, 306]]].map(([n, c], i) => S.shot(n, c, 440, i === 3)).join('')}</div>`, next: nx }),
+        S.app({ chip: '할 수 있는 것', page: '2 / 3', h1: '탭 몇 번으로<br>이만큼', sub: '경기 전 · 경기 중 · 경기 후',
+          vis: `<div class="steps" style="position:static;width:100%">${['타구 · 볼카운트 기록 (스프레이 차트)', '경기 리포트 · 선수 카드 이미지', '리그 기록지 · 오더지 A4', '타자 · 투수 · 팀 분석', '상대 타자 스카우트', '게임원 기록 가져오기'].map((x, i) => `<div><b>${i + 1}</b><span>${x}</span></div>`).join('')}</div>`, next: nx }),
+        S.cta({ chip: 'SprayLab', page: '3 / 3', h1: '기본 무료,<br>지금 바로', steps: ['휴대폰 브라우저로 주소 열기', '홈 화면에 추가하면 앱처럼', '샘플 데이터로 먼저 둘러보기'] }),
       ],
     },
   ];
-  window.SUBJ = { P1, P2, B1, B2, B3, TEAM, CELL };
+  window.SUBJ = { P1, B2, B3, CELL };
 })();

@@ -1,7 +1,7 @@
 // 릴스(1080×1920) — 데이터가 움직이는 영상. seek(t초)로 한 프레임씩 그린다.
 // 화면 위 220px · 아래 420px · 오른쪽 140px 은 인스타 버튼에 가려지므로 비운다.
 (() => {
-  const { K, G } = window;
+  const { K, G, S } = window;
   const cl = v => Math.max(0, Math.min(1, v));
   const p = (t, a, b) => cl((t - a) / (b - a));
   const eo = x => 1 - Math.pow(1 - x, 3);
@@ -9,6 +9,8 @@
   const $ = id => document.getElementById(id);
   const show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
   const rise = (el, k, d = 60) => { el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * d}px)`; };
+  // 구간 길이: 기본 길이와 음성 길이(item.durs, build.mjs 가 넘김) 중 긴 쪽
+  const segs = (base, durs) => base.map((b, i) => durs ? Math.max(b, durs[i]) : b);
 
   // 공용: 인트로(훅) · 마무리 · 와이프 · 예시 데이터 표시
   const intro = (chip, hook, sub) => `<div class="sc" id="s0">
@@ -26,7 +28,7 @@
     if (W == null) { wp.style.display = 'none'; return; }
     wp.style.display = ''; wp.style.left = (-1800 + (t - (W - .28)) / .56 * 3600) + 'px';
   }
-  function seekIntro(t) { rise($('i0'), eo(p(t, 0, .45)), 0); $('i0').style.transform = `translateX(${(1 - eo(p(t, 0, .45))) * -700}px)`; rise($('i1'), eo(p(t, .2, .8)), 80); rise($('i2'), eo(p(t, .6, 1.1)), 30); }
+  function seekIntro(t) { rise($('i0'), eo(p(t, 0, .45)), 0); $('i0').style.transform = `translateX(${(1 - eo(p(t, 0, .45))) * -700}px)`; rise($('i1'), eo(p(t, .2, .8)), 80); rise($('i2'), eo(p(t, .6, 1.1)), 30); if ($('i3')) rise($('i3'), eo(p(t, .8, 1.4)), 120); }
   function seekOutro(t, t0) {
     document.querySelectorAll('#z0 [data-v]').forEach((el, i) => {
       const a = eo(p(t, t0 + .2 + i * .15, t0 + 1.1 + i * .15)), v = el.dataset.v, num = parseFloat(v.replace(/^\./, '0.'));
@@ -38,16 +40,17 @@
 
   // ── 한 타석 다시 보기 (투수) ─────────────────────────────
   function pa(item, P) {
-    const seq = item.pa, T1 = 2.4, P0 = 3.0, DT = .8, T2 = P0 + DT * seq.length + 1.4, T3 = T2 + 3.4, END = T3 + 3.8;
-    const html = intro('PITCH BY PITCH', item.hook.replace(', ', ',<br>'), `<b style="color:var(--tx)">${P.name} #${P.num}</b> · ${P.ip}이닝 · ${P.n}구`) + `
+    const seq = item.pa, DT = .8, [d0, d1, d2, d3] = segs([2.4, .6 + DT * seq.length + 1.4, 3.4, 3.8], item.durs);
+    const T1 = d0, P0 = T1 + .6, T2 = T1 + d1, T3 = T2 + d2, END = T3 + d3;
+    const html = intro(item.chip || 'PITCH BY PITCH', item.hook.replace(', ', ',<br>'), `<b style="color:var(--tx)">${P.name} #${P.num}</b> · ${P.ip}이닝 · ${P.n}구`) + `
       <div class="sc" id="s1">
-        <div class="abs" style="left:90px;top:250px"><div class="lab">AT-BAT · 포수 시점</div><div class="big" style="font-size:92px;margin-top:18px">풀카운트 승부</div></div>
+        <div class="abs" style="left:90px;top:250px"><div class="lab">한 타석 · 포수 시점</div><div class="big" style="font-size:92px;margin-top:18px">풀카운트 승부</div></div>
         <div class="abs cnt" id="cnt" style="left:90px;top:470px"></div>
         <div class="abs" id="zone" style="left:140px;top:560px;width:760px"></div>
         <div class="abs cap" id="cap" style="left:60px;right:140px;top:1540px"></div>
         <div class="abs kk" id="kk" style="left:0;right:60px;top:700px;text-align:center">K</div></div>
       <div class="sc" id="s2">
-        <div class="abs" style="left:90px;top:300px"><div class="lab">ARSENAL · ${P.n}구</div><div class="big" style="font-size:92px;margin-top:18px">이날 던진 공</div></div>
+        <div class="abs" style="left:90px;top:300px"><div class="lab">구종 비율 · ${P.n}구</div><div class="big" style="font-size:92px;margin-top:18px">이날 던진 공</div></div>
         <div class="abs" id="ars" style="left:90px;right:150px;top:620px">${P.types.map(t => `<div class="arow"><span class="pt">${t.pt}</span><span class="v num" style="color:${K.ptCol(t.pt)}" data-v="${t.use}"></span><div class="tr"><s style="background:${K.ptCol(t.pt)}"></s></div></div>`).join('')}</div></div>
       ${outro([[P.sPct, '스트라이크', '%'], [P.K, '삼진'], [P.fsPct, '초구 S', '%']])}${chrome}`;
     const X = x => Math.min(97, Math.max(3, x * 100)), Y = y => Math.min(121, Math.max(3, y * 124));
@@ -83,7 +86,7 @@
       }
       seekOutro(t, T3);
     }
-    return { html, seek, dur: END, coverT: 1.6 };
+    return { html, seek, dur: END, coverT: 1.6, cues: [0, T1, T2, T3] };
   }
 
   // ── 타구가 하나씩 떨어지는 스프레이 차트 (타자) ─────────────
@@ -153,8 +156,8 @@
   // ── 한 경기 → 다섯 경기 → 시즌 (기록이 쌓이는 모습) ─────────
   function season(item, B) {
     const balls = B.bip, N = balls.length, ph = [[1, '1경기', Math.round(N / 14)], [2, '5경기', Math.round(N * 5 / 14)], [3, '시즌 14경기', N]];
-    const T1 = 2.4, Q0 = 2.9, QD = 2.1, T2 = Q0 + QD * 3 + 1.2, END = T2 + 3.8;
-    const html = intro('SEASON', item.hook.replace(', ', ',<br>'), `<b style="color:var(--tx)">${B.name} #${B.num}</b> · ${B.hand === 'L' ? '좌' : '우'}타 · 인플레이 타구`) + `
+    const QD = 2.1, [d0, d1, d2] = segs([2.4, .5 + QD * 3 + 1.2, 3.8], item.durs), T1 = d0, Q0 = T1 + .5, T2 = T1 + d1, END = T2 + d2;
+    const html = intro(item.chip || 'SEASON', item.hook.replace(', ', ',<br>'), `<b style="color:var(--tx)">${B.name} #${B.num}</b> · ${B.hand === 'L' ? '좌' : '우'}타 · 인플레이 타구`) + `
       <div class="sc" id="s1">
         <div class="abs" style="left:90px;top:250px"><div class="lab" id="ql">기록이 쌓이면</div><div class="big" style="font-size:120px;margin-top:18px" id="qh"></div></div>
         <div class="abs" id="fld" style="left:40px;top:600px;width:900px"></div>
@@ -175,8 +178,51 @@
       }
       seekOutro(t, T2);
     }
-    return { html, seek, dur: END, coverT: 1.6 };
+    return { html, seek, dur: END, coverT: 1.6, cues: [0, T1, T2] };
   }
 
-  window.REELS = { pa, spray, grid, season };
+  // ── 앱 화면 둘러보기 (v2) — 장면마다 앱 화면을 a → b 로 천천히 훑고, 음성과 같은 글을 자막으로 ─────
+  //   item.scenes = [{ l: 꼬리표, shot, a: [x, y, w], b: [x, y, w], say: [문장, ...] }] — 잘라 낸 칸의 높이는 틀 비율로 정한다
+  //   item.says = [첫 화면, 장면…, 마지막 화면] 의 음성 글 · item.durs = 그 길이(초) — 없으면 글 길이로 어림
+  function app(item) {
+    const sc = item.scenes, PW = 840, PH = 960, says = item.says;
+    const D = item.durs || says.map(x => Math.max(2.2, x.replace(/\s/g, '').length * .17 + .6));
+    const st = []; let t0 = 0; for (const d of D) { st.push(t0); t0 += d; }
+    const T1 = D[0], END = t0, TZ = st[st.length - 1];
+    const html = `<div class="sc" id="s0">
+        <div class="abs" id="i0" style="left:90px;top:270px"><span class="pill">${item.chip}</span></div>
+        <div class="abs big" id="i1" style="left:90px;right:150px;top:380px;font-size:124px">${item.hookHtml}</div>
+        <div class="abs" id="i2" style="left:94px;top:840px;font-size:46px;font-weight:500;color:var(--tx2)">${item.sub}</div>
+        <div class="abs" id="i3" style="left:90px;top:950px">${S.shot(item.introShot[0], item.introShot[1], item.introShot[2] || PW)}</div></div>
+      ${sc.map((s, i) => `<div class="sc" id="a${i}">
+        <div class="abs" id="al${i}" style="left:90px;top:240px"><span class="pill">${s.l}</span></div>
+        <div class="abs" id="ap${i}" style="left:90px;top:350px"><div class="ph" style="width:${PW}px;height:${PH}px"><img id="im${i}" src="shots/${s.shot}.jpg"><div class="tag">예시 데이터</div></div></div>
+        <div class="subt" id="sb${i}"></div></div>`).join('')}
+      <div class="sc" id="sZ">
+        <div class="abs big" id="z1" style="left:90px;right:150px;top:520px;font-size:100px">${item.endHtml}</div>
+        <div class="abs" id="z2" style="left:90px;top:930px">${K.mark(100)}<div style="margin-top:30px;font:600 42px/1.35 Oswald;color:var(--tx)">kimjeongcheol13.github.io<br>/baseball-spray-chart</div>
+          <div style="margin-top:20px;font:500 40px/1.3 'Noto Sans KR';color:var(--tx2)">기본 무료 · 설치 없이 웹에서 바로</div></div></div>`;
+    const lerp = (a, b, k) => a.map((v, j) => v + (b[j] - v) * k);
+    const ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    function seek(t) {
+      t = Math.min(t, END - .001);
+      const cur = st.reduce((m, v, j) => t >= v ? j : m, 0);
+      show('s0', cur === 0); show('sZ', cur === st.length - 1); sc.forEach((_, i) => show('a' + i, cur === i + 1));
+      if (cur === 0) return seekIntro(t);
+      if (cur === st.length - 1) return seekOutro(t, TZ - 1.1);
+      const i = cur - 1, s = sc[i], k = (t - st[cur]) / D[cur], W = S.SHOTW[s.shot] || 390;
+      const [x, y, w] = lerp(s.a, s.b, ease(cl(k))), z = PW / w, im = $('im' + i);
+      im.style.width = W * z + 'px'; im.style.left = -x * z + 'px'; im.style.top = -y * z + 'px';
+      const a = eo(p(t, st[cur], st[cur] + .45));
+      rise($('ap' + i), a, 90); rise($('al' + i), a, 30);
+      // 자막: 문장마다 글 길이만큼 시간을 나눠 갖는다
+      const L = s.say.map(x => x.length), tot = L.reduce((m, v) => m + v, 0);
+      let acc = 0, j = 0; while (j < L.length - 1 && k > (acc + L[j]) / tot) acc += L[j++];
+      $('sb' + i).innerHTML = `<span>${s.say[j]}</span>`;
+      $('sb' + i).style.opacity = a;
+    }
+    return { html, seek, dur: END, coverT: 1.6, cues: st };
+  }
+
+  window.REELS = { pa, spray, grid, season, app };
 })();

@@ -5,7 +5,15 @@
   const top = (o) => `<div class="top"><span class="chip">${o.chip}</span><span class="pg">${o.page || ''}</span></div>`;
   const tag = '<div class="tag">예시 데이터</div>';
 
+  const SHOTW = { order: 1588, sheet: 1588, card: 1080, pitrep: 1080 };   // shots/ 그림 폭 단위 — 그 밖(앱 화면)은 390 = 화면 CSS px
+
   const S = {
+    SHOTW,
+    // 앱 화면 잘라 보여 주기 — c = [x, y, w, h] (위 단위), w = 보여 줄 폭(px), tg = 예시 데이터 꼬리표
+    shot: (name, c, w = 920, tg = true) => { const k = w / c[2]; return `<div class="ph" style="width:${w}px;height:${Math.round(c[3] * k)}px"><img src="shots/${name}.jpg" style="width:${(SHOTW[name] || 390) * k}px;left:${-c[0] * k}px;top:${-c[1] * k}px">${tg ? tag : ''}</div>`; },
+    // 앱 기능 한 장: 제목 + 앱 화면
+    app: o => `${top(o)}<h1 class="ah1" style="${o.h1Style || ''}">${o.h1}</h1>${o.sub ? `<div class="asub">${o.sub}</div>` : ''}<div class="avis">${o.vis}</div>${foot(o)}`,
+
     // 표지: 큰 제목 + 그림 한 개
     cover: o => `${top(o)}<h1 class="h1" style="${o.h1Style || ''}">${o.h1}</h1>${o.sub ? `<div class="sub">${o.sub}</div>` : ''}
       <div class="vis" style="top:${o.visTop || 640}px">${o.vis || ''}</div>${foot(o)}${tag}`,

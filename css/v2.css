@@ -1061,3 +1061,111 @@ html body.sb.sb-night:not(.high-contrast) #app-page .sb-none { font: 500 14px/1.
   html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine .lsl-v b { font: 600 17px/1.2 var(--v-num); color: var(--v-ink); }
   html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine .lsl-prev { font-size: 13px; }
 }
+
+/* 점수판이 좁을 때(태블릿 · 9이닝 폰): 팀 이름 · R H E 는 제자리, 이닝 칸만 옆으로 밀린다
+   · 태블릿(721–1199px) 머리줄에서 R · H · E 가 화면 밖으로 밀려 점수가 안 보이던 문제 (11-01)
+   · 칸 폭을 정해 두고 오른쪽부터 E 0 · H 34 · R 68 (폰은 E 0 · H 24 · R 48) — 넓은 화면에서는 다 들어가 그대로 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls { border-collapse: separate; border-spacing: 0; }   /* 붙는 칸의 테두리가 칸과 같이 움직이게 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(.t, th:nth-last-child(-n+3), td:nth-last-child(-n+3)) { position: sticky; z-index: 1; background: var(--v-card); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):nth-last-child(-n+3) { box-sizing: border-box; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .t { left: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):nth-last-child(-n+2) { width: 34px; min-width: 34px; max-width: 34px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):nth-last-child(2) { right: 34px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):last-child { right: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .r { width: 40px; max-width: 40px; right: 68px; }
+@media (min-width: 721px) and (max-width: 1199px) {
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .t { min-width: 64px; max-width: 84px; padding: 0 10px; }
+}
+@media (max-width: 720px) {
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):nth-last-child(-n+2) { width: 24px; min-width: 24px; max-width: 24px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls :is(th, td):nth-last-child(2) { right: 24px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .r { width: 28px; max-width: 28px; right: 48px; }
+}
+
+
+/* ═══ 기록 중에 뜨는 작은 창 ═══════════════════════════════════
+   결과 고르기 · 타자 고르기 · 점수 수정 · ☰ 메뉴 · 전체 타석 · 주자 고르기 · 교체 · 알림 · 타구 상세
+   사용자 결정 11-01: 기록 탭과 같은 카드형. 뜨는 자리 · 크기 · 동작은 그대로, 모양만. 폰 · 컴퓨터 둘 다
+   · 결과 색은 기록 탭 결과 버튼과 같다 — 안타 · 장타 주황, 아웃 회색, 삼진 빨강, 볼넷 초록, 사구 파랑
+   · 몇 개는 #app-page 밖(body 바로 아래)에 있어 v2 색 토큰을 그대로 쓴다
+   · paper.css 의 !important(전체 타석 시트 · 기록 줄 · 결과 뱃지 · 메뉴 두 버튼)는 !important 로 */
+
+/* 필드 탭 → 결과 고르기 (core.js #tapPop) */
+html body.sb.sb-night:not(.high-contrast) .tap-pop { background: var(--v-card); border: 0; border-radius: 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, .55); }
+html body.sb.sb-night:not(.high-contrast) .tp-sub { font: 600 13px/1.2 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .tp-btn { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .tp-btn:active { filter: brightness(1.3); }
+html body.sb.sb-night:not(.high-contrast) :is(.tp-hit, .tp-xbh, .tp-2b, .tp-3b, .tp-hr) { background: rgba(255, 90, 54, .16); color: #FF7A5C; }
+
+/* 타자 없이 필드 탭 → 타자 고르기 (firstrun.js #batPick) */
+html body.sb.sb-night:not(.high-contrast) .bat-pick { background: var(--v-card); border: 0; border-radius: 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, .55); }
+html body.sb.sb-night:not(.high-contrast) .bp-hd b { font: 800 14px 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .bp-hd small { font: 500 13px 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .bp-b { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .bp-b i { font: 600 14px var(--v-num); color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) .bp-add input { background: var(--v-card2); border: 1px solid var(--v-line); border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .bp-go { background: var(--v-acc); border-radius: 12px; color: #fff; font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .bp-anon { font: 600 13px 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) :is(.bp-b, .bp-anon):active { background: rgba(255, 255, 255, .1); }
+html body.sb.sb-night:not(.high-contrast) .bat-pick :is(button, input):focus-visible { outline-color: var(--v-acc); }
+
+/* 점수 수정 · ☰ 메뉴 (shell.js .sl-pop — 폰은 아래 시트, 컴퓨터는 오른쪽 위 창) */
+html body.sb.sb-night:not(.high-contrast) .sl-pop { background: var(--v-card); border: 0; border-radius: 20px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .sl-pop-hd { margin-bottom: 0; padding: 10px 6px 8px 10px; border-bottom: 0; font: 800 17px/1.2 'Noto Sans KR', sans-serif; letter-spacing: -.2px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .sl-pop-x { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .se-body .team-inp { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .se-body .sc-btn { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .se-body .sc-val { font-family: var(--v-num) !important; font-size: 26px; font-weight: 600; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .se-body .vs { font: 600 13px 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .se-pop .set-hint { font: 500 13px/1.5 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .slm-sec { border-top: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) .slm > .slm-sec:nth-child(2) { --mc: var(--v-acc); --mc-soft: rgba(255, 90, 54, .14); }
+html body.sb.sb-night:not(.high-contrast) .slm > .slm-sec:nth-child(3) { --mc: var(--v-blue); --mc-soft: rgba(124, 176, 255, .14); }
+html body.sb.sb-night:not(.high-contrast) .slm > .slm-sec:nth-child(4) { --mc: var(--v-good); --mc-soft: rgba(53, 212, 158, .14); }
+html body.sb.sb-night:not(.high-contrast) .slm > .slm-sec:nth-child(5) { --mc: var(--v-hi); --mc-soft: rgba(246, 195, 67, .14); }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-title { padding: 10px 10px 6px; font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item { border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item:hover { background: rgba(255, 255, 255, .05); }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item::before { border: 0; border-radius: 10px; background: var(--mc-soft); }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item:not(:disabled):hover::before { background: var(--mc); }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item:not(:disabled):hover::after { background: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) .slm .slm-item small { font-size: 13px; font-weight: 600; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .slm :is(#hcToggleBtn, #helpModeBtn) { border-radius: 12px !important; color: var(--v-ink) !important; font: 700 14px 'Noto Sans KR', sans-serif !important; }
+html body.sb.sb-night:not(.high-contrast) .slm-auth #teamBadge { font-size: 13px; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) .slm-sync .save-ind { font-size: 13px; }
+
+/* 전체 타석 기록 시트 (shellRecSheet) */
+html body.sb.sb-night.rec-sheet-open:not(.high-contrast) .pnl-right { background: var(--v-card) !important; border: 0 !important; border-radius: 20px 20px 0 0 !important; box-shadow: 0 -16px 48px rgba(0, 0, 0, .55) !important; }
+html body.sb.sb-night.rec-sheet-open:not(.high-contrast) .rec-sheet-hd { padding: 14px 12px 8px 20px; border-bottom: 0; font: 800 17px/1.2 'Noto Sans KR', sans-serif !important; letter-spacing: -.2px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .rec-count { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .rpn-btn { background: var(--v-card2); border: 0; border-radius: 10px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .rpn-label { background: var(--v-card2); border: 0; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .rec-item { background: var(--v-card2) !important; border: 0 !important; border-radius: 14px !important; }
+html body.sb.sb-night:not(.high-contrast) .rec-item.rec-latest { box-shadow: inset 3px 0 0 var(--v-acc) !important; }
+html body.sb.sb-night:not(.high-contrast) .rec-player { font-size: 14px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .rec-detail { font-size: 13px; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) :is(.rec-drag-handle, .rec-del, .rec-edit) { color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) .rec-edit { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) .rec-undo { background: rgba(255, 90, 54, .16); border: 0; border-radius: 12px; color: #FF7A5C; }
+/* 결과 뱃지 (전체 타석 · 라인업 서랍) */
+html body.sb.sb-night:not(.high-contrast) :is(.b-hit, .b-2b, .b-3b, .b-hr, .b-out, .b-k, .b-walk, .b-hbp, .b-other) { padding: 3px 8px; border: 0 !important; border-radius: 8px !important; font: 700 13px/1.2 'Noto Sans KR', sans-serif; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) :is(.b-hit, .b-2b, .b-3b, .b-hr) { background: rgba(255, 90, 54, .16) !important; color: #FF7A5C !important; }
+html body.sb.sb-night:not(.high-contrast) :is(.b-out, .b-other) { background: rgba(255, 255, 255, .07) !important; color: var(--v-ink2) !important; }
+html body.sb.sb-night:not(.high-contrast) .b-k { background: rgba(255, 107, 116, .14) !important; color: var(--v-bad) !important; }
+html body.sb.sb-night:not(.high-contrast) .b-walk { background: rgba(53, 212, 158, .14) !important; color: #5FE3B5 !important; }
+html body.sb.sb-night:not(.high-contrast) .b-hbp { background: rgba(124, 176, 255, .14) !important; color: var(--v-blue) !important; }
+
+/* 경기 운영: 주자 고르기 · 도루 · 교체 (runners.js .sl-runpick) */
+html body.sb.sb-night:not(.high-contrast) .sl-runpick { padding: 16px; background: var(--v-card); border: 0; border-radius: 20px; box-shadow: 0 24px 60px rgba(0, 0, 0, .6); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick p { font: 800 15px/1.35 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick button { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick button.x { background: none; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick button.ok { background: var(--v-acc); color: #fff; }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick button.tg[aria-pressed="true"]::before { box-shadow: inset 0 0 0 2px var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick .new input { background: var(--v-card2); border: 1px solid var(--v-line); border-radius: 12px; color: var(--v-ink); font-family: 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .sl-runpick :is(button, input):focus-visible { outline-color: var(--v-acc); }
+
+/* 알림 · 타구 상세 */
+html body.sb.sb-night:not(.high-contrast) .toast { background: #fff; border: 0; border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); color: #0A0C11; font: 700 14px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) .toast-undo { background: var(--v-acc); border-radius: 10px; color: #fff; font: 700 13px 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #hitDetailCard { background: var(--v-card); border: 0; border-radius: 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, .55); color: var(--v-ink); }

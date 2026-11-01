@@ -6,12 +6,14 @@
  *   · key(i) · length · for…in · 프로퍼티 접근도 같은 시각(샘플 칸 기준)으로 보인다
  *   · 클라우드: 세션 · 팀 코드가 항상 비어 있어 로그인 전과 같고, 로그인 · 공유 링크 업로드는 막는다
  * 켜기/끄기는 플래그(sl_sample_on)를 바꾸고 새로고침한다. 꺼져 있으면 아무것도 설치하지 않는다.
+ * 플래그 값 = 샘플 데이터 판(DATA_V). 생성 코드가 바뀐 뒤 옛 판으로 켜져 있으면 샘플 칸을 새로 만든다 (옛 플래그 '1' = 판 1).
  * 새 키: sl_sample_on, sl_sample__* (모두 이 파일에서만 만든다)
  */
 (function () {
   'use strict';
 
   var FLAG = 'sl_sample_on', PFX = 'sl_sample__', TOMB = '\u0000sample-deleted';
+  var DATA_V = 2;   // 샘플 데이터 판 — buildGames 결과가 바뀌면 올린다 (1 = 3경기 ~ 투구까지 넣은 판들, 2 = 12경기 · 투수 · 타자가 본 공)
   var REAL;
   try { REAL = window.localStorage; REAL.getItem(FLAG); } catch (e) { return; }   // 저장소를 못 쓰는 브라우저: 기능 없음
 
@@ -30,7 +32,7 @@
     return THROUGH[k] ? 2 : 3;
   }
 
-  function isOn() { try { return REAL.getItem(FLAG) === '1'; } catch (e) { return false; } }
+  function isOn() { try { return +REAL.getItem(FLAG) >= 1; } catch (e) { return false; } }
 
   // 실제 저장소에서 "내 데이터"가 있는지: 설정 키를 뺀 sl_ 키 중 내용이 있는 것이 하나라도 있으면 있는 것 (샘플 칸 · 플래그는 제외)
   // 경기를 모두 지우면 sl_saves 가 "[]" 로 남는다 — 그런 빈 값은 데이터가 아니다
@@ -356,19 +358,27 @@
   }
   function offerable() { return !ON && canIntercept() && !hasRealData() && memEmpty(); }
 
+  function seed() {   // 샘플 칸에 경기 · 목록, 마지막에 플래그(= 판)
+    var saves = [];
+    buildGames().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (g) {   // 경기 목록은 오래된 순 (앱이 저장하는 순서)
+      REAL.setItem(PFX + g.key, JSON.stringify(g));
+      saves.push({ key: g.key, label: g.th + ' vs ' + g.ta + ' ' + g.hs + ':' + g.as, ts: g.ts });
+    });
+    REAL.setItem(PFX + 'sl_saves', JSON.stringify(saves));
+    REAL.setItem(FLAG, String(DATA_V));
+  }
   function enter() {
     if (!offerable()) return false;   // 내 데이터가 있거나 기록 중이면 시작하지 않는다 (호출한 쪽이 이유를 알린다)
-    try {
-      var saves = [];
-      buildGames().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (g) {   // 경기 목록은 오래된 순 (앱이 저장하는 순서)
-        REAL.setItem(PFX + g.key, JSON.stringify(g));
-        saves.push({ key: g.key, label: g.th + ' vs ' + g.ta + ' ' + g.hs + ':' + g.as, ts: g.ts });
-      });
-      REAL.setItem(PFX + 'sl_saves', JSON.stringify(saves));
-      REAL.setItem(FLAG, '1');
-    } catch (e) { wipe(); return false; }   // 저장 공간 부족 등: 만든 것만 되돌린다
+    try { seed(); } catch (e) { wipe(); return false; }   // 저장 공간 부족 등: 만든 것만 되돌린다
     location.reload();
     return true;
+  }
+
+  // 옛 판으로 켜진 채 열렸으면 샘플 칸을 지우고 새 판으로 다시 만든다 — 앱 스크립트가 저장소를 읽기 전(이 파일은 head 에서 먼저 돈다)
+  // 샘플 모드에서 직접 기록한 것도 같이 지워진다 ('샘플 지우고 내 데이터 시작'과 같은 범위 · 실제 데이터는 그대로)
+  var REFRESHED = false;
+  if (ON && +REAL.getItem(FLAG) < DATA_V) {
+    try { wipe(); seed(); REFRESHED = true; } catch (e) { wipe(); }   // 못 쓰면 다음에 열 때 일반 모드
   }
 
   var CONFIRM = '샘플 데이터를 지우고 내 데이터로 시작할까요?\n\n샘플 모드에서 직접 기록한 내용도 함께 삭제됩니다.\n내 기록에는 영향이 없습니다.';
@@ -408,6 +418,8 @@
       + '<button type="button" class="sl-sample-exit">샘플 지우고 내 데이터 시작</button>';
     bar.querySelector('.sl-sample-exit').addEventListener('click', exit);
     document.body.insertBefore(bar, document.body.firstChild);
+    // ponytail: 1.2초 = 앱이 여는 '마지막 경기를 열었어요'(core.js _openLastGame) 뒤에 덮어 보이게. 앱 시작이 그보다 늦으면 그 토스트가 이긴다
+    if (REFRESHED) setTimeout(function () { toast('샘플 데이터를 새로 만들었어요 · 12경기'); }, 1200);
 
     // 샘플 모드에서는 로그인 · 클라우드 설정 · 링크 공유 업로드를 막는다 (샘플이 서버로 나가거나 내 계정과 섞이지 않게)
     var MSG = '샘플 모드에서는 쓸 수 없어요. 먼저 "샘플 지우고 내 데이터 시작"을 눌러 주세요';

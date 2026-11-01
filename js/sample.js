@@ -201,6 +201,86 @@
     return o;
   }
 
+  // 샘플팀 투수가 상대 타자에게 던진 공 (투수 탭 · 투수 리포트용) — 저장 모양은 pitchcalc.js nextPitch 가 만드는 v2 그대로
+  // 타석 기록과 다른 시드라 위 타석들은 그대로다. 상대 타자는 기록 탭 타석이 없고 공에만 이름 · 번호가 있다 (앱에서 투수 탭으로만 기록할 때와 같다)
+  // [이름, 등번호, 역할, 존 안에 던지는 비율, 구종 비율]
+  var PIT = [
+    ['서준호', '1', 'SP', .52, [['직구', .5], ['슬라이더', .25], ['체인지업', .15], ['커브', .1]]],
+    ['임재원', '11', 'SP', .47, [['직구', .45], ['커브', .25], ['포크볼', .2], ['슬라이더', .1]]],
+    ['배동훈', '19', 'RP', .5, [['직구', .6], ['슬라이더', .3], ['커터', .1]]]
+  ];
+  var SUR = '김이박최정강조윤장임한오서신권황안송'.split('');
+  var GIV = ['민수', '지성', '태민', '준영', '성진', '동욱', '재혁', '상훈', '영호', '기범', '우성', '건우', '시원', '도윤', '하준', '은호', '주원', '승현'];
+  var LEGACY = { '볼넷': '볼넷', '사구': '볼넷', '삼진': '삼진', '안타': '안타', '2루타': '2루타', '3루타': '3루타', '홈런': '홈런' };   // 그 밖(아웃) = '아웃' (pitchcalc legacyResult)
+
+  function zoneOf(x, y) {   // core.js _getZoneFromPos 와 같은 칸
+    if (x < .22) return '볼 내';
+    if (x > .78) return '볼 외';
+    if (y < .15) return '볼 위';
+    if (y > .85) return '볼 아래';
+    return (x < .4067 ? '내각' : x < .5933 ? '중앙' : '외각') + ' ' + (y < .3833 ? '높음' : y < .6167 ? '중간' : '낮음');
+  }
+  function pickPt(R, mix, full) {   // 3볼이면 직구를 더 던진다
+    var tot = 0, i, w = mix.map(function (m) { return m[1] + (full && m[0] === '직구' ? .25 : 0); });
+    w.forEach(function (v) { tot += v; });
+    var r = R() * tot;
+    for (i = 0; i < mix.length - 1 && r >= w[i]; i++) r -= w[i];
+    return mix[i][0];
+  }
+  function inPlay(R, hitP) {
+    var h = R();
+    if (R() < hitP) return h < .68 ? '안타' : h < .88 ? '2루타' : h < .92 ? '3루타' : '홈런';
+    return h < .46 ? '땅볼 아웃' : h < .86 ? '플라이 아웃' : '라인드라이브 아웃';
+  }
+
+  function buildPitching(gi, op, ts) {
+    var R = rng(SEED + 5000 + gi * 131);
+    var t = 0;
+    while (OPP[t][0] !== op[0]) t++;   // 같은 상대 = 같은 타자들
+    var lu = [];
+    for (var i = 0; i < 9; i++) lu.push({ id: 9000 + t * 10 + i, name: SUR[(t * 5 + i * 7) % 18] + GIV[(t * 7 + i * 5) % 18], num: String(2 + (t * 13 + i * 7) % 60) });
+    var hitP = .2 + op[1] * .025;   // 상대 득점이 많은 경기일수록 많이 맞았다
+    var ps = [], cur = null, cp = null, bi = 0, id = ts + 1000, k = 0;
+    function enter(src) { cp = src; cur = { id: ts + 900 + ps.length, name: src[0], num: src[1], role: src[2], pitches: [] }; ps.push(cur); }
+    for (var inn = 1; inn <= 7; inn++) {
+      if (!cur) enter(PIT[gi % 2]);
+      else if (cur.role === 'SP' && (inn >= 6 || cur.pitches.length >= 85)) enter(PIT[2]);   // 6회부터 또는 85구 넘으면 계투
+      var outs = 0;
+      while (outs < 3) {
+        var b = lu[bi++ % 9], pa = id + 1, c = { b: 0, s: 0 }, end = null;
+        while (!end) {
+          var pt = pickPt(R, cp[4], c.b === 3), low = pt === '커브' || pt === '포크볼' || pt === '체인지업';
+          var inZ = R() < cp[3] + (c.b === 3 ? .1 : 0) - (c.s === 2 && c.b < 2 ? .12 : 0), x, y, side = R();
+          if (inZ) { x = .24 + R() * .52; y = low ? .4 + R() * .43 : .17 + R() * .66; }   // 떨어지는 공은 존 아래쪽
+          else if (low ? side < .55 : side < .2) { x = .2 + R() * .6; y = .87 + R() * .11; }
+          else if (side < .7) { x = .03 + R() * .17; y = .12 + R() * .76; }
+          else if (side < .9) { x = .8 + R() * .17; y = .12 + R() * .76; }
+          else { x = .2 + R() * .6; y = .02 + R() * .11; }
+          var swing = R() < (inZ ? (c.b + c.s ? .62 : .4) : .18 + c.s * .08), pr;
+          if (!swing && x < .2 && R() < .04) { pr = '사구'; end = '사구'; }
+          else if (!swing) pr = inZ ? '루킹' : '볼';
+          else if (R() > (inZ ? .82 : .55)) pr = '헛스윙';
+          else if (R() < (c.s === 2 ? .56 : .46)) pr = '파울';
+          else { pr = '타격됨'; end = inPlay(R, hitP); }
+          if (!end) {
+            if (pr === '볼') c.b++; else if (pr !== '파울' || c.s < 2) c.s++;
+            end = c.b >= 4 ? '볼넷' : c.s >= 3 ? '삼진' : null;
+          }
+          var m = 3 + Math.floor(k++ * .8), e = {
+            id: ++id, inning: inn + '회초', zone: zoneOf(x, y), zoneX: +x.toFixed(3), zoneY: +y.toFixed(3), pt: pt,
+            batter: b.name, bteam: 'away', bnum: b.num, ts: ('0' + (13 + Math.floor(m / 60))).slice(-2) + ':' + ('0' + m % 60).slice(-2),
+            outs: outs, runners: null, v: 2, pa: pa, bid: b.id, pr: pr,
+            result: end ? (LEGACY[end] || '아웃') : (pr === '헛스윙' || pr === '루킹' ? '스트라이크' : pr)
+          };
+          if (end) e.end = end;
+          cur.pitches.push(e);
+        }
+        if (!LEGACY[end] || end === '삼진') outs++;
+      }
+    }
+    return ps;
+  }
+
   function buildGames() {
     var games = [], now = Date.now(), day = 864e5;
     OPP.forEach(function (op, gi) {
@@ -223,7 +303,7 @@
       }
       var data = {
         key: key, hs: rbi + 1, as: op[1], th: TEAM, ta: op[0], home_lineup: lineup, away_lineup: [], abs: abs, zoneHistory: {},
-        d: dt.toLocaleDateString('ko-KR'), ts: ts, cond: {}, pitchers: [],
+        d: dt.toLocaleDateString('ko-KR'), ts: ts, cond: {}, pitchers: buildPitching(gi, op, ts),
         info: { date: dt.getFullYear() + '-' + p2(dt.getMonth() + 1) + '-' + p2(dt.getDate()), venue: '샘플 구장', side: 'home', innings: 7 }
       };
       games.push(data);

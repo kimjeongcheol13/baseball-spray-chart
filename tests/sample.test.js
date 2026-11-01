@@ -58,7 +58,7 @@
       Object.keys(s0).forEach(function (k) { eq(s1[k], s0[k], '실제 키 변경: ' + k); });
       Object.keys(s1).forEach(function (k) { if (!(k in s0)) ok(k === 'sl_sample_on' || k.indexOf('sl_sample__') === 0, '실제 칸에 새 키: ' + k); });
       eq(s1['sl_sample_on'], '1', '플래그');
-      eq(sampleKeys().length, 1 + 1 + 3, '플래그 + sl_saves + 경기 3개');
+      eq(sampleKeys().length, 1 + 1 + 12, '플래그 + sl_saves + 경기 12개');
     } finally { restore(); REAL.clear(); }
   });
 
@@ -78,11 +78,12 @@
     } finally { restore(); REAL.clear(); }
   });
 
-  test('샘플 모드: 3경기 · 타자 9명 · 실제 저장 형식(키 형식 · 필드)', async function () {
+  test('샘플 모드: 12경기(오래된 순) · 타자 9명 · 실제 저장 형식(키 형식 · 필드)', async function () {
     try {
       fresh(); await enterAndReopen();
       var saves = JSON.parse(localStorage.getItem('sl_saves'));
-      eq(saves.length, 3, '경기 수');
+      eq(saves.length, 12, '경기 수');
+      saves.forEach(function (s, i) { if (i) ok(s.ts > saves[i - 1].ts, '경기 목록이 오래된 순이 아님: ' + i); });
       var names = {}, total = 0;
       saves.forEach(function (s) {
         ok(window._isSaveKey(s.key), '경기 키가 앱의 키 형식이 아님: ' + s.key);
@@ -101,7 +102,7 @@
         });
       });
       eq(Object.keys(names).length, 9, '전체 타자 수');
-      ok(total > 100 && total < 140, '전체 타석: ' + total);
+      ok(total > 430 && total < 530, '전체 타석: ' + total);
     } finally { restore(); REAL.clear(); }
   });
 
@@ -128,7 +129,7 @@
       fresh(); await enterAndReopen();
       populateCompareSelects();
       var opts = document.getElementById('cmpGame1').options.length;
-      eq(opts, 1 + 3, '경기 비교 선택지(기본 + 3경기)');
+      eq(opts, 1 + 12, '경기 비교 선택지(기본 + 12경기)');
       var u = storageManager.getUsage();
       var want = 0; keysByLoop().forEach(function (k) { want += k.length + (localStorage.getItem(k) || '').length; });
       eq(u.bytes, want * 2, 'getUsage 가 보는 크기');

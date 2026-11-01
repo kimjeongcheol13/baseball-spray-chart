@@ -1,5 +1,5 @@
 /* SprayLab — 샘플 데이터 모드
- * 첫 진입(데이터 없음) 사용자가 "샘플 데이터로 둘러보기"를 누르면 가상 팀 1개 · 타자 9명 · 3경기를 샘플 칸에 저장하고 앱을 다시 연다.
+ * 첫 진입(데이터 없음) 사용자가 "샘플 데이터로 둘러보기"를 누르면 가상 팀 1개 · 타자 9명 · 12경기를 샘플 칸에 저장하고 앱을 다시 연다.
  * 기존 코드는 고치지 않는다: 샘플 모드가 켜져 있을 때만 window.localStorage 를 Proxy 로 바꿔 sl_ 키를 샘플 칸(sl_sample__ 접두사)으로 보낸다.
  *   · 쓰기: sl_ 키는 항상 샘플 칸으로. 샘플 모드 중 실제 sl_ 키에는 쓰기 0건 (sl_ 가 아닌 키는 그대로 통과)
  *   · 읽기: 설정 키 = 샘플 칸에 값 있으면 샘플, 없으면 실제 / 경기 데이터 키 = 샘플 칸만 / 클라우드 인증 키 = 항상 비어 있음
@@ -150,7 +150,10 @@
     ['한지호', '99', 'R', .26, .05, .15, .3, .52, .20]
   ];
   var SEED = 20268256;   // 고정 시드: 매번 같은 샘플 (성적 분포가 그럴듯한 값으로 골랐다)
-  var OPP = [['한빛팀', 4], ['동산팀', 7], ['미래팀', 2]];   // [상대, 상대 득점]
+  // [상대, 상대 득점, 며칠 전, 타석 수] — 앞 3경기는 처음 샘플 그대로(랜딩 히어로 숫자 = 이 3경기 김민준 15타석), 뒤 9경기는 그 전 주마다 (6팀 리그 · 팀당 2번)
+  var OPP = [['한빛팀', 4, 15, 41], ['동산팀', 7, 8, 38], ['미래팀', 2, 2, 44],
+    ['푸른팀', 3, 22, 40], ['새벽팀', 6, 29, 37], ['별빛팀', 5, 36, 42], ['한빛팀', 2, 43, 39], ['동산팀', 9, 50, 36],
+    ['미래팀', 4, 57, 43], ['푸른팀', 1, 64, 38], ['새벽팀', 7, 71, 41], ['별빛팀', 5, 78, 40]];
   var ZONES = ['내각 높음', '중앙 높음', '외각 높음', '내각 중간', '중앙 중간', '외각 중간', '내각 낮음', '중앙 낮음', '외각 낮음'];
   var PITCH = ['직구', '직구', '직구', '슬라이더', '커브', '체인지업', '포크볼', '커터'];
   var FT = { LF: 295, LC: 357, CF: 394, RC: 357, RF: 295 };   // 표준 구장(90·120·90m) 펜스 거리(ft) — core.js onFClick 과 같은 계산
@@ -202,12 +205,12 @@
     var games = [], now = Date.now(), day = 864e5;
     OPP.forEach(function (op, gi) {
       var R = rng(SEED + gi * 977);
-      var ts = now - [15, 8, 2][gi] * day;
+      var ts = now - op[2] * day;
       var dt = new Date(ts), p2 = function (v) { return ('0' + v).slice(-2); };
       var ds = p2(dt.getFullYear() % 100) + p2(dt.getMonth() + 1) + p2(dt.getDate());
-      var key = 'sl_' + TEAM + 'vs' + op[0] + '_' + ds + '_sa' + (gi + 1);
+      var key = 'sl_' + TEAM + 'vs' + op[0] + '_' + ds + '_s' + p2(gi + 1);   // 끝 칸은 3글자까지 (core.js _SAVE_KEY_RE)
       var lineup = BAT.map(function (b, i) { return { id: (gi + 1) * 100 + i + 1, name: b[0], num: b[1], pos: '', bh: b[2], isStarter: true }; });
-      var total = [41, 38, 44][gi], abs = [], rbi = 0;
+      var total = op[3], abs = [], rbi = 0;
       for (var n = 0; n < total; n++) {
         var bi = n % 9, inn = Math.min(7, 1 + Math.floor(n * 7 / total)) + '회말';
         var a = buildAtBat(R, BAT[bi], lineup[bi].id, ts, n, inn);
@@ -241,7 +244,7 @@
     if (!offerable()) return false;   // 내 데이터가 있거나 기록 중이면 시작하지 않는다 (호출한 쪽이 이유를 알린다)
     try {
       var saves = [];
-      buildGames().forEach(function (g) {
+      buildGames().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (g) {   // 경기 목록은 오래된 순 (앱이 저장하는 순서)
         REAL.setItem(PFX + g.key, JSON.stringify(g));
         saves.push({ key: g.key, label: g.th + ' vs ' + g.ta + ' ' + g.hs + ':' + g.as, ts: g.ts });
       });

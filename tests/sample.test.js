@@ -57,8 +57,30 @@
       var s1 = snap();
       Object.keys(s0).forEach(function (k) { eq(s1[k], s0[k], '실제 키 변경: ' + k); });
       Object.keys(s1).forEach(function (k) { if (!(k in s0)) ok(k === 'sl_sample_on' || k.indexOf('sl_sample__') === 0, '실제 칸에 새 키: ' + k); });
-      eq(s1['sl_sample_on'], '1', '플래그');
+      eq(s1['sl_sample_on'], '2', '플래그 = 샘플 데이터 판');
       eq(sampleKeys().length, 1 + 1 + 12, '플래그 + sl_saves + 경기 12개');
+    } finally { restore(); REAL.clear(); }
+  });
+
+  test('샘플: 옛 판 플래그(\'1\')로 켜진 채 열면 샘플 칸을 새 판으로 다시 만든다 — 옛 경기 · 샘플 모드 기록은 지우고 실제 키는 그대로, 같은 판이면 다시 안 만든다', async function () {
+    try {
+      fresh(); var real0 = slReal(), OLD = 'sl_샘플팀vs한빛팀_261017_sa1';
+      REAL.setItem('sl_sample_on', '1');
+      REAL.setItem('sl_sample__sl_saves', JSON.stringify([{ key: OLD, label: 'old', ts: 1 }]));
+      REAL.setItem('sl_sample__' + OLD, '{"abs":[]}');
+      REAL.setItem('sl_sample__sl_autosave', '{"data":{"abs":[1]}}');   // 샘플 모드에서 직접 기록하던 것
+      var a = await load();
+      ok(a.api.isOn(), '옛 플래그로 샘플 모드가 안 켜짐');
+      eq(a.reloads, 0, '리로드');
+      eq(REAL.getItem('sl_sample_on'), '2', '플래그 = 새 판');
+      eq(REAL.getItem('sl_sample__' + OLD), null, '옛 경기가 남음');
+      eq(REAL.getItem('sl_sample__sl_autosave'), null, '샘플 모드 자동저장이 남음');
+      eq(JSON.parse(localStorage.getItem('sl_saves')).length, 12, '새 판 경기 수');
+      eq(slReal(), real0, '실제 키가 바뀜');
+      var saves = REAL.getItem('sl_sample__sl_saves');
+      restore();
+      await load();   // 같은 판으로 다시 열기
+      eq(REAL.getItem('sl_sample__sl_saves'), saves, '같은 판인데 다시 만듦');
     } finally { restore(); REAL.clear(); }
   });
 

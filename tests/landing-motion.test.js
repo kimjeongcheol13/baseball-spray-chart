@@ -9,7 +9,8 @@
     var a = src.indexOf('/* ── 샘플 데이터'), b = src.indexOf('// 지금 화면(메모리)');
     T.ok(a > 0 && b > a, 'sample.js 생성 코드 구간을 찾지 못함');
     var games = new Function(src.slice(a, b) + '; return buildGames();')();
-    var abs = [].concat.apply([], games.map(function (g) { return g.abs.filter(function (x) { return x.bname === '김민준'; }); }));
+    // 히어로는 처음 샘플 3경기(buildGames 앞 3개) 기준 — 뒤에 붙인 경기는 그 전 주 경기라 15타석 이야기에 들어가지 않는다
+    var abs = [].concat.apply([], games.slice(0, 3).map(function (g) { return g.abs.filter(function (x) { return x.bname === '김민준'; }); }));
     T.eq(abs.length, 15, '김민준 타석 수');
 
     var B = await import('/js/features/batdata.js');

@@ -3143,7 +3143,7 @@ var _PT_ABR={__proto__:null,'직구':'F','싱커':'SK','커터':'CT','체인지�
 // 방향: 그려진 파울라인(drawField: π*.28 / π*.72 → 50.4°~129.6°) 사이 페어 지역을 각도로 3등분
 var _LSL_FL=50.4,_LSL_FR=129.6,_LSL_T=(_LSL_FR-_LSL_FL)/3;
 var _LSL_NOBALL=['삼진','볼넷','사구']; // 타구 없는 결과 → 방향 분포 제외
-var _LSL_ITEMS=[{k:'avg',l:'AVG'},{k:'obp',l:'OBP'},{k:'pull',l:'PULL%'},{k:'ctr',l:'CENTER%'},{k:'oppo',l:'OPPO%'}];
+var _LSL_ITEMS=[{k:'avg',l:'타율'},{k:'obp',l:'출루율'},{k:'pull',l:'당겨치기'},{k:'ctr',l:'가운데'},{k:'oppo',l:'밀어치기'}];
 var _lslLast={bid:null,v:null},_lslTimers={};
 function _lslDeg(a){
   if(a.deg!=null)return a.deg;

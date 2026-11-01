@@ -918,3 +918,146 @@ html body.sb.sb-night:not(.high-contrast) #gfEndOv :is(.gfe-stat, .gfe-comment) 
 html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-mvp { background: rgba(255, 90, 54, .12) !important; border: 0 !important; border-radius: 14px !important; }
 html body.sb.sb-night:not(.high-contrast) #gfEndOv .gfe-mvp-ttl { color: var(--v-acc); }
 html body.sb.sb-night:not(.high-contrast) #shareQROv .share-qr-sub { color: var(--v-ink3) !important; }
+
+
+/* ═══ 기록 탭 첫 화면 (#app-page · scorebook.js) ═══════════════════
+   사용자 결정 11-01: 분석 화면과 같은 카드형 · 글자는 한글 · 결과 버튼은 투구 입력처럼 · 점수판은 표 그대로 카드에. 폰 · 컴퓨터 둘 다
+   · 버튼 자리 · 동작은 그대로, 모양만 — 밤 토큰(night.css)을 v2 색으로 바꿔 끼우고 카드 · 버튼만 다시 그린다
+   · 필드 캔버스 색은 body 의 --fld-* 를 읽는다(scorebook.js tok) → 여기서 안 바뀜
+   · paper.css 의 !important(헤더 · 경기 운영 바 · 폰 타순표 시트)는 !important 로 */
+html body.sb.sb-night:not(.high-contrast) #app-page {
+  --paper: var(--v-bg);
+  --paper-2: var(--v-card);
+  --n-line: var(--v-line);
+  --n-line2: rgba(255, 255, 255, .05);
+  --n-ink2: var(--v-ink2);
+  --n-ink3: var(--v-ink3);
+  --n-pink: var(--v-acc);
+  --n-bar: var(--v-card);
+  --highlight-soft: rgba(255, 90, 54, .12);
+  color: var(--v-ink);
+}
+
+/* 머리: 점수판(표 그대로, 둥근 카드) · 이닝 · 점수 · ☰ */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls-wrap { padding: 4px 6px; background: var(--v-card); border: 0; border-radius: 16px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls thead th { border-bottom: 1px solid var(--v-line); font: 500 13px/1 var(--v-num); letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls thead .t { font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls thead th.cur { background: rgba(255, 90, 54, .2); border-radius: 8px 8px 0 0; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls td.cur { background: rgba(255, 90, 54, .08); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls tbody td { font: 500 15px/1 var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls tbody .t { font: 700 14px/1 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .r { min-width: 40px; border-left: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls tbody .r { font: 700 20px/1 var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page :is(.sb-inn, .sb-score-btn, .hdr-menu-btn) { background: var(--v-card2); border: 0; border-radius: 14px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .hdr-menu-btn[aria-expanded="true"] { background: #fff; color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-inn-v { border: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-inn-v small { font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-score-btn { font: 700 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+
+/* 카드 · 카드 제목 · 작은 버튼 · 고르기 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-card { background: var(--v-card); border: 0; border-radius: var(--v-r); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-card-hd { padding: 12px 12px 6px 20px; border-bottom: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-card-hd h2 { font: 800 17px/1.2 'Noto Sans KR', sans-serif; letter-spacing: -.2px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page :is(.sb-mini, .sb-btn) { padding: 0 14px; background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 13px/1 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg { padding: 3px; gap: 2px; background: var(--v-card2); border: 0; border-radius: 12px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg button { min-height: 44px; padding: 0 12px; background: none; border: 0; border-radius: 10px; color: var(--v-ink2); font: 700 13px/1 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg button[aria-pressed="true"] { background: #fff; color: #0A0C11; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-sheet-x { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); }
+
+/* 타순표 · 지금 타자 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-h { padding: 8px 20px; border-bottom: 0; font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot { padding: 0 8px 8px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row { padding: 6px 12px; border-radius: 12px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row.cur { background: rgba(255, 90, 54, .12); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row .n { font: 500 16px/1 var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row .nm { font: 700 15px/1.2 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row .nm small { font: 500 13px/1 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-ot-row .ls { font: 500 14px/1.2 var(--v-num); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-eyebrow { font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-now { padding: 20px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-now .sb-btn { min-height: 48px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar { min-height: 56px; padding: 6px 6px 6px 16px; background: var(--v-card); border: 0; border-radius: 16px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar .sb-eyebrow { font-size: 13px; letter-spacing: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar b { font: 800 17px/1.1 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar span { font: 600 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar em { min-height: 44px; padding: 0 12px; background: var(--v-card2); border: 0; border-radius: 12px; font: 700 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+
+/* 필드 카드 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-field-hd h2 small { font: 500 14px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-field-ft { padding: 12px 20px 14px; background: none; border-top: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-legend { color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-sum { font: 500 14px/1 var(--v-num); letter-spacing: .02em; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-field > .field-hint { font-size: 13px; color: var(--v-acc); }
+
+/* 경기 운영 바 */
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar { padding: 0 12px; background: var(--v-card) !important; border: 0 !important; border-radius: 16px !important; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-inn { font: 800 17px/1 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-out-dot { width: 14px; height: 14px; border: 2px solid rgba(244, 246, 250, .28); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-out-dot.on { background: var(--v-bad); border-color: var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-out-lbl { font: 700 13px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-base { border: 2px solid rgba(244, 246, 250, .28); background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-base.on { background: var(--v-acc); border-color: var(--v-acc); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-batter { font: 700 14px 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-score { font: 600 20px/1 var(--v-num); color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-sc-btn { background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page #gfBar .gfb-end { background: rgba(255, 107, 116, .12); border: 0; border-radius: 12px; color: var(--v-bad); font: 700 13px 'Noto Sans KR', sans-serif; }
+
+/* 볼카운트 — 점은 투구 입력과 같은 색(볼 초록 · 스트라이크 노랑 · 아웃 빨강) */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-count .sb-card-hd h2 { font: 800 17px/1.2 'Noto Sans KR', sans-serif; letter-spacing: -.2px; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cnt { gap: 8px; padding: 4px 12px 14px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg { flex: 1 1 auto; justify-content: center; min-height: 52px; background: var(--v-card2); border: 0; border-radius: 14px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg:active { background: rgba(255, 255, 255, .1); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.ro { background: none; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg > span { font: 600 18px/1 var(--v-num); color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg i { width: 16px; height: 16px; border: 2px solid rgba(244, 246, 250, .28); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.b i.on { background: var(--v-good); border-color: var(--v-good); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.s i.on { background: var(--v-hi); border-color: var(--v-hi); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.o i.on { background: var(--v-bad); border-color: var(--v-bad); }
+
+/* 결과 버튼 — 삼진 · 볼넷 · 사구는 색 바탕, 나머지는 어두운 카드 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamps { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp { min-height: 88px; padding: 14px 16px; border: 0; border-radius: 16px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp b { font: 600 30px/1 var(--v-num); letter-spacing: 0; color: inherit; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp small { font: 700 13px/1 'Noto Sans KR', sans-serif; color: inherit; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp.k { background: rgba(255, 107, 116, .14); color: var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp.bb { background: rgba(53, 212, 158, .14); color: #5FE3B5; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp.hbp { background: rgba(124, 176, 255, .14); color: var(--v-blue); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp:active { filter: brightness(1.3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-aux { gap: 8px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-aux button { min-height: 52px; padding: 0 14px; gap: 10px; background: var(--v-card); border: 0; border-radius: 14px; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-aux button:active { background: var(--v-card2); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-aux button b { min-width: 36px; font: 600 16px/1 var(--v-num); letter-spacing: .02em; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-aux button span { font: 600 13px/1.2 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+
+/* 타석 기록 */
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list li { min-height: 44px; border-bottom: 1px solid var(--v-line); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list li:last-child { border-bottom: 0; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list .no { font: 500 13px/1 var(--v-num); color: var(--v-ink3); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list .nm { font: 700 15px/1.2 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list .rs { font: 600 15px/1 var(--v-num); letter-spacing: .02em; color: var(--v-ink2); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list .rs:is(.k-hit, .k-hr, .k-xbh) { color: #FF7A5C; }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-pa-list .rs.k-k { color: var(--v-bad); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-none { font: 500 14px/1.55 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+
+@media (max-width: 720px) {
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls-wrap { padding: 0; border-radius: 14px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls .r { min-width: 28px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls tbody .r { font-size: 17px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-ls tbody td { font-size: 14px; }
+  /* 타순표 = 아래에서 올라오는 시트 */
+  html body.sb.sb-night:not(.high-contrast) #app-page .app-layout > .pnl-left { background: var(--v-bg) !important; border-top: 0 !important; border-radius: 20px 20px 0 0; box-shadow: 0 -12px 32px rgba(0, 0, 0, .5) !important; }
+  /* 볼카운트: 한 줄 (B · S · O · 초기화) */
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cnt { gap: 6px; padding: 8px 0 8px 8px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-count .sb-card-hd { padding: 0 8px 0 6px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg { gap: 5px; padding: 0 4px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg i { width: 14px; height: 14px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.ro::after { font: 600 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp { min-height: 72px; padding: 12px 14px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp b { font-size: 26px; }
+  /* 지표 줄 (타율 · 출루율 · 당겨치기 · 가운데 · 밀어치기) */
+  html body.sb.sb-night:not(.high-contrast) #app-page .pnl-center > #liveStatLine { margin: 6px 0 0; padding: 14px 4px 10px; background: var(--v-card); border: 0; border-radius: 16px; }
+  html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine::before { top: -10px; padding: 0 10px; background: var(--v-card2); border-radius: 999px; font: 700 13px/20px 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+  html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine .lsl-k { font: 600 13px/1.2 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+  html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine .lsl-v b { font: 600 17px/1.2 var(--v-num); color: var(--v-ink); }
+  html body.sb.sb-night:not(.high-contrast) #app-page #liveStatLine .lsl-prev { font-size: 13px; }
+}

@@ -257,6 +257,12 @@
   .tm .an-trend { max-width: 560px; margin: 0 auto; }
 }
 
+/* ── 폰: 전적을 팀 이름 밑으로 (옆에 두면 이름 칸이 70px — 「샘…」으로 잘리고 「9명 · 123타석」이 두 줄) ── */
+@media (max-width: 720px) {
+  .tm-hero { grid-template-columns: minmax(0, 1fr); }
+  .tm-rec { align-items: flex-start; text-align: left; }
+}
+
 /* ── 모바일 터치 타겟 44×44px 이상 ── */
 @media (max-width: 720px) {
   .tm-ldr-tabs button { height: 44px; }

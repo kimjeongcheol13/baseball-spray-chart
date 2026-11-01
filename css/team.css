@@ -180,6 +180,13 @@
 .tm-roster thead button.on { color: var(--an-ink); }
 .tm-roster td { font: 600 12px var(--mono); color: var(--an-ink2); }
 .tm-roster td.lead { color: var(--an-ink); font-weight: 800; }
+/* 팀 평균 대비 색 (team.js _rosterCard tint): 빨강 = 좋음, 파랑 = 나쁨 · 1σ 이상이면 진하게 */
+.tm-roster td.hi1, .tm-tint-key.hi1 { background: rgba(255, 90, 54, .14); }
+.tm-roster td.hi2, .tm-tint-key.hi2 { background: rgba(255, 90, 54, .30); }
+.tm-roster td.lo1, .tm-tint-key.lo1 { background: rgba(77, 141, 255, .14); }
+.tm-roster td.lo2, .tm-tint-key.lo2 { background: rgba(77, 141, 255, .30); }
+.tm-tint-lg { white-space: nowrap; }
+.tm-tint-key { display: inline-block; width: 10px; height: 10px; margin: 0 3px 0 4px; border-radius: 2px; vertical-align: -1px; }
 .tm-roster tbody tr + tr > * { border-top: 1px solid var(--an-line); }
 .tm-roster tr.thin td { opacity: .5; }
 .tm-roster .tm-sticky {

@@ -394,9 +394,24 @@ function _rosterCard(T) {
     if (!q.length) return;
     lead[c.k] = c.lower ? Math.min(...q.map(p => p.row[c.k])) : Math.max(...q.map(p => p.row[c.k]));
   });
+  // 팀 평균 대비 색 (Savant 표 색칠): 비율 지표만, QUAL_PA타석+ 선수가 3명 이상일 때
+  //   기준 = 팀 합계 줄 값, 폭 = 그 선수들의 표준편차 → 0.5σ 이상이면 연하게, 1σ 이상이면 진하게 · 빨강 = 좋음, 파랑 = 나쁨 (삼진%는 낮을수록 좋음)
+  const qual = T.players.filter(p => p.st.pa >= QUAL_PA), sd = {};
+  if (qual.length >= 3) COLS.forEach(c => {
+    const vs = c.fmt === 'int' ? [] : qual.map(p => p.row[c.k]).filter(Number.isFinite);
+    if (vs.length < 3) return;
+    const m = vs.reduce((a, b) => a + b, 0) / vs.length, s = Math.sqrt(vs.reduce((a, b) => a + (b - m) ** 2, 0) / vs.length);
+    if (s > 0 && Number.isFinite(T.st[c.k])) sd[c.k] = s;
+  });
+  const tint = (p, c) => {
+    const s = sd[c.k], v = p.row[c.k];
+    if (!s || p.st.pa < QUAL_PA || !Number.isFinite(v)) return '';
+    const z = (v - T.st[c.k]) / s * (c.lower ? -1 : 1);
+    return z >= 1 ? 'hi2' : z >= 0.5 ? 'hi1' : z <= -1 ? 'lo2' : z <= -0.5 ? 'lo1' : '';
+  };
   return `
     <section class="an-card">
-      <header class="an-hd"><h3>선수별 기록</h3><span class="an-hd-note">열 이름을 누르면 정렬 · 굵은 값 = 팀 1위(${QUAL_PA}타석+)</span></header>
+      <header class="an-hd"><h3>선수별 기록</h3><span class="an-hd-note">열 이름을 누르면 정렬 · 굵은 값 = 팀 1위 · <span class="tm-tint-lg"><i class="tm-tint-key hi2"></i>팀 평균보다 좋음 <i class="tm-tint-key lo2"></i>나쁨 (${QUAL_PA}타석+)</span></span></header>
       <div class="tm-roster-wrap">
         <table class="tm-roster">
           <thead><tr>
@@ -409,7 +424,8 @@ function _rosterCard(T) {
               ${COLS.map(c => {
                 const v = p.row[c.k];
                 const top = p.st.pa >= QUAL_PA && lead[c.k] != null && v === lead[c.k] && (c.fmt !== 'int' || v > 0);
-                return `<td${top ? ' class="lead"' : ''}>${_esc(fmt(v, c.fmt))}</td>`;
+                const cls = [top ? 'lead' : '', tint(p, c)].filter(Boolean).join(' ');
+                return `<td${cls ? ` class="${cls}"` : ''}>${_esc(fmt(v, c.fmt))}</td>`;
               }).join('')}
             </tr>`).join('')}
           </tbody>

@@ -13,7 +13,7 @@
   'use strict';
 
   var FLAG = 'sl_sample_on', PFX = 'sl_sample__', TOMB = '\u0000sample-deleted';
-  var DATA_V = 2;   // 샘플 데이터 판 — buildGames 결과가 바뀌면 올린다 (1 = 3경기 ~ 투구까지 넣은 판들, 2 = 12경기 · 투수 · 타자가 본 공)
+  var DATA_V = 3;   // 샘플 데이터 판 — buildGames 결과가 바뀌면 올린다 (1 = 3경기 ~ 투구까지 넣은 판들, 2 = 12경기 · 투수 · 타자가 본 공, 3 = 타석 직전 아웃 · 주자)
   var REAL;
   try { REAL = window.localStorage; REAL.getItem(FLAG); } catch (e) { return; }   // 저장소를 못 쓰는 브라우저: 기능 없음
 
@@ -318,6 +318,23 @@
     if (a.res === '볼넷' || a.res === '사구') a.zone = a.pitches[a.pitches.length - 1].zone;
   }
 
+  // 경기 운영 모드 타석처럼 타석 직전 아웃 · 주자(gfPre)를 남긴다 — RE24(runners.js re24)용.
+  // 진루는 runners.js advance 와 같은 규칙(샘플에 나오는 결과만) · 이닝이 바뀌거나 3아웃이면 0아웃 빈 베이스부터
+  function addPre(abs) {
+    var outs = 0, b = [false, false, false], cur = null;
+    abs.forEach(function (a, n) {
+      if (a.inn !== cur || outs >= 3) { cur = a.inn; outs = 0; b = [false, false, false]; }
+      a.gfPre = { inning: parseInt(a.inn, 10), half: 'bottom', outs: outs, batterIdx: n % 9, bases: b.slice() };
+      var r = a.res;
+      if (r === '홈런') b = [false, false, false];
+      else if (r === '3루타') b = [false, false, true];
+      else if (r === '2루타') b = [false, true, b[0]];
+      else if (r === '안타' || r === '내야안타') b = [true, b[0], b[1]];
+      else if (r === '볼넷' || r === '사구') b = [true, b[0] || b[1], b[0] && b[1] ? true : b[2]];
+      else outs++;
+    });
+  }
+
   function buildGames() {
     var games = [], now = Date.now(), day = 864e5;
     OPP.forEach(function (op, gi) {
@@ -339,6 +356,7 @@
         rbi += a.rbi;
         abs.push(a);
       }
+      addPre(abs);
       var data = {
         key: key, hs: rbi + 1, as: op[1], th: TEAM, ta: op[0], home_lineup: lineup, away_lineup: [], abs: abs, zoneHistory: {},
         d: dt.toLocaleDateString('ko-KR'), ts: ts, cond: {}, pitchers: buildPitching(gi, op, ts),

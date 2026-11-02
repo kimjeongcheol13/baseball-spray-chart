@@ -170,6 +170,7 @@ function _hero(P, info, order, today, live, pool) {
   const t = calcStats(today);
   const s = P.st;
   const X = profileHeroBits(P, pool);   // 예전 프로필 히어로의 wOBA+ · 유형 태그 · 표본 배지
+  const reN = window.gfRe24 ? P.abs.filter(a => window.gfRe24(a) != null).length : 0, re = reN ? window.gfRe24Sum(P.abs) : null;   // RE24 (runners.js) — 경기 운영 모드로 적은 타석만
   const isLive = live && live.name === P.name;
   const meta = [order >= 0 ? `${order + 1}번 타자` : '', _esc(info.pos || ''), P.num !== '' && P.num != null ? '#' + _esc(P.num) : '', P.bats === 'L' ? '좌타' : P.bats === 'R' ? '우타' : P.bats === 'S' ? '스위치' : ''].filter(Boolean).join(' · ');
   const line = t.pa
@@ -188,6 +189,7 @@ function _hero(P, info, order, today, live, pool) {
         <b>${f3(s.avg)}</b>
         <span>${f3(s.obp)} / ${f3(s.slg)}</span>
         ${X.woba != null ? `<em class="bt-wplus" title="내 기록 전체 평균 wOBA를 100으로 둔 값">wOBA ${f3(X.woba)}${X.idx != null ? ` · <b>${X.idx}</b> wOBA+` : ''}</em>` : ''}
+        ${re != null ? `<em class="bt-wplus bt-re24" title="주자 · 아웃 상황으로 본 득점 기여 (MLB 기대득점표) — 경기 운영 모드로 적은 ${reN}타석">RE24 <b>${window.gfRe24Txt(re)}</b> · ${reN}타석</em>` : ''}
       </div>
       <div class="bt-today">
         <small>오늘</small>

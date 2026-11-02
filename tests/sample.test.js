@@ -57,7 +57,7 @@
       var s1 = snap();
       Object.keys(s0).forEach(function (k) { eq(s1[k], s0[k], '실제 키 변경: ' + k); });
       Object.keys(s1).forEach(function (k) { if (!(k in s0)) ok(k === 'sl_sample_on' || k.indexOf('sl_sample__') === 0, '실제 칸에 새 키: ' + k); });
-      eq(s1['sl_sample_on'], '2', '플래그 = 샘플 데이터 판');
+      eq(s1['sl_sample_on'], '3', '플래그 = 샘플 데이터 판');
       eq(sampleKeys().length, 1 + 1 + 12, '플래그 + sl_saves + 경기 12개');
     } finally { restore(); REAL.clear(); }
   });
@@ -72,7 +72,7 @@
       var a = await load();
       ok(a.api.isOn(), '옛 플래그로 샘플 모드가 안 켜짐');
       eq(a.reloads, 0, '리로드');
-      eq(REAL.getItem('sl_sample_on'), '2', '플래그 = 새 판');
+      eq(REAL.getItem('sl_sample_on'), '3', '플래그 = 새 판');
       eq(REAL.getItem('sl_sample__' + OLD), null, '옛 경기가 남음');
       eq(REAL.getItem('sl_sample__sl_autosave'), null, '샘플 모드 자동저장이 남음');
       eq(JSON.parse(localStorage.getItem('sl_saves')).length, 12, '새 판 경기 수');
@@ -125,6 +125,21 @@
       });
       eq(Object.keys(names).length, 9, '전체 타자 수');
       ok(total > 430 && total < 530, '전체 타석: ' + total);
+    } finally { restore(); REAL.clear(); }
+  });
+
+  test('샘플 모드: 타석마다 직전 아웃 · 주자(gfPre) — 이닝 첫 타석은 0아웃 빈 베이스, 모든 타석의 RE24 가 계산된다', async function () {
+    try {
+      fresh(); await enterAndReopen();
+      JSON.parse(localStorage.getItem('sl_saves')).forEach(function (s) {
+        var g = JSON.parse(localStorage.getItem(s.key)), cur = null;
+        g.abs.forEach(function (a) {
+          var p = a.gfPre;
+          ok(p && [0, 1, 2].indexOf(p.outs) >= 0 && p.bases.length === 3 && p.half === 'bottom' && p.inning === parseInt(a.inn, 10), 'gfPre: ' + JSON.stringify(p));
+          if (a.inn !== cur) { eq([p.outs, p.bases], [0, [false, false, false]], a.inn + ' 첫 타석'); cur = a.inn; }
+          ok(window.gfRe24(a) != null, 'RE24 계산 안 됨: ' + a.res);
+        });
+      });
     } finally { restore(); REAL.clear(); }
   });
 

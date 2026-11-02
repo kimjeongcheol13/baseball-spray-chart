@@ -54,6 +54,23 @@ export function advance(res, b, bat, outs, fco) {
   }
 }
 
+// RE24 — 타석 하나가 바꾼 기대득점: 끝난 뒤 기대득점 − 직전 기대득점 + 그 플레이로 들어온 점수 (분석 › 팀 선수별 표 · 타자 카드)
+// 기대득점표 = FanGraphs 라이브러리 RE24 표 (MLB, 경기당 4.15점 환경 — 2014년 무렵). [주자 1루=1 · 2루=2 · 3루=4 의 합][아웃 0~2]
+// 경기 운영 모드로 적은 타석(gfPre)만 계산하고 그 밖은 null. 끝난 뒤 상황은 위 advance 규칙 (그 뒤 손으로 고친 주자 · 점수는 모름), 3아웃이면 0
+const RE = [
+  [0.461, 0.243, 0.095], [0.831, 0.489, 0.214], [1.068, 0.644, 0.305], [1.373, 0.908, 0.343],
+  [1.426, 0.865, 0.413], [1.798, 1.140, 0.471], [1.920, 1.352, 0.570], [2.282, 1.520, 0.736],
+];
+const reAt = (b, o) => (o >= 3 ? 0 : RE[(b[0] ? 1 : 0) + (b[1] ? 2 : 0) + (b[2] ? 4 : 0)][o]);
+export function re24(a) {
+  const p = a && a.gfPre;
+  if (!p || !Array.isArray(p.bases) || ![0, 1, 2].includes(p.outs)) return null;
+  const fc = a.res === '야수선택' && [0, 1, 2].includes(a.fco) ? a.fco : null;   // 야수선택으로 아웃된 주자 (pickFC — 아웃 하나)
+  const r = advance(a.res, p.bases.map(Boolean), true, p.outs, fc);
+  const outs = p.outs + (a.res === '병살' ? 2 : a.res === '삼중살' ? 3 : window._GF_IS_OUT && window._GF_IS_OUT(a.res) ? 1 : 0) + (fc != null ? 1 : 0);
+  return reAt(r.bases, outs) - reAt(p.bases, p.outs) + r.scored.length;
+}
+
 // 폭투 · 포일로 한 베이스 간 주자의 베이스 (앞 주자부터) — go 중에서 실제로 갈 수 있는 주자만: 앞 주자가 남으면 바로 뒤 주자는 못 간다
 export function wpMoves(b, go) {
   const occ = b.map(Boolean), m = [];
@@ -648,5 +665,8 @@ window.slRunPlay = function (t) {
 window.slSub = subStart;
 
 window.slLineScore = lineScore;
+window.gfRe24 = re24;
+window.gfRe24Sum = abs => { let s = 0, n = 0; (abs || []).forEach(a => { const v = re24(a); if (v != null) { s += v; n++; } }); return n ? s : null; };   // 경기 운영 타석이 하나도 없으면 null
+window.gfRe24Txt = v => (v == null ? '-' : Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1));
 window.slRunnerStats = runnerStats;
 if (G() && G().active) window.gfUpdateBar();   // 이 모듈보다 먼저 복구된 경기 운영 상태도 주자 이름을 그린다

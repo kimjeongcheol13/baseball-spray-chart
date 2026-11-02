@@ -152,6 +152,7 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .bt-pa-top small { font-
 html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq-none { display: none; }   /* '투구 기록 없음'이 타석마다 반복 → 숨김 (공 칩이 있으면 그대로 보임) */
 html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq { gap: 5px; margin-top: 8px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq span { padding: 5px 9px; border: 0 !important; border-radius: 10px !important; background: var(--v-card2) !important; font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-seq span small { font-size: 12px; }
 
 /* ── 그림 카드(본 공 위치 · 타구 방향) · 요약 ────────────────── */
 html body.sb.sb-night:not(.high-contrast) #analysisView .bt-2col { gap: 14px; }
@@ -461,7 +462,7 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-count :is(th, td) {
 html body.sb.sb-night:not(.high-contrast) #analysisView .cmp-count td { font: 500 16px var(--v-num); }
 
 /* 타석 결과 구성 (비교 · 타자 시즌 같은 부품): 안타 = 노랑→주황→빨강 · 볼넷·사구 = 초록 · 삼진 = 회색 · 범타 = 어두운 칸 */
-html body.sb.sb-night:not(.high-contrast) #analysisView :is(.cmp, .pf) { --mx0: #F6C343; --mx1: #FF9F43; --mx2: #FF5A36; --mx3: #35D49E; --mx4: #8C95A8; --mx5: #2F3644; }
+html body.sb.sb-night:not(.high-contrast) #analysisView :is(.cmp, .pf, .an-mixbars, .an-mixtbl) { --mx0: #F6C343; --mx1: #FF9F43; --mx2: #FF5A36; --mx3: #35D49E; --mx4: #8C95A8; --mx5: #2F3644; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixbars { gap: 12px; margin-bottom: 18px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixwho { gap: 8px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixwho b { font-size: 15px; }
@@ -478,6 +479,8 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl td { font: 50
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl td small { font-size: 13px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl tbody tr + tr > * { border-color: var(--v-line) !important; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl-who { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl thead th { padding-inline: 2px; }
+@media (min-width: 720px) { html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixtbl.named tr > :first-child { width: 56px; } }   /* 태블릿 표 폭 326px — 이름 칸 120px 이면 머리글이 겹친다 */
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-mixnote { margin-top: 10px; font-size: 13px; }
 
 /* 타구 방향 그림 (비교 · 타자 · 스카우트 같은 부품): 이름 · 방향 띠 */
@@ -543,6 +546,7 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key i { width: 
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key .k-lo { color: var(--v-blue); }
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-key .k-hi { color: var(--v-bad); }
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-zone-note { margin-top: 10px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .zf .zf-c.on :is(.zf-m, .zf-s, .zf-l) { fill: #0A0C11; }
 /* 구종별 결과 표 */
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt thead th { padding: 0 4px 10px; font: 600 12px 'Noto Sans KR', sans-serif; color: var(--v-ink3); border-color: var(--v-line) !important; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pt :is(th, td) { padding: 12px 4px; }
@@ -597,6 +601,8 @@ html body.sb.sb-night:not(.high-contrast) #analysisView .sc-col-tbl thead th { b
 /* ── 그래프 · 옆으로 밀리는 줄 (10-31 팀 탭 점검) ─────────────── */
 /* 그래프 글씨: viewBox 320 이 폰 폭(약 310px)에 맞춰 줄면 8px 글씨가 7.7px → 13 단위 (폰에서 약 13px) */
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-trend :is(.t-ax, .t-end) { font-size: 13px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-trend { max-width: 420px; margin-inline: auto; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .an-trend .t-ax[text-anchor="middle"]:not(.tm-run-lbl) { transform: translateY(4px); }
 html body.sb.sb-night:not(.high-contrast) #analysisView .an-legend .an-legend-note { font-size: 13px; }
 html body.sb.sb-night:not(.high-contrast) #analysisView .tm-run-lbl.w { fill: var(--v-good); }
 html body.sb.sb-night:not(.high-contrast) #analysisView .tm-run-lbl.l { fill: var(--v-bad); }

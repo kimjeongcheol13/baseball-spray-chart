@@ -503,7 +503,7 @@ export function openGameOneImport(from) {
   if (how) how.open = true;   // 링크 · 첫 화면으로 온 사람은 처음 쓰는 사람 — 복사 방법을 펼쳐 둔다
   if (window.openOverlay) window.openOverlay('goOverlay');
   _track('gameone_import_open', { from: fresh || from === 'menu' ? from : 'tile' });   // menu = ☰ 메뉴 「게임원 가져오기」(2026-10-30)
-  setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);
+  if (!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches)) setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);   // 폰은 포커스 안 줌 — 창이 점수 칸(가운데)부터 열려 제목 · 주소 칸이 가려졌다
 }
 
 export function saveGameOneImport() {

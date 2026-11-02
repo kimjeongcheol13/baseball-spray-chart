@@ -3705,6 +3705,9 @@ function showShareQR(url,withNameOpt){
   if(nameOpt)nameOpt.style.display=withNameOpt?'':'none';
   var nameChk=document.getElementById('shareNameChk');
   if(nameChk&&withNameOpt)nameChk.checked=!!_shareNames;
+  // 경기 공유에 상세 필터가 실리면(_shareGameBuild) 그 조건을 보여 준다
+  var fNote=document.getElementById('shareFilterNote');
+  if(fNote){var fl=withNameOpt&&_shareKind==='game'&&window._sfLabel?_sfLabel():'';fNote.textContent=fl?'지금 필터도 같이 보내요 · '+fl:'';fNote.style.display=fl?'':'none';}
 
   // URL 표시
   var urlEl=document.getElementById('shareQRUrl');
@@ -5283,6 +5286,7 @@ function _shareGameBuild(withNames){
   var ht=document.getElementById('tHome').value||'홈팀';
   var at=document.getElementById('tAway').value||'원정팀';
 
+  var _hd=function(a){var h=window._sfHand?_sfHand(a):a.hand;return h==='L'||h==='R'?h:undefined;};   // 타석의 투수 손 — 받는 쪽 좌우투수 필터용
   /* ── Full payload (Supabase용: 모든 데이터) ── */
   var _lpMin=function(arr){return(arr||[]).map(function(p){return{n:p.name,no:p.num,id:p.id};});};
   var fullPayload={
@@ -5294,7 +5298,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi,
       x:a.x?Math.round(a.x*1000)/1000:null,y:a.y?Math.round(a.y*1000)/1000:null,
-      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),tm:a.ts||'',
+      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),tm:a.ts||'',hd:_hd(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0,bid:a.bid,
       cnt:a.count?{b:a.count.b,s:a.count.s,o:a.count.o}:null,
       ev:a.ev!=null?a.ev:null,
@@ -5315,7 +5319,7 @@ function _shareGameBuild(withNames){
     abs:(AS.abs||[]).map(function(a){return{
       r:a.res,d:a.deg,dr:a.dir,p:a.pt,z:a.zone,i:a.inn,b:a.rbi||0,
       x:a.x?Math.round(a.x*100)/100:null,y:a.y?Math.round(a.y*100)/100:null,
-      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),
+      ft:a.ft,fa:a.fa,ov:a.ov,fp:a.fp,t:a.team,ba:_batsOf(a),hd:_hd(a),
       bn:a.bname!=null?String(a.bname):'',bno:a.bnum!=null?a.bnum:0
     };})
   };
@@ -5334,6 +5338,9 @@ function _shareGameBuild(withNames){
   if(_si.ls&&typeof _si.ls==='object')_info.ls=_si.ls;
   else if(window.slLineScore){var _dls=slLineScore(AS.abs);if(_dls)_info.ls=_dls;}   // 직접 기록한 경기: 경기 운영 모드 득점으로 만든 이닝별 득점 (features/runners.js)
   if(Object.keys(_info).length){fullPayload.info=_info;compactPayload.info=_info;}
+  /* 상세 필터(features/filter.js)가 켜져 있으면 그 조건도 — 받는 쪽 「보기」가 같은 필터로 연다. URL 폴백 payload 는 카운트를 싣지 않아 카운트 조건은 뺀다 */
+  var _sf=window._sfState&&_sfState();
+  if(_sf){fullPayload.sf=_sf;var _csf=Object.assign({},_sf,{count:null});if(_csf.pt.length||_csf.res.length||_csf.hand)compactPayload.sf=_csf;}
 
   /* 기본: 선수 실명을 치환해서 내보낸다 (체크박스 "선수 실명 포함" 을 켠 경우만 실명 그대로) */
   if(!withNames){fullPayload=_anonSharePayload(fullPayload);compactPayload=_anonSharePayload(compactPayload);}
@@ -5458,6 +5465,7 @@ function _restoreAbsFromPayload(payloadAbs){
     x:a.x, y:a.y, deg:a.d, dir:a.dr||null, ft:a.ft||null, fa:a.fa>0&&a.fa<=90?+a.fa:undefined, ov:a.ov>0&&a.ov<=_OV_LIM?+a.ov:undefined,
     fp:typeof a.fp==='string'&&/^(?:[FL][1-9]|[1-9](?:-[1-9]){0,3}|[1-9]U)$/.test(a.fp)?a.fp:undefined,   // 아웃 수비 기록(6-3 · F8) — 형식이 맞을 때만
     ev:a.ev!=null?a.ev:null,
+    hand:a.hd==='L'||a.hd==='R'?a.hd:undefined,   // 투수 손 (좌우투수 필터)
     inn:a.i||'1회초',
     ts:a.tm||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
     count:a.cnt?{b:a.cnt.b||0,s:a.cnt.s||0,o:a.cnt.o||0}:{b:0,s:0,o:0},
@@ -5597,6 +5605,7 @@ function loadSharedGame(){
   /* 상태 초기화 */
   AS.batter=null; AS.balls=0; AS.strikes=0; AS.outs=0; AS.currentPitches=[]; _cntBid=null;
   AS.batterFilter=false; AS.showHotCold=false; AS.teamFilter=null; AS.advFilter=null;
+  var _fl=window._sfSetState?_sfSetState(payload.sf):'';   // 보낸 사람이 건 상세 필터 — 링크에 없으면 지금 필터 그대로
   history.replaceState(null,'',location.pathname);
   dismissSharedBanner();
   showApp();
@@ -5605,7 +5614,8 @@ function loadSharedGame(){
     updateAll();
     if(typeof renderPitcherRoster==='function')renderPitcherRoster();
     if(typeof renderPitchLog==='function')renderPitchLog();
-    if(savedMine)showToast('공유받은 경기를 열었어요 · 내 경기는 저장됨',false,8000);
+    if(savedMine)showToast('공유받은 경기를 열었어요 · 내 경기는 저장됨'+(_fl?' · 필터 '+_fl:''),false,8000);
+    else if(_fl)showToast('보낸 사람이 건 필터로 열었어요 · '+_fl,false,8000);
     else showToast('공유 데이터 v'+(payload.v||1)+' 로드 완료 (읽기 전용)');
   },500);
 }

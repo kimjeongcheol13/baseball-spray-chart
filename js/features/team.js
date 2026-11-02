@@ -36,7 +36,10 @@ const COLS = [
   { k: 'rbi', l: '타점', fmt: 'int' },
   { k: 'bbRate', l: '볼넷%', fmt: 'pct' },
   { k: 'kRate', l: '삼진%', fmt: 'pct', lower: true },
+  { k: 're24', l: 'RE24', fmt: 're', t: '주자 · 아웃 상황으로 본 득점 기여 합계 (MLB 기대득점표) — 경기 운영 모드로 적은 타석만' },
 ];
+const _re24 = abs => (window.gfRe24Sum ? window.gfRe24Sum(abs) : null);   // runners.js — 경기 운영 타석이 없으면 null
+const _fmt = (v, t) => (t === 're' ? (window.gfRe24Txt ? window.gfRe24Txt(v) : '-') : fmt(v, t));
 
 // ── 진입 · 조작 ──────────────────────────────────────────────
 function _mountView() {
@@ -121,8 +124,8 @@ function _collect(games) {
     return { ...g, mine };
   });
   const players = Object.values(map).map(p => ({ ...p, st: calcStats(p.abs) }))
-    .map(p => ({ ...p, row: { ...p.st, g: p.games } }));
-  return { abs, perGame, players, st: calcStats(abs) };
+    .map(p => ({ ...p, row: { ...p.st, g: p.games, re24: _re24(p.abs) } }));
+  return { abs, perGame, players, st: { ...calcStats(abs), re24: _re24(abs) } };
 }
 
 function _result(g) {
@@ -398,7 +401,7 @@ function _rosterCard(T) {
   //   기준 = 팀 합계 줄 값, 폭 = 그 선수들의 표준편차 → 0.5σ 이상이면 연하게, 1σ 이상이면 진하게 · 빨강 = 좋음, 파랑 = 나쁨 (삼진%는 낮을수록 좋음)
   const qual = T.players.filter(p => p.st.pa >= QUAL_PA), sd = {};
   if (qual.length >= 3) COLS.forEach(c => {
-    const vs = c.fmt === 'int' ? [] : qual.map(p => p.row[c.k]).filter(Number.isFinite);
+    const vs = c.fmt === 'int' || c.fmt === 're' ? [] : qual.map(p => p.row[c.k]).filter(Number.isFinite);   // RE24 는 합계라 팀 합계 줄과 견주지 않는다
     if (vs.length < 3) return;
     const m = vs.reduce((a, b) => a + b, 0) / vs.length, s = Math.sqrt(vs.reduce((a, b) => a + (b - m) ** 2, 0) / vs.length);
     if (s > 0 && Number.isFinite(T.st[c.k])) sd[c.k] = s;
@@ -416,7 +419,7 @@ function _rosterCard(T) {
         <table class="tm-roster">
           <thead><tr>
             <th scope="col" class="tm-sticky">선수</th>
-            ${COLS.map(c => `<th scope="col" aria-sort="${k === c.k ? (_sort.dir < 0 ? 'descending' : 'ascending') : 'none'}"><button type="button" class="${k === c.k ? 'on' : ''}" onclick="setTeamScope('sort','${c.k}')">${c.l}${k === c.k ? (_sort.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}
+            ${COLS.map(c => `<th scope="col" aria-sort="${k === c.k ? (_sort.dir < 0 ? 'descending' : 'ascending') : 'none'}"><button type="button" class="${k === c.k ? 'on' : ''}"${c.t ? ` title="${c.t}"` : ''} onclick="setTeamScope('sort','${c.k}')">${c.l}${k === c.k ? (_sort.dir < 0 ? ' ▼' : ' ▲') : ''}</button></th>`).join('')}
           </tr></thead>
           <tbody>${rows.map(p => `
             <tr${p.st.pa < QUAL_PA ? ' class="thin"' : ''}>
@@ -425,13 +428,13 @@ function _rosterCard(T) {
                 const v = p.row[c.k];
                 const top = p.st.pa >= QUAL_PA && lead[c.k] != null && v === lead[c.k] && (c.fmt !== 'int' || v > 0);
                 const cls = [top ? 'lead' : '', tint(p, c)].filter(Boolean).join(' ');
-                return `<td${cls ? ` class="${cls}"` : ''}>${_esc(fmt(v, c.fmt))}</td>`;
+                return `<td${cls ? ` class="${cls}"` : ''}>${_esc(_fmt(v, c.fmt))}</td>`;
               }).join('')}
             </tr>`).join('')}
           </tbody>
           <tfoot><tr>
             <th scope="row" class="tm-sticky">팀 합계</th>
-            ${COLS.map(c => `<td>${c.k === 'g' ? '' : _esc(fmt(T.st[c.k], c.fmt))}</td>`).join('')}
+            ${COLS.map(c => `<td>${c.k === 'g' ? '' : _esc(_fmt(T.st[c.k], c.fmt))}</td>`).join('')}
           </tr></tfoot>
         </table>
       </div>

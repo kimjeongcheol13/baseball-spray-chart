@@ -120,6 +120,7 @@ function stSetInfo(k, v) {
   if (k === 'innings') v = [5, 7, 9].indexOf(+v) >= 0 ? +v : 9;
   if (k === 'side') v = v === 'away' ? 'away' : 'home';
   if (k === 'venue') v = String(v || '').trim().slice(0, 20);
+  if (k === 'video') { v = String(v || '').trim().slice(0, 300); if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v; }   // 타석 ▶ 버튼(core.js _vidUrl)이 여는 경기 영상
   i[k] = v;
   if (!i.date) i.date = _today();
   A.info = i;
@@ -276,6 +277,7 @@ function _infoHtml() {
     <div class="st-form">
       <label class="st-f"${H('날짜', '경기 날짜입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>날짜</span><input type="date" class="st-u" value="${esc(i.date || _today())}" onchange="stSetInfo('date',this.value)"></label>
       <label class="st-f"${H('구장', '경기한 구장 이름(최대 20자)입니다. 분석 탭 경기 요약에 표시됩니다.')}><span>구장</span><input type="text" class="st-u" value="${esc(i.venue)}" maxlength="20" placeholder="예: 목동 보조구장" onchange="stSetInfo('venue',this.value)"></label>
+      <label class="st-f"${H('경기 영상', '이 경기 <b>유튜브 주소</b>입니다. 타석 수정 창에 <b>영상 시간</b>(예: 1:23)을 적으면 최근 기록의 ▶ 버튼이 그 장면부터 엽니다.')}><span>경기 영상</span><input type="url" class="st-u" value="${esc(i.video || '')}" maxlength="300" placeholder="유튜브 주소 (선택)" onchange="stSetInfo('video',this.value)"></label>
       <div class="st-2">
         <label class="st-f"${H('내 팀', '우리 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>내 팀</span><input type="text" class="st-u" value="${esc(th)}" maxlength="6" placeholder="내 팀" oninput="stTeamName('home',this.value)"></label>
         <label class="st-f"${H('상대팀', '상대 팀 이름(최대 6자)입니다. 기록 탭 점수판에도 바로 바뀝니다.')}><span>상대팀</span><input type="text" class="st-u" value="${esc(ta)}" maxlength="6" placeholder="원정팀" oninput="stTeamName('away',this.value)"></label>

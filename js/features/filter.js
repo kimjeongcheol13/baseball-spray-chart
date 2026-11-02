@@ -36,6 +36,29 @@ function _isActive() {
 window._sfPass = _pass;
 window._sfCount = function() { return _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0); };
 
+// ── 공유 링크 (core.js _shareGameBuild · loadSharedGame): 지금 필터를 싣고, 받은 필터를 켠다 ──
+var _SF_HAND = { L: '좌투수 상대', R: '우투수 상대' }, _SF_CNT = { first: '초구', pitcher: '투수 유리', batter: '타자 유리', full: '풀카운트' };
+function _sfLabel() {
+  return _SF.pt.concat(_SF.res, _SF.hand ? [_SF_HAND[_SF.hand]] : [], _SF.count ? [_SF_CNT[_SF.count]] : []).join(' · ');
+}
+window._sfLabel = function() { return _isActive() ? _sfLabel() : ''; };
+window._sfState = function() { return _isActive() ? { pt: _SF.pt.slice(), res: _SF.res.slice(), hand: _SF.hand, count: _SF.count } : null; };
+// 받은 값은 형식이 맞는 것만 (짧은 문자열 목록 · L/R · 카운트 이름) — 필터 객체가 아니면 아무것도 안 바꾸고 '' 를 돌려준다
+window._sfSetState = function(s) {
+  if (!s || typeof s !== 'object') return '';
+  var list = function(a) { return Array.isArray(a) ? a.filter(function(v) { return typeof v === 'string' && v.length <= 12; }).slice(0, 20) : []; };
+  _SF.pt = list(s.pt); _SF.res = list(s.res);
+  _SF.hand = s.hand === 'L' || s.hand === 'R' ? s.hand : null;
+  _SF.count = ['first', 'pitcher', 'batter', 'full'].indexOf(s.count) >= 0 ? s.count : null;
+  _syncChips(); _updateBadge();
+  return window._sfLabel();
+};
+// 타석의 투수 손 — _pass 와 같은 판정 (투구 기록과 연결된 타구는 그 기록의 손). 공유 링크에 싣는다
+window._sfHand = function(a) {
+  var L = a && a.pa != null && window.PitchLink ? window.PitchLink.of(a) : null;
+  return (L && L.hand) || (a && a.hand);
+};
+
 // ── 함수 패치: _build() 안에서 DOMContentLoaded 이후 호출 ─────
 function _applyPatches() {
   var origDrawDot = window.drawDot;

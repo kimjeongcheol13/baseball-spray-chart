@@ -217,6 +217,7 @@
 .bp-go { min-height: 44px; border: 0; border-radius: 0; background: var(--ink, #1F2A23); color: var(--paper, #F3EDDF); font: 700 13px var(--f-body, serif); cursor: pointer; }
 .bp-anon { min-height: 44px; border: 0; background: none; color: var(--ink-soft, #55605A); font: 600 12px var(--f-body, serif); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .bp-b:active, .bp-anon:active { background: var(--highlight-soft, #FFF4C2); }
+@media (max-width: 720px) { .bat-pick { max-height: 100%; } }   /* 필드보다 길면 9번 타자가 잘렸다 — .bp-grid 가 줄고 안에서 스크롤 */
 .bat-pick button:focus-visible, .bat-pick input:focus-visible { outline: 2px solid var(--pen-red, #C8322B); outline-offset: 1px; }
 
 /* ── 타순표 빈 '이름' 행 → 그 자리 입력칸 (firstrun.js) — 입력칸이 이름 · 결과 · 기록 칸을 차지 ── */

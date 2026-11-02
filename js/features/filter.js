@@ -262,7 +262,7 @@ function _build() {
 
     // 필드 표시 (기본 OFF)
     + '<div class="sfp-sec"><div class="sfp-lbl">필드 표시</div><div class="sfp-row">'
-    + [['arcs','거리 호·거리'],['dir','당겨치기/밀어치기'],['legend','범례']].map(function(pair) {
+    + [['arcs','거리 호·거리'],['dir','당겨치기/밀어치기'],['ang','15° 각도선'],['legend','범례']].map(function(pair) {
         return '<button class="sfc" data-key="ov" data-val="' + pair[0] + '" onclick="_sfChip(this)">' + pair[1] + '</button>';
       }).join('')
     + '</div></div>'

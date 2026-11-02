@@ -203,6 +203,16 @@ function paintField(ctx, S, T) {
     });
     ctx.restore();
   }
+  // 15° 각도선 (sl_field_overlays.ang): 화면 부채꼴 각도 = 실제 방향 (저장 각도 deg 는 구간별로 늘린 값이라 쓰지 않음) — 센터 0°, 좌우 15° · 30°
+  if (ov.ang) {
+    ctx.save(); fair(); ctx.clip();
+    ctx.setLineDash([2 * u, 6 * u]); ctx.strokeStyle = T.paper; ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1, 1.2 * u);
+    [60, 75, 90, 105, 120].forEach(d => { const ph = d * Math.PI / 180, p = P(ph, F(ph) - 16 * u); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(p[0], p[1]); ctx.stroke(); });
+    ctx.restore();
+    // 숫자는 15° · 30° 만 (센터 줄 끝엔 중앙 펜스 거리 라벨이 있다)
+    ctx.font = `600 ${Math.max(10, Math.round(12 * u))}px Oswald, sans-serif`; ctx.fillStyle = T.paper2; ctx.textAlign = 'center';
+    [60, 75, 105, 120].forEach(d => { const ph = d * Math.PI / 180, p = P(ph, F(ph) * 0.92); ctx.fillText(Math.abs(90 - d) + '°', p[0], p[1]); });
+  }
   ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }

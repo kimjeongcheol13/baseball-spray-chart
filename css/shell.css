@@ -204,6 +204,16 @@ body:has(.ld.open) .toast{z-index:460}
   color:var(--sl-signal);font:700 11px var(--font);cursor:pointer;white-space:nowrap;
 }
 .rec-undo:active{background:rgba(75,140,245,.25)}
+.rec-vid{
+  display:inline-flex;align-items:center;margin:6px 6px 0 0;
+  padding:5px 10px;border-radius:8px;border:1px solid var(--border2);
+  color:var(--text2);font:700 11px var(--font);text-decoration:none;white-space:nowrap;
+}
+.rec-vid:active{background:var(--bg-hover)}
+body.sb .rec-vid{border-radius:0;border-color:var(--ink);color:var(--ink)}
+html body.sb.sb-night:not(.high-contrast) .rec-vid{border:0;border-radius:12px;background:var(--v-line);color:var(--v-ink2)}
+/* 폰: 보이는 크기는 옆 되돌리기와 같게, 누르는 영역만 높이 44 (위는 상세 줄과의 간격, 아래는 카드 안쪽 여백으로 들어감) */
+@media(max-width:720px){.rec-vid{position:relative}.rec-vid::before{content:'';position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}}
 
 /* ═══ 4단계: 상단 바 (이닝 · 스코어 · ☰) · ☰ 통합 메뉴 · 결과 색상 ═══ */
 

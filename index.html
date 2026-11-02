@@ -84,7 +84,7 @@ var _kakaoSdkLoaded = false;
 </script>
 <link rel="stylesheet" href="css/styles.css?v=97">
 <link rel="stylesheet" href="css/features.css?v=27">
-<link rel="stylesheet" href="css/shell.css?v=14">
+<link rel="stylesheet" href="css/shell.css?v=15">
 <link rel="stylesheet" href="css/analysis.css?v=13">
 <link rel="stylesheet" href="css/compare.css?v=6">
 <link rel="stylesheet" href="css/profile.css?v=11">
@@ -1615,6 +1615,7 @@ var _kakaoSdkLoaded = false;
       <div><div class="sec-lbl" style="margin-bottom:4px">코스</div><select class="inp" id="editZone"><option value="">없음</option><option>내각 높음</option><option>중앙 높음</option><option>외각 높음</option><option>내각 중간</option><option>중앙 중간</option><option>외각 중간</option><option>내각 낮음</option><option>중앙 낮음</option><option>외각 낮음</option><option>볼 위</option><option>볼 아래</option><option>볼 내</option><option>볼 외</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">타구 방향</div><select class="inp" id="editDir"><option value="">없음</option><option value="LF">당겨치기(LF)</option><option value="LC">좌중간(LC)</option><option value="CF">센터(CF)</option><option value="RC">우중간(RC)</option><option value="RF">밀어치기(RF)</option></select></div>
       <div><div class="sec-lbl" style="margin-bottom:4px">타점</div><div class="rbi-row" style="margin-bottom:0"><button class="rbi-btn" onclick="chEditRbi(-1)">−</button><span class="rbi-val" id="editRbiVal">0</span><button class="rbi-btn" onclick="chEditRbi(1)">+</button></div></div>
+      <div><label class="sec-lbl" for="editVt" style="display:block;margin-bottom:4px">영상 시간</label><input class="inp" id="editVt" maxlength="10" placeholder="예: 1:23" autocomplete="off"><div id="editVtHint" style="font-size:11px;color:var(--text3);margin-top:4px">경기설정 › 경기 정보에 「경기 영상」 주소를 넣으면 최근 기록에 ▶ 버튼이 생겨요</div></div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveEditRec()">저장</button>
@@ -2481,10 +2482,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=246"></script>
+<script defer src="js/core.js?v=247"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=13"></script>
-<script type="module" src="js/app.js?v=210"></script>
+<script type="module" src="js/app.js?v=211"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -1793,7 +1793,7 @@ function renderRecs(){
   const BC={__proto__:null,'안타':'b-hit','내야안타':'b-hit','2루타':'b-2b','3루타':'b-3b','홈런':'b-hr','볼넷':'b-walk','사구':'b-hbp','삼진':'b-k','플라이 아웃':'b-out','땅볼 아웃':'b-out','희타':'b-other','희비':'b-other','병살':'b-out','라인드라이브 아웃':'b-out','삼중살':'b-out','실책':'b-other','야수선택':'b-other'};
   var _ub=document.getElementById('toolbarUndoBtn');if(_ub)_ub.disabled=!AS.abs.length;
   var _mub=document.getElementById('mabUndoBtn');if(_mub)_mub.disabled=!AS.abs.length;
-  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.fp,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div></div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
+  el.innerHTML=[...list].reverse().map(a=>`<div class="rec-item" draggable="true" ondragstart="recDragStart(event,${_numArg(a.id)})" ondragover="recDragOver(event,${_numArg(a.id)})" ondrop="recDrop(event,${_numArg(a.id)})" ondragleave="recDragLeave(event)" ondragend="recDragEnd()"><span class="rec-drag-handle" ondragstart="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span><span class="badge ${BC[a.res]||'b-other'}">${_escHtml(a.res)}</span><div class="rec-info"><div class="rec-player">${a.bnum?'#'+_escHtml(a.bnum)+' ':''}${_escHtml(a.bname)} (${a.team==='home'?'홈':'원정'})</div><div class="rec-detail">${_escHtml([a.inn,a.fp,a.pt,a.zone,a.dir,a.rbi>0?a.rbi+'타점':'',a.ts].filter(Boolean).join(' · '))}</div>${_vidLink(a)}</div><button class="rec-edit" onclick="openEditRec(${_numArg(a.id)})">✏️ 수정</button><button class="rec-del" onclick="delRec(${_numArg(a.id)})">✕</button></div>`).join('');
 }
 var _dragRecId=null;
 function recDragStart(e,id){_dragRecId=id;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.classList.add('dragging'),0);}
@@ -3910,13 +3910,35 @@ function openEditRec(id){
   document.getElementById('editDir').value=ab.dir||'';
   _editRbi=ab.rbi||0;
   document.getElementById('editRbiVal').textContent=_editRbi;
+  document.getElementById('editVt').value=ab.vt!=null?_vtFmt(ab.vt):'';
+  document.getElementById('editVtHint').style.display=AS.info&&AS.info.video?'none':'';   // 경기 영상 주소가 없으면 어디에 넣는지 알려 준다
   openOverlay('editRecOverlay');
+}
+// ── 타석 영상: 경기설정 「경기 영상」(AS.info.video) + 수정 창 「영상 시간」(ab.vt, 초) → 최근 기록 ▶ 버튼 ──
+// "1:23" · "1:02:03" · "83" (구분은 : 또는 .) → 초. 빈칸 null, 형식이 틀리면 NaN
+function _vtParse(s){
+  s=String(s==null?'':s).trim();if(!s)return null;
+  if(!/^\d{1,4}([:.][0-5]?\d){0,2}$/.test(s))return NaN;
+  return s.split(/[:.]/).reduce(function(t,p){return t*60+(+p);},0);
+}
+function _vtFmt(t){var h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60,p=function(n){return (n<10?'0':'')+n;};return (h?h+':'+p(m):m)+':'+p(s);}
+// 그 장면부터 여는 주소 — 유튜브(watch · youtu.be · live · shorts · embed)는 t=초, 그 밖은 #t=초(영상 파일이면 그 시간부터). http(s) 가 아니면 ''
+function _vidUrl(v,t){
+  v=String(v||'').trim();if(!/^https?:\/\//i.test(v))return '';
+  var m=v.match(/^https?:\/\/(?:(?:www|m)\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|live\/|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/i);
+  return m?'https://www.youtube.com/watch?v='+m[1]+'&t='+t+'s':v.split('#')[0]+'#t='+t;
+}
+function _vidLink(a){
+  var u=a.vt!=null&&AS.info?_vidUrl(AS.info.video,a.vt):'';
+  return u?'<a class="rec-vid" href="'+_escHtml(u)+'" target="_blank" rel="noopener" title="경기 영상에서 이 타석 보기">▶ '+_vtFmt(a.vt)+'</a>':'';
 }
 function chEditRbi(d){_editRbi=Math.max(0,_editRbi+d);document.getElementById('editRbiVal').textContent=_editRbi;}
 function saveEditRec(){
   var id=parseInt(document.getElementById('editRecId').value);
   var ab=AS.abs.find(function(a){return a.id===id;});
   if(!ab)return;
+  var vt=_vtParse(document.getElementById('editVt').value);
+  if(Number.isNaN(vt)){showToast('영상 시간은 1:23 처럼 적어 주세요',false);return;}
   _sharedView=null;   // 공유받아 보던 경기도 기록을 고치면 내 경기(제자리 수정이라 _sharedViewActive 가 못 알아챈다)
   ab.inn=document.getElementById('editInn').value;
   ab.res=document.getElementById('editRes').value;
@@ -3927,6 +3949,7 @@ function saveEditRec(){
   ab.dir=dirVal||null;
   ab.deg=dirVal?dirDeg[dirVal]||null:null;
   ab.rbi=_editRbi;
+  if(vt==null)delete ab.vt;else ab.vt=vt;
   _syncAbPitchEdit(ab);   // 바뀐 결과 · 이닝을 투수 탭 공에도
   closeOverlay('editRecOverlay');
   updateAll();

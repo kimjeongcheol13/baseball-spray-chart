@@ -532,7 +532,8 @@ wrap('gfToggle', orig => function () {
   const g = G();
   if (!g || g.active) return orig.apply(this, arguments);
   const name = (id, d) => (($(id) || {}).value || '').trim() || d, self = this, args = arguments;
-  const go = f => { closePick(); g.first = f; orig.apply(self, args); if (window.shellSyncSettings) window.shellSyncSettings(); };
+  // 경기설정 '내 팀은 홈(말 공격) / 원정(초 공격)'도 고른 대로 — 점수판 윗줄 = 선공 팀 (setup.js stSetInfo · scorebook.js _lsHtml)
+  const go = f => { closePick(); g.first = f; orig.apply(self, args); if (window.stSetInfo) window.stSetInfo('side', f === 'home' ? 'away' : 'home'); if (window.shellSyncSettings) window.shellSyncSettings(); };
   const box = sheet('1회초에 어느 팀이 먼저 공격하나요?');
   btn(box, `${name('tAway', '원정팀')} 먼저 — 우리 팀 후공 (기본)`, () => go('away'));
   btn(box, `${name('tHome', '홈팀')} 먼저 — 우리 팀 선공`, () => go('home'));

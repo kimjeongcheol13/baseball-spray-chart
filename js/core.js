@@ -8278,8 +8278,29 @@ function gfUpdateBases(res,rbi){
 }
 
 // ─── 경기 종료 ───
+// 브라우저 확인 창 대신 앱 창 (새 경기 확인 창 #newGameGuard 와 같은 모양) — 처음 열 때 body 에 만든다(#app-page 밖이라 경기설정 탭에서도 보임)
 function gfEndConfirm(){
-  if(confirm('경기를 종료하고 최종 요약을 확인할까요?'))gfEndGame();
+  var el=document.getElementById('gfEndAsk');
+  if(!el){
+    el=document.createElement('div');el.id='gfEndAsk';
+    el.style.cssText='position:fixed;inset:0;z-index:470;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px';
+    el.innerHTML='<div class="gw-card" role="dialog" aria-modal="true" aria-labelledby="geaTitle">'
+      +'<div class="gw-title" id="geaTitle">경기를 종료할까요?</div>'
+      +'<div class="gw-sub">경기 운영을 끝내고 경기 리포트를 엽니다.</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<button type="button" class="gw-btn-start" style="flex:none" onclick="gfEndAskClose();gfEndGame()">경기 종료</button>'
+      +'<button type="button" class="gw-btn-cancel" style="flex:none" onclick="gfEndAskClose()">계속 기록</button>'
+      +'</div></div>';
+    el.addEventListener('click',function(e){if(e.target===el)gfEndAskClose();});
+    el.addEventListener('keydown',function(e){if(e.key==='Escape')gfEndAskClose();});
+    document.body.appendChild(el);
+  }
+  el.style.display='flex';
+  el.querySelector('.gw-btn-cancel').focus();
+}
+function gfEndAskClose(){
+  var el=document.getElementById('gfEndAsk');
+  if(el)el.style.display='none';
 }
 function gfEndGame(){
   gfDeactivate();

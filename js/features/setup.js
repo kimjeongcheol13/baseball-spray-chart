@@ -307,9 +307,9 @@ function _infoHtml() {
       </div>
     </div>
     <div class="st-gf">
-      <button type="button" class="sb-btn${gf ? ' on' : ''}" onclick="stGf()"${H('경기 운영', '켜면 <b>타순 · 아웃 · 이닝 · 주자</b>가 자동으로 넘어갑니다. (자동 진행은 내 팀이 초 공격이라고 가정)')}>${gf ? '경기 운영 끄기' : '경기 운영 시작'}</button>
+      <button type="button" class="sb-btn${gf ? ' on' : ''}" onclick="stGf()"${H('경기 운영', '켜면 <b>타순 · 아웃 · 이닝 · 주자</b>가 자동으로 넘어갑니다. (켤 때 어느 팀이 먼저 공격하는지 고릅니다)')}>${gf ? '경기 운영 끄기' : '경기 운영 시작'}</button>
       ${gf ? `<button type="button" class="sb-btn st-danger" onclick="gfEndConfirm()"${H('경기 종료', '경기를 끝내고 <b>최종 요약(경기 리포트)</b>을 엽니다. 누르면 한 번 더 확인합니다.')}>경기 종료</button>` : ''}
-      <p>경기 운영을 켜면 타순·아웃·이닝·주자가 자동으로 넘어갑니다. (자동 진행은 내 팀이 초 공격이라고 가정)</p>
+      <p>경기 운영을 켜면 타순·아웃·이닝·주자가 자동으로 넘어갑니다. (켤 때 어느 팀이 먼저 공격하는지 고릅니다)</p>
     </div>`;
 }
 

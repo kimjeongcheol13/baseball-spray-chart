@@ -80,6 +80,8 @@ export function renderRecordPanel() {
 
 // ── 이닝 ─────────────────────────────────────────────────────
 export function recStepInning(d) {
+  // 경기 운영 중엔 경기 운영 이닝을 같이 옮긴다 (아웃 · 주자 비움 — core.js gfStepHalf). 헤더만 바꾸면 헤더 2회초 / 경기 운영 1회말로 갈렸다
+  if (window.GF && window.GF.active && window.gfStepHalf) { window.gfStepHalf(d); return; }
   const s = $('innSel');
   if (!s) return;
   const i = Math.max(0, Math.min(s.options.length - 1, s.selectedIndex + d));

@@ -504,6 +504,11 @@ body.sb .overlay .modal { background: var(--paper-2); border: var(--card-bw) sol
 .sb-nowbar span { flex: none; font: 700 12px/1 var(--f-body); color: var(--ink-soft); }
 .sb-nowbar em { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; font: 700 12px/1 var(--f-body); font-style: normal; color: var(--ink); border-left: 1px solid var(--rule); padding-left: 10px; min-height: 32px; }
 .sb-nowbar:active { background: var(--highlight-soft); }
+/* 경기 운영 · 상대 공격 · 상대 명단 없음: 타자 바 대신 넘기기 바 (scorebook.js #sbSkipBar — 둘 중 하나만 보임) */
+#sbNowBar[hidden], #sbSkipBar[hidden] { display: none !important; }
+.sb-skipbar { cursor: default; }
+.sb-skipbar:active { background: var(--paper-2); }
+.sb-skipbar .sb-skip-go { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: var(--card-bw) solid var(--ink); background: var(--ink); color: var(--paper); font: 700 13px/1 var(--f-body); cursor: pointer; }
 
 /* ═══ 모바일 (≤720px): 라인스코어 → 필드 → 볼카운트 → 도장 → 타석 기록, 타순표는 하단 시트 ═══ */
 @media (max-width: 720px) {

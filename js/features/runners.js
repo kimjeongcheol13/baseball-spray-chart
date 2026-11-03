@@ -501,9 +501,13 @@ wrap('gfUpdateBases', orig => function (res) {
   g.runners = mv.bases.map((r, i) => (g.bases[i] && r && r !== UNK ? r : null));
   if (mine) {
     mine.scored = mv.scored.map(clean);
+    // 타점 = 이 타석에 홈인한 주자 수 (홈런은 타자 포함). 실책 · 병살로 들어온 점수는 타점이 아니다 — 손으로 넣은 타점은 그대로 · 수정 창에서 고칠 수 있다
+    // 예전엔 빠른 버튼(안타 · 장타 · 홈런)이 늘 0타점이라 3점 홈런도 0타점이었다
+    const rbi = !(mine.rbi > 0) && res !== '실책' && res !== '병살' ? mv.scored.length : 0;
+    if (rbi) { mine.rbi = rbi; if (window.updateAll) window.updateAll(); }
     if (mv.scored.length) {
       const t = $('toastTxt');
-      window.showToast(`${t ? t.textContent : ''} · 홈인 ${mv.scored.map(nm).join(', ')}`, true, 3000);
+      window.showToast(`${t ? t.textContent : ''} · 홈인 ${mv.scored.map(nm).join(', ')}${rbi ? ` (${rbi}타점)` : ''}`, true, 3000);
     }
   }
   return n;
@@ -618,6 +622,7 @@ function askResume(key, s) {
     window.swLineupTab(atk());
     const L = window.gfGetLineup(), p = L.length ? L[g.batterIdx % L.length] : null;
     if (p) { A.batter = null; window.selBatter(p.id); }
+    else { A.batter = null; window.selBatter(null); }   // 공격 팀 명단이 비면 타자 없이 (core.js gfSkip — 상대 공격은 기록 안 함)
     if (p && keep.bid != null && String(keep.bid) === String(p.id)) { A.currentPitches = keep.cp; A.balls = keep.b; A.strikes = keep.s; }
     window._cntBid = A.batter ? A.batter.id : null;
     window.renderCount(); window.gfSyncInnSel(); window.gfUpdateBar();

@@ -158,7 +158,7 @@ function stEdit(id, f, v) {
   render();
 }
 // 빈 행에 이름을 쓰면 선수 추가 (기존 addPlayer 입력칸을 채워서 그대로 호출)
-function stAdd(v, pos, bh) {
+function stAdd(v, pos, bh, go) {
   const nm = String(v || '').trim().slice(0, 10);
   if (!nm) return;
   const n = $('pName'), num = $('pNum');
@@ -171,8 +171,13 @@ function stAdd(v, pos, bh) {
   if (_extra > 0 && lu.length > 9) _extra = Math.max(0, _extra - 1);
   _refreshLineup();
   render();
-  // 다음 빈 행으로 바로 이어서 입력
+  // 다른 칸을 누르며 넘어왔으면(go) 다시 그린 그 칸으로 — 같은 줄이면 방금 넣은 선수 줄. 아니면(Enter) 다음 빈 행으로 바로 이어서 입력
+  if (go) { _refocus(go.same ? (p && p.name === nm ? lu.indexOf(p) : -1) : go.i, go.f); return; }
   requestAnimationFrame(() => { const e = document.querySelector('#stLu .st-row.empty .st-in.nm'); if (e) e.focus(); });
+}
+// 다시 그린 타순표의 i 번째 줄(위에서부터 · 빈 줄 포함) f 칸으로 — 다시 그리면 누른 칸이 사라진다
+function _refocus(i, f) {
+  requestAnimationFrame(() => { const r = document.querySelectorAll('#stLu .st-row')[i], e = r && r.querySelector(`.st-in[data-f="${f}"]`); if (e) e.focus(); });
 }
 function stAddExtra() {
   _extra++;
@@ -241,14 +246,25 @@ function _dragInit() {
     requestAnimationFrame(() => { const r = document.querySelector(`#stLu .st-row[data-i="${Math.max(0, Math.min(_lineup().length - 1, i))}"] .st-drag`); if (r) r.focus(); });
   });
   // 입력: 이름은 Enter/포커스 이탈, 포지션·타석은 change
+  // 칸을 바꾸면(stAdd · stEdit) 타순표를 다시 그려 방금 누른 다음 칸이 사라진다 — 예전엔 커서가 다음 줄 이름 칸으로 가거나 없어져
+  // 수비 숫자가 다음 선수 이름에 붙고("8이두리") 다음 이름이 빠졌다. 그래서 칸이 포커스를 잃기 전에(pointerdown · Tab keydown) 어디로 가는지 적어 두고 다시 그린 뒤 그 칸으로
+  let to = null;   // { row: 누른 줄, i: 위에서부터 몇째 줄, f: 칸 }
+  const mark = (row, f) => { to = row ? { row, i: Array.prototype.indexOf.call(box.querySelectorAll('.st-row'), row), f } : null; };
+  box.addEventListener('pointerdown', e => { const t = e.target.closest('.st-in'); if (t) mark(t.closest('.st-row'), t.dataset.f); else to = null; }, true);
   box.addEventListener('change', e => {
     const inp = e.target.closest('.st-in');
     if (!inp) return;
     const row = inp.closest('.st-row');
-    if (row.dataset.id) stEdit(row.dataset.id, inp.dataset.f, inp.value);
-    else if (inp.dataset.f === 'name') stAdd(inp.value, (row.querySelector('.st-in.pos') || {}).value, (row.querySelector('.st-in.bh') || {}).value);
+    const go = to && !(to.row === row && to.f === inp.dataset.f) ? { i: to.i, f: to.f, same: to.row === row } : null;
+    to = null;
+    if (row.dataset.id) { stEdit(row.dataset.id, inp.dataset.f, inp.value); if (go) _refocus(go.i, go.f); }
+    else if (inp.dataset.f === 'name') stAdd(inp.value, (row.querySelector('.st-in.pos') || {}).value, (row.querySelector('.st-in.bh') || {}).value, go);
   });
-  box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.st-in')) e.target.blur(); });
+  const NEXT = { name: 'pos', pos: 'bh' };
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('.st-in')) { to = null; e.target.blur(); }
+    else if (e.key === 'Tab' && e.target.matches('.st-in')) mark(!e.shiftKey && NEXT[e.target.dataset.f] ? e.target.closest('.st-row') : null, NEXT[e.target.dataset.f]);
+  });
 }
 
 const ICON = {

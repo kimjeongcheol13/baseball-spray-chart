@@ -219,6 +219,7 @@ function _hookFieldTap() {
     if (_pk) { if (!_tpFresh(_pk.t)) _pkClose(); return; }   // 팝업이 열린 채 필드 탭 = 취소 (결과 팝업과 같은 동작 · 막 열렸으면 무시)
     // 결과 팝업 열림(탭=취소) · 다른 창 열림 · 타자 있음 → 기존 흐름 그대로
     if (window._tp || document.querySelector('.overlay.show') || _AS().batter) return orig.apply(this, arguments);
+    if (window.gfSkip && window.gfSkip()) return orig.apply(this, arguments);   // 상대 공격 · 상대 명단 없음: 타자 고르기 팝업 대신 core 안내만
     const at = _tapAt(e);
     if (!at) return orig.apply(this, arguments);   // 홈 뒤: 기존 처리
     if (_gfOn() && _gfAuto()) {

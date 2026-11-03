@@ -987,6 +987,8 @@ html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar .sb-eyebrow { fon
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar b { font: 800 17px/1.1 'Noto Sans KR', sans-serif; }
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar span { font: 600 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-nowbar em { min-height: 44px; padding: 0 12px; background: var(--v-card2); border: 0; border-radius: 12px; font: 700 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-skipbar:active { background: var(--v-card); }
+html body.sb.sb-night:not(.high-contrast) #app-page .sb-skipbar .sb-skip-go { padding: 0 14px; background: var(--v-acc); border: 0; border-radius: 12px; font: 700 13px/1 'Noto Sans KR', sans-serif; color: #fff; }
 
 /* 필드 카드 */
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-field-hd h2 small { font: 500 14px/1 'Noto Sans KR', sans-serif; letter-spacing: 0; color: var(--v-ink3); }

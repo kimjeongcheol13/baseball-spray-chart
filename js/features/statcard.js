@@ -451,7 +451,7 @@ function season(cv) {
 
 // ── GAME REPORT 공유 이미지 (스토리 1080×1920 · 피드 1080×1080) ─────────────
 // 공유 이미지 모듈이라 여기서 그린다 — 카드의 구장 · 지표 타일 · 방향 막대를 그대로 쓴다. core.js pgExport 를 바꿔 낀다(모달 버튼 onclick)
-//  · 계산은 core pgExport 와 같다: 팀 타율 = 안타 / (볼넷 · 사구 · 희생 뺀 타석, 0 이면 1) · 안타 · 타점 · 삼진 · 방향(_isPull · _isCtr) · 타구 = AS.abs 전부
+//  · 계산은 core _pgBuild 와 같다: 팀 타율 = 안타 / (볼넷 · 사구 · 희생 뺀 타석, 0 이면 1) · 안타 · 타점 · 삼진 · 방향(_isPull · _isCtr) · 타구 = 우리 팀 타석(core _pgAbs)
 //  · 코멘트는 모달의 #pgAITxt 글 그대로. 모달 안 작은 그림(_pgDrawMini)은 아래 pgMini 가 같은 선 구장으로
 
 // 결과 카드(스토리): 두 팀 줄(이름 + 큰 점수). 이긴 쪽 = 밝게 + 승 꼬리표 · 주황 점수, 진 쪽 흐리게, 비기면 둘 다 보통. 높이 반환
@@ -508,7 +508,7 @@ function note(c, x, y, w, h, t, size) {
 // 스토리: 맨 위 줄 · 결과 카드 · 지표 타일 · 방향 막대 · 스프레이(남는 높이 전부) · 코멘트
 // 피드(1:1): 맨 위 줄 · 한 줄 결과 · 지표 타일 · [구장 | 방향(세로) + 코멘트]
 function gameReport(cv, sc, H, mode) {
-  const c = begin(cv, H, sc), AS = window.AS, abs = AS.abs, bot = H - FOOT;
+  const c = begin(cv, H, sc), AS = window.AS, abs = window._pgAbs(), bot = H - FOOT;
   const oab = abs.filter(a => !window._NOAB.includes(a.res)).length || 1;
   const h = abs.filter(a => window._HITS.includes(a.res)).length;
   const k = abs.filter(a => a.res === '삼진').length;
@@ -566,8 +566,9 @@ function pgMini(cv, S) {
   cv.width = cv.height = Math.round(S * r); cv.style.width = cv.style.height = S + 'px';
   c.setTransform(r, 0, 0, r, 0, 0);
   const P = 8, R = Math.min(S - P * 2, (S / 2 - P) / (k * Math.SQRT1_2));
-  field(c, S / 2, S - P - (S - P * 2 - R) / 2, R, window.AS.abs, 'mini');
-  const d = window.AS.abs.filter(a => a.deg != null), n = [d.filter(window._isPull).length, d.filter(window._isCtr).length];
+  const abs = window._pgAbs();
+  field(c, S / 2, S - P - (S - P * 2 - R) / 2, R, abs, 'mini');
+  const d = abs.filter(a => a.deg != null), n = [d.filter(window._isPull).length, d.filter(window._isCtr).length];
   n.push(d.length - n[0] - n[1]);
   const mx = Math.max.apply(null, n);
   ['pgDP', 'pgDC', 'pgDO'].forEach((s, i) => { const e = $(s); if (e) e.classList.toggle('max', d.length > 0 && n[i] === mx); });

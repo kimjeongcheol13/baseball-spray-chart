@@ -411,7 +411,14 @@ function _nowInfo() {
   return { name: b.name, order: i >= 0 ? i + 1 : null, pa: pa + 1 };
 }
 
+// 경기 운영 · 상대 공격인데 상대 명단이 비었다 (core.js gfSkip) — 지금 타자 대신 「다음 이닝으로 ▶」
+const _skip = () => !!(window.gfSkip && window.gfSkip());
+
 function _nowHtml() {
+  if (_skip()) {
+    return `<small class="sb-eyebrow">상대 공격</small><b class="sb-now-nm empty">기록 안 함</b><span class="sb-now-meta">상대 타순표에 이름을 넣으면 기록돼요</span>`
+      + `<button type="button" class="sb-btn" onclick="gfStepHalf(1)">다음 이닝으로 ${ICON.next}</button>`;
+  }
   const x = _nowInfo();
   return `<small class="sb-eyebrow">지금 타자</small>`
     + (x ? `<b class="sb-now-nm">${esc(x.name)}</b><span class="sb-now-meta">${x.order ? x.order + '번 · ' : ''}${x.pa}타석째</span>`
@@ -654,6 +661,9 @@ function render() {
   if (!(act && act.closest && act.closest('#sbOrder') && act.matches('input'))) set('sbOrder', _orderHtml());
   set('sbNow', _nowHtml());
   set('sbNowBar', _nowBarHtml());
+  const sk = _skip(), nb = $('sbNowBar'), kb = $('sbSkipBar');
+  if (nb) nb.hidden = sk;
+  if (kb) kb.hidden = !sk;
   set('sbFieldFt', _fieldFtHtml());
   set('sbFieldHd', _fieldHdHtml());
   _paint3d();
@@ -754,6 +764,7 @@ function _mountRecord() {
   if (hint) card.appendChild(hint);
   card.insertAdjacentHTML('beforeend', '<footer class="sb-field-ft" id="sbFieldFt"></footer>');
   card.insertAdjacentHTML('beforebegin', '<button type="button" class="sb-nowbar" id="sbNowBar" onclick="sbOrderSheet(true)" aria-haspopup="dialog" aria-controls="sbOrder" aria-expanded="false"></button>');
+  card.insertAdjacentHTML('beforebegin', `<div class="sb-nowbar sb-skipbar" id="sbSkipBar" hidden><small class="sb-eyebrow">상대 공격</small><b class="empty">기록 안 함</b><button type="button" class="sb-skip-go" onclick="gfStepHalf(1)">다음 이닝으로 ${ICON.next}</button></div>`);
 
   // 오른쪽: 입력 열
   al.insertAdjacentHTML('beforeend', '<aside class="sb-side" id="sbSide" aria-label="기록 입력"></aside>');
@@ -789,7 +800,7 @@ function _hook() {
   // 리포트 화면의 작은 스프레이(#pgMini)만 종이 필드로 (이미지 내보내기용 _pgDrawMiniOnCanvas는 그대로)
   const pm = window._pgDrawMini;
   if (typeof pm === 'function' && !pm._sb) {
-    const w = function (id) { if (id === 'pgMini' && $(id)) return paperMiniSpray($(id), (window.AS || {}).abs || []); return pm.apply(this, arguments); };
+    const w = function (id) { if (id === 'pgMini' && $(id)) return paperMiniSpray($(id), window._pgAbs ? window._pgAbs() : (window.AS || {}).abs || []); return pm.apply(this, arguments); };
     w._sb = true;
     window._pgDrawMini = w;
   }

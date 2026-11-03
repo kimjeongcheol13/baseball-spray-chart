@@ -1320,6 +1320,7 @@ function onFClick(e){
   if(_tp){if(!_tpFresh(_tp.t))_tpCancel();return;}
   // 팝업 열린 상태에서 field 클릭 이벤트 차단
   if(document.querySelector('.overlay.show'))return;
+  if(gfSkip()){gfSkipHint();return;}   // 상대 공격 · 상대 명단 없음: 기록하지 않는다 ('타자 1'도 만들지 않음)
   // 타자 미선택: 라인업이 비어 있으면 "타자 1" 자동 생성, 아니면 선택 요청
   if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   let x,y;const rect=e.rect||fC.getBoundingClientRect();const sx=e.sx||(FS/rect.width),sy=e.sy||(FS/rect.height);
@@ -2958,6 +2959,7 @@ function restoreGame(key){
 // B·S·O 를 누르면 +1. 카운트가 차면 그 자리에서 타석을 끝낸다 — 4볼 → 볼넷, 3스트라이크 → 삼진 (K/BB 도장과 같은 recQuick 경로), 3아웃 → 다음 이닝
 // (예전에는 0 으로 되돌아가기만 해서 "볼 4개·스트라이크 3개를 눌러도 기록이 안 된다"는 문제가 있었다)
 function chCount(type){
+  if(type!=='o'&&gfSkip()){gfSkipHint();return;}   // 상대 공격 · 상대 명단 없음: 볼 · 스트라이크를 세지 않는다 (우리 첫 타자 카운트로 넘어가지 않게)
   if(AS.batter)_cntBid=AS.batter.id;
   if(type==='b'){if(AS.balls>=3){_countFull('볼넷');return;}AS.balls++;}
   else if(type==='s'){if(AS.strikes>=2){_countFull('삼진');return;}AS.strikes++;}
@@ -5787,6 +5789,7 @@ function runGameCompare(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const _QUICK_HITS=['안타','2루타','3루타','홈런'];
 function recQuick(res){
+  if(gfSkip()){gfSkipHint();return;}
   if(!_ensureBatter()){showToast('타자를 먼저 선택하세요',false,false);return;}
   if(_QUICK_HITS.includes(res)){
     AS.pendingQuickRes=res;
@@ -8003,7 +8006,7 @@ function showGameSummary(){
   var ov=document.getElementById('gameSummaryOv');
   var card=document.getElementById('gameSummaryCard');
   if(!ov||!card)return;
-  var abs=AS.abs;
+  var abs=_pgAbs();
   var oab=abs.filter(function(a){return!_NOAB.includes(a.res);}).length||1;
   var h=abs.filter(function(a){return _HITS.includes(a.res);}).length;
   var bb=abs.filter(function(a){return a.res==='볼넷'||a.res==='사구';}).length;
@@ -8015,9 +8018,7 @@ function showGameSummary(){
   var slg=oab>0?tb/oab:0;
   var th=document.getElementById('tHome').value||'홈팀';
   var ta=document.getElementById('tAway').value||'원정팀';
-  var mvpAbs=Object.create(null);
-  abs.forEach(function(a){if(!mvpAbs[a.bid])mvpAbs[a.bid]={name:a.bname,h:0,rbi:0};if(_HITS.includes(a.res))mvpAbs[a.bid].h++;mvpAbs[a.bid].rbi+=a.rbi;});
-  var mvpEntry=Object.values(mvpAbs).sort(function(a,b){return(b.h*2+b.rbi)-(a.h*2+a.rbi);})[0];
+  var mvpEntry=_pgMvp(abs);   // 경기 리포트와 같은 사람
   var mvpText=mvpEntry?mvpEntry.name+' ('+(mvpEntry.h)+'안타 '+mvpEntry.rbi+'타점)':'기록 없음';
   card.innerHTML=
     '<div class="gs-title">경기 종료 🎉</div>'
@@ -8058,6 +8059,10 @@ var GF={
 };
 // 지금 공격 팀 'home' | 'away' (예전엔 초 = 늘 홈팀 공격이었다 — 그때 저장된 복구본은 first 가 없어 'home' 으로 되살린다)
 function gfAtk(){return (GF.half==='top')===(GF.first==='home')?'home':'away';}
+// 상대 공격인데 상대 명단이 비었다 — 이 반이닝은 기록하지 않는다 (타자 없음 · 필드 탭은 안내만 · 「다음 이닝으로 ▶」 gfStepHalf 로 넘김)
+// 예전엔 우리 팀 타자가 그대로 남아 상대 타석이 우리 선수 기록으로 들어갔다
+function gfSkip(){return GF.active&&gfAtk()==='away'&&!gfGetLineup().length;}
+function gfSkipHint(){showToast('상대 타순표에 이름을 넣으면 기록돼요',false,2500);}
 
 // ─── 모드 ON/OFF ───
 function gfToggle(){GF.active?gfDeactivate():gfActivate();}
@@ -8070,6 +8075,7 @@ function gfActivate(){
   swLineupTab(gfAtk());
   var lu=gfGetLineup();
   if(lu.length){AS.batter=null;selBatter(lu[GF.batterIdx%lu.length].id);}
+  else{AS.batter=null;selBatter(null);}   // 공격 팀 명단이 비면 타자 없이 (다른 팀 타자가 남지 않게)
   gfSyncInnSel();
   var bar=document.getElementById('gfBar');
   if(bar)bar.classList.add('active');
@@ -8131,7 +8137,7 @@ function gfUpdateBar(){
   var bEl=document.getElementById('gfbBatter');
   if(bEl){
     var p=lu[idx];
-    bEl.textContent=p?(idx+1)+'번 #'+p.num+' '+p.name:'타자 없음';
+    bEl.textContent=p?(idx+1)+'번 #'+p.num+' '+p.name:gfSkip()?'상대 공격 · 기록 안 함':'타자 없음';
   }
   var sc=document.getElementById('gfbScore');
   if(sc)sc.textContent=AS.hs+':'+AS.as;
@@ -8184,7 +8190,7 @@ function gfScoreAtk(d){
 }
 
 // ─── 아웃 & 이닝 전환 ───
-function gfNextHalf(){
+function gfNextHalf(quiet){
   if(GF.half==='top'){GF.half='bottom';}
   else{GF.half='top';GF.inning++;}
   GF.batterIdx=0;
@@ -8195,11 +8201,26 @@ function gfNextHalf(){
   swLineupTab(nextTeam); // 이제 team이 다르므로 renderLP/renderMob 정상 실행
   var lu=gfGetLineup();
   if(lu.length){AS.batter=null;selBatter(lu[0].id);}
+  else{AS.batter=null;selBatter(null);}   // 공격 팀 명단이 비면 타자 없이 (gfActivate 와 같이)
   requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});
+  if(quiet)return;   // gfStepHalf 가 자기 안내를 띄운다
   var halfTxt=GF.half==='top'?'초':'말';
   setTimeout(function(){
-    showToast('3아웃 — '+GF.inning+'회'+halfTxt+' 공격 시작 ⚾',false,true);
+    showToast('3아웃 — '+GF.inning+'회'+halfTxt+(gfSkip()?' 상대 공격 (기록 안 함)':' 공격 시작 ⚾'),false,true);
   },80);
+}
+
+// ─── 반이닝 옮기기 — 헤더 ◀ ▶(record.js recStepInning) · 상대 공격 「다음 이닝으로 ▶」 (d=1 다음 · -1 이전)
+// 아웃 · 주자는 비운다. 예전 ◀ ▶ 는 헤더 이닝만 바꿔 헤더 2회초 / 경기 운영 1회말처럼 둘이 달라졌다
+function gfStepHalf(d){
+  if(!GF.active)return;
+  var i=GF.inning*2+(GF.half==='bottom'?1:0)+(d<0?-1:1);   // 1회초=2 · 1회말=3 · 2회초=4 …
+  if(i<2)return;   // 1회초 앞은 없다
+  i--;GF.inning=Math.floor(i/2);GF.half=i%2?'bottom':'top';   // 한 칸 앞에 두고 gfNextHalf 로 넘긴다 — 공격 팀 · 타자 고르기(runners.js 이어지는 타순 포함)를 같이 쓴다
+  GF.outs=0;GF.bases=[false,false,false];
+  gfNextHalf(true);
+  resetCount();
+  showToast(gfInnStr()+(gfSkip()?' 상대 공격 — 기록 안 함':' 공격'),false,true);
 }
 
 // ─── 다음 타자 ───
@@ -8467,8 +8488,26 @@ function _pgDate(){
   return (m?new Date(+m[1],m[2]-1,+m[3]):new Date()).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
 }
 
+// 우리 팀 타석(team 'away' 아닌 것) — 경기 리포트 · 경기 종료 창 · 리포트 이미지가 분석 › 팀 탭과 같은 타석으로 센다 (예전엔 상대 타석까지 섞여 팀 타율이 달랐다).
+// 우리 팀 타석이 하나도 없으면(상대 팀만 기록한 경기) 예전처럼 전부
+function _pgAbs(){var m=AS.abs.filter(function(a){return a.team!=='away';});return m.length?m:AS.abs;}
+// 오늘의 선수 — 루타 + 타점이 가장 많은 선수 (안타 1개 이상). 경기 리포트와 경기 종료 창이 같은 기준 (예전엔 둘이 달라 다른 사람이 나왔다)
+function _pgMvp(abs){
+  var map=Object.create(null);
+  abs.forEach(function(a){
+    if(!map[a.bid])map[a.bid]={name:a.bname,score:0,h:0,rbi:0,hr:0};
+    var m=map[a.bid];
+    m.score+=(_BASE[a.res]||0)+(a.rbi||0);
+    if(_HITS.includes(a.res))m.h++;
+    m.rbi+=a.rbi||0;
+    if(a.res==='홈런')m.hr++;
+  });
+  var arr=Object.values(map).sort(function(a,b){return b.score-a.score;});
+  return arr.length&&arr[0].h>0?arr[0]:null;
+}
+
 function _pgBuild(){
-  var abs=AS.abs;
+  var abs=_pgAbs();
   var th=document.getElementById('tHome').value||'홈팀';
   var ta=document.getElementById('tAway').value||'원정팀';
   var date=_pgDate();
@@ -8535,22 +8574,12 @@ function _pgBuild(){
     if(r>weakR&&r>=0.70){weakR=r;weakZ={name:g.name,rate:r};}
   });
   var kRate=abs.length?k/abs.length:0;
-  if(weakZ)ins.push({cls:'weak',lbl:'⚠ 약점',val:weakZ.name+' 아웃률 '+Math.round(weakZ.rate*100)+'% — 공략 포인트 조정 포인트'});
+  if(weakZ)ins.push({cls:'weak',lbl:'⚠ 약점',val:weakZ.name+' 아웃률 '+Math.round(weakZ.rate*100)+'% — 조정 포인트'});
   else if(kRate>=0.6&&k>=3)ins.push({cls:'weak',lbl:'⚠ 약점',val:'삼진률 '+Math.round(kRate*100)+'% — 컨택 비율을 높일 여지가 있습니다'});
 
-  // MVP (안타×1 + 2루타×1 추가 + 3루타×2 추가 + 홈런×3 추가 + 타점×1)
-  var mvpMap=Object.create(null);
-  abs.forEach(function(a){
-    if(!mvpMap[a.bid])mvpMap[a.bid]={name:a.bname,score:0,h:0,rbi:0,hr:0};
-    var pts=(_BASE[a.res]||0)+(a.rbi||0);
-    mvpMap[a.bid].score+=pts;
-    if(_HITS.includes(a.res))mvpMap[a.bid].h++;
-    mvpMap[a.bid].rbi+=a.rbi||0;
-    if(a.res==='홈런')mvpMap[a.bid].hr++;
-  });
-  var mvpArr=Object.values(mvpMap).sort(function(a,b){return b.score-a.score;});
-  if(mvpArr.length&&mvpArr[0].h>0){
-    var m=mvpArr[0];
+  // MVP (안타×1 + 2루타×1 추가 + 3루타×2 추가 + 홈런×3 추가 + 타점×1) — _pgMvp
+  var m=_pgMvp(abs);
+  if(m){
     ins.push({cls:'mvp',lbl:'🏆 오늘의 선수',val:_escHtml(m.name)+' — '+m.h+'안타 '+_escHtml(m.rbi)+'타점'+(m.hr?' '+m.hr+'홈런':'')});
   }
 
@@ -8589,7 +8618,7 @@ function _pgDrawMini(id,S){
   if(!c)return;
   var ctx=c.getContext('2d');
   ctx.clearRect(0,0,S,S);
-  _drawConeMini(ctx,S,S,AS.abs,{r:3});
+  _drawConeMini(ctx,S,S,_pgAbs(),{r:3});
 }
 
 function pgDoSave(){
@@ -9581,6 +9610,7 @@ function toggleHighContrast(){
           swLineupTab(gfAtk());   // 공격 팀 명단에서 그 타순 타자
           var lu=gfGetLineup(),p=lu.length?lu[GF.batterIdx%lu.length]:null;
           if(p){AS.batter=null;selBatter(p.id);}
+          else{AS.batter=null;selBatter(null);}   // 공격 팀 명단이 비면(상대 공격 · 상대 명단 없음) 타자 없이 — gfActivate 가 고른 1회초 타자가 남지 않게
           if(p&&keep.bid!=null&&String(keep.bid)===String(p.id)){AS.currentPitches=keep.cp;AS.balls=keep.b;AS.strikes=keep.s;}
           _cntBid=AS.batter?AS.batter.id:null;
           renderCount();gfSyncInnSel();gfUpdateBar();

@@ -1200,7 +1200,7 @@ body.sb #saveMethodSheet > div:first-child, body.sb #mabMoreModal > div > div:fi
 
 /* 창 공통: 각진 모서리 · 그림자 없음 (점 표시는 유지) */
 body.sb :is(#saveMethodSheet, #ocrModal, #mobPitchModal, #mabMoreModal, #mobMoreSheet, #mobPlayerModal, #gameWizard, #gameSummaryOv, #helpModal, #teamCreateModal,
-  #newGameGuard, #gfEndOv, #loginModal, #profileModal, #cloudOverlay, #dataSettingsOverlay, #loadOverlay, #fieldFeedbackModal, #archRecoveryBanner, #sharedBanner,
+  #newGameGuard, #gfEndAsk, #gfEndOv, #loginModal, #profileModal, #cloudOverlay, #dataSettingsOverlay, #loadOverlay, #fieldFeedbackModal, #archRecoveryBanner, #sharedBanner,
   .scout-intro-sheet, #sfPanel, .input-bar, #shareOverlay) :is(*, *::before):not([class*="dot"]):not(svg *) { border-radius: 0 !important; box-shadow: none !important; }
 body.sb :is(#gameWizard, #gameSummaryOv, #helpModal, #teamCreateModal, #gfEndOv, #fieldFeedbackModal) > div,
 body.sb #fieldFeedbackModal .ffm-sheet, body.sb #archRecoveryBanner, body.sb #sharedBanner .sb-inner, body.sb .scout-intro-sheet {

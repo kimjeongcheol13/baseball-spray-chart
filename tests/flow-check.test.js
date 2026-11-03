@@ -3,6 +3,7 @@
 //  ② 경기설정 타순표: 이름을 쓰고 같은 줄 수비 칸을 누르면 그 칸으로 (예전엔 다음 줄 이름 칸으로 가 "8이두리")
 //  ③ 경기 운영 타점 = 홈인한 주자 수 (실책 · 병살 제외 · 손으로 넣은 타점 그대로) · 리포트 · 경기 종료 창은 우리 팀 타석만 · 오늘의 선수 같은 사람
 //  ④ 경기 운영 중 헤더 ◀ ▶ 는 경기 운영 이닝도 같이 옮긴다 (아웃 · 주자 비움)
+//  ⑤ 선공 고르기 → 경기설정 홈/원정 · 점수판 윗줄이 선공 팀 · 경기종료 확인은 앱 창
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes', 'rbi'];
@@ -190,5 +191,36 @@
       ok(document.activeElement && document.activeElement.matches('#stLu .st-row.empty .st-in.nm'), 'Enter → 다음 빈 줄 이름 칸');
       document.activeElement.blur();
     });
+  });
+
+  test('⑤ 선공 고르기 = 경기설정 홈/원정 · 점수판 윗줄 / 경기종료는 앱 확인 창 (취소 · Esc 면 그대로)', async function () {
+    var cf = window.confirm, asked = 0;
+    window.confirm = function () { asked++; return true; };
+    try {
+      await isolated(async function () {
+        fresh();
+        AS.curTeam = 'home';
+        AS.home_lineup = [{ id: 'fc1', name: '일번', num: '1', pos: '', bh: '', isStarter: true }];
+        renderLP();
+        var nm = function (id, d) { return ($(id).value || '').trim() || d; };
+        var top = function () { sbRenderNow(); return document.querySelector('#sbHdrMid .sb-ls tbody th.t').textContent; };
+        gfToggle(); $('slRunPick').querySelectorAll('button')[1].click();   // 우리 팀 선공
+        eq([GF.active, GF.first, gameInfo().side], [true, 'home', 'away'], '우리 팀 선공 → 경기설정 원정(초 공격)');
+        eq(top(), nm('tHome', '내 팀'), '점수판 윗줄 = 우리 팀');
+        gfDeactivate();
+        gfToggle(); $('slRunPick').querySelectorAll('button')[0].click();   // 상대 선공 (기본)
+        eq([GF.first, gameInfo().side], ['away', 'home'], '상대 선공 → 경기설정 홈(말 공격)');
+        eq(top(), nm('tAway', '원정팀'), '점수판 윗줄 = 상대 팀');
+
+        gfEndConfirm();
+        var box = $('gfEndAsk');
+        ok(box && box.style.display === 'flex' && /경기를 종료할까요/.test(box.textContent), '앱 확인 창');
+        eq(document.activeElement, box.querySelector('.gw-btn-cancel'), '처음 초점은 「계속 기록」');
+        box.querySelector('.gw-btn-cancel').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        eq(box.style.display, 'none', 'Esc → 닫힘');
+        gfEndConfirm(); box.querySelector('.gw-btn-cancel').click();
+        eq([box.style.display, GF.active, asked], ['none', true, 0], '「계속 기록」 → 경기 운영 그대로 · 브라우저 확인 창 안 뜸');
+      });
+    } finally { window.confirm = cf; }
   });
 })();

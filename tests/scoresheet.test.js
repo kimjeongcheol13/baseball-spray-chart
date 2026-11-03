@@ -183,10 +183,9 @@
       GF.first = 'home';
       gfActivate();
       await T.sleep(750); recOther('볼넷');
-      var cf = window.confirm, asked = '';
-      window.confirm = function (m) { asked = m; return true; };
-      try { document.querySelector('.gfb-end').click(); } finally { window.confirm = cf; }   // 경기 운영 바의 실제 경기종료 버튼
-      ok(/경기를 종료/.test(asked), '종료 확인을 묻는다: ' + asked);
+      document.querySelector('.gfb-end').click();   // 경기 운영 바의 실제 경기종료 버튼 → 앱 확인 창 (core.js gfEndConfirm)
+      ok($('gfEndAsk').style.display === 'flex' && /경기를 종료/.test($('gfEndAsk').textContent), '종료 확인을 묻는다');
+      document.querySelector('#gfEndAsk .gw-btn-start').click();
       for (var j = 0; j < 40 && $('pgReport').style.display !== 'flex'; j++) await T.sleep(50);
       eq($('pgReport').style.display, 'flex', '경기종료 → GAME REPORT');
       eq([].map.call(document.querySelectorAll('#pgReport .pg-share-row button'), function (b) { return b.textContent.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim(); }), ['스토리 9:16', '피드 1:1', '리그 기록지'], 'GAME REPORT 공유 줄');

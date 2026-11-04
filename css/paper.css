@@ -1121,6 +1121,31 @@ select.st-in { cursor: pointer; font-size: 14px; }
 .st-d input:focus { border-bottom: 2.5px solid var(--pen-red); }
 .st-d em { position: absolute; right: 2px; bottom: 12px; font: 500 13px var(--f-num); font-style: normal; color: var(--ink-soft); }
 .stx-r .st-note { padding: 12px 14px 14px; font-size: 11.5px; color: var(--ink-soft); }
+/* 투구 수 관리 카드 (pitchlimit.js · 경기설정 #stPitch) */
+.pl-on { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 14px; cursor: pointer; }
+.pl-on input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; accent-color: var(--pen-red); }
+.pl-on span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pl-on b { font: 700 14px var(--f-body); }
+.pl-on small { font: 600 11px var(--f-body); color: var(--ink-soft); }
+.pl-max { grid-template-columns: minmax(0, 1fr); padding-top: 0; }
+.pl-tiers { width: calc(100% - 28px); margin: 8px 14px 0; border-collapse: collapse; }
+.pl-tiers th { padding: 6px 0; text-align: left; font: 600 11px/1 var(--f-num); letter-spacing: 2px; color: var(--ink-soft); border-bottom: 1.5px solid var(--ink); }
+.pl-tiers td { padding: 0; border-bottom: 1px solid var(--rule); font: 600 13px var(--f-body); color: var(--ink-soft); }
+.pl-tiers input { width: 64px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 0; background: none; color: var(--ink); font: 600 18px var(--f-num); text-align: right; outline: none; -moz-appearance: textfield; }
+.pl-tiers input::-webkit-inner-spin-button, .pl-tiers input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pl-tiers input:focus { box-shadow: inset 0 -2px 0 var(--pen-red); }
+.pl-act { padding: 10px 14px 0; }
+.pl-act .sb-mini { min-height: 44px; }
+#stPitch .st-note { padding: 10px 14px 4px; font-size: 11.5px; color: var(--ink-soft); }
+.pl-h { margin: 14px 14px 4px; font: 600 11px/1.3 var(--f-num); letter-spacing: 2px; color: var(--ink-soft); }
+.pl-list { list-style: none; margin: 0 14px 14px; padding: 0; }
+.pl-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.pl-list b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-list span { font-size: 12px; color: var(--ink-soft); }
+.pl-list em { font-style: normal; font-weight: 700; }
+.pl-list em.ok { color: var(--grass); }
+.pl-list em.no { color: var(--pen-red); }
+.pl-empty { margin: 4px 14px 14px; font-size: 12px; color: var(--ink-soft); }
 
 /* 그 밖의 기능 */
 .st-more { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
@@ -1162,7 +1187,7 @@ select.st-in { cursor: pointer; font-size: 14px; }
   .stx { padding: 12px 12px 24px; }
   .stx-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .stx-l { display: contents; }
-  #stInfo { order: 1; } .stx-c { order: 2; } .stx-r { order: 3; } #stData { order: 4; }
+  #stInfo { order: 1; } .stx-c { order: 2; } .stx-r { order: 3; } #stData { order: 4; } #stPitch { order: 5; }
   .stx-more { margin-top: 12px !important; }
   .st-hbtn { margin-left: 0; width: 100%; }
   .st-hbtn .sb-mini { flex: 1 1 0; padding: 0 8px; }

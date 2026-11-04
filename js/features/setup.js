@@ -3,7 +3,9 @@
 //   구장: 기존 STADIUMS 4개 + 리틀야구(61·70·61) + 직접 입력(sl_stadium_custom) — 거리를 바꾸면 기록 필드 펜스와 추정 비거리(ft)에 반영
 //         새 사용자 기본값 = 리틀야구 · 경기마다 구장을 경기 정보(info.stadium)에 저장하고 불러올 때 되살림
 //   버튼은 기존 함수(core.js · shell.js · cloud.js)를 그대로 부른다
+//   투구 수 관리 카드(#stPitch): 내용 · 버튼은 pitchlimit.js — 여기서는 자리만 만든다
 import { esc } from '../constants.js';
+import { cardHtml as _pitchCard } from './pitchlimit.js?v=1';
 
 const $ = id => document.getElementById(id);
 const _AS = () => window.AS || {};
@@ -429,7 +431,7 @@ function _mount() {
     box.id = 'stNew';
     box.className = 'stx';
     box.innerHTML = `<div class="stx-grid">
-        <div class="stx-l"><section class="sb-card" id="stInfo" aria-label="경기 정보"${H('경기 정보', '<b>날짜 · 구장 · 팀 이름 · 홈/원정 · 이닝</b>을 정합니다. 경기와 함께 저장됩니다.')}></section><section class="sb-card" id="stData" aria-label="데이터"${H('데이터', '기록은 <b>이 브라우저에만</b> 저장됩니다. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 백업 파일을 내보내 두세요.')}></section></div>
+        <div class="stx-l"><section class="sb-card" id="stInfo" aria-label="경기 정보"${H('경기 정보', '<b>날짜 · 구장 · 팀 이름 · 홈/원정 · 이닝</b>을 정합니다. 경기와 함께 저장됩니다.')}></section><section class="sb-card" id="stData" aria-label="데이터"${H('데이터', '기록은 <b>이 브라우저에만</b> 저장됩니다. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 백업 파일을 내보내 두세요.')}></section><section class="sb-card" id="stPitch" aria-label="투구 수 관리"${H('투구 수 관리', '<b>하루 투구 수 · 의무 휴식일</b>을 관리합니다. 켜면 투구 기록 화면에 오늘 투구 수와 다음 등판 가능일이 나옵니다.')}></section></div>
         <section class="sb-card stx-c" id="stLu" aria-label="타순표"${H('타순표', '<b>이름 · 포지션 · 타석(우/좌/양)</b>을 바로 고칩니다. 빈 줄에 이름을 쓰면 선수가 추가되고, 오른쪽 손잡이를 끌면 타순이 바뀝니다.')}></section>
         <section class="sb-card stx-r" id="stStad" aria-label="구장 규격"${H('구장 규격', '펜스 거리(좌 · 중 · 우, m)를 고릅니다. 기록 탭 <b>필드 펜스</b>와 <b>타구 추정 비거리</b>에 바로 반영됩니다.')}></section>
       </div>
@@ -452,6 +454,7 @@ export function render() {
   set('stData', _dataHtml());
   set('stLu', _luHtml());
   set('stStad', _stadHtml());
+  set('stPitch', _pitchCard());
   const more = $('stMore');
   if (more && !more.innerHTML) more.innerHTML = _moreHtml();
   _dragInit();

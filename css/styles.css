@@ -1313,6 +1313,14 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .pg-sh-btn{flex:1;padding:12px 6px;border:1.5px solid var(--border2);border-radius:var(--r);background:none;color:var(--text2);font-size:11px;font-weight:800;font-family:var(--font);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .12s}
 .pg-sh-btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
 .pg-sh-btn:active{filter:brightness(.88);transform:scale(.97)}
+/* 경기 기사 (features/recap.js) — 경기 코멘트(.pg-ai) 상자 모양을 그대로 쓴다 */
+.pg-recap .pg-rc-hint{margin-left:4px;font-weight:500;opacity:.75}
+.pg-recap .pg-ai-txt+.pg-ai-txt{margin-top:8px}
+/* 제목 · 부제는 #pgRecap 으로 — 밤 화면 .pg-ai-txt 글꼴(night.css)보다 앞서게 */
+#pgRecap .pg-rc-t{margin-top:6px;font-size:16px;font-weight:800;line-height:1.5}
+#pgRecap .pg-rc-s{margin-top:2px;font-weight:700}
+.pg-recap .pg-rc-n{font-size:11px;opacity:.8}
+.pg-recap .pg-rc-act{padding:10px 0 0}
 
 /* 諛섎났 湲곕줉 踰꾪듉 */
 .repeat-btn{padding:5px 10px;border:1px dashed var(--border2);border-radius:7px;background:none;color:var(--text3);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all 100ms;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0}

@@ -224,5 +224,45 @@
     return { html, seek, dur: END, coverT: 1.6, cues: st };
   }
 
-  window.REELS = { pa, spray, grid, season, app };
+  // ── 이야기(공감 · 팁) — 첫 화면 → 장면 → 마무리. 장면 안의 .rv 를 차례로 띄우고, 음성 글을 자막으로 ─────
+  //   item.scenes = [{ l: 꼬리표, html, say: 음성, sub: 자막(문자열 또는 나눠 보일 배열, 없으면 say) }]
+  //   item.says = [첫 화면, 장면…, 마지막 화면] 의 음성 글 · item.durs = 그 길이(초) — 없으면 글 길이로 어림
+  function story(item) {
+    const sc = item.scenes, says = item.says;
+    const D = item.durs || says.map(x => Math.max(2.2, x.replace(/\s/g, '').length * .17 + .6));
+    const st = []; let t0 = 0; for (const d of D) { st.push(t0); t0 += d; }
+    const END = t0, TZ = st[st.length - 1];
+    const html = `<div class="sc" id="s0"><div class="abs" style="left:90px;right:150px;top:${item.hookTop || 520}px">
+        <div id="i0"><span class="pill">${item.chip}</span></div>
+        <div class="big" id="i1" style="margin-top:44px;font-size:${item.hookSize || 124}px">${item.hookHtml}</div>
+        <div id="i2" style="margin-top:44px;font-size:48px;font-weight:500;color:var(--tx2)">${item.sub}</div></div></div>
+      ${sc.map((s, i) => `<div class="sc" id="a${i}">
+        <div class="abs" id="al${i}" style="left:90px;top:240px"><span class="pill">${s.l}</span></div>
+        <div class="abs" id="ab${i}" style="left:90px;right:150px;top:350px">${s.html}</div>
+        <div class="subt" id="sb${i}"></div></div>`).join('')}
+      <div class="sc" id="sZ">
+        <div class="abs big" id="z1" style="left:90px;right:150px;top:520px;font-size:100px">${item.endHtml}</div>
+        <div class="abs" id="z2" style="left:90px;top:930px">${K.mark(100)}<div style="margin-top:30px;font:600 42px/1.35 Oswald;color:var(--tx)">kimjeongcheol13.github.io<br>/baseball-spray-chart</div>
+          <div style="margin-top:20px;font:500 40px/1.3 'Noto Sans KR';color:var(--tx2)">기본 무료 · 설치 없이 웹에서 바로</div></div></div>
+      ${item.tag ? `<div class="tag rtag">${item.tag}</div>` : ''}`;
+    function seek(t) {
+      t = Math.min(t, END - .001);
+      const cur = st.reduce((m, v, j) => t >= v ? j : m, 0);
+      show('s0', cur === 0); show('sZ', cur === st.length - 1); sc.forEach((_, i) => show('a' + i, cur === i + 1));
+      if (cur === 0) return seekIntro(t);
+      if (cur === st.length - 1) return seekOutro(t, TZ - 1.1);
+      const i = cur - 1, s = sc[i], t1 = t - st[cur], a = eo(p(t1, 0, .45));
+      rise($('al' + i), a, 30);
+      const rv = $('ab' + i).querySelectorAll('.rv'), gap = Math.min(.9, D[cur] * .6 / Math.max(1, rv.length));
+      rv.forEach((el, k) => rise(el, eo(p(t1, .2 + k * gap, .55 + k * gap)), 40));
+      // 자막: 나눠 둔 글은 글 길이만큼 시간을 나눠 갖는다
+      const L = [].concat(s.sub || s.say), n = L.map(x => x.length), tot = n.reduce((m, v) => m + v, 0), k = t1 / D[cur];
+      let acc = 0, j = 0; while (j < n.length - 1 && k > (acc + n[j]) / tot) acc += n[j++];
+      $('sb' + i).innerHTML = `<span>${L[j]}</span>`;
+      $('sb' + i).style.opacity = a;
+    }
+    return { html, seek, dur: END, coverT: 1.6, cues: st };
+  }
+
+  window.REELS = { pa, spray, grid, season, app, story };
 })();

@@ -61,14 +61,21 @@ function gameDate(g) {
 
 // ── 투수별 날짜별 투구 수 ─────────────────────────────────────
 export const same = (a, b) => a.name === b.name && (!a.num || !b.num || String(a.num) === String(b.num));
-// list = [{ date, pitchers }] → [{ name, num, days: { 날짜: 투구 수 } }]
+// 상대 투수 = 우리 타자에게 던진 공(bteam 'home')이 상대 타자에게 던진 공('away')보다 많은 투수 (recap.js 마운드 문단과 같은 규칙) — 경기마다 따로 본다
+//   타자 팀을 모르는 공(타자를 안 고르고 적은 공 · 옛 기록)만 있으면 우리 투수로 본다
+export function isOpp(p) {
+  let a = 0, h = 0;
+  ((p && p.pitches) || []).forEach(x => { if (x && x.bteam === 'away') a++; else if (x && x.bteam === 'home') h++; });
+  return h > a;
+}
+// list = [{ date, pitchers }] → [{ name, num, days: { 날짜: 투구 수 } }] (상대 투수는 뺀다)
 export function history(list) {
   const out = [];
   list.forEach(({ date, pitchers }) => {
     if (!okDate(date)) return;
     (pitchers || []).forEach(p => {
       const n = (p && Array.isArray(p.pitches)) ? p.pitches.length : 0;
-      if (!n || !p.name) return;
+      if (!n || !p.name || isOpp(p)) return;
       let h = out.find(x => same(x, p));
       if (!h) out.push(h = { name: p.name, num: p.num ? String(p.num) : '', days: {} });
       else if (!h.num && p.num) h.num = String(p.num);
@@ -115,7 +122,7 @@ const _who = p => (p.num ? '#' + p.num + ' ' : '') + p.name;
 // ── 투구 기록 화면: 카운트 줄 아래 한 줄 (core.js renderPitchCount) ──
 export function barHtml() {
   const r = getRule(), P = (window.AS || {}).currentPitcher;
-  if (!r.on || !P || !P.name) return '';
+  if (!r.on || !P || !P.name || isOpp(P)) return '';
   const T = liveDate(), h = _all().find(x => same(x, P));
   const s = h ? status(h, T, r) : { today: 0, rest: 0, block: null, next: null, left: r.max };
   let t, warn = false;
@@ -132,7 +139,7 @@ export function barHtml() {
 // ── 공 하나 기록한 뒤 (core.js recordPitch): 구간이 바뀌거나 최대에 가까우면 알림 ──
 export function onPitch() {
   const r = getRule(), P = (window.AS || {}).currentPitcher;
-  if (!r.on || !P || !P.name || typeof window.showToast !== 'function') return;
+  if (!r.on || !P || !P.name || isOpp(P) || typeof window.showToast !== 'function') return;
   const T = liveDate(), h = _all().find(x => same(x, P));
   if (!h) return;
   const s = status(h, T, r), n = s.today, who = _who(P);
@@ -180,7 +187,7 @@ function _redraw() {
 }
 
 if (typeof window !== 'undefined') {
-  window.PitchLimit = { DEF, norm, getRule, setRule, restFor, addDays, fmt, history, status, barHtml, onPitch, cardHtml };
+  window.PitchLimit = { DEF, norm, getRule, setRule, restFor, addDays, fmt, isOpp, history, status, barHtml, onPitch, cardHtml };
   window.plOn = on => { setRule({ on: !!on }); _redraw(); };
   window.plSet = v => { const n = int(v, 1, 300); if (n) setRule({ max: n }); _redraw(); };
   window.plTier = (i, k, v) => {

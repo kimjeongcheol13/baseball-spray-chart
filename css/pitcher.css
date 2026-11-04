@@ -417,6 +417,10 @@
 @media (max-width: 720px) {
   /* 되돌리기 버튼이 없는 알림은 눌러도 반응하지 않는다: 알림이 스트라이크/볼/파울 버튼 위에 떠 있어도 탭이 버튼까지 간다 */
   .toast.show.toast-passive { pointer-events: none; }
+  /* 투구 기록 화면에서는 알림을 화면 맨 위로, 글자만: 타석이 끝난 뒤 뜨는 「저장됨 · 되돌리기」가 공 버튼 위에 떠 있어서,
+     다음 공을 누르면 되돌리기가 눌려 방금 타석이 지워졌다. 되돌리기는 투구 카드의 「↩ 되돌리기」(undoPitch — 그 타석까지)로 한다 */
+  body:has(#analysisView.active #anaSecPitcher.on.pc-input) .toast { top: calc(env(safe-area-inset-top, 0px) + 8px); bottom: auto !important; pointer-events: none !important; }
+  body:has(#analysisView.active #anaSecPitcher.on.pc-input) .toast-undo { display: none; }
   #anaSecPitcher.pc-input #pnl-pitcher .pitch-dock .pcnt-nop:not([hidden]) {
     display: block; margin: 0 0 8px; padding: 10px 12px; border: 1px solid #d97706; border-radius: 12px;
     font-size: 13px; line-height: 1.4; color: var(--text); background: var(--bg-raised);

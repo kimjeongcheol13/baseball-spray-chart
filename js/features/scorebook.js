@@ -386,9 +386,10 @@ function _orderHtml() {
     const last = abs[abs.length - 1];
     const on = !!cur && String(cur.id) === String(p.id);
     const lastTxt = last ? abbrOf(last) : '';
+    const bn = p.isStarter === false;   // 후보 — 교체로 나간 선수(runners.js subApply)도 여기로. 타순 번호(10번 …)를 붙이지 않는다
     rows.push(`<li><button type="button" class="sb-ot-row${on ? ' cur' : ''}"${on ? ' aria-current="true"' : ''} onclick="sbPickBatter(${esc(JSON.stringify(String(p.id)))})"`
-      + ` aria-label="${i + 1}번 ${esc(p.name)}${lastTxt ? ', 마지막 ' + esc(lastTxt) : ''}${on ? ', 현재 타자' : ''}">`
-      + `<span class="n"><i>${i + 1}</i></span><span class="nm">${esc(p.name)}${p.pos ? `<small>${esc(p.pos)}</small>` : ''}</span>`
+      + ` aria-label="${bn ? '후보' : i + 1 + '번'} ${esc(p.name)}${lastTxt ? ', 마지막 ' + esc(lastTxt) : ''}${on ? ', 현재 타자' : ''}">`
+      + `<span class="n${bn ? ' bn' : ''}"><i>${bn ? '후보' : i + 1}</i></span><span class="nm">${esc(p.name)}${p.pos ? `<small>${esc(p.pos)}</small>` : ''}</span>`
       + `<span class="ls">${esc(lastTxt)}</span><span class="mk">${abs.map(a => markSvg(kindOf(a.res), 14)).join('')}</span></button></li>`);
   }
   return `<header class="sb-card-hd"><h2>타순표</h2>
@@ -471,7 +472,7 @@ function _paint3d() {
   if (!card || !box) return;
   card.classList.toggle('is-3d', _fv === '3d');
   if (_fv !== '3d') return;
-  import('./spray3d.js?v=10').then(() => {
+  import('./spray3d.js?v=11').then(() => {
     if (_fv !== '3d' || !box.isConnected) return;
     if (!_f3d) {
       _f3d = document.createElement('spray-field-3d');

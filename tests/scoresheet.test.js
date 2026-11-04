@@ -188,7 +188,7 @@
       document.querySelector('#gfEndAsk .gw-btn-start').click();
       for (var j = 0; j < 40 && $('pgReport').style.display !== 'flex'; j++) await T.sleep(50);
       eq($('pgReport').style.display, 'flex', '경기종료 → GAME REPORT');
-      eq([].map.call(document.querySelectorAll('#pgReport .pg-share-row button'), function (b) { return b.textContent.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim(); }), ['스토리 9:16', '피드 1:1', '리그 기록지'], 'GAME REPORT 공유 줄');
+      eq([].map.call(document.querySelectorAll('#pgReport .pg-share-row button'), function (b) { return b.textContent.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim(); }), ['스토리 9:16', '피드 1:1', '리그 기록지', '경기 기사'], 'GAME REPORT 공유 줄 (경기 기사 = features/recap.js)');
       eq(document.querySelectorAll('#pgSheetBtn').length, 1, '버튼은 하나만');
       $('pgSheetBtn').click();
       ok(!$('ssView').hidden, '기록지가 열린다');

@@ -4,7 +4,7 @@
 //   --fast                               → 릴스는 표지만 (영상 생략, 확인용)
 // 필요: Chrome, ffmpeg (PATH). 음성이 있는 릴스(says)는 edge-tts 7.3.1+ — 다른 것이 PATH 앞에 있으면 EDGE_TTS=<edge-tts 경로>
 import { spawn, spawnSync } from 'node:child_process';
-import { writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -14,6 +14,8 @@ const args = process.argv.slice(2), FAST = args.includes('--fast'), ONLY = args.
 const CHROME = process.env.CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(existsSync);
 const PORT = 9353, FPS = 30, TTS = process.env.EDGE_TTS || 'edge-tts', VOICE = 'ko-KR-InJoonNeural';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// 고른 것만 만들 때 안 만든 릴스는 음성 없이 길이를 재서 짧게 나온다(11-04 r1 40.4→30.4) → 전 manifest 의 길이를 그대로 쓴다
+const MF = join(HERE, '..', 'manifest.json'), OLD = existsSync(MF) ? Object.fromEntries(JSON.parse(readFileSync(MF, 'utf8')).items.map(x => [x.id, x])) : {};
 
 const prof = mkdtempSync(join(tmpdir(), 'slg-'));
 const child = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${prof}`, '--no-first-run', '--hide-scrollbars', '--force-color-profile=srgb', '--allow-file-access-from-files', 'about:blank']);
@@ -45,7 +47,8 @@ async function open(c, q, w, h) {
 function speak(dir, says, voice) {
   return says.map((t, i) => {
     const f = join(dir, `v${i}.mp3`);
-    const r = spawnSync(TTS, ['--voice', voice || VOICE, '--rate=+8%', '--text', t, '--write-media', f], { encoding: 'utf8' });
+    // 음성 서버가 가끔 응답을 안 준다(11-04 두 번 — 소켓 시간 초과) → 세 번까지
+    let r; for (let k = 0; k < 3 && !(r && r.status === 0 && existsSync(f)); k++) r = spawnSync(TTS, ['--voice', voice || VOICE, '--rate=+8%', '--text', t, '--write-media', f], { encoding: 'utf8' });
     if (r.status !== 0 || !existsSync(f)) throw new Error('edge-tts failed: ' + t + ' ' + (r.stderr || r.error || '').toString().slice(-300));
     const d = +spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).stdout;
     if (!(d > 0)) throw new Error('no audio: ' + t);
@@ -70,7 +73,7 @@ try {
   const out = [];
   for (const m of META) {
     const files = [], rec = { ...m };
-    delete rec.n; delete rec.theme; delete rec.voice; if (!rec.says) delete rec.says;
+    delete rec.n; delete rec.theme; delete rec.voice; delete rec.off; if (!rec.says) delete rec.says;
     if (m.format === 'reel') {
       // 음성이 있으면 장면 길이 = 음성 길이 + 쉼 (첫 화면 2.6초 이상, 마지막 화면은 끝까지 보이게 +1.6초)
       const vdir = m.says && !FAST && (!ONLY.length || ONLY.includes(m.id)) ? mkdtempSync(join(tmpdir(), 'slv-')) : null;
@@ -78,7 +81,7 @@ try {
       const durs = voice && voice.map((v, i) => +(i === 0 ? Math.max(2.6, v.d + .7) : i === voice.length - 1 ? v.d + 1.9 : Math.max(2.2, v.d + .55)).toFixed(2));
       await open(c, `?id=${m.id}${durs ? '&d=' + durs.join(',') : ''}`, 1080, 1920);
       const dur = await c.ev('window.DUR'), cover = await c.ev('window.COVER_T');
-      rec.seconds = Math.round(dur * 10) / 10;
+      rec.seconds = (ONLY.length && !ONLY.includes(m.id) && OLD[m.id]?.seconds) || Math.round(dur * 10) / 10;
       rec.cover = `${m.id}_cover.jpg`;
       if (!ONLY.length || ONLY.includes(m.id)) {
         await c.ev(`window.seek(${cover})`); await sleep(80);
@@ -108,11 +111,11 @@ try {
       console.log(m.format, m.id, files.length + '장');
     }
     rec.files = files;
-    out.push(rec);
+    if (!m.off) out.push(rec);   // off: 파일만 남기고 게시 순서에서는 뺀다
   }
-  writeFileSync(join(HERE, '..', 'manifest.json'), JSON.stringify({
-    note: '인스타 자동 게시 풀. 순서대로 한 회차에 하나. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터.',
-    start: '2026-11-03', items: out,
+  writeFileSync(MF, JSON.stringify({
+    note: '인스타 자동 게시 풀. 순서대로 한 회차에 하나 — start 부터 weekdays(0 = 월 … 6 = 일)에 해당하는 날마다. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터, 단톡방 대화는 지어낸 상황극.',
+    start: '2026-11-06', weekdays: [0, 1, 2, 3, 4, 5, 6], items: out,
   }, null, 2) + '\n');
   console.log('manifest', out.length, 'items');
   c.close();

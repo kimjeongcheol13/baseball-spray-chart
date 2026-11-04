@@ -9698,6 +9698,7 @@ document.addEventListener('keydown',function(e){
 
 // ─── 7. 피드백 시스템 ─────────────────────────
 var _ffmTags=[];
+var _ffmOpenedAt=0;   // 피드백 창을 연 시각 — 봇 경비(js/botguard.js)의 "너무 빠른 제출" 검사에 쓴다
 function ffmToggle(el){
   el.classList.toggle('on');
   var v=el.dataset.v,i=_ffmTags.indexOf(v);
@@ -9709,15 +9710,29 @@ function fieldFeedbackOpen(){
   var ta=document.getElementById('ffmText');if(ta)ta.value='';
   _ffmTags=[];
   document.querySelectorAll('.ffm-tag').forEach(function(t){t.classList.remove('on');});
+  _ffmOpenedAt=Date.now();
+  var hp=document.getElementById('ffmHp');if(hp)hp.value='';
+  _ffmSay('');
 }
+// 피드백 창 안 안내 줄(#ffmMsg) — 아래 알림(toast, z 396)은 이 창(z 9100) 뒤에 가려져 창이 열린 동안에는 안 보인다
+function _ffmSay(msg){var el=document.getElementById('ffmMsg');if(!el)return;el.textContent=msg||'';el.hidden=!msg;}
 function fieldFeedbackClose(){
   var m=document.getElementById('fieldFeedbackModal');if(m)m.classList.remove('show');
 }
 function fieldFeedbackSubmit(){
   var text=(document.getElementById('ffmText')||{}).value||'';
   var tags=_ffmTags.slice();
-  if(!text.trim()&&!tags.length){showToast('내용을 입력해주세요',false);return;}
-  var entry={ts:Date.now(),tags:tags,text:text.trim(),
+  if(!text.trim()&&!tags.length){showToast('내용을 입력해주세요',false);_ffmSay('내용을 입력해주세요');return;}
+  // 봇 경비(js/botguard.js): 숨은 칸이 차 있으면 받은 척만 · 너무 빠르거나 방금 보냈으면 창 안에 안내만 하고 창은 그대로
+  var _bg=window.SLBotGuard&&SLBotGuard.check({trap:(document.getElementById('ffmHp')||{}).value,openedAt:_ffmOpenedAt,minMs:1500});
+  if(_bg&&!_bg.ok){
+    if(_bg.why==='trap'){fieldFeedbackClose();showToast('피드백이 전송되었습니다 ✓',false);}
+    else _ffmSay(_bg.msg);
+    return;
+  }
+  _ffmSay('');
+  if(window.SLBotGuard)SLBotGuard.mark();
+  var entry={ts:Date.now(),tags:tags,text:text.trim().slice(0,2000),
     abs:(AS.abs||[]).length,ver:'1.2.0',ua:navigator.userAgent.slice(0,80)};
   try{
     var list=JSON.parse(localStorage.getItem('sl_feedback')||'[]');

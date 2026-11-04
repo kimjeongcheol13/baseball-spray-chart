@@ -6065,6 +6065,7 @@ function recordPitch(result){
   // 피드백
   var icons={'볼':'🟢','스트라이크':'🟡','헛스윙':'🟡','루킹':'🟡','파울':'🟣'};
   showToast((icons[result]||'⚾')+(AS.pitcherPt?' '+AS.pitcherPt:'')+' '+result+(entry.end?' → '+(PC.END_LABEL[entry.end]||entry.end)+' · 타석 종료':''),false,1500);
+  if(window.PitchLimit)window.PitchLimit.onPitch();   // 휴식 구간이 바뀌거나 최대에 가까우면 위 알림 대신 투구 수 알림 (켠 기기만)
   _pitchToRecord(entry,outsBefore);   // 기록 탭 연동 (main #102 흡수) — 이닝을 넘기기 전에: 이 공으로 끝난 타석은 이 공의 이닝에 적힌다
   _pitchAutoInning(entry,outsBefore);
 }
@@ -6572,7 +6573,7 @@ function renderPitchCount(){
   el.style.display='block';
   el.innerHTML='<div class="pcnt-row"><div class="pcnt-who">'+(who?_escHtml(who):'타자 미선택')+'</div>'
     +'<div class="pcnt-dots" role="img" aria-label="볼 '+b+', 스트라이크 '+s+', 아웃 '+o+'"><span class="grp">볼 '+dots(b,3,'b')+'</span><span class="grp">스트라이크 '+dots(s,2,'s')+'</span><span class="grp">아웃 '+dots(o,2,'o')+'</span></div></div>'
-    +msg+(acts?'<div class="pcnt-act">'+acts+'</div>':'');
+    +msg+(window.PitchLimit?window.PitchLimit.barHtml():'')+(acts?'<div class="pcnt-act">'+acts+'</div>':'');   // 투구 수 관리(pitchlimit.js) — 켠 기기만
 }
 
 // 타자(또는 투수)를 바꾸기 전에 앞 타석에 결과가 없으면 입력을 요구한다.

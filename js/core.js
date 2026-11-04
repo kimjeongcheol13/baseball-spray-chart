@@ -788,7 +788,7 @@ function selBatter(id){
   if(AS.batter&&String(AS.batter.id)===String(id)){
     AS.batter=null;AS.batterFilter=false;
   } else {
-    AS.batter=clicked;AS.batterFilter=!!clicked;
+    AS.batter=clicked;AS.batterFilter=!!clicked&&!GF.active;   // 경기 운영 중에는 타자를 바꿔도(자동으로 다음 타자 포함) 필드를 그 타자로 거르지 않는다 — 기록한 타구가 곧바로 사라졌다(shell.js _selectBatter 와 같이)
   }
   const fb=document.getElementById('filterBtn');
   if(fb)fb.classList.toggle('btn-primary',AS.batterFilter);
@@ -2481,7 +2481,8 @@ function _showCloudUpsellToast() {
   clearTimeout(_cloudUpsellTimer);
   var el = document.getElementById('cloudUpsellToast');
   if (!el) return;
-  // 저장 안내 토스트를 이 창이 가리므로, 앞부분에 저장 결과를 그대로 적는다
+  // 저장 안내 토스트를 이 창이 가리므로, 앞부분에 저장 결과를 그대로 적는다 — 아래 토스트는 닫는다(두 알림이 겹쳐 보였다)
+  hideToast();
   el.textContent = (_lastSaveUpdated ? '저장한 경기를 업데이트했어요 ✓' : '저장 완료 ✓') + ' · 클라우드 동기화로 다른 기기에서도 이어보기 →';
   el.style.opacity = '1';
   el.style.transform = 'translateX(-50%) translateY(0)';
@@ -2568,7 +2569,7 @@ function saveGame(fromEdit){
     showToast(fromEdit?'타석 기록 수정 완료 — 저장됨 ✓':prev?'저장한 경기를 업데이트했어요 ✓':'경기 저장 완료 ✓',false);
     triggerSavePulse();
     if(_afterSaveCb){var cb=_afterSaveCb;_afterSaveCb=null;setTimeout(cb,300);}   // 새 경기 저장 확인에서 온 저장: 요약 대신 새 경기
-    else if(!fromEdit)setTimeout(showGameSummary, 400);
+    else if(!fromEdit&&!GF.active)setTimeout(showGameSummary, 400);   // 경기 운영 중 저장은 경기 중간 — 「경기 종료」 요약은 경기종료(gfEndGame)가 띄운다
   };
   if(fromEdit)run();else saveTimer=setTimeout(run,300);
 }
@@ -9636,6 +9637,9 @@ function toggleHighContrast(){
           _cntBid=AS.batter?AS.batter.id:null;
           renderCount();gfSyncInnSel();gfUpdateBar();
           if(typeof _renderMobPitchLog==='function')_renderMobPitchLog();
+          // 복구 저장(_archQuietSave)은 경기 운영을 다시 켜기 전에 돌아 저장 항목의 진행 상태에 경기 운영(live.gf)이 빠졌다
+          // → 다른 경기를 열었다가 이 경기를 다시 열면 「이어서 기록」을 묻지 않았다. 켠 뒤 한 번 더 저장한다(기록이 없으면 저장하지 않는다)
+          if(_curSaveKey&&_archQuietSave(_curSaveKey))_cloudSaveCur();
         }catch(e){console.warn('[Recovery] GF 복구 실패',e);}
       },200);
     }

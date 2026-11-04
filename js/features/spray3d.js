@@ -633,8 +633,8 @@ class SprayField3D extends HTMLElement {
     const w = this.clientWidth, h = this.clientHeight;
     if (!w || !h) return;
     this._renderer.setSize(w, h, false);
-    // 좁은 화면은 카메라를 관중석 뒤로 빼지 않고 화각을 넓힌다
-    this._camera.aspect = w / h; this._camera.fov = 2 * Math.atan(Math.tan(Math.PI / 10) * Math.max(1, 1.6 / (w / h))) * 180 / Math.PI;
+    // 좁은 화면은 카메라를 관중석 뒤로 빼지 않고 화각을 넓힌다. 넓은 화면도 세로 화각은 폰(1.4배) 아래로 줄이지 않는다 — 컴퓨터 기록 화면에서 전광판이 위로 잘렸다
+    this._camera.aspect = w / h; this._camera.fov = 2 * Math.atan(Math.tan(Math.PI / 10) * Math.max(1.4, 1.6 / (w / h))) * 180 / Math.PI;
     this._camera.updateProjectionMatrix();
     this._dirty = true;
   }

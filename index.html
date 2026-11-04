@@ -90,14 +90,14 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/profile.css?v=11">
 <link rel="stylesheet" href="css/scout.css?v=5">
 <link rel="stylesheet" href="css/team.css?v=8">
-<link rel="stylesheet" href="css/pitcher.css?v=31">
+<link rel="stylesheet" href="css/pitcher.css?v=32">
 <link rel="stylesheet" href="css/batter.css?v=6">
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=16">
 <link rel="stylesheet" href="css/settings.css?v=2">
 <link rel="stylesheet" href="css/paper.css?v=29">
 <link rel="stylesheet" href="css/night.css?v=5">
-<link rel="stylesheet" href="css/v2.css?v=13">
+<link rel="stylesheet" href="css/v2.css?v=14">
 <link rel="stylesheet" href="css/report.css?v=6">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -1427,7 +1427,8 @@ var _kakaoSdkLoaded = false;
           <div class="pcnt" id="pitchCountBar" aria-live="polite"></div>
 
           <!-- [모바일] 타격결과 확장 패널 (버튼 줄 바로 위에 열린다) -->
-          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel">
+          <!-- 결과를 누르면 닫는다 — 열린 채 남으면 아래 고정 칸이 화면 대부분을 덮어 위의 투수 등록 · 교체를 못 눌렀다 -->
+          <div id="mobile-pitch-result-panel" class="mobile-pitch-result-panel" onclick="if(event.target.closest('.ptr-end')){this.classList.remove('open');document.getElementById('mobile-pitch-result-toggle').textContent='타격결과 ▼'}">
             <div data-pend></div>
           </div>
 
@@ -2482,10 +2483,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-<script defer src="js/core.js?v=249"></script>
+<script defer src="js/core.js?v=250"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=13"></script>
-<script type="module" src="js/app.js?v=215"></script>
+<script type="module" src="js/app.js?v=216"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

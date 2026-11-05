@@ -579,6 +579,39 @@
     });
   });
 
+  // 흐름 점검 4 (사용자 결정 11-05): 투구 수 관리를 켜면 기록 탭 B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나 — 수비 팀 타순표 투수에게 (없으면 등록)
+  test('투구 수 관리를 켜면 기록 탭 B·S · 결과도 투구로 센다 — 수비 팀 투수에게 · 지우개 · 삼진 · 투수를 모르면 안내', async function () {
+    await isolated(async function () {
+      fresh(); gfDeactivate();
+      localStorage.setItem('sl_pitch_rule', JSON.stringify({ on: true }));
+      AS.home_lineup = [{ id: 'rp1', name: '에이스', num: '18', pos: '투수', bh: '', isStarter: true }, { id: 'rp2', name: '일번', num: '1', pos: '유격', bh: '', isStarter: true }];
+      AS.away_lineup = [{ id: 'ro1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'ro2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      AS.curTeam = 'away'; renderLP(); selBatter('ro1');   // 원정 공격 = 우리(홈) 수비
+      var ace = function () { return AS.pitchers.find(function (p) { return p.name === '에이스'; }); };
+      var prs = function () { return ace().pitches.map(function (e) { return e.pr + (e.end ? '→' + e.end : ''); }); };
+      chCount('b'); chCount('s'); chCount('s');
+      eq([AS.pitchers.length, ace() && ace().num, AS.currentPitcher && AS.currentPitcher.name, prs(), [AS.balls, AS.strikes]],
+        [1, '18', '에이스', ['볼', '스트라이크', '스트라이크'], [1, 2]], 'B·S 하나 = 공 하나 · 타순표 투수를 등록하고 고름 · 볼카운트 그대로');
+      ok(ace().pitches.every(function (e) { return e.src === 'rec' && e.pt == null && e.zone == null && e.bteam === 'away'; }), '구종 · 코스 없는 기록 탭 공');
+      await hit('2루타');
+      var ab = AS.abs[0], last = ace().pitches[3];
+      eq([prs().length, last.end, last.src, ab.pa, ab.pid, ab.pitches.length, [AS.balls, AS.strikes]], [4, '2루타', 'rec', last.pa, ace().id, 4, [0, 0]], '필드로 끝낸 타석 → 결과 공 하나 · 그 타석과 연결');
+      undoLast();
+      eq([AS.abs.length, prs(), [AS.balls, AS.strikes]], [0, ['볼', '스트라이크', '스트라이크'], [1, 2]], '지우개 → 결과 공도 지우고 1-2 로');
+      if (!AS.batter || AS.batter.id !== 'ro1') selBatter('ro1');
+      await gap(); chCount('s');
+      eq([AS.abs.length, AS.abs[0] && AS.abs[0].res, prs()], [1, '삼진', ['볼', '스트라이크', '스트라이크', '스트라이크→삼진']], '3스트라이크 → 삼진 타석 · 결과 공을 따로 더하지 않음');
+      AS.curTeam = 'home'; renderLP(); selBatter('rp2');   // 우리 공격 — 상대 타순표에 투수가 없다
+      chCount('b');
+      eq([prs().length, AS.balls], [4, 1], '투수를 모르면 세지 않고 볼카운트만');
+      eq($('toastTxt').textContent, '투구 수를 세려면 수비 팀 타순표에 투수를 넣어 주세요', '한 번 안내');
+      localStorage.setItem('sl_pitch_rule', JSON.stringify({ on: false }));
+      AS.curTeam = 'away'; renderLP(); selBatter('ro2');
+      chCount('b');
+      eq(prs().length, 4, '투구 수 관리를 끄면 예전대로');
+    });
+  });
+
   test('경기 운영 모드가 아니면 도루는 예전처럼 안내만 · 이닝별 득점 없음', async function () {
     await isolated(async function () {
       fresh(); gfDeactivate();

@@ -8,6 +8,15 @@ import { esc } from '../constants.js';
 
 const KEY = 'sl_pitch_rule';
 export const DEF = { on: false, max: 105, tiers: [[45, 0], [60, 1], [75, 2], [90, 3], [105, 4]] };
+// 기본값 고르기 (경기설정 카드 버튼). 중학 · 리틀 = Little League 본부 규정(littleleague.org pitch-count, 14세 이하 휴식표):
+//   하루 최대 9~10세 75 · 11~12세 85 · 13~16세 95, 휴식 1~20 0일 · 21~35 1 · 36~50 2 · 51~65 3 · 66 이상 4
+const LL = [[20, 0], [35, 1], [50, 2], [65, 3]];
+export const PRESETS = {
+  hs:   { label: '고교',         max: 105, tiers: DEF.tiers },
+  ms:   { label: '중학',         max: 95,  tiers: [...LL, [95, 4]] },
+  ll12: { label: '리틀 11~12세', max: 85,  tiers: [...LL, [85, 4]] },
+  ll10: { label: '리틀 9~10세',  max: 75,  tiers: [...LL, [75, 4]] },
+};
 const DAY = '일월화수목금토';
 const int = (v, lo, hi) => { v = Math.floor(Number(v)); return isFinite(v) && v >= lo && v <= hi ? v : null; };
 
@@ -175,8 +184,11 @@ export function cardHtml() {
   return `<header class="sb-card-hd"><h2>투구 수 관리</h2></header>${on}
     <div class="st-dists pl-max"><label class="st-d"><span>하루 최대</span><input type="number" inputmode="numeric" min="1" max="300" value="${r.max}" onchange="plSet(this.value)" aria-label="하루 최대 투구 수"><em>구</em></label></div>
     <table class="pl-tiers"><thead><tr><th>투구 수</th><th>휴식</th></tr></thead><tbody>${r.tiers.map(tier).join('')}</tbody></table>
-    <div class="pl-act"><button type="button" class="sb-mini" onclick="plReset()">기본값으로 (고교 · 2025 보도)</button></div>
-    <p class="st-note">기본값은 2025-08 보도에 나온 고교 규정이에요. 대회 요강과 다를 수 있으니 꼭 확인하고 고쳐 쓰세요. 휴식 N일 = 던진 다음 날부터 N일 쉬고 그다음 날 등판.</p>
+    <div class="pl-pre" role="group" aria-label="기본값 고르기"><span class="pl-pre-l">기본값</span>${Object.keys(PRESETS).map(k => {
+      const p = PRESETS[k], on = p.max === r.max && JSON.stringify(p.tiers) === JSON.stringify(r.tiers);
+      return `<button type="button" class="sb-mini${on ? ' on' : ''}" aria-pressed="${on}" onclick="plReset('${k}')">${p.label}</button>`;
+    }).join('')}</div>
+    <p class="st-note">고교는 2025-08 보도, 중학(13~16세) · 리틀은 Little League 본부 규정이에요. 대회 요강과 다를 수 있으니 꼭 확인하고 고쳐 쓰세요. 휴식 N일 = 던진 다음 날부터 N일 쉬고 그다음 날 등판. 3일 연속 등판 금지는 따로 세지 않아요.</p>
     <h3 class="pl-h">투수 휴식 현황 · ${esc(fmt(liveDate()))} 기준</h3>
     <div id="plStatus">${_statusHtml(r)}</div>`;
 }
@@ -187,7 +199,7 @@ function _redraw() {
 }
 
 if (typeof window !== 'undefined') {
-  window.PitchLimit = { DEF, norm, getRule, setRule, restFor, addDays, fmt, isOpp, history, status, barHtml, onPitch, cardHtml };
+  window.PitchLimit = { DEF, PRESETS, norm, getRule, setRule, restFor, addDays, fmt, isOpp, history, status, barHtml, onPitch, cardHtml };
   window.plOn = on => { setRule({ on: !!on }); _redraw(); };
   window.plSet = v => { const n = int(v, 1, 300); if (n) setRule({ max: n }); _redraw(); };
   window.plTier = (i, k, v) => {
@@ -196,5 +208,5 @@ if (typeof window !== 'undefined') {
     if (t[i] && n != null) { t[i][k] = n; setRule({ tiers: t }); }
     _redraw();
   };
-  window.plReset = () => { setRule({ max: DEF.max, tiers: DEF.tiers.map(t => t.slice()) }); _redraw(); };
+  window.plReset = k => { const p = PRESETS[k] || PRESETS.hs; setRule({ max: p.max, tiers: p.tiers.map(t => t.slice()) }); _redraw(); };
 }

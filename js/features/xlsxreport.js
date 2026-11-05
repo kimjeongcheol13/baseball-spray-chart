@@ -851,6 +851,7 @@ export function exportBatterXlsx(P) {
 const AB_PITCH_SLACK = 5 * 60 * 1000;
 // → { name, pitch, how } (pitch = 시간순으로 연결된 투수 기록의 공, 직접 적힌 경우는 null)
 //   how: 'link' = 투구 기록과 명시 연결(P2: a.pa) · 'direct' = 직접 적힌 투수 · 'time' = 시간순 추정
+export { _abPitcher as abPitcher };   // 팀 분석 「상대 투수 맞대결」(team.js)도 같은 연결을 쓴다
 function _abPitcher(a, flat) {
   if (a.pa != null) {
     const m = flat.find(x => x.p && x.p.pa != null && String(x.p.pa) === String(a.pa));

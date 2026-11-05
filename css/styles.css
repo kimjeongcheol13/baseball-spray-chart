@@ -1321,6 +1321,11 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 #pgRecap .pg-rc-s{margin-top:2px;font-weight:700}
 .pg-recap .pg-rc-n{font-size:11px;opacity:.8}
 .pg-recap .pg-rc-act{padding:10px 0 0}
+/* 「선수 실명 포함」 — 기본 꺼짐(공유 링크와 같게 #번호 · 성OO) · 줄 전체가 44px 터치 칸 */
+.pg-recap .pg-rc-names{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:6px;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pg-recap .pg-rc-names input{width:20px;height:20px;margin:0;flex-shrink:0;accent-color:var(--accent)}
+/* ☰ 메뉴 「경기 기사」 아이콘 (paper.css 메뉴 아이콘 규칙과 같은 방식) */
+body.sb .slm .slm-item[onclick^="openRecap"] { --mi: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 5h13v14H6a2 2 0 0 1-2-2z%22/%3E%3Cpath d=%22M17 9h3v8a2 2 0 0 1-2 2M7.5 9h6M7.5 12.5h6M7.5 16h4%22/%3E%3C/svg%3E"); }
 /* 폰: 공유 줄 4칸(스토리 · 피드 · 리그 기록지 · 경기 기사) — 360~375px 밤 화면(13px 글씨)에서 두 줄로 접혀서 2×2 로 */
 @media (max-width:720px){#pgReport .pg-share-row{flex-wrap:wrap}#pgReport .pg-share-row .pg-sh-btn{flex:1 1 calc(50% - 4px)}}
 

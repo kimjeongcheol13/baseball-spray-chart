@@ -32,8 +32,9 @@ import './features/gopitchseason.js?v=1';   // pitcher.js(위) 다음 — openPi
 import './features/runners.js?v=14';         // 주자 · 득점 · 주루 플레이 · 타순 · 교체 · 되돌리기 — shell.js(위) 다음 (undoLast · gfAfterRecord 를 바깥에서 감싼다)
 import './features/fielding.js?v=2';         // 아웃 수비 기록(6-3 · F8 · L6) — 타구 위치로 추정 · 번호판으로 고치기
 import './features/scoresheet.js?v=6';       // 리그 제출용 기록지 (이미지 · 인쇄) — GAME REPORT 공유 줄에 버튼 추가
-import './features/recap.js?v=1';            // 경기 기사(기록된 숫자만) — GAME REPORT 공유 줄에 버튼 추가 · showPostGameReport 를 감싼다
+import './features/recap.js?v=2';            // 경기 기사(기록된 숫자만) — GAME REPORT 공유 줄에 버튼 추가 · showPostGameReport 를 감싼다
 import './features/ordersheet.js?v=5';       // 오더지(타순표) — 경기 전 제출용 (이미지 · 인쇄)
+import './features/coachnotes.js?v=1';       // 경기 후 코치 메모 — GAME REPORT 인사이트 칸에 최대 3줄 (core.js _pgBuild)
 import './features/statcard.js?v=6';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
 
 import './features/anahelp.js?v=5';

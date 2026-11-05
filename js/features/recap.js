@@ -30,7 +30,7 @@ function _lines(abs) {
   const m = new Map();
   abs.forEach(a => {
     const k = a.bid != null ? String(a.bid) : a.bname;
-    if (!m.has(k)) m.set(k, { name: a.bname || '이름 없음', pa: 0, ab: 0, h: 0, rbi: 0, bb: 0, tb: 0, t: Object.create(null) });
+    if (!m.has(k)) m.set(k, { key: k, name: a.bname || '이름 없음', pa: 0, ab: 0, h: 0, rbi: 0, bb: 0, tb: 0, t: Object.create(null) });
     const L = m.get(k);
     L.pa++;
     if (!NOAB.includes(a.res)) L.ab++;
@@ -42,6 +42,19 @@ function _lines(abs) {
   return [...m.values()];
 }
 const _xbhTxt = t => XBH.filter(r => t[r]).map(r => (t[r] > 1 ? `${r} ${t[r]}개` : r));
+
+// 오늘의 선수 bid — GAME REPORT(core.js _pgMvp)와 똑같이: 루타 + 타점이 가장 큰 타자, 안타 1개 이상.
+// 점수가 같으면 _pgMvp 처럼 bid 를 키로 쓴 객체 순서(숫자 bid 는 작은 순, 나머지는 처음 나온 순)
+function _mvpBid(abs) {
+  const m = Object.create(null);
+  abs.forEach(a => {
+    const e = m[a.bid] || (m[a.bid] = { bid: a.bid, s: 0, h: 0 });
+    e.s += (BASE[a.res] || 0) + (a.rbi || 0);
+    if (HITS.includes(a.res)) e.h++;
+  });
+  const arr = Object.values(m).sort((x, y) => y.s - x.s);
+  return arr.length && arr[0].h > 0 ? arr[0].bid : null;
+}
 
 // 이름 가리기 — 공유 링크와 같은 규칙(core.js _anonSharePayload: 등번호 있으면 #번호, 없으면 성OO · 겹치면 구분) + " 선수"
 // 라인업(hl · al)을 같이 넘겨 공유 링크와 같은 표기가 나오게 한다. 투수는 따로(pit) 센다
@@ -149,8 +162,13 @@ export function buildRecap(src) {
   const t = Object.create(null);
   L.forEach(x => XBH.forEach(r => { if (x.t[r]) t[r] = (t[r] || 0) + x.t[r]; }));
 
-  // 수훈 타자: 2안타 이상 · 홈런 · 2타점 이상 — 루타 + 타점 순, 3명까지
-  const stars = L.filter(x => x.h >= 2 || x.t['홈런'] || x.rbi >= 2).sort((a, b) => (b.tb + b.rbi) - (a.tb + a.rbi) || b.h - a.h).slice(0, 3);
+  // 수훈 타자: 2안타 이상 · 홈런 · 2타점 이상 — 루타 + 타점 순, 3명까지.
+  // 맨 앞(부제 · 첫 문장)은 GAME REPORT 「오늘의 선수」와 같은 사람 (단타 1개뿐이어도)
+  // ponytail: bid 없는 타석은 _pgMvp 가 한데 묶어서 맞추지 않는다 — 그때는 예전 순서
+  const mb = _mvpBid(ours), top = mb != null ? L.find(x => x.key === String(mb)) : null;
+  let stars = L.filter(x => x.h >= 2 || x.t['홈런'] || x.rbi >= 2).sort((a, b) => (b.tb + b.rbi) - (a.tb + a.rbi) || b.h - a.h);
+  if (top) stars = [top, ...stars.filter(x => x !== top)];
+  stars = stars.slice(0, 3);
   const mvp = stars[0];
 
   // 득점 순서를 알면(경기 운영 모드 · 합 = 점수) 역전승 · 결승타. 이닝은 운영 모드이거나 이닝이 두 가지 이상 적힌 경기만 (안 바꾼 기본값 1회를 믿지 않는다)

@@ -3,12 +3,14 @@
 //  · 보내기 = 앱 「의견 보내기」(core.js fieldFeedbackSubmit)와 같은 Formspree 주소 · JSON. 실패하면 메일 앱으로 보내는 링크를 보여 준다
 //  · 이름 · 연락처 · 브라우저 정보는 보내지 않는다. 주소의 utm_source · utm_campaign 만 '출처'로 붙인다(어느 부탁 메시지로 왔는지)
 //  · 같은 답을 두 번 보내지 않게 보내는 동안 버튼을 끈다 · _gotcha(사람에게 안 보이는 칸)가 차 있으면 보내지 않는다(스팸 봇)
+//  · 봇 경비(js/botguard.js): 페이지를 연 뒤 3초 안에 보내거나, 이 기기에서 방금(20초 안) · 1시간에 5번 넘게 보내면 안내만 하고 보내지 않는다
 (function () {
   var ENDPOINT = 'https://formspree.io/f/xnjrevge';
   var MAIL = 'jeongcheol13@naver.com';
   var REQ = { role: '역할', result: '가져오기', nps: '추천' };
   var form = document.getElementById('pf'), status = document.getElementById('status'), btn = document.getElementById('pfSend');
   if (!form) return;
+  var guard = { openedAt: Date.now(), minMs: 3000 };   // 페이지를 연 시각 — 시험은 SLPilotFeedback.guard 로 바꾼다
 
   function one(name) { var el = form.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; }
   function many(name) { return Array.prototype.map.call(form.querySelectorAll('input[name="' + name + '"]:checked'), function (el) { return el.value; }); }
@@ -66,11 +68,13 @@
       return Promise.resolve(false);
     }
     if (form.elements._gotcha && form.elements._gotcha.value) { done(); return Promise.resolve(false); }   // 봇: 받은 척만
+    var g = window.SLBotGuard && window.SLBotGuard.check({ openedAt: guard.openedAt, minMs: guard.minMs });
+    if (g && !g.ok) { status.className = 'fail'; status.textContent = g.msg; return Promise.resolve(false); }
     var d = collect();
     btn.disabled = true; btn.textContent = '보내는 중…';
     status.className = ''; status.textContent = '';
     return fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(d) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); done(); return true; })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); if (window.SLBotGuard) window.SLBotGuard.mark(); done(); return true; })
       .catch(function () { fail(d); return false; })
       .then(function (sent) { btn.disabled = false; btn.textContent = '보내기'; return sent; });
   }
@@ -82,5 +86,5 @@
     if (fs && one(fs.getAttribute('data-name'))) fs.classList.remove('bad');
     if (reqShown) showMiss(Object.keys(REQ).filter(function (n) { return !one(n); }));
   });
-  window.SLPilotFeedback = { collect: collect, validate: validate, submit: submit, mailHref: mailHref };
+  window.SLPilotFeedback = { collect: collect, validate: validate, submit: submit, mailHref: mailHref, guard: guard };
 })();

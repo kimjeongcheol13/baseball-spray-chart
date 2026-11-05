@@ -1326,6 +1326,18 @@ body.help-mode [data-help]:hover{outline-color:rgba(246,194,62,.8)}
 .pg-recap .pg-rc-names input{width:20px;height:20px;margin:0;flex-shrink:0;accent-color:var(--accent)}
 /* ☰ 메뉴 「경기 기사」 아이콘 (paper.css 메뉴 아이콘 규칙과 같은 방식) */
 body.sb .slm .slm-item[onclick^="openRecap"] { --mi: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 5h13v14H6a2 2 0 0 1-2-2z%22/%3E%3Cpath d=%22M17 9h3v8a2 2 0 0 1-2 2M7.5 9h6M7.5 12.5h6M7.5 16h4%22/%3E%3C/svg%3E"); }
+/* 학부모 실시간 링크 (features/livefollow.js) — 링크 칸 · 상태 · 「선수 실명 포함」 · 버튼 모두 44px */
+.lv-modal .lv-lbl{display:block;margin:4px 0 6px;font-size:12px;font-weight:700;color:var(--text2)}
+.lv-modal .lv-url{width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg-raised);color:var(--text);font:600 13px var(--mono)}
+.lv-modal .lv-st{margin:8px 0 0;font-size:12px;font-weight:700;color:var(--green)}
+.lv-modal .lv-err{margin:8px 0 0;font-size:12px;font-weight:700;color:var(--red)}
+.lv-modal .lv-chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lv-modal .lv-chk input{width:20px;height:20px;margin:0;flex-shrink:0;accent-color:var(--accent)}
+.lv-modal .lv-chk small{font-weight:500;opacity:.75}
+.lv-modal .lv-btns{display:flex;gap:8px;margin-top:12px}
+.lv-modal .lv-btns .btn{flex:1;min-height:44px}
+/* ☰ 메뉴 「학부모 실시간 링크」 아이콘 */
+body.sb .slm .slm-item[onclick^="openLiveFollow"] { --mi: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222%22/%3E%3Cpath d=%22M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2%22/%3E%3C/svg%3E"); }
 /* 폰: 공유 줄 4칸(스토리 · 피드 · 리그 기록지 · 경기 기사) — 360~375px 밤 화면(13px 글씨)에서 두 줄로 접혀서 2×2 로 */
 @media (max-width:720px){#pgReport .pg-share-row{flex-wrap:wrap}#pgReport .pg-share-row .pg-sh-btn{flex:1 1 calc(50% - 4px)}}
 

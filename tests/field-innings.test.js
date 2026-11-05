@@ -45,6 +45,18 @@
     eq(['-', '⅓', '⅔', '1', '4⅔'].join(), [0, 1, 2, 3, 14].map(window.slFieldInnings.ip).join(), '이닝 표기');
   });
 
+  test('수비 이닝: 수비 위치 바꾸기(SUB k = POS) — 그때부터 두 선수 자리를 맞바꾸고, 선발 위치는 되돌려 찾는다', function () {
+    // 경기 끝 라인업: X 포수 · Y 투수 · Z 유격 (선발은 X 투수 · Y 유격 · Z 포수)
+    var X = P(1, 'X', '포수', true), Y = P(2, 'Y', '투수', true), Z = P(3, 'Z', '유격', true);
+    var pos = function (a, b, pa, pb, pre) { return { t: 'SUB', k: 'POS', id: a.id, name: a.name, num: a.num, with: { id: b.id, name: b.name, num: b.num }, pa: pa, pb: pb, out: null, from: null,
+      inn: pre.inning + '회' + (pre.half === 'top' ? '초' : '말'), team: 'home', scored: false, pre: pre }; };
+    var abs = ['1회초', '1회말', '2회초', '2회말', '3회초'].map(function (s) { return ab(s, /초/.test(s) ? 'away' : 'home'); });
+    abs[2].runEv = [pos(X, Y, '투수', '유격', { inning: 2, half: 'top', outs: 1 })];      // 2회초 1아웃 X ↔ Y
+    abs[3].runEv = [pos(X, Z, '유격', '포수', { inning: 2, half: 'bottom', outs: 2 })];   // 2회말(우리 공격) X ↔ Z → 3회초부터
+    eq(outs(window.slFieldInnings(abs, [X, Y, Z], 'home')),
+      { X: { P: 4, SS: 2, C: 3 }, Y: { SS: 4, P: 5 }, Z: { C: 6, SS: 3 } }, 'X 투수 1⅓ · 유격 ⅔ · 포수 1 / Y 유격 1⅓ · 투수 1⅔ / Z 포수 2 · 유격 1');
+  });
+
   test('수비 이닝: 팀 대시보드(이번 경기)에 표가 나온다', function () {
     var g = game();
     window.AS.home_lineup = g.lu; window.AS.abs = g.abs;

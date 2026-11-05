@@ -1,10 +1,11 @@
 // 포지션별 수비 이닝 — 팀 대시보드 카드 (유소년 출전 공정성: 누가 어느 자리에서 몇 이닝 뛰었나)
 //   선발 수비 위치(라인업 pos) + 경기 운영 모드 교체(runEv SUB, runners.js)로 센다. 저장 데이터는 읽기만 한다.
-//   · 저장 라인업은 경기가 끝난 모습 → 교체를 거꾸로 되돌려(sw.os · sw.is, runners.js undoSub 와 같다) 선발을 찾는다
-//   · 들어온 선수 자리 = 투수 교체면 투수, 아니면 그 선수의 라인업 위치(대타 · 대주자는 subApply 가 나간 선수 자리를 넣어 둔다) → 없으면 나간 선수 자리
+//   · 저장 라인업은 경기가 끝난 모습 → 교체(sw.os · sw.is · sw.pos)와 수비 위치 바꾸기(k = POS: with · pa · pb)를 거꾸로 되돌려
+//     (runners.js undoSub 와 같다) 선발과 그때 위치를 찾는다
+//   · 들어온 선수 자리 = 투수 교체면 투수, 아니면 들어오기 전 그 선수 라인업 위치 → 없으면 나간 선수 자리(subApply 와 같다 · 지명타자 대타는 지명타자)
+//   · 수비 위치 바꾸기(POS) = 그때부터 두 선수 자리를 맞바꾼다
 //   · 수비 이닝 = 상대가 공격한 이닝마다 아웃 3개. 수비 중 교체는 그때 아웃 수(pre.outs)에서 나누고, 공격 중 교체는 다음 수비 이닝부터
-// ponytail: 마지막 이닝도 아웃 3개로 센다(끝내기 · 콜드로 덜 한 이닝 포함) · 교체 없이 자리만 바꾼 이동은 기록이 없어 못 센다 —
-//           이동 버튼을 붙이면 그 기록을 subs 와 같은 타임라인(eff)에 넣으면 된다
+// ponytail: 마지막 이닝도 아웃 3개로 센다(끝내기 · 콜드로 덜 한 이닝 포함)
 import { esc } from '../constants.js';
 import { loadGames } from './games.js?v=1';
 
@@ -39,8 +40,9 @@ export function gameInnings(abs, lineup, team) {
   abs.forEach(a => (Array.isArray(a.runEv) ? a.runEv : []).forEach(e => { if (e && e.t === 'SUB' && e.team === team) subs.push(e); }));
   const find = r => lu.find(p => same(p, r));
   subs.slice().reverse().forEach(e => {
+    if (e.k === 'POS') { const a = find(e), b = find(e.with); if (a) a.pos = e.pa; if (b) b.pos = e.pb; return; }
     const s = e.sw, inP = find(e), op = e.out && find(e.out);
-    if (s && inP && op) { op.isStarter = s.os; inP.isStarter = s.is; }
+    if (s && inP && op) { op.isStarter = s.os; inP.isStarter = s.is; inP.pos = s.pos; }
   });
   const st = lu.filter(p => p.isStarter !== false);
   if (!st.some(p => { const c = norm(p.pos); return c && c !== 'ETC'; })) return null;
@@ -54,14 +56,24 @@ export function gameInnings(abs, lineup, team) {
   const on = new Map(), segs = [];
   const put = (p, pos, from) => { if (pos && pos !== 'DH') on.set(key(p), { p, pos, from }); };
   const close = (x, to) => { on.delete(key(x.p)); segs.push({ ...x, to }); };
+  const onOf = r => [...on.values()].find(x => same(x.p, r));
   st.forEach(p => put(p, norm(p.pos) || 'ETC', -Infinity));
   subs.forEach(e => {
-    const t = eff(e), inP = find(e) || { id: e.id, name: e.name, num: e.num, pos: '' };
-    const cur = e.out ? [...on.values()].find(x => same(x.p, e.out)) : e.k === 'P' ? [...on.values()].find(x => x.pos === 'P') : null;
+    const t = eff(e);
+    if (e.k === 'POS') {   // 두 선수 자리 맞바꾸기 (지명타자와 바꾸면 그 선수가 수비로 · 다른 선수가 지명타자로)
+      const x = onOf(e), y = onOf(e.with), pa = x ? x.pos : norm(e.pa), pb = y ? y.pos : norm(e.pb);
+      if (x) close(x, t);
+      if (y) close(y, t);
+      put(x ? x.p : find(e) || e, pb, t);
+      put(y ? y.p : find(e.with) || e.with, pa, t);
+      return;
+    }
+    const inP = find(e) || { id: e.id, name: e.name, num: e.num, pos: '' }, op = e.out && find(e.out);
+    const cur = e.out ? onOf(e.out) : e.k === 'P' ? [...on.values()].find(x => x.pos === 'P') : null;
     if (cur) close(cur, t);
-    const was = on.get(key(inP));   // 이미 수비 중인 선수가 다른 자리로 (재출전 · 겹친 기록)
+    const was = onOf(inP);   // 이미 수비 중인 선수가 다른 자리로 (재출전 · 겹친 기록)
     if (was) close(was, t);
-    put(inP, e.k === 'P' ? 'P' : norm(inP.pos) || (cur && cur.pos) || 'ETC', t);
+    put(inP, e.k === 'P' ? 'P' : norm(inP.pos) || (cur ? cur.pos : norm(op && op.pos)) || 'ETC', t);
   });
   [...on.values()].forEach(x => close(x, Infinity));
 

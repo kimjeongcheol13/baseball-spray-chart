@@ -567,19 +567,19 @@ function _vsCard(T) {
   P.abs.forEach(a => { const n = a.bname || '(이름 없음)'; if (!map.has(n)) map.set(n, []); map.get(n).push(a); });
   const rows = [...map].map(([n, abs]) => ({ n, st: calcStats(abs) })).sort((a, b) => b.st.pa - a.st.pa || b.st.h - a.st.h);
   const tot = calcStats(P.abs);
-  const row = st => `<td>${st.pa}</td><td>${st.h}</td><td>${st.k}</td><td><b>${st.ab ? f3(st.avg) : '—'}</b></td><td>${f3(st.obp)}</td>`;
+  const row = st => `<td>${st.pa}</td><td>${st.ab}</td><td>${st.h}</td><td>${st.s2 + st.s3 + st.hr}</td><td>${st.bb}</td><td>${st.k}</td><td><b>${st.ab ? f3(st.avg) : '—'}</b></td><td>${f3(st.obp)}</td><td>${f3(st.woba)}</td>`;
   const lbl = x => x.name + (x.team ? ' · ' + x.team : '') + ' · ' + x.abs.length + '타석';
   return `
     <section class="an-card tm-vs">
       ${hd}
       <select class="pc-rp-sel tm-vs-sel" aria-label="투수 고르기" onchange="setTeamScope('vs',this.value)">${list.map(x => `<option value="${_esc(x.k)}"${x === P ? ' selected' : ''}>${_esc(lbl(x))}</option>`).join('')}</select>
-      <table class="pf-split">
-        <thead><tr><th scope="col">타자</th><th scope="col">타석</th><th scope="col">안타</th><th scope="col">삼진</th><th scope="col">타율</th><th scope="col">출루율</th></tr></thead>
+      <div class="tm-vs-wrap"><table class="pf-split">
+        <thead><tr><th scope="col">타자</th><th scope="col">타석</th><th scope="col">타수</th><th scope="col">안타</th><th scope="col" title="2루타 이상">장타</th><th scope="col">볼넷</th><th scope="col">삼진</th><th scope="col">타율</th><th scope="col">출루율</th><th scope="col">wOBA</th></tr></thead>
         <tbody>${rows.map(r => `
           <tr><th scope="row">${_esc(r.n)}</th>${row(r.st)}</tr>`).join('')}
           <tr class="tm-vs-tot"><th scope="row">합계</th>${row(tot)}</tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="an-hd-note">같은 이름 · 같은 팀이면 여러 경기를 합쳐요 · 3타석 미만은 참고만</div>
     </section>`;
 }

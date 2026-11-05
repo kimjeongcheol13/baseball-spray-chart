@@ -23,7 +23,7 @@
   test('이번 경기: 직접 적힌 투수 · 공에 적힌 투수 · 시간순 공으로 투수를 찾고, 타석이 많은 투수가 먼저 · 타자별 줄 + 합계', async function () {
     names('한빛', '청솔');
     window.AS.abs = [
-      ab(1, '강', '안타', { pitcher: '박투수' }),                              // 직접 적힌 투수
+      ab(1, '강', '2루타', { pitcher: '박투수' }),                             // 직접 적힌 투수
       ab(2, '중', '삼진', { pitches: [{ pt: '직구', pitcher: '박투수' }] }),   // 공에 적힌 투수
       ab(3, '강', '볼넷'),                                                     // 시간순: 바로 전 강에게 던진 공 = 박투수
       ab(4, '약', '땅볼 아웃', { pitcher: '이계투' }),
@@ -36,13 +36,14 @@
     setTeamScope('scope', 'game'); setTeamScope('side', 'home');
     eq(title(), '상대 투수 맞대결', '제목');
     eq(opts(), ['박투수 · 청솔 · 3타석', '이계투 · 청솔 · 1타석'], '투수 목록 = 타석 많은 순 · 팀 = 상대 팀 이름');
-    eq(rows(), ['강 2 1 0 1.000 1.000', '중 1 0 1 .000 .000', '합계 3 1 1 .500 .667'], '박투수 — 타석 · 안타 · 삼진 · 타율 · 출루율');
+    eq(rows(), ['강 2 1 1 1 1 0 1.000 1.000 .980', '중 1 1 0 0 0 1 .000 .000 .000', '합계 3 2 1 1 1 1 .500 .667 .653'],
+      '박투수 — 타석 · 타수 · 안타 · 장타 · 볼넷 · 삼진 · 타율 · 출루율 · wOBA (wOBA = (0.69 볼넷 + 1.27 2루타) ÷ (타수+볼넷))');
   });
 
   test('다른 투수를 고르면 그 투수와 붙은 타자만', function () {
     setTeamScope('vs', '이계투|청솔');
     eq(document.querySelector('.tm-vs-sel').value, '이계투|청솔', '고른 투수');
-    eq(rows(), ['약 1 0 0 .000 .000', '합계 1 0 0 .000 .000'], '이계투');
+    eq(rows(), ['약 1 1 0 0 0 0 .000 .000 .000', '합계 1 1 0 0 0 0 .000 .000 .000'], '이계투');
   });
 
   test('원정 = 우리 투수 vs 상대 타자 · 양 팀이면 카드 없음', function () {
@@ -77,7 +78,7 @@
       var mine = opts().filter(function (o) { return /박투수/.test(o); });
       eq(mine, ['박투수 · 청솔 · 2타석', '박투수 · 솔빛 · 1타석'], '청솔 박투수 2경기 합침 · 솔빛 박투수는 따로');
       setTeamScope('vs', '박투수|청솔');
-      eq(rows(), ['강 2 1 1 .500 .500', '합계 2 1 1 .500 .500'], '두 경기 합친 줄');
+      eq(rows(), ['강 2 2 1 0 0 1 .500 .500 .445', '합계 2 2 1 0 0 1 .500 .500 .445'], '두 경기 합친 줄');
     } finally {
       G.forEach(function (d) { localStorage.removeItem(d.key); });
       localStorage.setItem('sl_saves', JSON.stringify(JSON.parse(localStorage.getItem('sl_saves') || '[]').filter(function (s) { return !/^sl_vs_t/.test(s.key); })));

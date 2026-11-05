@@ -29,6 +29,7 @@
     srv.games = []; srv.user_games = []; srv.teams = []; srv.team_members = []; srv.shared_links = []; srv.user = null;
     srv.log = []; srv.failRead = null; srv.failWrite = null; srv.delayRead = null; srv.channels = []; srv.rlsDelete = false;
     srv.noLabelCols = false;   // true = sql/14 적용 전: user_games.label · label_at 을 읽거나 쓰면 42703(열 없음)
+    srv.live = {}; srv.liveBusy = false;   // 학부모 실시간 링크(sql/16) — id → {key, payload, at} · liveBusy=true 면 live_put 이 PT429(3초 제한)
   };
   var authCb = null;   // cloud.js 가 등록한 onAuthStateChange 콜백
   // 로그인한 것처럼 만든다: 세션을 돌려주고 SIGNED_IN 을 알린다(cloud.js 가 시작 동기화를 다시 돌린다). id = 계정(생략하면 TEST-USER)
@@ -122,6 +123,17 @@
   }
   // 핸들러는 행 배열을 돌려주거나, {error:{code,message}} 로 서버 예외를 흉내 낸다
   var rpcs = {
+    // sql/16: 새 id 는 쓰기 열쇠와 함께 저장, 같은 id 는 같은 열쇠로만 덮어쓴다(아니면 42501). 잘못된 id · 열쇠 · 내용은 22023
+    live_put: function (a) {
+      if (!/^[A-Za-z0-9]{10,32}$/.test(a.p_id || '') || !(typeof a.p_key === 'string' && a.p_key.length >= 20 && a.p_key.length <= 128) || !a.p_payload || typeof a.p_payload !== 'object' || Array.isArray(a.p_payload))
+        return { error: { code: '22023', message: 'bad live_put input' } };
+      if (srv.liveBusy) return { error: { code: 'PT429', message: 'too frequent' } };
+      var r = (srv.live || (srv.live = {}))[a.p_id];
+      if (r && r.key !== a.p_key) return { error: { code: '42501', message: 'wrong key' } };
+      srv.live[a.p_id] = { key: a.p_key, payload: clone(a.p_payload), at: new Date().toISOString() };
+      return srv.live[a.p_id].at;
+    },
+    live_get: function (a) { var r = (srv.live || {})[a.p_id]; return r ? { payload: clone(r.payload), at: r.at } : null; },
     get_shared_link: function (a) { var r = srv.shared_links.filter(function (x) { return x.id === a.p_id; })[0]; return r ? clone(r.payload) : null; },   // 실제 SQL 은 sql/05: id 정확 일치 1건의 payload, 없으면 null
     find_team_by_code: function (a) { return teamsByCode(a.p_code); },
     // 1인자 = sql/10, 2인자(p_name) = sql/13: 이름을 trim 해 검사(빈 값 · 20자 초과는 P0001)한 뒤 같은 규칙으로 가입하고 display_name 을 저장한다.
@@ -142,13 +154,14 @@
 
   var client = {
     from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, update: function (patch) { return new Q(t, 'update', patch); }, insert: function (rows) { return new Q(t, 'insert', rows); }, delete: function () { return new Q(t, 'delete'); } }; },
-    rpc: function (fn, args) {
-      return Promise.resolve().then(function () {
+    rpc: function (fn, args) {   // 진짜 supabase-js 처럼 .then 만 있는 thenable 을 돌려준다(.catch 없음 — 바로 .catch 를 부르면 여기서도 깨진다)
+      var p = Promise.resolve().then(function () {
         srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });
         if (!rpcs[fn]) throw new Error('stub: 지원하지 않는 rpc ' + fn);
         var out = rpcs[fn](args || {});
         return out && out.error ? { data: null, error: out.error, status: 400 } : { data: out, error: null, status: 200 };
       });
+      return { then: function (a, b) { return p.then(a, b); } };
     },
     auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다
       getSession: function () { return Promise.resolve({ data: { session: srv.user ? { user: srv.user } : null } }); },

@@ -9725,25 +9725,6 @@ function fieldFeedbackSubmit(){
     localStorage.setItem('sl_feedback',JSON.stringify(list));
   }catch(e){}
 
-  // ── 1. Google Forms 전송 (CORS 우회 가능 — no-cors mode) ──
-  // Google Forms 폼 응답 URL 및 entry ID를 실제 값으로 교체하세요.
-  // (Google Forms → 미리보기 → 개발자도구 Network에서 formResponse URL 확인)
-  (function(){
-    var GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_FORM_ID/formResponse';
-    var params = new URLSearchParams({
-      'entry.REPLACE_TAGS_ENTRY':  tags.join(', ') || '없음',
-      'entry.REPLACE_TEXT_ENTRY':  text.trim()     || '(내용 없음)',
-      'entry.REPLACE_ABS_ENTRY':   String(entry.abs),
-      'entry.REPLACE_VER_ENTRY':   entry.ver
-    });
-    fetch(GOOGLE_FORM_URL, {
-      method: 'POST',
-      mode: 'no-cors',                         // CORS 우회 — 응답 확인 불가하지만 전송됨
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: params.toString()
-    }).catch(function(){});
-  })();
-
   // ── 2. Supabase 전송 (기존 프로젝트 재사용) ──
   (function(){
     var SUPABASE_URL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';

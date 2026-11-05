@@ -54,6 +54,9 @@
     eq(window.slCoachNotes(p2.slice(0, 4)), [], '3타석이면 줄이 없다');
   });
 
+  // scorebook.js 가 _pgBuild · showToast 를 감싸 화면 글자의 이모지(⚠ · 📋 …)를 지운다. 감싸는 때가 setTimeout 0 이라 테스트 시작과 겨뤄
+  //   어떤 때는 지워지고 어떤 때는 안 지워진다 → 같은 규칙(scorebook.js _noEmoji)으로 빼고 비교
+  var noEmo = function (t) { return String(t).replace(/\p{Extended_Pictographic}\uFE0F?\s?|\uFE0F/gu, '').replace(/^\s+/, ''); };
   test('코치 메모: 경기 리포트(GAME REPORT) 인사이트 칸에 나온다', function () {
     var keep = { abs: AS.abs, hs: AS.hs, as: AS.as };
     try {
@@ -65,7 +68,7 @@
       AS.hs = 2; AS.as = 1;
       _pgBuild();
       var rows = $('pgInsights').querySelectorAll('.pg-ins.coach');
-      eq(Array.prototype.map.call(rows, function (r) { return r.textContent; }), ['📋 득점권3타석 1안타 · 타점 1', '📋 선두타자 출루2 / 4이닝'], '조건이 맞는 줄만 (득점권 3타석 · 이닝 4개)');
+      eq(Array.prototype.map.call(rows, function (r) { return noEmo(r.textContent); }), ['득점권3타석 1안타 · 타점 1', '선두타자 출루2 / 4이닝'], '조건이 맞는 줄만 (득점권 3타석 · 이닝 4개)');
       ok(/오늘의 선수/.test($('pgInsights').textContent), '원래 줄(오늘의 선수)은 그대로');
     } finally { AS.abs = keep.abs; AS.hs = keep.hs; AS.as = keep.as; }
   });

@@ -53,9 +53,9 @@
     var tb = document.querySelector('#teamContent .tm-fieldinn');
     ok(tb, '포지션별 수비 이닝 표');
     var head = [].map.call(tb.querySelectorAll('thead th'), function (x) { return x.textContent; });
-    eq(head, ['선수', '투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익', '합계', '경기'], '열 — 기타 없음');
+    eq(head, ['선수', '합계', '경기', '투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익'], '열 — 합계 · 경기가 앞, 기타 없음');
     var row = [].find.call(tb.querySelectorAll('tbody tr'), function (tr) { return tr.querySelector('th b').textContent === 'G'; });
-    eq([].map.call(row.querySelectorAll('td'), function (x) { return x.textContent; }), ['-', '-', '-', '-', '-', '-', '1⅔', '-', '-', '1⅔', '1'], 'G 줄');
+    eq([].map.call(row.querySelectorAll('td'), function (x) { return x.textContent; }), ['1⅔', '1', '-', '-', '-', '-', '-', '-', '1⅔', '-', '-'], 'G 줄');
     eq(tb.querySelector('tbody tr th b').textContent, 'B', '많이 뛴 선수부터');
   });
 })();

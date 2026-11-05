@@ -83,7 +83,7 @@ export function gameInnings(abs, lineup, team) {
 // 아웃 → '4⅔' (이닝 표기)
 export const ipTxt = o => (o ? `${Math.floor(o / 3) || ''}${['', '⅓', '⅔'][o % 3]}` || '0' : '-');
 
-// 팀 대시보드 카드 — games = team.js 의 경기 목록(key · current · abs), team = 'home' | 'away'
+// 팀 대시보드 카드 — 합계 · 경기를 이름 바로 옆에(폰에서 옆으로 밀지 않고 보이게) · games = team.js 의 경기 목록(key · current · abs), team = 'home' | 'away'
 export function fieldInnCard(games, team) {
   const recs = new Map(loadGames().map(r => [r.key, r]));
   const lk = team === 'away' ? 'away_lineup' : 'home_lineup';
@@ -110,10 +110,10 @@ export function fieldInnCard(games, team) {
       ${head}<span class="an-hd-note">${n}경기 · 선발 위치 + 경기 운영 모드 교체로 셈 · ⅓ = 아웃 1개 · 교체 없이 자리만 바꾼 것은 안 들어가요</span></header>
       <div class="tm-roster-wrap">
         <table class="tm-roster tm-fieldinn">
-          <thead><tr><th scope="col" class="tm-sticky">선수</th>${cols.map(c => `<th scope="col">${c[1]}</th>`).join('')}<th scope="col">합계</th><th scope="col">경기</th></tr></thead>
+          <thead><tr><th scope="col" class="tm-sticky">선수</th><th scope="col">합계</th><th scope="col">경기</th>${cols.map(c => `<th scope="col">${c[1]}</th>`).join('')}</tr></thead>
           <tbody>${rows.map(r => `
             <tr><th scope="row" class="tm-sticky"><b>${esc(r.name)}</b>${r.num !== '' && r.num != null ? `<small>#${esc(r.num)}</small>` : ''}</th>
-              ${cols.map(c => `<td>${ipTxt(r.outs[c[0]] || 0)}</td>`).join('')}<td class="lead">${ipTxt(r.all)}</td><td>${r.g}</td></tr>`).join('')}
+              <td class="lead">${ipTxt(r.all)}</td><td>${r.g}</td>${cols.map(c => `<td>${ipTxt(r.outs[c[0]] || 0)}</td>`).join('')}</tr>`).join('')}
           </tbody>
         </table>
       </div>

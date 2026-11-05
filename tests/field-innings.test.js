@@ -55,6 +55,12 @@
     abs[3].runEv = [pos(X, Z, '유격', '포수', { inning: 2, half: 'bottom', outs: 2 })];   // 2회말(우리 공격) X ↔ Z → 3회초부터
     eq(outs(window.slFieldInnings(abs, [X, Y, Z], 'home')),
       { X: { P: 4, SS: 2, C: 3 }, Y: { SS: 4, P: 5 }, Z: { C: 6, SS: 3 } }, 'X 투수 1⅓ · 유격 ⅔ · 포수 1 / Y 유격 1⅓ · 투수 1⅔ / Z 포수 2 · 유격 1');
+    // 원정(말에 수비) 1회말 0아웃에 유격(일번) ↔ 투수(이번) — 경기 끝 라인업은 바꾼 뒤 값(일번 투수 · 이번 유격). 바꾸기 전 이닝이 없으니 0
+    var A1 = P(1, '일번', '투수', true), B2 = P(2, '이번', '유격', true);
+    var abs2 = ['1회초', '1회말', '2회초', '2회말', '3회초', '3회말'].map(function (s) { return ab(s, /초/.test(s) ? 'away' : 'home'); });
+    var e = pos(A1, B2, '유격', '투수', { inning: 1, half: 'bottom', outs: 0 }); e.team = 'away'; e.inn = '1회말';
+    abs2[1].runEv = [e];
+    eq(outs(window.slFieldInnings(abs2, [A1, B2], 'away')), { 이번: { SS: 9 }, 일번: { P: 9 } }, '일번 투수 3이닝 · 이번 유격 3이닝');
   });
 
   test('수비 이닝: 팀 대시보드(이번 경기)에 표가 나온다', function () {

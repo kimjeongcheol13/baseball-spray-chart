@@ -8606,6 +8606,7 @@ function _pgBuild(){
     ins.push({cls:'mvp',lbl:'🏆 오늘의 선수',val:_escHtml(m.name)+' — '+m.h+'안타 '+_escHtml(m.rbi)+'타점'+(m.hr?' '+m.hr+'홈런':'')});
   }
 
+  if(window.slCoachNotes)try{ins=ins.concat(window.slCoachNotes(AS.abs));}catch(e){}   // 코치 메모 최대 3줄 — 득점권 · 2스트라이크 · 선두타자 … (features/coachnotes.js)
   var insEl=document.getElementById('pgInsights');
   if(insEl)insEl.innerHTML=ins.length
     ?ins.map(function(i){return'<div class="pg-ins '+i.cls+'"><div class="pg-ins-lbl">'+i.lbl+'</div><div class="pg-ins-val">'+i.val+'</div></div>';}).join('')

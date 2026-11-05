@@ -15,6 +15,7 @@ let _trendKey = 'avg';
 let _logAll = false;
 let _fv = '2d';          // 팀 타구 방향: 2d | 3d
 let _vsKey = '';         // 투수 맞대결: 고른 투수 (이름|팀)
+let _bxKey = 'bunt';     // 주자 · 아웃별 표: bunt | xbh
 
 const LEADERS = [
   { k: 'ops', l: 'OPS', fmt: 'f3', rate: true },
@@ -78,6 +79,7 @@ export function setTeamScope(k, v) {
   if (k === 'log') _logAll = !_logAll;
   if (k === 'fv') _fv = v === '3d' ? '3d' : '2d';
   if (k === 'vs') _vsKey = String(v);
+  if (k === 'bx') _bxKey = v === 'xbh' ? 'xbh' : 'bunt';
   _render();
 }
 
@@ -188,6 +190,7 @@ function _render() {
       ${_countCard(T)}
     </div>
     ${_vsCard(T)}
+    ${_bxCard(T, seg)}
     ${_dirCard(T)}
     ${pitchTable([{ name: '팀', cls: 'a', pitch: _pitchMap(T.abs) }])}
     ${_exportCard(team)}
@@ -581,6 +584,38 @@ function _vsCard(T) {
         </tbody>
       </table></div>
       <div class="an-hd-note">같은 이름 · 같은 팀이면 여러 경기를 합쳐요 · 3타석 미만은 참고만</div>
+    </section>`;
+}
+
+// ── 주자 · 아웃별 번트 · 장타 (6-4-3 Charts 「Bunt / XBH」 표) ──
+//   경기 운영 모드로 적은 타석만 (gfPre = 그 타석 직전 주자 · 아웃) · 번트 = 희생번트 · 장타 = 2루타 이상
+const BX_ROWS = [[0, '주자 없음'], [1, '1루'], [2, '2루'], [4, '3루'], [3, '1 · 2루'], [5, '1 · 3루'], [6, '2 · 3루'], [7, '만루']];
+const BX_IS = { bunt: a => a.res === '희타' || a.res === '희생번트', xbh: a => ['2루타', '3루타', '홈런'].includes(a.res) };
+
+function _bxCard(T, seg) {
+  const list = T.abs.filter(a => a.gfPre && Array.isArray(a.gfPre.bases) && [0, 1, 2].includes(a.gfPre.outs));
+  const hd = `<header class="an-hd"><h3>주자 · 아웃별 번트 · 장타</h3>${list.length ? seg('bx', _bxKey, [['bunt', '번트'], ['xbh', '장타']]) : ''}</header>`;
+  if (!list.length) return `<section class="an-card tm-bx">${hd}<div class="an-note">경기 운영 모드로 적은 타석이 없어요. 기록 탭에서 경기 운영 모드로 주자 · 아웃을 따라가며 기록하면 채워져요.</div></section>`;
+  const is = BX_IS[_bxKey], at = new Map(BX_ROWS.map(([b], i) => [b, i]));
+  const box = BX_ROWS.map(() => [0, 1, 2].map(() => ({ n: 0, k: 0 })));
+  list.forEach(a => {
+    const b = a.gfPre.bases, c = box[at.get((b[0] ? 1 : 0) + (b[1] ? 2 : 0) + (b[2] ? 4 : 0))][a.gfPre.outs];
+    c.n++; if (is(a)) c.k++;
+  });
+  const tot = [0, 1, 2].map(o => box.reduce((s, r) => ({ n: s.n + r[o].n, k: s.k + r[o].k }), { n: 0, k: 0 }));
+  const cell = c => (c.n ? `<td${c.k ? ' class="on"' : ''}><b>${c.k}</b><small>/${c.n}</small></td>` : '<td class="tm-bx-0">—</td>');
+  const what = _bxKey === 'xbh' ? '장타(2루타 이상)' : '희생번트';
+  return `
+    <section class="an-card tm-bx">
+      ${hd}
+      <table class="pf-split">
+        <thead><tr><th scope="col">주자</th><th scope="col">무사</th><th scope="col">1사</th><th scope="col">2사</th></tr></thead>
+        <tbody>${BX_ROWS.map(([, l], i) => `
+          <tr><th scope="row">${l}</th>${box[i].map(cell).join('')}</tr>`).join('')}
+          <tr class="tm-bx-tot"><th scope="row">합계</th>${tot.map(cell).join('')}</tr>
+        </tbody>
+      </table>
+      <div class="an-hd-note">숫자 = ${what} 수 / 그 상황 타석 · 경기 운영 모드로 적은 ${list.length}타석만</div>
     </section>`;
 }
 

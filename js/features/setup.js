@@ -5,7 +5,7 @@
 //   버튼은 기존 함수(core.js · shell.js · cloud.js)를 그대로 부른다
 //   투구 수 관리 카드(#stPitch): 내용 · 버튼은 pitchlimit.js — 여기서는 자리만 만든다
 import { esc } from '../constants.js';
-import { cardHtml as _pitchCard } from './pitchlimit.js?v=1';
+import { cardHtml as _pitchCard } from './pitchlimit.js?v=2';
 
 const $ = id => document.getElementById(id);
 const _AS = () => window.AS || {};

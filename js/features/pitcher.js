@@ -1,7 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=9';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=27';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=28';
 import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=9';
 import { FONT, DARK as D, font, fitFont, rr, drawWithFonts, dCard, dPill, dFoot } from './imgkit.js?v=3';
 

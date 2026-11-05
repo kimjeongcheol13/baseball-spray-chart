@@ -389,3 +389,11 @@
   .cd-cell:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
   .tg-tab { flex: 1 1 0; }
 }
+/* 투수 맞대결 (team.js _vsCard): 투수 고르기 · 합계 줄 */
+.tm-vs-sel { width: 100%; margin: 0 0 10px; }
+.tm-vs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tm-vs .tm-vs-tot :is(th, td) { border-top: 1px solid var(--an-line); }
+@media (max-width: 720px) {
+  /* 투수 맞대결 10열: 폰에서는 칸 사이를 좁혀 wOBA 까지 한 화면에 (v2.css 밤 화면 12px 4px 보다 우선) */
+  html body.sb.sb-night:not(.high-contrast) #analysisView .tm-vs .pf-split :is(th, td) { padding-left: 2px; padding-right: 2px; }
+}

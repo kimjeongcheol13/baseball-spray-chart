@@ -39,6 +39,23 @@ function _lines(abs) {
 }
 const _xbhTxt = t => XBH.filter(r => t[r]).map(r => (t[r] > 1 ? `${r} ${t[r]}개` : r));
 
+// 이름 가리기 — 공유 링크와 같은 규칙(core.js _anonSharePayload: 등번호 있으면 #번호, 없으면 성OO · 겹치면 구분) + " 선수"
+// 라인업(hl · al)을 같이 넘겨 공유 링크와 같은 표기가 나오게 한다. 투수는 따로(pit) 센다
+function _anon(src) {
+  const abs = src.abs || [], ps = src.pitchers || [];
+  const lp = arr => (Array.isArray(arr) ? arr : []).map(p => ({ id: p.id, n: p.name, no: p.num }));
+  const pay = { hl: lp(src.hl), al: lp(src.al),
+    abs: abs.map(a => ({ bid: a.bid, bn: a.bname != null ? String(a.bname) : '', bno: a.bnum, t: a.team })),
+    pitchers: ps.map(p => ({ id: p.id, nm: p.name, no: p.num })) };
+  const lab = (n, no) => (no != null && no !== 0 && String(no).trim() ? '#' + String(no).trim() : String(n || '').trim() ? String(n).trim()[0] + 'OO' : '선수');
+  let out = null;
+  try { if (typeof window !== 'undefined' && typeof window._anonSharePayload === 'function') out = window._anonSharePayload(pay); } catch (e) {}
+  return Object.assign({}, src, {
+    abs: abs.map((a, i) => Object.assign({}, a, { bname: (out ? out.abs[i].bn : lab(a.bname, a.bnum)) + ' 선수' })),
+    pitchers: ps.map((p, i) => Object.assign({}, p, { name: (out ? out.pitchers[i].nm : lab(p.name, p.num)) + ' 선수' })),
+  });
+}
+
 // 결승점: 반 이닝씩 점수를 더해 이긴 팀이 마지막으로 앞서기 시작한 반 이닝 (이닝별 득점이 다 있을 때만)
 function _decider(ls, side, win) {
   const top = side === 'away' ? 'home' : 'away', bot = top === 'home' ? 'away' : 'home';
@@ -57,9 +74,10 @@ function _decider(ls, side, win) {
   return dec;
 }
 
-// src = { th, ta, hs, as, info: { date, venue, side, ls }, abs, pitchers, ls(경기 운영 모드 득점 — 없으면 null) }
+// src = { th, ta, hs, as, info: { date, venue, side, ls }, abs, pitchers, ls(경기 운영 모드 득점 — 없으면 null), anon(이름 가리기), hl · al(라인업) }
 // 반환: { title, sub, paras: [...], note } · 타석이 하나도 없으면 null
 export function buildRecap(src) {
+  if (src && src.anon) src = _anon(src);
   const all = (src.abs || []).filter(Boolean);
   if (!all.length) return null;
   const mine = all.filter(a => a.team !== 'away');
@@ -158,14 +176,19 @@ function _src() {
     info: window.gameInfo ? window.gameInfo() : A.info || {},
     abs: A.abs || [], pitchers: A.pitchers || [],
     ls: window.slLineScore ? window.slLineScore(A.abs || []) : null,
+    hl: A.home_lineup, al: A.away_lineup, anon: !_names,
   };
 }
-let _cur = null;
+let _cur = null, _names = false;   // _names: 「선수 실명 포함」 — 기사를 새로 열 때마다 꺼진 채로 (공유 링크와 같게)
 function _ga(action) { try { if (typeof window.gtag === 'function') window.gtag('event', 'game_recap', { action }); } catch (e) {} }
 
-export function openRecap() {
+// keep = true: 실명 체크만 바꿔 다시 쓰기 (스크롤 · 체크 그대로)
+export function openRecap(keep) {
   const card = $('pgCard');
   if (!card) return;
+  if (keep !== true) _names = false;
+  // ☰ 메뉴에서 열면 경기 리포트부터 띄운다 (기사는 리포트 카드 맨 아래에 붙는다)
+  if (!card.classList.contains('up') && typeof window.showPostGameReport === 'function') window.showPostGameReport();
   let box = $('pgRecap');
   if (!box) { box = document.createElement('section'); box.id = 'pgRecap'; box.className = 'pg-ai pg-recap'; box.setAttribute('aria-label', '경기 기사'); card.appendChild(box); }
   _cur = buildRecap(_src());
@@ -174,11 +197,14 @@ export function openRecap() {
        <div class="pg-ai-txt pg-rc-t">${esc(_cur.title)}</div>${_cur.sub ? `<div class="pg-ai-txt pg-rc-s">${esc(_cur.sub)}</div>` : ''}
        ${_cur.paras.map(p => `<div class="pg-ai-txt">${esc(p)}</div>`).join('')}
        <div class="pg-ai-txt pg-rc-n">${esc(_cur.note)}</div>
+       <label class="pg-rc-names"><input type="checkbox" id="pgRecapNames"${_names ? ' checked' : ''} onchange="recapNames(this.checked)"> 선수 실명 포함 <span class="pg-rc-hint">끄면 #등번호 · 성OO</span></label>
        <div class="pg-share-row pg-rc-act"><button type="button" class="pg-sh-btn acc" id="pgRecapCopy" onclick="copyRecap()">📋 복사</button>${navigator.share ? '<button type="button" class="pg-sh-btn" onclick="shareRecap()">↗ 보내기</button>' : ''}</div>`
     : '<div class="pg-ai-txt">타석을 기록하면 경기 기사를 쓸 수 있어요.</div>';
+  if (keep === true) return;
   if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   _ga('make');
 }
+export function recapNames(on) { _names = !!on; openRecap(true); }
 
 function _copy(text, done) {
   if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, () => window.showToast && window.showToast('복사하지 못했어요')); return; }
@@ -204,6 +230,7 @@ if (typeof window !== 'undefined') {
   window.openRecap = openRecap;
   window.copyRecap = copyRecap;
   window.shareRecap = shareRecap;
+  window.recapNames = recapNames;
   // 공유 줄에 버튼 (scoresheet.js 의 리그 기록지 버튼과 같은 방식)
   const row = document.querySelector('#pgReport .pg-share-row');
   if (row && !$('pgRecapBtn')) row.insertAdjacentHTML('beforeend', '<button class="pg-sh-btn" id="pgRecapBtn" onclick="openRecap()">📰 경기 기사</button>');

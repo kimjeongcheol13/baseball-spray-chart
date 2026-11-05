@@ -96,7 +96,7 @@ function start() {
 function stop() {
   const s = load();
   localStorage.removeItem(LS); liveTimer(false); _err = '';
-  if (s) put(s, Object.assign(livePayload(s.names), { end: true })).catch(() => {});   // 학부모 화면에 「중계 끝」
+  if (s) Promise.resolve(put(s, Object.assign(livePayload(s.names), { end: true }))).catch(() => {});   // 학부모 화면에 「중계 끝」 · supabase-js rpc 는 .catch 가 없는 thenable
   paint();
   if (window.showToast) window.showToast('실시간 중계를 껐어요', false, 2500);
 }

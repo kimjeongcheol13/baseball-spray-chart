@@ -154,13 +154,14 @@
 
   var client = {
     from: function (t) { return { select: function (c) { return new Q(t, 'select').select(c); }, upsert: function (rows, o) { return new Q(t, 'upsert', rows, o); }, update: function (patch) { return new Q(t, 'update', patch); }, insert: function (rows) { return new Q(t, 'insert', rows); }, delete: function () { return new Q(t, 'delete'); } }; },
-    rpc: function (fn, args) {
-      return Promise.resolve().then(function () {
+    rpc: function (fn, args) {   // 진짜 supabase-js 처럼 .then 만 있는 thenable 을 돌려준다(.catch 없음 — 바로 .catch 를 부르면 여기서도 깨진다)
+      var p = Promise.resolve().then(function () {
         srv.log.push({ table: null, op: 'rpc', fn: fn, args: clone(args || {}) });
         if (!rpcs[fn]) throw new Error('stub: 지원하지 않는 rpc ' + fn);
         var out = rpcs[fn](args || {});
         return out && out.error ? { data: null, error: out.error, status: 400 } : { data: out, error: null, status: 200 };
       });
+      return { then: function (a, b) { return p.then(a, b); } };
     },
     auth: {   // 기본은 로그인 안 한 상태(srv.user = null). srv.signIn() 으로 로그인한 것처럼 만든다
       getSession: function () { return Promise.resolve({ data: { session: srv.user ? { user: srv.user } : null } }); },

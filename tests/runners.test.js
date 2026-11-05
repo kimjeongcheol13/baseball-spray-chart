@@ -535,6 +535,83 @@
     });
   });
 
+  // 투구 기록(분석 › 투수)의 지금 투수가 교체 · 수비 위치 바꾸기 · 공수 교대를 따라간다 (예전엔 따로 놀아 새 투수 · 상대 타자의 공이 앞 투수에 쌓였다)
+  test('투구 기록 투수: 공수 교대 · 투수 교체 · 수비 위치 바꾸기를 따라간다 — 모르는 상대 투수면 비운다 · ↩ 는 바뀌기 전 공부터', async function () {
+    await isolated(async function () {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [['일번', '1', '유격수'], ['에이스', '18', '투수'], ['삼번', '3', '포수'], ['구원', '30', '']].map(function (x, i) { return { id: 'pf' + (i + 1), name: x[0], num: x[1], pos: x[2], bh: '', isStarter: i < 3 }; });
+      AS.away_lineup = [{ id: 'pa1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'pa2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      renderLP();
+      AS.pitchers = [{ id: 'pq1', name: '에이스', num: '18', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers;   // 경기 첫 공의 이닝 묻기는 tests/pitching-p1.test.js 에서
+      selectPitcher('pq1');
+      GF.first = 'away'; gfActivate();   // 1회초 원정 공격 · 우리(홈) 수비
+      var cur = function () { return AS.currentPitcher ? AS.currentPitcher.name : null; };
+      var n = function (nm) { var p = AS.pitchers.find(function (q) { return q.name === nm; }); return p ? p.pitches.length : -1; };
+      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t + ' / ' + txt()); b.click(); };
+      async function k3() { recordPitch('헛스윙'); recordPitch('헛스윙'); await gap(); recordPitch('헛스윙'); }   // 삼진 → 기록 탭 타석(0.7초 연타 방지)
+      await k3(); await k3(); await k3();
+      await T.sleep(100);
+      eq([GF.half, n('에이스'), cur()], ['bottom', 9, null], '1회말: 상대 투수를 몰라 투구 기록 투수를 비움 (에이스에 우리 타자 공이 쌓이지 않게)');
+      AS.pitchers.push({ id: 'pq2', name: '상대투', num: '', role: null, pitches: [] }); selectPitcher('pq2');   // 손으로 상대 투수 등록
+      await k3(); await k3(); await k3();
+      await T.sleep(100);
+      eq([GF.inning, GF.half, n('상대투'), cur()], [2, 'top', 9, '에이스'], '2회초: 우리 수비 → 에이스로');
+      undoPitch();   // 에이스는 아직 공이 없다 → 바뀌기 전 마지막 공(상대투 삼진)
+      eq([GF.half, GF.outs, n('상대투'), n('에이스'), cur()], ['bottom', 2, 8, 9, '상대투'], '↩: 상대투의 마지막 공을 지우고 1회말 2아웃 · 상대투로 (에이스 옛 공은 그대로)');
+      await gap(); recordPitch('헛스윙');
+      await T.sleep(100);
+      eq([GF.half, cur()], ['top', '에이스'], '다시 삼진 → 2회초 에이스');
+      slSub(); tap('투수 교체');
+      eq(txt(), ['1번 일번 (유격수)', '2번 에이스 (투수)', '3번 삼번 (포수)', '타순에 없는 투수 (지명타자)', '취소'], '나가는 선수');
+      tap('2번 에이스 (투수)'); tap('#30 구원');
+      eq([cur(), AS.currentPitcher && AS.currentPitcher.num, AS.pitchers.length], ['구원', '30', 3], '투수 교체 → 투구 기록도 구원 (처음이면 등록)');
+      ok(/ · 투구 기록 투수도 바꿈$/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      slSub(); tap('수비 위치 바꾸기 — 주전끼리'); tap('1번 일번 (유격수)'); tap('2번 구원 (투수)');
+      eq([AS.home_lineup[0].pos, cur()], ['투수', '일번'], '수비 위치 바꾸기로 일번이 투수 → 투구 기록도 일번');
+      undoLast();
+      eq(cur(), '구원', '위치 바꾸기 되돌림 → 구원');
+      undoLast();
+      eq([AS.home_lineup[1].name, cur()], ['에이스', '에이스'], '투수 교체 되돌림 → 에이스');
+      AS._pitchAuto = null;
+    });
+  });
+
+  // 흐름 점검 4 (사용자 결정 11-05): 투구 수 관리를 켜면 기록 탭 B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나 — 수비 팀 타순표 투수에게 (없으면 등록)
+  test('투구 수 관리를 켜면 기록 탭 B·S · 결과도 투구로 센다 — 수비 팀 투수에게 · 지우개 · 삼진 · 투수를 모르면 안내', async function () {
+    await isolated(async function () {
+      fresh(); gfDeactivate();
+      localStorage.setItem('sl_pitch_rule', JSON.stringify({ on: true }));
+      AS.home_lineup = [{ id: 'rp1', name: '에이스', num: '18', pos: '투수', bh: '', isStarter: true }, { id: 'rp2', name: '일번', num: '1', pos: '유격', bh: '', isStarter: true }];
+      AS.away_lineup = [{ id: 'ro1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'ro2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      AS.curTeam = 'away'; renderLP(); selBatter('ro1');   // 원정 공격 = 우리(홈) 수비
+      var ace = function () { return AS.pitchers.find(function (p) { return p.name === '에이스'; }); };
+      var prs = function () { return ace().pitches.map(function (e) { return e.pr + (e.end ? '→' + e.end : ''); }); };
+      chCount('b'); chCount('s'); chCount('s');
+      eq([AS.pitchers.length, ace() && ace().num, AS.currentPitcher && AS.currentPitcher.name, prs(), [AS.balls, AS.strikes]],
+        [1, '18', '에이스', ['볼', '스트라이크', '스트라이크'], [1, 2]], 'B·S 하나 = 공 하나 · 타순표 투수를 등록하고 고름 · 볼카운트 그대로');
+      ok(ace().pitches.every(function (e) { return e.src === 'rec' && e.pt == null && e.zone == null && e.bteam === 'away'; }), '구종 · 코스 없는 기록 탭 공');
+      await hit('2루타');
+      var ab = AS.abs[0], last = ace().pitches[3];
+      eq([prs().length, last.end, last.src, ab.pa, ab.pid, ab.pitches.length, [AS.balls, AS.strikes]], [4, '2루타', 'rec', last.pa, ace().id, 4, [0, 0]], '필드로 끝낸 타석 → 결과 공 하나 · 그 타석과 연결');
+      undoLast();
+      eq([AS.abs.length, prs(), [AS.balls, AS.strikes]], [0, ['볼', '스트라이크', '스트라이크'], [1, 2]], '지우개 → 결과 공도 지우고 1-2 로');
+      if (!AS.batter || AS.batter.id !== 'ro1') selBatter('ro1');
+      await gap(); chCount('s');
+      eq([AS.abs.length, AS.abs[0] && AS.abs[0].res, prs()], [1, '삼진', ['볼', '스트라이크', '스트라이크', '스트라이크→삼진']], '3스트라이크 → 삼진 타석 · 결과 공을 따로 더하지 않음');
+      AS.curTeam = 'home'; renderLP(); selBatter('rp2');   // 우리 공격 — 상대 타순표에 투수가 없다
+      chCount('b');
+      eq([prs().length, AS.balls], [4, 1], '투수를 모르면 세지 않고 볼카운트만');
+      eq($('toastTxt').textContent, '투구 수를 세려면 수비 팀 타순표에 투수를 넣어 주세요', '한 번 안내');
+      localStorage.setItem('sl_pitch_rule', JSON.stringify({ on: false }));
+      AS.curTeam = 'away'; renderLP(); selBatter('ro2');
+      chCount('b');
+      eq(prs().length, 4, '투구 수 관리를 끄면 예전대로');
+    });
+  });
+
   test('경기 운영 모드가 아니면 도루는 예전처럼 안내만 · 이닝별 득점 없음', async function () {
     await isolated(async function () {
       fresh(); gfDeactivate();

@@ -327,11 +327,121 @@ function restoreBatter(half, bid) {
     const t = atk();
     A.curTeam = t === 'home' ? 'away' : 'home';   // swLineupTab 은 같은 팀이면 아무것도 안 한다
     window.swLineupTab(t);
+    followHalf(fldAt(half));   // 투구 기록 투수도 되돌린 반 이닝의 수비 팀 투수로
   }
   const lu = window.gfGetLineup();
   const pl = (bid != null && lu.find(p => p && String(p.id) === String(bid))) || (lu.length ? lu[g.batterIdx % lu.length] : null);
   if (!pl || (A.batter && String(A.batter.id) === String(pl.id))) return;
   setBatter(pl.id);
+}
+
+// ── 투구 기록 투수 따라가기 ───────────────────────────────
+// 투구 기록(분석 › 투수)의 지금 투수(AS.currentPitcher)를 교체 · 수비 위치 바꾸기 · 공수 교대(되돌리기 포함)에 맞춘다 — 투구 기록을 쓰는 경기(등록한 투수가 있을 때)만.
+//   예전엔 따로 놀아 새 투수의 공이 앞 투수에, 공수 교대 뒤 상대 타자에게 던진 공이 우리 투수에 쌓였다
+//   같은 투수 = 이름이 같고 번호가 같거나 한쪽이 비어 있음 (core.js addPitcher 와 같은 규칙) · 투수의 팀 = pitchlimit.js isOpp (상대 투수 = 우리 타자에게 더 많이 던진 투수)
+const isP = p => !!p && p.isStarter !== false && /^(투수|투|P|SP|RP|1)$/i.test(String(p.pos || '').replace(/\s/g, ''));   // fieldinn.js 투수 표기
+const luP = team => LU(team).find(isP) || null;   // 타순표의 지금 투수
+const pTeam = p => (window.PitchLimit && window.PitchLimit.isOpp(p) ? 'away' : 'home');
+const pitchOn = () => (window.AS.pitchers || []).length > 0;
+const fldAt = half => ((half === 'top') === (G().first === 'home') ? 'away' : 'home');   // 그 반 이닝의 수비 팀 (core.js gfAtk 의 반대)
+const PT = ' · 투구 기록 투수도 바꿈';
+const lastP = { home: null, away: null };   // 공수 교대 때 팀마다 마지막으로 쓰던 투수 (이 화면에서만 — 새로고침 뒤엔 투구 기록으로 찾는다)
+function pickP(p) {   // 고르기 — core.js selectPitcher (진행 중인 타석이 있으면 결과부터 묻는다). 고른 투수가 아직 공이 없을 때 ↩ 는 바뀌기 전 마지막 공(core.js undoPitch)
+  const A = window.AS;
+  if (A.currentPitcher === p) return false;   // 반환 = 바꿨는지
+  window.selectPitcher(p ? p.id : null);
+  if (A.currentPitcher !== p) return false;
+  A._pitchAuto = p;
+  return true;
+}
+function regP(pl) {   // 타순표 선수 → 투구 기록 투수 (없으면 등록)
+  const A = window.AS, name = String((pl && pl.name) || '').trim(), num = pl && pl.num ? String(pl.num) : '';
+  if (!name) return null;
+  let p = A.pitchers.find(q => q.name === name && (!num || !q.num || String(q.num) === num));
+  if (!p) { let id = Date.now(); while (A.pitchers.some(q => q.id === id)) id++; A.pitchers.push(p = { id, name, num, role: null, pitches: [] }); }
+  return p;
+}
+const usePitcher = pl => { const p = regP(pl); return !!p && pickP(p); };
+// 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null
+function forTeam(f) {
+  const A = window.AS;
+  if (A.pitchers.includes(lastP[f])) return lastP[f];
+  let p = null, t = -Infinity;
+  A.pitchers.forEach(q => { const ps = q.pitches || [], e = ps[ps.length - 1]; if (e && pTeam(q) === f && (+e.id || 0) > t) { t = +e.id || 0; p = q; } });
+  return p || (luP(f) ? regP(luP(f)) : null);
+}
+// 교체 · 위치 바꾸기 · 그 되돌리기 뒤: 수비 팀 타순표의 투수가 바뀌었으면 투구 기록도 그 투수로. before = 바꾸기 전 타순표 투수
+function followLu(team, before) {
+  if (!pitchOn() || team !== fld()) return false;
+  const now = luP(team);
+  return !!now && !same(now, before) && usePitcher(now);
+}
+// 공수 교대(되돌리기 포함) 뒤: 새 수비 팀 투수로 (forTeam). 모르면 지금 투수(공격 팀 투수)를 비운다 — 다음 공에서 "투수를 먼저 등록하세요"
+function followHalf(prevFld) {
+  const A = window.AS;
+  if (!pitchOn()) return;
+  if (A.currentPitcher) lastP[prevFld] = A.currentPitcher;
+  const f = fld(), p = forTeam(f);
+  if (p) pickP(p);
+  else if (A.currentPitcher && pTeam(A.currentPitcher) !== f) pickP(null);
+}
+
+// ── 기록 탭 B·S → 투구 기록 (투구 수 관리를 켰을 때만 · 흐름 점검 4, 사용자 결정 11-05) ──
+// 기록 탭만 쓰면 투구가 하나도 안 생겨 투구 수 알림이 안 떴다 → B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나를 더한다.
+//   이 공은 구종 · 위치가 없다(src 'rec'). 2스트라이크 뒤 파울은 버튼이 없어 빠진다 — 실제보다 조금 적게 센다
+//   투수 = 지금 투구 기록 투수가 수비 팀 투수면 그대로, 아니면 수비 팀 투수(forTeam). 모르면 세지 않고(예전대로) 경기마다 한 번 안내
+//   투구 기록 화면에서 적던 타석(src 'rec' 아닌 공)은 예전대로 — 결과는 그 타석 마지막 공에 붙는다(core.js _recordToPitch)
+const recOn = () => !!(window.PitchLimit && window.PitchLimit.getRule().on);
+let recWarned = null;
+function recPitcher() {
+  const A = window.AS, g = G(), f = g && g.active ? fld() : (A.curTeam === 'away' ? 'home' : 'away'), c = A.currentPitcher;   // 경기 운영 모드가 아니면 기록 탭 팀 = 공격 팀
+  if (c && pTeam(c) === f) return c;
+  const p = forTeam(f);
+  if (p) { pickP(p); return A.currentPitcher === p ? p : null; }
+  if (recWarned !== A.pitchers) { recWarned = A.pitchers; window.showToast('투구 수를 세려면 수비 팀 타순표에 투수를 넣어 주세요', false, 3000); }
+  return null;
+}
+wrap('chCount', orig => function (type) {
+  const A = window.AS;
+  if ((type !== 'b' && type !== 's') || !recOn() || !A.batter || window.gfSkip()) return orig.apply(this, arguments);
+  const P = recPitcher();
+  if (!P) return orig.apply(this, arguments);
+  const n = P.pitches.length, keep = [A.pitcherPt, A.pitcherZone, A.pitcherZoneX, A.pitcherZoneY];
+  window._pitchInnAskedFor = A.pitchers;   // 이닝은 기록 탭 이닝 칸 그대로 (경기 첫 공에 묻지 않는다)
+  A.pitcherPt = A.pitcherZone = A.pitcherZoneX = A.pitcherZoneY = null;   // 투구 기록 화면에서 골라 둔 구종 · 코스가 붙지 않게
+  try { window.recordPitch(type === 'b' ? '볼' : '스트라이크'); }   // 볼카운트 · 4볼 볼넷 · 3스트라이크 삼진은 투구 기록이 센다 (기록 탭 점도 그 카운트로)
+  finally {
+    const e = P.pitches[P.pitches.length - 1];
+    if (P.pitches.length > n && e) { e.src = 'rec'; A.pitcherPt = keep[0]; }
+    else [A.pitcherPt, A.pitcherZone, A.pitcherZoneX, A.pitcherZoneY] = keep;
+  }
+});
+// 기록 탭으로 끝낸 타석(필드 · 도장): 결과 공 하나 — 그 타석과 연결 · 지우개(core.js _dropAbPitch)가 이 공을 지운다
+wrap('_recordToPitch', orig => function (ab) {
+  if (ab && !window._pitchLinking && ab.pa == null && recOn() && resultPitch(ab)) return;
+  return orig.apply(this, arguments);
+});
+function resultPitch(ab) {
+  const A = window.AS, PC = window.PitchCalc;
+  if (!PC || ab.res === PC.UNKNOWN || !PC.END_LABEL[ab.res] || window._pitchLinkCandidatePA(ab)) return false;   // 투구 기록 화면에서 끝내고 위치만 건너뛴 타석 — 그쪽과 연결을 묻는다
+  const P = recPitcher();
+  if (!P) return false;
+  const o = PC.openPA(P.pitches || []);
+  if (o && o.pitches.some(e => e.src !== 'rec')) return false;
+  const id = window._nextPitchId(), plan = PC.nextPitch(P.pitches, ab.res, { batter: { id: ab.bid, name: ab.bname }, newPA: true, id });
+  if (plan.blocked) return false;
+  const sit = window._pitchSit(), before = window._pitchInningOuts(ab.inn), cnt = ab.count || {};
+  const e = Object.assign({ id, inning: ab.inn || null, zone: null, zoneX: null, zoneY: null, pt: null, batter: ab.bname || null,
+    bteam: ab.team === 'away' ? 'away' : 'home', bnum: ab.bnum ? String(ab.bnum) : null, ts: ab.ts, outs: sit.outs, runners: sit.runners, src: 'rec' }, plan.fields);
+  (P._batterLog || (P._batterLog = [])).push(e);
+  P.pitches.push(e);
+  A.pitchLog.unshift(e);
+  (ab.pitches || (ab.pitches = [])).push({ zone: null, pt: null, x: null, y: null, balls: cnt.b || 0, strikes: cnt.s || 0, outs: cnt.o || 0, pitcher: P.name || '', ts: e.ts, result: e.result, pitchId: id });
+  window._pitchLinkSet(ab, e.pa, P.id);
+  window._pitchChanged();
+  window._pitchAutoInning(e, before);   // 경기 운영 모드가 아니면 3아웃에 다음 회로 (투구 기록과 같은 규칙)
+  if (window.PitchLimit) window.PitchLimit.onPitch();
+  return true;
 }
 
 // ── 교체 ─────────────────────────────────────────────────
@@ -369,12 +479,14 @@ function posApply(team, a, b) {
   const last = lastAb('수비 위치 바꾸기를');
   if (!last) return;
   const ev = Object.assign({ t: 'SUB', k: 'POS' }, clean(a), { with: clean(b), pa: a.pos || '', pb: b.pos || '', out: null, from: null, inn: inn(), team, scored: false, pre: preOf() });
+  const was = luP(team);
   a.pos = ev.pb; b.pos = ev.pa;
   pushEv(last, ev);
+  const pt = followLu(team, was) ? PT : '';
   window.renderLP();
   window.updateAll();
   window.gfUpdateBar();
-  window.showToast(`수비 위치 · ${ev.inn} ${a.name} → ${a.pos || '-'} · ${b.name} → ${b.pos || '-'}`, true, 3000);
+  window.showToast(`수비 위치 · ${ev.inn} ${a.name} → ${a.pos || '-'} · ${b.name} → ${b.pos || '-'}${pt}`, true, 3000);
 }
 
 // 대수비 · 투수 — 수비 팀 주전 중에서 나가는 선수 (투수는 타순에 없을 수도: 지명타자)
@@ -405,7 +517,7 @@ function subIn(k, team, out, base) {
 function subApply(k, team, out, base, inP, name) {
   const g = G(), A = window.AS, last = lastAb('교체를');
   if (!last) return;
-  const lu = LU(team), o = out && out.id != null ? lu.findIndex(p => same(p, out)) : -1;
+  const lu = LU(team), o = out && out.id != null ? lu.findIndex(p => same(p, out)) : -1, was = luP(team);
   let added = false;
   if (!inP) {
     inP = { id: Date.now() + Math.random(), name: String(name).slice(0, 8), num: '', pos: '', bh: '', isStarter: false };   // core.js addPlayer 와 같은 모양
@@ -424,14 +536,16 @@ function subApply(k, team, out, base, inP, name) {
   pushEv(last, ev);
   if (k === 'PR') runners()[base] = clean(inP);
   if (k === 'PH' && team === atk()) setBatter(inP.id);
+  // 투수 교체는 들어온 선수가 투수 (타순에 없는 투수 포함) · 대수비로 투수 자리가 바뀌어도
+  const pt = (k === 'P' ? pitchOn() && team === fld() && usePitcher(inP) : followLu(team, was)) ? PT : '';
   window.renderLP();
   window.updateAll();
   window.gfUpdateBar();
-  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}`, true, 3000);
+  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}${pt}`, true, 3000);
 }
 
 function undoSub(ev) {
-  const A = window.AS, lu = LU(ev.team), s = ev.sw;
+  const A = window.AS, lu = LU(ev.team), s = ev.sw, was = luP(ev.team);
   if (ev.k === 'POS') {   // 수비 위치 바꾸기 — 두 선수 pos 를 바꾸기 전으로
     const a = lu.find(p => same(p, ev)), b = lu.find(p => same(p, ev.with));
     if (a) a.pos = ev.pa;
@@ -446,6 +560,7 @@ function undoSub(ev) {
   const g = G();
   if (ev.k === 'PR' && ev.pre && g.bases[ev.from]) runners()[ev.from] = cleanRunners(ev.pre.runners, g.bases)[ev.from];
   if (ev.k === 'PH' && ev.team === atk() && ev.out && ev.out.id != null) setBatter(ev.out.id);
+  followLu(ev.team, was);   // 투수 자리가 되돌아갔으면 투구 기록도 그 투수로
   window.renderLP();
   window.updateAll();
   window.gfUpdateBar();
@@ -567,9 +682,10 @@ wrap('gfToggle', orig => function () {
 });
 
 wrap('gfNextHalf', orig => function () {
-  const r = orig.apply(this, arguments);
+  const was = fld(), r = orig.apply(this, arguments);
   const g = G(), lu = window.gfGetLineup(), k = lu.length ? nextIdx(lu, atk()) : 0;
   if (k) { g.batterIdx = k; window.AS.batter = null; window.selBatter(lu[k].id); }   // core.js 가 1번을 고른 뒤 — 바 · 이닝 표시는 core.js 가 다음 프레임에
+  followHalf(was);   // 투구 기록 투수도 새 수비 팀 투수로
   return r;
 });
 

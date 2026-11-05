@@ -976,6 +976,7 @@ html body.sb.sb-night:not(.high-contrast) #app-page .sb-card { background: var(-
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-card-hd { padding: 12px 12px 6px 20px; border-bottom: 0; }
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-card-hd h2 { font: 800 17px/1.2 'Noto Sans KR', sans-serif; letter-spacing: -.2px; color: var(--v-ink); }
 html body.sb.sb-night:not(.high-contrast) #app-page :is(.sb-mini, .sb-btn) { padding: 0 14px; background: var(--v-card2); border: 0; border-radius: 12px; color: var(--v-ink); font: 700 13px/1 'Noto Sans KR', sans-serif; }
+html body.sb.sb-night:not(.high-contrast) #app-page .pl-pre .sb-mini.on { background: var(--v-ink); color: var(--v-bg); }   /* 투구 수 기본값: 고른 것 */
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg { padding: 3px; gap: 2px; background: var(--v-card2); border: 0; border-radius: 12px; }
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg button { min-height: 44px; padding: 0 12px; background: none; border: 0; border-radius: 10px; color: var(--v-ink2); font: 700 13px/1 'Noto Sans KR', sans-serif; }
 html body.sb.sb-night:not(.high-contrast) #app-page .sb-seg button[aria-pressed="true"] { background: #fff; color: #0A0C11; }

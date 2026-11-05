@@ -186,4 +186,28 @@
       Array.prototype.forEach.call(inputs, function (el) { ok(el.getBoundingClientRect().height >= 44 || el.offsetParent === null, '입력칸 높이 44px 이상'); });
     } finally { restore(S); }
   });
+
+  // 중학 · 리틀 = Little League 본부 규정(littleleague.org pitch-count, 14세 이하 휴식표). 고교는 그대로
+  test('투구 수 관리: 기본값 고르기 — 고교 · 중학 · 리틀 11~12세 · 리틀 9~10세', function () {
+    var S = save();
+    try {
+      localStorage.removeItem(KEY); window.plOn(true);
+      var btns = function () { return Array.prototype.slice.call($('stPitch').querySelectorAll('.pl-pre button')); };
+      eq(btns().map(function (b) { return b.textContent; }), ['고교', '중학', '리틀 11~12세', '리틀 9~10세'], '버튼 4개');
+      eq(btns().map(function (b) { return b.getAttribute('aria-pressed'); }), ['true', 'false', 'false', 'false'], '처음엔 고교가 골라져 있음');
+      var rf = function (n) { return PL().restFor(n, PL().getRule()); };
+      var at = [1, 20, 21, 35, 36, 50, 51, 65, 66, 100];
+      btns()[2].click();
+      eq(T.ls(KEY).max, 85, '리틀 11~12세 하루 최대');
+      eq(at.map(rf), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4], '리틀 휴식: 1~20 0일 · 21~35 1 · 36~50 2 · 51~65 3 · 66 이상 4');
+      eq(btns().map(function (b) { return b.getAttribute('aria-pressed'); }), ['false', 'false', 'true', 'false'], '고른 버튼 표시');
+      btns()[3].click(); eq(T.ls(KEY).max, 75, '리틀 9~10세 하루 최대'); eq(at.map(rf), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4], '휴식 구간은 같음');
+      btns()[1].click(); eq(T.ls(KEY).max, 95, '중학 하루 최대'); eq(at.map(rf), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4], '중학 휴식 = 14세 이하 표');
+      eq(T.ls(KEY).on, true, '기본값을 바꿔도 켜짐은 그대로');
+      window.plTier(0, 0, '25');
+      eq(btns().filter(function (b) { return b.getAttribute('aria-pressed') === 'true'; }).length, 0, '구간을 고치면 어느 기본값도 아님');
+      btns()[0].click(); eq([T.ls(KEY).max, T.ls(KEY).tiers], [105, [[45, 0], [60, 1], [75, 2], [90, 3], [105, 4]]], '고교로 되돌리기');
+      btns().forEach(function (b) { ok(b.getBoundingClientRect().height >= 44 || b.offsetParent === null, b.textContent + ' 버튼 높이 44px 이상'); });
+    } finally { restore(S); }
+  });
 })();

@@ -471,7 +471,7 @@
       var put = function (n) { $('slRunPick').querySelector('input').value = n; tap('넣기'); };
       await other('삼진'); await other('삼진');   // 일번 · 이번
       slSub();
-      eq(txt(), ['대타 — 지금 타자 대신', '대주자 — 베이스 주자 대신', '대수비 — 수비 선수 바꾸기', '투수 교체', '취소'], '교체 종류');
+      eq(txt(), ['대타 — 지금 타자 대신', '대주자 — 베이스 주자 대신', '대수비 — 수비 선수 바꾸기', '투수 교체', '수비 위치 바꾸기 — 주전끼리', '취소'], '교체 종류');
       tap('대타 — 지금 타자 대신');
       eq([$('slRunPick').getAttribute('aria-label'), txt()], ['대타 — 삼번 대신 누가 들어오나요?', ['#21 후보일', '넣기', '취소']], '후보 · 새 이름');
       tap('#21 후보일');
@@ -503,6 +503,35 @@
       eq([GF.half, GF.outs, names()[0], lu()], ['top', 2, '후보일', ['일번', '이번', '후보일', '사번', '삼번*']], '대주자 되돌림');
       undoLast(); undoLast();   // 후보일 안타 · 대타
       eq([AS.batter && AS.batter.name, lu(), AS.home_lineup[4].isStarter], ['삼번', ['일번', '이번', '삼번', '사번', '후보일*'], false], '대타 되돌림');
+    });
+  });
+
+  test('수비 위치 바꾸기: 수비 팀 주전 둘의 자리를 맞바꾸고 기록에 남긴다 · 지우개로 되돌린다', async function () {
+    await isolated(async function () {
+      start();
+      ['유격수', '투수', '포수', '1루수'].forEach(function (p, i) { AS.home_lineup[i].pos = p; });
+      renderLP();
+      var txt = function () { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); };
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t); b.click(); };
+      var pos = function () { return AS.home_lineup.map(function (p) { return p.pos; }); };
+      await other('삼진'); await other('삼진'); await other('삼진');   // 1회초 우리 팀(홈) 공격 끝 → 1회말 홈 수비
+      await T.sleep(100);   // 이닝 칸(innSel)은 3아웃 다음 프레임에 1회말로 (core.js gfNextHalf → rAF gfSyncInnSel)
+      eq(GF.half, 'bottom', '1회말');
+      slSub(); tap('수비 위치 바꾸기 — 주전끼리');
+      eq(txt(), ['1번 일번 (유격수)', '2번 이번 (투수)', '3번 삼번 (포수)', '4번 사번 (1루수)', '취소'], '수비 팀(홈) 주전과 지금 자리');
+      tap('1번 일번 (유격수)');
+      eq([$('slRunPick').getAttribute('aria-label'), txt()], ['일번 (유격수) — 누구와 자리를 바꾸나요?', ['2번 이번 (투수)', '3번 삼번 (포수)', '4번 사번 (1루수)', '취소']], '나머지 주전');
+      tap('2번 이번 (투수)');
+      ok(!$('slRunPick'), '창 닫힘');
+      eq(pos(), ['투수', '유격수', '포수', '1루수'], '두 선수 자리 맞바꿈');
+      var ev = AS.abs[2].runEv[0];
+      eq([ev.t, ev.k, ev.name, ev.with.name, ev.pa, ev.pb, ev.team, ev.inn, ev.out, ev.pre.half, ev.pre.outs], ['SUB', 'POS', '일번', '이번', '유격수', '투수', 'home', '1회말', null, 'bottom', 0], '마지막 타석 뒤 기록');
+      ok(/^수비 위치 · 1회말 일번 → 투수 · 이번 → 유격수$/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      eq([GF.batterIdx, AS.batter && AS.batter.name], [0, '원정일'], '타순 · 타자는 그대로');
+      undoLast();
+      eq(pos(), ['유격수', '투수', '포수', '1루수'], '되돌림');
+      ok(!AS.abs[2].runEv, '기록도 지움');
+      ok(/직전 수비 위치 바꾸기 기록을 취소/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
     });
   });
 

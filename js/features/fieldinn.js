@@ -119,7 +119,7 @@ export function fieldInnCard(games, team) {
   const cols = POS.concat(rows.some(r => r.outs.ETC) ? [['ETC', '기타']] : []);
   return `
     <section class="an-card">
-      ${head}<span class="an-hd-note">${n}경기 · 선발 위치 + 경기 운영 모드 교체로 셈 · ⅓ = 아웃 1개 · 교체 없이 자리만 바꾼 것은 안 들어가요</span></header>
+      ${head}<span class="an-hd-note">${n}경기 · 선발 위치 + 경기 운영 모드 교체 · 수비 위치 바꾸기로 셈 · ⅓ = 아웃 1개</span></header>
       <div class="tm-roster-wrap">
         <table class="tm-roster tm-fieldinn">
           <thead><tr><th scope="col" class="tm-sticky">선수</th><th scope="col">합계</th><th scope="col">경기</th>${cols.map(c => `<th scope="col">${c[1]}</th>`).join('')}</tr></thead>

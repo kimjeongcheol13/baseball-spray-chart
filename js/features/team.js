@@ -2,7 +2,7 @@
 //   예전 '종합' 서브탭 내용도 여기로: 5구역 타구 방향도 + 상세 필터 · BABIP · 타석 결과 막대 · 표본 경고
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, fmt, josa as _j, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
-import { fieldInnCard } from './fieldinn.js?v=1';
+import { fieldInnCard } from './fieldinn.js?v=2';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 

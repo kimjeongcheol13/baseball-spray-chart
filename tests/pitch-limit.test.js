@@ -121,6 +121,44 @@
     }
   });
 
+  // 상대 투수 = 우리 타자에게 던진 공(bteam 'home')이 상대 타자에게 던진 공('away')보다 많은 투수 (recap.js 와 같은 규칙) · 타자 팀 모르는 공은 우리 투수
+  var bt = function (n, team, base) { return pitches(n).map(function (x) { return Object.assign({}, x, { id: (base || 0) + x.id, bteam: team }); }); };
+  test('투구 수 관리: 상대 투수는 투구 수 · 휴식일에서 뺀다 (타자 팀 모르는 공만 있으면 우리 투수)', function () {
+    var h = PL().history([{ date: '2026-11-02', pitchers: [
+      { name: '상대투', num: '1', pitches: bt(30, 'home').concat(bt(5, 'away', 100)) },
+      { name: '우리투', num: '2', pitches: bt(30, 'away').concat(bt(5, 'home', 100)) },
+      { name: '옛투수', num: '3', pitches: pitches(46) },
+      { name: '빈타자', num: '4', pitches: bt(10, null) },
+      { name: '동점투', num: '5', pitches: bt(3, 'home').concat(bt(3, 'away', 100)) }
+    ] }]);
+    eq(h.map(function (x) { return x.name; }), ['우리투', '옛투수', '빈타자', '동점투'], '상대 투수만 빠짐');
+    eq(h[0].days, { '2026-11-02': 35 }, '우리 투수는 상대 타자 공이 섞여도 전부 셈');
+  });
+
+  test('투구 수 관리: 상대 투수를 기록할 땐 투구 수 줄 · 알림이 없고 휴식 현황에도 안 나온다', function () {
+    var S = save();
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ on: true }));
+      AS.info = Object.assign({}, AS.info || {}, { date: '2026-11-02' });
+      var O = { id: 'plo', name: '상대투', num: '1', role: null, pitches: bt(46, 'home', 300) };
+      var M = { id: 'plm', name: '우리투', num: '2', role: null, pitches: bt(46, 'away', 400) };
+      AS.pitchers = [O, M]; AS.currentPitcher = O;
+      renderPitchCount();
+      eq($('pitchCountBar').querySelector('.pcnt-limit'), null, '상대 투수 → 투구 수 줄 없음');
+      $('toastTxt').textContent = '';
+      PL().onPitch();
+      eq($('toastTxt').textContent, '', '상대 투수 46구 → 알림 없음');
+      window.renderSetup();
+      var st = $('plStatus').textContent;
+      ok(st.indexOf('우리투') >= 0 && st.indexOf('상대투') < 0, '휴식 현황엔 우리 투수만 — ' + st);
+      AS.currentPitcher = M;
+      renderPitchCount();
+      eq($('pitchCountBar').querySelector('.pcnt-limit').textContent, '오늘 46구 / 최대 105 · 휴식 1일 → 11-04(수)부터', '우리 투수는 그대로');
+      PL().onPitch();
+      eq($('toastTxt').textContent, '#2 우리투 오늘 46구 — 이제 휴식 1일 (11-04(수)부터 등판)', '우리 투수 알림은 그대로');
+    } finally { restore(S); }
+  });
+
   test('투구 수 관리: 경기설정 카드 — 켜기 · 구간 고치기 · 기본값', function () {
     var S = save();
     try {

@@ -3,6 +3,7 @@ import { HITS, esc as _esc } from '../constants.js';
 import { pitchInfo } from './pitchcalc.js?v=9';
 import { buildData, playerData, calcStats, f3, pct, sampleBadge, emptyState, sprayFigure, playerChips } from './batdata.js?v=9';
 import { buildColumn, columnText, renderColumnFigure } from './column.js?v=6';
+import { FONT, PAPER, font, fitFont, rr, tint, wordmark, dPill, drawWithFonts } from './imgkit.js?v=3';
 
 // 저장 코스 이름 (기록 탭 존 선택과 같은 문자열) — 행: 높음/중간/낮음, 열: 내각(몸쪽)/중앙/외각(바깥쪽)
 const ZONES = [
@@ -19,6 +20,9 @@ let _zoneMode = 'avg';   // 코스 칸 표시: avg | pa
 let _data = null;
 let _reportText = '';
 let _col = null;         // 만들어 둔 칼럼 { name, col } — 다른 타자를 고르면 비운다
+let _mode = 'one';       // one = 선수 한 명 · team = 상대 팀 전체(포켓 카드)
+let _team = null;        // 포켓 카드: 고른 팀 이름
+let _pkCv = null;        // 포켓 카드: 만들어 둔 이미지 캔버스 — 다시 그리면 비운다
 
 const SHORT = { __proto__: null,
   '안타': ['안타', '1b'], '내야안타': ['내야안타', '1b'], '2루타': ['2루타', 'xbh'], '3루타': ['3루타', 'xbh'], '홈런': ['홈런', 'hr'],
@@ -43,7 +47,16 @@ export function renderScoutPlayerSelect() {
   const el = document.getElementById('scoutPlayerList');
   if (!el) return;
   if (!_data) _data = buildData();
-  el.innerHTML = playerChips(_data.players, _sel, 'generateScoutReport');
+  const mode = document.getElementById('scoutMode');
+  if (mode) mode.innerHTML = `<div class="an-seg" role="tablist" aria-label="보기">${[['one', '선수 한 명'], ['team', '상대 팀 전체']].map(([v, l]) => `<button type="button" role="tab" class="${_mode === v ? 'on' : ''}" aria-selected="${_mode === v}" onclick="setScoutMode('${v}')">${l}</button>`).join('')}</div>`;
+  if (_mode === 'team') {
+    const teams = _teams(), T = _pickTeam(teams);
+    el.setAttribute('aria-label', '팀 선택');
+    el.innerHTML = playerChips(teams.map(t => ({ name: t.name, num: '', pa: t.pa })), T && T.name, 'setScoutTeam');
+  } else {
+    el.setAttribute('aria-label', '타자 선택');
+    el.innerHTML = playerChips(_data.players, _sel, 'generateScoutReport');
+  }
   const on = el.querySelector('.an-chip.on');
   if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
@@ -55,6 +68,18 @@ export function generateScoutReport(name) {
     b.classList.toggle('on', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  _render();
+}
+
+export function setScoutMode(m) {
+  _mode = m === 'team' ? 'team' : 'one';
+  renderScoutPlayerSelect();
+  _render();
+}
+
+export function setScoutTeam(name) {
+  _team = name || null;
+  renderScoutPlayerSelect();
   _render();
 }
 
@@ -274,12 +299,145 @@ function _plan(P, A, pool) {
   return out.sort((x, y) => order[x.type] - order[y.type]);
 }
 
+// ── 상대 팀 전체 = 포켓 카드 (6-4-3 Charts 「pocket card」) ──────────
+//   팀 = 경기마다 홈 타석은 th, 원정 타석은 ta 팀 이름으로 묶는다 (이름이 같으면 같은 팀)
+//   순서 = 그 팀의 가장 최근 경기에서 처음 타석에 선 순서(≈ 타순), 그 경기에 없던 타자는 타석 많은 순으로 뒤에
+//   공략 한 줄 = 선수 한 명 화면의 공략 포인트(_plan) 중 근거(표본)가 가장 큰 것 — 숫자는 그 팀 타석만으로
+const _when = g => (g.current ? Infinity : +g.ts || 0);
+const PK_TAG = { attack: '공략', avoid: '주의', field: '수비' };
+
+function _teams() {
+  const by = new Map();
+  _data.games.forEach(g => ['home', 'away'].forEach(side => {
+    const name = String((side === 'away' ? g.ta : g.th) || '').trim();
+    const abs = g.abs.filter(a => (a.team === 'away' ? 'away' : 'home') === side);
+    if (!name || !abs.length) return;
+    if (!by.has(name)) by.set(name, { name, pa: 0, games: [] });
+    const t = by.get(name);
+    t.pa += abs.length;
+    t.games.push({ ...g, abs });
+  }));
+  const last = t => Math.max(...t.games.map(_when));
+  return [...by.values()].sort((x, y) => last(y) - last(x) || y.pa - x.pa);
+}
+
+// 처음엔 가장 최근 경기의 원정 팀(홈 = 우리)
+function _pickTeam(teams) {
+  if (!teams.some(t => t.name === _team)) {
+    const g = _data.games.slice().sort((x, y) => _when(y) - _when(x))[0] || {};
+    _team = (teams.find(t => t.name === String(g.ta || '').trim()) || teams[0] || {}).name || null;
+  }
+  return teams.find(t => t.name === _team) || null;
+}
+
+function _pocket(T) {
+  const games = T.games.slice().sort((x, y) => _when(x) - _when(y));
+  const order = [];
+  games[games.length - 1].abs.forEach(a => { if (a.bname && !order.includes(a.bname)) order.push(a.bname); });
+  const rest = new Map();
+  games.forEach(g => g.abs.forEach(a => { if (a.bname && !order.includes(a.bname)) rest.set(a.bname, (rest.get(a.bname) || 0) + 1); }));
+  const tdata = { players: _data.players, games };
+  return [...order, ...[...rest].sort((x, y) => y[1] - x[1]).map(x => x[0])].map(n => {
+    const P = playerData(tdata, n);
+    const plan = _plan(P, _analyze(P, _data.pool), _data.pool);
+    return { P, top: plan.slice().sort((x, y) => y.n - x.n)[0] || null };
+  });
+}
+
+const _pull = s => (s.dn >= 3 ? Math.round(s.pull / s.dn * 100) + '%' : '—');
+const _batsKo = b => (b === 'L' ? '좌' : b === 'R' ? '우' : b === 'S' ? '양' : '');
+
+function _pocketHtml() {
+  const teams = _teams(), T = _pickTeam(teams);
+  if (!T) return emptyState('아직 기록된 팀 타석이 없어요', '기록 탭에서 상대 팀 타석을 입력하면 팀 전체 공략 카드가 만들어져요.');
+  const rows = _pocket(T);
+  return `
+    <section class="an-card sc-pk">
+      <header class="an-hd"><h3>${_esc(T.name)} 포켓 카드</h3><span class="an-hd-note">${T.games.length}경기 · ${T.pa}타석 · 최근 경기 타석 순</span></header>
+      <table class="pf-split">
+        <thead><tr><th scope="col">#</th><th scope="col">타자</th><th scope="col">타석</th><th scope="col">타율</th><th scope="col">출루율</th><th scope="col">당김</th></tr></thead>
+        ${rows.map((r, i) => {
+          const s = r.P.st;
+          return `<tbody>
+          <tr><td>${i + 1}</td><th scope="row">${_esc(r.P.name)}${_batsKo(r.P.bats) ? ` <small>${_batsKo(r.P.bats)}</small>` : ''}</th><td>${s.pa}</td><td><b>${s.ab ? f3(s.avg) : '—'}</b></td><td>${f3(s.obp)}</td><td>${_pull(s)}</td></tr>
+          <tr class="sc-pk-plan"><td></td><td colspan="5">${r.top ? `<em class="sc-pk-${r.top.type}">${PK_TAG[r.top.type]}</em>${_esc(r.top.title)}` : '아직 뚜렷한 포인트 없음'}</td></tr>
+        </tbody>`;
+        }).join('')}
+      </table>
+      <p class="an-hd-note">공략 = 선수 한 명 화면의 공략 포인트 중 근거가 가장 많은 것 · 당김 = 타구 방향 3개 이상일 때 · 10타석 미만은 참고만</p>
+    </section>
+    <div class="sc-actions"><button type="button" class="sc-act sc-act-col" onclick="exportScoutPocket()">포켓 카드 이미지 만들기</button></div>
+    <figure class="sc-pk-fig" id="scPkFig" hidden>
+      <img id="scPkImg" alt="${_esc(T.name)} 포켓 카드">
+      <figcaption class="an-hd-note">저장·공유가 안 되는 브라우저(카톡 안 등)에서는 이미지를 길게 눌러 저장하세요.</figcaption>
+      <div class="sc-actions"><button type="button" class="sc-act sc-act-col" onclick="saveScoutPocket()">이미지 저장 · 공유</button></div>
+    </figure>`;
+}
+
+// 흰 종이 한 장(폰 세로 폭 1080) — 오더지 · 기록지와 같은 PAPER 색 · 글꼴
+function _drawPocket(cv, T, rows) {
+  const W = 1080, X = 56, TOP = 300, RH = 112, H = TOP + rows.length * RH + 140;
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), P = PAPER;
+  const COL = { pa: 650, avg: 770, obp: 890, pull: 1000 };
+  c.fillStyle = P.bg; c.fillRect(0, 0, W, H);
+  c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+  font(c, '700', 26, FONT.kr); c.fillStyle = P.ink3; c.fillText('상대 타자 포켓 카드', X, 88);
+  fitFont(c, T.name, '900', 64, FONT.kr, W - X * 2, 32); c.fillStyle = P.ink; c.fillText(T.name, X, 166);
+  font(c, '500', 26, FONT.kr); c.fillStyle = P.ink2; c.fillText(`${T.games.length}경기 · ${T.pa}타석 · 최근 경기 타석 순`, X, 214);
+  // 머리 띠
+  rr(c, X - 16, 240, W - (X - 16) * 2, 48, 10); c.fillStyle = P.band; c.fill();
+  c.fillStyle = '#fff'; font(c, '700', 22, FONT.kr);
+  c.textAlign = 'center'; c.fillText('#', X + 14, 272);
+  c.textAlign = 'left'; c.fillText('타자', X + 52, 272);
+  c.textAlign = 'center'; [['pa', '타석'], ['avg', '타율'], ['obp', '출루율'], ['pull', '당김']].forEach(([k, l]) => c.fillText(l, COL[k], 272));
+  const TC = { attack: P.bb, avoid: P.acc, field: P.ink2 };
+  rows.forEach((r, i) => {
+    const y = TOP + i * RH, s = r.P.st;
+    if (i % 2) { c.fillStyle = P.zebra; c.fillRect(X - 16, y, W - (X - 16) * 2, RH); }
+    c.fillStyle = P.rule2; c.fillRect(X - 16, y + RH - 1, W - (X - 16) * 2, 1);
+    c.textAlign = 'center'; font(c, '700', 30, FONT.num); c.fillStyle = P.ink3; c.fillText(String(i + 1), X + 14, y + 48);
+    c.textAlign = 'left'; fitFont(c, r.P.name, '700', 34, FONT.kr, 400, 20); c.fillStyle = P.ink; c.fillText(r.P.name, X + 52, y + 48);
+    const nw = c.measureText(r.P.name).width;
+    if (_batsKo(r.P.bats)) { font(c, '500', 22, FONT.kr); c.fillStyle = P.ink3; c.fillText(_batsKo(r.P.bats), X + 52 + nw + 10, y + 48); }
+    c.textAlign = 'center'; font(c, '600', 32, FONT.num);
+    c.fillStyle = P.ink2; c.fillText(String(s.pa), COL.pa, y + 48);
+    c.fillStyle = P.ink; c.fillText(s.ab ? f3(s.avg) : '—', COL.avg, y + 48);
+    c.fillStyle = P.ink2; c.fillText(f3(s.obp), COL.obp, y + 48); c.fillText(_pull(s), COL.pull, y + 48);
+    if (r.top) {
+      const pw = dPill(c, PK_TAG[r.top.type], X + 52, y + 84, TC[r.top.type], tint(TC[r.top.type], 0.12), 'left', 18);
+      c.textAlign = 'left'; fitFont(c, r.top.title, '500', 26, FONT.kr, W - X - (X + 64 + pw), 16); c.fillStyle = P.ink;
+      c.fillText(r.top.title, X + 64 + pw, y + 93);
+    } else { c.textAlign = 'left'; font(c, '500', 24, FONT.kr); c.fillStyle = P.ink3; c.fillText('아직 뚜렷한 포인트 없음', X + 52, y + 93); }
+  });
+  c.textAlign = 'left'; font(c, '500', 20, FONT.kr); c.fillStyle = P.ink3;
+  c.fillText('공략 = 공략 포인트 중 근거가 가장 많은 것 · 당김 = 타구 방향 3개 이상 · 10타석 미만은 참고', X, H - 92);
+  wordmark(c, X, H - 40, 22, P.ink, P.acc);
+}
+
+export async function exportScoutPocket() {
+  const T = _pickTeam(_teams());
+  if (!T) return;
+  const cv = document.createElement('canvas'), rows = _pocket(T);
+  await drawWithFonts(cv, () => _drawPocket(cv, T, rows));
+  if (_mode !== 'team' || _team !== T.name) return;   // 그리는 사이 다른 팀 · 보기로 바뀜
+  _pkCv = cv;
+  const img = document.getElementById('scPkImg'), fig = document.getElementById('scPkFig');
+  if (img) img.src = cv.toDataURL('image/png');
+  if (fig) { fig.hidden = false; if (fig.scrollIntoView) fig.scrollIntoView({ block: 'nearest' }); }
+}
+
+export function saveScoutPocket() {
+  if (_pkCv && window._downloadCanvas) window._downloadCanvas(_pkCv, 'spraylab_pocket_' + Date.now() + '.png');
+}
+
 // ── 렌더 ─────────────────────────────────────────────────────
 function _render() {
   const el = document.getElementById('scoutContent');
   if (!el) return;
   if (!_data) _data = buildData();
   _reportText = '';
+  if (_mode === 'team') { _pkCv = null; el.innerHTML = _pocketHtml(); return; }
   if (!_data.players.length) {
     el.innerHTML = emptyState('아직 기록된 타자가 없어요', '기록 탭에서 상대 타자의 타석을 입력하면 공략 리포트가 만들어져요.');
     return;
@@ -568,4 +726,8 @@ if (typeof window !== 'undefined') {
   window.closeScoutColumn = closeScoutColumn;
   window.copyScoutColumn = copyScoutColumn;
   window.exportScoutColumnPDF = exportScoutColumnPDF;
+  window.setScoutMode = setScoutMode;
+  window.setScoutTeam = setScoutTeam;
+  window.exportScoutPocket = exportScoutPocket;
+  window.saveScoutPocket = saveScoutPocket;
 }

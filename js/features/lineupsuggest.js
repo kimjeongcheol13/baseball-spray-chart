@@ -50,8 +50,12 @@ export function open() {
   ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-labelledby', 'lsSheetT');
   const li = (r, i) => `<li><span class="ls-n">${i + 1}</span><b>${esc((r.p.num ? '#' + r.p.num + ' ' : '') + r.p.name)}</b>`
     + `<span class="ls-st">${r.st.pa >= MIN_PA ? `출루 ${f3(r.st.obp)} · 장타 ${f3(r.st.slg)} · wOBA ${f3(r.st.woba)}` : ''}</span><em>${esc(r.why)}</em></li>`;
+  // 현대식은 3명부터(suggest), 2명은 wOBA 순, 0~1명은 추천 없이 지금 순서
+  const how = enough >= 3 ? `우리 팀 지난 기록(저장 경기 + 지금 경기)으로 정한 순서예요. 기록 ${MIN_PA}타석 이상인 주전 ${enough}명을 현대식(최고 타자 2·4번)으로 놓았어요.`
+    : enough === 2 ? `우리 팀 지난 기록(저장 경기 + 지금 경기)으로 정한 순서예요. 기록 ${MIN_PA}타석 이상인 주전 2명을 wOBA 순으로 놓았어요 (현대식은 3명부터).`
+    : `우리 팀 지난 기록(저장 경기 + 지금 경기)으로 순서를 정해요. 지금은 기록 ${MIN_PA}타석 이상인 주전이 ${enough ? '1명뿐이라' : '아직 없어서'} 지금 순서 그대로예요.`;
   const body = !rows.length ? '<p class="pes-sub">홈 라인업에 주전이 없어요. 선수를 추가하면 추천할 수 있어요.</p>'
-    : `<p class="pes-sub">우리 팀 지난 기록(저장 경기 + 지금 경기)으로 정한 순서예요. 기록 ${MIN_PA}타석 이상인 주전 ${enough}명을 현대식(최고 타자 2·4번)으로 놓았어요.</p>`
+    : `<p class="pes-sub">${how}</p>`
       + `<ol class="ls-list">${rows.map(li).join('')}</ol>`
       + (bench.length ? `<p class="pes-sub">후보 ${bench.length}명은 그 뒤에 지금 순서대로.</p>` : '');
   const can = enough >= 2;

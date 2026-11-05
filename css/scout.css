@@ -277,6 +277,21 @@
 .sc-col-fig .an-spray { max-width: 360px; margin: 0 auto; }
 .sc-col-fig .an-spray figcaption { margin-top: 0; }
 
+/* ── 상대 팀 전체 = 포켓 카드 (scouting.js _pocketHtml): 보기 전환 · 타자마다 숫자 줄 + 공략 줄 ── */
+.sc-mode { display: flex; justify-content: center; margin: 0 0 10px; }
+.sc-pk tbody + tbody tr:first-child :is(th, td) { border-top: 1px solid var(--an-line); }
+.sc-pk thead th:nth-child(2) { text-align: left; }
+.sc-pk tbody th small { font-weight: 500; color: var(--an-ink3); }
+.sc-pk .sc-pk-plan td { padding-top: 0; text-align: left; font: 500 12px var(--font); color: var(--an-ink2); }
+.sc-pk-plan em { margin-right: 6px; font-style: normal; font-weight: 800; }
+.sc-pk-attack { color: var(--sc-atk); }
+.sc-pk-avoid { color: var(--sc-avd); }
+.sc-pk-field { color: var(--sc-fld); }
+.sc-pk-fig { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.sc-pk-fig img { display: block; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 12px; }
+.sc-pk-fig figcaption { text-align: center; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .sc-pk .sc-pk-plan td { padding-top: 0; font: 500 14px 'Noto Sans KR', sans-serif; color: var(--v-ink2); }
+
 /* ── 넓은 화면 ── */
 @media (min-width: 720px) {
   .sc-hero { padding: 20px 22px 16px; }
@@ -310,6 +325,7 @@
   body.sc-printing .an-card, body.sc-printing .sc-hero { break-inside: avoid; }
   body.sc-printing { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body.sc-printing .sc-col-actions { display: none !important; }
+  body.sc-printing .sc-mode { display: none !important; }
   /* 칼럼만 인쇄: 나머지 카드는 접고, 흰 종이·검은 글씨로 */
   body.sc-col-print #scoutView > :not(#scoutContent), body.sc-col-print #scoutContent > :not(#scoutColumnWrap) { display: none !important; }
   body.sc-col-print, body.sc-col-print #app-page, body.sc-col-print #scoutView, body.sb.sc-col-print #analysisView.savant-view { background: #fff !important; }

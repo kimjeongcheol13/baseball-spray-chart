@@ -130,6 +130,21 @@
     eq(r.paras[1], '안타는 가와 다가 쳤다.', '안타 친 선수');
   });
 
+  test('경기 기사: 수훈 타자 3명 밖 멀티히트 한 줄 · 팀 도루(경기 운영 모드 주루 기록만)', function () {
+    // 갑 7 · 을 5 · 병 3(3안타) · 정 3(2안타) · 무 2 → 수훈 타자 갑 · 을 · 병, 나머지 2안타 정 · 무
+    var abs = [pa('갑', '홈런', { rbi: 2 }), pa('갑', '안타'), pa('을', '2루타', { rbi: 1 }), pa('을', '2루타'),
+      pa('병', '안타'), pa('병', '안타'), pa('병', '안타'), pa('정', '안타'), pa('정', '안타', { rbi: 1 }), pa('무', '안타'), pa('무', '안타')];
+    var r = R().buildRecap({ th: '불꽃', ta: '번개', hs: 4, as: 1, abs: abs, pitchers: [] });
+    ok(/병이 3타수 3안타를 기록했다\. 정\(2안타 1타점\)과 무\(2안타\)도 멀티히트를 기록했다\.$/.test(r.paras[1]), '멀티히트 줄 (조사는 이름에) — ' + r.paras[1]);
+    ok(!/멀티히트/.test(R().buildRecap(game()).paras.join(' ')), '수훈 타자 안에 다 들면 멀티히트 줄 없음');
+    // 도루: runEv t 'SB' 중 우리 팀만 (상대 도루 · 도루 실패는 세지 않는다)
+    var g = game();
+    g.abs[3].runEv = [{ t: 'SB', id: 1, team: 'home' }, { t: 'CS', id: 2, team: 'home' }, { t: 'SB', id: 9, team: 'away' }];
+    g.abs[6].runEv = [{ t: 'SB', id: 3, team: 'home', scored: true }];
+    eq(R().buildRecap(g).paras[0], '11월 1일 목동에서 열린 경기에서 불꽃이 번개를 5-3으로 이겼다. 불꽃 타선은 안타 4개(홈런 · 2루타)와 볼넷·사구 1개를 묶었다. 도루는 2개를 성공했다.', '팀 도루 2개');
+    ok(!/도루/.test(R().buildRecap(game()).paras[0]), '주루 기록이 없으면 도루 문장 없음');
+  });
+
   test('경기 기사: 이름 가리기(anon) = 공유 링크 규칙 — 등번호 있으면 #번호, 없으면 성OO, 투수도', function () {
     var g = game(); g.anon = true;
     g.abs.forEach(function (a) { if (a.bname === '김타자') a.bnum = '7'; });

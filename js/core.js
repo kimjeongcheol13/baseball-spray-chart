@@ -7985,6 +7985,21 @@ function recallLastAtBat(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 이전 라인업 불러오기
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 저장 라인업은 경기가 끝난 모습 → 교체 · 수비 위치 바꾸기(runEv SUB, runners.js)를 뒤에서부터 되돌려 선발 라인업으로
+//   (runners.js undoSub 와 같은 규칙 · 자리는 sw 번호 대신 id 로 찾는다 — 경기 중 손으로 순서를 바꿨어도 맞게)
+function _luStart(lu,abs,team){
+  var subs=[];
+  (abs||[]).forEach(function(a){(a&&Array.isArray(a.runEv)?a.runEv:[]).forEach(function(e){if(e&&e.t==='SUB'&&e.team===team)subs.push(e);});});
+  var at=function(r){for(var i=0;r&&i<lu.length;i++){var p=lu[i];if(p&&(r.id!=null&&p.id!=null?String(p.id)===String(r.id):!!r.name&&p.name===r.name))return i;}return -1;};
+  subs.reverse().forEach(function(e){
+    if(e.k==='POS'){var a=lu[at(e)],b=lu[at(e.with)];if(a)a.pos=e.pa;if(b)b.pos=e.pb;return;}
+    var s=e.sw,i=at(e),o=at(e.out);
+    if(!s||i<0||o<0)return;
+    var inP=lu[i],op=lu[o];lu[i]=op;lu[o]=inP;
+    op.isStarter=s.os;inP.isStarter=s.is;inP.pos=s.pos;
+  });
+  return lu;
+}
 function applyLastLineup(){
   var saves=JSON.parse(localStorage.getItem('sl_saves')||'[]');
   if(!saves.length){showToast('저장된 경기가 없습니다',true);return;}
@@ -7993,10 +8008,10 @@ function applyLastLineup(){
   if(!raw){showToast('데이터를 불러올 수 없습니다',true);return;}
   var data=JSON.parse(raw);
   if(data.home_lineup&&data.home_lineup.length){
-    AS._pendingHomeLineup=data.home_lineup.map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
+    AS._pendingHomeLineup=_luStart(data.home_lineup,data.abs,'home').map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
   }
   if(data.away_lineup&&data.away_lineup.length){
-    AS._pendingAwayLineup=data.away_lineup.map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
+    AS._pendingAwayLineup=_luStart(data.away_lineup,data.abs,'away').map(function(p){return Object.assign({},p,{id:Date.now()+Math.random()});});
   }
   var homeCount=(AS._pendingHomeLineup||[]).length;
   var awayCount=(AS._pendingAwayLineup||[]).length;

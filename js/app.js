@@ -37,7 +37,7 @@ import './features/ordersheet.js?v=5';       // 오더지(타순표) — 경기 
 import './features/coachnotes.js?v=2';       // 경기 후 코치 메모 — GAME REPORT 인사이트 칸에 최대 3줄 (core.js _pgBuild)
 import './features/statcard.js?v=6';         // 성적 카드 3종(개인 · 팀 · 시즌) · GAME REPORT 이미지 그리기 — core.js _drawCard · pgExport 를 바꿔 낀다
 import './features/livefollow.js?v=2';       // 학부모 실시간 링크 — ☰ 메뉴 · 기록하는 폰이 15초마다 요약을 올림(sql/16) · 보는 쪽은 live.html
-import './features/lineupsuggest.js?v=1';     // 타순 추천 — 라인업 창 「📊 타순 추천」(index.html) · 우리 팀 지난 기록으로 현대식 순서, 「적용」해야 바뀜
+import './features/lineupsuggest.js?v=2';     // 타순 추천 — 라인업 창 「📊 타순 추천」(index.html) · 우리 팀 지난 기록으로 현대식 순서, 「적용」해야 바뀜
 
 import './features/anahelp.js?v=5';
 import './features/anahelp.js?v=5';

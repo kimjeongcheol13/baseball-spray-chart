@@ -28,6 +28,7 @@ body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 
 .lv-bases rect { fill: none; stroke: var(--lv-ink3); stroke-width: 2; }
 .lv-bases rect.on { fill: var(--lv-acc); stroke: var(--lv-acc); }
 .lv-note { margin: 10px 2px 0; font-size: 13px; color: #f2c14e; font-weight: 700; }
+.lv-note.fin { color: var(--lv-ink2); font-weight: 600; }
 .lv-ls-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .lv-ls { border-collapse: collapse; width: 100%; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .lv-ls td, .lv-ls thead th { font-family: var(--lv-mono); }

@@ -7,6 +7,9 @@
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
   var KEY = 'sl_pitch_rule';
   var PL = function () { return window.PitchLimit; };
+  // scorebook.js 가 _pgBuild · showToast 를 감싸 화면 글자의 이모지(⚠ · 📋 …)를 지운다. 감싸는 때가 setTimeout 0 이라 테스트 시작과 겨뤄
+  //   어떤 때는 지워지고 어떤 때는 안 지워진다 → 같은 규칙(scorebook.js _noEmoji)으로 빼고 비교
+  var noEmo = function (t) { return String(t).replace(/\p{Extended_Pictographic}\uFE0F?\s?|\uFE0F/gu, '').replace(/^\s+/, ''); };
   var pitches = function (n) { var a = []; for (var i = 0; i < n; i++) a.push({ id: i + 1, inning: '1회초', pt: '직구', result: '볼', pr: '볼', v: 2 }); return a; };
 
   function save() {
@@ -90,7 +93,7 @@
       P.pitches = pitches(95); PL().onPitch();
       eq($('toastTxt').textContent, '#9 한계투 오늘 95구 — 하루 최대까지 10구 남았어요', '최대 10구 전');
       P.pitches = pitches(106); PL().onPitch(); renderPitchCount();
-      eq($('toastTxt').textContent, '⚠ #9 한계투 오늘 106구 — 하루 최대 105구를 넘었어요', '최대를 넘은 첫 공');
+      eq(noEmo($('toastTxt').textContent), '#9 한계투 오늘 106구 — 하루 최대 105구를 넘었어요', '최대를 넘은 첫 공');
       ok($('pitchCountBar').querySelector('.pcnt-limit.warn'), '넘으면 경고 색');
     } finally { restore(S); }
   });
@@ -288,7 +291,7 @@
       ok(line().classList.contains('warn'), '경고 색');
       P.pitches = mk(1, 900); $('toastTxt').textContent = '';
       PL().onPitch(); renderPitchCount();
-      eq($('toastTxt').textContent, '⚠ #9 연투 어제 · 그제도 던졌어요 — 3일 연속 등판 금지 (오늘은 쉬어야 해요)', '첫 공 알림');
+      eq(noEmo($('toastTxt').textContent), '#9 연투 어제 · 그제도 던졌어요 — 3일 연속 등판 금지 (오늘은 쉬어야 해요)', '첫 공 알림');
       eq(line().textContent, '⚠ 3일 연속 등판 · 오늘 1구 / 최대 85 · 휴식 0일 → 11-06(금)부터', '던진 뒤: 모레부터');
       // 그제는 안 던지고 어제만 던졌으면: 오늘 던질 수 있지만 내일은 못 던짐
       localStorage.setItem(K1, JSON.stringify({ info: { date: '2026-11-01' }, abs: [], pitchers: [{ name: '연투', num: '9', pitches: mk(15, 700) }] }));

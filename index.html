@@ -82,7 +82,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=99">
+<link rel="stylesheet" href="css/styles.css?v=101">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=15">
 <link rel="stylesheet" href="css/analysis.css?v=14">
@@ -95,9 +95,9 @@ var _kakaoSdkLoaded = false;
 <link rel="stylesheet" href="css/spray.css?v=4">
 <link rel="stylesheet" href="css/record.css?v=16">
 <link rel="stylesheet" href="css/settings.css?v=2">
-<link rel="stylesheet" href="css/paper.css?v=30">
+<link rel="stylesheet" href="css/paper.css?v=31">
 <link rel="stylesheet" href="css/night.css?v=5">
-<link rel="stylesheet" href="css/v2.css?v=14">
+<link rel="stylesheet" href="css/v2.css?v=15">
 <link rel="stylesheet" href="css/report.css?v=6">
 <link rel="stylesheet" href="css/sample.css?v=1">
 <style>
@@ -1082,6 +1082,7 @@ var _kakaoSdkLoaded = false;
         <button class="btn btn-primary btn-icon mobile-quick-add" onclick="addPlayer()" style="flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       </div>
       <button class="lineup-alt-input-btn" onclick="ocrModalOpen()" title="사진/CSV로 라인업 입력">📷 다른 방법으로 입력 (사진/CSV)</button>
+      <button class="lineup-alt-input-btn ls-btn" onclick="lsOpen()" title="지난 기록으로 홈 라인업 타순 추천">📊 타순 추천 (지난 기록으로)</button>
       <button class="mobile-detail-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ 상세 설정 접기':'+ 상세 설정 (포지션·타석)'">+ 상세 설정 (포지션·타석)</button>
       <div class="mobile-detail-row" style="display:flex;gap:5px">
         <select class="inp" id="pPos" style="flex:1;padding:7px 6px;font-size:12px"><option value="">포지션</option><option>투수</option><option>포수</option><option>1루</option><option>2루</option><option>3루</option><option>유격</option><option>좌익</option><option>중견</option><option>우익</option><option>DH</option></select>
@@ -2492,7 +2493,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=256"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=13"></script>
-<script type="module" src="js/app.js?v=232"></script>
+<script type="module" src="js/app.js?v=236"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

@@ -1,5 +1,5 @@
 // 경기 후 코치 메모 (js/features/coachnotes.js) — GAME REPORT 인사이트 칸에 기록된 숫자만으로 최대 3줄
-//  · 득점권(경기 운영 모드 gfPre 의 2 · 3루) · 2스트라이크(볼카운트 count.s) · 선두타자 출루(이닝마다 첫 타석) · 2아웃 타점 · 우리 투수(상대 타석) 순서
+//  · 득점권(경기 운영 모드 gfPre 의 2 · 3루) · 2스트라이크(볼카운트 count.s) · 선두타자 출루(이닝마다 첫 타석) · 2아웃 타점 · 우리 투수(상대 타석: 선두타자 출루 · 볼넷 · 사구 · 2스트라이크 뒤 피안타) 순서
 //  · 표본이 적거나(득점권 3 · 2스트라이크 4 · 이닝 3 미만) 그 기록을 안 적었으면 줄을 만들지 않는다
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
@@ -47,6 +47,11 @@
     // 상대 팀만 적은 경기 = 전부 우리 팀으로 (경기 리포트 _pgAbs 와 같은 기준) → 투수 줄은 없다
     var only = abs.filter(function (a) { return a.team === 'away'; });
     eq(vals(window.slCoachNotes(only)), ['📋 선두타자 출루 2 / 3이닝'], '상대만 적은 경기');
+    // 우리 투수 · 2스트라이크 뒤 피안타 (상대 타석 count.s ≥ 2, 4타석부터) — 한 이닝이라 선두타자 줄은 없다
+    var s2 = function (res) { return ab(1, 'away', res, { count: { b: 1, s: 2, o: 0 } }); };
+    var p2 = [ab(1, 'home', '삼진'), s2('안타'), s2('삼진'), s2('삼진'), s2('땅볼 아웃'), ab(1, 'away', '안타', { count: { b: 0, s: 1, o: 0 } })];
+    eq(vals(window.slCoachNotes(p2)), ['📋 투수 · 2스트라이크 뒤 4타석 피안타 1 · 삼진 2'], '2스트라이크 전에 맞은 안타는 세지 않는다');
+    eq(window.slCoachNotes(p2.slice(0, 4)), [], '3타석이면 줄이 없다');
   });
 
   test('코치 메모: 경기 리포트(GAME REPORT) 인사이트 칸에 나온다', function () {

@@ -107,11 +107,27 @@
     eq(R().buildRecap(game()).title, '불꽃, 번개에 5-3 승리', '득점 기록이 없으면 승리');
   });
 
-  test('경기 기사: 수훈 타자가 없으면 안타 친 선수만 · 투구 기록이 없으면 마운드 문단 없음', function () {
-    var r = R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 4, abs: [pa('가', '안타'), pa('나', '삼진'), pa('다', '안타', { rbi: 1 })], pitchers: [] });
+  test('경기 기사: 수훈 타자 맨 앞 = GAME REPORT 「오늘의 선수」(_pgMvp) · 없으면 안타 친 선수만 · 투구 기록이 없으면 마운드 문단 없음', function () {
+    var mvp = function (abs) { var m = window._pgMvp(abs.filter(function (a) { return a.team !== 'away'; })); return m && m.name; };
+    // 단타 1개 1타점뿐이어도 오늘의 선수면 기사에 쓴다 (예전엔 2안타 · 홈런 · 2타점이 아니라 빠졌다)
+    var abs = [pa('가', '안타'), pa('나', '삼진'), pa('다', '안타', { rbi: 1 })];
+    var r = R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 4, abs: abs, pitchers: [] });
+    eq(mvp(abs), '다', 'GAME REPORT 오늘의 선수');
+    eq(r.sub, '다 1타수 1안타 1타점', '부제 = 오늘의 선수');
+    eq(r.paras[1], '공격에서는 다가 1타수 1안타 1타점을 기록했다.', '첫 문장 = 오늘의 선수');
+    eq(r.paras.length, 2, '마운드 문단 없음');
+    // 점수가 같으면(솔로 홈런 4+1 = 단타 2개 2+3) _pgMvp 처럼 bid 객체 순서 — 숫자 bid 2 가 먼저 쳤어도 bid 1
+    abs = [pa('박', '안타', { bid: 2, rbi: 2 }), pa('박', '안타', { bid: 2, rbi: 1 }), pa('최', '홈런', { bid: 1, rbi: 1 })];
+    r = R().buildRecap({ th: '불꽃', ta: '번개', hs: 4, as: 1, abs: abs, pitchers: [] });
+    eq(mvp(abs), '최', 'GAME REPORT 오늘의 선수 (동점)');
+    eq(r.sub, '최 1타수 1안타 1타점 · 홈런 1개', '부제 = 오늘의 선수 (예전엔 안타가 많은 박)');
+    ok(r.paras[1].indexOf('공격에서는 최가 홈런을 포함해') === 0 && /박이 2타수 2안타 3타점/.test(r.paras[1]), '오늘의 선수 다음에 나머지 수훈 타자 — ' + r.paras[1]);
+    // 오늘의 선수가 없으면(가장 높은 타자가 무안타) 예전처럼 안타 친 선수만
+    abs = [pa('나', '땅볼 아웃', { rbi: 1 }), pa('가', '안타'), pa('다', '안타')];
+    r = R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 4, abs: abs, pitchers: [] });
+    eq(mvp(abs), null, 'GAME REPORT 오늘의 선수 없음');
     eq(r.sub, '팀 안타 2개', '부제');
     eq(r.paras[1], '안타는 가와 다가 쳤다.', '안타 친 선수');
-    eq(r.paras.length, 2, '마운드 문단 없음');
   });
 
   test('경기 기사: 이름 가리기(anon) = 공유 링크 규칙 — 등번호 있으면 #번호, 없으면 성OO, 투수도', function () {
@@ -124,8 +140,8 @@
     eq(r.paras[3], '마운드에서는 최OO 선수 70구, 정OO 선수 21구로 2명이 이어 던졌다. 번개 타선은 안타 1개, 삼진 2개를 기록했다.', '투수');
     ok(!/김타자|이타자|박타자|최선발|정계투/.test(JSON.stringify(r) + R().recapText(r)), '실명이 기사 · 복사 글 어디에도 없음');
     eq(R().buildRecap(game()).sub.indexOf('김타자'), 0, 'anon 이 없으면 실명 (순수 함수 기본)');
-    var a = [pa('김가', '안타'), pa('김나', '안타')];
-    eq(R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 0, abs: a, anon: true }).paras[1], '안타는 김OO 선수와 김OO 홈 선수가 쳤다.', '같은 성이 겹치면 공유 링크처럼 구분 (_anonSharePayload: 홈 팀 → " 홈")');
+    var a = [pa('김가', '안타'), pa('김나', '안타', { rbi: 1 })];   // 오늘의 선수 = 김나 (두 번째 김OO)
+    eq(R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 0, abs: a, anon: true }).paras[1], '공격에서는 김OO 홈 선수가 1타수 1안타 1타점을 기록했다.', '같은 성이 겹치면 공유 링크처럼 구분 (_anonSharePayload: 홈 팀 → " 홈")');
   });
 
   test('경기 기사: GAME REPORT 「📰 경기 기사」 → 카드 아래 기사 · 실명 체크 · 다시 열면 지움 · ☰ 메뉴', async function () {

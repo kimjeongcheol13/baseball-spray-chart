@@ -12,6 +12,10 @@
     document.body.appendChild(f);
     for (var i = 0; i < 100 && !(f.contentWindow && f.contentWindow.SLPilotFeedback); i++) await T.sleep(50);
     ok(f.contentWindow.SLPilotFeedback, '페이지 · js/pilotfeedback.js 로드');
+    // 봇 경비(js/botguard.js · tests/bot-guard.test.js): 이 시험들은 페이지를 열자마자 보낸다 → "너무 빠른 제출" 검사는 연 시각을 앞당겨 넘기고,
+    // 앞 시험이 남긴 이 기기의 보낸 기록(sl_fb_sent)도 지운다 — 경비 자체는 bot-guard.test.js 가 본다
+    f.contentWindow.SLPilotFeedback.guard.openedAt = Date.now() - 60000;
+    f.contentWindow.localStorage.removeItem('sl_fb_sent');
     return f;
   }
   function pick(w, name, value) { var el = w.document.querySelector('input[name="' + name + '"][value="' + value + '"]'); el.checked = true; el.dispatchEvent(new w.Event('change', { bubbles: true })); }

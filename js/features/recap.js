@@ -42,6 +42,13 @@ function _lines(abs) {
   return [...m.values()];
 }
 const _xbhTxt = t => XBH.filter(r => t[r]).map(r => (t[r] > 1 ? `${r} ${t[r]}개` : r));
+// 수훈 타자 3명 밖의 2안타 이상: 'A(2안타 1타점), B(2안타)와 C(3안타)도 멀티히트를 기록했다.' — 조사는 이름에 맞춘다
+function _multi(l) {
+  if (!l.length) return [];
+  const w = l.map(x => `${x.name}(${x.h}안타${x.rbi ? ` ${x.rbi}타점` : ''})`);
+  if (w.length > 1) w[w.length - 2] += josa(l[l.length - 2].name, '과', '와');
+  return [`${w.slice(0, -2).concat(w.length > 1 ? [w[w.length - 2] + ' ' + w[w.length - 1]] : w).join(', ')}도 멀티히트를 기록했다.`];
+}
 
 // 오늘의 선수 bid — GAME REPORT(core.js _pgMvp)와 똑같이: 루타 + 타점이 가장 큰 타자, 안타 1개 이상.
 // 점수가 같으면 _pgMvp 처럼 bid 를 키로 쓴 객체 순서(숫자 bid 는 작은 순, 나머지는 처음 나온 순)
@@ -202,7 +209,10 @@ export function buildRecap(src) {
   const bat = h
     ? `${th} 타선은 안타 ${h}개${xb.length ? `(${xb.join(' · ')})` : ''}${bb ? `와 볼넷·사구 ${bb}개를 묶었다.` : '를 쳤다.'}`
     : `${th} 타선은 안타를 치지 못했다${bb ? `(볼넷·사구 ${bb}개)` : ''}.`;
-  paras.push([lead, bat, k >= 5 ? `삼진은 ${k}개였다.` : ''].filter(Boolean).join(' '));
+  // 도루: 경기 운영 모드 주루 기록(runEv t 'SB' — runners.js)만. 우리 팀 = team 'away' 가 아닌 주자
+  const sb = all.flatMap(a => (Array.isArray(a.runEv) ? a.runEv : []))
+    .filter(e => e && e.t === 'SB' && (mine.length ? e.team !== 'away' : true)).length;
+  paras.push([lead, bat, sb ? `도루는 ${sb}개를 성공했다.` : '', k >= 5 ? `삼진은 ${k}개였다.` : ''].filter(Boolean).join(' '));
 
   // 흐름: 이닝별 득점(경기 운영 모드 득점 → 없으면 가져온 이닝별 점수표) 합이 최종 점수와 같을 때만
   const ls = src.ls || (info.ls && typeof info.ls === 'object' ? info.ls : null);
@@ -228,7 +238,7 @@ export function buildRecap(src) {
       const xt = _xbhTxt(x.t);
       const inc = xt.length ? `${J(listKo(xt), '을', '를')} 포함해 ` : '';
       return `${i ? '' : '공격에서는 '}${J(x.name, '이', '가')} ${inc}${J(line, '을', '를')} 기록했다${x.bb ? `(볼넷·사구 ${x.bb}개)` : ''}.`;
-    }).join(' '));
+    }).concat(_multi(L.filter(x => x.h >= 2 && !stars.includes(x)))).join(' '));
   } else if (h) {
     const hitters = L.filter(x => x.h).map(x => x.name);
     paras.push(`안타는 ${listKo(hitters.slice(0, 5))}${hitters.length > 5 ? ` 등 ${hitters.length}명` : ''}${josa(hitters.length > 5 ? '명' : hitters[Math.min(hitters.length, 5) - 1], '이', '가')} 쳤다.`);

@@ -5,7 +5,7 @@
 //   버튼은 기존 함수(core.js · shell.js · cloud.js)를 그대로 부른다
 //   투구 수 관리 카드(#stPitch): 내용 · 버튼은 pitchlimit.js — 여기서는 자리만 만든다
 import { esc } from '../constants.js';
-import { cardHtml as _pitchCard } from './pitchlimit.js?v=4';
+import { cardHtml as _pitchCard } from './pitchlimit.js?v=5';
 import { rowHtml as _speakRow } from './speak.js?v=1';   // 그 밖의 기능 › 경기: 기록 읽어 주기 켜기 (speak.js 가 updateAll 을 감싼다)
 
 const $ = id => document.getElementById(id);

@@ -124,7 +124,34 @@
     }
   });
 
-  // 상대 투수 = 우리 타자에게 던진 공(bteam 'home')이 상대 타자에게 던진 공('away')보다 많은 투수 (recap.js 와 같은 규칙) · 타자 팀 모르는 공은 우리 투수
+  // 경기 1 을 기록하는 동안엔 그 저장본이 "지금 경기"로 묶여 빠진다 → 새 경기를 시작하면(sl_saves 는 그대로) 다시 읽어야 지난 경기 투구 수가 들어온다
+  test('투구 수 관리: 같은 앱에서 새 경기를 시작해도 지난 경기 투구 수가 휴식에 들어간다', function () {
+    var S = save(), abs = AS.abs, saves = localStorage.getItem('sl_saves'), K1 = 'sl_t_pl_g1';
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ on: true }));
+      var p50 = pitches(50).map(function (x) { return Object.assign({}, x, { id: 1.7e12 + x.id }); });
+      localStorage.setItem(K1, JSON.stringify({ info: { date: '2026-11-02' }, abs: [], pitchers: [{ name: '한계투', num: '9', pitches: p50 }] }));
+      localStorage.setItem('sl_saves', JSON.stringify([{ key: K1, ts: 1 }]));
+      AS.abs = []; AS.info = Object.assign({}, AS.info || {}, { date: '2026-11-02' });
+      var P = { id: 'pl1', name: '한계투', num: '9', role: null, pitches: p50.slice() };
+      AS.pitchers = [P]; AS.currentPitcher = P;
+      renderPitchCount();
+      eq($('pitchCountBar').querySelector('.pcnt-limit').textContent, '오늘 50구 / 최대 105 · 휴식 1일 → 11-04(수)부터', '경기 1: 저장본과 같은 공은 한 번만');
+      // 새 경기 (저장 목록은 그대로)
+      AS.info = Object.assign({}, AS.info, { date: '2026-11-03' });
+      P = { id: 'pl2', name: '한계투', num: '9', role: null, pitches: [] };
+      AS.pitchers = [P]; AS.currentPitcher = P;
+      renderPitchCount();
+      eq($('pitchCountBar').querySelector('.pcnt-limit').textContent, '⚠ 휴식 중 — 11-04(수)부터 등판 가능 (11-02(월) 50구)', '새 경기: 어제 50구 → 휴식 중');
+    } finally {
+      localStorage.removeItem(K1);
+      if (saves == null) localStorage.removeItem('sl_saves'); else localStorage.setItem('sl_saves', saves);
+      AS.abs = abs;
+      restore(S);
+    }
+  });
+
+  // 상대 투수 =우리 타자에게 던진 공(bteam 'home')이 상대 타자에게 던진 공('away')보다 많은 투수 (recap.js 와 같은 규칙) · 타자 팀 모르는 공은 우리 투수
   var bt = function (n, team, base) { return pitches(n).map(function (x) { return Object.assign({}, x, { id: (base || 0) + x.id, bteam: team }); }); };
   test('투구 수 관리: 상대 투수는 투구 수 · 휴식일에서 뺀다 (타자 팀 모르는 공만 있으면 우리 투수)', function () {
     var h = PL().history([{ date: '2026-11-02', pitchers: [

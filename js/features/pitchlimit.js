@@ -116,11 +116,18 @@ export function status(h, T, r) {
   return { today, rest, last, lastN: last ? h.days[last] : 0, block, next, left: r.max - today, c3, n3 };
 }
 
-// 저장 경기(지금 경기 제외)는 sl_saves 가 바뀔 때만 다시 읽는다 — 공 하나마다 전체 경기를 읽지 않게
+// 저장 경기(지금 경기 제외)는 sl_saves 나 지금 경기(첫 타석 · 첫 투구 id)가 바뀔 때만 다시 읽는다 — 공 하나마다 전체 경기를 읽지 않게
+//   지금 경기도 봐야 한다: 경기 1 을 기록하는 동안엔 그 저장본이 지금 경기로 묶여 빠지는데, 새 경기를 시작해도 sl_saves 는 그대로라 지난 경기 공이 계속 빠졌다
+function _curId() {
+  const A = window.AS || {}, a = (A.abs || []).find(x => x && x.id != null);
+  if (a) return 'a' + a.id;
+  for (const p of A.pitchers || []) for (const x of (p && p.pitches) || []) if (x && x.id != null) return 'p' + x.id;
+  return '';
+}
 let _cache = { sig: null, list: [] };
 function _others() {
   let sig = null;
-  try { sig = localStorage.getItem('sl_saves') || ''; } catch (e) {}
+  try { sig = (localStorage.getItem('sl_saves') || '') + '|' + _curId(); } catch (e) {}
   if (sig !== _cache.sig || sig === null) {
     let games = [];
     try { games = window.SLGames ? window.SLGames.loadGames({ withCurrent: true }).filter(g => !g.live) : []; } catch (e) {}

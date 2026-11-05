@@ -4,7 +4,7 @@
 import './features/games.js?v=1';
 import './features/profile.js?v=32';
 import './features/compare.js?v=14';
-import './features/scouting.js?v=26';
+import './features/scouting.js?v=27';
 import './features/heatmap.js?v=3';
 import './features/filter.js?v=6';
 import './features/insights.js?v=1';

@@ -4,18 +4,20 @@
 //   저장: sl_pitch_rule (이 기기만, 동기화 안 함). 경기 데이터는 읽기만 한다.
 //   하루 = 같은 날짜 경기의 합(더블헤더). 같은 투수 = 이름이 같고 번호가 같거나 한쪽이 비어 있음 (core.js addPitcher 와 같은 규칙)
 //   경기 날짜 = 경기 정보 날짜(info.date) → 없으면 첫 투구 시각(투구 id = Date.now()) → 저장 시각. 지금 경기 = AS.info.date, 없으면 오늘
+//   3일 연속 등판 금지(c3, 켠 때만) = Little League 본부 규정 NOTE 1 "Under no circumstance shall a player pitch in three (3) consecutive days" — 1~20구(휴식 0일)여도 적용
 import { esc } from '../constants.js';
 
 const KEY = 'sl_pitch_rule';
 export const DEF = { on: false, max: 105, tiers: [[45, 0], [60, 1], [75, 2], [90, 3], [105, 4]] };
 // 기본값 고르기 (경기설정 카드 버튼). 중학 · 리틀 = Little League 본부 규정(littleleague.org pitch-count, 14세 이하 휴식표):
-//   하루 최대 9~10세 75 · 11~12세 85 · 13~16세 95, 휴식 1~20 0일 · 21~35 1 · 36~50 2 · 51~65 3 · 66 이상 4
+//   하루 최대 9~10세 75 · 11~12세 85 · 13~16세 95, 휴식 1~20 0일 · 21~35 1 · 36~50 2 · 51~65 3 · 66 이상 4 · 3일 연속 등판 금지
+//   고교(2025 보도)는 3일 연속 규정을 확인 못 해 끈다
 const LL = [[20, 0], [35, 1], [50, 2], [65, 3]];
 export const PRESETS = {
-  hs:   { label: '고교',         max: 105, tiers: DEF.tiers },
-  ms:   { label: '중학',         max: 95,  tiers: [...LL, [95, 4]] },
-  ll12: { label: '리틀 11~12세', max: 85,  tiers: [...LL, [85, 4]] },
-  ll10: { label: '리틀 9~10세',  max: 75,  tiers: [...LL, [75, 4]] },
+  hs:   { label: '고교',         max: 105, tiers: DEF.tiers,       c3: false },
+  ms:   { label: '중학',         max: 95,  tiers: [...LL, [95, 4]], c3: true },
+  ll12: { label: '리틀 11~12세', max: 85,  tiers: [...LL, [85, 4]], c3: true },
+  ll10: { label: '리틀 9~10세',  max: 75,  tiers: [...LL, [75, 4]], c3: true },
 };
 const DAY = '일월화수목금토';
 const int = (v, lo, hi) => { v = Math.floor(Number(v)); return isFinite(v) && v >= lo && v <= hi ? v : null; };
@@ -28,7 +30,7 @@ export function norm(r) {
     .filter(t => t[0] != null && t[1] != null)
     .sort((a, b) => a[0] - b[0])
     .filter((t, i, a) => !i || t[0] !== a[i - 1][0]);
-  return { on: r.on === true, max: int(r.max, 1, 300) || DEF.max, tiers: tiers.length ? tiers : DEF.tiers.map(t => t.slice()) };
+  return { on: r.on === true, max: int(r.max, 1, 300) || DEF.max, tiers: tiers.length ? tiers : DEF.tiers.map(t => t.slice()), c3: r.c3 === true };
 }
 export function getRule() { try { return norm(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return norm(null); } }
 export function setRule(patch) {
@@ -94,6 +96,7 @@ export function history(list) {
   return out;
 }
 // 날짜 T 기준 상태: today(그날 투구 수) · rest(그날 기준 휴식) · block(앞 경기 휴식이 끝나 등판 가능한 날, T 이후일 때만) · next(다음 등판 가능일)
+//   r.c3(3일 연속 등판 금지): c3 = 어제 · 그제 던져서 오늘 못 던짐(block = 내일) · n3 = 어제 · 오늘 던져서 내일 못 던짐(next = 모레)
 export function status(h, T, r) {
   let block = null, last = null;
   Object.keys(h.days).forEach(d => {
@@ -102,9 +105,15 @@ export function status(h, T, r) {
     if (d < T) { const f = addDays(d, restFor(h.days[d], r) + 1); if (f > T && (!block || f > block)) block = f; }
   });
   const today = h.days[T] || 0, rest = restFor(today, r);
+  const y1 = h.days[addDays(T, -1)] > 0, y2 = h.days[addDays(T, -2)] > 0;
+  const b3 = r.c3 && y1 && y2 ? addDays(T, 1) : null;
+  const c3 = !!b3 && !block;   // 휴식일로도 막혀 있으면(그 날은 늘 내일 이후) 휴식일로 본다
+  if (c3) block = b3;
   let next = today ? addDays(T, rest + 1) : block;
   if (block && next && block > next) next = block;
-  return { today, rest, last, lastN: last ? h.days[last] : 0, block, next, left: r.max - today };
+  const n3 = !!(r.c3 && today && y1 && next < addDays(T, 2));
+  if (n3) next = addDays(T, 2);
+  return { today, rest, last, lastN: last ? h.days[last] : 0, block, next, left: r.max - today, c3, n3 };
 }
 
 // 저장 경기(지금 경기 제외)는 sl_saves 가 바뀔 때만 다시 읽는다 — 공 하나마다 전체 경기를 읽지 않게
@@ -135,12 +144,12 @@ export function barHtml() {
   const T = liveDate(), h = _all().find(x => same(x, P));
   const s = h ? status(h, T, r) : { today: 0, rest: 0, block: null, next: null, left: r.max };
   let t, warn = false;
-  if (s.block && s.today === 0) { warn = true; t = `⚠ 휴식 중 — ${fmt(s.block)}부터 등판 가능 (${fmt(s.last)} ${s.lastN}구)`; }
+  if (s.block && s.today === 0) { warn = true; t = s.c3 ? `⚠ 3일 연속 등판 금지 — 어제 · 그제 던졌어요 · ${fmt(s.block)}부터 등판 가능` : `⚠ 휴식 중 — ${fmt(s.block)}부터 등판 가능 (${fmt(s.last)} ${s.lastN}구)`; }
   else {
     t = `오늘 ${s.today}구 / 최대 ${r.max}`;
     if (s.today > r.max) { warn = true; t += ` · ${s.today - r.max}구 넘음`; }
-    else if (s.today) t += ` · 휴식 ${s.rest}일 → ${fmt(s.next)}부터`;
-    if (s.block && s.today) { warn = true; t = '⚠ 휴식 중 등판 · ' + t; }
+    else if (s.today) t += ` · 휴식 ${s.rest}일 → ${fmt(s.next)}부터` + (s.n3 && !s.c3 ? ' (3일 연속 금지)' : '');
+    if (s.block && s.today) { warn = true; t = (s.c3 ? '⚠ 3일 연속 등판 · ' : '⚠ 휴식 중 등판 · ') + t; }
   }
   return `<div class="pcnt-limit${warn ? ' warn' : ''}">${esc(t)}</div>`;
 }
@@ -153,7 +162,8 @@ export function onPitch() {
   if (!h) return;
   const s = status(h, T, r), n = s.today, who = _who(P);
   let m = null;
-  if (n === 1 && s.block) m = `⚠ ${who} 휴식 중이에요 — ${fmt(s.block)}부터 등판 가능 (${fmt(s.last)} ${s.lastN}구)`;
+  if (n === 1 && s.block) m = s.c3 ? `⚠ ${who} 어제 · 그제도 던졌어요 — 3일 연속 등판 금지 (오늘은 쉬어야 해요)` : `⚠ ${who} 휴식 중이에요 — ${fmt(s.block)}부터 등판 가능 (${fmt(s.last)} ${s.lastN}구)`;
+  else if (n === 1 && s.n3) m = `${who} 어제도 던졌어요 — 내일은 쉬어야 해요 (3일 연속 등판 금지) · ${fmt(s.next)}부터`;
   else if (n === r.max + 1) m = `⚠ ${who} 오늘 ${n}구 — 하루 최대 ${r.max}구를 넘었어요`;
   else if (n === r.max) m = `${who} 오늘 ${n}구 — 하루 최대예요 · 휴식 ${s.rest}일`;
   else if (n < r.max && restFor(n, r) > restFor(n - 1, r)) m = `${who} 오늘 ${n}구 — 이제 휴식 ${s.rest}일 (${fmt(s.next)}부터 등판)`;
@@ -184,11 +194,12 @@ export function cardHtml() {
   return `<header class="sb-card-hd"><h2>투구 수 관리</h2></header>${on}
     <div class="st-dists pl-max"><label class="st-d"><span>하루 최대</span><input type="number" inputmode="numeric" min="1" max="300" value="${r.max}" onchange="plSet(this.value)" aria-label="하루 최대 투구 수"><em>구</em></label></div>
     <table class="pl-tiers"><thead><tr><th>투구 수</th><th>휴식</th></tr></thead><tbody>${r.tiers.map(tier).join('')}</tbody></table>
+    <label class="pl-on pl-c3"><input type="checkbox"${r.c3 ? ' checked' : ''} onchange="plC3(this.checked)"><span><b>3일 연속 등판 금지</b><small>이틀 연속 던지면 다음 날은 쉬어요 (적게 던져도) · 리틀 · 중학 규정</small></span></label>
     <div class="pl-pre" role="group" aria-label="기본값 고르기"><span class="pl-pre-l">기본값</span>${Object.keys(PRESETS).map(k => {
-      const p = PRESETS[k], on = p.max === r.max && JSON.stringify(p.tiers) === JSON.stringify(r.tiers);
+      const p = PRESETS[k], on = p.max === r.max && JSON.stringify(p.tiers) === JSON.stringify(r.tiers) && p.c3 === r.c3;
       return `<button type="button" class="sb-mini${on ? ' on' : ''}" aria-pressed="${on}" onclick="plReset('${k}')">${p.label}</button>`;
     }).join('')}</div>
-    <p class="st-note">고교는 2025-08 보도, 중학(13~16세) · 리틀은 Little League 본부 규정이에요. 대회 요강과 다를 수 있으니 꼭 확인하고 고쳐 쓰세요. 휴식 N일 = 던진 다음 날부터 N일 쉬고 그다음 날 등판. 3일 연속 등판 금지는 따로 세지 않아요.</p>
+    <p class="st-note">고교는 2025-08 보도, 중학(13~16세) · 리틀은 Little League 본부 규정이에요. 대회 요강과 다를 수 있으니 꼭 확인하고 고쳐 쓰세요. 휴식 N일 = 던진 다음 날부터 N일 쉬고 그다음 날 등판.</p>
     <h3 class="pl-h">투수 휴식 현황 · ${esc(fmt(liveDate()))} 기준</h3>
     <div id="plStatus">${_statusHtml(r)}</div>`;
 }
@@ -208,5 +219,6 @@ if (typeof window !== 'undefined') {
     if (t[i] && n != null) { t[i][k] = n; setRule({ tiers: t }); }
     _redraw();
   };
-  window.plReset = k => { const p = PRESETS[k] || PRESETS.hs; setRule({ max: p.max, tiers: p.tiers.map(t => t.slice()) }); _redraw(); };
+  window.plReset = k => { const p = PRESETS[k] || PRESETS.hs; setRule({ max: p.max, tiers: p.tiers.map(t => t.slice()), c3: p.c3 }); _redraw(); };
+  window.plC3 = on => { setRule({ c3: !!on }); _redraw(); };
 }

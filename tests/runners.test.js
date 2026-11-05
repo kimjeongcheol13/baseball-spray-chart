@@ -640,6 +640,25 @@
     });
   });
 
+  // 흐름 점검 10 (사용자 결정 11-05): 투구 기록 인플레이 → 「타구 위치를 찍을까요?」 → 예전 '건너뛰기'는 기록 탭 타석을 안 만들어 경기 운영 모드가 멈췄다
+  test('투구 기록 인플레이 → 「위치 없이 기록」: 기록 탭 타석이 바로 생겨 아웃 · 주자 · 다음 타자가 넘어간다 · ↩ 는 그 타석도 지운다', async function () {
+    await isolated(async function () {
+      start();
+      AS.pitchers = [{ id: 'po1', name: '상대투', num: '1', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers; selectPitcher('po1');
+      var skip = function () { var b = $('pitchLinkSheet') && $('pitchLinkSheet').querySelector('[data-act="skip"]'); ok(b && b.textContent === '위치 없이 기록', '버튼: ' + (b && b.textContent)); if (b) b.click(); };
+      var bat = function () { return AS.batter && AS.batter.name; };
+      await gap(); recordPitch('볼'); recordPitch('플라이 아웃'); skip();
+      var a = AS.abs[0];
+      eq([AS.abs.length, a && a.res, a && a.x, a && a.pa === AS.pitchers[0].pitches[1].pa, a && a.pitches.length, GF.outs, bat()],
+        [1, '플라이 아웃', null, true, 2, 1, '이번'], '위치 없는 타석 · 투구 기록과 연결 · 1아웃 · 다음 타자');
+      await gap(); recordPitch('안타'); skip();
+      eq([AS.abs.length, AS.abs[1].res, names()[0], bat()], [2, '안타', '이번', '삼번'], '안타 → 1루 이번 · 다음 타자');
+      undoPitch();
+      eq([AS.abs.length, names()[0], bat(), GF.outs], [1, null, '이번', 1], '↩ 되돌리면 그 타석도 지우고 주자 · 타자도 그 전으로');
+    });
+  });
+
   test('경기 운영 모드가 아니면 도루는 예전처럼 안내만 · 이닝별 득점 없음', async function () {
     await isolated(async function () {
       fresh(); gfDeactivate();

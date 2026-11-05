@@ -217,11 +217,12 @@
       eq(AS.abs[3].inn, '2회초', '그다음 기록 탭 타석은 지금 이닝');
     });
   });
-  test('기록 탭 연동: 투수 탭 인플레이로 끝난 뒤 필드를 안 찍고 다음 공을 던지면, 그 뒤 기록 탭 타석은 지금 이닝', async function () {
+  test('기록 탭 연동: 투수 탭 인플레이로 3아웃 → 「위치 없이 기록」 타석은 그 공의 이닝(1회초), 그 뒤 기록 탭 타석은 지금 이닝', async function () {
     await withRecordTab(async function () {
       fresh(); pitcher(1, '투수'); await twoKs();
       batter('c', '다'); rec('플라이 아웃');
-      $('pitchLinkSheet').querySelector('[data-act="skip"]').click();   // P2: 연결 시트 → 건너뛰기 eq(inn(), '2회초', '이닝은 다음 회');
+      $('pitchLinkSheet').querySelector('[data-act="skip"]').click();   // P2: 연결 시트 → 위치 없이 기록
+      eq([AS.abs.length, AS.abs[2].res, AS.abs[2].inn, AS.abs[2].count.o, inn()], [3, '플라이 아웃', '1회초', 2, '2회초'], '그 타석은 1회초 2아웃에서 · 이닝은 다음 회');
       batter('d', '라'); rec('볼');   // 필드는 건너뛰고 다음 타자 공
       await sleep(750); recOther('사구');
       eq(AS.abs[AS.abs.length - 1].inn, '2회초', '지난 공의 이닝이 남아 있지 않다');

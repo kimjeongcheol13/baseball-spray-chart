@@ -6075,7 +6075,7 @@ function recordPitch(result){
 // · 투수 탭의 공은 기록 탭 '이번 타석 투구'(AS.currentPitches)에도 들어가 타석 기록의 pitches 가 된다 (#102 그대로)
 // · 투수 탭에서 위치가 필요 없는 결과(볼넷 · 사구 · 삼진 · 병살 · 희타 · 희비 · 내야안타 — 기록 탭 '즉시 기록'과 같은 것)로 끝나면 기록 탭 타석도 바로 만든다
 //   (그 공을 되돌리면 그 타석도 지운다). 그 타석은 이 투구 타석과 연결된다(a.pa · a.pid — P2).
-//   다른 인플레이 결과는 P2 연결 시트로: 필드에서 위치 찍기(그 결과로 저장 · 연결) / 이미 찍은 타구와 연결 / 건너뛰기
+//   다른 인플레이 결과는 P2 연결 시트로: 필드에서 위치 찍기(그 결과로 저장 · 연결) / 이미 찍은 타구와 연결 / 위치 없이 기록(그 결과로 바로 저장 · 연결)
 // · 기록 탭에서 먼저 타석을 끝내면(필드 · 도장 · 볼카운트), 투수 탭에 같은 타자의 열린 타석이 있을 때 마지막으로 기록된 공에 결과를 단다.
 //   공을 지어내지 않는다 (#102 는 결과 공 하나를 보탰다 — 투구 수 · 스트라이크% 가 바뀌고 구종 · 위치가 없는 공이 생긴다). 그 타석도 투구 타석과 연결한다(P2)
 var _pitchLinking=false;   // 투수 탭에서 시작된 타석 기록 중 (되돌아오는 연동 방지)
@@ -6106,18 +6106,23 @@ function _pitchToRecord(e,outsBefore){
   var clear=function(){AS.balls=0;AS.strikes=0;AS.currentPitches=[];_syncOutsFromPitch();renderCount();};
   if(!AS.batter){clear();showToast((PitchCalc.END_LABEL[e.end]||e.end)+' — 기록 탭에서 타자를 고르면 타석 기록에도 들어갑니다',false,2500);return;}
   if(_NO_LOC_END[e.end]){
-    var n=AS.abs.length;
-    _pitchLinking=true;
-    AS._pendLink={pa:e.pa,pid:AS.currentPitcher.id,bid:AS.batter.id};   // P2: 이렇게 만든 타석은 이 투구 타석과 연결 (_pitchLinkAfterAb 가 읽는다)
-    try{recOther(e.end);}finally{_pitchLinking=false;AS._pendLink=null;}
-    if(AS.abs.length>n)AS._pitchAutoAb={pitchId:e.id,abId:AS.abs[AS.abs.length-1].id};
-    else clear();   // 연타 방지 가드(0.7초)에 걸려 타석이 안 적혔어도 투수 쪽 타석은 끝났으므로 카운트는 비운다
+    if(!_pitchRecNoLoc(e,AS.currentPitcher))clear();   // 연타 방지 가드(0.7초)에 걸려 타석이 안 적혔어도 투수 쪽 타석은 끝났으므로 카운트는 비운다
     return;
   }
   // 필드에서 찍을 타구는 이 타석의 이닝 · 아웃으로 (P1 _abInn · _abOuts — 찍기 전에 3아웃으로 이닝이 넘어가도)
   AS._pitchEndInn=e.inning||null;
   AS._pitchEndOuts=outsBefore!=null?Math.min(2,outsBefore):null;
-  _showPitchLinkSheet(e,function(){AS._pitchEndInn=null;AS._pitchEndOuts=null;clear();});   // P2: 인플레이 → 연결 시트 (필드에서 위치 찍기 · 방금 찍은 타구와 연결 · 건너뛰기)
+  _showPitchLinkSheet(e,function(){AS._pitchEndInn=null;AS._pitchEndOuts=null;clear();});   // P2: 인플레이 → 연결 시트 (필드에서 위치 찍기 · 방금 찍은 타구와 연결 · 위치 없이 기록)
+}
+// 투구 기록에서 끝난 타석 → 기록 탭 타석을 위치 없이 바로 만들고 이 투구 타석과 연결 (그 공을 되돌리면 그 타석도 지운다). 적혔으면 true
+function _pitchRecNoLoc(e,P){
+  var n=AS.abs.length;
+  _pitchLinking=true;
+  AS._pendLink={pa:e.pa,pid:P.id,bid:AS.batter.id};   // P2: 이렇게 만든 타석은 이 투구 타석과 연결 (_pitchLinkAfterAb 가 읽는다)
+  try{recOther(e.end);}finally{_pitchLinking=false;AS._pendLink=null;}
+  if(AS.abs.length<=n)return false;
+  AS._pitchAutoAb={pitchId:e.id,abId:AS.abs[AS.abs.length-1].id};
+  return true;
 }
 // 타구 위치가 필요한 결과: 기록 탭으로 가서 필드 탭을 기다린다 (res 가 있으면 탭 즉시 그 결과로 기록, 없으면 결과 팝업)
 function _countOpenField(res,msg){
@@ -6275,19 +6280,21 @@ function _pitchLinkCandidateAb(e){   // 이 타석이 시작된 뒤 같은 타�
   }
   return null;
 }
-function _showPitchLinkSheet(e,done){   // done: 필드에서 찍지 않고 끝낼 때(연결 · 건너뛰기) 기록 탭 대기를 비운다 (_pitchToRecord 가 넘긴다)
+function _showPitchLinkSheet(e,done){   // done: 필드에서 찍지 않고 끝낼 때(연결 · 위치 없이 기록이 안 됐을 때) 기록 탭 대기를 비운다 (_pitchToRecord 가 넘긴다)
   var PC=window.PitchCalc,P=AS.currentPitcher;if(!PC||!P||!e)return;
   var cand=_pitchLinkCandidateAb(e),lbl=PC.END_LABEL[e.end]||e.end;
   var ov=_pitchLinkSheet('pitchLinkSheet','타구 위치를 찍을까요?',
     _escHtml((e.batter||'타자')+' · '+lbl)+' — 필드에서 찍으면 이 투구 기록과 연결돼요. 연결된 타구만 「타구 허용」 새 지표에 들어가요.',
     [{act:'field',label:'필드에서 위치 찍기'}]
       .concat(cand?[{act:'ab',label:'방금 찍은 타구와 연결 ('+_escHtml(cand.res)+')'}]:[])
-      .concat([{act:'skip',label:'건너뛰기',cls:'pes-cancel'}]));
+      .concat([{act:'skip',label:'위치 없이 기록',cls:'pes-cancel'}]));
   ov.addEventListener('click',function(ev){
     var b=ev.target.closest('button');if(!b)return;
     ov.remove();
     if(b.dataset.act==='ab'){_pitchLinkSet(cand,e.pa,P.id);showToast('타구와 투구 기록을 연결했어요',false,2000);if(done)done();else _syncBoardFromPitch();return;}
-    if(b.dataset.act!=='field'){if(done)done();else _syncBoardFromPitch();return;}   // 건너뛰기: 이 타석은 여기서 끝 — 기록 탭 볼카운트 0-0 (나중에 기록 탭에서 찍으면 ②로 묻는다)
+    // 위치 없이 기록 (흐름 점검 10, 사용자 결정 11-05): 기록 탭 타석을 이 결과로 바로 만든다 — 경기 운영 모드의 아웃 · 주자 · 다음 타자 · 이닝이 넘어가고 타율에도 든다.
+    //   예전 '건너뛰기'는 타석을 안 만들어(나중에 기록 탭에서 찍으면 ②로 묻는다) 경기 운영 모드가 그 자리에 멈췄다. 타자가 바뀌었거나 적히지 않으면 예전대로
+    if(b.dataset.act!=='field'){if(done){if(!(AS.batter&&String(AS.batter.id)===String(e.bid)&&_pitchRecNoLoc(e,P)))done();}else _syncBoardFromPitch();return;}
     AS._pendLink={pa:e.pa,pid:P.id,bid:e.bid};
     AS._pitchEndInn=e.inning||null;   // P1: 그사이 3아웃으로 이닝이 넘어가도 이 타구는 이 공의 이닝으로 (recHit 이 _abInn 으로 읽는다)
     _countOpenField(e.end,'기록 탭 필드에서 공이 떨어진 위치를 탭하세요 — '+lbl+'(으)로 저장되고 투구 기록과 연결돼요');   // 기록 탭으로 · 필드 탭 대기(그 결과로 바로 저장) · 모바일 스크롤 (main #102 · #104)

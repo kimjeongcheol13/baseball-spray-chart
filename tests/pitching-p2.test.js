@@ -99,9 +99,11 @@
     await gap(); rec('헛스윙', '루킹', '헛스윙');
     var k = lastAb(); eq([k.bid, k.res, k.pa, k.pid], ['b', '삼진', p.pitches[5].pa, 15], '다음 타자 삼진 · 연결');
   });
-  test('① 건너뛰기 → 연결 없음 · 위치 찍기를 고른 뒤 다른 타자를 찍으면 연결하지 않는다', async function () {
-    fresh(); pitcher(14, '투수D'); pick('a'); rec('플라이 아웃');
-    $('pitchLinkSheet').querySelector('[data-act="skip"]').click(); ok(!AS._pendLink && !AS.pendingQuickRes, '대기 없음');
+  test('① 위치 없이 기록 → 그 결과로 위치 없는 기록 탭 타석이 바로 생기고 연결 · 위치 찍기를 고른 뒤 다른 타자를 찍으면 연결하지 않는다', async function () {
+    fresh(); var p = pitcher(14, '투수D'); pick('a'); rec('플라이 아웃');
+    var sk = $('pitchLinkSheet').querySelector('[data-act="skip"]'); eq(sk.textContent, '위치 없이 기록', '버튼 이름');
+    await gap(); sk.click(); ok(!AS._pendLink && !AS.pendingQuickRes, '대기 없음');
+    var w = lastAb(); eq([AS.abs.length, w.bid, w.res, w.x, w.pa, w.pid, w.pitches.length], [1, 'a', '플라이 아웃', null, p.pitches[0].pa, 14, 1], '위치 없는 타석 · 연결 · 그 타석의 공');
     pick('b'); rec('안타'); $('pitchLinkSheet').querySelector('[data-act="field"]').click();
     pick('c'); await tapField(); clean();
     eq([lastAb().bid, lastAb().pa], ['c', undefined], '다른 타자의 타구에는 연결 안 붙음');
@@ -109,7 +111,7 @@
 
   // ═══ ② 기록 탭에서 먼저 ═══
   test('② 기록 탭에서 타구를 찍으면, 같은 타자의 방금 끝난 인플레이 투구 타석과 "연결" 확인 → 연결 · 결과가 다르면 경고', async function () {
-    fresh(); var p = pitcher(21, '투수E'); pick('a'); rec('볼', '땅볼 아웃'); $('pitchLinkSheet').querySelector('[data-act="skip"]').click();
+    fresh(); var p = pitcher(21, '투수E'); pick('a'); rec('볼', '땅볼 아웃'); clean(); AS.currentPitches = [];   // 타석 없이 끝난 투구 타석 (예전 '건너뛰기'로 적은 경기)
     await hit('안타', { x: 0.3, y: 0.4, deg: 60, dir: 'LC', ft: 200 });
     var sh = $('abLinkSheet'); ok(sh, '연결 확인이 안 뜸');
     ok(/투수E/.test(sh.textContent) && /결과가 달라요/.test(sh.textContent), '내용: ' + sh.textContent.replace(/\s+/g, ' '));
@@ -190,11 +192,12 @@
     AS.currentPitches = [];
   });
 
-  test('① 건너뛰기: 이 타석의 공은 기록 탭 "이번 타석 투구"에서도 비운다 (다음 타자 타석에 붙지 않게)', async function () {
+  test('① 위치 없이 기록: 이 타석의 공은 그 타석으로 가고 기록 탭 "이번 타석 투구"는 비운다 (다음 타자 타석에 붙지 않게)', async function () {
     fresh(); pitcher(17, '투수K'); pick('a');
     rec('볼', '헛스윙', '플라이 아웃');
-    $('pitchLinkSheet').querySelector('[data-act="skip"]').click();
+    await gap(); $('pitchLinkSheet').querySelector('[data-act="skip"]').click();
     eq([AS.currentPitches.length, AS.balls, AS.strikes, AS._pitchEndInn, AS._pitchEndOuts], [0, 0, 0, null, null], '대기 없음');
+    eq([lastAb().bid, lastAb().pitches.length, lastAb().count.b, lastAb().count.s], ['a', 3, 1, 1], '그 타석 · 공 3개 · 마지막 공 직전 1-1');
     pick('b'); await hit('안타');
     eq([lastAb().bid, lastAb().pitches.length], ['b', 0], '다음 타자 타구에 앞 타석의 공이 붙지 않음');
     clean();

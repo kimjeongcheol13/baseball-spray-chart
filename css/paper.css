@@ -249,6 +249,8 @@ body.sb.rec-v2 .pnl-center > #liveStatLine { display: none !important; }
 .sb-ot-row.cur .n i { border: 2px solid var(--pen-red); border-radius: 50%; color: var(--pen-red); transform: rotate(-6deg); }
 .sb-ot-row .nm { min-width: 0; display: flex; align-items: baseline; gap: 5px; font: 700 15px/1.2 var(--f-body); white-space: nowrap; overflow: hidden; }
 .sb-ot-row .nm small { font: 500 10px/1 var(--f-num); letter-spacing: 1px; color: var(--ink-soft); }
+/* 컴퓨터: 기록 탭 타순표 칸이 좁아 이름 옆 수비 위치가 잘림 → 수비 위치를 이름 아래 줄로 */
+@media (min-width: 721px) { .sb-ot-row .nm { flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; } }
 .sb-ot-row .ls { font: 500 12px/1.2 var(--f-num); letter-spacing: .5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-ot-row .mk { display: flex; gap: 1px; overflow: hidden; }
 .sb-ot-row .mk .sb-mk { flex: none; }

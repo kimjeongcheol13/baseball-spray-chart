@@ -8650,6 +8650,7 @@ function _pgDrawMini(id,S){
 function pgDoSave(){
   var sb=document.getElementById('pgSaveBtn');
   if(sb){sb.textContent='저장 중...';sb.disabled=true;}
+  _afterSaveCb=function(){};   // 리포트가 곧 경기 요약 — 저장 뒤 「경기 종료」 요약 창을 또 띄우지 않는다
   saveGame();
   setTimeout(function(){if(sb){sb.textContent='✓ 저장 완료';sb.disabled=false;}},600);
 }

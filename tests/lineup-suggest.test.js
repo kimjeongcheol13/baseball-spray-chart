@@ -64,6 +64,17 @@
       eq(document.getElementById('lsSheet'), null, '닫기');
       var r = btn.getBoundingClientRect();
       ok(r.height >= 44 || btn.offsetParent === null, '버튼 높이 44px 이상 — ' + r.height);
+      // 기록이 모자라면 「현대식으로 놓았어요」라고 하지 않는다 (흐름 점검 ⑥)
+      var sub = function () { var t = document.querySelector('#lsSheet .pes-sub').textContent; document.getElementById('lsSheet').remove(); return t; };
+      AS.abs = pas(A, rep('안타', 12)).concat(pas(B, rep('삼진', 12)));
+      btn.click();
+      ok(/주전 2명을 wOBA 순으로/.test(sub()), '2명 = wOBA 순');
+      AS.abs = pas(A, rep('안타', 12));
+      btn.click();
+      eq(sub(), '우리 팀 지난 기록(저장 경기 + 지금 경기)으로 순서를 정해요. 지금은 기록 10타석 이상인 주전이 1명뿐이라 지금 순서 그대로예요.', '1명');
+      AS.abs = [];
+      btn.click();
+      ok(/주전이 아직 없어서 지금 순서 그대로/.test(sub()), '0명');
     } finally {
       var s = document.getElementById('lsSheet'); if (s) s.remove();
       AS.home_lineup = keep.h; AS.abs = keep.a; AS.curTeam = keep.t; renderLP();

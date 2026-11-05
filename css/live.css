@@ -1,0 +1,50 @@
+/* 학부모 실시간 따라보기 화면 (live.html · js/live.js) — 폰 먼저, 어두운 카드형 (분석 화면 v2 와 같은 느낌) */
+:root {
+  --lv-bg: #0d1117; --lv-card: #161b22; --lv-line: #2a313c; --lv-ink: #f2f4f7; --lv-ink2: #a9b2bf; --lv-ink3: #6e7886;
+  --lv-acc: #ff6b3d; --lv-on: #3ccf7a;
+  --lv-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--lv-bg); color: var(--lv-ink); }
+body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; -webkit-text-size-adjust: 100%; }
+.lv { max-width: 520px; margin: 0 auto; padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); }
+.lv-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.lv-brand { font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
+.lv-tag { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+.lv-tag.on { color: var(--lv-on); background: rgba(60, 207, 122, .12); }
+.lv-tag.end { color: var(--lv-ink2); background: var(--lv-card); }
+.lv-card { background: var(--lv-card); border: 1px solid var(--lv-line); border-radius: 14px; padding: 14px; margin-top: 12px; }
+.lv-card h2 { margin: 0 0 8px; font-size: 13px; color: var(--lv-ink2); font-weight: 800; }
+.lv-msg { text-align: center; padding: 32px 16px; }
+.lv-msg h1 { margin: 0 0 6px; font-size: 17px; }
+.lv-msg p { margin: 0; color: var(--lv-ink2); }
+.lv-score { display: grid; gap: 4px; }
+.lv-team { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lv-team span { font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-team b { font: 800 34px/1.1 var(--lv-mono); }
+.lv-now { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--lv-line); color: var(--lv-ink2); }
+.lv-now b { color: var(--lv-acc); font-size: 15px; }
+.lv-bases { width: 56px; height: 40px; margin-left: auto; }
+.lv-bases rect { fill: none; stroke: var(--lv-ink3); stroke-width: 2; }
+.lv-bases rect.on { fill: var(--lv-acc); stroke: var(--lv-acc); }
+.lv-note { margin: 10px 2px 0; font-size: 13px; color: #f2c14e; font-weight: 700; }
+.lv-ls-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.lv-ls { border-collapse: collapse; width: 100%; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.lv-ls td, .lv-ls thead th { font-family: var(--lv-mono); }
+.lv-ls th, .lv-ls td { padding: 6px 5px; text-align: center; }
+.lv-ls thead th { color: var(--lv-ink3); font-size: 11px; }
+.lv-ls tbody th { text-align: left; font-weight: 700; max-width: 7em; overflow: hidden; text-overflow: ellipsis; }
+.lv-ls .r { color: var(--lv-acc); font-weight: 800; }
+.lv-plays { list-style: none; margin: 0; padding: 0; }
+.lv-plays li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 9px 0; border-top: 1px solid var(--lv-line); }
+.lv-plays li:first-child { border-top: 0; padding-top: 2px; }
+.lv-inn { color: var(--lv-ink3); font-size: 12px; min-width: 3.6em; }
+.lv-res { font-weight: 700; }
+.lv-rbi { color: var(--lv-acc); font-size: 12px; font-weight: 800; }
+.lv-plays small { margin-left: auto; color: var(--lv-ink3); font-size: 11px; }
+.lv-bat { width: 100%; border-collapse: collapse; }
+.lv-bat th, .lv-bat td { padding: 7px 4px; border-top: 1px solid var(--lv-line); text-align: right; font-variant-numeric: tabular-nums; }
+.lv-bat thead th { border-top: 0; color: var(--lv-ink3); font-size: 11px; font-weight: 700; }
+.lv-bat th[scope="row"], .lv-bat thead th:first-child { text-align: left; }
+.lv-foot { margin-top: 18px; text-align: center; font-size: 12px; color: var(--lv-ink3); }
+.lv-foot a { color: var(--lv-ink2); display: inline-block; min-height: 44px; line-height: 44px; }

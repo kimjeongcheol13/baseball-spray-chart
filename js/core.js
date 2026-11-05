@@ -6500,6 +6500,8 @@ function delPitch(id,undo){
 function undoPitch(){
   var P=AS.currentPitcher,ps=P&&P.pitches;
   var e=ps&&ps.length?ps[ps.length-1]:(P?null:AS.pitchLog[0]);
+  var L=AS.pitchLog[0];   // 공수 교대 · 교체로 투수가 저절로 바뀐 뒤(runners.js pickP) 그 투수 공이 아직 없으면 → 바뀌기 전 마지막 공 (예전 투수의 옛 공을 지우지 않게)
+  if(P&&AS._pitchAuto===P&&L&&(!e||(+L.id||0)>(+e.id||0)))e=L;
   if(!e){showToast('취소할 투구가 없어요',false,2500);return;}
   delPitch(e.id,true);
 }

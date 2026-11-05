@@ -3,6 +3,7 @@
 // 구조: 제목 · 부제 → 결과(리드) → 흐름(이닝별 득점이 있을 때만) → 수훈 타자 → 마운드 → 출처
 // 규칙: 기록에 없는 것은 쓰지 않는다
 //   · 이닝별 득점 합이 최종 점수와 다르면 흐름 문단을 뺀다
+//   · 역전승 · 결승타는 경기 운영 모드 득점 기록(scored · runEv)의 합이 점수판 점수와 같을 때만 (순서를 알 때만) — 영봉승 = 이기고 상대 0점
 //   · 우리 팀 = 내 팀(tHome · 타석 team 'home'), 상대 = 원정(team 'away') — 경기 리포트(_pgAbs)와 같은 기준
 //   · 투수는 공을 받은 타자 팀(투구 bteam)으로 가른다: 상대 타자(away)에게 던진 투수 = 우리 투수. 상대 투수는 마운드 문단에 넣지 않는다
 import { HITS, NOAB, BASE, esc } from '../constants.js';
@@ -10,8 +11,11 @@ import { josa } from './batdata.js?v=9';
 
 const XBH = ['홈런', '3루타', '2루타'];
 const J = (w, a, b) => w + josa(w, a, b);
-// 숫자로 끝나는 말 + 로/으로: 0(영) 3(삼) 6(육) → 으로
-const ro = s => s + (/[036]$/.test(s) ? '으로' : /\d$/.test(s) ? '로' : josa(s, '으로', '로'));
+// 말 + 로/으로: 숫자 0(영) 3(삼) 6(육) → 으로 · 한글은 받침이 있으면 으로, 단 ㄹ 받침은 로(포일로 · 땅볼로)
+const ro = s => {
+  const c = String(s).slice(-1).charCodeAt(0), j = c >= 0xAC00 && c <= 0xD7A3 ? (c - 0xAC00) % 28 : -1;
+  return s + (/[036]$/.test(s) ? '으로' : /\d$/.test(s) ? '로' : j >= 0 ? (j && j !== 8 ? '으로' : '로') : josa(s, '으로', '로'));
+};
 // ['홈런', '2루타'] → 홈런과 2루타 · 셋 이상 → A, B와 C
 const listKo = l => (l.length < 2 ? l[0] || '' : [...l.slice(0, -2), J(l[l.length - 2], '과', '와') + ' ' + l[l.length - 1]].join(', '));
 const num = v => (typeof v === 'number' && isFinite(v) ? v : 0);
@@ -74,6 +78,57 @@ function _decider(ls, side, win) {
   return dec;
 }
 
+// ── 득점 순서 (경기 운영 모드: 타석의 scored · 주루 플레이 runEv — runners.js) ──
+// 타석 순서대로 그 타석으로 들어온 점수, 그 뒤 주루 플레이(폭투 · 포일 · 홈스틸 …) 득점.
+// 합이 점수판 점수와 같을 때만 쓴다 — 손으로 바꾼 점수 · 운영 모드 없이 적은 타석이 섞이면 순서를 모르니 null
+const _side = a => (a && a.team === 'away' ? 'away' : 'home');
+function _timeline(abs, hs, as) {
+  if (!abs.some(a => Array.isArray(a.scored))) return null;
+  const ev = [];
+  abs.forEach(a => {
+    if (Array.isArray(a.scored) && a.scored.length) ev.push({ team: _side(a), n: a.scored.length, ab: a });
+    (Array.isArray(a.runEv) ? a.runEv : []).forEach(e => { if (e && e.t !== 'SUB' && e.scored) ev.push({ team: e.team === 'away' ? 'away' : 'home', n: 1, run: e }); });
+  });
+  const tot = { home: 0, away: 0 };
+  ev.forEach(e => { tot[e.team] += e.n; });
+  return tot.home === hs && tot.away === as ? ev : null;
+}
+// 가장 크게 뒤졌던 점수 차 · 결승 득점(우리 팀이 마지막으로 앞서 나간 득점 — 그 뒤로 동점 · 역전이 없었다)
+function _flow(ev) {
+  let h = 0, a = 0, worst = 0, lead = null;
+  ev.forEach(e => {
+    const was = h > a;
+    if (e.team === 'home') h += e.n; else a += e.n;
+    if (h - a < worst) worst = h - a;
+    if (!was && h > a && e.team === 'home') lead = e;
+  });
+  return { behind: -worst, lead };
+}
+// 결승타 말: 적시타 · 2타점 2루타 · 3점 홈런 · 희생플라이 · 밀어내기 볼넷 …
+const _hrKind = r => ({ 1: '솔로', 2: '2점', 3: '3점', 4: '만루' }[r] || '');
+function _rbiPhrase(a) {
+  const r = num(a.rbi);
+  switch (a.res) {
+    case '홈런': return (_hrKind(r) ? _hrKind(r) + ' ' : '') + '홈런';
+    case '안타': return r >= 2 ? r + '타점 적시타' : '적시타';
+    case '내야안타': return r >= 2 ? r + '타점 내야안타' : '적시 내야안타';
+    case '2루타': case '3루타': return r >= 2 ? `${r}타점 ${a.res}` : '적시 ' + a.res;
+    case '희비': return '희생플라이';
+    case '희타': return '희생번트';
+    case '볼넷': return '밀어내기 볼넷';
+    case '사구': return '밀어내기 몸에 맞는 공';
+    case '땅볼 아웃': return '타점 땅볼';
+    case '플라이 아웃': return '타점 뜬공';
+    default: return (r >= 2 ? r + '타점 ' : '') + a.res;
+  }
+}
+// 타점이 붙은 이 결과면 '결승타는 …', 아니면(실책 · 병살 · 폭투 등으로 들어온 결승점) '결승점은 … 들어왔다'
+const RBI_RES = [...HITS, '희비', '희타', '볼넷', '사구', '땅볼 아웃', '플라이 아웃', '야수선택'];
+const _RUN_PH = { WP: '상대 폭투', PB: '상대 포일', SB: '홈스틸' };
+const _AB_PH = { '실책': '상대 실책', '야수선택': '야수선택', '병살': '병살타', '땅볼 아웃': '땅볼', '플라이 아웃': '뜬공' };
+// 이닝 숫자: '5회말' → 5 · '연장' → 연장
+const _innTxt = inn => { const n = parseInt(inn, 10); return n >= 1 && n <= 30 ? n + '회' : String(inn || '').trim() === '연장' ? '연장' : ''; };
+
 // src = { th, ta, hs, as, info: { date, venue, side, ls }, abs, pitchers, ls(경기 운영 모드 득점 — 없으면 null), anon(이름 가리기), hl · al(라인업) }
 // 반환: { title, sub, paras: [...], note } · 타석이 하나도 없으면 null
 export function buildRecap(src) {
@@ -98,7 +153,23 @@ export function buildRecap(src) {
   const stars = L.filter(x => x.h >= 2 || x.t['홈런'] || x.rbi >= 2).sort((a, b) => (b.tb + b.rbi) - (a.tb + a.rbi) || b.h - a.h).slice(0, 3);
   const mvp = stars[0];
 
-  const title = res === 'win' ? `${th}, ${ta}에 ${score} 승리` : res === 'loss' ? `${th}, ${ta}에 ${score} 패배` : `${th}·${ta}, ${score} 무승부`;
+  // 득점 순서를 알면(경기 운영 모드 · 합 = 점수) 역전승 · 결승타. 이닝은 운영 모드이거나 이닝이 두 가지 이상 적힌 경기만 (안 바꾼 기본값 1회를 믿지 않는다)
+  const ev = _timeline(all, hs, as), fl = ev ? _flow(ev) : null;
+  const comeback = res === 'win' && !!fl && fl.behind > 0;
+  const innOk = ours.some(a => a.gfPre) || new Set(ours.map(a => _innTxt(a.inn)).filter(Boolean)).size >= 2;
+  const pre = inn => (innOk && _innTxt(inn) ? _innTxt(inn) + ' ' : '');
+  let win1 = '';
+  if (res === 'win' && fl && fl.lead) {
+    const e = fl.lead;
+    if (e.ab) {
+      const a = e.ab, who = a.bname || '이름 없음';
+      win1 = num(a.rbi) > 0 && RBI_RES.includes(a.res)
+        ? `결승타는 ${pre(a.inn)}${who}의 ${J(_rbiPhrase(a), '이었다', '였다')}.`
+        : `결승점은 ${pre(a.inn)}${who} 타석에서 나온 ${ro(_AB_PH[a.res] || a.res)} 들어왔다.`;
+    } else if (e.run && _RUN_PH[e.run.t]) win1 = `결승점은 ${pre(e.run.inn)}${ro(_RUN_PH[e.run.t])} 들어왔다.`;
+  }
+
+  const title = res === 'win' ? `${th}, ${ta}에 ${score} ${comeback ? '역전승' : as === 0 ? '영봉승' : '승리'}` : res === 'loss' ? `${th}, ${ta}에 ${score} 패배` : `${th}·${ta}, ${score} 무승부`;
   const sub = mvp ? `${mvp.name} ${mvp.ab}타수 ${mvp.h}안타${mvp.rbi ? ` ${mvp.rbi}타점` : ''}${mvp.t['홈런'] ? ` · 홈런 ${mvp.t['홈런']}개` : ''}`
     : h ? `팀 안타 ${h}개` : '';
 
@@ -106,7 +177,7 @@ export function buildRecap(src) {
   // 리드
   const when = [_dateTxt(info.date), info.venue ? `${info.venue}에서` : ''].filter(Boolean).join(' ');
   const head = when ? `${when} 열린 경기에서 ` : '';
-  const lead = res === 'win' ? `${head}${J(th, '이', '가')} ${J(ta, '을', '를')} ${ro(score)} 이겼다.`
+  const lead = res === 'win' ? (comeback ? `${head}${J(th, '이', '가')} ${ta}에 최대 ${fl.behind}점 차로 끌려가다 ${ro(score)} 역전승했다.` : `${head}${J(th, '이', '가')} ${J(ta, '을', '를')} ${ro(score)} 이겼다.`)
     : res === 'loss' ? `${head}${J(th, '은', '는')} ${ta}에 ${ro(score)} 졌다.`
     : `${head}${J(th, '과', '와')} ${J(ta, '은', '는')} ${ro(score)} 비겼다.`;
   const xb = _xbhTxt(t);
@@ -119,16 +190,18 @@ export function buildRecap(src) {
   const ls = src.ls || (info.ls && typeof info.ls === 'object' ? info.ls : null);
   const row = k2 => (ls && Array.isArray(ls[k2]) ? ls[k2] : []);
   const sum = r => r.reduce((s, v) => s + num(v), 0);
+  // 결승타(득점 순서를 알 때)가 있으면 '결승점은 N회말에 나왔다' 대신 그 문장
+  const f = [];
   if (ls && sum(row('home')) === hs && sum(row('away')) === as && hs + as > 0) {
     const ins = row('home').map((v, i) => (num(v) > 0 ? `${i + 1}회 ${v}점` : '')).filter(Boolean);
-    const f = [];
     if (ins.length) f.push(`${J(th, '은', '는')} ${ins.length === 1 ? ins[0] : ins.slice(0, -1).join(', ') + ', ' + ins[ins.length - 1]}을 뽑았다.`);
-    if (res !== 'tie') {
+    if (res !== 'tie' && !win1) {
       const d = _decider({ home: row('home'), away: row('away') }, info.side, res === 'win' ? 'home' : 'away');
       if (d) f.push(`결승점은 ${d.inn}회${d.half}에 나왔다.`);
     }
-    if (f.length) paras.push(f.join(' '));
   }
+  if (win1) f.push(win1);
+  if (f.length) paras.push(f.join(' '));
 
   // 수훈 타자
   if (stars.length) {

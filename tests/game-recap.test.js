@@ -1,6 +1,7 @@
 // 경기 기사 (js/features/recap.js) — 기록된 숫자만으로 쓰는 학부모 · 단톡방용 기사
 //  · 제목 = 승리 · 패배 · 무승부 + 점수, 부제 = 수훈 타자(2안타 · 홈런 · 2타점 이상, 루타 + 타점 순)
 //  · 흐름 문단은 이닝별 득점 합이 최종 점수와 같을 때만 · 결승점 = 이긴 팀이 마지막으로 앞서기 시작한 반 이닝
+//  · 경기 운영 모드 득점 기록(scored · runEv) 합 = 점수면 역전승 · 결승타(희생플라이 · 적시타 …) · 폭투 결승점, 상대 0점이면 영봉승
 //  · 마운드 = 상대 타자(bteam 'away')에게 던진 투수만 (우리 타자에게 던진 상대 투수는 빼기)
 //  · GAME REPORT 공유 줄 「📰 경기 기사」 → 카드 아래 기사 · 복사 / 리포트를 다시 열면 지난 기사는 지움
 (function () {
@@ -55,6 +56,55 @@
     ok(/불꽃과 번개는 3-3으로 비겼다/.test(r.paras[0]), '무승부 리드');
     ok(!r.paras.some(function (p) { return /점을 뽑았다/.test(p); }), '합이 점수와 다르면 흐름 문단을 뺀다');
     eq(R().buildRecap({ abs: [] }), null, '타석이 없으면 기사 없음');
+  });
+
+  // 경기 운영 모드로 적은 경기 (scored · runEv · gfPre) — 1회초 0-3 → 2회 1점 · 4회 2점(3-3) · 5회 희생플라이로 앞섬(결승) · 6회 솔로 홈런, 5-3
+  var S = function (pid, name) { return { id: pid, name: name }; };
+  var gp = function (pid, name, num, team, inn, res, rbi, more) { return Object.assign({ id: ++id, bid: pid, bname: name, bnum: num, team: team, inn: inn, res: res, rbi: rbi, gfPre: {}, scored: [] }, more || {}); };
+  function gfGame() {
+    return {
+      th: '서울 리틀', ta: '부산 유소년', hs: 5, as: 3, info: { date: '2026-11-05', venue: '목동 보조구장', side: 'home' },
+      hl: [{ id: 1, name: '김민준', num: '7' }, { id: 2, name: '이서준', num: '' }, { id: 3, name: '박도윤', num: '12' }, { id: 4, name: '최하준', num: '3' }],
+      abs: [
+        gp(9, '상대', '7', 'away', '1회초', '홈런', 3, { scored: [S(8, 'a'), S(7, 'b'), S(9, '상대')] }),
+        gp(1, '김민준', '7', 'home', '1회말', '안타', 0),
+        gp(2, '이서준', '', 'home', '2회말', '2루타', 1, { scored: [S(1, '김민준')] }),
+        gp(3, '박도윤', '12', 'home', '4회말', '안타', 2, { scored: [S(2, '이서준'), S(1, '김민준')] }),
+        gp(4, '최하준', '3', 'home', '5회말', '희비', 1, { scored: [S(3, '박도윤')] }),
+        gp(1, '김민준', '7', 'home', '5회말', '2루타', 0),
+        gp(4, '최하준', '3', 'home', '6회말', '홈런', 1, { scored: [S(4, '최하준')] }),
+      ],
+      pitchers: [], ls: { away: [3, 0, 0, 0, 0, 0], home: [0, 1, 0, 2, 1, 1] },
+    };
+  }
+
+  test('경기 기사: 경기 운영 모드 득점 기록 — 역전승 · 결승타 · 폭투 결승점 · 영봉승, 점수가 안 맞으면 쓰지 않는다', function () {
+    var r = R().buildRecap(gfGame());
+    eq(r.title, '서울 리틀, 부산 유소년에 5-3 역전승', '제목');
+    eq(r.paras[0], '11월 5일 목동 보조구장에서 열린 경기에서 서울 리틀이 부산 유소년에 최대 3점 차로 끌려가다 5-3으로 역전승했다. 서울 리틀 타선은 안타 5개(홈런 · 2루타 2개)를 쳤다.', '리드');
+    eq(r.paras[1], '서울 리틀은 2회 1점, 4회 2점, 5회 1점, 6회 1점을 뽑았다. 결승타는 5회 최하준의 희생플라이였다.', '흐름 — 결승점 반 이닝 대신 결승타');
+    var g = gfGame(); g.anon = true;
+    ok(R().buildRecap(g).paras[1].indexOf('결승타는 5회 #3 선수의 희생플라이였다.') > 0, '이름 가리기: ' + R().buildRecap(g).paras[1]);
+    // 결승점이 폭투로 들어오면 결승타 대신 결승점 문장 (포일 = ㄹ 받침 → 로)
+    g = gfGame(); g.abs[4] = gp(4, '최하준', '3', 'home', '5회말', '삼진', 0, { runEv: [{ t: 'WP', id: 3, name: '박도윤', team: 'home', inn: '5회말', scored: true }] });
+    eq(R().buildRecap(g).paras[1].split('. ')[1], '결승점은 5회 상대 폭투로 들어왔다.', '폭투 결승점');
+    g.abs[4].runEv[0].t = 'PB';
+    ok(/결승점은 5회 상대 포일로 들어왔다\./.test(R().buildRecap(g).paras[1]), '포일로');
+    // 이닝별 점수표가 없어도 결승타 문장은 쓴다
+    g = gfGame(); g.ls = null;
+    eq(R().buildRecap(g).paras[1], '결승타는 5회 최하준의 희생플라이였다.', '점수표 없이 결승타');
+    // 영봉승: 상대 0점 (상대 홈런을 빼고 5-0) — 결승타 = 첫 득점(2회 적시 2루타)
+    g = gfGame(); g.abs.shift(); g.as = 0; g.ls = null;
+    r = R().buildRecap(g);
+    eq(r.title, '서울 리틀, 부산 유소년에 5-0 영봉승', '영봉승 제목');
+    ok(/서울 리틀이 부산 유소년을 5-0으로 이겼다/.test(r.paras[0]) && r.paras[1] === '결승타는 2회 이서준의 적시 2루타였다.', '영봉승 리드 · 결승타: ' + r.paras[1]);
+    // 점수판을 손으로 바꿔 득점 기록 합과 다르면 역전 · 결승타를 쓰지 않는다
+    g = gfGame(); g.hs = 6;
+    r = R().buildRecap(g);
+    eq(r.title, '서울 리틀, 부산 유소년에 6-3 승리', '합이 다르면 그냥 승리');
+    ok(!/역전|결승타|결승점/.test(JSON.stringify(r)), '역전 · 결승 문장 없음');
+    // 운영 모드 기록이 없는 경기(기존 경기)는 그대로
+    eq(R().buildRecap(game()).title, '불꽃, 번개에 5-3 승리', '득점 기록이 없으면 승리');
   });
 
   test('경기 기사: 수훈 타자가 없으면 안타 친 선수만 · 투구 기록이 없으면 마운드 문단 없음', function () {

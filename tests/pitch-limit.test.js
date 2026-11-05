@@ -210,4 +210,89 @@
       btns().forEach(function (b) { ok(b.getBoundingClientRect().height >= 44 || b.offsetParent === null, b.textContent + ' 버튼 높이 44px 이상'); });
     } finally { restore(S); }
   });
+
+  // Little League 본부 규정 NOTE 1 "Under no circumstance shall a player pitch in three (3) consecutive days" — 1~20구(휴식 0일)여도
+  test('투구 수 관리: 3일 연속 등판 금지 — 켜면 이틀 연속 던진 투수는 다음 날 쉰다', function () {
+    var base = PL().norm({ max: 85, tiers: [[20, 0], [35, 1], [50, 2], [65, 3], [85, 4]] });
+    var r = PL().norm(Object.assign({}, base, { c3: true }));
+    eq([base.c3, r.c3, PL().norm({ c3: 'yes' }).c3], [false, true, false], 'c3 는 true 일 때만 · 기본 꺼짐');
+    var h = PL().history([
+      { date: '2026-11-02', pitchers: [{ name: '연투', num: '1', pitches: pitches(15) }] },
+      { date: '2026-11-03', pitchers: [{ name: '연투', num: '1', pitches: pitches(10) }] }
+    ])[0];
+    var s = PL().status(h, '2026-11-04', base);
+    eq([s.block, s.next, s.c3], [null, null, false], '꺼져 있으면 수요일 등판 가능');
+    s = PL().status(h, '2026-11-04', r);
+    eq([s.block, s.next, s.c3], ['2026-11-05', '2026-11-05', true], '월 · 화 던졌으면 수요일은 못 던지고 목요일부터');
+    s = PL().status(h, '2026-11-03', r);
+    eq([s.today, s.rest, s.next, s.n3, s.c3], [10, 0, '2026-11-05', true, false], '화요일(월요일도 던짐) 10구 → 휴식 0일이어도 목요일부터');
+    s = PL().status(h, '2026-11-02', r);
+    eq([s.next, s.n3], ['2026-11-03', false], '월요일 하루만이면 다음 날 가능');
+    s = PL().status(h, '2026-11-05', r);
+    eq([s.block, s.next], [null, null], '목요일엔 등판 가능');
+    var h2 = PL().history([
+      { date: '2026-11-02', pitchers: [{ name: '긴휴식', num: '2', pitches: pitches(10) }] },
+      { date: '2026-11-03', pitchers: [{ name: '긴휴식', num: '2', pitches: pitches(70) }] }
+    ])[0];
+    s = PL().status(h2, '2026-11-04', r);
+    eq([s.block, s.c3], ['2026-11-08', false], '화요일 70구 → 휴식 4일이 더 길면 휴식일로');
+    var h3 = PL().history([
+      { date: '2026-11-01', pitchers: [{ name: '격일', num: '3', pitches: pitches(10) }] },
+      { date: '2026-11-03', pitchers: [{ name: '격일', num: '3', pitches: pitches(10) }] }
+    ])[0];
+    s = PL().status(h3, '2026-11-04', r);
+    eq([s.block, s.next], [null, null], '일 · 화 던졌으면(월요일 쉼) 수요일 가능');
+  });
+
+  test('투구 수 관리: 3일 연속 — 투구 기록 화면 줄 · 첫 공 알림 · 경기설정 칸', function () {
+    var S = save(), saves = localStorage.getItem('sl_saves'), K1 = 'sl_t_pl_c3a', K2 = 'sl_t_pl_c3b';
+    var mk = function (n, base) { return pitches(n).map(function (x) { return Object.assign({}, x, { id: base + x.id }); }); };
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ on: true, max: 85, tiers: [[20, 0], [35, 1], [50, 2], [65, 3], [85, 4]], c3: true }));
+      localStorage.setItem(K1, JSON.stringify({ info: { date: '2026-11-02' }, abs: [], pitchers: [{ name: '연투', num: '9', pitches: mk(15, 700) }] }));
+      localStorage.setItem(K2, JSON.stringify({ info: { date: '2026-11-03' }, abs: [], pitchers: [{ name: '연투', num: '9', pitches: mk(10, 800) }] }));
+      localStorage.setItem('sl_saves', JSON.stringify([{ key: K1, ts: 1 }, { key: K2, ts: 2 }]));
+      AS.info = Object.assign({}, AS.info || {}, { date: '2026-11-04' });
+      var P = { id: 'plc3', name: '연투', num: '9', role: null, pitches: [] };
+      AS.pitchers = [P]; AS.currentPitcher = P;
+      renderPitchCount();
+      var line = function () { return $('pitchCountBar').querySelector('.pcnt-limit'); };
+      eq(line().textContent, '⚠ 3일 연속 등판 금지 — 어제 · 그제 던졌어요 · 11-05(목)부터 등판 가능', '던지기 전: 오늘은 못 던짐');
+      ok(line().classList.contains('warn'), '경고 색');
+      P.pitches = mk(1, 900); $('toastTxt').textContent = '';
+      PL().onPitch(); renderPitchCount();
+      eq($('toastTxt').textContent, '⚠ #9 연투 어제 · 그제도 던졌어요 — 3일 연속 등판 금지 (오늘은 쉬어야 해요)', '첫 공 알림');
+      eq(line().textContent, '⚠ 3일 연속 등판 · 오늘 1구 / 최대 85 · 휴식 0일 → 11-06(금)부터', '던진 뒤: 모레부터');
+      // 그제는 안 던지고 어제만 던졌으면: 오늘 던질 수 있지만 내일은 못 던짐
+      localStorage.setItem(K1, JSON.stringify({ info: { date: '2026-11-01' }, abs: [], pitchers: [{ name: '연투', num: '9', pitches: mk(15, 700) }] }));
+      localStorage.setItem('sl_saves', JSON.stringify([{ key: K1, ts: 3 }, { key: K2, ts: 4 }]));
+      $('toastTxt').textContent = '';
+      PL().onPitch(); renderPitchCount();
+      eq($('toastTxt').textContent, '#9 연투 어제도 던졌어요 — 내일은 쉬어야 해요 (3일 연속 등판 금지) · 11-06(금)부터', '첫 공: 내일은 쉬어야');
+      eq(line().textContent, '오늘 1구 / 최대 85 · 휴식 0일 → 11-06(금)부터 (3일 연속 금지)', '줄: 모레부터 (3일 연속 금지)');
+      ok(!line().classList.contains('warn'), '오늘 던지는 건 괜찮아 경고 색 아님');
+      window.renderSetup();
+      var li = $('plStatus').querySelector('li');
+      eq([li.querySelector('em').textContent, li.querySelector('em').className], ['11-06(금)부터', 'no'], '휴식 현황: 모레부터');
+      // 경기설정 칸 · 기본값
+      var c3 = function () { return $('stPitch').querySelector('.pl-c3 input'); };
+      var pressed = function () { return Array.prototype.slice.call($('stPitch').querySelectorAll('.pl-pre button')).map(function (b) { return b.getAttribute('aria-pressed'); }); };
+      ok(c3() && c3().checked, '3일 연속 칸 켜짐');
+      ok(c3().closest('label').getBoundingClientRect().height >= 44 || c3().offsetParent === null, '3일 연속 칸 높이 44px 이상');
+      eq(pressed(), ['false', 'false', 'true', 'false'], '리틀 11~12세 (3일 연속 포함)');
+      window.plC3(false);
+      eq([T.ls(KEY).c3, c3().checked], [false, false], '끄면 저장');
+      eq(pressed(), ['false', 'false', 'false', 'false'], '3일 연속을 끄면 리틀 기본값이 아님');
+      $('stPitch').querySelectorAll('.pl-pre button')[0].click();
+      eq(T.ls(KEY).c3, false, '고교 = 3일 연속 꺼짐');
+      $('stPitch').querySelectorAll('.pl-pre button')[3].click();
+      eq([T.ls(KEY).c3, c3().checked, T.ls(KEY).max], [true, true, 75], '리틀 9~10세 = 3일 연속 켜짐');
+      $('stPitch').querySelectorAll('.pl-pre button')[1].click();
+      eq(T.ls(KEY).c3, true, '중학 = 3일 연속 켜짐');
+    } finally {
+      [K1, K2].forEach(function (k) { localStorage.removeItem(k); });
+      if (saves == null) localStorage.removeItem('sl_saves'); else localStorage.setItem('sl_saves', saves);
+      restore(S);
+    }
+  });
 })();

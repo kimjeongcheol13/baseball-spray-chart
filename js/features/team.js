@@ -3,6 +3,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, fmt, josa as _j, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
 import { fieldInnCard } from './fieldinn.js?v=2';
+import { abPitcher } from './xlsxreport.js?v=28';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -13,6 +14,7 @@ let _sort = { k: 'pa', dir: -1 };
 let _trendKey = 'avg';
 let _logAll = false;
 let _fv = '2d';          // 팀 타구 방향: 2d | 3d
+let _vsKey = '';         // 투수 맞대결: 고른 투수 (이름|팀)
 
 const LEADERS = [
   { k: 'ops', l: 'OPS', fmt: 'f3', rate: true },
@@ -75,6 +77,7 @@ export function setTeamScope(k, v) {
   if (k === 'sort') _sort = _sort.k === v ? { k: v, dir: -_sort.dir } : { k: v, dir: v === 'kRate' ? 1 : -1 };
   if (k === 'log') _logAll = !_logAll;
   if (k === 'fv') _fv = v === '3d' ? '3d' : '2d';
+  if (k === 'vs') _vsKey = String(v);
   _render();
 }
 
@@ -184,6 +187,7 @@ function _render() {
       ${_inningCard(T)}
       ${_countCard(T)}
     </div>
+    ${_vsCard(T)}
     ${_dirCard(T)}
     ${pitchTable([{ name: '팀', cls: 'a', pitch: _pitchMap(T.abs) }])}
     ${_exportCard(team)}
@@ -526,6 +530,57 @@ function _countCard(T) {
           <tr><th scope="row">${r.l}<small class="tm-sub">${r.d}</small></th><td>${r.st.pa}</td><td><b>${r.st.ab ? f3(r.st.avg) : '—'}</b></td><td>${r.st.pa ? f3(r.st.obp) : '—'}</td><td>${r.st.pa ? pct(r.st.kRate) : '—'}</td></tr>`).join('')}
         </tbody>
       </table>
+    </section>`;
+}
+
+// ── 투수 맞대결: 투수 한 명 ↔ 타자 전원 (6-4-3 Charts 「Player vs Player」) ──
+//   타석의 투수 = 엑셀 「투구 기록」 · 기록 탭 「투수별 요약」과 같은 연결(abPitcher)
+//   같은 이름 + 같은 팀 = 같은 투수 → 경기를 넘어 합친다 (홈(우리)면 상대 투수, 원정이면 우리 투수)
+function _vsList(T) {
+  const AS = window.AS || {};
+  const by = new Map();
+  T.perGame.forEach(g => {
+    const flat = [];
+    (g.pitchers || (g.current ? AS.pitchers : null) || []).forEach(p => {
+      if (p && p.name) (p.pitches || []).forEach(x => { if (x && isFinite(+x.id)) flat.push({ id: +x.id, name: p.name, batter: x.batter || '', p: x }); });
+    });
+    const team = String((_side === 'away' ? g.th : g.ta) || '').trim();
+    g.mine.forEach(a => {
+      const name = abPitcher(a, flat).name;
+      if (!name) return;
+      const k = name + '|' + team;
+      if (!by.has(k)) by.set(k, { k, name, team, abs: [] });
+      by.get(k).abs.push(a);
+    });
+  });
+  return [...by.values()].sort((a, b) => b.abs.length - a.abs.length);
+}
+
+function _vsCard(T) {
+  if (_side === 'all') return '';
+  const them = _side === 'away';
+  const hd = `<header class="an-hd"><h3>${them ? '우리 투수' : '상대 투수'} 맞대결</h3><span class="an-hd-note">투수 한 명과 ${them ? '상대' : '우리'} 타자 전원</span></header>`;
+  const list = _vsList(T);
+  if (!list.length) return `<section class="an-card tm-vs">${hd}<div class="an-note">투수가 이어진 타석이 없어요. 투구 기록에서 투수를 고르고 기록하거나, 게임원에서 가져온 경기면 타석마다 투수가 이어져요.</div></section>`;
+  const P = list.find(x => x.k === _vsKey) || list[0];
+  const map = new Map();
+  P.abs.forEach(a => { const n = a.bname || '(이름 없음)'; if (!map.has(n)) map.set(n, []); map.get(n).push(a); });
+  const rows = [...map].map(([n, abs]) => ({ n, st: calcStats(abs) })).sort((a, b) => b.st.pa - a.st.pa || b.st.h - a.st.h);
+  const tot = calcStats(P.abs);
+  const row = st => `<td>${st.pa}</td><td>${st.h}</td><td>${st.k}</td><td><b>${st.ab ? f3(st.avg) : '—'}</b></td><td>${f3(st.obp)}</td>`;
+  const lbl = x => x.name + (x.team ? ' · ' + x.team : '') + ' · ' + x.abs.length + '타석';
+  return `
+    <section class="an-card tm-vs">
+      ${hd}
+      <select class="pc-rp-sel tm-vs-sel" aria-label="투수 고르기" onchange="setTeamScope('vs',this.value)">${list.map(x => `<option value="${_esc(x.k)}"${x === P ? ' selected' : ''}>${_esc(lbl(x))}</option>`).join('')}</select>
+      <table class="pf-split">
+        <thead><tr><th scope="col">타자</th><th scope="col">타석</th><th scope="col">안타</th><th scope="col">삼진</th><th scope="col">타율</th><th scope="col">출루율</th></tr></thead>
+        <tbody>${rows.map(r => `
+          <tr><th scope="row">${_esc(r.n)}</th>${row(r.st)}</tr>`).join('')}
+          <tr class="tm-vs-tot"><th scope="row">합계</th>${row(tot)}</tr>
+        </tbody>
+      </table>
+      <div class="an-hd-note">같은 이름 · 같은 팀이면 여러 경기를 합쳐요 · 3타석 미만은 참고만</div>
     </section>`;
 }
 

@@ -389,3 +389,6 @@
   .cd-cell:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
   .tg-tab { flex: 1 1 0; }
 }
+/* 투수 맞대결 (team.js _vsCard): 투수 고르기 · 합계 줄 */
+.tm-vs-sel { width: 100%; margin: 0 0 10px; }
+.tm-vs .tm-vs-tot :is(th, td) { border-top: 1px solid var(--an-line); }

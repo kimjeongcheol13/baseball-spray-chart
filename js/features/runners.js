@@ -6,7 +6,8 @@
 //      runEv  = [{ t, id, name, num, from, inn, team, scored, pre }]  이 타석 뒤 · 다음 타석 전의 주루 플레이 · 교체
 //               t = SB 도루 · CS 도루 실패 · PO 견제사 (from = 그 주자의 베이스 0~2) · WP 폭투 · PB 포일 (from = null, adv = 진루한 주자의 베이스 —
 //               없으면 모두 한 베이스씩 · id · name 은 홈인한 3루 주자) · SUB 교체 (k = PH 대타 · PR 대주자(from = 베이스) · DEF 대수비 · P 투수,
-//               id · name = 들어온 선수, out = 나간 선수, team = 그 선수들의 팀, sw = 타순표에서 맞바꾼 자리 · added = 새로 넣은 선수).
+//               id · name = 들어온 선수, out = 나간 선수, team = 그 선수들의 팀, sw = 타순표에서 맞바꾼 자리 · added = 새로 넣은 선수)
+//               · k = POS 수비 위치 바꾸기 (주전 둘의 pos 를 맞바꾼다 — id · name = 한 선수, with = 다른 선수, pa · pb = 바꾸기 전 두 선수의 pos, out = null).
 //               pre = 그 직전 경기 운영 상태 — 되돌리기용
 //      gfPre  = { inning, half, outs, batterIdx, bases, hs?, as? }  그 타석 직전 경기 운영 상태 + 그 타석으로 오른 점수 — 지우개가 되돌린다
 //  · 타순은 '주전'만 돈다 ('후보'는 교체로 들어와야 친다) · 이닝이 바뀌면 그 팀 마지막 타석의 다음 타자부터 (core.js gfNextHalf 는 늘 1번부터)
@@ -22,7 +23,7 @@
 
 const BASE = ['1루', '2루', '3루'];
 const EV = { SB: '도루', CS: '도루 실패', PO: '견제사', WP: '폭투', PB: '포일' };
-const KIND = { PH: '대타', PR: '대주자', DEF: '대수비', P: '투수 교체' };
+const KIND = { PH: '대타', PR: '대주자', DEF: '대수비', P: '투수 교체', POS: '수비 위치 바꾸기' };
 const UNK = Object.freeze({ id: null, name: null, num: null });   // 이름 모르는 주자 (손으로 켠 베이스)
 const $ = id => document.getElementById(id);
 const nm = r => (r && r.name) || '주자';
@@ -353,7 +354,27 @@ function subStart() {
   });
   btn(box, '대수비 — 수비 선수 바꾸기', () => subOut('DEF'));
   btn(box, '투수 교체', () => subOut('P'));
+  btn(box, '수비 위치 바꾸기 — 주전끼리', () => posPick());
   show(box);
+}
+
+// 수비 위치 바꾸기 — 수비 팀 주전 둘의 수비 위치(pos)를 맞바꾼다 (유격수 ↔ 투수 처럼). 분석 › 팀 포지션별 수비 이닝이 이 기록으로 나눈다(definn.js)
+const posTxt = p => `${p.name}${p.pos ? ' (' + p.pos + ')' : ''}`;
+function posPick(a) {
+  const team = fld(), box = sheet(a ? `${posTxt(a)} — 누구와 자리를 바꾸나요?` : '수비 위치 바꾸기 — 누구 자리를 바꾸나요?');
+  starters(LU(team)).forEach((p, i) => { if (!same(p, a)) btn(box, `${i + 1}번 ${posTxt(p)}`, () => (a ? (closePick(), posApply(team, a, p)) : posPick(p))); });
+  show(box);
+}
+function posApply(team, a, b) {
+  const last = lastAb('수비 위치 바꾸기를');
+  if (!last) return;
+  const ev = Object.assign({ t: 'SUB', k: 'POS' }, clean(a), { with: clean(b), pa: a.pos || '', pb: b.pos || '', out: null, from: null, inn: inn(), team, scored: false, pre: preOf() });
+  a.pos = ev.pb; b.pos = ev.pa;
+  pushEv(last, ev);
+  window.renderLP();
+  window.updateAll();
+  window.gfUpdateBar();
+  window.showToast(`수비 위치 · ${ev.inn} ${a.name} → ${a.pos || '-'} · ${b.name} → ${b.pos || '-'}`, true, 3000);
 }
 
 // 대수비 · 투수 — 수비 팀 주전 중에서 나가는 선수 (투수는 타순에 없을 수도: 지명타자)
@@ -411,6 +432,11 @@ function subApply(k, team, out, base, inP, name) {
 
 function undoSub(ev) {
   const A = window.AS, lu = LU(ev.team), s = ev.sw;
+  if (ev.k === 'POS') {   // 수비 위치 바꾸기 — 두 선수 pos 를 바꾸기 전으로
+    const a = lu.find(p => same(p, ev)), b = lu.find(p => same(p, ev.with));
+    if (a) a.pos = ev.pa;
+    if (b) b.pos = ev.pb;
+  }
   if (s && lu[s.o] && lu[s.i]) {
     const inP = lu[s.o], op = lu[s.i];
     lu[s.o] = op; lu[s.i] = inP;

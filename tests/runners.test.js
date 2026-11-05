@@ -612,6 +612,34 @@
     });
   });
 
+  // 흐름 점검 8: 7회초 끝 후공 리드인데 「7회말 공격 시작」 — 정규 이닝(경기설정 5 · 7 · 9회)부터는 경기 종료를 묻는다
+  test('정규 이닝이 끝나면 경기 종료를 묻는다 — 초 끝 후공 리드 · 말 끝 동점은 연장 · 끝내기 · 정규 이닝 전에는 묻지 않음', async function () {
+    await isolated(async function () {
+      start(); AS.info = { innings: 5 };   // 우리(홈) 선공 · 원정 후공
+      var ask = function () { var b = $('gfEndAsk'); return b && b.style.display === 'flex' ? b.querySelector('.gw-sub').textContent : ''; };
+      var to = function (inn, half) { GF.inning = half === 'top' ? inn : inn + 1; GF.half = half === 'top' ? 'bottom' : 'top'; gfStepHalf(-1); GF.outs = 2; };   // 그 반 이닝 2아웃으로
+      var wait = function () { return T.sleep(150); };
+      to(4, 'top'); AS.hs = 1; AS.as = 2;
+      await other('삼진'); await wait();
+      eq([ask(), GF.inning, GF.half], ['', 4, 'bottom'], '4회초 끝: 정규 이닝 전이라 묻지 않음'); ok(/4회말 공격 시작/.test($('toastTxt').textContent), $('toastTxt').textContent);
+      to(5, 'top');
+      await other('삼진'); await wait();
+      ok(/^5회초 끝 — .+ 2 : 1 승리예요 \(정규 5회\)/.test(ask()), '5회초 끝 · 후공 2:1 → 종료 묻기: ' + ask());
+      gfEndAskClose();
+      eq([GF.active, GF.inning, GF.half], [true, 5, 'bottom'], '계속 기록 → 5회말 그대로');
+      AS.as = 1; GF.outs = 2;
+      await other('삼진'); await wait();
+      eq([ask(), GF.inning, GF.half], ['', 6, 'top'], '5회말 끝 1:1 동점 → 연장 6회초');
+      to(6, 'bottom'); GF.outs = 0;
+      await hit('홈런'); await wait();
+      ok(/^끝내기 — .+ 2 : 1 승리예요/.test(ask()), '6회말 홈런 → 끝내기: ' + ask());
+      gfEndAskClose();
+      gfEndConfirm();
+      eq(ask(), '경기 운영을 끝내고 경기 리포트를 엽니다.', '경기종료 버튼으로 열면 예전 글');
+      gfEndAskClose();
+    });
+  });
+
   test('경기 운영 모드가 아니면 도루는 예전처럼 안내만 · 이닝별 득점 없음', async function () {
     await isolated(async function () {
       fresh(); gfDeactivate();

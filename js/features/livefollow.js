@@ -5,6 +5,8 @@
 //   · 이름은 공유 링크와 같게 기본으로 가린다(#등번호 · 김OO — core.js _anonLabel). 「선수 실명 포함」을 켜면 실명
 //   · AS · GF 를 읽기만 한다 — 기록 · 저장 구조는 건드리지 않는다
 // ponytail: 링크 하나 = 중계를 끌 때까지. 새 경기를 시작해도 같은 링크가 이어서 보여 준다(더블헤더) — 경기마다 나누려면 새 경기 때 끄기
+//   · 경기종료(gfEndGame) → 「경기 끝」(fin)을 올리고 링크는 그대로 둔다. 그 뒤에 친 타석이 생기기 전까지는
+//     (새 경기 첫 타석 전 · 다른 저장 경기를 열어 봄) 올리지 않아 학부모 화면엔 끝난 경기가 남는다
 import { HITS, NOAB, esc } from '../constants.js';
 
 const SURL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
@@ -13,10 +15,13 @@ const LS = 'sl_live';
 const EVERY = 15000;
 const $ = id => document.getElementById(id);
 
-let _db = null, _timer = null, _last = '', _busy = false, _okAt = 0, _err = '';
+let _db = null, _timer = null, _last = '', _busy = false, _okAt = 0, _err = '', _sent = null;
 const db = () => _db || (_db = window.supabase && window.supabase.createClient
   ? window.supabase.createClient(SURL, SKEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : null);
 const load = () => { try { const s = JSON.parse(localStorage.getItem(LS) || 'null'); return s && s.id && s.key ? s : null; } catch (e) { return null; } };
+const save = s => { try { localStorage.setItem(LS, JSON.stringify(s)); } catch (e) { /* 저장 공간 없음 — 이번만 */ } };
+const absNow = () => ((window.AS || {}).abs || []).filter(Boolean);
+const firstId = abs => (abs.length ? String(abs[0].id) : '');   // 경기 구별 — 첫 타석 id (runners.js gameId 와 같은 생각)
 const rnd = n => { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(n)); return Array.from(b, x => c[x % c.length]).join(''); };
 const linkOf = s => new URL('live.html?g=' + s.id, location.href).href;
 
@@ -59,7 +64,14 @@ const why = e => {
 export function liveTick(force) {
   const s = load();
   if (!s || !s.on) { liveTimer(false); return Promise.resolve(); }
-  const p = livePayload(s.names), j = JSON.stringify(Object.assign({}, p, { at: 0 }));
+  if (s.fin) {   // 「경기 끝」을 올린 뒤
+    const abs = absNow();
+    if (abs.some(a => +a.id > s.fin)) { delete s.fin; delete s.fid; save(s); }   // 경기 끝 뒤에 친 타석 — 다음 경기(또는 다시 이어서 기록)를 실시간으로
+    else if (firstId(abs) !== s.fid) return Promise.resolve();   // 새 경기 첫 타석 전 · 다른 저장 경기를 열어 봄 — 끝난 경기를 그대로 둔다
+  }
+  const p = livePayload(s.names);
+  if (s.fin) p.fin = 1;   // 끝난 경기를 고치면(리포트에서 기록 수정) 경기 끝인 채로 다시 올림
+  const j = JSON.stringify(Object.assign({}, p, { at: 0 }));
   if (_busy || (!force && j === _last)) return Promise.resolve();
   _busy = true;
   return put(s, p).then(r => {
@@ -68,7 +80,7 @@ export function liveTick(force) {
       if (r.error.code === 'PT429') return;   // 너무 잦음 — 다음 차례에 다시
       _err = why(r.error);
       if (r.error.code === '42501' || r.error.code === 'PGRST202' || r.error.code === '42883') { localStorage.removeItem(LS); liveTimer(false); }
-    } else { _last = j; _okAt = Date.now(); _err = ''; }
+    } else { _last = j; _sent = p; _okAt = Date.now(); _err = ''; }
     paint();
   }, e => { _busy = false; _err = why(e); paint(); });
 }
@@ -96,7 +108,9 @@ function start() {
 function stop() {
   const s = load();
   localStorage.removeItem(LS); liveTimer(false); _err = '';
-  if (s) Promise.resolve(put(s, Object.assign(livePayload(s.names), { end: true }))).catch(() => {});   // 학부모 화면에 「중계 끝」 · supabase-js rpc 는 .catch 가 없는 thenable
+  // 경기 끝을 올린 뒤 새 경기(첫 타석 전)에서 끄면 새 경기 0:0 대신 마지막으로 올린 끝난 경기에 「끝」 표시 (새로고침해 없으면 그대로 둔다)
+  const p = s && (s.fin && firstId(absNow()) !== s.fid ? _sent : livePayload(s.names));
+  if (p) Promise.resolve(put(s, Object.assign({}, p, { end: true }))).catch(() => {});   // 학부모 화면에 「중계 끝」 · supabase-js rpc 는 .catch 가 없는 thenable
   paint();
   if (window.showToast) window.showToast('실시간 중계를 껐어요', false, 2500);
 }
@@ -134,7 +148,7 @@ function paint() {
   b.innerHTML = s && s.on ? `
     <label class="lv-lbl" for="liveUrl">학부모에게 보낼 링크</label>
     <input id="liveUrl" class="lv-url" readonly value="${esc(linkOf(s))}" onclick="this.select()">
-    <p class="lv-st">● 중계 중${t ? ` · 마지막으로 올림 ${esc(t)}` : ''}${s.names ? ' · 실명' : ' · 이름 가림'}</p>${err}
+    <p class="lv-st">${s.fin ? '■ 경기 끝을 보냈어요 · 다음 경기 첫 타석부터 이 링크로 이어서' : '● 중계 중'}${t ? ` · 마지막으로 올림 ${esc(t)}` : ''}${s.names ? ' · 실명' : ' · 이름 가림'}</p>${err}
     <div class="lv-btns"><button type="button" class="btn btn-primary" onclick="slLive.share()">링크 보내기</button><button type="button" class="btn btn-ghost" onclick="slLive.stop()">중계 끄기</button></div>` : `
     <label class="lv-chk"><input type="checkbox" id="liveNames"> 선수 실명 포함 <small>(끄면 #등번호 · 김OO)</small></label>${err}
     <div class="lv-btns"><button type="button" class="btn btn-primary" id="liveStart" onclick="slLive.start()">링크 만들고 중계 시작</button></div>`;
@@ -149,5 +163,23 @@ if (typeof window !== 'undefined') {
   window.openLiveFollow = openLiveFollow;
   window.slLive = { start, stop, share, tick: liveTick, payload: livePayload };
   if (load()) liveTimer(true);   // 새로고침 뒤에도 이어서
+  // 경기종료 — 학부모 화면에 「경기 끝」. 링크 · 타이머는 그대로 (core.js gfEndGame — runners.js 도 감싼다)
+  const endGame = window.gfEndGame;
+  if (typeof endGame === 'function') window.gfEndGame = function () {
+    const r = endGame.apply(this, arguments), s = load();   // 경기 리포트는 0.3초 뒤에 열린다 (아래 한 줄이 그때 붙는다)
+    if (s && s.on) { s.fin = Date.now(); s.fid = firstId(absNow()); save(s); liveTick(true); }
+    return r;
+  };
+  // 경기 리포트 맨 아래 한 줄 — 토스트는 리포트 창 밑에 깔려 안 보인다. 저장 이미지(pgExport)는 캔버스로 따로 그려 이 줄이 안 들어간다
+  const report = window.showPostGameReport;
+  if (typeof report === 'function') window.showPostGameReport = function () {
+    const r = report.apply(this, arguments), s = load(), card = $('pgCard'), old = $('pgLiveNote');
+    if (old) old.remove();
+    if (card && s && s.on && s.fin && firstId(absNow()) === s.fid) {
+      card.insertAdjacentHTML('beforeend', '<p id="pgLiveNote" role="status" style="margin:4px 16px 14px;font-size:12px;line-height:1.5;text-align:center;opacity:.75">'
+        + '📡 학부모 실시간 링크에 「경기 끝」을 보냈어요 · 다음 경기도 같은 링크로 이어서 보여요</p>');
+    }
+    return r;
+  };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && load()) liveTick(); });
 }

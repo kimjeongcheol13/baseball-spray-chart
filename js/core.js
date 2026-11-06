@@ -7787,7 +7787,7 @@ function startFromWizard(){
     var w=document.getElementById('cwrap');
     if(!w)return;
     var nw=_fieldFS(w)||w.offsetWidth;
-    if(nw&&nw!==FS){FS=nw;if(fC){fC.width=FS;fC.height=FS;}if(hC){hC.width=FS;hC.height=FS;}if(oC){oC.width=FS;oC.height=FS;}}
+    if(nw&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){if(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';}});_applyDPR();}   // 다른 크기 바꾸기와 같게 DPR · CSS 크기까지 (빠지면 폰에서 흐리고, FS 가 같아져 다시 안 돌아옴)
     drawField();safeRender();
   });
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
@@ -9288,7 +9288,7 @@ document.addEventListener('visibilitychange',function(){
         if(fC&&hC&&oC){
           var w=document.getElementById('cwrap');
           var nw=w?_fieldFS(w):0;
-          if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS;c.height=FS;});}
+          if(nw>0&&nw!==FS){FS=nw;[fC,hC,oC].forEach(function(c){c.width=FS*DPR;c.height=FS*DPR;c.style.width=FS+'px';c.style.height=FS+'px';});_applyDPR();}   // DPR · CSS 크기까지 (initCanvas 와 같게)
           fCtx=fC.getContext('2d');
           hCtx=hC.getContext('2d');
           oCtx=oC.getContext('2d');

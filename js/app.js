@@ -6,7 +6,7 @@ import './features/profile.js?v=32';
 import './features/compare.js?v=14';
 import './features/scouting.js?v=27';
 import './features/heatmap.js?v=3';
-import './features/filter.js?v=6';
+import './features/filter.js?v=7';
 import './features/insights.js?v=1';
 import './features/perf.js?v=2';
 import './features/team.js?v=32';
@@ -21,7 +21,7 @@ import './features/scorebook.js?v=38';
 import './features/dashboard.js?v=14';
 import './features/setup.js?v=21';
 import './features/report.js?v=9';
-import './features/anahelp.js?v=5';
+import './features/anahelp.js?v=6';
 import './features/firstrun.js?v=9';
 import './features/tabloop.js?v=1';
 import './features/ana3d.js?v=12';     // 분석 그림(타구 방향 · 코스) 2D | 3D
@@ -39,8 +39,8 @@ import './features/statcard.js?v=6';         // 성적 카드 3종(개인 · 팀
 import './features/livefollow.js?v=2';       // 학부모 실시간 링크 — ☰ 메뉴 · 기록하는 폰이 15초마다 요약을 올림(sql/16) · 보는 쪽은 live.html
 import './features/lineupsuggest.js?v=2';     // 타순 추천 — 라인업 창 「📊 타순 추천」(index.html) · 우리 팀 지난 기록으로 현대식 순서, 「적용」해야 바뀜
 
-import './features/anahelp.js?v=5';
-import './features/anahelp.js?v=5';
+import './features/anahelp.js?v=6';
+import './features/anahelp.js?v=6';
 // ── Bottom Navigation ──
 function initSavantNav() {
   const nav = document.getElementById('savantNav');

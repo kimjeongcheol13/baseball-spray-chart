@@ -157,6 +157,7 @@ function _render() {
         ${_plotCard(P, today)}
         ${_sprayCard(P, today, season_)}
       </div>
+      ${season_ ? _situCard(P, data) : ''}
       ${_memoCard(P, data)}
       ${season_ && P.st.pa ? profileSeasonHtml(P, data) : ''}
       <div class="bt-links bt-links-1">
@@ -296,6 +297,41 @@ function _sprayCard(P, today, seasonView) {
       <div class="an-spray-key">
         <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
       </div>
+    </section>`;
+}
+
+// 상황별 타구 방향 — 6-4-3 Charts 상황별 스프레이 묶음: 한 타자를 상황별 작은 차트로 한 카드에
+//   카운트 · 투수 손 = 상세 필터(filter.js)와 같은 판정 · 득점권 = 경기 운영 모드 타석만(gfPre) · 타구 점이 없는 상황은 뺀다
+const _cntOf = a => { const L = a.pa != null && window.PitchLink ? window.PitchLink.of(a) : null; return (L && L.count) || a.count || {}; };
+const SITU = [
+  ['2스트라이크', a => _cntOf(a).s >= 2],
+  ['초구', a => { const c = _cntOf(a); return c.s === 0 && !c.b; }],
+  ['득점권', a => { const b = a.gfPre && a.gfPre.bases; return !!(b && (b[1] || b[2])); }],
+  ['좌투 상대', a => window._sfHand(a) === 'L'],
+  ['우투 상대', a => window._sfHand(a) === 'R'],
+  ['안타만', a => HITS.includes(a.res), true],
+  ['아웃만', a => window._GF_IS_OUT(a.res), true],
+];
+
+function _situCard(P, data) {
+  const mine = g => g.abs.filter(a => a.bname === P.name);
+  // 경기 시각 순서 (저장 순서는 게임원 시즌 가져오기 등으로 뒤섞일 수 있다) · 5경기 이하면 시즌 전체와 같다
+  const games = data.games.filter(g => !g.current && mine(g).length).sort((a, b) => (+a.ts || 0) - (+b.ts || 0));
+  const list = SITU.map(([l, f, noRate]) => ({ l, noRate, abs: P.abs.filter(f) }));
+  if (games.length > 5) list.splice(5, 0, { l: '최근 5경기', abs: games.slice(-5).flatMap(mine) });
+  const tiles = list.filter(x => x.abs.some(a => a.x != null && a.y != null)).map(x => {
+    const st = calcStats(x.abs);
+    return `<div class="bt-situ-tile">${sprayFigure({ name: x.l, abs: x.abs, st }, '', false)}${x.noRate ? '' : `<p class="bt-situ-st">${st.pa}타석 · 타율 ${st.ab ? f3(st.avg) : '—'}</p>`}</div>`;
+  });
+  if (!tiles.length) return '';
+  return `
+    <section class="an-card bt-situ-card">
+      <header class="an-hd"><h3>상황별 타구 방향</h3><span class="an-hd-note">시즌 전체 · 타구 점이 있는 상황만</span></header>
+      <div class="bt-situ">${tiles.join('')}</div>
+      <div class="an-spray-key">
+        <span><i class="k-1b"></i>단타</span><span><i class="k-xbh"></i>2·3루타</span><span><i class="k-hr"></i>홈런</span><span><i class="k-out"></i>아웃</span>
+      </div>
+      <div class="an-hd-note">득점권은 경기 운영 모드로 적은 타석만 · 좌우 투수는 투수 손이 적힌 타석만</div>
     </section>`;
 }
 

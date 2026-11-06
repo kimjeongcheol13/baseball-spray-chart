@@ -192,6 +192,21 @@
   .bt-links { max-width: 640px; margin: 0 auto; width: 100%; }
 }
 
+/* 상황별 타구 방향 (batter.js _situCard): 작은 차트 묶음 — 넓은 화면 4칸 · 폰 2칸. 점선 안내는 바로 위 타구 방향 카드에 있다 */
+.bt-situ { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px 28px; margin-bottom: 12px; }
+.bt-situ .an-est-note, .bt-situ .an-dir-none { display: none; }
+/* 칸이 좁아 % 글자가 잘린다 — 막대는 비율만, 숫자는 아래 당김·센터·밀어 줄 */
+.bt-situ .an-dir { height: 8px; }
+.bt-situ .an-dir i { font-size: 0; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-situ .an-dir { height: 8px; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-situ .an-dir i { font-size: 0; }
+.bt-situ-st { margin: 5px 0 0; font-size: 11px; color: var(--an-ink2); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-result > .bt-situ-card { grid-column: 1 / -1; }
+html body.sb.sb-night:not(.high-contrast) #analysisView .bt-situ-st { font-size: 13px; }
+@media (max-width: 720px) {
+  .bt-situ { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 14px; }
+}
+
 @media (prefers-reduced-motion: reduce) { .bt-dot { animation: none; } }
 
 /* ── 모바일 터치 타겟 44×44px 이상 ── */

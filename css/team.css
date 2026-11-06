@@ -397,3 +397,9 @@
   /* 투수 맞대결 10열: 폰에서는 칸 사이를 좁혀 wOBA 까지 한 화면에 (v2.css 밤 화면 12px 4px 보다 우선) */
   html body.sb.sb-night:not(.high-contrast) #analysisView .tm-vs .pf-split :is(th, td) { padding-left: 2px; padding-right: 2px; }
 }
+/* 주자 · 아웃별 번트 · 장타 (team.js _bxCard): 숫자 = 그 일 수 / 그 상황 타석 · 0 은 흐리게 · 나온 칸만 강조색 */
+.tm-bx .pf-split td small { margin-left: 1px; }
+.tm-bx .pf-split td:not(.on) b, .tm-bx .tm-bx-0 { opacity: .4; }
+.tm-bx .pf-split td.on b { color: var(--an-accent); }
+html body.sb.sb-night:not(.high-contrast) #analysisView .tm-bx .pf-split td.on b { color: var(--v-acc); }
+.tm-bx .tm-bx-tot :is(th, td) { border-top: 1px solid var(--an-line); }

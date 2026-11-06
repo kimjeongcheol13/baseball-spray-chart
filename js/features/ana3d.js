@@ -93,7 +93,7 @@ const _shown = (id) => { const v = document.getElementById(id); return v && v.cl
 function scan() {
   const items = [], sec = _shown('analysisView') && document.querySelector('#anaBody .ana-sec.on'), set = _shown('settingsView');
   if (sec) {
-    sec.querySelectorAll('.an-card figure.an-spray').forEach((f) => { const s = f.querySelector(':scope > svg'); if (s) items.push({ fig: s, tag: 'spray-field-3d', data: () => sprayData(f) }); });
+    sec.querySelectorAll('.an-card:not(.bt-situ-card) figure.an-spray').forEach((f) => { const s = f.querySelector(':scope > svg'); if (s) items.push({ fig: s, tag: 'spray-field-3d', data: () => sprayData(f) }); });
     sec.querySelectorAll('.an-card svg.pc-plot').forEach((s) => items.push({ fig: s, tag: 'pitch-zone-3d', data: () => zoneData(s) }));
     sec.querySelectorAll('.an-card .sc-zone[data-view]').forEach((z) => items.push({ fig: z, tag: 'pitch-zone-3d', data: () => gridData(z) }));
   }

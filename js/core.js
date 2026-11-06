@@ -8179,6 +8179,8 @@ function gfAfterRecord(res,rbi){
   if(scored>0){
     if(gfAtk()==='home'){AS.hs+=scored;var h=document.getElementById('scH');if(h)h.textContent=AS.hs;}
     else{AS.as+=scored;var a=document.getElementById('scA');if(a)a.textContent=AS.as;}
+    var wo=GF.half==='bottom'&&(gfAtk()==='home'?AS.hs-AS.as:AS.as-AS.hs)-scored<=0?_gfOverTxt(GF.inning,'walk'):'';   // 끝내기 — 이 득점으로 앞섰을 때만 (계속 기록 중 추가 점수는 다시 묻지 않음)
+    if(wo)setTimeout(function(){gfEndConfirm(wo);},80);
   }
   // 아웃 처리
   var outCount=res==='병살'?2:_GF_IS_OUT(res)?1:0;
@@ -8231,9 +8233,21 @@ function gfNextHalf(quiet){
   requestAnimationFrame(function(){gfUpdateBar();gfSyncInnSel();});
   if(quiet)return;   // gfStepHalf 가 자기 안내를 띄운다
   var halfTxt=GF.half==='top'?'초':'말';
+  var over=GF.half==='bottom'?_gfOverTxt(GF.inning,'top'):_gfOverTxt(GF.inning-1,'bottom');   // 방금 끝난 반 이닝
   setTimeout(function(){
+    if(over){gfEndConfirm(over);return;}   // 흐름 점검 8: 7회초 끝 후공 리드인데 「7회말 공격 시작」이라 했다 — 경기 종료를 묻는다 (계속 기록하면 이 반 이닝 그대로)
     showToast('3아웃 — '+GF.inning+'회'+halfTxt+(gfSkip()?' 상대 공격 (기록 안 함)':' 공격 시작 ⚾'),false,true);
   },80);
+}
+// 경기가 끝났나 — 정규 이닝(경기설정 5 · 7 · 9회) 회부터: 초 끝에 후공 리드 · 말 끝에 동점 아님 · 말 공격 중 후공 역전(ended 'walk', 끝내기).
+// 끝났으면 경기 종료 창 글, 아니면 ''. 동점이면 연장
+function _gfOverTxt(inn,ended){
+  var N=(AS.info&&+AS.info.innings)||9;
+  if(!GF.active||inn<N)return '';
+  var sc=function(t){return t==='home'?AS.hs:AS.as;},last=GF.first==='home'?'away':'home',d=sc(last)-sc(GF.first);
+  if(ended==='bottom'?d===0:d<=0)return '';
+  var w=d>0?last:GF.first,nm=function(t){var el=document.getElementById(t==='home'?'tHome':'tAway');return (el&&el.value.trim())||(t==='home'?'홈팀':'원정팀');};
+  return (ended==='walk'?'끝내기 — ':inn+'회'+(ended==='top'?'초':'말')+' 끝 — ')+nm(w)+' '+Math.max(AS.hs,AS.as)+' : '+Math.min(AS.hs,AS.as)+' 승리예요 (정규 '+N+'회). 경기를 끝내고 경기 리포트를 엽니다.';
 }
 
 // ─── 반이닝 옮기기 — 헤더 ◀ ▶(record.js recStepInning) · 상대 공격 「다음 이닝으로 ▶」 (d=1 다음 · -1 이전)
@@ -8305,7 +8319,7 @@ function gfUpdateBases(res,rbi){
 
 // ─── 경기 종료 ───
 // 브라우저 확인 창 대신 앱 창 (새 경기 확인 창 #newGameGuard 와 같은 모양) — 처음 열 때 body 에 만든다(#app-page 밖이라 경기설정 탭에서도 보임)
-function gfEndConfirm(){
+function gfEndConfirm(sub){   // sub: 이닝이 끝나 경기가 끝났을 때 그 결과 글 (_gfOverTxt)
   var el=document.getElementById('gfEndAsk');
   if(!el){
     el=document.createElement('div');el.id='gfEndAsk';
@@ -8321,6 +8335,7 @@ function gfEndConfirm(){
     el.addEventListener('keydown',function(e){if(e.key==='Escape')gfEndAskClose();});
     document.body.appendChild(el);
   }
+  el.querySelector('.gw-sub').textContent=typeof sub==='string'?sub:'경기 운영을 끝내고 경기 리포트를 엽니다.';
   el.style.display='flex';
   el.querySelector('.gw-btn-cancel').focus();
 }

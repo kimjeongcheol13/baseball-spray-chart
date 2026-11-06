@@ -1,6 +1,6 @@
 /**
  * SprayLab — 스프레이 차트 필터 시스템
- * 구종 / 타구 결과 / 좌우투수 / 카운트
+ * 구종 / 타구 결과 / 좌우투수 / 카운트 / 주자 상황
  */
 
 // ── 필터 상태 ─────────────────────────────────────────────────
@@ -8,12 +8,23 @@ var _SF = {
   pt:    [],   // 구종: ['직구', '슬라이더', ...]
   res:   [],   // 타구 결과: ['안타', '홈런', ...]
   hand:  null, // 투수: 'L' | 'R' | null
-  count: null  // 카운트: 'first' | 'pitcher' | 'batter' | 'full' | null
+  count: null, // 카운트: 'first' | 'pitcher' | 'batter' | 'full' | null
+  sit:   null  // 주자 상황: 'risp' | 'on' | 'empty' | 'two' | null
 };
 // 현재 투수 투구 손 (새 기록에 스탬프)
 var _pitcherHand = null;
 
 // ── 필터 판정 ─────────────────────────────────────────────────
+// 그 타석 직전 주자 · 아웃 = 경기 운영 모드로 적은 타석(gfPre)만 안다 (coachnotes.js 와 같은 판정). 2아웃은 볼카운트로 적은 아웃(count.o)도 본다
+function _sitOk(a) {
+  var p = a.gfPre, b = p && Array.isArray(p.bases) ? p.bases : null;
+  if (_SF.sit === 'two') return (p && p.outs != null ? p.outs : a.count && a.count.o) === 2;
+  if (!b) return false;
+  if (_SF.sit === 'risp')  return !!(b[1] || b[2]);
+  if (_SF.sit === 'on')    return !!(b[0] || b[1] || b[2]);
+  if (_SF.sit === 'empty') return !(b[0] || b[1] || b[2]);
+  return true;
+}
 function _pass(a) {
   var L = a && a.pa != null && window.PitchLink ? window.PitchLink.of(a) : null;   // P2: 투구 기록과 연결된 타구 → 그 기록의 카운트 · 구종 · 투수 손
   var pt = (L && L.pt) || a.pt, hand = (L && L.hand) || a.hand;
@@ -27,25 +38,29 @@ function _pass(a) {
     if (_SF.count === 'batter'  && !(b >= 2 && b > s))            return false;
     if (_SF.count === 'full'    && !(b === 3 && s === 2))          return false;
   }
+  if (_SF.sit != null && !_sitOk(a)) return false;
   return true;
 }
-function _isActive() {
+// 공유 링크에 실을 수 있는 조건 — 주자 상황은 빠진다 (링크의 타석에 gfPre 가 없어 받는 쪽에서 판정할 수 없음)
+function _isSharable() {
   return _SF.pt.length > 0 || _SF.res.length > 0 || _SF.hand != null || _SF.count != null;
 }
+function _isActive() { return _isSharable() || _SF.sit != null; }
 // 외부 노출 (heatmap.js·spray.js 등에서 사용)
 window._sfPass = _pass;
-window._sfCount = function() { return _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0); };
+window._sfCount = function() { return _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0) + (_SF.sit ? 1 : 0); };
 
 // ── 공유 링크 (core.js _shareGameBuild · loadSharedGame): 지금 필터를 싣고, 받은 필터를 켠다 ──
 var _SF_HAND = { L: '좌투수 상대', R: '우투수 상대' }, _SF_CNT = { first: '초구', pitcher: '투수 유리', batter: '타자 유리', full: '풀카운트' };
 function _sfLabel() {
   return _SF.pt.concat(_SF.res, _SF.hand ? [_SF_HAND[_SF.hand]] : [], _SF.count ? [_SF_CNT[_SF.count]] : []).join(' · ');
 }
-window._sfLabel = function() { return _isActive() ? _sfLabel() : ''; };
-window._sfState = function() { return _isActive() ? { pt: _SF.pt.slice(), res: _SF.res.slice(), hand: _SF.hand, count: _SF.count } : null; };
-// 받은 값은 형식이 맞는 것만 (짧은 문자열 목록 · L/R · 카운트 이름) — 필터 객체가 아니면 아무것도 안 바꾸고 '' 를 돌려준다
+window._sfLabel = function() { return _isSharable() ? _sfLabel() : ''; };
+window._sfState = function() { return _isSharable() ? { pt: _SF.pt.slice(), res: _SF.res.slice(), hand: _SF.hand, count: _SF.count } : null; };
+// 받은 값은 형식이 맞는 것만 (짧은 문자열 목록 · L/R · 카운트 이름) — 필터 객체가 아니면 주자 상황만 끄고 '' 를 돌려준다
 window._sfSetState = function(s) {
-  if (!s || typeof s !== 'object') return '';
+  _SF.sit = null;   // 링크의 타석엔 gfPre 가 없어, 켜 두면 점이 다 사라진다 — 링크에 필터가 없어도 끈다
+  if (!s || typeof s !== 'object') { _syncChips(); _updateBadge(); return ''; }
   var list = function(a) { return Array.isArray(a) ? a.filter(function(v) { return typeof v === 'string' && v.length <= 12; }).slice(0, 20) : []; };
   _SF.pt = list(s.pt); _SF.res = list(s.res);
   _SF.hand = s.hand === 'L' || s.hand === 'R' ? s.hand : null;
@@ -87,7 +102,7 @@ function _stampHand() {
 }
 // ── 배지 업데이트 ─────────────────────────────────────────────
 function _updateBadge() {
-  var cnt = _SF.pt.length + _SF.res.length + (_SF.hand ? 1 : 0) + (_SF.count ? 1 : 0);
+  var cnt = window._sfCount();
   var badge = document.getElementById('sfBadge');
   var btn   = document.getElementById('sfToggleBtn');
   if (badge) {
@@ -125,6 +140,7 @@ function _syncChips() {
     if (key === 'res')   on = _SF.res.indexOf(val) >= 0;
     if (key === 'hand')  on = _SF.hand  === val;
     if (key === 'count') on = _SF.count === val;
+    if (key === 'sit')   on = _SF.sit   === val;
     if (key === 'ov')    on = !!(window._fieldOv && window._fieldOv[val]);
     el.classList.toggle('sfc-on', !!on);
   });
@@ -145,7 +161,7 @@ function _sfChip(el) {
     if (idx >= 0) arr.splice(idx, 1);
     else arr.push(val);
   } else {
-    // single-select (hand, count)
+    // single-select (hand, count, sit)
     _SF[key] = (_SF[key] === val) ? null : val;
   }
   _syncChips();
@@ -159,7 +175,7 @@ function _sfApply() {
   if (window.safeRender) window.safeRender();
 }
 function _sfReset() {
-  _SF.pt = []; _SF.res = []; _SF.hand = null; _SF.count = null;
+  _SF.pt = []; _SF.res = []; _SF.hand = null; _SF.count = null; _SF.sit = null;
   _syncChips();
   _updateBadge();
   _sfClose();
@@ -235,7 +251,8 @@ function _build() {
     '.sfp-reset{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border2);background:none;',
     '  color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer}',
     '.sfp-apply{flex:2;padding:9px;border-radius:8px;border:none;background:var(--blue,#4b8cf5);',
-    '  color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer}'
+    '  color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer}',
+    '@media (max-width:720px){#sfPanel .sfc,#sfPanel .sfp-x,#sfPanel .sfp-reset,#sfPanel .sfp-apply{min-width:44px;min-height:44px}}'
   ].join('');
   document.head.appendChild(style);
 
@@ -281,6 +298,14 @@ function _build() {
       ].map(function(pair) {
         return '<button class="sfc" data-key="count" data-val="' + pair[0] + '" data-single="1" onclick="_sfChip(this)">' + pair[1] + '</button>';
       }).join('')
+    + '</div></div>'
+
+    // 주자 상황
+    + '<div class="sfp-sec"><div class="sfp-lbl">주자 상황</div><div class="sfp-row">'
+    + [['risp','득점권'],['on','주자 있음'],['empty','주자 없음'],['two','2아웃']].map(function(pair) {
+        return '<button class="sfc" data-key="sit" data-val="' + pair[0] + '" data-single="1" onclick="_sfChip(this)">' + pair[1] + '</button>';
+      }).join('')
+    + '<span style="font-size:9px;color:var(--text3);align-self:center;margin-left:4px">※ 주자는 경기 운영 모드로 적은 타석만</span>'
     + '</div></div>'
 
     // 필드 표시 (기본 OFF)

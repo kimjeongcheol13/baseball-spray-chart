@@ -29,13 +29,21 @@
       .filter(function (t) { return t.indexOf("location.replace('landing.html'") >= 0; });
     eq(src.length, 1, 'index.html 에서 첫 화면 이동 스크립트를 찾음');
     ok(src[0].indexOf('localStorage') < 0, '기록(localStorage)은 보지 않는다 — 기록이 있어도 랜딩');
-    var run = new Function('location', 'sessionStorage', 'document', src[0]);
+    var run = new Function('location', 'sessionStorage', 'document', 'navigator', src[0]), online = { onLine: true };
     CASES.forEach(function (c) {
       var to = null, wrote = [], ss = Object.assign({}, c[3]);
-      run({ search: c[1], hash: c[2], replace: function (u) { to = u; } }, ss, { write: function (h) { wrote.push(h); } });
+      run({ search: c[1], hash: c[2], replace: function (u) { to = u; } }, ss, { write: function (h) { wrote.push(h); } }, online);
       eq(to, c[4], c[0] + ': 이동 주소');
       if (to) eq(wrote, ['<plaintext hidden>'], c[0] + ': 아래 스크립트(GA · 앱)를 막음');
       else ok(ss.sl_in_app, c[0] + ': 이 탭에서 앱을 열었다고 표시');
+    });
+    // 인터넷 없이 설치 앱 · 맨 주소: SW 가 안 담긴 landing.html 자리에 이 파일을 주면 끝없이 돌았다 → 앱에 남는다
+    [['인터넷 없음', { search: '', hash: '' }, { onLine: false }], ['SW 가 landing.html 자리에 이 파일을 줌 (신호 약함)', { search: '', hash: '', pathname: '/baseball-spray-chart/landing.html' }, online]].forEach(function (c) {
+      var to = null, ss = {};
+      c[1].replace = function (u) { to = u; };
+      run(c[1], ss, { write: function () {} }, c[2]);
+      eq(to, null, c[0] + ': 이동하지 않음');
+      ok(ss.sl_in_app, c[0] + ': 앱을 열었다고 표시');
     });
   });
 

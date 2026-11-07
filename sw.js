@@ -1,7 +1,10 @@
 // SprayLab Service Worker v24
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v229';
+const CACHE_NAME = 'spraylab-v233';
+
+// HTML 을 이만큼 기다려도 안 오면(신호가 아주 약할 때) 전에 열어 둔 같은 주소를 먼저 보여 준다 (받은 최신본은 그대로 캐시에 들어가 다음에 열 때 쓴다)
+const HTML_WAIT_MS = 3000;
 
 // 설치 시 사전 캐싱할 핵심 로컬 파일 목록
 // (버전 쿼리 없는 경로 — 런타임에 ?v= 버전드 요청이 들어오면 stale-while-revalidate로 추가 캐싱됨)
@@ -68,7 +71,7 @@ self.addEventListener('fetch', function(e) {
 
   // HTML 네비게이션: 네트워크 우선, 성공 시 캐시에도 저장, 실패 시 캐시 폴백
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
-    e.respondWith(
+    var net =
       fetch(new Request(req, { cache: 'no-cache' }))
         .then(function(res) {
           if (res && res.status === 200) {
@@ -98,8 +101,17 @@ self.addEventListener('fetch', function(e) {
           return caches.match(req)
             .then(function(r) { return r || caches.match('./index.html'); })
             .then(function(r) { return r || caches.match('./'); });
-        })
-    );
+        });
+    e.waitUntil(net);
+    e.respondWith(new Promise(function(resolve) {
+      // 같은 페이지만 쓴다(?app=1 은 열자마자 주소에서 지워져 뒤의 ? 는 다를 수 있다): 처음 가는 다른 페이지(landing.html 등)는 앱 화면으로 바꿔치지 않고 계속 기다린다
+      var wait = setTimeout(function() {
+        caches.match(req)
+          .then(function(r) { return r || caches.match(req, { ignoreSearch: true }); })
+          .then(function(r) { if (r) resolve(r); });
+      }, HTML_WAIT_MS);
+      net.then(function(r) { clearTimeout(wait); resolve(r); });
+    }));
     return;
   }
 

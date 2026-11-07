@@ -1577,6 +1577,12 @@ body.high-contrast .player-row{border-width:2px}
 #fieldOfflineBanner{position:fixed;top:0;left:0;right:0;z-index:9001;background:#f59e0b;color:#000;text-align:center;padding:7px 16px;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px}
 #fieldOfflineBanner.show{display:flex}
 body.game-focus.offline-active .app-hdr{margin-top:34px}
+/* 폰: 띠가 맨 위 버튼 · 이닝 숫자를 가리지 않게 화면을 띠 높이만큼 내린다. 창(메뉴 · 리포트)이 열리면 창이 띠를 덮는다. 빨간 오프라인 표시는 띠와 같은 말이라 숨긴다 */
+@media (max-width:720px){
+  #fieldOfflineBanner{height:30px;padding:0 8px;white-space:nowrap;overflow:hidden;z-index:60}
+  body.offline-active:not(.game-focus) #app-page{padding-top:30px}
+  body.offline-active .net-badge.offline{display:none}
+}
 
 /* ?? 怨좊?鍮??좉? 踰꾪듉 ?? */
 #hcToggleBtn{padding:4px 8px;font-size:10px;white-space:nowrap}

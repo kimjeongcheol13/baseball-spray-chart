@@ -3,9 +3,10 @@
 <head>
 <script>
 /* 첫 화면 = landing.html (모든 기기·설치 앱, 기록 있어도. ?utm_·fbclid 등은 넘김). 앱으로 바로: 아래 앱 링크 파라미터(새로 만들면 추가)·#·
-   이 탭(설치 앱은 이번 실행)에서 앱 열었음(sl_in_app — ?go=1 등은 곧 지워짐). plaintext=아래 GA·앱 안 돌림 */
+   이 탭(설치 앱은 이번 실행)에서 앱 열었음(sl_in_app — ?go=1 등은 곧 지워짐). plaintext=아래 GA·앱 안 돌림
+   인터넷이 없으면 앱으로: SW 가 안 담긴 landing.html 자리에 이 파일을 주면 다시 landing.html 로 가며 끝없이 돌았다 */
 (function(){try{var s=sessionStorage,p=new URLSearchParams(location.search);
-if(!s.sl_in_app&&!location.hash&&!['go','app','game','gid','team','import','code','error','debug','goc','goteam'].some(function(k){return p.has(k);})){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
+if(!s.sl_in_app&&!location.hash&&navigator.onLine&&!/landing\.html$/.test(location.pathname)&&!['go','app','game','gid','team','import','code','error','debug','goc','goteam'].some(function(k){return p.has(k);})){location.replace('landing.html'+location.search);document.write('<plaintext hidden>');return;}
 s.sl_in_app=1}catch(e){}})();
 </script>
 <script
@@ -2511,6 +2512,31 @@ if ('serviceWorker' in navigator) {
     window._slSwReloading = true;
     window.location.reload();
   };
+
+  // 앱을 여는 데 쓴 파일을 SW 캐시에 마저 담는다. 전날 한 번만 열면 다음 날 인터넷 없이 앱이 안 떴다:
+  //  · 처음 여는 동안 받은 파일은 SW 를 거치지 않았다 (설치가 끝나기 전)
+  //  · 외부 <script>·<link> 는 SW 가 내용을 못 봐 담지 않는다 (신호가 약하면 이것들이 화면을 막는다)
+  // 캐시에 없는 것만 다시 요청하면 SW 가 담는다. 브라우저 캐시에서 오므로 다시 내려받지 않는다. API 호출(fetch · 통계)은 빼고 파일만
+  window._slSwWarm = function() {
+    if (!navigator.serviceWorker.controller || !window.caches) return;
+    var page = location.href.split('#')[0];
+    var urls = performance.getEntriesByType('resource').filter(function(r) {
+      return ['script', 'link', 'css', 'img'].indexOf(r.initiatorType) >= 0 && !/google(tagmanager|-analytics)\.com\//.test(r.name);
+    }).map(function(r) { return r.name; });
+    [page].concat(urls).forEach(function(u) {
+      caches.match(u).then(function(hit) {
+        if (!hit) return fetch(u, u === page ? { headers: { Accept: 'text/html' } } : {});
+      }).catch(function() {});
+    });
+  };
+  // load 만 기다리면 안 된다: 신호가 약해 통계 스크립트가 매달리면 load 가 한참 안 온다. 모듈까지 다 받은 DOMContentLoaded 뒤에 담고, load 때 남은 것을 한 번 더
+  function _slSwWarmSoon() {
+    var soon = function() { setTimeout(window._slSwWarm, 500); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', soon); else soon();
+    if (document.readyState !== 'complete') window.addEventListener('load', soon);
+  }
+  _slSwWarmSoon();   // 이미 SW 가 있을 때. 첫 방문은 아래 controllerchange 에서
+  navigator.serviceWorker.addEventListener('controllerchange', _slSwWarmSoon);
 
   // 새 SW가 활성화되면 페이지를 깨끗하게 새로고침
   // (skipWaiting으로 인한 리소스 불일치 방지)

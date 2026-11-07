@@ -57,7 +57,7 @@
       var s1 = snap();
       Object.keys(s0).forEach(function (k) { eq(s1[k], s0[k], '실제 키 변경: ' + k); });
       Object.keys(s1).forEach(function (k) { if (!(k in s0)) ok(k === 'sl_sample_on' || k.indexOf('sl_sample__') === 0, '실제 칸에 새 키: ' + k); });
-      eq(s1['sl_sample_on'], '3', '플래그 = 샘플 데이터 판');
+      eq(s1['sl_sample_on'], '4', '플래그 = 샘플 데이터 판');
       eq(sampleKeys().length, 1 + 1 + 12, '플래그 + sl_saves + 경기 12개');
     } finally { restore(); REAL.clear(); }
   });
@@ -72,7 +72,7 @@
       var a = await load();
       ok(a.api.isOn(), '옛 플래그로 샘플 모드가 안 켜짐');
       eq(a.reloads, 0, '리로드');
-      eq(REAL.getItem('sl_sample_on'), '3', '플래그 = 새 판');
+      eq(REAL.getItem('sl_sample_on'), '4', '플래그 = 새 판');
       eq(REAL.getItem('sl_sample__' + OLD), null, '옛 경기가 남음');
       eq(REAL.getItem('sl_sample__sl_autosave'), null, '샘플 모드 자동저장이 남음');
       eq(JSON.parse(localStorage.getItem('sl_saves')).length, 12, '새 판 경기 수');
@@ -125,6 +125,28 @@
       });
       eq(Object.keys(names).length, 9, '전체 타자 수');
       ok(total > 430 && total < 530, '전체 타석: ' + total);
+    } finally { restore(); REAL.clear(); }
+  });
+
+  test('샘플 모드: 타석 · 공마다 상대 투수 — 같은 상대면 같은 선발 · 계투, 6회부터 계투, 우리 선수 이름과 안 겹침', async function () {
+    try {
+      fresh(); await enterAndReopen();
+      var byOpp = {}, all = {};
+      JSON.parse(localStorage.getItem('sl_saves')).forEach(function (s) {
+        var g = JSON.parse(localStorage.getItem(s.key)), ours = {};
+        g.home_lineup.concat(g.pitchers).forEach(function (p) { ours[p.name] = 1; });
+        var sp = g.abs[0].pitcher, rp = g.abs[g.abs.length - 1].pitcher;
+        ok(sp && rp && sp !== rp, '선발 · 계투가 따로 없음: ' + sp + ' / ' + rp);
+        ok(!ours[sp] && !ours[rp], '우리 선수 이름과 겹침: ' + sp + ' / ' + rp);
+        g.abs.forEach(function (a) {
+          eq(a.pitcher, parseInt(a.inn, 10) >= 6 ? rp : sp, a.inn + ' 투수');
+          a.pitches.forEach(function (q) { eq(q.pitcher, a.pitcher, '공의 투수'); });
+        });
+        if (byOpp[g.ta]) eq(sp + '/' + rp, byOpp[g.ta], '같은 상대인데 투수가 다름: ' + g.ta);
+        byOpp[g.ta] = sp + '/' + rp; all[sp] = all[rp] = 1;
+      });
+      eq(Object.keys(byOpp).length, 6, '상대 팀 수');
+      eq(Object.keys(all).length, 12, '상대 투수 수 (팀마다 2명, 이름이 안 겹침)');
     } finally { restore(); REAL.clear(); }
   });
 

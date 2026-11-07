@@ -63,6 +63,17 @@
     ok(!document.querySelector('.tm-vs-sel'), '고르기 없음');
   });
 
+  test('시간순 연결은 같은 반 이닝의 공만 — 앞 이닝에 던진 투수 · 5분 안에 다음 이닝에 던진 투수를 붙이지 않고, 뺀 타석 수를 알려 준다', function () {
+    window.AS.abs = [ab(1, '강', '안타'), ab(2, '강', '볼넷', { inn: '3회말' }), ab(3, '중', '안타')];
+    window.AS.pitchers = [
+      { id: 1, name: '선발', pitches: [{ id: t0 + 500, batter: '강', inning: '1회말' }] },
+      { id: 2, name: '계투', pitches: [{ id: t0 + 3500, batter: '중', inning: '2회말' }] },
+    ];
+    setTeamScope('scope', 'game');
+    eq(opts(), ['선발 · 청솔 · 1타석'], '같은 반 이닝의 공만 이어진다');
+    ok(/투수를 모르는 2타석은 뺐어요/.test(document.querySelector('.tm-vs').textContent), '뺀 타석 수: ' + document.querySelector('.tm-vs').textContent);
+  });
+
   test('시즌: 같은 이름 + 같은 팀은 여러 경기를 합치고, 팀이 다르면 다른 투수', async function () {
     var G = [['sl_vs_t1', '청솔'], ['sl_vs_t2', '청솔'], ['sl_vs_t3', '솔빛']].map(function (x, i) {
       return { key: x[0], th: '한빛', ta: x[1], hs: 1, as: 0, ts: t0 + i * 86400000, d: '2026. 11. ' + (i + 1) + '.',

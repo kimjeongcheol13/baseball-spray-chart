@@ -13,7 +13,7 @@
   'use strict';
 
   var FLAG = 'sl_sample_on', PFX = 'sl_sample__', TOMB = '\u0000sample-deleted';
-  var DATA_V = 3;   // 샘플 데이터 판 — buildGames 결과가 바뀌면 올린다 (1 = 3경기 ~ 투구까지 넣은 판들, 2 = 12경기 · 투수 · 타자가 본 공, 3 = 타석 직전 아웃 · 주자)
+  var DATA_V = 4;   // 샘플 데이터 판 — buildGames 결과가 바뀌면 올린다 (1 = 3경기 ~ 투구까지 넣은 판들, 2 = 12경기 · 투수 · 타자가 본 공, 3 = 타석 직전 아웃 · 주자, 4 = 상대 투수 이름)
   var REAL;
   try { REAL = window.localStorage; REAL.getItem(FLAG); } catch (e) { return; }   // 저장소를 못 쓰는 브라우저: 기능 없음
 
@@ -310,7 +310,7 @@
       var fin = n === seq.length - 1, at, zone;
       if (k === '볼' || k === '사구' || (k === '헛스윙' && !fin && R() < .4)) { at = ballSpot(R, k === '사구'); zone = zoneOf(at.x, at.y); }
       else { zone = fin ? a.zone : ZONES[Math.floor(R() * 9)]; at = spot(R, zone); }
-      var q = { zone: zone, pt: fin ? a.pt : PITCH[Math.floor(R() * PITCH.length)], x: at.x, y: at.y, balls: b, strikes: st, outs: 0, pitcher: '', ts: a.ts,
+      var q = { zone: zone, pt: fin ? a.pt : PITCH[Math.floor(R() * PITCH.length)], x: at.x, y: at.y, balls: b, strikes: st, outs: 0, pitcher: a.pitcher, ts: a.ts,
         result: fin ? (LEGACY[a.res] || (a.res === '내야안타' ? '안타' : '아웃')) : k === '볼' || k === '파울' ? k : '스트라이크' };
       if (k === '볼') b++; else if (k !== '파울' || st < 2) st++;
       return q;
@@ -345,10 +345,14 @@
       var key = 'sl_' + TEAM + 'vs' + op[0] + '_' + ds + '_s' + p2(gi + 1);   // 끝 칸은 3글자까지 (core.js _SAVE_KEY_RE)
       var lineup = BAT.map(function (b, i) { return { id: (gi + 1) * 100 + i + 1, name: b[0], num: b[1], pos: '', bh: b[2], isStarter: true }; });
       var total = op[3], abs = [], rbi = 0, R2 = rng(SEED + 9000 + gi * 101);   // R2 = 타자가 본 공 (타석 시드와 따로)
+      // 상대 투수 — 같은 상대면 같은 선발 · 계투 (이름은 buildPitching 상대 타자와 같은 식의 10 · 11번째). 난수를 안 써서 타석 숫자는 그대로다
+      var t = 0; while (OPP[t][0] !== op[0]) t++;
+      var oppP = [9, 10].map(function (i) { return SUR[(t * 5 + i * 7) % 18] + GIV[(t * 7 + i * 5) % 18]; });
       for (var n = 0; n < total; n++) {
-        var bi = n % 9, inn = Math.min(7, 1 + Math.floor(n * 7 / total)) + '회말';
+        var bi = n % 9, inNo = Math.min(7, 1 + Math.floor(n * 7 / total)), inn = inNo + '회말';
         var a = buildAtBat(R, BAT[bi], lineup[bi].id, ts, n, inn);
         a.ts = ('0' + (13 + Math.floor(n / 14))).slice(-2) + ':' + ('0' + ((n * 4) % 60)).slice(-2);
+        a.pitcher = oppP[inNo >= 6 ? 1 : 0];   // 6회부터 계투
         addSeq(R2, a);
         if (a.res === '홈런') a.rbi = 1 + (R() < .4 ? 1 : 0);
         else if (a.res === '2루타' || a.res === '3루타') a.rbi = R() < .5 ? 1 : 0;

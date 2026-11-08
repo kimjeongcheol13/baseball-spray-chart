@@ -76,6 +76,19 @@ function _lineup(side) {
   return ((side === 'away' ? AS.away_lineup : AS.home_lineup) || []).filter(p => p && p.name);
 }
 
+// 타순 = 주전 사이의 순서 (gfGetLineup 과 같은 기준). 교체로 나간 선수는 그 자리에 들어온 선수(또 바뀌었으면 마지막 선수)의 타순,
+// 교체 기록 없는 후보는 타순 없음 — 예전엔 명단 칸 번호라 나간 6번 타자가 「10번 타자」로 나왔다 (흐름 점검 11-06 ⑭)
+function _order(lineup, name, side) {
+  const subs = [];
+  ((window.AS && window.AS.abs) || []).forEach(a => (a && Array.isArray(a.runEv) ? a.runEv : []).forEach(e => { if (e && e.t === 'SUB' && e.team === side && e.out && e.out.id != null) subs.push(e); }));
+  let p = lineup.find(x => x.name === name);
+  for (let n = 0; p && p.isStarter === false && n < 30; n++) {
+    const e = subs.filter(s => String(s.out.id) === String(p.id)).pop();
+    p = e ? lineup.find(x => String(x.id) === String(e.id)) : null;
+  }
+  return p ? lineup.filter(x => x.isStarter !== false).indexOf(p) : -1;
+}
+
 function _todayAbs(name) {
   return ((window.AS && window.AS.abs) || []).filter(a => a.bname === name);
 }
@@ -141,8 +154,8 @@ function _render() {
     return;
   }
   const P = playerData(data, _sel);
-  const order = lineup.findIndex(p => p.name === _sel);
-  const info = lineup[order] || {};
+  const order = _order(lineup, _sel, side);
+  const info = lineup.find(p => p.name === _sel) || {};
   const today = _todayAbs(_sel);
   // 시즌 전체에서 오늘 타석이 없는 타자면 타구 방향·본 공 위치도 시즌 기록으로
   if (scope === 'season' && !today.length) { _spray = 'season'; _plot = 'season'; }

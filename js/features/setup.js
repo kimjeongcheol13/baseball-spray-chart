@@ -379,7 +379,7 @@ function _luHtml() {
     <ol class="st-lu-list">${rows.join('')}</ol>
     <datalist id="stPosList">${['투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익', 'DH'].map(x => `<option value="${x}">`).join('')}</datalist>
     <footer class="st-lu-ft">
-      <button type="button" class="sb-btn" onclick="stAddExtra()"${H('지명타자 · 대타 추가', '9번 아래에 <b>빈 줄</b>을 하나 더 만듭니다. 이름을 쓰면 선수가 추가됩니다.')}>＋ 지명타자 · 대타 추가</button>
+      <button type="button" class="sb-btn" onclick="stAddExtra()"${H('지명타자 · 대타 추가', '9번 아래에 <b>빈 줄</b>을 하나 더 만듭니다. 이름을 쓰면 선수가 추가됩니다. 주전이 9명이면 <b>후보</b>로 들어가요 — 전원 타격이면 라인업 창에서 주전으로 바꿔 주세요.')}>＋ 지명타자 · 대타 추가</button>
       <button type="button" class="sb-mini" onclick="shellDrawer(true)"${H('삭제 · 후보 · 등번호', '라인업 창을 열어 <b>선수 삭제 · 후보 · 등번호</b>를 고칩니다.')}>삭제 · 후보 · 등번호</button>
       ${team === 'home' ? `<button type="button" class="sb-mini" onclick="window.lsOpen&&lsOpen()"${H('타순 추천', '우리 팀 <b>지난 기록</b>으로 타순을 추천합니다. 「이 순서로 적용」을 눌러야 바뀝니다.')}>📊 타순 추천</button>` : ''}
     </footer>`;

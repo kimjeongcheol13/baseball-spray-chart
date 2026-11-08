@@ -3,7 +3,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, fmt, josa as _j, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
 import { fieldInnCard } from './fieldinn.js?v=2';
-import { abPitcher } from './xlsxreport.js?v=28';
+import { abPitcher } from './xlsxreport.js?v=29';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 
@@ -570,6 +570,7 @@ function _vsCard(T) {
   P.abs.forEach(a => { const n = a.bname || '(이름 없음)'; if (!map.has(n)) map.set(n, []); map.get(n).push(a); });
   const rows = [...map].map(([n, abs]) => ({ n, st: calcStats(abs) })).sort((a, b) => b.st.pa - a.st.pa || b.st.h - a.st.h);
   const tot = calcStats(P.abs);
+  const miss = T.perGame.reduce((n, g) => n + g.mine.length, 0) - list.reduce((n, x) => n + x.abs.length, 0);
   const row = st => `<td>${st.pa}</td><td>${st.ab}</td><td>${st.h}</td><td>${st.s2 + st.s3 + st.hr}</td><td>${st.bb}</td><td>${st.k}</td><td><b>${st.ab ? f3(st.avg) : '—'}</b></td><td>${f3(st.obp)}</td><td>${f3(st.woba)}</td>`;
   const lbl = x => x.name + (x.team ? ' · ' + x.team : '') + ' · ' + x.abs.length + '타석';
   return `
@@ -583,7 +584,7 @@ function _vsCard(T) {
           <tr class="tm-vs-tot"><th scope="row">합계</th>${row(tot)}</tr>
         </tbody>
       </table></div>
-      <div class="an-hd-note">같은 이름 · 같은 팀이면 여러 경기를 합쳐요 · 3타석 미만은 참고만</div>
+      <div class="an-hd-note">같은 이름 · 같은 팀이면 여러 경기를 합쳐요 · 3타석 미만은 참고만${miss ? ` · 투수를 모르는 ${miss}타석은 뺐어요` : ''}</div>
     </section>`;
 }
 

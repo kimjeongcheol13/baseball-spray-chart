@@ -362,6 +362,7 @@ function regP(pl) {   // 타순표 선수 → 투구 기록 투수 (없으면 �
   return p;
 }
 const usePitcher = pl => { const p = regP(pl); return !!p && pickP(p); };
+const fldP = () => { const c = window.AS.currentPitcher, f = fld(); return c && pTeam(c) === f ? c : luP(f); };   // 지금 수비 팀 투수 (recPitcher 와 같은 순서 · 고르거나 등록하지 않는다)
 // 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null
 function forTeam(f) {
   const A = window.AS;
@@ -660,6 +661,8 @@ wrap('gfAfterRecord', orig => function (res) {
   if (!(g && g.active && last && last.res === res)) return orig.apply(this, arguments);
   const h = A.hs, a = A.as;
   const pre = { inning: g.inning, half: g.half, outs: g.outs, batterIdx: g.batterIdx, bases: g.bases.slice() };
+  const P = fldP();
+  if (P && P.name && !last.pitcher) last.pitcher = P.name;   // 공을 안 적은 타석도 그때 투수를 안다 (맞대결 카드 · 타자 엑셀 — xlsxreport abPitcher) · orig 가 공수 교대를 하므로 먼저
   const r = orig.apply(this, arguments);
   if (A.hs !== h) pre.hs = A.hs - h;   // 이 타석으로 오른 점수 — 되돌릴 때 이만큼만 뺀다 (그사이 손으로 바꾼 점수는 두고)
   if (A.as !== a) pre.as = A.as - a;

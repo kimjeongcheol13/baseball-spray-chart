@@ -299,7 +299,9 @@ function _hdrHtml() {
 
 function _infoHtml() {
   const i = gameInfo();
-  const th = (($('tHome') || {}).value || '').trim(), ta = (($('tAway') || {}).value || '').trim();
+  // 기본 이름(「내 팀」 · 「원정팀」 …)은 값이 아니라 흐린 안내 글자로 — 값으로 넣으면 이어 쳐서 「내 팀한빛」이 됐다 (흐름 점검 11-06 ⑩)
+  const DEF = ['내 팀', '홈팀', '원정팀', '상대팀'], own = s => (DEF.includes(s) ? '' : s);
+  const th = own((($('tHome') || {}).value || '').trim()), ta = own((($('tAway') || {}).value || '').trim());
   const gf = _gfOn();
   return `<header class="sb-card-hd"><h2>경기 정보</h2></header>
     <div class="st-form">

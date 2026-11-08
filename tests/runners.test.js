@@ -598,6 +598,43 @@
     });
   });
 
+  // 흐름 점검 11-06 ⑧: 경기 운영을 끈 채 상대 투수로 우리 타자 공을 적다가 경기 운영을 켜면 → 1회초 수비 팀(우리) 투수로
+  //   예전엔 상대 투수가 그대로 남고, 공수 교대 때 우리 팀 칸(lastP)에도 들어가 경기 내내 안 바뀌었다
+  test('경기 운영 켜기: 켜기 전 상대 투수가 남지 않고 수비 팀 투수로 · 공수 교대도 따라간다 · 앞 타석 결과를 물으면 고른 뒤에', async function () {
+    var cur = function () { return AS.currentPitcher ? AS.currentPitcher.name : null; };
+    function setup() {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [['일번', '1', '유격수'], ['에이스', '18', '투수'], ['삼번', '3', '포수']].map(function (x, i) { return { id: 'gs' + (i + 1), name: x[0], num: x[1], pos: x[2], bh: '', isStarter: true }; });
+      AS.away_lineup = [{ id: 'gt1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'gt2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      renderLP();
+      AS.pitchers = [{ id: 'go1', name: '보육', num: '', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers;
+      selectPitcher('go1'); selBatter('gs1');
+    }
+    function startGame() { gfToggle(); $('slRunPick').querySelectorAll('button')[0].click(); }   // 상대 선공 (기본) — 1회초 우리 수비
+    await isolated(async function () {
+      setup();
+      recordPitch('헛스윙'); recordPitch('헛스윙'); await gap(); recordPitch('헛스윙');   // 우리 타자 삼진 — 보육 = 상대 투수
+      ok(window.PitchLimit.isOpp(AS.pitchers[0]), '보육 = 상대 투수');
+      startGame();
+      eq([GF.active, GF.half, cur()], [true, 'top', '에이스'], '1회초: 우리 타순표 투수로 (처음이면 등록) — 예전엔 보육');
+      gfNextHalf();
+      eq([GF.half, cur()], ['bottom', '보육'], '1회말: 상대 투수 보육');
+      gfNextHalf();
+      eq([GF.inning, GF.half, cur()], [2, 'top', '에이스'], '2회초: 다시 에이스 — 예전엔 보육이 계속 남았다');
+    });
+    await isolated(async function () {
+      setup();
+      recordPitch('볼');   // 결과 없는 타석이 열린 채로 켠다 → 다음 타자로 넘기기 전에 결과를 묻는다
+      startGame();
+      ok($('pitchEndSheet'), '앞 타석 결과 묻기');
+      eq(cur(), '보육', '고르기 전에는 그대로');
+      $('pitchEndSheet').querySelector('.pes-btn[data-end]').click();
+      eq([cur(), AS.batter && AS.batter.name], ['에이스', '원정일'], '결과를 고르면 1회초 첫 타자 · 우리 투수');
+    });
+  });
+
   // 흐름 점검 4 (사용자 결정 11-05): 투구 수 관리를 켜면 기록 탭 B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나 — 수비 팀 타순표 투수에게 (없으면 등록)
   test('투구 수 관리를 켜면 기록 탭 B·S · 결과도 투구로 센다 — 수비 팀 투수에게 · 지우개 · 삼진 · 투수를 모르면 안내', async function () {
     await isolated(async function () {

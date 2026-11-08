@@ -1,7 +1,7 @@
 // SprayLab Service Worker v24
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v247';
+const CACHE_NAME = 'spraylab-v253';
 
 // HTML 을 이만큼 기다려도 안 오면(신호가 아주 약할 때) 전에 열어 둔 같은 주소를 먼저 보여 준다 (받은 최신본은 그대로 캐시에 들어가 다음에 열 때 쓴다)
 const HTML_WAIT_MS = 3000;

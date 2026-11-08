@@ -1074,7 +1074,7 @@ html body.sb.sb-night:not(.high-contrast) #app-page .go-start { background: var(
   html body.sb.sb-night:not(.high-contrast) #app-page .sb-count .sb-card-hd { padding: 0 8px 0 6px; }
   html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg { gap: 5px; padding: 0 4px; }
   html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg i { width: 14px; height: 14px; }
-  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.ro::after { font: 600 13px/1 'Noto Sans KR', sans-serif; color: var(--v-ink3); }
+  html body.sb.sb-night:not(.high-contrast) #app-page .sb-cg.ro::after { font: 600 11px/1 'Noto Sans KR', sans-serif; color: var(--v-ink3); }   /* O 점 아래 작은 글씨 (paper.css ⑰) */
   html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp { min-height: 72px; padding: 12px 14px; }
   html body.sb.sb-night:not(.high-contrast) #app-page .sb-stamp b { font-size: 26px; }
   /* 지표 줄 (타율 · 출루율 · 당겨치기 · 가운데 · 밀어치기) */

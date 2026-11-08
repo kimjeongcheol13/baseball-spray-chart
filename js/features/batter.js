@@ -87,7 +87,7 @@ function _render() {
   const AS = window.AS || {};
   const side = _side || AS.curTeam || 'home';
   const lineup = _lineup(side);
-  const live = AS.batter;
+  const ended = typeof window.gfEnded === 'function' && window.gfEnded(), live = ended ? null : AS.batter;   // 경기종료 뒤엔 「지금 타석」 · 기록 중 표시 없이 (core.js gfEnded)
   // 시즌 전체: 저장한 모든 경기 + 이번 경기의 타자 (새 경기로 라인업이 비어도 지난 기록이 보이게)
   const scope = _scope || (lineup.length ? 'game' : 'season');
   const data = buildData();
@@ -122,7 +122,7 @@ function _render() {
       ? (season.length || goOnly.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="시즌 타자">${playerChips(season.concat(goOnly.map(name => ({ name }))), _goAdd ? null : _sel, 'selectBatterSeason')}</div>` : '')
         + `<button type="button" class="bt-link-pill" onclick="setBatterView('goadd')">＋ 게임원 통산 · 팀 기록 붙여넣기 · SprayLab 기록 없는 선수도</button>`
       : (lineup.length ? `<div class="an-pick bt-pick" role="radiogroup" aria-label="타순">${chips}</div>` : '')}
-    ${AS.currentPitcher ? `<button type="button" class="bt-link-pill" onclick="shellOpenAnalysis('pitcher')">⚾ ${_esc(AS.currentPitcher.name)} 투구 기록 중 · ${(AS.currentPitcher.pitches || []).length}구</button>` : ''}`;
+    ${AS.currentPitcher && !ended ? `<button type="button" class="bt-link-pill" onclick="shellOpenAnalysis('pitcher')">⚾ ${_esc(AS.currentPitcher.name)} 투구 기록 중 · ${(AS.currentPitcher.pitches || []).length}구</button>` : ''}`;
 
   if (scope === 'season' && (_goAdd || goOnly.includes(_sel))) {
     v.innerHTML = head + `<div class="bt-result">${goCareerCard(_goAdd ? '' : _sel, 0, 0)}</div>`;

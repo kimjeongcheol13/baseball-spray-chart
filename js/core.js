@@ -2946,6 +2946,7 @@ function restoreGame(key){
   AS.home_lineup=d.home_lineup || d.lineup || [];
   AS.away_lineup=d.away_lineup || [];
   AS.info=d.info||null;   // 경기 정보 (없던 옛 경기는 null → 기본값)
+  AS.fin=d.live&&typeof d.live.fin==='number'&&isFinite(d.live.fin)?d.live.fin:null;   // 끝난 경기는 끝난 채로 (gfEnded)
   // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
@@ -6198,10 +6199,11 @@ function _recordToPitch(ab){
 function _liveState(){
   var s=document.getElementById('innSel');
   return{inn:s?s.value:null,b:AS.balls||0,s:AS.strikes||0,o:AS.outs||0,team:AS.curTeam==='away'?'away':'home',
-    bid:AS.batter?AS.batter.id:null,pit:AS.currentPitcher?AS.currentPitcher.id:null,pitches:AS.currentPitches||[]};
+    bid:AS.batter?AS.batter.id:null,pit:AS.currentPitcher?AS.currentPitcher.id:null,pitches:AS.currentPitches||[],fin:typeof AS.fin==='number'?AS.fin:null};
 }
 // 저장 데이터는 가져온 경기일 수도 있으므로 값을 거른다 — 숫자는 범위 안으로, 이닝은 목록에 있는 값만, 타자 · 투수는 이 경기 명단에 있는 사람만
 function _applyLive(L){
+  AS.fin=L&&typeof L==='object'&&typeof L.fin==='number'&&isFinite(L.fin)?L.fin:null;   // 경기종료 시각 (gfEnded)
   if(!L||typeof L!=='object')return;
   var num=function(v,max){v=Math.floor(Number(v));return isFinite(v)?Math.min(max,Math.max(0,v)):0;};
   var str=function(v){return typeof v==='string'?v:null;};
@@ -8368,9 +8370,14 @@ function gfEndAskClose(){
   if(el)el.style.display='none';
 }
 function gfEndGame(){
+  AS.fin=Date.now();   // 경기종료 시각 — 분석 화면이 끝난 경기로 본다 (gfEnded)
   gfDeactivate();
   setTimeout(showPostGameReport,300);
 }
+
+// 경기가 끝났나 — 경기종료(gfEndGame) 뒤 새 타석이 없고 경기 운영이 꺼져 있으면. 분석 › 팀 「진행 중」 · 타자 「지금 타석」 · 투수 「등판 중」을 안 보인다 (team.js · batter.js · pitcher.js)
+// AS.fin 은 저장 항목의 live.fin 으로 남고(_liveState) 그 경기를 다시 열면 되살린다(restoreGame · _applyLive). 그 뒤에 친 타석(id = 기록 시각)이 생기면 다시 진행 중
+function gfEnded(){var f=AS.fin;return typeof f==='number'&&!GF.active&&AS.abs.length>0&&!AS.abs.some(function(a){return +a.id>f;});}
 
 // ─── 종료 카드 빌드 ───
 function gfShowEndCard(){

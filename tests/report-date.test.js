@@ -30,6 +30,28 @@
     }
   });
 
+  // 분석 › 팀 경기 결과 카드 · 투수 등판 목록은 저장 항목의 d 를 쓴다 (batdata.js) — 예전엔 저장한 날이라 11-05 경기를 11-06에 저장하면 11. 6.
+  test('저장한 경기 날짜(d) = 경기 정보 날짜 — 다음 날 저장해도 · 날짜를 고치면 따라감 · 경기 정보 날짜가 없으면 전에 저장한 날짜 → 오늘', async function () {
+    var K = { info: AS.info, sk: window._curSaveKey, gs: window._gameSaved, sg: window.showGameSummary, cs: window.cloudSave }, store = {};
+    for (var i = 0; i < localStorage.length; i++) store[localStorage.key(i)] = localStorage.getItem(localStorage.key(i));
+    var D = function (y, m, d) { return new Date(y, m - 1, d).toLocaleDateString('ko-KR'); }, n = new Date();
+    var saved = function () { return JSON.parse(localStorage.getItem(window._curSaveKey)).d; };
+    window.showGameSummary = function () {}; window.cloudSave = undefined;
+    try {
+      window._curSaveKey = null; AS.info = { date: '2026-11-05' }; saveGame(true);
+      eq(saved(), D(2026, 11, 5), '새 경기: 경기 정보 날짜');
+      AS.info = { date: '2026-11-04' }; saveGame(true);
+      eq(saved(), D(2026, 11, 4), '다시 저장: 고친 경기 날짜를 따라감');
+      AS.info = null; saveGame(true);
+      eq(saved(), D(2026, 11, 4), '경기 정보가 없으면 전에 저장한 날짜 그대로');
+      window._curSaveKey = null; saveGame(true);
+      eq(saved(), D(n.getFullYear(), n.getMonth() + 1, n.getDate()), '경기 정보 · 전 저장 모두 없으면 오늘');
+    } finally {
+      localStorage.clear(); Object.keys(store).forEach(function (k) { localStorage.setItem(k, store[k]); });
+      AS.info = K.info; window._curSaveKey = K.sk; window._gameSaved = K.gs; window.showGameSummary = K.sg; window.cloudSave = K.cs;
+    }
+  });
+
   test('GAME REPORT 이미지(피드 1:1)에도 경기 날짜가 그려진다', async function () {
     await withInfo({ date: '2026-10-07' }, async function () {
       var t = await drawn(function () { pgExport(1080, 1080, 'feed'); });

@@ -151,6 +151,8 @@
   .mini4.app { gap: 20px; }
   .ph img { position: absolute; display: block; max-width: none; }
   .ph .tag { right: 18px; top: 18px; bottom: auto; background: rgba(10,12,17,.78); color: var(--tx2); }
+  .ph .vw { position: absolute; } .ph .vw video { display: block; width: 100%; height: 100%; }
+  .tapr { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 6px solid #fff; background: rgba(255,255,255,.28); box-shadow: 0 0 0 3px rgba(255,90,54,.7), 0 8px 30px rgba(0,0,0,.5); pointer-events: none; }
   .ah1 { position: absolute; left: 80px; right: 80px; top: 168px; font-size: 80px; line-height: 1.16; font-weight: 900; letter-spacing: -.045em; }
   .asub { position: absolute; left: 80px; right: 80px; top: 372px; font-size: 32px; font-weight: 500; color: var(--tx2); }
   .avis { position: absolute; left: 80px; right: 80px; top: 466px; display: flex; justify-content: center; }
@@ -201,7 +203,7 @@
 </style></head>
 <body>
 <div class="deco"></div><div id="root"></div>
-<script src="data.js"></script><script src="kit.js"></script><script src="slides.js"></script><script src="singles.js"></script><script src="items.js"></script><script src="reels.js"></script>
+<script src="data.js"></script><script src="kit.js"></script><script src="slides.js"></script><script src="singles.js"></script><script src="items.js"></script><script src="shots/rec.js"></script><script src="reels.js"></script>
 <script>
   // ?id=c1&s=0 → 피드 한 장 · ?id=r1 → 릴스 (window.seek)
   const q = new URLSearchParams(location.search), it = ITEMS.find(x => x.id === q.get('id'));

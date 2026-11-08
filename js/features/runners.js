@@ -388,6 +388,15 @@ function followHalf(prevFld) {
   if (p) pickP(p);
   else if (A.currentPitcher && pTeam(A.currentPitcher) !== f) pickP(null);
 }
+// 경기 운영 켜기(1회초) 뒤: 공수 교대처럼 수비 팀 투수로 — 예전엔 켜기 전 투수(상대 투수일 수 있음)가 그대로 남고,
+//   다음 공수 교대 때 lastP 의 다른 팀 칸에 들어가 경기 내내 안 바뀌었다 (흐름 점검 11-06 ⑧)
+//   켜면서 앞 타석 결과를 묻는 창(core.js _pitchGuardChange)이 뜨면 결과를 고른 뒤에 · 「타자 바꾸지 않음」이면 그대로
+function followStart() {
+  const run = () => { const c = window.AS.currentPitcher; followHalf(c ? pTeam(c) : fld()); };
+  const ov = $('pitchEndSheet');
+  if (!ov) return run();
+  ov.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.end) run(); });   // core.js 창 처리(결과 · 다음 타자) 다음에 돈다
+}
 
 // ── 기록 탭 B·S → 투구 기록 (투구 수 관리를 켰을 때만 · 흐름 점검 4, 사용자 결정 11-05) ──
 // 기록 탭만 쓰면 투구가 하나도 안 생겨 투구 수 알림이 안 떴다 → B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나를 더한다.
@@ -680,7 +689,7 @@ wrap('gfToggle', orig => function () {
   if (!g || g.active) return orig.apply(this, arguments);
   const name = (id, d) => (($(id) || {}).value || '').trim() || d, self = this, args = arguments;
   // 경기설정 '내 팀은 홈(말 공격) / 원정(초 공격)'도 고른 대로 — 점수판 윗줄 = 선공 팀 (setup.js stSetInfo · scorebook.js _lsHtml)
-  const go = f => { closePick(); g.first = f; orig.apply(self, args); if (window.stSetInfo) window.stSetInfo('side', f === 'home' ? 'away' : 'home'); if (window.shellSyncSettings) window.shellSyncSettings(); };
+  const go = f => { closePick(); g.first = f; orig.apply(self, args); followStart(); if (window.stSetInfo) window.stSetInfo('side', f === 'home' ? 'away' : 'home'); if (window.shellSyncSettings) window.shellSyncSettings(); };
   const box = sheet('1회초에 어느 팀이 먼저 공격하나요?');
   btn(box, `${name('tAway', '원정팀')} 먼저 — 우리 팀 후공 (기본)`, () => go('away'));
   btn(box, `${name('tHome', '홈팀')} 먼저 — 우리 팀 선공`, () => go('home'));

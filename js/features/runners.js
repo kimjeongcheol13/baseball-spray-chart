@@ -44,6 +44,8 @@ export function advance(res, b, bat, outs, fco) {
     case '볼넷': case '사구':   // 밀려나는 주자만
       return { bases: [bat, r1 || r2, r1 && r2 ? r2 : r3], scored: r1 && r2 && r3 ? [r3] : [] };
     case '희비': return { bases: [r1, r2, null], scored: r3 ? [r3] : [] };
+    case '희타':   // 희생번트 — 주자 모두 한 베이스씩 (3루 주자는 홈 · 스퀴즈). 2아웃이면 타자 아웃으로 이닝 끝
+      return outs >= 2 ? { bases: [r1, r2, r3], scored: [] } : { bases: [null, r1, r2], scored: r3 ? [r3] : [] };
     case '병살': {   // 타자 + 주자 한 명 — 1루 주자(6-4-3), 1루가 비었으면 가장 앞 주자
       const out = r1 ? 0 : r3 ? 2 : 1, n = b.map((r, i) => (i === out ? null : r));
       if (outs) return { bases: n, scored: [] };   // 1아웃 병살 = 3아웃 (포스 아웃으로 끝나 득점 없음)
@@ -51,7 +53,7 @@ export function advance(res, b, bat, outs, fco) {
     }
     case '실책': case '야수선택':   // 볼넷처럼 — 아웃된 주자가 있으면 그 자리가 비어 뒤 주자가 밀리지 않는다 (홈 포스 아웃이면 득점 없음)
       return advance('볼넷', b.map((r, i) => (i === fco ? null : r)), bat, outs);
-    default: return { bases: [r1, r2, r3], scored: [] };   // 아웃 계열 — 베이스 그대로 (core.js 와 같이 단순화)
+    default: return { bases: [r1, r2, r3], scored: [] };   // 그 밖의 아웃 — 베이스 그대로 (core.js 와 같이 단순화)
   }
 }
 
@@ -646,9 +648,10 @@ wrap('gfUpdateBases', orig => function (res) {
     // 예전엔 빠른 버튼(안타 · 장타 · 홈런)이 늘 0타점이라 3점 홈런도 0타점이었다
     const rbi = !(mine.rbi > 0) && res !== '실책' && res !== '병살' ? mv.scored.length : 0;
     if (rbi) { mine.rbi = rbi; if (window.updateAll) window.updateAll(); }
-    if (mv.scored.length) {
+    const sac = res === '희타' && g.outs < 2 && b.some(Boolean) ? ' · 주자 한 칸씩 진루 — 다르면 베이스를 눌러 고치세요' : '';   // 자동 진루는 짐작이라 알린다
+    if (mv.scored.length || sac) {
       const t = $('toastTxt');
-      window.showToast(`${t ? t.textContent : ''} · 홈인 ${mv.scored.map(nm).join(', ')}${rbi ? ` (${rbi}타점)` : ''}`, true, 3000);
+      window.showToast(`${t ? t.textContent : ''}${mv.scored.length ? ` · 홈인 ${mv.scored.map(nm).join(', ')}${rbi ? ` (${rbi}타점)` : ''}` : ''}${sac}`, true, 3000);
     }
   }
   return n;

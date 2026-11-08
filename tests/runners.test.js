@@ -715,6 +715,38 @@
     });
   });
 
+  // 흐름 점검 11-06 ⑮: 투수 대신 대타 → 대타는 「투수」 위치를 물려받지 않고, 나간 투수는 다음 수비에 다시 고르지 않는다
+  //   예전엔 대타가 투수로 표시되고 투구 기록은 후보로 나간 투수에게 계속 쌓였다
+  test('투수 대신 대타: 대타는 투수 위치를 물려받지 않고 · 나간 투수는 다음 수비에 안 고른다 · 투수 교체를 하면 그 투수로', async function () {
+    await isolated(async function () {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [['일번', '1', '유격수', true], ['장주원', '18', '투수', true], ['삼번', '3', '포수', true], ['김대타', '25', '', false]].map(function (x, i) { return { id: 'ph' + (i + 1), name: x[0], num: x[1], pos: x[2], bh: '', isStarter: x[3] }; });
+      AS.away_lineup = [{ id: 'pz1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'pz2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      renderLP();
+      AS.pitchers = [{ id: 'pj1', name: '장주원', num: '18', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers; selectPitcher('pj1');
+      GF.first = 'away'; gfActivate();   // 1회초 우리(홈) 수비
+      var cur = function () { return AS.currentPitcher ? AS.currentPitcher.name : null; };
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t); b.click(); };
+      eq(cur(), '장주원', '1회초 장주원');
+      gfNextHalf();   // 1회말 우리 공격
+      await hit('안타');   // 일번 1루 → 다음 타자 장주원
+      eq(AS.batter && AS.batter.name, '장주원', '지금 타자 장주원');
+      slSub(); tap('대타 — 지금 타자 대신'); tap('#25 김대타');
+      eq([AS.home_lineup[1].name, AS.home_lineup[1].pos, AS.batter && AS.batter.name], ['김대타', '', '김대타'], '대타는 투수 위치를 물려받지 않는다 (예전엔 투수)');
+      ok(/다음 수비 전에 투수 교체를 기록해 주세요$/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      gfNextHalf();   // 2회초 우리 수비
+      eq([GF.inning, GF.half, cur()], [2, 'top', null], '2회초: 나간 장주원을 다시 고르지 않는다 (예전엔 장주원)');
+      slSub(); tap('투수 교체'); tap('2번 김대타');
+      $('slRunPick').querySelector('input').value = '구원투'; tap('넣기');
+      eq([cur(), AS.home_lineup[1].name, AS.home_lineup[1].pos], ['구원투', '구원투', '투수'], '투수 교체 → 투구 기록도 구원투');
+      undoLast(); undoLast();   // 투수 교체 · 대타 되돌림
+      eq([AS.home_lineup[1].name, AS.home_lineup[1].pos], ['장주원', '투수'], '되돌리면 장주원이 다시 투수');
+      AS._pitchAuto = null;
+    });
+  });
+
   test('경기 운영 모드가 아니면 도루는 예전처럼 안내만 · 이닝별 득점 없음', async function () {
     await isolated(async function () {
       fresh(); gfDeactivate();

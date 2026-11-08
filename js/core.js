@@ -2545,6 +2545,13 @@ function saveMethodCloud() {
   }, 150);
 }
 
+// 저장 항목의 경기 날짜(d, 'YYYY. M. D.') = 경기 정보 날짜(AS.info.date) → 없으면 전에 저장한 날짜 → 오늘.
+// 지난 경기를 다음 날 저장해도 그 경기 날짜 (분석 › 팀 경기 결과 · 투수 등판 목록이 d 를 쓴다 — 게임원 가져오기도 d = 경기 날짜 · 리포트 _pgDate 와 같은 날)
+function _saveDate(prev){
+  var m=AS.info&&typeof AS.info.date==='string'&&/^(\d{4})-(\d{2})-(\d{2})$/.exec(AS.info.date);
+  return m?new Date(+m[1],m[2]-1,+m[3]).toLocaleDateString('ko-KR'):(prev&&prev.d)||new Date().toLocaleDateString('ko-KR');
+}
+
 // fromEdit = 타석 기록 수정(_saveEditImmediate)에서 온 저장: 바로 저장 · 수정 완료 토스트 · 요약 창 안 띄움
 function saveGame(fromEdit){
   fromEdit=fromEdit===true;   // 이벤트 객체 등이 넘어와도 평소 저장
@@ -2560,7 +2567,7 @@ function saveGame(fromEdit){
     let prev=null;
     if(si>=0){try{prev=JSON.parse(localStorage.getItem(_curSaveKey));}catch(e){prev=null;}}
     const key=prev?_curSaveKey:'sl_'+th+'vs'+ta+'_'+ds+'_'+Math.random().toString(36).slice(2,5);
-    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:(prev&&prev.d)||new Date().toLocaleDateString('ko-KR'),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers,info:AS.info||(prev&&prev.info)||null,live:_liveState()});   // info = 경기 정보(날짜·구장·홈/원정·이닝, 경기설정 탭)
+    const data=Object.assign({},prev||{},{key,hs:AS.hs,as:AS.as,th:document.getElementById('tHome').value,ta:document.getElementById('tAway').value,home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,abs:AS.abs,zoneHistory:AS.zoneHistory,d:_saveDate(prev),ts:(prev&&prev.ts)||(si>=0&&saves[si].ts)||Date.now(),cond:getGameCond(),pitchers:AS.pitchers,info:AS.info||(prev&&prev.info)||null,live:_liveState()});   // info = 경기 정보(날짜·구장·홈/원정·이닝, 경기설정 탭)
     const label=_gameTitle(data.th,data.ta,data.ts)+' '+data.hs+':'+data.as;
     if(prev){
       saves[si].label=label;
@@ -2939,6 +2946,7 @@ function restoreGame(key){
   AS.home_lineup=d.home_lineup || d.lineup || [];
   AS.away_lineup=d.away_lineup || [];
   AS.info=d.info||null;   // 경기 정보 (없던 옛 경기는 null → 기본값)
+  AS.fin=d.live&&typeof d.live.fin==='number'&&isFinite(d.live.fin)?d.live.fin:null;   // 끝난 경기는 끝난 채로 (gfEnded)
   // 구 데이터 호환: team 필드 없는 abs는 'home' 처리
   AS.abs=(d.abs||[]).map(function(a){return a.team?a:Object.assign({},a,{team:'home'});});
   AS.zoneHistory=d.zoneHistory || {};
@@ -3556,7 +3564,7 @@ function _doAutoSave(){
     ta:document.getElementById('tAway')?document.getElementById('tAway').value:'원정팀',
     home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
     zoneHistory:AS.zoneHistory,pitchers:AS.pitchers,saveKey:_curSaveKey,
-    d:new Date().toLocaleDateString('ko-KR'),cond:getGameCond()
+    d:_saveDate(),cond:getGameCond()
   });
   var ind=document.getElementById('saveInd');
   try{
@@ -6191,10 +6199,11 @@ function _recordToPitch(ab){
 function _liveState(){
   var s=document.getElementById('innSel');
   return{inn:s?s.value:null,b:AS.balls||0,s:AS.strikes||0,o:AS.outs||0,team:AS.curTeam==='away'?'away':'home',
-    bid:AS.batter?AS.batter.id:null,pit:AS.currentPitcher?AS.currentPitcher.id:null,pitches:AS.currentPitches||[]};
+    bid:AS.batter?AS.batter.id:null,pit:AS.currentPitcher?AS.currentPitcher.id:null,pitches:AS.currentPitches||[],fin:typeof AS.fin==='number'?AS.fin:null};
 }
 // 저장 데이터는 가져온 경기일 수도 있으므로 값을 거른다 — 숫자는 범위 안으로, 이닝은 목록에 있는 값만, 타자 · 투수는 이 경기 명단에 있는 사람만
 function _applyLive(L){
+  AS.fin=L&&typeof L==='object'&&typeof L.fin==='number'&&isFinite(L.fin)?L.fin:null;   // 경기종료 시각 (gfEnded)
   if(!L||typeof L!=='object')return;
   var num=function(v,max){v=Math.floor(Number(v));return isFinite(v)?Math.min(max,Math.max(0,v)):0;};
   var str=function(v){return typeof v==='string'?v:null;};
@@ -8361,9 +8370,14 @@ function gfEndAskClose(){
   if(el)el.style.display='none';
 }
 function gfEndGame(){
+  AS.fin=Date.now();   // 경기종료 시각 — 분석 화면이 끝난 경기로 본다 (gfEnded)
   gfDeactivate();
   setTimeout(showPostGameReport,300);
 }
+
+// 경기가 끝났나 — 경기종료(gfEndGame) 뒤 새 타석이 없고 경기 운영이 꺼져 있으면. 분석 › 팀 「진행 중」 · 타자 「지금 타석」 · 투수 「등판 중」을 안 보인다 (team.js · batter.js · pitcher.js)
+// AS.fin 은 저장 항목의 live.fin 으로 남고(_liveState) 그 경기를 다시 열면 되살린다(restoreGame · _applyLive). 그 뒤에 친 타석(id = 기록 시각)이 생기면 다시 진행 중
+function gfEnded(){var f=AS.fin;return typeof f==='number'&&!GF.active&&AS.abs.length>0&&!AS.abs.some(function(a){return +a.id>f;});}
 
 // ─── 종료 카드 빌드 ───
 function gfShowEndCard(){
@@ -9465,7 +9479,7 @@ function _archQuietSave(saveKey){
     var data={key,hs:AS.hs,as:AS.as,th:th,ta:ta,
       home_lineup:AS.home_lineup,away_lineup:AS.away_lineup,
       abs:AS.abs,zoneHistory:AS.zoneHistory,
-      d:new Date().toLocaleDateString('ko-KR'),ts:Date.now(),
+      d:_saveDate(),ts:Date.now(),
       pitchers:AS.pitchers||[],info:AS.info||null,live:_liveState()};
     saves.push({key,label:'[복구] '+data.d+' '+th+' '+data.hs+':'+data.as+' '+ta,ts:data.ts});
     localStorage.setItem('sl_saves',JSON.stringify(saves));

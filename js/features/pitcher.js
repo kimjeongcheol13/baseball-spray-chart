@@ -1,7 +1,7 @@
 // 투수 분석 — 투구 기록(투수 탭 입력)을 타석 단위로 다시 묶어서 제구·구종·코스·투구수·상대 타자를 본다
 import { esc as _esc } from '../constants.js';
 import { buildData, f3, pct, emptyState, josa } from './batdata.js?v=9';
-import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=29';
+import { exportPitcherXlsx, xlsxButton } from './xlsxreport.js?v=30';
 import { calcPitching, pitchInfo, isStrikePitch, warnLines, prLabel, END_LABEL, HIT_ENDS, UNKNOWN, FIP_C, groupPA, countOf, outsOfPA } from './pitchcalc.js?v=9';
 import { FONT, DARK as D, font, fitFont, rr, drawWithFonts, dCard, dPill, dFoot } from './imgkit.js?v=3';
 
@@ -74,7 +74,7 @@ function _pitchers() {
       (g.pitchers || []).forEach(p => add(p, g, p.pitches || [], all));
     });
   }
-  const cur = AS.currentPitcher && AS.currentPitcher.name;
+  const cur = AS.currentPitcher && !_ended() && AS.currentPitcher.name;   // 경기종료 뒤엔 「등판 중」 없이
   return Object.values(map).map(P => ({ ...P, n: P.apps.reduce((s, a) => s + a.pitches.length, 0), live: P.name === cur }))
     .sort((a, b) => b.live - a.live || b.n - a.n);
 }
@@ -140,6 +140,8 @@ function _autoSelect() {
   window.selectPitcher(P.id);   // → renderPitcherStats → (_hookLegacy) 이 화면을 다시 그린다. currentPitcher 가 채워졌으니 다시 들어오지 않는다
 }
 
+const _ended = () => typeof window.gfEnded === 'function' && window.gfEnded();   // 경기종료 뒤 = 끝난 경기 (core.js gfEnded)
+
 // 투구 기록 모드: 현재 투수의 이번 경기 요약만 (입력 UI는 기존 패널을 그대로 씀)
 function _liveCard() {
   const AS = window.AS || {};
@@ -149,7 +151,7 @@ function _liveCard() {
   const k = (l, val) => `<div><span>${l}</span><b>${val}</b></div>`;
   return `
     <section class="pc-live">
-      <div class="pc-live-who"><small>등판 중</small><b>${P.num ? '#' + _esc(P.num) + ' ' : ''}${_esc(P.name)}</b></div>
+      <div class="pc-live-who"><small>${_ended() ? '마지막 투수' : '등판 중'}</small><b>${P.num ? '#' + _esc(P.num) + ' ' : ''}${_esc(P.name)}</b></div>
       <div class="pc-live-kpis">
         ${k('투구', S.n)}${k('이닝', ipTxt(S.outs))}${k('스트라이크', pct(S.sPct))}${k('삼진', S.k)}${S.hbp ? k('볼넷·사구', `${S.bb}·${S.hbp}`) : k('볼넷', S.bb)}${k('피안타', S.h)}
       </div>

@@ -600,12 +600,14 @@ export function exportBatterXlsx(P) {
     const p = window._fieldPos(a);
     return [p[0], 1 - p[1]];
   });
+  // 아웃: 경기 모드 기록(gfPre.outs)이 진짜 — count.o 는 볼카운트 판 값이라 경기 모드에선 틀림 · coachnotes outsOf 와 같은 규칙
+  const outsOf = a => (a.gfPre && [0, 1, 2].includes(a.gfPre.outs) ? a.gfPre.outs : a.count && a.count.o != null ? a.count.o : '');
   rows.forEach(({ a, game }, i) => {
     const cnt = a.count ? `${a.count.b ?? ''}-${a.count.s ?? ''}` : '';
     rec.line(i + 1, 0, [
       i + 1, game, a.inn || '', a.res || '', a.pt || '', zoneOf(a), dirOf(a),
       a.ft != null ? +a.ft : '', a.ev != null ? +a.ev : '', a.launchAngle != null ? +a.launchAngle : '', a.launchType || '',
-      cnt, a.count && a.count.o != null ? a.count.o : '', a.rbi || 0, (a.pitches || []).length,
+      cnt, outsOf(a), a.rbi || 0, (a.pitches || []).length,
       xy[i] ? r4(xy[i][0]) : '', xy[i] ? r4(xy[i][1]) : '',
     ], ['td', 'tdL', 'td', 'tdB', 'td', 'td', 'td', 'td', 'td1', 'td', 'td', 'td', 'td', 'td', 'td', 'tdC', 'tdC']);
   });

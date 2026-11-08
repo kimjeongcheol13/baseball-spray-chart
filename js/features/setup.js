@@ -127,9 +127,18 @@ function stSetInfo(k, v) {
   i[k] = v;
   if (!i.date) i.date = _today();
   A.info = i;
+  if (k === 'side') _firstInn();
   // 저장 안 됨 표시 · 자동저장 · 라인스코어 다시 그림은 기존 updateAll 흐름으로
   try { if (window.updateAll) window.updateAll(); } catch (e) {}
   render();
+}
+// 경기 운영을 끈 기록은 3아웃이 같은 초/말로 넘어간다(1회말 → 2회말) — 아직 아무것도 안 적었으면 첫 이닝 = 우리 팀이 치는 반 이닝
+// (내 팀 홈 = 1회말 · 원정 = 1회초). 예전엔 홈이어도 1회초라 우리 타석이 전부 「초」로 적혔다 (흐름 점검 11-06 ⑨)
+function _firstInn() {
+  const A = _AS(), s = $('innSel');
+  if (!s || (window.GF && window.GF.active) || (s.value !== '1회초' && s.value !== '1회말')) return;
+  if ((A.abs || []).length || (A.pitchers || []).some(p => p && p.pitches && p.pitches.length)) return;
+  if (window._pitchSetInning) window._pitchSetInning(gameInfo().side === 'away' ? '1회초' : '1회말');
 }
 function stTeamName(which, v) { if (window.shellTeamName) window.shellTeamName(which, v); }
 
@@ -498,6 +507,7 @@ function _hook() {
       const inn = gameInfo().innings;
       const out = sw.apply(this, arguments);
       _AS().info = inn !== 9 ? { innings: inn } : null;
+      _firstInn();
       return out;
     };
     w._st = true;

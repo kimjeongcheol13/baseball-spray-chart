@@ -99,7 +99,9 @@ function _scopeGames(data, team) {
     // 저장하거나 불러온 경기는 buildData 에서 저장 경기로 합쳐져 current 가 꺼진다(games.js live) → 점수 · 팀 이름도 지금 화면(AS · 입력칸)에서 읽는다
     const AS = window.AS || {};
     const val = id => ((document.getElementById(id) || {}).value || '').trim();
-    return { games: [{ current: true, th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0, abs: AS.abs || [], label: '현재 경기' }], note: '진행 중인 현재 경기', live: true };
+    // 경기종료 뒤(core.js gfEnded)엔 끝난 경기 — 승 · 패 · 무와 「경기 끝」 (예전엔 끝내고 저장해도 「중 · 진행 중」)
+    const ended = typeof window.gfEnded === 'function' && window.gfEnded();
+    return { games: [{ current: !ended, d: ended ? '경기 끝' : '', th: val('tHome'), ta: val('tAway'), hs: +AS.hs || 0, as: +AS.as || 0, abs: AS.abs || [], pitchers: AS.pitchers || [], label: '현재 경기' }], note: ended ? '끝난 현재 경기' : '진행 중인 현재 경기', live: true };
   }
   const saved = data.games.filter(g => !g.current);
   const keys = team && Array.isArray(team.games) ? new Set(team.games.map(g => g.key).filter(Boolean)) : null;

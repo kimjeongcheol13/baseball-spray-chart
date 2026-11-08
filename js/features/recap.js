@@ -74,9 +74,16 @@ function _anon(src) {
   const lab = (n, no) => (no != null && no !== 0 && String(no).trim() ? '#' + String(no).trim() : String(n || '').trim() ? String(n).trim()[0] + 'OO' : '선수');
   let out = null;
   try { if (typeof window !== 'undefined' && typeof window._anonSharePayload === 'function') out = window._anonSharePayload(pay); } catch (e) {}
+  // 투수 기록엔 보통 등번호가 없다 — 등번호 없는 투수가 라인업에 같은 이름 한 명뿐이면 타자와 같은 표기로.
+  // 예전엔 같은 사람이 타선에선 「#6 선수」, 마운드에선 「박OO 선수」로 갈렸다 (흐름 점검 11-06 ⑬). 타석에 적힌 투수(a.pitcher)도 같은 표기로
+  const lu = pay.hl.map((p, i) => [p.n, out ? out.hl[i].n : lab(p.n, p.no)]).concat(pay.al.map((p, i) => [p.n, out ? out.al[i].n : lab(p.n, p.no)]));
+  const asBat = n => { const m = lu.filter(x => x[0] === n); return m.length === 1 ? m[0][1] : null; };
+  const hasNo = no => no != null && no !== 0 && String(no).trim() !== '';
+  const pit = ps.map((p, i) => ((!hasNo(p.num) && asBat(p.name)) || (out ? out.pitchers[i].nm : lab(p.name, p.num))) + ' 선수');
+  const pitOf = n => { const i = ps.findIndex(p => p.name === n); return i >= 0 ? pit[i] : (asBat(n) || lab(n, null)) + ' 선수'; };
   return Object.assign({}, src, {
-    abs: abs.map((a, i) => Object.assign({}, a, { bname: (out ? out.abs[i].bn : lab(a.bname, a.bnum)) + ' 선수' })),
-    pitchers: ps.map((p, i) => Object.assign({}, p, { name: (out ? out.pitchers[i].nm : lab(p.name, p.num)) + ' 선수' })),
+    abs: abs.map((a, i) => Object.assign({}, a, { bname: (out ? out.abs[i].bn : lab(a.bname, a.bnum)) + ' 선수' }, a.pitcher ? { pitcher: pitOf(a.pitcher) } : {})),
+    pitchers: ps.map((p, i) => Object.assign({}, p, { name: pit[i] })),
   });
 }
 
@@ -250,9 +257,11 @@ export function buildRecap(src) {
     const away = ps.filter(x => x && x.bteam === 'away').length, home = ps.filter(x => x && x.bteam === 'home').length;
     return { name: p.name, n: ps.length, ours: away > home };
   }).filter(p => p.ours && p.n > 0);
-  const m = [];
-  if (mound.length === 1) m.push(`마운드에서는 ${J(mound[0].name, '이', '가')} ${mound[0].n}구를 던졌다.`);
-  else if (mound.length > 1) m.push(`마운드에서는 ${mound.map(p => `${p.name} ${p.n}구`).join(', ')}로 ${mound.length}명이 이어 던졌다.`);
+  // 공을 안 적은 투수도 상대 타석에 그 투수가 적혀 있으면(경기 운영 · 투수 교체) 넣는다 — 예전엔 마무리가 빠져 「2명이 이어 던졌다」 (흐름 점검 11-06 ⑬)
+  opp.forEach(a => { if (a.pitcher && !mound.some(p => p.name === a.pitcher)) mound.push({ name: a.pitcher, n: 0, ours: true }); });
+  const m = [], pn = p => (p.n ? `${p.name} ${p.n}구` : p.name);
+  if (mound.length === 1) m.push(`마운드에서는 ${J(mound[0].name, '이', '가')} ${mound[0].n ? `${mound[0].n}구를 ` : ''}던졌다.`);
+  else if (mound.length > 1) m.push(`마운드에서는 ${J(mound.map(pn).join(', '), '으로', '로')} ${mound.length}명이 이어 던졌다.`);
   if (opp.length >= 3) {
     const oh = opp.filter(a => HITS.includes(a.res)).length, ok = opp.filter(a => a.res === '삼진').length;
     m.push(`${ta} 타선은 안타 ${oh}개${ok ? `, 삼진 ${ok}개` : ''}를 기록했다.`);

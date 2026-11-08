@@ -182,6 +182,21 @@
   .rg .tr { position: relative; height: 56px; margin-top: 22px; border-radius: 14px; background: var(--mute); }
   .rg .tr s { position: absolute; top: 0; bottom: 0; border-radius: 14px; background: var(--acc); }
   .rg .ax { display: flex; justify-content: space-between; margin-top: 12px; font: 600 30px/1 Oswald; color: var(--tx3); }
+  /* 11-09 주 — 용어 목록 · 공식 칸 · 한 장 정리 */
+  .tg { width: 100%; display: flex; flex-direction: column; gap: 18px; }
+  .tg div { display: flex; align-items: center; gap: 26px; padding: 26px 34px; border-radius: 22px; background: var(--card); box-shadow: 0 0 0 1.5px var(--line); }
+  .tg i { flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--acc); color: var(--on); display: flex; align-items: center; justify-content: center; font: 700 34px Oswald; font-style: normal; }
+  .tg b { font-size: 46px; font-weight: 900; letter-spacing: -.03em; } .tg span { margin-left: auto; font-size: 30px; font-weight: 600; color: var(--tx2); }
+  .fx { padding: 30px 38px; border-radius: 24px; background: var(--card); box-shadow: 0 0 0 1.5px var(--line); }
+  .fx .k { font-size: 26px; font-weight: 800; color: var(--acc); } .fx .f { margin-top: 12px; font-size: 40px; font-weight: 800; line-height: 1.4; letter-spacing: -.02em; }
+  .fx .v { margin-top: 8px; font: 700 128px/1 Oswald; color: var(--acc); }
+  .egl { font-size: 23px; font-weight: 600; color: var(--tx3); }
+  .gl { width: 100%; } .gl div { display: grid; grid-template-columns: 200px 1fr 200px; align-items: center; padding: 24px 0; border-bottom: 1.5px solid var(--line); }
+  .gl b { font-size: 36px; font-weight: 900; letter-spacing: -.03em; } .gl span { font-size: 27px; font-weight: 600; color: var(--tx2); line-height: 1.35; } .gl i { font: 700 52px/1 Oswald; font-style: normal; color: var(--acc); text-align: right; }
+  .gl p { margin-top: 30px; font-size: 25px; font-weight: 600; color: var(--tx2); }
+  .dir3.f { margin-top: 30px; } .dir3.f .num { font-size: 84px; } .dir3.f span { font-size: 30px; }
+  .reel .leg { font-size: 38px; gap: 40px; margin-top: 40px; } .reel .leg i { width: 28px; height: 28px; }
+  .vc svg { margin: 24px auto 0; }
   .say2 { font-size: 92px; font-weight: 900; line-height: 1.15; letter-spacing: -.045em; }
 </style></head>
 <body>
@@ -199,7 +214,7 @@
     window.seek = R.seek; window.DUR = R.dur; window.COVER_T = R.coverT; window.CUES = R.cues || [0];
     // 처음부터 끝까지 한 번 그려 한글 글꼴 조각을 미리 받게 한다 — 안 그러면 장면이 처음 뜰 때 글자가 비었다 (11-04 y1)
     for (let t = 0; t < R.dur; t += .25) { R.seek(t); document.body.offsetHeight; }
-    R.seek(0);
+    R.seek(+(q.get('t') || 0));   // &t=초 → 그 장면 미리 보기
   } else {
     document.getElementById('root').innerHTML = it.slides()[+(q.get('s') || 0)];
   }

@@ -1,4 +1,4 @@
-// 게시물 목록 — 게시 순서는 맨 아래 ORDER (루틴이 회차마다 다음 것을 쓴다)
+// 게시물 목록 — 게시 날짜는 맨 아래 DAYS(직접 적은 날) · SLOTS(매주 요일 칸)
 // 숫자는 전부 data.js 의 가짜 데이터에서 계산한다. 사람 이름 대신 별명·등번호만 쓴다.
 (() => {
   const { G, S, K } = window;
@@ -334,9 +334,164 @@
     }),
   );
 
-  // 게시 순서 — 11-06(금)부터 매일 하나. 릴스 15 · 카드뉴스 5 (사회인 · 유소년 · 엘리트 섞어서), 11-20쯤 숫자 보고 다시 정한다
-  // 빠진 것(c1 은 11-03 게시, 이미지 i1~i3 은 도달 1~6명)은 off — 풀 파일만 남기고 manifest 에는 안 넣는다
-  const ORDER = ['r1', 'g1', 'y1', 't2', 'c2', 'g3', 'y2', 'r3', 'g2', 't1', 'y3', 'c3', 'g4', 'r2', 'y4', 't3', 'c4', 'r4', 'c5', 'c6'];
-  window.ITEMS = [...ORDER.map(id => window.ITEMS.find(x => x.id === id)), ...window.ITEMS.filter(x => !ORDER.includes(x.id)).map(x => ({ ...x, off: true }))];
+  // ── 11-09 주: 기록 읽는 법 릴스(t4~t6) · 캐러셀(c7~c9) — 숫자는 손으로 정한 예시 또는 data.js 가짜 데이터 ──
+  const WW = { bb: .69, hbp: .72, s1: .89, s2: 1.27, s3: 1.62, hr: 2.10 };   // js/constants.js WOBA_W 와 같은 값
+  const f3 = v => v.toFixed(3).replace(/^0/, '');
+  // 앱과 같은 공식 (CLAUDE.md 지표 공식 · core.js BABIP) — 타석 = 타수 + 볼넷 + 사구 + 희생플라이
+  const stat = o => {
+    const x = { s2: 0, s3: 0, hr: 0, bb: 0, hbp: 0, sf: 0, k: 0, ...o }, h = x.s1 + x.s2 + x.s3 + x.hr, pa = x.ab + x.bb + x.hbp + x.sf;
+    const obp = (h + x.bb + x.hbp) / pa, slg = (x.s1 + 2 * x.s2 + 3 * x.s3 + 4 * x.hr) / x.ab;
+    return { ...x, h, pa, tb: x.s1 + 2 * x.s2 + 3 * x.s3 + 4 * x.hr, avg: f3(h / x.ab), obp: f3(obp), slg: f3(slg), ops: f3(obp + slg),
+      woba: f3((WW.bb * x.bb + WW.hbp * x.hbp + WW.s1 * x.s1 + WW.s2 * x.s2 + WW.s3 * x.s3 + WW.hr * x.hr) / pa),
+      babip: f3((h - x.hr) / (x.ab - x.k - x.hr + x.sf)), kp: Math.round(x.k / pa * 100), bbp: Math.round(x.bb / pa * 100) };
+  };
+  const E = stat({ ab: 35, s1: 6, s2: 2, hr: 2, bb: 4, hbp: 1, k: 8 });   // 용어 정리 예시 타자
+  const WA = stat({ ab: 30, s1: 9 }), WB = stat({ ab: 32, s1: 4, s2: 2, hr: 2, bb: 4 });   // wOBA 릴스 A · B
+  const card = (who, ln, kv, hi = '') => `<div class="vc rv${hi}"><div class="who">${who}</div><div class="ln">${ln}</div>${kv.map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join('')}</div>`;
+  const fx = (k, f, v) => `<div class="fx"><div class="k">${k}</div><div class="f">${f}</div>${v ? `<div class="v">${v}</div>` : ''}</div>`;
+  const egLine = `예시 타자 · ${E.pa}타석 ${E.ab}타수 ${E.h}안타(2루타 ${E.s2} · 홈런 ${E.hr}) · 볼넷 ${E.bb} · 사구 ${E.hbp} · 삼진 ${E.k}`;
+  const term = (n, h1, sub, f, calc, v) => S.app({ chip: `용어 ${n}`, page: `${n + 1} / 7`, h1, sub, next: nx,
+    vis: `<div style="width:100%;display:flex;flex-direction:column;gap:28px">${fx('공식', f)}${fx('예시 타자로 계산하면', calc, v)}<div class="egl">${egLine} · 예시 숫자</div></div>` });
+  // 수비 위치 — 내야 4명 · 외야 3명 (각도, 거리)
+  const FIELDERS = [[5, -33, .36], [6, -14, .47], [4, 14, .47], [3, 33, .36], [7, -28, .78], [8, 0, .84], [9, 28, .78]];   // 수비 번호 · 각도 · 거리
+  const SHIFT = { 5: [-26, .38], 6: [-6, .45], 4: [21, .5] };   // 좌타자 당겨치기 → 1루 쪽으로 한 발씩
+  const men = (moved, ghost) => FIELDERS.map(([n, a, d]) => {
+    const to = moved && SHIFT[n], [x, y] = K.fpos(...(to || [a, d])), [x0, y0] = K.fpos(a, d);
+    return (to && ghost ? `<circle cx="${x0}" cy="${y0}" r="3.2" fill="none" stroke="rgba(244,246,250,.5)" stroke-width=".45" stroke-dasharray="1 .8"/><line x1="${x0}" y1="${y0}" x2="${x}" y2="${y}" stroke="#FF5A36" stroke-width=".6"/>` : '')
+      + `<circle cx="${x}" cy="${y}" r="3.4" fill="${to ? '#FF5A36' : '#F4F6FA'}"/><text x="${x}" y="${y + 1.35}" font-family="Oswald" font-size="3.8" font-weight="700" text-anchor="middle" fill="#0A0C11">${n}</text>`;
+  }).join('');
+  const B5 = G.batter(733, { name: '상대 3번', num: 7, hand: 'L', pa: 80, pull: .6, gb: .55, hot: Array(9).fill(1) });
+  const gb5 = B5.bip.filter(p => p.t === '땅볼'), gbPull5 = G.pct(gb5.filter(p => p.side === -1).length, gb5.length);
+  const B6 = G.batter(409, { name: '예시', num: 9, hand: 'R', pa: 80, pull: .55, gb: .45, hot: Array(9).fill(1) });
+  const p6 = B6.dirs[0].p;
+  const LSEC = [[15, 45, 'rgba(255,90,54,.22)']], RSEC = [[-45, -15, 'rgba(255,90,54,.22)']];
+  // 볼카운트 — 2볼 2스트라이크 + 카운트별 타율(예시)
+  const bso = (() => { const row = (l, n, of, c) => `<div style="display:flex;align-items:center;gap:18px"><b style="font:700 56px/1 Oswald;width:56px">${l}</b>${Array.from({ length: of }, (_, i) => `<i style="width:50px;height:50px;border-radius:50%;box-sizing:border-box;${i < n ? 'background:' + c : 'border:4px solid var(--mute)'}"></i>`).join('')}</div>`;
+    return `<div style="width:920px"><div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:28px;padding:40px 56px;box-shadow:0 0 0 2px var(--line)"><div style="display:flex;flex-direction:column;gap:22px">${row('B', 2, 3, '#3ECF8E')}${row('S', 2, 2, '#FFB020')}${row('O', 1, 2, '#FF5A36')}</div><div style="text-align:right"><div style="font:700 170px/1 Oswald">2-2</div><div class="egl">투 볼 투 스트라이크</div></div></div>
+      <div style="margin-top:48px">${S.bars([{ l: '초구', t: '.350', v: .35 / .45 }, { l: '유리한 카운트', sub: '2-0 · 3-1', t: '.410', v: .41 / .45 }, { l: '2스트라이크 뒤', t: '.180', v: .18 / .45, hi: true }])}</div>
+      <div class="egl" style="margin-top:20px;text-align:right">카운트별 타율 · 예시 데이터</div></div>`; })();
+  // 주자 진루 — 1루 → 3루 (내야만 크게)
+  const run13 = (() => { const B = { h: [50, 74], 1: [80, 44], 2: [50, 14], 3: [20, 44] }, xy = k => B[k].join(' ');
+    return `<svg viewBox="0 0 100 82" width="760" style="display:block"><path d="M${xy('h')}L${xy(1)}L${xy(2)}L${xy(3)}Z" fill="rgba(255,200,140,.06)" stroke="rgba(255,255,255,.35)" stroke-width=".6"/>
+      ${[1, 2, 3, 'h'].map(k => `<rect x="${B[k][0] - 2.2}" y="${B[k][1] - 2.2}" width="4.4" height="4.4" transform="rotate(45 ${xy(k)})" fill="#E8EDF5"/>`).join('')}
+      <path d="M${B[1][0] - 4} ${B[1][1] - 4}L${B[2][0] + 3} ${B[2][1] + 3}L${B[3][0] + 4} ${B[3][1] - 4}" fill="none" stroke="#FF5A36" stroke-width="1.4" stroke-dasharray="3 2"/>
+      <circle cx="${B[1][0]}" cy="${B[1][1] - 7}" r="3.6" fill="none" stroke="#FF5A36" stroke-width=".8"/><circle cx="${B[3][0]}" cy="${B[3][1] - 7}" r="3.6" fill="#FF5A36"/>
+      ${[[1, '1루', 8, 4], [2, '2루', 0, -6], [3, '3루', -8, 4]].map(([k, t, dx, dy]) => `<text x="${B[k][0] + dx}" y="${B[k][1] + dy + 1.4}" font-size="4" font-weight="800" text-anchor="middle" fill="rgba(244,246,250,.75)">${t}</text>`).join('')}</svg>`; })();
+
+  window.ITEMS.push(
+    {
+      id: 'c7', format: 'carousel', theme: 'v2', type: 'T', topic: '세이버 용어 5개 한 장 정리 (저장용)',
+      hook: '세이버 용어 5개, 이 한 장이면',
+      facts: ['출루율 = (안타+볼넷+사구) ÷ (타수+볼넷+사구+희생플라이)', 'OPS = 출루율 + 장타율(루타 ÷ 타수)', 'wOBA = (볼넷 0.69 · 사구 0.72 · 단타 0.89 · 2루타 1.27 · 3루타 1.62 · 홈런 2.10 의 합) ÷ (타수+볼넷+사구+희생플라이)', 'BABIP = (안타−홈런) ÷ (타수−삼진−홈런+희생플라이)', 'K% = 삼진 ÷ 타석 · BB% = 볼넷 ÷ 타석(사구 제외)',
+        `${egLine} → 출루율 ${E.obp} · OPS ${E.ops} · wOBA ${E.woba} · BABIP ${E.babip} · K% ${E.kp}% · BB% ${E.bbp}%`, 'SprayLab 은 다섯 가지 모두 자동 계산', '마지막 장은 저장용 한 장 정리'],
+      slides: () => [
+        S.app({ chip: '기록 읽는 법 · 저장용', page: '1 / 7', h1: '세이버 용어 5개,<br><em>이 한 장</em>이면', sub: '공식과 예시 계산까지 · 마지막 장은 저장용', next: nx,
+          vis: `<div class="tg">${[['출루율', 'OBP'], ['OPS', '출루율 + 장타율'], ['wOBA', '무게를 둔 출루율'], ['BABIP', '인플레이 타구 타율'], ['K% · BB%', '삼진 · 볼넷 비율']].map(([a, b], i) => `<div><i>${i + 1}</i><b>${a}</b><span>${b}</span></div>`).join('')}</div>` }),
+        term(1, '<em>출루율</em><br>얼마나 살아 나갔나', '타율과 달리 볼넷 · 사구도 셉니다', '(안타 + 볼넷 + 사구)<br>÷ (타수 + 볼넷 + 사구 + 희생플라이)', `(${E.h} + ${E.bb} + ${E.hbp}) ÷ (${E.ab} + ${E.bb} + ${E.hbp} + 0)`, E.obp),
+        term(2, '<em>OPS</em><br>출루율 + 장타율', '장타율 = 루타 ÷ 타수 (단타 1 · 2루타 2 · 3루타 3 · 홈런 4)', '출루율 + 장타율', `${E.obp} + ${E.slg} (루타 ${E.tb} ÷ ${E.ab}타수)`, E.ops),
+        term(3, '<em>wOBA</em><br>안타마다 무게가 다르다', '볼넷 0.69 → 단타 0.89 → 2루타 1.27 → 홈런 2.10 (3루타 1.62 · 사구 0.72)', '무게 × 개수를 모두 더해서<br>÷ (타수 + 볼넷 + 사구 + 희생플라이)', `(0.69×${E.bb} + 0.72×${E.hbp} + 0.89×${E.s1} + 1.27×${E.s2} + 2.10×${E.hr}) ÷ ${E.pa}`, E.woba),
+        term(4, '<em>BABIP</em><br>앞으로 간 타구의 타율', '너무 높거나 낮으면 운이 섞였을 수 있어요', '(안타 − 홈런)<br>÷ (타수 − 삼진 − 홈런 + 희생플라이)', `(${E.h} − ${E.hr}) ÷ (${E.ab} − ${E.k} − ${E.hr} + 0)`, E.babip),
+        term(5, '<em>K% · BB%</em><br>선구안을 숫자로', 'K% 는 삼진, BB% 는 볼넷을 타석으로 나눕니다 (사구는 빼고)', '삼진 ÷ 타석 · 볼넷 ÷ 타석', `${E.k} ÷ ${E.pa} · ${E.bb} ÷ ${E.pa}`, `${E.kp}% · ${E.bbp}%`),
+        S.app({ chip: '한 장 정리 · 저장해 두세요', page: '7 / 7', h1: '세이버 용어 5개<br><em>한 장 정리</em>', sub: `예시 타자 ${E.pa}타석 기준 · 예시 숫자`,
+          vis: `<div class="gl">${[['출루율', '(안타+볼넷+사구) ÷ (타수+볼넷+사구+희플)', E.obp], ['OPS', '출루율 + 장타율(루타 ÷ 타수)', E.ops], ['wOBA', '안타마다 무게를 둔 출루율', E.woba], ['BABIP', '(안타−홈런) ÷ (타수−삼진−홈런+희플)', E.babip], ['K% · BB%', '삼진 ÷ 타석 · 볼넷 ÷ 타석', `${E.kp}%·${E.bbp}%`]].map(([a, b, c]) => `<div><b>${a}</b><span>${b}</span><i>${c}</i></div>`).join('')}
+            <p>SprayLab 은 다섯 가지 모두 <em>자동 계산</em> · kimjeongcheol13.github.io/baseball-spray-chart</p></div>` }),
+      ],
+    },
+    {
+      id: 'c8', format: 'carousel', theme: 'v2', type: 'T', topic: '타구 분포로 수비 위치 잡는 법 (코치용)',
+      hook: '타구 분포 보면 수비 위치가 보입니다',
+      facts: [`가상의 상대 좌타자 '3번'(예시 데이터) 인플레이 타구 ${B5.bip.length}개`, `당겨친 ${B5.dirs[0].p}% · 가운데 ${B5.dirs[1].p}% · 밀어친 ${B5.dirs[2].p}%`, `땅볼 ${gb5.length}개 중 당겨친 땅볼 ${gbPull5}%`, '좌타자가 당겨친 타구는 1루 · 2루 쪽', '3루수 · 유격수 · 2루수를 한 발씩 1루 쪽으로', '스카우트 탭 → 상대 타자 → 타구 방향 · 수비 위치'],
+      slides: () => [
+        S.app({ chip: '코치용 · 수비 위치', page: '1 / 6', h1: '타구 분포 보면<br>수비 위치가 <em>보입니다</em>', sub: `상대 좌타자 '3번' · 인플레이 타구 ${B5.bip.length}개 · 예시 데이터`, next: nx,
+          vis: `<div>${K.field(B5.bip, { w: 900, r: 1.9 })}${S.legendRes()}</div>` }),
+        S.app({ chip: '① 세 방향으로 나누기', page: '2 / 6', h1: `당겨친 타구가<br><em>${B5.dirs[0].p}%</em>`, sub: '좌타자는 오른쪽(1루 쪽)이 당겨친 방향', next: nx,
+          vis: `<div>${K.field(B5.bip, { w: 700, r: 1.8, sectors: LSEC })}<div class="dir3 f">${B5.dirs.map((d, i) => `<div><div class="num"${i ? '' : ' style="color:var(--acc)"'}>${d.p}%</div><span>${['당겨친', '가운데', '밀어친'][i]}</span></div>`).join('')}</div></div>` }),
+        S.app({ chip: '② 땅볼만 따로 보기', page: '3 / 6', h1: `땅볼 ${gb5.length}개 중<br>당겨친 땅볼 <em>${gbPull5}%</em>`, sub: '내야 수비는 땅볼 방향으로 정합니다', next: nx,
+          vis: `<div>${K.field(gb5, { w: 900, r: 2.1, sectors: LSEC })}</div>` }),
+        S.app({ chip: '③ 한 발씩 옮기기', page: '4 / 6', h1: '내야 셋을<br><em>한 발씩</em> 1루 쪽으로', sub: '3루수(5) · 유격수(6) · 2루수(4) — 점선이 원래 자리', next: nx,
+          vis: `<div>${K.field(gb5.map(p => ({ ...p, col: 'rgba(200,210,225,.35)' })), { w: 900, r: 1.3, sectors: LSEC, extra: men(true, true) })}</div>` }),
+        S.app({ chip: '④ 앱에서는', page: '5 / 6', h1: '상대 타자를 고르면<br>타구 방향이 <em>바로</em>', sub: '스카우트 탭 → 상대 타자 → 타구 방향 · 수비 위치', next: nx, vis: S.shot('scout', [0, 2560, 390, 440], 640) }),
+        S.cta({ chip: 'SprayLab', page: '6 / 6', h1: '수비 위치도<br><em>기록</em>으로', steps: ['경기마다 상대 타석도 기록', '스카우트 탭에서 상대 타자 고르기', '타구 방향 보고 수비 위치 정하기'] }),
+      ],
+    },
+    {
+      id: 'c9', format: 'carousel', theme: 'v2', type: 'T', topic: '기록지에 꼭 적을 5가지 (기록 담당용)',
+      hook: '기록지에 꼭 적을 5가지',
+      facts: ['① 타구 방향 — 어디로 갔나', '② 결과 — 좌중안 · 땅볼 · 삼진처럼 짧게', '③ 볼카운트 — 몇 볼 몇 스트라이크에서', '④ 투구 수 — 투수마다 몇 개', '⑤ 주자 진루 — 누가 몇 루까지', '이 다섯 가지면 타구 방향 · 카운트별 타율 · 투구 수 관리 · 타점 득점이 남음', 'SprayLab 은 타구는 탭, 나머지는 버튼으로 기록 → 기록지 · 리포트 자동'],
+      slides: () => [
+        S.app({ chip: '기록 담당 필독', page: '1 / 7', h1: '기록지에<br>꼭 적을 <em>5가지</em>', sub: '이것만 남겨 두면 경기 뒤 분석이 됩니다', next: nx,
+          vis: `<div class="steps" style="position:static;width:100%">${['타구 방향 — 어디로 갔나', '결과 — 어떻게 됐나', '볼카운트 — 몇 대 몇에서', '투구 수 — 투수마다 몇 개', '주자 진루 — 누가 몇 루까지'].map((x, i) => `<div><b>${i + 1}</b><span>${x}</span></div>`).join('')}</div>` }),
+        S.app({ chip: '① 타구 방향', page: '2 / 7', h1: '어디로 갔나<br><em>타구 방향</em>', sub: '쌓이면 약점 코스 · 수비 위치가 보입니다', next: nx, vis: S.shot('rec', [0, 285, 390, 306]) }),
+        S.app({ chip: '② 결과', page: '3 / 7', h1: '어떻게 됐나<br><em>짧게</em> 적기', sub: '좌중안 · 땅볼 · 삼진처럼 — 앱에서는 버튼 하나', next: nx, vis: S.shot('sheet', [0, 470, 800, 560]) }),
+        S.app({ chip: '③ 볼카운트', page: '4 / 7', h1: '<em>볼카운트</em><br>몇 대 몇에서 쳤나', sub: '쌓이면 초구 · 2스트라이크 뒤 타율이 나옵니다', next: nx, vis: bso }),
+        S.app({ chip: '④ 투구 수', page: '5 / 7', h1: '투수마다<br><em>몇 개</em> 던졌나', sub: '투구 수 알림 · 다음 등판까지 쉬는 날 계산', next: nx, vis: S.shot('pit', [0, 372, 390, 210]) }),
+        S.app({ chip: '⑤ 주자 진루', page: '6 / 7', h1: '누가<br><em>몇 루까지</em> 갔나', sub: '타점 · 득점 · 도루가 맞게 남습니다', next: nx, vis: `<div>${run13}<div class="egl" style="text-align:center">1루 주자 → 안타 때 3루까지</div></div>` }),
+        S.cta({ chip: 'SprayLab', page: '7 / 7', h1: '종이 대신<br><em>폰 하나</em>로', steps: ['타구 떨어진 곳을 탭', '결과 · 볼카운트 · 주자는 버튼으로', '기록지 · 리포트는 자동'] }),
+      ],
+    },
+    story({
+      id: 't4', type: 'T', tag: '예시 데이터', topic: '스프레이차트 30초 읽는 법 — 당겨치기 비율 (기록 읽는 법)',
+      hook: '스프레이 차트, 30초면 읽습니다', chip: '기록 읽는 법', hookHtml: '스프레이 차트,<br><em>30초</em>면<br>읽습니다', hookSize: 112, sub: '점 · 색 · 방향, 세 가지만',
+      facts: [`가상의 우타자(예시 데이터) 인플레이 타구 ${B6.bip.length}개`, '점 하나 = 타구 하나(공이 떨어진 곳)', '색 = 결과(안타 · 2루타 · 홈런 · 빈 동그라미는 아웃)', `당겨친 ${p6}% · 가운데 ${B6.dirs[1].p}% · 밀어친 ${B6.dirs[2].p}%`, '우타자는 왼쪽(3루 쪽), 좌타자는 오른쪽(1루 쪽)이 당겨친 방향', '기록 화면에서 타자를 고르면 PULL% · CENTER% · OPPO% 가 바로', '음성: AI 목소리'],
+      hookSay: '스프레이 차트, 삼십 초면 읽습니다.',
+      scenes: [
+        { l: '① 점', html: `<div class="rv" style="margin-top:60px">${K.field(B6.bip, { w: 840, r: 2 })}</div>`, say: '점 하나가 타구 하나, 공이 떨어진 곳입니다.', sub: ['점 하나가 타구 하나', '공이 떨어진 곳입니다'] },
+        { l: '② 색', html: `<div style="margin-top:60px">${K.field(B6.bip, { w: 840, r: 2 })}</div><div class="rv">${S.legendRes()}</div>`, say: '색은 결과입니다. 빈 동그라미는 아웃.', sub: ['색은 결과', '빈 동그라미는 아웃'] },
+        { l: '③ 방향', html: `<div style="margin-top:40px">${K.field(B6.bip, { w: 700, r: 1.9, sectors: RSEC })}</div><div class="dir3" style="margin-top:50px">${B6.dirs.map((d, i) => `<div class="rv"><div class="num"${i ? '' : ' style="color:var(--acc)"'}>${d.p}%</div><span>${['당겨친', '가운데', '밀어친'][i]}</span></div>`).join('')}</div>`,
+          say: `세 칸으로 나누면, 당겨친 타구가 ${kn(p6)} 퍼센트.`, sub: ['세 칸으로 나누면', `당겨친 타구가 ${p6}%`] },
+        { l: '우타 · 좌타', html: `<div class="vs">${[['우타자', RSEC, '왼쪽(3루 쪽)'], ['좌타자', LSEC, '오른쪽(1루 쪽)']].map(([w, s, d]) => `<div class="vc rv"><div class="who">${w}</div>${K.field([], { w: 340, sectors: s })}<div class="ln">당겨친 쪽<br><b style="color:var(--acc)">${d}</b></div></div>`).join('')}</div>`,
+          say: '우타자는 왼쪽, 좌타자는 오른쪽이 당겨친 쪽입니다.', sub: ['우타자는 왼쪽', '좌타자는 오른쪽이 당겨친 쪽'] },
+      ],
+      endHtml: '당겨친 비율은<br><em>자동</em>으로', endSay: '당겨친 비율은 스프레이랩이 자동으로 계산합니다. 기본 무료.',
+    }),
+    story({
+      id: 't5', type: 'T', tag: '예시 숫자', topic: '타율 3할인데 wOBA는 왜 낮을까 — 안타마다 무게가 다르다 (기록 읽는 법)',
+      hook: '타율 3할인데 wOBA는 왜 낮을까?', chip: '기록 읽는 법', hookHtml: '타율 <em>3할</em>인데<br>wOBA는<br>왜 낮을까?', hookSize: 112, sub: '안타에도 무게가 있습니다',
+      facts: [`A: ${WA.ab}타수 ${WA.h}안타(전부 단타) 볼넷 0 → 타율 ${WA.avg} · wOBA ${WA.woba}`, `B: ${WB.ab}타수 ${WB.h}안타(단타 ${WB.s1} · 2루타 ${WB.s2} · 홈런 ${WB.hr}) 볼넷 ${WB.bb} → 타율 ${WB.avg} · wOBA ${WB.woba}`, 'wOBA 무게: 볼넷 0.69 · 사구 0.72 · 단타 0.89 · 2루타 1.27 · 3루타 1.62 · 홈런 2.10', 'wOBA = 무게 × 개수의 합 ÷ (타수+볼넷+사구+희생플라이)', 'SprayLab 은 wOBA를 자동 계산', '음성: AI 목소리'],
+      hookSay: '타율 삼할인데, 더블유오바는 왜 낮을까요?',
+      scenes: [
+        { l: 'A 타자', html: `<div class="vs">${card('A', `${WA.ab}타수 ${WA.h}안타`, [['타율', WA.avg]])}</div>`, say: '에이 타자, 서른 타수 아홉 안타. 타율 삼할입니다.', sub: ['A 타자, 30타수 9안타', '타율 3할'] },
+        { l: 'A 타자의 wOBA', html: `<div class="vs">${card('타율', `${WA.ab}타수 ${WA.h}안타`, [['', WA.avg]])}${card('wOBA', '9안타 전부 단타<br>볼넷 0', [['', WA.woba]], ' hi')}</div>`,
+          say: '그런데 더블유오바는 이할 육푼 칠리. 안타 아홉 개가 전부 단타, 볼넷은 없습니다.', sub: [`그런데 wOBA는 ${WA.woba}`, '9안타 전부 단타 · 볼넷 0'] },
+        { l: '무게가 다릅니다', html: `<div class="rv" style="margin-top:20px">${S.bars([['볼넷', .69], ['사구', .72], ['단타', .89], ['2루타', 1.27], ['3루타', 1.62], ['홈런', 2.10]].map(([l, w]) => ({ l, v: w / 2.1, t: w.toFixed(2), hi: w > 1 })))}</div>`,
+          say: '더블유오바는 안타마다 무게가 다릅니다. 단타보다 이루타, 이루타보다 홈런이 큽니다.', sub: ['wOBA는 안타마다 무게가 다릅니다', '단타 < 2루타 < 홈런'] },
+        { l: 'B 타자', html: `<div class="vs">${card('A', `${WA.ab}타수 ${WA.h}안타<br>전부 단타`, [['타율', WA.avg], ['wOBA', WA.woba]])}${card('B', `${WB.ab}타수 ${WB.h}안타<br>장타 ${WB.s2 + WB.hr} · 볼넷 ${WB.bb}`, [['타율', WB.avg], ['wOBA', WB.woba]], ' hi')}</div>`,
+          say: '타율 이할 오푼인 비 타자는, 장타와 볼넷으로 더블유오바 삼할 육푼 삼리.', sub: [`타율 ${WB.avg} B 타자는`, `장타 · 볼넷으로 wOBA ${WB.woba}`] },
+      ],
+      endHtml: '타율 옆에<br><em>wOBA</em>도 보세요', endSay: '더블유오바는 스프레이랩이 자동으로 계산합니다. 기본 무료.',
+    }),
+    story({
+      id: 't6', type: 'T', tag: '예시 숫자', topic: 'K% · BB%로 보는 선구안 (기록 읽는 법)',
+      hook: '선구안, 숫자로 보는 법', chip: '기록 읽는 법', hookHtml: '선구안,<br><em>숫자</em>로<br>보는 법', sub: '삼진과 볼넷을 타석으로 나누세요',
+      facts: ['K%(삼진 비율) = 삼진 ÷ 타석', 'BB%(볼넷 비율) = 볼넷 ÷ 타석 (사구는 넣지 않음)', '예시 타자 전반기 40타석 삼진 12 · 볼넷 2 → K% 30% · BB% 5%', '후반기 40타석 삼진 6 · 볼넷 6 → K% 15% · BB% 15%', 'SprayLab 은 K% · BB%를 자동 계산', '음성: AI 목소리'],
+      hookSay: '선구안, 숫자로 보는 법.',
+      scenes: [
+        { l: '공식', html: `<div class="vs">${card('K%', '삼진 ÷ 타석', [])}${card('BB%', '볼넷 ÷ 타석<br>(사구는 빼고)', [])}</div>`, say: '삼진 비율은 삼진 나누기 타석, 볼넷 비율은 볼넷 나누기 타석.', sub: ['K% = 삼진 ÷ 타석', 'BB% = 볼넷 ÷ 타석'] },
+        { l: '전반기 40타석', html: `<div class="vs">${card('전반기', '40타석<br>삼진 12 · 볼넷 2', [['K%', '30%'], ['BB%', '5%']])}</div>`, say: '전반기 사십 타석, 삼진 열두 개에 볼넷 두 개. 삼진 삼십 퍼센트, 볼넷 오 퍼센트.', sub: ['전반기 40타석, 삼진 12 · 볼넷 2', 'K% 30% · BB% 5%'] },
+        { l: '후반기 40타석', html: `<div class="vs">${card('전반기', '40타석<br>삼진 12 · 볼넷 2', [['K%', '30%'], ['BB%', '5%']])}${card('후반기', '40타석<br>삼진 6 · 볼넷 6', [['K%', '15%'], ['BB%', '15%']], ' hi')}</div>`, say: '후반기엔 삼진 여섯 개, 볼넷 여섯 개. 삼진은 반으로, 볼넷은 세 배로.', sub: ['후반기 삼진 6 · 볼넷 6', '삼진은 반으로, 볼넷은 세 배로'] },
+        { l: '그래서', html: '<div class="say2 rv" style="margin-top:160px">삼진이 줄고<br>볼넷이 늘면<br><em>선구안</em>이 좋아진 것</div>', say: '삼진이 줄고 볼넷이 늘었다면, 공을 보는 눈이 좋아진 겁니다.', sub: ['삼진이 줄고 볼넷이 늘면', '공을 보는 눈이 좋아진 것'] },
+      ],
+      endHtml: '선구안도<br><em>숫자</em>로 남습니다', endSay: '삼진 비율과 볼넷 비율은 스프레이랩이 자동으로 계산합니다. 기본 무료.',
+    }),
+  );
+
+  // 게시 날짜표 (KST) — 11-15 까지는 날짜를 직접 적는다. 11-06~08 은 옛 순서로 이미 올라간 것(기록 — 다시 안 올림)
+  window.DAYS = {
+    '2026-11-06': ['r1'], '2026-11-07': ['g1'], '2026-11-08': ['y1'],
+    '2026-11-09': ['t2'], '2026-11-10': ['t4', 'c7'], '2026-11-11': ['g3'], '2026-11-12': ['c8'], '2026-11-13': ['t5', 'c9'], '2026-11-14': ['y2', 'c2'], '2026-11-15': ['t6'],
+  };
+  // 11-16 부터는 매주 같은 요일 칸 — build.mjs 가 날짜표로 펼친다 (한 날 = 적힌 순서, 릴스 → 캐러셀)
+  //   pool = 기존 풀을 순서대로, 다 떨어지면 새 콘텐츠 · new = 새 콘텐츠를 추가된 순서대로 · 이미 올린 것은 건너뜀 · 채울 게 없으면 빈 칸(gaps)
+  window.SLOTS = {
+    from: '2026-11-16', weeks: 8,
+    week: [['reel/pool'], ['reel/new', 'carousel/new'], ['reel/pool'], ['carousel/new'], ['reel/new', 'carousel/new'], ['reel/pool', 'carousel/pool'], ['reel/new']],   // 월 … 일
+    pool: ['r1', 'g1', 'y1', 't2', 'c2', 'g3', 'y2', 'r3', 'g2', 't1', 'y3', 'c3', 'g4', 'r2', 'y4', 't3', 'c4', 'r4', 'c5', 'c6'],   // 기존 풀 (#343 순서)
+    new: ['t4', 'c7', 'c8', 't5', 'c9', 't6'],   // 새 콘텐츠 — 만들면 뒤에 붙인다
+  };
+  // 사전등록 줄 — 목 · 토 캐러셀 캡션에만 (폼 = 소개 페이지 「업데이트 소식 받기」, 개인정보처리방침상 만 14세 미만 불가)
+  window.PREREG = { text: '사전등록(새 기능 소식 받기 · 만 14세 이상)', url: 'https://forms.gle/SXjKaEDBpHqoa2s88', weekdays: [3, 5] };
+  // 날짜표 · 칸에 없는 것(c1 · i1~i3 등)은 off — 풀 파일만 남기고 manifest 에는 안 넣는다
+  const ON = [...new Set([...Object.values(window.DAYS).flat(), ...window.SLOTS.pool, ...window.SLOTS.new])];
+  window.ITEMS = [...ON.map(id => window.ITEMS.find(x => x.id === id)), ...window.ITEMS.filter(x => !ON.includes(x.id)).map(x => ({ ...x, off: true }))];
   window.SUBJ = { P1, B2, B3, CELL };
 })();

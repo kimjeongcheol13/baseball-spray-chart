@@ -123,4 +123,25 @@
       });
     } finally { _pitchSetInning(inn); }
   });
+
+  // 흐름 점검 11-06 ⑯ (사용자 결정: 라인업 있으면 기록 탭) — 예전엔 경기설정에 남고, 라인업을 넣었어도 "라인업 등록 후"
+  test('경기설정에서 새 경기: 라인업이 있으면 기록 탭 · 「타자를 선택하세요」 · 비었으면 경기설정에 남아 타순표 안내', async function () {
+    try {
+      await isolated(async function () {
+        seedPrev();
+        shellNav('settings');
+        AS._pendingHomeLineup = [{ id: 'p1', name: '가선수', num: '7', pos: '' }];
+        newGame('새홈', '새원정');
+        ok($('app-page').style.display === 'flex' && !$('settingsView').classList.contains('active'), '라인업이 있으면 기록 탭');
+        eq($('toastTxt').textContent, '새 경기를 시작합니다. 타자를 선택하세요', '토스트');
+        shellNav('settings');
+        newGame('새홈', '새원정');
+        ok($('settingsView').classList.contains('active'), '라인업이 비면 경기설정 그대로');
+        eq($('toastTxt').textContent, '새 경기를 시작합니다. 이 화면 타순표에 라인업을 넣어 주세요', '토스트 — 타순표');
+        shellNav('record');
+        newGame('새홈', '새원정');
+        eq($('toastTxt').textContent, '새 경기를 시작합니다. 라인업 등록 후 타자를 선택하세요', '기록 탭에서 시작하면 예전 문구');
+      });
+    } finally { shellNav('record'); }
+  });
 })();

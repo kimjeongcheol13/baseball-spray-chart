@@ -365,12 +365,18 @@ function regP(pl) {   // 타순표 선수 → 투구 기록 투수 (없으면 �
 }
 const usePitcher = pl => { const p = regP(pl); return !!p && pickP(p); };
 const fldP = () => { const c = window.AS.currentPitcher, f = fld(); return c && pTeam(c) === f ? c : luP(f); };   // 지금 수비 팀 투수 (recPitcher 와 같은 순서 · 고르거나 등록하지 않는다)
-// 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null
+// 교체 기록(대타 · 대주자 · 대수비 · 투수 교체)으로 나간 투수 — 타순표에서 후보가 됐고 교체의 나간 선수로 적힌 선수. 다시 던지지 않는다 (흐름 점검 11-06 ⑮)
+//   기록 없이 투구 화면에서만 투수를 바꿔 쓰는 경기는 예전 그대로 (타순표 후보에 같은 이름이 있어도 교체 기록이 없으면 나간 게 아니다)
+function gone(f, q) {
+  const p = q && LU(f).find(x => x && x.isStarter === false && x.name === q.name && (!x.num || !q.num || String(x.num) === String(q.num)));
+  return !!p && window.AS.abs.some(a => ((a && a.runEv) || []).some(e => e && e.t === 'SUB' && e.team === f && same(e.out, p)));
+}
+// 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null · 교체로 나간 투수는 빼고
 function forTeam(f) {
   const A = window.AS;
-  if (A.pitchers.includes(lastP[f])) return lastP[f];
+  if (A.pitchers.includes(lastP[f]) && !gone(f, lastP[f])) return lastP[f];
   let p = null, t = -Infinity;
-  A.pitchers.forEach(q => { const ps = q.pitches || [], e = ps[ps.length - 1]; if (e && pTeam(q) === f && (+e.id || 0) > t) { t = +e.id || 0; p = q; } });
+  A.pitchers.forEach(q => { const ps = q.pitches || [], e = ps[ps.length - 1]; if (e && pTeam(q) === f && !gone(f, q) && (+e.id || 0) > t) { t = +e.id || 0; p = q; } });
   return p || (luP(f) ? regP(luP(f)) : null);
 }
 // 교체 · 위치 바꾸기 · 그 되돌리기 뒤: 수비 팀 타순표의 투수가 바뀌었으면 투구 기록도 그 투수로. before = 바꾸기 전 타순표 투수
@@ -529,12 +535,13 @@ function subApply(k, team, out, base, inP, name) {
   const ev = Object.assign({ t: 'SUB', k }, clean(inP), { out: out ? clean(out) : null, from: k === 'PR' ? base : null, inn: inn(), team, scored: false, pre: preOf() });
   const i = lu.indexOf(inP);
   if (o >= 0 && i >= 0) {
-    const op = lu[o];
+    const op = lu[o], outP = (k === 'PH' || k === 'PR') && isP(op);   // 투수 대신 대타 · 대주자 — 그 선수는 던지지 않는다 (흐름 점검 11-06 ⑮)
     ev.sw = { o, i, os: op.isStarter, is: inP.isStarter, pos: inP.pos };
     if (added) ev.added = true;
     lu[o] = inP; lu[i] = op;
     op.isStarter = false; inP.isStarter = true;
-    if (!inP.pos) inP.pos = k === 'P' ? '투수' : op.pos || '';
+    if (!inP.pos) inP.pos = k === 'P' ? '투수' : outP ? '' : op.pos || '';
+    if (outP) ev.outP = true;
   }
   pushEv(last, ev);
   if (k === 'PR') runners()[base] = clean(inP);
@@ -544,7 +551,7 @@ function subApply(k, team, out, base, inP, name) {
   window.renderLP();
   window.updateAll();
   window.gfUpdateBar();
-  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}${pt}`, true, 3000);
+  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}${pt}${ev.outP ? ' · 다음 수비 전에 투수 교체를 기록해 주세요' : ''}`, true, ev.outP ? 5000 : 3000);
 }
 
 function undoSub(ev) {

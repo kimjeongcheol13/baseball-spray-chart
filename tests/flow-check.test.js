@@ -6,7 +6,7 @@
 //  ⑤ 선공 고르기 → 경기설정 홈/원정 · 점수판 윗줄이 선공 팀 · 경기종료 확인은 앱 창
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test, $ = T.$;
-  var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes', 'rbi'];
+  var F = ['abs', 'home_lineup', 'away_lineup', 'hs', 'as', 'zoneHistory', 'pitchers', 'currentPitcher', 'pitchLog', 'currentPitches', 'info', 'curGame', 'batter', 'balls', 'strikes', 'outs', 'curTeam', 'pendingQuickRes', 'rbi', 'fin'];
   var GK = ['active', 'inning', 'half', 'first', 'outs', 'batterIdx', 'bases', 'runners'];
 
   // runners.test.js 와 같은 격리 — 경기 운영 바는 rAF 로 그리므로 테스트 동안만 16ms 타이머로
@@ -285,6 +285,49 @@
       start('home', AWAY);
       await other('삼진');
       ok(!('pitcher' in AS.abs[0]), '타순표에 투수가 없고 투구 기록도 없으면 안 적는다');
+    });
+  });
+
+  // 흐름 점검 11-06 P2 ⑦ — 경기종료 → 저장 → 분석에 「중 · 진행 중」 · 「지금 타석」 · 「투구 기록 중」 · 「등판 중」이 남았다
+  test('경기종료 뒤엔 끝난 경기 — 팀 「진행 중」 · 타자 「지금 타석」 · 투수 「등판 중」 없음 · 저장해 다시 열어도 끝 · 새 타석을 치면 다시 진행 중', async function () {
+    await isolated(async function () {
+      start('home', AWAY);
+      AS.pitchers = [{ id: 'fp1', name: '원정투', num: '30', pitches: [{ id: Date.now(), batter: '일번' }] }]; AS.currentPitcher = AS.pitchers[0];
+      await hit('안타'); await other('삼진');
+      var txt = function (e) { return e ? e.textContent.replace(/\s+/g, ' ').trim() : ''; };
+      var look = async function () {
+        shellOpenAnalysis('team'); await T.sleep(50); setTeamScope('scope', 'game'); setTeamScope('side', 'home');
+        var team = txt(document.querySelector('#teamContent .tm-res')) + ' ' + txt(document.querySelector('#teamContent .tm-g-main small'));
+        shellOpenAnalysis('batter'); await T.sleep(50);
+        var bat = txt(document.querySelector('#batterView .bt-eyebrow')), pill = /투구 기록 중/.test(txt($('batterView')));
+        shellOpenAnalysis('pitcher'); await T.sleep(50); setPitcherView('mode', 'stats');
+        var small = Array.prototype.map.call(document.querySelectorAll('#pitcherView .an-chip small'), txt);
+        var tag = !!document.querySelector('#pitcherView .pc-live-tag') || small.some(function (t) { return /^등판 중 ·/.test(t); });
+        setPitcherView('mode', 'input');   // 투구 기록 모드 — 지금 투수 카드
+        var pit = txt(document.querySelector('#pitcherView .pc-live-who small'));
+        setPitcherView('mode', 'stats');
+        return { team: team, bat: bat, pill: pill, pit: pit, tag: tag };
+      };
+      var L = await look();
+      ok(!gfEnded() && /^중 진행 중/.test(L.team), '경기 중: ' + L.team);
+      eq([L.bat, L.pill, L.pit, L.tag], ['지금 타석', true, '등판 중', true], '경기 중: 지금 타석 · 투구 기록 중 · 등판 중');
+
+      gfEndGame(); await T.sleep(400); $('pgReport').style.display = 'none';
+      ok(gfEnded(), '경기종료 → 끝난 경기');
+      L = await look();
+      ok(/^무 경기 끝 · 2타석 1\/2/.test(L.team), '팀 이번 경기 = 승패 · 경기 끝: ' + L.team);
+      eq([L.bat, L.pill, L.pit, L.tag], ['타자 브리핑', false, '마지막 투수', false], '지금 타석 · 투구 기록 중 · 등판 중 없음');
+
+      saveGame(true);
+      var key = window._curSaveKey, fin = AS.fin;
+      eq(JSON.parse(localStorage.getItem(key)).live.fin, fin, '저장 항목에 경기종료 시각');
+      restoreGame(key);
+      eq([AS.fin, gfEnded()], [fin, true], '목록에서 다시 열어도 끝난 경기');
+      _applyLive(undefined);
+      eq(AS.fin, null, '경기종료 시각이 없는 경기를 열면 진행 중 (예전처럼)');
+      _applyLive({ fin: fin });
+      selBatter('fc1'); await hit('안타');
+      ok(!gfEnded(), '경기종료 뒤에 친 타석이 생기면 다시 진행 중');
     });
   });
 })();

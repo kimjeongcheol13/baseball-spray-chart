@@ -8323,7 +8323,14 @@ function gfUpdateBases(res,rbi){
     if(b[2]){scored++;GF.bases[2]=false;}
     return scored;
   }
-  // 아웃 계열 — 베이스 변화 없음 (사회인야구 단순화)
+  if(res==='희타'){
+    // 희생번트: 주자 모두 한 베이스씩 (3루 주자 홈 — 스퀴즈). 2아웃이면 타자 아웃이 3아웃이라 그대로 · runners.js advance 와 같은 규칙
+    if(GF.outs>=2)return 0;
+    if(b[2])scored++;
+    GF.bases=[false,b[0],b[1]];
+    return scored;
+  }
+  // 그 밖의 아웃 — 베이스 변화 없음 (사회인야구 단순화)
   return 0;
 }
 

@@ -773,7 +773,8 @@ function addPlayer(){
   const pos=(document.getElementById('pPos')||{}).value||'';
   if(!n)return;
   const bh=(document.getElementById('pBH')||{}).value||'';
-  const p={id:Date.now()+Math.random(),name:n,num,pos,bh,isStarter:true};
+  // 주전이 이미 9명이면 후보로 (대타 · 대주자 교체 목록에 나온다 · 전원 타격이면 라인업 창에서 주전으로) — 흐름 점검 11-06 ⑪
+  const p={id:Date.now()+Math.random(),name:n,num,pos,bh,isStarter:getActiveLineup().filter(function(q){return q&&q.isStarter!==false;}).length<9};
   getActiveLineup().push(p);
   document.getElementById('pName').value='';
   document.getElementById('pNum').value='';
@@ -3152,6 +3153,11 @@ function toggleStarter(id,e){
   e.stopPropagation();
   var p=getActiveLineup().find(function(p){return String(p.id)===String(id);});
   if(p)p.isStarter=!(p.isStarter!==false);
+  // 지금 타자를 후보로 돌리면 — 경기 운영 중(공격 팀)은 그 타순의 다음 주전, 아니면 타자 선택을 푼다 (흐름 점검 11-06 ⑪)
+  if(p&&p.isStarter===false&&AS.batter&&String(AS.batter.id)===String(p.id)){
+    var lu=GF.active&&AS.curTeam===gfAtk()?gfGetLineup():[];
+    selBatter(lu.length?lu[GF.batterIdx%lu.length].id:p.id);   // 같은 선수를 다시 고르면 선택이 풀린다
+  }
   renderLP();
 }
 

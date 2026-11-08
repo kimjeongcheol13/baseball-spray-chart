@@ -515,8 +515,15 @@ function _inningCard(T) {
     </section>`;
 }
 
+// 카운트 모름 = 볼카운트를 안 적은 타석(0-0 · 공 기록 없음 · 투구 연결 없음)과 말이 안 되는 카운트(0~1스트라이크 삼진 · 0~2볼 볼넷) — 기록 탭은 카운트를 안 눌러도 0-0 으로 저장한다 · scouting.js _analyze 와 같은 규칙
+const _cntKnown = a => {
+  const c = a.count;
+  if (!c || c.b == null || c.s == null) return false;
+  if ((a.res === '삼진' && c.s < 2) || (a.res === '볼넷' && c.b < 3)) return false;
+  return !!(c.b || c.s || (a.pitches && a.pitches.length) || a.pa != null);
+};
 function _countCard(T) {
-  const cnt = T.abs.filter(a => a.count && a.count.s != null && a.count.b != null);
+  const cnt = T.abs.filter(_cntKnown), skip = T.abs.length - cnt.length;
   if (!cnt.length) return `<section class="an-card"><header class="an-hd"><h3>카운트별 타격</h3></header><div class="an-note">볼카운트가 기록된 타석이 없어요.</div></section>`;
   const rows = [
     ['타자 유리', '볼 > 스트라이크', cnt.filter(a => a.count.b > a.count.s)],
@@ -533,6 +540,7 @@ function _countCard(T) {
           <tr><th scope="row">${r.l}<small class="tm-sub">${r.d}</small></th><td>${r.st.pa}</td><td><b>${r.st.ab ? f3(r.st.avg) : '—'}</b></td><td>${r.st.pa ? f3(r.st.obp) : '—'}</td><td>${r.st.pa ? pct(r.st.kRate) : '—'}</td></tr>`).join('')}
         </tbody>
       </table>
+      ${skip ? `<div class="an-hd-note tm-inn-note">볼카운트를 안 적은 ${skip}타석은 뺐어요</div>` : ''}
     </section>`;
 }
 

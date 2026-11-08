@@ -364,4 +364,21 @@
       ok(!gfEnded(), '경기종료 뒤에 친 타석이 생기면 다시 진행 중');
     });
   });
+
+  test('⑩ 경기설정 팀 이름: 기본 이름(내 팀 · 원정팀)은 흐린 안내 글자 — 눌러서 치면 「내 팀한빛」이 아니라 「한빛」', async function () {
+    var h = $('tHome'), w = $('tAway'), hv = h.value, wv = w.value;
+    try {
+      await isolated(async function () {
+        h.value = '내 팀'; w.value = '원정팀';
+        shellNav('settings'); renderSetup(); await T.sleep(30);
+        var inp = function (k) { return document.querySelector('#stInfo input[placeholder="' + (k === 'home' ? '내 팀' : '원정팀') + '"]'); };
+        eq([inp('home').value, inp('home').placeholder, inp('away').value, inp('away').placeholder], ['', '내 팀', '', '원정팀'], '기본 이름은 값이 아니라 안내 글자');
+        inp('home').focus(); document.execCommand('insertText', false, '한빛'); await T.sleep(30);
+        eq(h.value, '한빛', '치면 그 이름만');
+        document.activeElement.blur(); await T.sleep(30);
+        h.value = '불꽃'; w.value = '상대팀'; renderSetup(); await T.sleep(30);
+        eq([inp('home').value, inp('away').value], ['불꽃', ''], '직접 넣은 이름은 그대로 · 상대팀도 안내 글자');
+      });
+    } finally { h.value = hv; w.value = wv; }
+  });
 })();

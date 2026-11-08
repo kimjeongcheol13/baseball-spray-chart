@@ -113,9 +113,11 @@ try {
     rec.files = files;
     if (!m.off) out.push(rec);   // off: 파일만 남기고 게시 순서에서는 뺀다
   }
+  const days = await c.ev('window.DAYS'), prereg = await c.ev('window.PREREG');
+  for (const id of Object.values(days).flat()) if (!out.some(x => x.id === id)) throw new Error('날짜표에 없는 id: ' + id);
   writeFileSync(MF, JSON.stringify({
-    note: '인스타 자동 게시 풀. 순서대로 한 회차에 하나 — start 부터 weekdays(0 = 월 … 6 = 일)에 해당하는 날마다. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터, 단톡방 대화는 지어낸 상황극.',
-    start: '2026-11-06', weekdays: [0, 1, 2, 3, 4, 5, 6], items: out,
+    note: '인스타 자동 게시 풀. days[오늘 KST 날짜] 의 id 를 적힌 순서대로 올린다(없으면 쉬는 날). prereg.weekdays(0 = 월 … 6 = 일)의 캐러셀 캡션에는 사전등록 줄을 넣는다. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터, 단톡방 대화는 지어낸 상황극.',
+    prereg, days, items: out,
   }, null, 2) + '\n');
   console.log('manifest', out.length, 'items');
   c.close();

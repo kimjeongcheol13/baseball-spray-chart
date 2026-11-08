@@ -749,8 +749,18 @@ function swLineupTab(team) {
   document.getElementById('subtab-home').classList.toggle('on', team==='home');
   document.getElementById('subtab-away').classList.toggle('on', team==='away');
   document.getElementById('lineupTitle').textContent = team==='home' ? '홈팀 명단' : '원정팀 명단';
+  // 다른 팀 타자를 그대로 두면 그 타자가 이 팀 타석으로 저장된다 (상대 타순을 적고 돌아온 경우)
+  var b=AS.batter;
+  if(b&&!getActiveLineup().some(function(p){return String(p.id)===String(b.id);})){
+    AS.batter=null;AS.batterFilter=false;
+    var fb=document.getElementById('filterBtn');if(fb)fb.classList.remove('btn-primary');
+    var d=document.getElementById('batterDisp');if(d)d.innerHTML='<span class="batter-empty">타자를 선택하세요</span>';
+    safeRender();updBatterStat();
+  }
   renderLP();
   renderMob();
+  // 경기 운영 중 상대 명단을 보고 공격 팀으로 돌아오면 지금 타순 타자 (공수 교대는 타자가 있어서 안 들어온다 — 호출한 쪽이 고른다)
+  if(!b&&GF.active&&team===gfAtk()){var lu=gfGetLineup();if(lu.length)selBatter(lu[GF.batterIdx%lu.length].id);}
 }
 
 function getActiveLineup() {

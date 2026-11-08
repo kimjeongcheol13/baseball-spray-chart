@@ -17,6 +17,10 @@
     sleep: function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   };
 
+  // 브라우저 알림 「ResizeObserver loop …」은 앱 예외가 아니다: 콜백이 크기를 바꿔 알림 일부가 다음 프레임으로 밀렸다는 뜻. window error 로 오는데 프레임 타이밍에 따라 오거나 안 와서,
+  // 오류를 모으는 테스트(보안 · 리포트 · 복구 등)가 어쩌다 실패하고 main 배포까지 막았다(11-06). 그 리스너들보다 먼저 여기서 막는다 — 진짜 예외는 메시지가 달라 그대로 간다
+  window.addEventListener('error', function (e) { if (/^ResizeObserver loop /.test(e.message)) e.stopImmediatePropagation(); }, true);
+
   // ── 하네스 자체 점검: 외부 요청 차단 장치가 실제로 거부·기록하고, 실행 동안 외부로 나가려던 요청이 0건인지 ──
   // 이 둘은 모든 파일 페이지에서 돈다(shared). 러너가 같은 이름의 결과를 하나로 합쳐 세고, 어느 페이지에서든 실패하면 실패로 본다
   function shared(list, name, fn) { list.push({ name: name, fn: fn, shared: true }); }
@@ -28,6 +32,16 @@
     T.ok(threw, '외부 XHR 이 거부되지 않음');
     T.eq(window.__netAttempts.length, before + 2, '시도 기록');
     window.__netAttempts.length = before;   // 점검용 시도 2건만 지운다(다른 테스트가 남긴 기록은 유지)
+  });
+  shared(tests, '오류 수집 점검: ResizeObserver loop 알림만 걸러지고 진짜 오류는 들어온다', async function () {
+    var got = [], on = function (e) { got.push(e.message); };
+    window.addEventListener('error', on);
+    try {
+      ['ResizeObserver loop completed with undelivered notifications.', 'ResizeObserver loop limit exceeded', 'TypeError: 진짜 오류'].forEach(function (m) {
+        window.dispatchEvent(new ErrorEvent('error', { message: m }));
+      });
+    } finally { window.removeEventListener('error', on); }
+    T.eq(got, ['TypeError: 진짜 오류'], '수집된 오류');
   });
   shared(lasts, '(마지막) 테스트 전체에서 외부로 나가려던 요청 0건', async function () {
     T.eq(window.__netAttempts, [], '외부 요청 시도');

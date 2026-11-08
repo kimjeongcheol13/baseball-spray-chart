@@ -846,7 +846,7 @@ export function exportBatterXlsx(P) {
 //   · 타자 패널에서 존을 클릭해 공을 기록하면 a.pitches[i].pitcher 에 그때 선택된 투수가 들어가지만
 //   · 투수 패널(recordPitch)로 기록한 공은 AS.pitchers[].pitches 에만 쌓이고 타석에는 남지 않는다.
 // 그래서 직접 적힌 투수가 없으면 같은 경기 투수 기록에서 그 타자에게 던진 공 중
-// 타석 저장 시각(a.id)과 가장 가까운 공의 투수로 연결한다 (기록 탭 타자 상세 「투수별 요약」과 같은 기준).
+// 타석 저장 시각(a.id)과 가장 가까운 공의 투수로 연결한다 (같은 반 이닝의 공만 — 경기 운영 타석은 저장할 때 a.pitcher 가 적힌다 · runners.js).
 // 타구를 먼저 찍고 투구를 나중에 기록한 경우도 AB_PITCH_SLACK 안이면 연결한다.
 const AB_PITCH_SLACK = 5 * 60 * 1000;
 // → { name, pitch, how } (pitch = 시간순으로 연결된 투수 기록의 공, 직접 적힌 경우는 null)
@@ -869,6 +869,7 @@ function _abPitcher(a, flat) {
   let best = null, bestD = Infinity;
   flat.forEach(x => {
     if (x.batter !== a.bname) return;
+    if (a.inn && x.p && x.p.inning && String(x.p.inning) !== String(a.inn)) return;   // 다른 반 이닝의 공 — 그 사이 투수가 바뀌었을 수 있다
     const d = x.id <= t ? t - x.id : x.id - t;
     if (x.id > t && d > AB_PITCH_SLACK) return;
     if (d < bestD) { bestD = d; best = x; }

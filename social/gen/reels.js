@@ -264,5 +264,59 @@
     return { html, seek, dur: END, coverT: 1.6, cues: st };
   }
 
-  window.REELS = { pa, spray, grid, season, app, story };
+  // ── 화면 녹화 — appshots.mjs 가 녹화한 shots/<rec>.mp4 를 장면마다 잘라 보여 준다 (누른 곳은 동그라미) ─────
+  //   item.rec = 녹화 이름 (window.REC[rec] = { taps:[{t,x,y}], marks:{이름: 초} } — shots/rec.js)
+  //   item.scenes = [{ l: 꼬리표, m: 시작 mark, to: 끝 mark, a: [x, y, w], b: [x, y, w], say: [자막…] }] — 칸은 앱 CSS px(폭 390)
+  //   장면 길이 = 음성과 녹화 구간 중 긴 쪽 → 녹화는 제 속도 그대로 (빨리 감지 않는다)
+  function screen(item) {
+    const R = window.REC[item.rec], sc = item.scenes, says = item.says, PW = 840, PH = 960, SW = 390, SH = 844, LEAD = .3;
+    const seg = sc.map(s => [R.marks[s.m], R.marks[s.to] - R.marks[s.m]]);
+    const D = (item.durs || says.map(x => Math.max(2.2, x.replace(/\s/g, '').length * .17 + .6))).map((d, i) => i && i <= sc.length ? Math.max(d, seg[i - 1][1] + LEAD + .5) : d);
+    const st = []; let t0 = 0; for (const d of D) { st.push(t0); t0 += d; }
+    const END = t0, TZ = st[st.length - 1];
+    const html = `<div class="sc" id="s0">
+        <div class="abs" id="i0" style="left:90px;top:270px"><span class="pill">${item.chip}</span></div>
+        <div class="abs big" id="i1" style="left:90px;right:150px;top:380px;font-size:124px">${item.hookHtml}</div>
+        <div class="abs" id="i2" style="left:94px;top:840px;font-size:46px;font-weight:500;color:var(--tx2)">${item.sub}</div>
+        <div class="abs" id="i3" style="left:90px;top:950px">${S.shot(item.introShot[0], item.introShot[1], PW)}</div></div>
+      ${sc.map((s, i) => `<div class="sc" id="a${i}">
+        <div class="abs" id="al${i}" style="left:90px;top:240px"><span class="pill">${s.l}</span></div>
+        <div class="abs" id="ap${i}" style="left:90px;top:350px"><div class="ph" style="width:${PW}px;height:${PH}px"><div class="vw" id="vw${i}"><video id="v${i}" src="shots/${item.rec}.mp4" muted preload="auto"></video><i class="tapr" id="tr${i}"></i></div><div class="tag">${item.tag || '샘플 모드 · 실제 화면'}</div></div></div>
+        <div class="subt" id="sb${i}"></div></div>`).join('')}
+      <div class="sc" id="sZ">
+        <div class="abs big" id="z1" style="left:90px;right:150px;top:520px;font-size:100px">${item.endHtml}</div>
+        <div class="abs" id="z2" style="left:90px;top:930px">${K.mark(100)}<div style="margin-top:30px;font:600 42px/1.35 Oswald;color:var(--tx)">kimjeongcheol13.github.io<br>/baseball-spray-chart</div>
+          <div style="margin-top:20px;font:500 40px/1.3 'Noto Sans KR';color:var(--tx2)">기본 무료 · 설치 없이 웹에서 바로</div></div></div>`;
+    const lerp = (a, b, k) => a.map((v, j) => v + (b[j] - v) * k);
+    const ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    // 녹화 프레임 맞추기 — 'seeked' 까지 기다린다 (build.mjs 가 window.seek 의 promise 를 기다린 뒤 찍는다)
+    const vseek = (v, x) => new Promise(res => {
+      const go = () => { if (Math.abs(v.currentTime - x) < 1e-3 && !v.seeking) return res(); v.addEventListener('seeked', () => setTimeout(res, 15), { once: true }); v.currentTime = x; };
+      v.readyState >= 2 ? go() : v.addEventListener('loadeddata', go, { once: true });
+    });
+    function seek(t) {
+      t = Math.min(t, END - .001);
+      const cur = st.reduce((m, v, j) => t >= v ? j : m, 0);
+      show('s0', cur === 0); show('sZ', cur === st.length - 1); sc.forEach((_, i) => show('a' + i, cur === i + 1));
+      if (cur === 0) return seekIntro(t);
+      if (cur === st.length - 1) return seekOutro(t, TZ - 1.1);
+      const i = cur - 1, s = sc[i], t1 = t - st[cur], k = t1 / D[cur], [m0, L] = seg[i], vt = m0 + cl((t1 - LEAD) / L) * L;
+      const [x, y, w] = lerp(s.a, s.b, ease(cl(k))), z = PW / w, vw = $('vw' + i);
+      vw.style.width = SW * z + 'px'; vw.style.height = SH * z + 'px'; vw.style.left = -x * z + 'px'; vw.style.top = -y * z + 'px';
+      const a = eo(p(t1, 0, .45));
+      rise($('ap' + i), a, 90); rise($('al' + i), a, 30);
+      // 누른 곳: 누른 뒤 0.6초 동안 퍼지는 동그라미
+      const tp = R.taps.find(q => vt >= q.t && vt < q.t + .6), tr = $('tr' + i);
+      tr.style.display = tp ? '' : 'none';
+      if (tp) { const kk = (vt - tp.t) / .6; tr.style.left = tp.x * SW * z + 'px'; tr.style.top = tp.y * SH * z + 'px'; tr.style.opacity = 1 - kk; tr.style.transform = `translate(-50%,-50%) scale(${.5 + kk})`; }
+      const L2 = s.say.map(q => q.length), tot = L2.reduce((m, v) => m + v, 0);
+      let acc = 0, j = 0; while (j < L2.length - 1 && k > (acc + L2[j]) / tot) acc += L2[j++];
+      $('sb' + i).innerHTML = `<span>${s.say[j]}</span>`;
+      $('sb' + i).style.opacity = a;
+      return vseek($('v' + i), vt);
+    }
+    return { html, seek, dur: END, coverT: 1.6, cues: st };
+  }
+
+  window.REELS = { pa, spray, grid, season, app, story, screen };
 })();

@@ -3,7 +3,7 @@
 import { HITS, esc as _esc } from '../constants.js';
 import { buildData, calcStats, f3, pct, fmt, josa as _j, emptyState, sprayFigure, trendChart, pitchTable } from './batdata.js?v=9';
 import { fieldInnCard } from './fieldinn.js?v=2';
-import { abPitcher } from './xlsxreport.js?v=29';
+import { abPitcher } from './xlsxreport.js?v=30';
 
 const QUAL_PA = 5;   // 리더보드(비율 지표) 대상: 5타석 이상
 

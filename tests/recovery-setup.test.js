@@ -98,4 +98,29 @@
       eq(ls('sl_autosave').data.th, '복구홈', '복구본 그대로');
     });
   });
+
+  // 흐름 점검 11-06 ⑨ — 경기 운영을 끈 기록은 3아웃이 같은 초/말로 넘어가므로 첫 이닝이 틀리면 우리 타석이 전부 「초」로 적혔다
+  test('경기 운영을 끈 경기는 우리 팀이 치는 반 이닝부터 — 경기설정 홈 1회말 · 원정 1회초 · 적은 게 있거나 손으로 고른 이닝은 그대로', async function () {
+    var inn = $('innSel').value;
+    try {
+      await isolated(async function () {
+        // 새 경기 시작(setup.js 의 startFromWizard 감싸기)은 이 테스트 페이지에서 setup.js _init 이 돌지 않아 못 본다 — 실제 앱에서 확인(새 경기 → 1회말)
+        seedPrev(); newGame('새홈', '새원정');
+        _pitchSetInning('1회초');
+        window.stSetInfo('side', 'home');
+        eq($('innSel').value, '1회말', '내 팀 홈 = 1회말');
+        window.stSetInfo('side', 'away');
+        eq($('innSel').value, '1회초', '원정으로 바꾸면 1회초');
+        window.stSetInfo('side', 'home');
+        eq($('innSel').value, '1회말', '다시 홈');
+        AS.abs = AB.slice();
+        window.stSetInfo('side', 'away');
+        eq($('innSel').value, '1회말', '이미 적은 타석이 있으면 그대로');
+        AS.abs = [];
+        _pitchSetInning('3회초');
+        window.stSetInfo('side', 'home');
+        eq($('innSel').value, '3회초', '손으로 고른 이닝도 그대로');
+      });
+    } finally { _pitchSetInning(inn); }
+  });
 })();

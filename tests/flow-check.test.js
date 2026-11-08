@@ -364,4 +364,20 @@
       ok(!gfEnded(), '경기종료 뒤에 친 타석이 생기면 다시 진행 중');
     });
   });
+
+  test('⑫ 경기 운영 3아웃 뒤 투구 화면 이닝 칸 · 아웃 점이 바로 새 반 이닝으로 (첫 공을 기다리지 않는다)', async function () {
+    await isolated(async function () {
+      start('home', AWAY);
+      AS.home_lineup[3].pos = '1';   // 우리 팀 투수 사번 — 1회말 수비 때 투구 화면이 그 투수로 (아웃 점이 보이게)
+      var P = { id: 'fp1', name: '원정투', num: '30', role: 'SP', pitches: [] };
+      AS.pitchers = [P]; AS.currentPitcher = P; window._pitchInnAskedFor = AS.pitchers;   // 첫 공 이닝 묻기 건너뜀
+      var bar = function () { var d = document.querySelector('#pitchCountBar .pcnt-dots'); return [$('pitchInnSel').value, d ? (d.getAttribute('aria-label').match(/아웃 \d/) || [''])[0] : '']; };
+      var k3 = async function () { await gap(); recordPitch('헛스윙'); recordPitch('헛스윙'); recordPitch('헛스윙'); await T.sleep(60); };
+      await k3(); await k3();
+      eq(bar(), ['1회초', '아웃 2'], '2아웃');
+      await k3();
+      eq(GF.inning + GF.half, '1bottom', '3아웃 → 1회말');
+      eq(bar(), ['1회말', '아웃 0'], '투구 화면도 바로 1회말 · 아웃 0');
+    });
+  });
 })();

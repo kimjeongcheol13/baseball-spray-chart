@@ -8,6 +8,7 @@ import { writeFileSync, readFileSync, mkdtempSync, mkdirSync, rmSync, existsSync
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { expand } from './schedule.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url)), POOL = join(HERE, '..', 'pool'), PAGE = pathToFileURL(join(HERE, 'page.html')).href;
 const args = process.argv.slice(2), FAST = args.includes('--fast'), ONLY = args.filter(a => !a.startsWith('--'));
@@ -113,13 +114,20 @@ try {
     rec.files = files;
     if (!m.off) out.push(rec);   // off: 파일만 남기고 게시 순서에서는 뺀다
   }
-  const days = await c.ev('window.DAYS'), prereg = await c.ev('window.PREREG');
-  for (const id of Object.values(days).flat()) if (!out.some(x => x.id === id)) throw new Error('날짜표에 없는 id: ' + id);
+  const fixed = await c.ev('window.DAYS'), SL = await c.ev('window.SLOTS'), prereg = await c.ev('window.PREREG');
+  const oldDays = existsSync(MF) ? JSON.parse(readFileSync(MF, 'utf8')).days || {} : {};
+  const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+  const fmt = Object.fromEntries(META.map(x => [x.id, x.format]));
+  for (const id of [...Object.values(fixed).flat(), ...SL.pool, ...SL.new]) if (!out.some(x => x.id === id)) throw new Error('없는 id: ' + id);
+  const { days, gaps } = expand(SL, fixed, oldDays, fmt, today);
   writeFileSync(MF, JSON.stringify({
-    note: '인스타 자동 게시 풀. days[오늘 KST 날짜] 의 id 를 적힌 순서대로 올린다(없으면 쉬는 날). prereg.weekdays(0 = 월 … 6 = 일)의 캐러셀 캡션에는 사전등록 줄을 넣는다. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터, 단톡방 대화는 지어낸 상황극.',
-    prereg, days, items: out,
+    note: '인스타 자동 게시 풀. days[오늘 KST 날짜] 의 id 를 적힌 순서대로 올린다(없으면 쉬는 날). gaps[날짜] = 그 요일 칸을 채울 파일이 없어 건너뛰는 형식(보고만). prereg.weekdays(0 = 월 … 6 = 일)의 캐러셀 캡션에는 사전등록 줄을 넣는다. 파일은 social/pool/ (raw.githubusercontent.com/kimjeongcheol13/baseball-spray-chart/main/social/pool/<파일>). 숫자는 전부 가상 데이터, 단톡방 대화는 지어낸 상황극. 날짜표는 social/gen/items.js 의 DAYS · SLOTS 로 build.mjs 가 만든다.',
+    prereg, days, gaps, items: out,
   }, null, 2) + '\n');
   console.log('manifest', out.length, 'items');
+  const W = '월화수목금토일', K = { reel: '릴스', carousel: '캐러셀' };
+  for (const d of [...new Set([...Object.keys(days), ...Object.keys(gaps)])].filter(d => d >= SL.from).sort())
+    console.log(d, W[(new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7], (days[d] || []).join(' ').padEnd(6), gaps[d] ? '빈 칸: ' + gaps[d].map(f => K[f]).join(' · ') : '');
   c.close();
 } finally {
   child.kill();

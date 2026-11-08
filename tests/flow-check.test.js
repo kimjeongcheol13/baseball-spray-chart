@@ -223,4 +223,68 @@
       });
     } finally { window.confirm = cf; }
   });
+
+  // 흐름 점검 11-06
+  test('경기 운영 끔: 상대 타순을 적고 돌아오면 상대 타자가 남지 않는다 — 우리 팀 타석으로 저장되지 않는다', async function () {
+    await isolated(async function () {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [{ id: 'fc1', name: '일번', num: '1', pos: '', bh: '', isStarter: true }];
+      AS.away_lineup = [];
+      renderLP();
+      selBatter('fc1');
+      swLineupTab('away');
+      eq(AS.batter, null, '상대 탭 — 우리 타자 해제');
+      $('pName').value = '고일'; $('pNum').value = '7';
+      addPlayer();
+      eq(AS.batter && AS.batter.name, '고일', '상대 첫 선수를 넣으면 골라진다 (addPlayer)');
+      swLineupTab('home');
+      eq([AS.batter, AS.batterFilter, $('batterDisp').textContent], [null, false, '타자를 선택하세요'], '돌아오면 타자 없음 · 표시도');
+      ok(!$('filterBtn').classList.contains('btn-primary'), '타자 필터 버튼 꺼짐');
+      await other('삼진');
+      eq(AS.abs.length, 0, '타자 없이는 저장 안 됨');
+      selBatter('fc1');
+      AS.curTeam = 'away';
+      swLineupTab('home');
+      eq(AS.batter && AS.batter.id, 'fc1', '이 팀 타자는 그대로');
+    });
+  });
+
+  test('경기 운영 켬: 상대 명단을 봤다가 공격 팀으로 돌아오면 지금 타순 타자', async function () {
+    await isolated(async function () {
+      start('home', AWAY);
+      await other('삼진');
+      eq(AS.batter && AS.batter.id, 'fc2', '다음 타자');
+      swLineupTab('away');
+      eq(AS.batter, null, '수비 팀 명단을 보는 동안 타자 없음');
+      swLineupTab('home');
+      eq([AS.curTeam, AS.batter && AS.batter.id, AS.batterFilter], ['home', 'fc2', false], '돌아오면 그 타자 · 필드는 안 거른다');
+    });
+  });
+
+  test('경기 운영 타석에 그때 수비 팀 투수가 적힌다 — 교체 뒤 · 3아웃 타석 · 공수 교대 뒤 · 투구 기록 투수 우선 · 모르면 안 적음', async function () {
+    await isolated(async function () {
+      start('home', [{ id: 'fa1', name: '원정일', num: '11', pos: '투수', bh: '', isStarter: true }]);
+      AS.home_lineup[0].pos = '투수';
+      await hit('안타');
+      eq(AS.abs[0].pitcher, '원정일', '1회초 = 상대 타순표 투수');
+      AS.away_lineup[0].pos = '';
+      AS.away_lineup.push({ id: 'fa2', name: '원정계투', num: '12', pos: '투수', bh: '', isStarter: true });
+      await other('삼진');
+      eq(AS.abs[1].pitcher, '원정계투', '교체 뒤');
+      await other('삼진'); await other('삼진');
+      eq([GF.half, AS.abs[3].pitcher], ['bottom', '원정계투'], '3아웃 타석도 그 반 이닝 투수');
+      await other('삼진');
+      eq(AS.abs[4].pitcher, '일번', '공수 교대 뒤 = 우리 타순표 투수');
+      AS.pitchers = [{ id: 1, name: '투구탭', num: '', role: null, pitches: [] }];
+      AS.currentPitcher = AS.pitchers[0];
+      await other('삼진');
+      eq(AS.abs[5].pitcher, '투구탭', '지금 투구 기록 투수가 수비 팀 투수면 그 투수');
+    });
+    await isolated(async function () {
+      start('home', AWAY);
+      await other('삼진');
+      ok(!('pitcher' in AS.abs[0]), '타순표에 투수가 없고 투구 기록도 없으면 안 적는다');
+    });
+  });
 })();

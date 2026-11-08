@@ -196,22 +196,41 @@
   function txt() { return Array.prototype.map.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent; }); }
   function tap(t) { Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (b) { return b.textContent === t; }).click(); }
 
-  test('손으로 켠 베이스는 누가 나갔는지 고른다 — 희타로 옮긴 주자 · 마지막 타자 · 취소하면 이름 없는 주자', async function () {
+  test('손으로 켠 베이스는 누가 나갔는지 고른다 — 진루타로 옮긴 주자 · 마지막 타자 · 취소하면 이름 없는 주자', async function () {
     await isolated(async function () {
       start();
       await hit('안타'); await other('실책');   // 이번 실책 — 타자 1루 · 1루 주자 2루
       eq([GF.bases, names()], [[true, true, false], ['이번', '일번', null]], '실책 = 타자 1루 · 밀려난 주자 한 베이스');
-      await other('희타');   // 삼번 희타 — core.js 는 아웃 계열에 주자를 옮기지 않아 손으로 옮긴다
+      await other('땅볼 아웃');   // 삼번 진루타 — core.js 는 땅볼 아웃에 주자를 옮기지 않아 손으로 옮긴다
       gfToggleBase(2);
-      eq(txt(), ['2루 일번 → 3루', '1루 이번 → 3루', '타자 삼번 (희타)', '4번 사번', '취소'], '3루 후보: 아래 주자 · 마지막 타자 · 베이스에 없는 주전');
+      eq(txt(), ['2루 일번 → 3루', '1루 이번 → 3루', '타자 삼번 (땅볼 아웃)', '4번 사번', '취소'], '3루 후보: 아래 주자 · 마지막 타자 · 베이스에 없는 주전');
       tap('2루 일번 → 3루');
       ok(!$('slRunPick'), '닫힘'); eq([GF.bases, names()], [[true, false, true], ['이번', null, '일번']], '2루 주자가 3루로');
       gfToggleBase(1); tap('1루 이번 → 2루');
-      eq([GF.bases, names(), $('gfbRunners').textContent], [[false, true, true], [null, '이번', '일번'], '2루 이번 · 3루 일번'], '희타로 한 베이스씩');
+      eq([GF.bases, names(), $('gfbRunners').textContent], [[false, true, true], [null, '이번', '일번'], '2루 이번 · 3루 일번'], '진루타로 한 베이스씩');
       gfToggleBase(0); $('slRunPick').querySelector('.x').click(); gfUpdateBar();   // 막대는 다음 프레임에 그린다 — 여기서는 바로
       eq([GF.bases[0], names()[0], $('gfbRunners').textContent], [true, null, '1루 주자 · 2루 이번 · 3루 일번'], '취소하면 이름 없는 주자');
       gfToggleBase(0);
       ok(!$('slRunPick') && !GF.bases[0], '끌 때는 묻지 않는다');
+    });
+  });
+
+  test('희타: 주자 모두 한 베이스씩 (3루 주자는 홈 · 타점) · 알림 · 다음 타석 상황 · 2아웃이면 이닝 끝', async function () {
+    await isolated(async function () {
+      start();
+      await hit('안타');   // 일번 1루
+      await other('희타');   // 이번
+      eq([GF.outs, GF.bases, names()], [1, [false, true, false], [null, '일번', null]], '1루 주자 → 2루 · 1아웃');
+      ok(/주자 한 칸씩 진루 — 다르면 베이스를 눌러 고치세요/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      await hit('안타');   // 삼번 — 2루 일번 → 3루
+      eq([AS.abs[2].gfPre.outs, AS.abs[2].gfPre.bases], [1, [false, true, false]], '다음 타석 직전 = 2루 1사 (예전엔 1루 1사)');
+      eq(names(), ['삼번', null, '일번'], '1 · 3루');
+      await other('희타');   // 사번 스퀴즈
+      eq([GF.outs, GF.bases, names(), AS.hs], [2, [false, true, false], [null, '삼번', null], 1], '3루 주자 홈 · 1루 주자 2루 · 2아웃');
+      eq([who(AS.abs[3].scored), AS.abs[3].rbi], [['일번'], 1], '홈인 · 1타점');
+      ok(/홈인 일번 \(1타점\) · 주자 한 칸씩 진루/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      await other('희타');   // 일번 — 2아웃이라 타자 아웃으로 이닝 끝
+      eq([AS.hs, who(AS.abs[4].scored), AS.abs[4].rbi, GF.half, GF.outs, GF.bases], [1, [], 0, 'bottom', 0, [false, false, false]], '득점 없이 3아웃 · 공수 교대');
     });
   });
 

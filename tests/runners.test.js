@@ -598,6 +598,43 @@
     });
   });
 
+  // 흐름 점검 11-06 ⑧: 경기 운영을 끈 채 상대 투수로 우리 타자 공을 적다가 경기 운영을 켜면 → 1회초 수비 팀(우리) 투수로
+  //   예전엔 상대 투수가 그대로 남고, 공수 교대 때 우리 팀 칸(lastP)에도 들어가 경기 내내 안 바뀌었다
+  test('경기 운영 켜기: 켜기 전 상대 투수가 남지 않고 수비 팀 투수로 · 공수 교대도 따라간다 · 앞 타석 결과를 물으면 고른 뒤에', async function () {
+    var cur = function () { return AS.currentPitcher ? AS.currentPitcher.name : null; };
+    function setup() {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [['일번', '1', '유격수'], ['에이스', '18', '투수'], ['삼번', '3', '포수']].map(function (x, i) { return { id: 'gs' + (i + 1), name: x[0], num: x[1], pos: x[2], bh: '', isStarter: true }; });
+      AS.away_lineup = [{ id: 'gt1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'gt2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      renderLP();
+      AS.pitchers = [{ id: 'go1', name: '보육', num: '', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers;
+      selectPitcher('go1'); selBatter('gs1');
+    }
+    function startGame() { gfToggle(); $('slRunPick').querySelectorAll('button')[0].click(); }   // 상대 선공 (기본) — 1회초 우리 수비
+    await isolated(async function () {
+      setup();
+      recordPitch('헛스윙'); recordPitch('헛스윙'); await gap(); recordPitch('헛스윙');   // 우리 타자 삼진 — 보육 = 상대 투수
+      ok(window.PitchLimit.isOpp(AS.pitchers[0]), '보육 = 상대 투수');
+      startGame();
+      eq([GF.active, GF.half, cur()], [true, 'top', '에이스'], '1회초: 우리 타순표 투수로 (처음이면 등록) — 예전엔 보육');
+      gfNextHalf();
+      eq([GF.half, cur()], ['bottom', '보육'], '1회말: 상대 투수 보육');
+      gfNextHalf();
+      eq([GF.inning, GF.half, cur()], [2, 'top', '에이스'], '2회초: 다시 에이스 — 예전엔 보육이 계속 남았다');
+    });
+    await isolated(async function () {
+      setup();
+      recordPitch('볼');   // 결과 없는 타석이 열린 채로 켠다 → 다음 타자로 넘기기 전에 결과를 묻는다
+      startGame();
+      ok($('pitchEndSheet'), '앞 타석 결과 묻기');
+      eq(cur(), '보육', '고르기 전에는 그대로');
+      $('pitchEndSheet').querySelector('.pes-btn[data-end]').click();
+      eq([cur(), AS.batter && AS.batter.name], ['에이스', '원정일'], '결과를 고르면 1회초 첫 타자 · 우리 투수');
+    });
+  });
+
   // 흐름 점검 4 (사용자 결정 11-05): 투구 수 관리를 켜면 기록 탭 B·S 하나 = 공 하나 · 기록 탭으로 끝낸 타석은 결과 공 하나 — 수비 팀 타순표 투수에게 (없으면 등록)
   test('투구 수 관리를 켜면 기록 탭 B·S · 결과도 투구로 센다 — 수비 팀 투수에게 · 지우개 · 삼진 · 투수를 모르면 안내', async function () {
     await isolated(async function () {
@@ -675,6 +712,38 @@
       eq([AS.abs.length, AS.abs[1].res, names()[0], bat()], [2, '안타', '이번', '삼번'], '안타 → 1루 이번 · 다음 타자');
       undoPitch();
       eq([AS.abs.length, names()[0], bat(), GF.outs], [1, null, '이번', 1], '↩ 되돌리면 그 타석도 지우고 주자 · 타자도 그 전으로');
+    });
+  });
+
+  // 흐름 점검 11-06 ⑮: 투수 대신 대타 → 대타는 「투수」 위치를 물려받지 않고, 나간 투수는 다음 수비에 다시 고르지 않는다
+  //   예전엔 대타가 투수로 표시되고 투구 기록은 후보로 나간 투수에게 계속 쌓였다
+  test('투수 대신 대타: 대타는 투수 위치를 물려받지 않고 · 나간 투수는 다음 수비에 안 고른다 · 투수 교체를 하면 그 투수로', async function () {
+    await isolated(async function () {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [['일번', '1', '유격수', true], ['장주원', '18', '투수', true], ['삼번', '3', '포수', true], ['김대타', '25', '', false]].map(function (x, i) { return { id: 'ph' + (i + 1), name: x[0], num: x[1], pos: x[2], bh: '', isStarter: x[3] }; });
+      AS.away_lineup = [{ id: 'pz1', name: '원정일', num: '11', pos: '', bh: '', isStarter: true }, { id: 'pz2', name: '원정이', num: '12', pos: '', bh: '', isStarter: true }];
+      renderLP();
+      AS.pitchers = [{ id: 'pj1', name: '장주원', num: '18', role: null, pitches: [] }];
+      window._pitchInnAskedFor = AS.pitchers; selectPitcher('pj1');
+      GF.first = 'away'; gfActivate();   // 1회초 우리(홈) 수비
+      var cur = function () { return AS.currentPitcher ? AS.currentPitcher.name : null; };
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t); b.click(); };
+      eq(cur(), '장주원', '1회초 장주원');
+      gfNextHalf();   // 1회말 우리 공격
+      await hit('안타');   // 일번 1루 → 다음 타자 장주원
+      eq(AS.batter && AS.batter.name, '장주원', '지금 타자 장주원');
+      slSub(); tap('대타 — 지금 타자 대신'); tap('#25 김대타');
+      eq([AS.home_lineup[1].name, AS.home_lineup[1].pos, AS.batter && AS.batter.name], ['김대타', '', '김대타'], '대타는 투수 위치를 물려받지 않는다 (예전엔 투수)');
+      ok(/다음 수비 전에 투수 교체를 기록해 주세요$/.test($('toastTxt').textContent), '알림: ' + $('toastTxt').textContent);
+      gfNextHalf();   // 2회초 우리 수비
+      eq([GF.inning, GF.half, cur()], [2, 'top', null], '2회초: 나간 장주원을 다시 고르지 않는다 (예전엔 장주원)');
+      slSub(); tap('투수 교체'); tap('2번 김대타');
+      $('slRunPick').querySelector('input').value = '구원투'; tap('넣기');
+      eq([cur(), AS.home_lineup[1].name, AS.home_lineup[1].pos], ['구원투', '구원투', '투수'], '투수 교체 → 투구 기록도 구원투');
+      undoLast(); undoLast();   // 투수 교체 · 대타 되돌림
+      eq([AS.home_lineup[1].name, AS.home_lineup[1].pos], ['장주원', '투수'], '되돌리면 장주원이 다시 투수');
+      AS._pitchAuto = null;
     });
   });
 

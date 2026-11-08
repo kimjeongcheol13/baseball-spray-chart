@@ -365,12 +365,18 @@ function regP(pl) {   // 타순표 선수 → 투구 기록 투수 (없으면 �
 }
 const usePitcher = pl => { const p = regP(pl); return !!p && pickP(p); };
 const fldP = () => { const c = window.AS.currentPitcher, f = fld(); return c && pTeam(c) === f ? c : luP(f); };   // 지금 수비 팀 투수 (recPitcher 와 같은 순서 · 고르거나 등록하지 않는다)
-// 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null
+// 교체 기록(대타 · 대주자 · 대수비 · 투수 교체)으로 나간 투수 — 타순표에서 후보가 됐고 교체의 나간 선수로 적힌 선수. 다시 던지지 않는다 (흐름 점검 11-06 ⑮)
+//   기록 없이 투구 화면에서만 투수를 바꿔 쓰는 경기는 예전 그대로 (타순표 후보에 같은 이름이 있어도 교체 기록이 없으면 나간 게 아니다)
+function gone(f, q) {
+  const p = q && LU(f).find(x => x && x.isStarter === false && x.name === q.name && (!x.num || !q.num || String(x.num) === String(q.num)));
+  return !!p && window.AS.abs.some(a => ((a && a.runEv) || []).some(e => e && e.t === 'SUB' && e.team === f && same(e.out, p)));
+}
+// 그 팀 투수 — 그 팀에서 마지막으로 쓰던 투수 → 그 팀 투수 중 가장 최근에 던진 투수 → 타순표 투수(없으면 등록). 모르면 null · 교체로 나간 투수는 빼고
 function forTeam(f) {
   const A = window.AS;
-  if (A.pitchers.includes(lastP[f])) return lastP[f];
+  if (A.pitchers.includes(lastP[f]) && !gone(f, lastP[f])) return lastP[f];
   let p = null, t = -Infinity;
-  A.pitchers.forEach(q => { const ps = q.pitches || [], e = ps[ps.length - 1]; if (e && pTeam(q) === f && (+e.id || 0) > t) { t = +e.id || 0; p = q; } });
+  A.pitchers.forEach(q => { const ps = q.pitches || [], e = ps[ps.length - 1]; if (e && pTeam(q) === f && !gone(f, q) && (+e.id || 0) > t) { t = +e.id || 0; p = q; } });
   return p || (luP(f) ? regP(luP(f)) : null);
 }
 // 교체 · 위치 바꾸기 · 그 되돌리기 뒤: 수비 팀 타순표의 투수가 바뀌었으면 투구 기록도 그 투수로. before = 바꾸기 전 타순표 투수
@@ -387,6 +393,15 @@ function followHalf(prevFld) {
   const f = fld(), p = forTeam(f);
   if (p) pickP(p);
   else if (A.currentPitcher && pTeam(A.currentPitcher) !== f) pickP(null);
+}
+// 경기 운영 켜기(1회초) 뒤: 공수 교대처럼 수비 팀 투수로 — 예전엔 켜기 전 투수(상대 투수일 수 있음)가 그대로 남고,
+//   다음 공수 교대 때 lastP 의 다른 팀 칸에 들어가 경기 내내 안 바뀌었다 (흐름 점검 11-06 ⑧)
+//   켜면서 앞 타석 결과를 묻는 창(core.js _pitchGuardChange)이 뜨면 결과를 고른 뒤에 · 「타자 바꾸지 않음」이면 그대로
+function followStart() {
+  const run = () => { const c = window.AS.currentPitcher; followHalf(c ? pTeam(c) : fld()); };
+  const ov = $('pitchEndSheet');
+  if (!ov) return run();
+  ov.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.end) run(); });   // core.js 창 처리(결과 · 다음 타자) 다음에 돈다
 }
 
 // ── 기록 탭 B·S → 투구 기록 (투구 수 관리를 켰을 때만 · 흐름 점검 4, 사용자 결정 11-05) ──
@@ -529,12 +544,13 @@ function subApply(k, team, out, base, inP, name) {
   const ev = Object.assign({ t: 'SUB', k }, clean(inP), { out: out ? clean(out) : null, from: k === 'PR' ? base : null, inn: inn(), team, scored: false, pre: preOf() });
   const i = lu.indexOf(inP);
   if (o >= 0 && i >= 0) {
-    const op = lu[o];
+    const op = lu[o], outP = (k === 'PH' || k === 'PR') && isP(op);   // 투수 대신 대타 · 대주자 — 그 선수는 던지지 않는다 (흐름 점검 11-06 ⑮)
     ev.sw = { o, i, os: op.isStarter, is: inP.isStarter, pos: inP.pos };
     if (added) ev.added = true;
     lu[o] = inP; lu[i] = op;
     op.isStarter = false; inP.isStarter = true;
-    if (!inP.pos) inP.pos = k === 'P' ? '투수' : op.pos || '';
+    if (!inP.pos) inP.pos = k === 'P' ? '투수' : outP ? '' : op.pos || '';
+    if (outP) ev.outP = true;
   }
   pushEv(last, ev);
   if (k === 'PR') runners()[base] = clean(inP);
@@ -544,7 +560,7 @@ function subApply(k, team, out, base, inP, name) {
   window.renderLP();
   window.updateAll();
   window.gfUpdateBar();
-  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}${pt}`, true, 3000);
+  window.showToast(`${KIND[k]} · ${ev.inn} ${inP.name}${out && out.name ? ` (${out.name} 대신)` : ''}${pt}${ev.outP ? ' · 다음 수비 전에 투수 교체를 기록해 주세요' : ''}`, true, ev.outP ? 5000 : 3000);
 }
 
 function undoSub(ev) {
@@ -680,7 +696,7 @@ wrap('gfToggle', orig => function () {
   if (!g || g.active) return orig.apply(this, arguments);
   const name = (id, d) => (($(id) || {}).value || '').trim() || d, self = this, args = arguments;
   // 경기설정 '내 팀은 홈(말 공격) / 원정(초 공격)'도 고른 대로 — 점수판 윗줄 = 선공 팀 (setup.js stSetInfo · scorebook.js _lsHtml)
-  const go = f => { closePick(); g.first = f; orig.apply(self, args); if (window.stSetInfo) window.stSetInfo('side', f === 'home' ? 'away' : 'home'); if (window.shellSyncSettings) window.shellSyncSettings(); };
+  const go = f => { closePick(); g.first = f; orig.apply(self, args); followStart(); if (window.stSetInfo) window.stSetInfo('side', f === 'home' ? 'away' : 'home'); if (window.shellSyncSettings) window.shellSyncSettings(); };
   const box = sheet('1회초에 어느 팀이 먼저 공격하나요?');
   btn(box, `${name('tAway', '원정팀')} 먼저 — 우리 팀 후공 (기본)`, () => go('away'));
   btn(box, `${name('tHome', '홈팀')} 먼저 — 우리 팀 선공`, () => go('home'));

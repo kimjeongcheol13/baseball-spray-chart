@@ -287,4 +287,38 @@
       ok(!('pitcher' in AS.abs[0]), '타순표에 투수가 없고 투구 기록도 없으면 안 적는다');
     });
   });
+
+  // 흐름 점검 11-06 ⑪ (사용자 결정: 후보로 넣기 · 다음 주전으로 넘기기)
+  test('주전 9명이면 새로 넣은 선수는 후보 · 지금 타자를 후보로 돌리면 경기 운영 중엔 다음 주전, 아니면 선택 해제', async function () {
+    var ev = { stopPropagation: function () {} };
+    await isolated(async function () {
+      fresh();
+      AS.curTeam = 'home';
+      AS.home_lineup = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) { return { id: 'fc' + n, name: '선수' + n, num: String(n), pos: '', bh: '', isStarter: true }; });
+      AS.away_lineup = [];
+      renderLP();
+      $('pName').value = '열번'; $('pNum').value = '10';
+      addPlayer();
+      eq([AS.home_lineup[9].name, AS.home_lineup[9].isStarter], ['열번', false], '10번째 = 후보');
+      AS.home_lineup[0].isStarter = false;
+      $('pName').value = '열한번'; $('pNum').value = '11';
+      addPlayer();
+      eq(AS.home_lineup[10].isStarter, true, '주전이 8명이면 주전으로');
+      selBatter('fc3');
+      toggleStarter('fc3', ev);
+      eq([AS.home_lineup[2].isStarter, AS.batter], [false, null], '경기 운영이 아니면 타자 선택이 풀린다');
+      selBatter('fc4');
+      toggleStarter('fc5', ev);
+      eq(AS.batter && AS.batter.id, 'fc4', '다른 선수를 후보로 돌리면 타자는 그대로');
+    });
+    await isolated(async function () {
+      start('home', AWAY);
+      await other('삼진');
+      eq(AS.batter && AS.batter.id, 'fc2', '다음 타자');
+      toggleStarter('fc2', ev);
+      eq(AS.batter && AS.batter.id, 'fc3', '경기 운영 중 지금 타자를 후보로 → 다음 주전');
+      await other('삼진');
+      eq(AS.batter && AS.batter.id, 'fc4', '그 뒤로도 타순대로');
+    });
+  });
 })();

@@ -159,6 +159,23 @@
     eq(R().buildRecap({ th: '불꽃', ta: '번개', hs: 1, as: 0, abs: a, anon: true }).paras[1], '공격에서는 김OO 홈 선수가 1타수 1안타 1타점을 기록했다.', '같은 성이 겹치면 공유 링크처럼 구분 (_anonSharePayload: 홈 팀 → " 홈")');
   });
 
+  // 흐름 점검 11-06 ⑬ — 같은 사람이 타선 「#6 선수」 · 마운드 「박OO 선수」로 갈렸고, 공을 안 적은 마무리는 마운드에서 빠졌다
+  test('경기 기사: 등번호 없는 투수도 라인업과 같은 표기 · 공을 안 적은 투수도 상대 타석에 적혀 있으면 마운드에', function () {
+    var g = game(); g.anon = true;
+    g.hl = [{ id: 'b-최선발', name: '최선발', num: '6' }];
+    g.abs.forEach(function (a) { if (a.team === 'away') a.pitcher = '최선발'; });
+    g.abs[g.abs.length - 1].pitcher = '마무리';
+    var r = R().buildRecap(g);
+    eq(r.paras[3], '마운드에서는 #6 선수 70구, 정OO 선수 21구, 마OO 선수로 3명이 이어 던졌다. 번개 타선은 안타 1개, 삼진 2개를 기록했다.', '이름 가리기: 라인업 #6 = 투수 #6 · 마무리 포함');
+    ok(!/최선발|정계투|마무리/.test(JSON.stringify(r) + R().recapText(r)), '실명이 기사 · 복사 글 어디에도 없음 (타석의 투수 이름 포함)');
+    g = game(); g.abs[g.abs.length - 1].pitcher = '마무리';
+    eq(R().buildRecap(g).paras[3].split('. ')[0], '마운드에서는 최선발 70구, 정계투 21구, 마무리로 3명이 이어 던졌다', '실명 · 공 수 없는 투수는 이름만');
+    g = game(); g.pitchers = [P('상대투수', 90, 'home')];
+    g.abs.forEach(function (a) { if (a.team === 'away') a.pitcher = '혼자'; });
+    eq(R().buildRecap(g).paras[3].split('. ')[0], '마운드에서는 혼자가 던졌다', '공 기록 없는 투수 한 명');
+    eq(R().buildRecap(game()).paras[3].split('. ')[0], '마운드에서는 최선발 70구, 정계투 21구로 2명이 이어 던졌다', '타석에 투수가 없으면 예전 그대로');
+  });
+
   test('경기 기사: GAME REPORT 「📰 경기 기사」 → 카드 아래 기사 · 실명 체크 · 다시 열면 지움 · ☰ 메뉴', async function () {
     var keep = { abs: AS.abs, hs: AS.hs, as: AS.as, p: AS.pitchers, th: $('tHome').value, ta: $('tAway').value, hl: AS.home_lineup, al: AS.away_lineup };
     try {

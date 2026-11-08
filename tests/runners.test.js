@@ -525,6 +525,24 @@
     });
   });
 
+  // 흐름 점검 11-06 ⑭ — 교체로 나간 선수 카드가 명단 칸 번호(「5번 타자」)로 나왔다
+  test('타자 카드 타순: 교체로 나간 선수는 그 자리 타순 · 들어온 선수도 같은 타순 · 교체 기록 없는 후보는 타순 없음', async function () {
+    await isolated(async function () {
+      start();
+      AS.home_lineup.push({ id: 'rb1', name: '후보일', num: '21', pos: '', bh: '', isStarter: false }, { id: 'rb2', name: '후보이', num: '22', pos: '', bh: '', isStarter: false });
+      renderLP();
+      var tap = function (t) { var b = Array.prototype.find.call($('slRunPick').querySelectorAll('button'), function (x) { return x.textContent === t; }); ok(b, '버튼 ' + t); b.click(); };
+      await other('삼진'); await other('삼진');   // 일번 · 이번 → 삼번 차례
+      slSub(); tap('대타 — 지금 타자 대신'); tap('#21 후보일');
+      var meta = async function (n) { shellOpenAnalysis('batter'); await T.sleep(50); setBatterView('side', 'home'); setBatterView('scope', 'game'); setBatterView('sel', n); var e = document.querySelector('#batterView .bt-meta'); return e ? e.textContent : null; };
+      eq(await meta('삼번'), '3번 타자 · #3', '나간 삼번 = 3번 타자 (명단 칸 5번 아님)');
+      eq(await meta('후보일'), '3번 타자 · #21', '들어온 후보일 = 3번 타자');
+      eq(await meta('사번'), '4번 타자 · #4', '주전은 그대로');
+      eq(await meta('후보이'), '#22', '교체 기록 없는 후보는 타순 없음');
+      shellNav('record');
+    });
+  });
+
   test('수비 위치 바꾸기: 수비 팀 주전 둘의 자리를 맞바꾸고 기록에 남긴다 · 지우개로 되돌린다', async function () {
     await isolated(async function () {
       start();

@@ -7816,7 +7816,11 @@ function startFromWizard(){
     drawField();safeRender();
   });
   _gameSaved=true;_saveReminderShown=false;_startSaveReminderTimer();
-  showToast('새 경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
+  // 라인업이 있으면(이전 라인업) 기록 탭으로 · 비었으면 지금 화면 그대로 — 경기설정이면 그 타순표에 넣게 (흐름 점검 11-06 ⑯, 사용자 결정)
+  // 예전엔 경기설정에서 「기록 시작 →」을 눌러도 경기설정에 남았고, 라인업을 넣었어도 "라인업 등록 후"라고 했다
+  var hasLu=(AS.home_lineup||[]).length>0,sv=document.getElementById('settingsView'),inSet=!!(sv&&sv.classList.contains('active'));
+  if(hasLu&&inSet&&window.shellNav)shellNav('record');
+  showToast(hasLu?'새 경기를 시작합니다. 타자를 선택하세요':inSet?'새 경기를 시작합니다. 이 화면 타순표에 라인업을 넣어 주세요':'새 경기를 시작합니다. 라인업 등록 후 타자를 선택하세요',false);
 }
 
 function gwAutoComplete(team,val){
@@ -8163,12 +8167,13 @@ function gfInnStr(){
 function gfSyncInnSel(){
   var s=document.getElementById('innSel');
   if(!s)return;
-  var t=gfInnStr();
+  var t=gfInnStr(),was=s.value;
   for(var i=0;i<s.options.length;i++){
     if(s.options[i].text===t||s.options[i].value===t){s.value=s.options[i].value;break;}
   }
   var d=document.getElementById('innDisp');
   if(d)d.textContent=t;
+  if(s.value!==was)renderPitchCount();   // change 를 안 보내므로 투구 화면 이닝 칸 · 아웃 점도 여기서 새 반 이닝으로 (예전엔 첫 공 전까지 이전 값 — 흐름 점검 11-06 ⑫)
 }
 
 // ─── 상태 바 갱신 ───

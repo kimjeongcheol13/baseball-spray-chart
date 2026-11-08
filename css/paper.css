@@ -1365,9 +1365,10 @@ html.sb-boot body::after {
 @media (max-width: 720px) {
   .sb-cg { border: 1.5px solid var(--ink); background: var(--paper-2); transition: transform .06s ease; }
   .sb-cg:active { background: var(--highlight-soft); transform: translateY(1px); }
-  .sb-cg.ro { border-color: transparent; background: none; }
+  .sb-cg.ro { border-color: transparent; background: none; position: relative; }
   .sb-cg.ro:active { background: none; transform: none; }
-  .sb-cg.ro::after { content: '자동'; margin-left: 2px; font: 600 10px/1 var(--f-body); color: var(--ink-soft); }
+  /* '자동' 은 O 점 아래 작은 글씨 — 옆에 두면 좁은 폰에서 「자/동」 세로로 꺾이고, 한 줄로 펴면 360px 에서 「초기화」가 잘렸다 (흐름 점검 11-06 ⑰) */
+  .sb-cg.ro::after { content: '자동'; position: absolute; left: 0; right: 0; bottom: 1px; text-align: center; white-space: nowrap; font: 600 10px/1 var(--f-body); color: var(--ink-soft); }
 }
 
 /* ═══ 터치 기기: 누르는 것은 최소 44 × 44px (iOS HIG 44pt · Material 48dp 의 하한) ═══

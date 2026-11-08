@@ -203,5 +203,23 @@
     clean();
   });
 
+  test('타자 엑셀 「타석 기록」 아웃 칸: 경기 모드 아웃(gfPre.outs)이 먼저, 없으면 볼카운트 판(count.o)', async function () {
+    fresh(); var t = Date.now();
+    // 경기 모드 2아웃 타석인데 볼카운트 판은 0 — 예전엔 0 이 적혔다
+    AS.abs.push({ id: t, bid: 'a', bname: '가', res: '2루타', inn: '3회초', team: 'home', count: { b: 1, s: 2, o: 0 }, gfPre: { inning: 3, half: 'top', outs: 2, batterIdx: 0, bases: [false, false, false] } });
+    AS.abs.push({ id: t + 1, bid: 'a', bname: '가', res: '3루타', inn: '4회초', team: 'home', count: { b: 0, s: 0, o: 1 } });   // 경기 모드 아님 → count.o
+    AS.abs.push({ id: t + 2, bid: 'a', bname: '가', res: '홈런', inn: '5회초', team: 'home' });   // 둘 다 없음 → 빈칸
+    var X = await import('/js/features/xlsxreport.js?v=30');
+    var restore = stubDownload(), sheets;
+    var B = await import('/js/features/batdata.js?v=6');
+    try { sheets = X.exportBatterXlsx(B.playerData(B.buildData(), '가')); } finally { restore(); }
+    var sh = sheets.find(function (s) { return s.name === '타석 기록'; }); ok(sh, '타석 기록 시트');
+    eq(sh.rows.get(0).get(12).v, '아웃', '아웃 열 = 13번째 칸');
+    var outs = {};
+    for (var r = 1; r < 50; r++) { var row = sh.rows.get(r); if (!row) break; var res = row.get(3) && row.get(3).v; outs[res] = row.get(12) ? row.get(12).v : undefined; }
+    eq([outs['2루타'], outs['3루타'], outs['홈런']], [2, 1, ''], '아웃: ' + JSON.stringify(outs));
+    AS.abs = [];
+  });
+
   test('(정리) 이 파일이 만든 상태를 비운다', function () { fresh(); AS.home_lineup = []; renderLP(); _sfReset && _sfReset(); ok(true); });
 })();

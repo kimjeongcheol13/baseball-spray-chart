@@ -203,6 +203,14 @@ function _columnCard(col) {
     </article>`;
 }
 
+// 카운트 모름 = 볼카운트를 안 적은 타석(0-0 · 공 기록 없음 · 투구 연결 없음)과 말이 안 되는 카운트(0~1스트라이크 삼진 · 0~2볼 볼넷) — 기록 탭은 카운트를 안 눌러도 0-0 으로 저장한다 · team.js _countCard 와 같은 규칙
+const _cntKnown = a => {
+  const c = a.count;
+  if (!c || c.b == null || c.s == null) return false;
+  if ((a.res === '삼진' && c.s < 2) || (a.res === '볼넷' && c.b < 3)) return false;
+  return !!(c.b || c.s || (a.pitches && a.pitches.length) || a.pa != null);
+};
+
 // ── 분석 ─────────────────────────────────────────────────────
 function _analyze(P, pool) {
   const abs = P.abs;
@@ -222,7 +230,7 @@ function _analyze(P, pool) {
   const pitches = Object.keys(byPt).map(pt => ({ pt, ...calcStats(byPt[pt]) })).sort((x, y) => y.pa - x.pa);
 
   // 카운트 — 결과가 나온 순간의 볼·스트라이크
-  const cnt = abs.filter(a => a.count && a.count.s != null && a.count.b != null);
+  const cnt = abs.filter(_cntKnown), cntSkip = abs.length - cnt.length;
   const counts = [
     { k: 'pitcher', l: '투수 유리', d: '스트라이크 > 볼', abs: cnt.filter(a => a.count.s > a.count.b) },
     { k: 'even', l: '이븐', d: '볼 = 스트라이크', abs: cnt.filter(a => a.count.s === a.count.b) },
@@ -244,7 +252,7 @@ function _analyze(P, pool) {
     : r >= 0.85 ? { k: 'low', l: '보통', d: '전체 평균보다 조금 약함' }
     : { k: 'easy', l: '공략 가능', d: '전체 평균보다 확실히 약한 타자' };
 
-  return { zones, zoned, pitches, counts, go, fo, gdp, dist, threat, idx: pool.woba > 0 ? Math.round(r * 100) : null };
+  return { zones, zoned, pitches, counts, cntSkip, go, fo, gdp, dist, threat, idx: pool.woba > 0 ? Math.round(r * 100) : null };
 }
 
 // 공략 포인트: type = attack(공략) · avoid(주의) · field(수비) — 모든 항목에 근거 숫자와 표본을 붙인다
@@ -608,7 +616,7 @@ function _countCard(A) {
           <div><dt>삼진%</dt><dd>${c.st.pa ? pct(c.st.kRate) : '—'}</dd></div>
         </dl>
       </div>`).join('')}
-    </div>` : '<div class="an-note">볼카운트가 기록된 타석이 없어요.</div>';
+    </div>${A.cntSkip ? `<div class="an-hd-note tm-inn-note">볼카운트를 안 적은 ${A.cntSkip}타석은 뺐어요</div>` : ''}` : '<div class="an-note">볼카운트가 기록된 타석이 없어요.</div>';
   return `
     <section class="an-card">
       <header class="an-hd"><h3>카운트별 결과</h3><span class="an-hd-note">결과가 나온 순간의 볼·스트라이크 · 흐린 칸은 ${MIN_SPLIT}타석 미만</span></header>

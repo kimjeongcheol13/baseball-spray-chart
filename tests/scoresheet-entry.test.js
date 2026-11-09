@@ -92,7 +92,7 @@
     runs('away', ['1', '', '2']);
     document.querySelector('#goSheet [data-sheet-tab="home"]').click();
     ok(shown(grid('home')) && !shown(grid('away')), '홈 탭');
-    fill('home', 0, { name: '정우진', cells: { 2: '삼진' } });
+    fill('home', 0, { name: '정우진', cells: { 2: '삼진', 4: '투희번' } });   // 희생번트 → 희타(투수 앞)
     runs('home', ['', '0']);
     document.querySelector('#goSheet [onclick="scoresheetPreview()"]').click();
     await T.sleep(300);
@@ -101,7 +101,7 @@
     ok(t.indexOf('저장 안 함 1타석') >= 0 && t.indexOf("최하준 3회 '번트'") >= 0, '모르는 기록 — ' + t);
     ok(t.indexOf('타자 표 합계') < 0, '점수표 · 타자 표 득점이 다르다는 경고 없음 — ' + t);
     ok(t.indexOf('타점 칸에는 선수별 타점 합계만 있어') >= 0, '타점 안내 — ' + t);
-    eq([$('goSave').disabled, $('goSave').textContent], [false, '새 경기로 저장 (9타석)'], '저장 버튼');
+    eq([$('goSave').disabled, $('goSave').textContent], [false, '새 경기로 저장 (10타석)'], '저장 버튼');
     eq($('goSheetMsg').textContent, '', '득점 줄을 적었으면 0 : 0 안내 없음');
     ok(JSON.parse(localStorage.getItem('sl_sheet_draft')).away.rows[0].name === '김민준(7)', '적던 표 보관');
   });
@@ -116,16 +116,16 @@
     eq([g.th, g.ta, g.hs, g.as, g.info.date], ['우리', '상대', 0, 3, '2026-11-01'], '팀 · 점수 · 날짜');
     eq(g.info.ls, { away: [1, null, 2], home: [null, 0] }, '이닝별 점수(득점 줄)');
     eq(seq(g), ['1회초 김민준 안타', '1회초 이도윤 플라이 아웃', '1회초 최하준 홈런', '2회말 정우진 삼진', '3회초 김민준 땅볼 아웃', '3회초 이도윤 2루타', '3회초 이도윤 삼진',
-      '5회초 김민준 볼넷', '6회초 박서준 삼진'], '타석 9개 — 이닝 · 타자 · 결과 (번트 제외)');
+      '4회말 정우진 희타', '5회초 김민준 볼넷', '6회초 박서준 삼진'], '타석 10개 — 이닝 · 타자 · 결과 (희번 = 희타, 그냥 번트는 제외)');
     eq(g.abs.filter(function (a) { return a.rbi; }).map(function (a) { return a.bname + ' ' + a.res + ':' + a.rbi; }), ['최하준 홈런:1', '이도윤 2루타:2'], '타점 칸 → 그 선수 타석에');
     eq(g.away_lineup.map(function (p) { return p.name + '#' + p.num + '/' + p.pos + '/' + (p.isStarter ? '선발' : '교체'); }),
       ['김민준#7/유격/선발', '박서준#//교체', '이도윤#/포수/선발', '최하준#/1루/선발'], '원정 라인업 — 같은 타순 둘째 줄 = 교체');
     eq(g.home_lineup.map(function (p) { return p.name; }), ['정우진'], '홈 라인업');
-    ok(g.abs.filter(function (a) { return a.x != null; }).length === 5 && g.abs.every(function (a) { return a.team === (a.bname === '정우진' ? 'home' : 'away'); }), '타구 위치 5개 · 팀');
+    ok(g.abs.filter(function (a) { return a.x != null; }).length === 6 && g.abs.every(function (a) { return a.team === (a.bname === '정우진' ? 'home' : 'away'); }), '타구 위치 6개 · 팀');
     eq(JSON.stringify(AS.abs), cur, '기록 중인 경기는 그대로');
     ok($('loadOverlay').classList.contains('show') && !$('goOverlay').classList.contains('show'), '입력창 닫고 불러오기 목록 열림');
-    ok($('toastTxt').textContent.indexOf('기록지 9타석 → 새 경기로 저장됨 (모르는 기록 1타석 제외)') >= 0, '토스트: ' + $('toastTxt').textContent);
-    eq(ev, [['scoresheet_entry_save', { pa: 9, skipped: 1, warned: 0 }]], '사용 기록: 저장 — 숫자만 (게임원 저장 이벤트는 보내지 않는다)');
+    ok($('toastTxt').textContent.indexOf('기록지 10타석 → 새 경기로 저장됨 (모르는 기록 1타석 제외)') >= 0, '토스트: ' + $('toastTxt').textContent);
+    eq(ev, [['scoresheet_entry_save', { pa: 10, skipped: 1, warned: 0 }]], '사용 기록: 저장 — 숫자만 (게임원 저장 이벤트는 보내지 않는다)');
     eq([$('goAway').value, $('goSheetGrid').children.length, localStorage.getItem('sl_sheet_draft')], ['', 0, null], '저장 뒤 숨은 칸 · 표 · 보관본 비움');
     if (window.gameOneFixClose) window.gameOneFixClose();
     closeOverlay('goFixOverlay'); closeOverlay('loadOverlay');

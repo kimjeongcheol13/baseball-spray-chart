@@ -44,6 +44,11 @@ const REC1 = [
   ['mark', 'report'], ['wait', 300], ['tap', '#slMenuBtn'], ['wait', 1000], ['tap', '#slMenu [onclick="showPostGameReport()"]'], ['wait', 2600], ['mark', 'end'],
 ];
 
+// 포지션별 수비 이닝 — 샘플 저장 경기에 경기마다 한 칸씩 돌아가는 수비 위치를 넣고(이 창에서만) 팀 화면의 표로
+const FIELDINN = `const P9 = ['투수', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익'];
+  (JSON.parse(localStorage.getItem('sl_saves')) || []).forEach((s, gi) => { const g = JSON.parse(localStorage.getItem(s.key)); if (!g) return; (g.home_lineup || []).forEach((p, i) => { p.pos = P9[(i + gi) % 9]; }); localStorage.setItem(s.key, JSON.stringify(g)); });
+  shellNav('analysis','team');await sleep(900);document.querySelector('.tm-fieldinn').closest('.an-card').scrollIntoView({block:'center'})`;
+
 // 찍을 것: [이름, 열기 식, 종류] — 'view' = 화면 그대로 · 'tall' = 분석 화면을 아래 끝까지 한 장으로 · 'img' = 식이 돌려준 그림 주소(data:)를 그대로
 const SHOTS = [
   ['rec', "shellNav('record')", 'view'],
@@ -63,6 +68,9 @@ const SHOTS = [
   ['plcard', "PitchLimit.setRule({on:true});shellNav('settings');await sleep(600);document.getElementById('stPitch').scrollIntoView({block:'start'})", 'view'],
   ['plbar', "PitchLimit.setRule({on:true});shellNav('analysis','pitcher');" + PSEED + ";setPitcherView('mode','input');await sleep(400);renderPitchCount();await sleep(300);document.getElementById('pitchCountBar').scrollIntoView({block:'center'})", 'view'],
   ['lineup', 'lsOpen()', 'view'],
+  // 11-24 주 묶음: 포지션별 수비 이닝 — 샘플 저장 경기에 경기마다 돌아가는 수비 위치를 넣고(이 창에서만) 팀 화면의 표로
+  ['fieldinn', FIELDINN, 'view'],
+  ['fieldinn2', FIELDINN + ";document.querySelector('.tm-fieldinn').closest('.tm-roster-wrap').scrollLeft = 9999", 'view'],   // 표를 오른쪽 끝까지 민 것
   // 'live' = 식이 돌려준 요약(slLive.payload)을 live.html 에 서버 없이 넣어 찍는다
   ['live', 'return JSON.stringify(slLive.payload())', 'live'],
   ['rec1', REC1, 'rec'],

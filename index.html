@@ -1701,7 +1701,7 @@ var _kakaoSdkLoaded = false;
     <div class="modal-sub go-sheet-only">종이 기록지를 보면서 타순 줄 · 이닝 칸에 결과를 옮겨 적으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 한 팀만 적어도 됩니다.</div>
     <!-- 🔗 게임원 주소로 가져오기 (gameoneimport.js fetchGameOneBox) — 중계가 박스스코어를 읽어 아래 칸을 채운다 -->
     <div class="go-link go-only">
-      <label class="go-f"><span>게임원 주소<small>경기 박스스코어 주소 = 한 경기 · 팀 경기결과 주소 = 시즌 경기를 한 번에. 넣고 「가져오기」만 누르면 돼요</small></span><input id="goUrl" class="go-inp" type="url" inputmode="url" spellcheck="false" placeholder="https://www.gameone.kr/club/info/schedule/boxscore?club_idx=…&amp;game_idx=…" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameOneBox()}"></label>
+      <label class="go-f"><span>게임원 주소 <small>경기 박스스코어 주소 = 한 경기 · 팀 경기결과 주소 = 시즌 경기를 한 번에. 넣고 「가져오기」만 누르면 돼요</small></span><input id="goUrl" class="go-inp" type="url" inputmode="url" spellcheck="false" placeholder="https://www.gameone.kr/club/info/schedule/boxscore?club_idx=…&amp;game_idx=…" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameOneBox()}"></label>
       <button type="button" class="btn btn-ghost go-link-b" id="goUrlBtn" onclick="fetchGameOneBox()">가져오기</button>
     </div>
     <div id="goUrlMsg" class="go-shot-msg go-only" aria-live="polite"></div>

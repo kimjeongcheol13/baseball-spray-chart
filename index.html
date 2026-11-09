@@ -83,7 +83,7 @@ var _kakaoSdkLoaded = false;
   document.head.appendChild(s);
 })();
 </script>
-<link rel="stylesheet" href="css/styles.css?v=104">
+<link rel="stylesheet" href="css/styles.css?v=105">
 <link rel="stylesheet" href="css/features.css?v=27">
 <link rel="stylesheet" href="css/shell.css?v=15">
 <link rel="stylesheet" href="css/analysis.css?v=14">
@@ -1669,6 +1669,7 @@ var _kakaoSdkLoaded = false;
       <label class="dm-tile"><span class="dm-ico">📊</span><b>엑셀</b><small>.xlsx</small>
         <input type="file" id="xlsxGameInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelAsGame(this)"></label>
       <button type="button" class="dm-tile go-tile" onclick="openGameOneImport()"><span class="dm-ico">⚾</span><b>게임원 가져오기</b><small>경기 · 팀 주소 붙여넣기 → 새 경기</small></button>
+      <button type="button" class="dm-tile sh-tile" onclick="openScoresheetEntry()"><span class="dm-ico">📝</span><b>종이 기록지 옮기기</b><small>손으로 적은 기록지 → 새 경기</small></button>
     </div>
 
     <div class="dm-lbl">내보내기 <span>전체 경기</span></div>
@@ -1696,16 +1697,17 @@ var _kakaoSdkLoaded = false;
       <div class="modal-title" id="goTitle" style="margin-bottom:0">게임원 기록 가져오기</div>
       <button type="button" class="dm-x go-x" onclick="closeOverlay('goOverlay')" aria-label="닫기">✕</button>
     </div>
-    <div class="modal-sub">게임원 <b>주소</b>(경기 박스스코어 · 팀 경기결과)를 넣거나 표를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 돼서, 앱 화면은 아래 「스크린샷으로 채우기」를 쓰세요.</div>
+    <div class="modal-sub go-only">게임원 <b>주소</b>(경기 박스스코어 · 팀 경기결과)를 넣거나 표를 복사해 붙여넣으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 휴대폰은 게임원 <b>앱</b> 말고 <b>크롬 · 사파리</b>에서 여세요 — 앱은 글자 복사가 안 돼서, 앱 화면은 아래 「스크린샷으로 채우기」를 쓰세요.</div>
+    <div class="modal-sub go-sheet-only">종이 기록지를 보면서 타순 줄 · 이닝 칸에 결과를 옮겨 적으면 새 경기로 저장됩니다. 기록 중인 경기는 그대로입니다. 한 팀만 적어도 됩니다.</div>
     <!-- 🔗 게임원 주소로 가져오기 (gameoneimport.js fetchGameOneBox) — 중계가 박스스코어를 읽어 아래 칸을 채운다 -->
-    <div class="go-link">
-      <label class="go-f"><span>게임원 주소 <small>경기 박스스코어 주소 = 한 경기 · 팀 경기결과 주소 = 시즌 경기를 한 번에. 넣고 「가져오기」만 누르면 돼요</small></span><input id="goUrl" class="go-inp" type="url" inputmode="url" spellcheck="false" placeholder="https://www.gameone.kr/club/info/schedule/boxscore?club_idx=…&amp;game_idx=…" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameOneBox()}"></label>
+    <div class="go-link go-only">
+      <label class="go-f"><span>게임원 주소<small>경기 박스스코어 주소 = 한 경기 · 팀 경기결과 주소 = 시즌 경기를 한 번에. 넣고 「가져오기」만 누르면 돼요</small></span><input id="goUrl" class="go-inp" type="url" inputmode="url" spellcheck="false" placeholder="https://www.gameone.kr/club/info/schedule/boxscore?club_idx=…&amp;game_idx=…" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameOneBox()}"></label>
       <button type="button" class="btn btn-ghost go-link-b" id="goUrlBtn" onclick="fetchGameOneBox()">가져오기</button>
     </div>
-    <div id="goUrlMsg" class="go-shot-msg" aria-live="polite"></div>
+    <div id="goUrlMsg" class="go-shot-msg go-only" aria-live="polite"></div>
     <!-- 📅 시즌 한 번에 (gameoneimport.js _seasonRender) — 팀 주소를 넣으면 그 시즌 경기 목록 · 골라서 차례로 저장 -->
-    <div id="goSeason" class="go-season" hidden></div>
-    <details class="go-how">
+    <div id="goSeason" class="go-season go-only" hidden></div>
+    <details class="go-how go-only">
       <summary>복사하는 방법</summary>
       <ol>
         <li><b>크롬 · 사파리 같은 브라우저</b>로 게임원(gameone.kr)에 들어가 경기 <b>박스스코어</b>를 엽니다 — 팀 페이지의 경기 일정, 또는 리그 › 게임결과 › 박스스코어. 게임원 <b>앱</b>은 글자 복사가 안 됩니다 — 앱 화면은 아래 「스크린샷으로 채우기」</li>
@@ -1715,7 +1717,7 @@ var _kakaoSdkLoaded = false;
       <p>전체 선택이 안 보이면 표를 하나씩 드래그해 각 칸에 붙여넣어도 됩니다. 머리글 · 합계 줄이 같이 들어가도 괜찮습니다. 리그 페이지는 박스스코어가 안쪽 화면에 따로 있어서, 표를 누르지 않고 전체 선택하면 표가 복사되지 않습니다.</p>
     </details>
     <!-- 📷 게임원 앱 스크린샷으로 채우기 (js/features/gameoneocr.js) — 휴대폰 안에서 글자를 읽어 아래 원정 · 홈 타자 표 칸에 넣는다 -->
-    <div class="go-shot">
+    <div class="go-shot go-only">
       <div class="go-shot-h">게임원 <b>앱</b> 화면이라면 스크린샷으로 채우기 <small>· 휴대폰 안에서 읽어요(사진은 밖으로 나가지 않음)</small></div>
       <div class="go-shot-btns">
         <button type="button" class="btn btn-ghost go-shot-b" onclick="gameOneShotPick('away')">원정팀 사진 고르기</button>
@@ -1740,16 +1742,40 @@ var _kakaoSdkLoaded = false;
       <label class="go-f"><span>홈팀</span><input id="goTh" class="go-inp" type="text" maxlength="20" placeholder="홈팀" oninput="gameOnePreview()"></label>
     </div>
     <label class="go-f"><span>경기 날짜</span><input id="goDate" class="go-inp" type="date" oninput="gameOnePreview()"></label>
-    <label class="go-f"><span>이닝별 점수표 <small>선택 · 위쪽 Team 1 2 3 … R H E B 표</small></span><textarea id="goScore" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="팀에이스&#9;4&#9;5&#9;4&#9;12 … 25&#9;17&#9;0&#9;8&#10;우진스나이퍼&#9;0&#9;0&#9;3&#9;0 … 3&#9;2&#9;3&#9;4" oninput="gameOnePreview()"></textarea></label>
-    <label class="go-f"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="선수&#9;1&#9;2&#9;3 … 타수 …&#10;1중홍길동(27)&#9;유플&#9;좌중2 …" oninput="gameOnePreview()"></textarea></label>
-    <label class="go-f"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
-    <label class="go-f"><span>투수 표 <small>선택 · 아래쪽 투수 기록 표 2개</small></span><textarea id="goPitch" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="전체 선택으로 붙여넣으면 자동으로 채워집니다" oninput="gameOnePreview()"></textarea></label>
+    <!-- 📝 종이 기록지 옮기기 (js/features/scoresheetentry.js) — 기록지 모드(#goOverlay.go-sheet-on)에서만 보인다. 표를 아래 숨은 붙여넣기 칸에 글로 넣어 같은 미리보기 · 저장을 쓴다 -->
+    <div class="go-sheet go-sheet-only" id="goSheet">
+      <div class="go-sheet-guide">칸마다 <b>방향 + 결과</b>로 적어요 — 좌안 · 유땅 · 중플 · 우중2 · 좌홈, 방향 없이 삼진 · 4구 · 사구. 한 이닝에 두 번 쳤으면 <b>/</b> 로 나눠요.<br>예) 1번 유격수 김민준: 1회 <b>좌안</b> · 3회 <b>유땅</b> · 5회 <b>4구</b></div>
+      <details class="go-how">
+        <summary>표기 더 보기</summary>
+        <ol>
+          <li><b>방향</b> — 외야: 좌 · 좌중 · 중 · 우중 · 우 / 내야: 3(3루) · 유 · 2(2루) · 1(1루) · 투 · 포</li>
+          <li><b>결과</b> — 안(안타) · 2(2루타) · 3(3루타) · 홈(홈런) · 내안(내야안타) · 땅(땅볼) · 플(뜬공) · 직(직선타) · 실(실책) · 병살 · 희플(희생플라이) · 야선(야수선택)</li>
+          <li><b>방향 없이</b> — 삼진 · 4구(볼넷) · 사구(몸에 맞는 공) · 고의4구</li>
+        </ol>
+        <p>등번호는 이름 뒤 괄호로 적어요: 김민준(7). 교체 선수는 「+ 줄 추가」 뒤 타순 번호를 선발과 같은 번호로 고쳐요. 「타점」 칸은 그 선수의 경기 타점 합계, 맨 아래 「득점」 줄은 이닝별 팀 점수예요. 희생번트처럼 읽지 못하는 표기는 미리보기에 「저장 안 함」으로 나와요 — 저장한 뒤 기록 수정에서 넣을 수 있어요.</p>
+      </details>
+      <div class="go-sheet-tabs" role="tablist" aria-label="팀">
+        <button type="button" class="btn btn-ghost" role="tab" data-sheet-tab="away" aria-selected="true" onclick="scoresheetTab('away')">원정 · 초 공격</button>
+        <button type="button" class="btn btn-ghost" role="tab" data-sheet-tab="home" aria-selected="false" onclick="scoresheetTab('home')">홈 · 말 공격</button>
+      </div>
+      <div class="go-sheet-scroll" id="goSheetGrid"></div>
+      <div id="goSheetMsg" class="go-shot-msg bad" aria-live="polite"></div>
+      <div class="go-sheet-add">
+        <button type="button" class="btn btn-ghost" onclick="scoresheetAdd('row')">+ 줄 추가</button>
+        <button type="button" class="btn btn-ghost" onclick="scoresheetAdd('inn')">+ 이닝 추가</button>
+        <button type="button" class="btn btn-primary" onclick="scoresheetPreview()">미리보기</button>
+      </div>
+    </div>
+    <label class="go-f go-only"><span>이닝별 점수표 <small>선택 · 위쪽 Team 1 2 3 … R H E B 표</small></span><textarea id="goScore" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="팀에이스&#9;4&#9;5&#9;4&#9;12 … 25&#9;17&#9;0&#9;8&#10;우진스나이퍼&#9;0&#9;0&#9;3&#9;0 … 3&#9;2&#9;3&#9;4" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f go-only"><span>원정팀 타자 표 <small>초 공격</small></span><textarea id="goAway" class="go-ta" rows="4" spellcheck="false" placeholder="선수&#9;1&#9;2&#9;3 … 타수 …&#10;1중홍길동(27)&#9;유플&#9;좌중2 …" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f go-only"><span>홈팀 타자 표 <small>말 공격</small></span><textarea id="goHome" class="go-ta" rows="4" spellcheck="false" placeholder="한쪽만 넣어도 됩니다" oninput="gameOnePreview()"></textarea></label>
+    <label class="go-f go-only"><span>투수 표 <small>선택 · 아래쪽 투수 기록 표 2개</small></span><textarea id="goPitch" class="go-ta go-ta-s" rows="3" spellcheck="false" placeholder="전체 선택으로 붙여넣으면 자동으로 채워집니다" oninput="gameOnePreview()"></textarea></label>
     <div id="goPrev" class="go-prev" aria-live="polite"></div>
     <div class="go-btns">
       <button type="button" class="btn btn-ghost" onclick="closeOverlay('goOverlay')">닫기</button>
       <button type="button" class="btn btn-primary" id="goSave" onclick="saveGameOneImport()" disabled>새 경기로 저장</button>
     </div>
-    <div id="goPrevMore" class="go-shot-msg"></div>
+    <div id="goPrevMore" class="go-shot-msg go-only"></div>
   </div>
 </div>
 
@@ -2496,7 +2522,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script defer src="js/core.js?v=272"></script>
 <script defer src="js/ocr.js?v=24"></script>
 <script defer src="js/gameone.js?v=13"></script>
-<script type="module" src="js/app.js?v=269"></script>
+<script type="module" src="js/app.js?v=270"></script>
 <script>
 /* ── Service Worker registration ── */
 if ('serviceWorker' in navigator) {

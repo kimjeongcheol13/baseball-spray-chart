@@ -450,7 +450,7 @@ function _preview() {
   const inp = _inputs(), hasBat = !!(inp.awayText.trim() || inp.homeText.trim());
   if (!hasBat && !inp.scoreText.trim()) {
     _venue = '';   // 칸을 다 비웠으면 지난 통째 붙여넣기의 구장도 다음 경기에 남기지 않는다
-    box.innerHTML = '<div class="go-empty">표를 붙여넣으면 여기에 가져올 내용이 나옵니다</div>';
+    box.innerHTML = `<div class="go-empty">${_sheet ? '칸을 채우면 여기에 저장할 내용이 나옵니다' : '표를 붙여넣으면 여기에 가져올 내용이 나옵니다'}</div>`;
     btn.disabled = true;
     return;
   }
@@ -466,7 +466,7 @@ function _preview() {
   if (!R.away.players && !R.home.players) {
     h = lsH + (hasBat ? '<div class="go-warn">선수 행을 찾지 못했습니다 — 게임원 박스스코어의 타자 표(선수명(등번호)가 있는 행)를 복사해 주세요.'
       + ' 전체 선택으로 복사했다면 <b>표를 한 번 누른 뒤</b> 다시 전체 선택해 보세요(리그 페이지는 박스스코어가 안쪽 화면에 따로 있습니다)</div>'
-      : '<div class="go-empty">타자 표도 붙여넣어야 저장할 수 있습니다</div>');
+      : `<div class="go-empty">${_sheet ? '타자 줄도 적어야 저장할 수 있습니다' : '타자 표도 붙여넣어야 저장할 수 있습니다'}</div>`);
   } else {
     h = `<div class="go-score">${_esc(g.ta)} <b>${g.as}</b> : <b>${g.hs}</b> ${_esc(g.th)}</div>`
       + iss.map(i => `<div class="go-warn ${i.cls}">${_esc(i.text)}</div>`).join('')
@@ -474,7 +474,7 @@ function _preview() {
     const rbi = R.away.rbi + R.home.rbi, hr = R.away.hrRbi + R.home.hrRbi, hrMin = R.away.hrMin + R.home.hrMin;
     const hrTxt = [hr ? '홈런 [2R 97M] 같은 기록이 있으면 그 타점' : '', hrMin ? '기록 없는 홈런은 최소 1타점(타자 본인 득점)' : ''].filter(Boolean).join(', ');
     const spread = g.abs.reduce((s, a) => s + a.rbi, 0) - hr - hrMin;
-    h += `<div class="go-note">타점: 게임원 표에는 선수별 타점 합계만 있어 ${hrTxt ? hrTxt + '을 넣고, ' : ''}나머지는 그 선수의 안타 · 희비 · 땅볼 · 볼넷 타석에 나눠 넣었습니다`
+    h += `<div class="go-note">타점: ${_sheet ? '타점 칸에는' : '게임원 표에는'} 선수별 타점 합계만 있어 ${hrTxt ? hrTxt + '을 넣고, ' : ''}나머지는 그 선수의 안타 · 희비 · 땅볼 · 볼넷 타석에 나눠 넣었습니다`
       + '(어느 타석인지는 추정 — 저장한 뒤 기록 수정에서 고칠 수 있습니다)'
       + (rbi ? ` (표의 타점 합계 ${rbi}${hr + hrMin ? ` · 홈런으로 넣은 타점 ${hr + hrMin}` : ''}${spread ? ` · 나눠 넣은 타점 ${spread}` : ''}`
         + `${R.rbiLeft ? ` · 넣을 타석이 없어 빠진 타점 ${R.rbiLeft}` : ''})` : '') + '.'
@@ -489,11 +489,21 @@ function _preview() {
 
 function _schedule() { clearTimeout(_timer); _splitNote = ''; _timer = setTimeout(_preview, 150); }
 
+// 기록지 모드 (2026-11-09): 「종이 기록지 옮기기」(scoresheetentry.js)가 openGameOneImport('sheet') 로 연다. 창 · 파서 · 미리보기 · 저장은 같고
+// 입력 칸만 다르다(게임원 주소 · 스크린샷 · 붙여넣기 칸을 숨기고 타순 × 이닝 표를 보인다 — #goOverlay.go-sheet-on). 사용 기록은 scoresheet_entry_* 로 따로 센다
+let _sheet = false;
+const _sheetDone = () => { if (_sheet && window.clearScoresheetEntry) window.clearScoresheetEntry(); };
+
 export function openGameOneImport(from) {
   if (!_P()) { if (window.showToast) window.showToast('게임원 파서를 불러오지 못했습니다 — 새로고침 후 다시 시도해 주세요', false); return; }
   if (window.closeOverlay) window.closeOverlay('dataSettingsOverlay');
   const dt = $('goDate');
   if (dt && !dt.value) { dt.value = _today(); dt.dataset.auto = '1'; }   // 기본값(오늘)도 자동 값 — 페이지 경기 정보 줄의 날짜가 덮는다
+  const sheet = from === 'sheet', ov = $('goOverlay'), ttl = $('goTitle');
+  if (sheet !== _sheet) _resetInputs();   // 모드가 바뀌면 다른 모드에서 채운 칸을 비운다(숨은 칸에 남아 섞이지 않게)
+  _sheet = sheet;
+  if (ov) ov.classList.toggle('go-sheet-on', sheet);
+  if (ttl) ttl.textContent = sheet ? '종이 기록지 옮기기' : '게임원 기록 가져오기';
   _saved.raw = null;   // 저장 경기를 새로 읽는다(목록은 그대로인데 경기 내용만 바뀐 경우)
   if (_season && !_season.busy) _season = null;   // 지난번 시즌 목록은 접는다(받는 중에 닫았다 다시 열면 그대로 이어서 보인다)
   _seasonRender();
@@ -502,6 +512,7 @@ export function openGameOneImport(from) {
   const how = fresh && document.querySelector('#goOverlay details.go-how');
   if (how) how.open = true;   // 링크 · 첫 화면으로 온 사람은 처음 쓰는 사람 — 복사 방법을 펼쳐 둔다
   if (window.openOverlay) window.openOverlay('goOverlay');
+  if (sheet) { _track('scoresheet_entry_open', {}); return; }
   _track('gameone_import_open', { from: fresh || from === 'menu' ? from : 'tile' });   // menu = ☰ 메뉴 「게임원 가져오기」(2026-10-30)
   if (!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches)) setTimeout(() => { const t = $('goScore'); if (t) t.focus(); }, 50);   // 폰은 포커스 안 줌 — 창이 점수 칸(가운데)부터 열려 제목 · 주소 칸이 가려졌다
 }
@@ -523,13 +534,15 @@ export function saveGameOneImport() {
   if (window.openLoad) window.openLoad();
   if (window.openGameOneFix) window.openGameOneFix(g.key);   // 타구 점이 있으면 「타구 위치 확인」을 불러오기 목록 위에 한 번 연다(나중에 할게로 넘길 수 있음)
   const skipped = R.away.skipped.length + R.home.skipped.length, L = R.pitch && R.pitch.linked;
-  _track('gameone_import', {
+  if (_sheet) _track('scoresheet_entry_save', { pa: g.abs.length, skipped, warned: iss.length ? 1 : 0 });
+  else _track('gameone_import', {
     pa: g.abs.length, paste: _usedLink ? 'link' : _usedSplit ? 'page' : 'tables', scoreboard: R.ls ? 1 : 0,
     pitch: !L ? 'none' : L.away && L.home ? 'linked' : L.away || L.home ? 'partial' : 'saved', skipped, warned: iss.length ? 1 : 0,
   });
   _usedSplit = _usedLink = false;
   _syncStart();
-  toast(`게임원 ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
+  _sheetDone();
+  toast(`${_sheet ? '기록지' : '게임원'} ${g.abs.length}타석 → 새 경기로 저장됨` + (skipped ? ` (모르는 기록 ${skipped}타석 제외)` : ''));
 }
 
 // 새 경기로 저장(sl_<타임스탬프> 키 · sl_saves 항목 · cloudSave) — 한 경기 저장 · 시즌 한 번에 저장이 같이 쓴다. 저장 공간이 모자라면 false
@@ -803,6 +816,7 @@ export function fillGameOneRbi() {
   if (!games) { toast('채울 타점이 없습니다' + (sk.length ? ` — 기록이 다르거나 타점을 이미 고친 선수: ${sk.join(', ')}` : '')); _preview(); return; }
   _resetInputs();
   if (window.closeOverlay) window.closeOverlay('goOverlay');
+  _sheetDone();
   toast(`기존 경기에 타점 ${added}점을 채웠습니다` + (sk.length ? ` (건너뛴 선수: ${sk.join(', ')} — 기록이 다르거나 타점을 이미 고침)` : ''));
 }
 

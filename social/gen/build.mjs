@@ -2,6 +2,7 @@
 //   node social/gen/build.mjs            → 전부
 //   node social/gen/build.mjs c1 r2      → 고른 것만 (manifest 는 항상 전체로 다시 씀)
 //   --fast                               → 릴스는 표지만 (영상 생략, 확인용)
+//   items.js 의 ext: true 릴스는 밖에서 만든 영상 — 찍지 않고 social/pool/ 의 파일을 그대로 manifest 에 싣는다
 // 필요: Chrome, ffmpeg (PATH). 음성이 있는 릴스(says)는 edge-tts 7.3.1+ — 다른 것이 PATH 앞에 있으면 EDGE_TTS=<edge-tts 경로>
 import { spawn, spawnSync } from 'node:child_process';
 import { writeFileSync, readFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from 'node:fs';
@@ -74,7 +75,14 @@ try {
   const out = [];
   for (const m of META) {
     const files = [], rec = { ...m };
-    delete rec.n; delete rec.theme; delete rec.voice; delete rec.off; if (!rec.says) delete rec.says;
+    delete rec.n; delete rec.theme; delete rec.voice; delete rec.off; delete rec.ext; if (!rec.says) delete rec.says;
+    if (m.ext) {   // 밖에서 만든 릴스(ext): 찍지 않는다 — social/pool/ 에 넣어 둔 영상 · 표지를 그대로 싣는다
+      for (const f of [m.ext.cover, ...m.ext.files]) if (!existsSync(join(POOL, f))) throw new Error(`${m.id}: social/pool/${f} 없음`);
+      Object.assign(rec, { seconds: m.ext.seconds, cover: m.ext.cover, files: m.ext.files });
+      if (!m.off) out.push(rec);
+      console.log('ext ', m.id, rec.seconds + 's');
+      continue;
+    }
     if (m.format === 'reel') {
       // 음성이 있으면 장면 길이 = 음성 길이 + 쉼 (첫 화면 2.6초 이상, 마지막 화면은 끝까지 보이게 +1.6초)
       const vdir = m.says && !FAST && (!ONLY.length || ONLY.includes(m.id)) ? mkdtempSync(join(tmpdir(), 'slv-')) : null;

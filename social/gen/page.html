@@ -220,6 +220,6 @@
   } else {
     document.getElementById('root').innerHTML = it.slides()[+(q.get('s') || 0)];
   }
-  window.META = ITEMS.map(x => ({ id: x.id, format: x.format, theme: x.theme, type: x.type, topic: x.topic, hook: x.hook, facts: x.facts, says: x.says || null, voice: x.voice || null, aud: x.aud || '전체', off: !!x.off, n: x.slides ? x.slides().length : 0 }));
+  window.META = ITEMS.map(x => ({ id: x.id, format: x.format, theme: x.theme, type: x.type, topic: x.topic, hook: x.hook, facts: x.facts, says: x.says || null, voice: x.voice || null, aud: x.aud || '전체', off: !!x.off, n: x.slides ? x.slides().length : 0, ext: x.ext ? { seconds: x.seconds, cover: x.cover, files: x.files } : null }));
 </script>
 </body></html>

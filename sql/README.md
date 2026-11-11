@@ -24,6 +24,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `14_user_games_label.sql` | 경기 이름 바꾸기를 다른 기기로: `user_games.label` · `label_at`(둘 다 null 허용). 클라이언트는 이름을 바꿀 때 이 두 열만 update 한다(data · updated_at 은 그대로 — 내용이 오래된 기기가 서버를 덮지 않게). 새 정책 없음(08 의 `user_games_update` 가 내 행만). 08 선행 · 사용자 트리거 없음 · 새 열의 열 권한을 가정 확인이 검사. **순서: ① 이 파일 → ② 클라이언트 머지·배포**. **2026-10-20 적용** |  컬럼 2개 추가 (DROP 없음) |
 | `15_bot_guard.sql` | 봇 경비: 로그인 없이 쓰는 `feedback` · `shared_links` 에 크기 검사(check, NOT VALID — 새 행만: 글 2000자 · 태그 10개 · payload 256 KB · id 4~32자)와 횟수 제한 트리거(security definer — feedback 10분 20개 · 하루 200개, shared_links 10분 60개 · 하루 600개 · 하루 50 MB, 넘으면 SQLSTATE `PT429`). `created_at` 은 트리거가 `now()` 로 고정. 06 선행(가정 확인이 검사) · 클라이언트와 순서 무관(지금 클라이언트는 한도 안의 값만 보낸다). 막히면 의견은 Formspree 로 그대로, 공유 링크는 주소형 링크로 대체된다. **2026-11-05 적용** | 제약 5개 · 함수 2개 · 트리거 2개 · 인덱스 2개 추가 (DROP 없음) |
 | `15b_verify_bot_guard.sql` | 15 검증 (임시 행, 전부 롤백) — 크기 · 횟수 · 시각 고정 · 기존 링크 열기 · 트리거 함수 직접 호출 차단 15개 | 없음 (전부 롤백) |
+| `17_log_visit.sql` | 방문 수: `log_visit(uid, kind)` 함수(security definer · anon/authenticated 실행) — 같은 uid 20시간에 1줄, 표 전체 10분 300줄까지, 1년 지난 줄 삭제. `visits` 표는 07 그대로(정책 없음 · 직접 읽기/쓰기 막힘). `visits (uid, created_at)` 색인. 클라이언트 js/analytics.js(github.io · 하루 한 번). **순서 무관** — 함수가 없으면 요청이 404 로 끝나고 화면 영향 없음 | 함수 1개 · 인덱스 1개 추가 (DROP 없음) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

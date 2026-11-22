@@ -1,12 +1,16 @@
 // 동작 분석 — MediaPipe Pose 엔진 불러오기 · 영상에서 포즈 뽑기 (브라우저 전용)
 //  · 엔진(Apache-2.0)은 분석을 처음 누를 때만 받는다(코드 + WASM + 모델). 영상은 기기 안에서만 처리하고 어디로도 보내지 않는다
 //  · 버전은 고정한다 — 올릴 때는 여기 한 곳만 바꾼다
+//  · 기본은 full · VIDEO 모드. 실제 실내 타격장 스윙 42프레임에서 잰 값(2026-11-22): full 이 heavy 보다 관절을 더 잡았고(평균 28.8 대 22.0개)
+//    4배 빨랐다. VIDEO 모드의 손목은 IMAGE 모드의 한 프레임 전보다 같은 프레임에 더 가까워 지연이 없었고, 사람을 찾은 프레임도 많았다(29 대 18).
+//    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
 import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
 const MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
 const MODELS = {
   full: `${MODEL_BASE}/pose_landmarker_full/float16/1/pose_landmarker_full.task`,
+  heavy: `${MODEL_BASE}/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task`,
   lite: `${MODEL_BASE}/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
 };
 const SEEK_TIMEOUT_MS = 4000;

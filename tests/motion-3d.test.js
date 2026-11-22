@@ -80,7 +80,7 @@
   });
 
   test('동작 다시 보기: 반복 구간은 임팩트 앞 1.2초 ~ 뒤 0.5초(영상 범위 안) · 선수 주변 네모는 여유를 두고 원하는 비율로', async function () {
-    var W = await import('/js/motion/view.js?v=2');
+    var W = await import('/js/motion/view.js?v=3');
     eq(W.loopRange({ events: { main: 100 }, fps: 30 }, 300), { from: 64, to: 115 }, '가운데');
     eq(W.loopRange({ events: { main: 10 }, fps: 30 }, 20), { from: 0, to: 19 }, '영상 끝에서 자름');
     eq(W.loopRange({ events: { main: 480 }, fps: 240 }, 2000), { from: 192, to: 600 }, '슬로모션(초당 240장)');
@@ -96,7 +96,7 @@
   });
 
   test('나란히 보기: 임팩트 기준 같은 실제 시간에 두 기록이 각자의 프레임을 보여 준다 · 사람이 없는 프레임은 가까운 프레임으로', async function () {
-    var W = await import('/js/motion/view.js?v=2'), U = await import('/js/motion/duel.js?v=1');
+    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=2');
     var mk = function (n, holes) { var f = [], i; for (i = 0; i < n; i++) f.push(holes.indexOf(i) >= 0 ? { world: null, image: null } : { world: [1], image: [1] }); return f; };
     var slow = { frames: mk(120, []), main: 60, fps: 30, hand: 'R' }, fast = { frames: mk(900, []), main: 480, fps: 240, hand: 'L' };
     eq([U.duelIndex(slow, 0), U.duelIndex(fast, 0)], [60, 480], '임팩트 순간');
@@ -105,6 +105,24 @@
     eq([W.nearestPose(mk(10, [4]), 4), W.nearestPose(mk(10, [4, 3, 5]), 4), W.nearestPose(mk(10, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), 4)], [3, 2, null], '가까운 프레임');
     eq(U.duelIndex({ frames: mk(20, [10]), main: 10, fps: 30, hand: 'R' }, 0), 9, '빈 프레임이면 가까운 프레임');
     eq([W.LOOP_BEFORE_S, W.LOOP_AFTER_S], [1.2, 0.5], '되풀이 구간');
+  });
+
+  test('분석할 선수 고르기: 끌어 그린 네모에 여유를 더하고, 그냥 누르면 화면 높이 절반짜리 네모 · 화면 밖으로 안 나감 · 좌표 되돌리기', async function () {
+    var W = await import('/js/motion/view.js?v=3');
+    var r = W.pickRegion({ x: 0.6, y: 0.3 }, { x: 0.8, y: 0.7 }, 16 / 9, 0.1);
+    near(r.w, 0.24, 1e-9, '폭 + 여유'); near(r.h, 0.48, 1e-9, '높이 + 여유'); near(r.x, 0.58, 1e-9, 'x'); near(r.y, 0.26, 1e-9, 'y');
+    var back = W.pickRegion({ x: 0.8, y: 0.7 }, { x: 0.6, y: 0.3 }, 16 / 9, 0.1);
+    eq([back.x, back.y, back.w, back.h].map(function (v) { return +v.toFixed(6); }), [0.58, 0.26, 0.24, 0.48], '반대로 끌어도 같다');
+    var tap = W.pickRegion({ x: 0.5, y: 0.5 }, { x: 0.505, y: 0.5 }, 16 / 9);
+    near(tap.h, 0.5, 1e-9, '누르기: 높이'); near(tap.w, 0.5 / (16 / 9), 1e-9, '누르기: 폭(픽셀로 정사각형)'); near(tap.x + tap.w / 2, 0.5025, 1e-9, '누른 자리가 가운데');
+    var edge = W.pickRegion({ x: 0.97, y: 0.95 }, { x: 0.97, y: 0.95 }, 16 / 9);
+    ok(edge.x + edge.w <= 1 + 1e-9 && edge.y + edge.h <= 1 + 1e-9 && edge.x >= 0 && edge.y >= 0, '화면 안');
+    near(W.pickRegion({ x: 0.5, y: 0.5 }, { x: 0.54, y: 0.5 }, 1, 0).w, 0.08, 1e-9, '너무 작게 끌면 최소 크기');
+    var m = W.mapToFrame([{ x: 0, y: 0, z: 0.5, visibility: 0.9 }, { x: 1, y: 0.5, z: 0, visibility: 1 }], { x: 0.5, y: 0.1, w: 0.3, h: 0.8 });
+    near(m[0].x, 0.5, 1e-9, '왼쪽 위 x'); near(m[0].y, 0.1, 1e-9, '왼쪽 위 y'); near(m[1].x, 0.8, 1e-9, '오른쪽 x'); near(m[1].y, 0.5, 1e-9, '가운데 y');
+    eq([m[0].visibility, W.mapToFrame(null, { x: 0, y: 0, w: 1, h: 1 })], [0.9, null], 'visibility 유지 · 사람 없음');
+    var same = [{ x: 0.2, y: 0.3 }];
+    ok(W.mapToFrame(same, null) === same, '영역이 없으면 그대로');
   });
 
   test('영상 위 안내: 사람을 못 찾은 프레임에만 「이 프레임은 사람을 찾지 못했어요」를 그린다', async function () {

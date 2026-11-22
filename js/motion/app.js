@@ -2,7 +2,7 @@
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=4';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
 import { drawOverlay, drawLabels, jointLabels, COLOR } from './overlay.js?v=6';
 import { createChart } from './chart.js?v=6';
 import { createSkeleton3D } from './skeleton3d.js?v=4';
@@ -10,8 +10,8 @@ import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TE
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
-import { loopRange, cropBox, nearestPose } from './view.js?v=2';
-import { createDuel } from './duel.js?v=1';
+import { loopRange, cropBox, nearestPose, pickRegion } from './view.js?v=3';
+import { createDuel } from './duel.js?v=2';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -37,15 +37,16 @@ const el = {
   results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
-  player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'),
+  player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
   duelBox: $('duelBox'), duelNone: $('duelNone'), duelPlay: $('btnDuel'), duelRate: $('duelRate'), duelTime: $('duelTime'), duelA: $('duelA'), duelB: $('duelB'), duelNameA: $('duelNameA'), duelNameB: $('duelNameB'),
 };
 const ctx = el.overlay.getContext('2d');
 const layer = document.createElement('canvas');   // 「영상 + 선」 화면용: 선만 그려 두었다가 선수 주변만 잘라 겹친다
 
 // clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수) }
+// region = 분석할 선수 영역(화면 비율 네모 · 없으면 화면 전체) · picking = 선수를 고르는 중 · drag = 끌고 있는 네모의 두 점
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0 };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -68,7 +69,7 @@ function setStatus(text, bad = false) {
 function setBusy(busy) {
   state.busy = busy;
   state.stopping = false;
-  for (const part of [el.setup, el.transport, el.rangeRow]) part.inert = busy;
+  for (const part of [el.setup, el.transport, el.rangeRow, el.pickRow]) part.inert = busy;
   el.analyze.disabled = busy;
   el.stop.hidden = el.progress.hidden = !busy;
   if (!busy) state.liveFrame = null;
@@ -91,6 +92,7 @@ function openVideo(file) {
   if (!file) return;
   clearResult();
   state.clip = null; state.restore = null; state.still = null;
+  setRegion(null);
   state.file = fileRef(file);
   showVideo(file);
   setStatus('영상을 여는 중…');
@@ -173,7 +175,68 @@ function overlayScene() {
 }
 
 function draw() {
-  if (el.overlay.width) drawOverlay(ctx, el.overlay.width, el.overlay.height, overlayScene());
+  if (!el.overlay.width) return;
+  drawOverlay(ctx, el.overlay.width, el.overlay.height, overlayScene());
+  drawPick();
+}
+
+// 분석할 선수 영역(또는 끌고 있는 네모)을 점선으로 보여 준다
+function drawPick() {
+  const w = el.overlay.width, h = el.overlay.height, box = state.drag ? pickRegion(state.drag.a, state.drag.b, w / h, 0) : state.region;
+  if (!box) return;
+  const u = Math.max(1, Math.min(w, h) / 360);
+  ctx.save();
+  ctx.setLineDash([7 * u, 5 * u]);
+  for (const [color, width] of [[COLOR.casing, 4 * u], [COLOR.ink, 2 * u]]) { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.strokeRect(box.x * w, box.y * h, box.w * w, box.h * h); }
+  ctx.restore();
+}
+
+// ── 분석할 선수 고르기 ───────────────────────────────────────
+function setRegion(region) {
+  state.region = region; state.drag = null;
+  setPicking(false);
+  el.pickClear.hidden = !region;
+  el.pickText.textContent = region ? '네모 안의 선수만 분석해요.' : '여러 사람이 나오는 영상이면 분석할 선수를 골라 주세요. 고르지 않으면 가장 크게 찍힌 사람을 분석해요.';
+  draw();
+}
+
+function setPicking(on) {
+  state.picking = on;
+  el.stage.classList.toggle('picking', on);
+  el.pick.textContent = on ? '고르기 취소' : state.region ? '선수 다시 고르기' : '선수 고르기';
+}
+
+function startPicking() {
+  if (state.picking) { state.drag = null; setPicking(false); draw(); return; }
+  el.video.pause();
+  setPicking(true);
+  setStatus('영상에서 분석할 선수를 눌러 주세요. 끌어서 네모로 감싸면 더 정확해요.');
+}
+
+// 누른 자리를 영상 기준 비율(0~1)로
+function stagePoint(e) {
+  const r = el.overlay.getBoundingClientRect();
+  return { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) };
+}
+
+function onPickDown(e) {
+  if (!state.picking) return;
+  el.overlay.setPointerCapture(e.pointerId);
+  state.drag = { a: stagePoint(e), b: stagePoint(e) };
+  draw();
+}
+
+function onPickMove(e) {
+  if (!state.drag) return;
+  state.drag.b = stagePoint(e);
+  draw();
+}
+
+function onPickUp(e) {
+  if (!state.drag) return;
+  const { a } = state.drag, b = stagePoint(e), v = el.video;
+  setRegion(pickRegion(a, b, v.videoWidth / v.videoHeight));
+  setStatus(state.clip ? '선수를 골랐어요. 「분석 시작」을 다시 눌러 주세요.' : '선수를 골랐어요. 구간을 확인하고 「분석 시작」을 눌러 주세요.');
 }
 
 // 영상 위치가 바뀔 때마다: 그림 · 위치 막대 · 시각 · 그래프의 재생선
@@ -259,7 +322,7 @@ async function analyze() {
     const hz = await estimateFps(el.video);
     setStatus('동작을 읽는 중…');
     state.readStart = performance.now();
-    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, onProgress, shouldStop: () => state.stopping });
+    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
     state.clip = { frames: sampled.frames, start: range.start, hz, aspect: el.video.videoWidth / el.video.videoHeight, missing: sampled.missing };
   } catch (e) {
@@ -643,6 +706,12 @@ function bind() {
   el.motionRate.addEventListener('change', () => { if (state.loop) { el.video.playbackRate = Number(el.motionRate.value); el.rate.value = el.motionRate.value; } });
   el.save.addEventListener('click', save);
   el.attach.addEventListener('change', () => attachVideo(el.attach.files[0]));
+  el.pick.addEventListener('click', startPicking);
+  el.pickClear.addEventListener('click', () => { setRegion(null); setStatus(state.clip ? '화면 전체에서 찾도록 되돌렸어요. 「분석 시작」을 다시 눌러 주세요.' : '화면 전체에서 가장 크게 찍힌 사람을 분석해요.'); });
+  el.overlay.addEventListener('pointerdown', onPickDown);
+  el.overlay.addEventListener('pointermove', onPickMove);
+  el.overlay.addEventListener('pointerup', onPickUp);
+  el.overlay.addEventListener('pointercancel', () => { state.drag = null; draw(); });
   el.duelPlay.addEventListener('click', toggleDuel);
   el.duelRate.addEventListener('change', () => { if (state.duel) state.duel.setRate(Number(el.duelRate.value)); });
   for (const b of document.querySelectorAll('[data-duel-view]')) b.addEventListener('click', () => { if (state.duel) state.duel.setView(VIEWS[b.dataset.duelView][0], VIEWS[b.dataset.duelView][1]); });

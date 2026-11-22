@@ -2,7 +2,7 @@
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=1';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=1';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=2';
 import { drawOverlay, COLOR } from './overlay.js?v=2';
 import { createChart } from './chart.js?v=2';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, NOTE_TEXT, FAIL_TEXT } from './metrics.js?v=1';
@@ -12,6 +12,7 @@ const MAX_RANGE_S = 12;
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
 const MODE_TEXT = { bat: '타격', pitch: '투구' };
+const DOWNLOAD_MB = { lite: 20, full: 24, heavy: 45 };   // 엔진(WASM 약 15MB) + 모델
 const HAND_TEXT = { R: '우', L: '좌' };
 const TILE_COLOR = { pelvisPeak: COLOR.pelvis, trunkPeak: COLOR.trunk };
 
@@ -173,7 +174,7 @@ async function analyze() {
   clearResult();
   setBusy(true);
   try {
-    setStatus('분석 엔진을 불러오는 중… (처음 한 번만 받아요 · 약 20MB)');
+    setStatus(`분석 엔진을 불러오는 중… (처음 한 번만 받아요 · 약 ${DOWNLOAD_MB[opt.model]}MB)`);
     const landmarker = await loadLandmarker(opt.model);
     const hz = await estimateFps(el.video);
     setStatus('동작을 읽는 중…');

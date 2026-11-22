@@ -11,7 +11,7 @@ import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
-import { createDuel } from './duel.js?v=3';
+import { createDuel } from './duel.js?v=4';
 import { createMirror } from './mirror.js?v=1';
 import { dropStrays } from './track.js?v=1';
 
@@ -637,22 +637,32 @@ async function duelSide(e) {
   return { frames, main: r.events.main, fps: r.fps, hz: clip.hz, start: clip.start, slow: clip.slow, hand: e.hand, video: await duelVideo(stored && stored.blob) };
 }
 
-// 두 기록을 나란히 올린다(둘 다 다시 보기 데이터가 있을 때): 기록마다 「영상 + 선」과 3D 뼈대. 임팩트 · 릴리스 순간에 맞춰 함께 움직인다
+// 다시 보기 데이터가 없는 기록이 있으면 무엇이 없고 어떻게 하면 되는지 알린다
+function duelWarning(entries, sides) {
+  const missing = entries.map((e, k) => (sides[k] ? null : `${'AB'[k]} 기록(${titleOf(e)})`)).filter(Boolean);
+  if (!missing.length) return '';
+  const what = missing.length === 2 ? '두 기록 모두' : `${missing[0]}은`;
+  return `${what} 숫자만 저장돼 있어 영상과 뼈대를 보여 줄 수 없어요. 다시 보기 기능이 생기기 전에 저장한 기록이에요. 그 선수의 영상을 다시 분석해서 저장하면 여기서 영상으로 비교할 수 있어요.`;
+}
+
+// 두 기록을 나란히 올린다: 기록마다 「영상 + 선」과 3D 뼈대. 임팩트 · 릴리스 순간에 맞춰 함께 움직인다
+//  · 한쪽에만 다시 보기 데이터가 있어도 그쪽은 보여 주고, 없는 쪽 자리에는 안내를 쓴다
 async function renderDuel(a, b) {
   const token = ++state.duelToken;
   stopDuel();
   let sides = [null, null];
   try { sides = await Promise.all([duelSide(a), duelSide(b)]); } catch (e) { console.warn('[motion] 나란히 보기 데이터를 읽지 못했어요', e); }
   if (token !== state.duelToken) { stopDuel(); return; }   // 읽는 사이 다른 기록을 골랐다
-  const ready = !!(sides[0] && sides[1]);
-  el.duelBox.hidden = !ready;
-  el.duelNone.hidden = ready;
-  if (!ready) { stopDuel(); return; }
+  const any = !!(sides[0] || sides[1]);
+  el.duelNone.textContent = duelWarning([a, b], sides);
+  el.duelNone.hidden = !el.duelNone.textContent;
+  el.duelBox.hidden = !any;
+  if (!any) { stopDuel(); return; }
   el.duelNameA.textContent = `A · ${titleOf(a)}`;
   el.duelNameB.textContent = `B · ${titleOf(b)}`;
   const event = eventName(a.mode);
   state.duel = createDuel(sides, [{ mirror: el.duelVideoA, view: el.duelA }, { mirror: el.duelVideoB, view: el.duelB }],
-    (t) => { el.duelTime.textContent = `${event} 기준 ${t > 0 ? '+' : ''}${Math.round(t * 1000)}ms`; });
+    (t) => { el.duelTime.textContent = `${event} 기준 ${t > 0 ? '+' : ''}${Math.round(t * 1000)}ms`; }, '숫자만 저장된 기록이에요');
   state.duel.setRate(Number(el.duelRate.value));
 }
 

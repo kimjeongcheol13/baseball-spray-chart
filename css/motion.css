@@ -110,6 +110,9 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 .mo-view3d:active { cursor: grabbing; }
 .mo-view-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mo-view-video, .mo-view-video:active { cursor: default; background: #000; }
+.mo-duel { margin: 0; min-width: 0; }
+.mo-duel figcaption { font-size: 12px; font-weight: 700; color: var(--mo-ink2); min-height: 2.6em; }
+#duelBox { margin-top: 16px; }
 .mo-view3d:focus-visible { outline: 2px solid var(--mo-blue); outline-offset: 2px; }
 .mo-table { margin-top: 6px; font-size: 12px; color: var(--mo-ink2); }
 .mo-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -139,6 +142,11 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 .mo-foot { font-size: 12px; color: var(--mo-ink3); padding: 4px 2px; }
 .mo-foot p { margin: 0 0 6px; }
 .mo-foot a { display: inline-block; min-height: 44px; line-height: 44px; color: var(--mo-ink2); }
+
+/* 휴대폰에서만: 나란히 놓은 두 화면(영상 + 선 | 3D, 기록 A | B)을 위아래로 쌓는다. 태블릿 · 데스크톱은 좌우 */
+@media (max-width: 720px) {
+  .mo-view-pair { grid-template-columns: 1fr; }
+}
 
 @media (min-width: 900px) {
   .mo-hero h1 { font-size: 34px; }

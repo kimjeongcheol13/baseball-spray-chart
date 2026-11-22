@@ -31,8 +31,8 @@
   }
 
   test('(준비) 3D 뷰어 · 오버레이 모듈을 불러온다', async function () {
-    V = await import('/js/motion/skeleton3d.js?v=3');
-    O = await import('/js/motion/overlay.js?v=5');
+    V = await import('/js/motion/skeleton3d.js?v=4');
+    O = await import('/js/motion/overlay.js?v=6');
     ok(V.rotatePoint && V.projectPose && V.createSkeleton3D && O.drawOverlay, '모듈 로드');
   });
 
@@ -80,7 +80,7 @@
   });
 
   test('동작 다시 보기: 반복 구간은 임팩트 앞 1.2초 ~ 뒤 0.5초(영상 범위 안) · 선수 주변 네모는 여유를 두고 원하는 비율로', async function () {
-    var W = await import('/js/motion/view.js?v=1');
+    var W = await import('/js/motion/view.js?v=2');
     eq(W.loopRange({ events: { main: 100 }, fps: 30 }, 300), { from: 64, to: 115 }, '가운데');
     eq(W.loopRange({ events: { main: 10 }, fps: 30 }, 20), { from: 0, to: 19 }, '영상 끝에서 자름');
     eq(W.loopRange({ events: { main: 480 }, fps: 240 }, 2000), { from: 192, to: 600 }, '슬로모션(초당 240장)');
@@ -93,6 +93,18 @@
     var wide = W.cropBox([fr(0.05, 0.95, 0.4, 0.6)], 0, 0, 0.5, 0.1);
     eq([wide.w, wide.x], [1, 0], '화면보다 넓어질 수 없다');
     eq(W.cropBox([{ image: null }], 0, 0, 1), { x: 0, y: 0, w: 1, h: 1 }, '사람이 없으면 화면 전체');
+  });
+
+  test('나란히 보기: 임팩트 기준 같은 실제 시간에 두 기록이 각자의 프레임을 보여 준다 · 사람이 없는 프레임은 가까운 프레임으로', async function () {
+    var W = await import('/js/motion/view.js?v=2'), U = await import('/js/motion/duel.js?v=1');
+    var mk = function (n, holes) { var f = [], i; for (i = 0; i < n; i++) f.push(holes.indexOf(i) >= 0 ? { world: null, image: null } : { world: [1], image: [1] }); return f; };
+    var slow = { frames: mk(120, []), main: 60, fps: 30, hand: 'R' }, fast = { frames: mk(900, []), main: 480, fps: 240, hand: 'L' };
+    eq([U.duelIndex(slow, 0), U.duelIndex(fast, 0)], [60, 480], '임팩트 순간');
+    eq([U.duelIndex(slow, -0.5), U.duelIndex(fast, -0.5)], [45, 360], '0.5초 전(촬영 속도가 달라도 같은 실제 시간)');
+    eq([U.duelIndex(slow, 0.5), U.duelIndex(slow, 9), U.duelIndex(slow, -9)], [75, 119, 0], '영상 범위 안으로');
+    eq([W.nearestPose(mk(10, [4]), 4), W.nearestPose(mk(10, [4, 3, 5]), 4), W.nearestPose(mk(10, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), 4)], [3, 2, null], '가까운 프레임');
+    eq(U.duelIndex({ frames: mk(20, [10]), main: 10, fps: 30, hand: 'R' }, 0), 9, '빈 프레임이면 가까운 프레임');
+    eq([W.LOOP_BEFORE_S, W.LOOP_AFTER_S], [1.2, 0.5], '되풀이 구간');
   });
 
   test('영상 위 안내: 사람을 못 찾은 프레임에만 「이 프레임은 사람을 찾지 못했어요」를 그린다', async function () {
@@ -109,6 +121,11 @@
     O.drawOverlay(withLabels.ctx, 360, 640, { frame: pose });
     O.drawOverlay(noLabels.ctx, 360, 640, { frame: pose, labels: false });
     ok(withLabels.texts.some(function (t) { return t.indexOf('앞무릎') === 0; }), '각도 표가 없다: ' + JSON.stringify(withLabels.texts));
+    var jl = O.jointLabels(pose, 'R');
+    eq(jl.map(function (l) { return [l.key, l.joint]; }), [['leadElbow', 13], ['rearElbow', 14], ['leadKnee', 25], ['rearKnee', 26]], '각도 표의 관절 번호(우타: 앞 = 왼쪽)');
+    var moved = fakeCtx();
+    O.drawLabels(moved.ctx, 200, 300, jl.map(function (l) { return Object.assign({}, l, { x: 0.5, y: 0.5 }); }), 1);
+    eq(moved.texts.length, 4, '좌표만 바꿔 다른 화면에 그릴 수 있다');
     eq(noLabels.texts, [], 'labels: false 면 글자를 그리지 않는다');
   });
 })();

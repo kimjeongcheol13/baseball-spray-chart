@@ -1,15 +1,16 @@
 // 동작 분석 화면 (motion.html) — 영상 고르기 → 구간 정하기 → 포즈 뽑기 → 지표 · 그래프 · 저장
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-import { analyzeMotion } from './analyze.js?v=1';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=2';
+import { analyzeMotion } from './analyze.js?v=2';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=3';
 import { drawOverlay, COLOR } from './overlay.js?v=3';
 import { createChart } from './chart.js?v=3';
 import { createSkeleton3D } from './skeleton3d.js?v=1';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, NOTE_TEXT, FAIL_TEXT } from './metrics.js?v=1';
 import { loadLog, addEntry, removeEntry } from './store.js?v=1';
 
-const MAX_RANGE_S = 12;
+const MAX_RANGE_S = 6;     // 스윙 · 투구 한 번은 2~3초면 된다. 길게 잡을수록 기다림이 길어진다
+const NEAR_3D = 5;         // 3D 에서 사람을 못 찾은 프레임이면 앞뒤 이만큼 안에서 가장 가까운 프레임을 보여 준다
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
 const MODE_TEXT = { bat: '타격', pitch: '투구' };
@@ -23,14 +24,14 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
 };
 const ctx = el.overlay.getContext('2d');
 
 // clip = 뽑아 둔 포즈 { frames, start, hz, stalled } · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0 };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -158,10 +159,19 @@ function tick() {
   sync3d();
 }
 
+// i 번째 프레임 앞뒤 NEAR_3D 안에서 사람을 찾은 가장 가까운 프레임 번호. 없으면 null
+function nearestPose(frames, i) {
+  for (let d = 0; d <= NEAR_3D; d++) for (const k of [i - d, i + d]) if (frames[k] && frames[k].world) return k;
+  return null;
+}
+
 // 3D 뷰어에 지금 영상 위치의 프레임을 넘긴다. 분석 구간 밖이면 마지막 프레임을 그대로 둔다
 function sync3d() {
   const i = currentIndex();
-  if (state.view3d && state.result && i !== null) state.view3d.setFrame(state.clip.frames[i], state.result.hand);
+  if (!state.view3d || !state.result || i === null) return;
+  const k = nearestPose(state.clip.frames, i);
+  state.view3d.setFrame(state.clip.frames[k === null ? i : k], state.result.hand);
+  el.view3dNote.textContent = k === null || k === i ? '' : `이 프레임은 사람을 못 찾아 가장 가까운 프레임(${k > i ? '+' : ''}${k - i})을 보여 줘요`;
 }
 
 function playLoop() {
@@ -186,6 +196,7 @@ async function analyze() {
     const landmarker = await loadLandmarker(opt.model);
     const hz = await estimateFps(el.video);
     setStatus('동작을 읽는 중…');
+    state.readStart = performance.now();
     const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, onProgress, shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
     state.clip = { frames: sampled.frames, start: range.start, hz, stalled: sampled.stalled };
@@ -202,7 +213,8 @@ async function analyze() {
 function onProgress(done, total, frame) {
   state.liveFrame = frame;
   el.progress.value = done / total;
-  setStatus(`동작을 읽는 중… ${done} / ${total} 프레임`);
+  const left = Math.round(((performance.now() - state.readStart) / done) * (total - done) / 1000);
+  setStatus(`동작을 읽는 중… ${done} / ${total} 프레임${done >= 5 ? ` · 약 ${left}초 남음` : ''}`);
   draw();
 }
 
@@ -222,6 +234,7 @@ function clearResult() {
   state.result = null;
   if (state.chart) { state.chart.destroy(); state.chart = null; }
   if (state.view3d) { state.view3d.destroy(); state.view3d = null; }
+  el.view3dNote.textContent = '';
   el.results.hidden = true;
   el.saveMsg.textContent = '';
   draw();

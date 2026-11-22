@@ -1,4 +1,4 @@
-// 동작 분석 결과 풀이 (js/motion/insight.js) · 프로 참고 범위 (reference.js) · 영상 끌어다 놓기 (drop.js)
+// 동작 분석 결과 풀이 (js/motion/insight.js) · 참고 범위 (reference.js) · 영상 끌어다 놓기 (drop.js)
 (function () {
   var T = window.__T, ok = T.ok, eq = T.eq, test = T.test;
   var I, R, D;
@@ -33,6 +33,8 @@
   test('한눈에 보기: 몸통이 먼저 · 같은 프레임 · 피크 없음을 구분한다', async function () {
     var early = I.summaryLines(result({ metrics: { sequence: { order: ['trunk', 'pelvis'], proximalToDistal: false, pelvisToTrunkMs: -67, resolutionMs: 33.3 } } }), null)[0];
     eq(early.tone, 'warn', '몸통 먼저는 주의'); ok(early.text.indexOf('67ms 먼저') > 0, early.text);
+    var handFirst = I.summaryLines(result({ metrics: { sequence: { order: ['pelvis', 'hand', 'trunk'], proximalToDistal: false, pelvisToTrunkMs: 33, resolutionMs: 33.3 } } }), null)[0];
+    ok(handFirst.tone === 'info' && handFirst.text.indexOf('손(추정)이 몸통보다 먼저') > 0, '손이 몸통보다 먼저: ' + handFirst.text);
     var same = I.summaryLines(result({ metrics: { sequence: { order: [], proximalToDistal: true, pelvisToTrunkMs: 0, resolutionMs: 33.3 } } }), null)[0];
     ok(same.text.indexOf('같은 프레임') > 0 && same.text.indexOf('33ms') > 0, same.text);
     var none = I.summaryLines(result({ metrics: { sequence: { order: [], proximalToDistal: null, pelvisToTrunkMs: null, resolutionMs: 33.3 } } }), null)[0];
@@ -72,7 +74,7 @@
     eq(I.readText('없는키'), '', '모르는 지표는 빈 글자');
   });
 
-  test('프로 참고 범위: 값이 낮음 · 안 · 높음을 가르고, 신뢰도가 낮으면 위치를 말하지 않는다', async function () {
+  test('참고 범위: 값이 낮음 · 안 · 높음을 가르고, 신뢰도가 낮으면 위치를 말하지 않는다', async function () {
     var ref = { low: 600, high: 800, unit: '°/s' };
     eq([I.positionIn(ref, 599), I.positionIn(ref, 600), I.positionIn(ref, 800), I.positionIn(ref, 801), I.positionIn(ref, null), I.positionIn(null, 700)], ['below', 'within', 'within', 'above', null, null], 'positionIn');
     eq(I.referenceLine('bat', 'stride', 50, 'high'), null, '참고 범위가 없는 지표');
@@ -82,12 +84,14 @@
         ok(ref2.low < ref2.high && ref2.unit && ref2.source, mode + ' · ' + key + ': ' + JSON.stringify(ref2));
         var mid = I.referenceLine(mode, key, (ref2.low + ref2.high) / 2, 'high'), low = I.referenceLine(mode, key, ref2.low - 1, 'mid'), poor = I.referenceLine(mode, key, ref2.low - 1, 'low');
         eq([mid.position, low.position, poor.position], ['within', 'below', null], mode + ' · ' + key + ' 위치');
-        ok(mid.text.indexOf('프로 참고 ' + ref2.low + '~' + ref2.high) === 0 && mid.text.indexOf('범위 안') > 0, mid.text);
+        ok(mid.text.indexOf('참고 범위 ' + ref2.low + '~' + ref2.high) === 0 && mid.text.indexOf('범위 안') > 0, mid.text);
         ok(poor.text.indexOf('범위보다') < 0, '신뢰도 낮음: ' + poor.text);
       });
       ok(R.REFERENCE_SOURCES[mode].length > 0 && R.REFERENCE_SOURCES[mode].every(function (s) { return /^https:\/\//.test(s.url) && s.label; }), mode + ' 출처');
     });
-    ok(R.REFERENCE_NOTE.length > 20, '주의 문구');
+    ok(R.REFERENCE_NOTE.bat.indexOf('참고로만') > 0 && R.REFERENCE_NOTE.pitch.indexOf('참고로만') > 0, '주의 문구');
+    eq([R.REFERENCE.bat.pelvisPeak.low, R.REFERENCE.bat.pelvisPeak.high, R.REFERENCE.bat.maxSeparation.low, R.REFERENCE.bat.maxSeparation.high], [593, 693, 29, 38], '평균 ± 표준편차를 반올림한 범위');
+    eq(Object.keys(R.REFERENCE.pitch), ['pelvisPeak'], '투구는 골반만(나머지는 근거가 모자라 넣지 않는다)');
   });
 
   test('끌어다 놓기: 영상 파일만 고른다 (종류 표시가 없으면 확장자로)', async function () {

@@ -167,6 +167,9 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 
 /* 휴대폰에서만: 나란히 놓은 두 화면(영상 + 선 | 3D, 기록 A | B)을 위아래로 쌓는다. 태블릿 · 데스크톱은 좌우 */
 @media (max-width: 720px) {
+  /* 고르기 칸이 글자 길이만큼 넓어져 화면이 옆으로 밀리지 않게 칸 폭에 맞춘다 */
+  .mo-field { grid-template-columns: minmax(0, 1fr); }
+  .mo-field select { width: 100%; }
   .mo-view-pair { grid-template-columns: 1fr; }
 }
 

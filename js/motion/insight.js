@@ -1,4 +1,4 @@
-// 동작 분석 — 결과를 말로 풀어 주는 곳: 한눈에 보기 문장 · 숫자마다 읽는 법 · 프로 참고 범위
+// 동작 분석 — 결과를 말로 풀어 주는 곳: 한눈에 보기 문장 · 숫자마다 읽는 법 · 참고 범위(연구에서 잰 값)
 //  · 문장은 「무슨 일이 있었는지」만 말한다. 잘했다 · 못했다는 판정은 하지 않는다(카메라 한 대로 잰 값의 정확도를 검증하지 못했다)
 //  · 문장을 가르는 경계값(분리각 15° · 35°, 속도비 0.95 · 1.05, 변화 5% · 3°)은 말을 고르기 위한 가정값이다. 평가 기준이 아니다
 import { REFERENCE } from './reference.js?v=1';
@@ -25,6 +25,8 @@ export const readText = (key) => READ[key] || '';
 function sequenceLine(seq) {
   const ms = seq.pelvisToTrunkMs, step = Math.round(seq.resolutionMs);
   if (!num(ms)) return { tone: 'info', text: '골반이나 몸통이 가장 빨랐던 순간을 찾지 못해 순서를 말하기 어려워요.' };
+  // 골반 → 몸통은 맞지만 손이 몸통보다 먼저면, 아래 「회전 순서」 칸과 말이 어긋나지 않게 그 사실도 같이 말한다
+  if (ms > 0 && seq.proximalToDistal === false) return { tone: 'info', text: `골반이 먼저, 몸통이 ${Math.round(ms)}ms 뒤에 가장 빨라졌어요. 다만 손(추정)이 몸통보다 먼저 가장 빨라져서 골반 → 몸통 → 손 순서는 아니었어요.` };
   if (ms > 0) return { tone: 'good', text: `골반이 먼저, 몸통이 ${Math.round(ms)}ms 뒤에 가장 빨라졌어요. 힘이 아래에서 위로 넘어가는 순서예요.` };
   if (ms === 0) return { tone: 'info', text: `골반과 몸통이 같은 프레임에서 가장 빨라졌어요. 이 영상은 ${step}ms 간격까지만 구분돼서 누가 먼저인지 가릴 수 없어요.` };
   return { tone: 'warn', text: `몸통이 골반보다 ${Math.round(-ms)}ms 먼저 가장 빨라졌어요. 보통은 골반이 먼저예요. 상체가 먼저 돌았을 수 있어요.` };
@@ -77,7 +79,7 @@ export function summaryLines(result, prev) {
   return lines;
 }
 
-// ── 프로 참고 범위 ──────────────────────────────────────────
+// ── 참고 범위 (reference.js) ──────────────────────────────────────────
 export const referenceOf = (mode, key) => (REFERENCE[mode] && REFERENCE[mode][key]) || null;
 
 // 값이 참고 범위의 어디인지 → 'below' | 'within' | 'above' | null(값이나 범위가 없음)
@@ -93,6 +95,6 @@ const POSITION_TEXT = { below: '범위보다 낮음', within: '범위 안', abov
 export function referenceLine(mode, key, value, quality) {
   const ref = referenceOf(mode, key);
   if (!ref) return null;
-  const range = `프로 참고 ${ref.low}~${ref.high}${ref.unit}`, position = quality === 'low' ? null : positionIn(ref, value);
+  const range = `참고 범위 ${ref.low}~${ref.high}${ref.unit}`, position = quality === 'low' ? null : positionIn(ref, value);
   return { text: position ? `${range} · ${POSITION_TEXT[position]}` : range, position };
 }

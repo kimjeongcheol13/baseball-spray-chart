@@ -438,10 +438,10 @@ function renderTiles(r) {
   renderReferenceNote(r.mode);
 }
 
-// 프로 참고 범위가 어디서 온 값이고 왜 그대로 견주면 안 되는지 + 출처 링크
+// 참고 범위가 누구를 어떻게 잰 값이고 왜 그대로 견주면 안 되는지 + 출처 링크
 function renderReferenceNote(mode) {
   const sources = REFERENCE_SOURCES[mode] || [];
-  el.refNote.replaceChildren(REFERENCE_NOTE, ...sources.flatMap((s, i) => {
+  el.refNote.replaceChildren(REFERENCE_NOTE[mode] || '', ...sources.flatMap((s, i) => {
     const a = node('a', '', s.label);
     a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
     return [i ? ', ' : ' 출처: ', a];

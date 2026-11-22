@@ -126,6 +126,13 @@
   .feat li::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--red); margin-right: 12px; vertical-align: 2px; }
   .feat.rev > :first-child { order: 2; }
   .feat .go-cta { margin-top: 28px; }
+  /* 동작 분석(베타) 안내 띠 — motion.html 로 간다 */
+  .menu sup { margin-left: 4px; font-size: 9px; font-weight: 800; letter-spacing: .08em; color: var(--red-2); }
+  .motion-strip { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: 32px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; }
+  .motion-strip:hover { border-color: rgba(255,255,255,.3); }
+  .motion-strip h3 { margin-top: 10px; font-size: 26px; line-height: 1.2; letter-spacing: -.03em; font-weight: 800; }
+  .motion-strip p { margin-top: 10px; font-size: 16px; color: var(--fg-2); max-width: 34em; }
+  .motion-strip .btn { flex: none; }
   .panel { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .panel .hd { display: flex; justify-content: space-between; align-items: baseline; padding: 20px 24px; border-bottom: 1px solid var(--line); }
   .panel .hd b { font-size: 18px; font-weight: 800; } .panel .hd b span { font-weight: 500; color: var(--fg-3); margin-left: 8px; } .panel .hd small { font-size: 12px; letter-spacing: .12em; font-weight: 700; color: var(--fg-3); }
@@ -195,6 +202,8 @@
     .cta-band .shade { background: linear-gradient(180deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.72) 50%, rgba(11,13,18,.2) 100%); }
   }
   @media (max-width: 720px) {   /* 폰 터치 타겟 44×44px: 위 메뉴 로고 · 게임원 기록 가져오기 버튼, 아래 링크 */
+    .motion-strip { flex-direction: column; align-items: flex-start; gap: 20px; padding: 24px 20px; } .motion-strip h3 { font-size: 22px; }
+    footer .links { flex-wrap: wrap; gap: 0 20px; }
     .nav .brand, footer .links a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
     .nav .btn-sm { height: 44px; }
     h1 { font-size: min(42px, calc((100vw - 40px) / 9.2)); }   /* 헤드라인 한 줄(약 8.9em, 줄 안은 &nbsp;)이 폰 폭에 들어가게 — 두 줄 유지 */
@@ -210,7 +219,7 @@
 
 <header class="nav"><div class="wrap">
   <a class="brand" href="#"><i></i>SPRAYLAB</a>
-  <nav class="menu"><a href="#import">가져오기</a><a href="#how">사용법</a><a href="#live">필드</a><a href="#features">기능</a><a href="#compare">비교</a></nav>
+  <nav class="menu"><a href="#import">가져오기</a><a href="#how">사용법</a><a href="#live">필드</a><a href="#features">기능</a><a href="#compare">비교</a><a class="js-motion" data-cta="nav" href="motion.html">동작 분석<sup>BETA</sup></a></nav>
   <a class="btn btn-white btn-sm js-start" data-cta="nav" href="index.html?go=1">게임원 기록 가져오기</a>
 </div></header>
 
@@ -318,6 +327,11 @@
         <div class="tags"><span>선수 리포트 PNG</span><span>차트 PNG</span><span>엑셀</span><span>QR · 링크</span></div></div>
     </div>
   </div>
+
+  <a class="motion-strip js-motion" data-cta="features" href="motion.html">
+    <div><div class="kicker">Motion · Beta</div><h3>폰 영상 하나로 보는 스윙 · 투구 동작</h3><p>영상을 고르면 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정합니다. 측정 장비 없이, 영상은 기기 밖으로 나가지 않습니다.</p></div>
+    <span class="btn btn-ghost">동작 분석 열어 보기</span>
+  </a>
 </div></section>
 
 <section class="sec light" id="compare"><div class="wrap">
@@ -347,7 +361,7 @@
 
 <footer><div class="wrap">
   <div><span class="brand" style="font-size:14px"><i></i>SPRAYLAB</span> &nbsp;·&nbsp; Your Swing, Visualized</div>
-  <div class="links"><a href="https://www.instagram.com/spraylab2026/" target="_blank" rel="noopener">Instagram</a><a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" rel="noopener">GitHub</a><a href="privacy.html">개인정보처리방침</a></div>
+  <div class="links"><a href="https://www.instagram.com/spraylab2026/" target="_blank" rel="noopener">Instagram</a><a href="https://github.com/kimjeongcheol13/baseball-spray-chart" target="_blank" rel="noopener">GitHub</a><a class="js-motion" data-cta="footer" href="motion.html">동작 분석(베타)</a><a href="privacy.html">개인정보처리방침</a></div>
   <div>© 2026 SprayLab</div>
 </div></footer>
 
@@ -367,6 +381,8 @@
     if (a) track('gameone_cta_click', { cta: a.getAttribute('data-cta'), from: 'landing' });
     a = e.target.closest('.js-waitlist');
     if (a) track('waitlist_click', { cta: a.getAttribute('data-cta') });
+    a = e.target.closest('.js-motion');
+    if (a) track('motion_click', { cta: a.getAttribute('data-cta'), from: 'landing' });
   });
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) {

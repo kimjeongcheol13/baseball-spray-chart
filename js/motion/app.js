@@ -3,8 +3,8 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=1';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=1';
-import { drawOverlay, COLOR } from './overlay.js?v=1';
-import { createChart } from './chart.js?v=1';
+import { drawOverlay, COLOR } from './overlay.js?v=2';
+import { createChart } from './chart.js?v=2';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, NOTE_TEXT, FAIL_TEXT } from './metrics.js?v=1';
 import { loadLog, addEntry, removeEntry } from './store.js?v=1';
 

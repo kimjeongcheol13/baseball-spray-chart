@@ -17,6 +17,7 @@ import { dropStrays } from './track.js?v=1';
 import { summaryLines, readText, referenceLine } from './insight.js?v=1';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';
+import { canCapture, startCapture, settleDuration, clock, MAX_CAPTURE_S, MIN_CAPTURE_S } from './capture.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -43,7 +44,7 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), capture: $('btnCapture'), captureMsg: $('captureMsg'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
@@ -55,7 +56,7 @@ const mirror = createMirror($('viewVideo'));   // 동작 다시 보기의 「영
 // clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수), strays(엉뚱한 곳에 잡혀 뺀 장 수) }
 // region = 분석할 선수 영역(화면 비율 네모 · 없으면 화면 전체) · picking = 선수를 고르는 중 · drag = 끌고 있는 네모의 두 점
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], capture: null, duel: null, duelToken: 0, region: null, picking: false, drag: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -109,6 +110,8 @@ function openVideo(file) {
 
 function onVideoReady() {
   const v = el.video;
+  // 방금 화면 녹화한 영상은 길이 정보가 비어 있다 → 길이를 알아낸 뒤 다시 들어온다
+  if (v.duration === Infinity && v.videoWidth) { settleVideo(); return; }
   if (!Number.isFinite(v.duration) || !v.videoWidth) { setStatus('영상 길이를 읽지 못했어요. MP4 · MOV 파일로 다시 시도해 주세요.', true); return; }
   el.stage.style.setProperty('--ar', String(v.videoWidth / v.videoHeight));
   if (state.restore) { finishLoad(); return; }
@@ -448,6 +451,57 @@ function renderReferenceNote(mode) {
   }));
 }
 
+// 길이 정보가 없는 영상의 길이를 알아낸다. 그 사이 다른 영상을 열었으면 아무것도 하지 않는다
+async function settleVideo() {
+  const url = state.url, found = await settleDuration(el.video);
+  if (url !== state.url) return;
+  if (found) onVideoReady(); else setStatus('영상 길이를 읽지 못했어요. 다시 녹화하거나 MP4 · MOV 파일로 시도해 주세요.', true);
+}
+
+// ── 화면 녹화로 가져오기 (capture.js) ────────────────────────
+const CAPTURE_TEXT = {
+  idle: `유튜브처럼 파일이 없는 영상은 다른 탭에 열어 두고 「화면 녹화로 가져오기」를 누른 뒤 그 탭을 고르세요. 장면을 재생하고 돌아와 「녹화 끝내기」를 누르면 돼요(최대 ${MAX_CAPTURE_S}초 · 기기 안에서만 처리).`,
+  unsupported: '화면 녹화로 가져오기는 PC 의 크롬 · 엣지에서만 돼요. 휴대폰에서는 화면 녹화 기능으로 찍은 영상 파일을 골라 주세요.',
+  recording: '녹화 중이에요. 고른 탭에서 장면을 재생한 뒤 돌아와 「녹화 끝내기」를 눌러 주세요. 영상을 크게(전체 화면) 틀수록 정확해요.',
+  cancelled: '녹화를 취소했어요.',
+  failed: '화면 녹화를 시작하지 못했어요. 브라우저의 화면 공유 권한을 확인해 주세요.',
+  empty: '녹화된 장면이 없어요. 다시 시도해 주세요.',
+  busy: '분석이 끝난 뒤에 녹화할 수 있어요.',
+};
+const CAPTURE_LABEL = '화면 녹화로 가져오기 (유튜브 등)';
+
+function resetCapture(message) {
+  state.capture = null;
+  el.capture.textContent = CAPTURE_LABEL;
+  el.capture.classList.remove('recording');
+  el.captureMsg.textContent = message;
+}
+
+function onCaptured(file, seconds) {
+  if (seconds < MIN_CAPTURE_S) { resetCapture(CAPTURE_TEXT.empty); return; }
+  resetCapture(`녹화한 ${clock(seconds)} 길이의 영상을 열었어요. 선수가 작게 나오면 「선수 고르기」로 감싸 주세요.`);
+  openVideo(file);
+}
+
+// 버튼 하나로 시작 · 끝내기를 한다
+async function toggleCapture() {
+  if (state.capture) { state.capture.stop(); return; }
+  if (state.busy) { el.captureMsg.textContent = CAPTURE_TEXT.busy; return; }
+  try {
+    state.capture = await startCapture({
+      onTick: (s) => { el.capture.textContent = `■ 녹화 끝내기 (${clock(s)})`; },
+      onDone: onCaptured,
+      onFail: () => resetCapture(CAPTURE_TEXT.empty),
+    });
+    el.capture.textContent = '■ 녹화 끝내기 (0:00)';
+    el.capture.classList.add('recording');
+    el.captureMsg.textContent = CAPTURE_TEXT.recording;
+  } catch (err) {
+    if (err && err.name !== 'NotAllowedError') console.warn('[motion] 화면 녹화를 시작하지 못함', err);
+    resetCapture(err && err.name === 'NotAllowedError' ? CAPTURE_TEXT.cancelled : CAPTURE_TEXT.failed);
+  }
+}
+
 // 끌어다 놓은 영상을 연다. 분석 중에는 받지 않는다
 function onDropFile(file) {
   if (state.busy) { el.dropMsg.textContent = '분석이 끝난 뒤에 다른 영상을 열 수 있어요.'; return; }
@@ -736,6 +790,9 @@ function saveImage() {
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
   el.file.addEventListener('change', () => openVideo(el.file.files[0]));
+  el.capture.hidden = !canCapture();
+  el.captureMsg.textContent = canCapture() ? CAPTURE_TEXT.idle : CAPTURE_TEXT.unsupported;
+  el.capture.addEventListener('click', toggleCapture);
   attachDrop(document, {
     onFile: onDropFile,
     onReject: () => { el.dropMsg.textContent = '영상 파일(MP4 · MOV 등)만 열 수 있어요.'; },

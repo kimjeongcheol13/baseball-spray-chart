@@ -8,7 +8,7 @@
 <title>SprayLab Motion — 스윙 · 투구 동작 분석 (베타)</title>
 <meta name="description" content="폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정합니다. 영상은 기기 밖으로 나가지 않습니다.">
 <link rel="icon" href="player-logo.png">
-<link rel="stylesheet" href="css/motion.css?v=8">
+<link rel="stylesheet" href="css/motion.css?v=9">
 </head>
 <body>
 <header class="mo-top">
@@ -53,11 +53,17 @@
       </label>
     </div>
     <p class="mo-hint">느리게 재생되는 슬로모션 영상이면 몇 배 느린지 골라 주세요. 회전 속도를 실제 시간으로 바꾸는 데 써요.</p>
-    <label class="mo-btn primary mo-file">
-      <input type="file" id="file" accept="video/*">
-      <span>영상 고르기</span>
-    </label>
-    <p class="mo-hint" id="dropMsg" role="status">영상 파일을 이 화면 아무 데나 끌어다 놓아도 열려요.</p>
+    <div class="mo-pick">
+      <div class="mo-pick-acts">
+        <label class="mo-btn primary mo-file">
+          <input type="file" id="file" accept="video/*">
+          <span>영상 고르기</span>
+        </label>
+        <button type="button" class="mo-btn" id="btnCapture" hidden>화면 녹화로 가져오기 (유튜브 등)</button>
+      </div>
+      <p class="mo-hint" id="dropMsg" role="status">영상 파일을 이 화면 아무 데나 끌어다 놓아도 열려요.</p>
+      <p class="mo-hint" id="captureMsg" role="status"></p>
+    </div>
     <details class="mo-guide">
       <summary>이렇게 찍으면 더 정확해요</summary>
       <ul>
@@ -117,9 +123,9 @@
         <span class="mo-quality" id="quality"></span>
       </div>
       <ul class="mo-notes" id="notes"></ul>
-      <h3 class="mo-sub">한눈에 보기</h3>
+      <h3 class="mo-section">한눈에 보기</h3>
       <ul class="mo-insights" id="insights"></ul>
-      <h3 class="mo-sub">숫자로 보기</h3>
+      <h3 class="mo-section">숫자로 보기</h3>
       <div class="mo-tiles" id="tiles"></div>
       <p class="mo-hint" id="refNote"></p>
       <div class="mo-actions">
@@ -216,6 +222,6 @@
   </footer>
 </main>
 <div class="mo-drop" id="dropHint" hidden><span>여기에 놓으면 영상을 열어요</span></div>
-<script type="module" src="js/motion/app.js?v=15"></script>
+<script type="module" src="js/motion/app.js?v=16"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=6';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -13,7 +13,7 @@ import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo,
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=6';
 import { createMirror } from './mirror.js?v=2';
-import { dropStrays } from './track.js?v=1';
+import { dropStrays } from './track.js?v=2';
 import { summaryLines, readText, referenceLine } from './insight.js?v=1';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';
@@ -28,6 +28,7 @@ const VIEWS = {
   top: [0, 90, '위에서 내려다본 모습이에요. 파란 골반선과 빨간 어깨선이 벌어진 각이 분리각이에요.'],
 };
 const MIN_RANGE_S = 0.3;
+const NO_WRAPPED_TEXT = '네모 가운데에서 감싼 선수를 찾지 못했어요(네모 안의 다른 사람은 분석하지 않았어요). 선수가 네모 가운데에 오고 머리부터 발까지 들어가게 다시 감싸 주세요. 카메라에 등을 돌린 구간은 못 찾을 수 있어요.';
 const EXPORT_MAX_WIDTH = 1280;
 const MODE_TEXT = { bat: '타격', pitch: '투구' };
 const ROLE_TEXT = { bat: '타자', pitch: '투수' };
@@ -330,10 +331,10 @@ async function analyze() {
     const hz = await estimateFps(el.video);
     setStatus('동작을 읽는 중…');
     state.readStart = performance.now();
-    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, shouldStop: () => state.stopping });
+    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, onRetry: () => setStatus('네모 안의 다른 사람이 잡혔어요. 감싼 선수를 다시 찾는 중…'), shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
     const aspect = el.video.videoWidth / el.video.videoHeight, kept = dropStrays(sampled.frames, aspect);
-    state.clip = { frames: kept.frames, start: range.start, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped };
+    state.clip = { frames: kept.frames, start: range.start, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped, others: sampled.others || 0 };
   } catch (e) {
     console.error('[motion] 분석 실패', e);
     setStatus('분석 엔진을 불러오거나 실행하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', true);
@@ -357,11 +358,17 @@ function compute(eventIndex) {
   const c = state.clip, opt = options();
   if (!c) return;
   const result = analyzeMotion({ frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: c.aspect, eventIndex });
-  if (!result.ok) { clearResult(); setStatus(FAIL_TEXT[result.reason] || '분석하지 못했어요.', true); return; }
+  if (!result.ok) {
+    clearResult();
+    // 네모 안에 사람은 있었지만 감싼 선수는 아니었던 경우: 다른 사람을 대신 분석하지 않고 그렇게 알린다
+    const wrongPerson = result.reason === 'noPose' && state.region && state.clip.others > 0;
+    setStatus(wrongPerson ? NO_WRAPPED_TEXT : FAIL_TEXT[result.reason] || '분석하지 못했어요.', true);
+    return;
+  }
   state.result = result;
   const strays = c.strays ? ` · 선수와 떨어진 곳에 잡힌 ${c.strays}프레임은 뺐어요` : '';
   // 선수를 고르지 않고 분석하면 화면에서 가장 크게 보이는 사람이 잡힌다 → 다른 사람이 잡혔을 때 할 일을 알려 준다
-  const who = state.region ? '' : ' · 다른 사람이 분석됐으면 「선수 고르기」로 감싼 뒤 다시 분석해 주세요';
+  const who = state.region ? (c.others ? ` · 네모 안의 다른 사람이 잡힌 ${c.others}프레임은 뺐어요` : '') : ' · 다른 사람이 분석됐으면 「선수 고르기」로 감싼 뒤 다시 분석해 주세요';
   setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 선수를 찾았어요${strays}${who}`);
   renderResult();
   seekToFrame(result.events.main);

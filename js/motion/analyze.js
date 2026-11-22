@@ -177,7 +177,8 @@ export function analyzeMotion({ frames, mode, hand, fps, aspect = 1, eventIndex 
   const handSpeed = handSpeedSeries(frames, mode, side, sigma, dt);
   if (!rot || !handSpeed) return fail('noPose');
 
-  const auto = argMax(handSpeed, 2, n - 3);
+  // 자동 임팩트 · 릴리스는 몸통을 찾은 프레임에서만 고른다 — 빈 프레임을 이어 붙인 자리는 속도가 튀기 쉽다
+  const auto = argMax(handSpeed.map((v, i) => (valid[i] ? v : null)), 2, n - 3);
   const main = eventIndex === null ? auto : Math.max(0, Math.min(n - 1, eventIndex));
   const win = { from: Math.max(0, main - Math.round(WINDOW_BEFORE_S * fps)), to: Math.min(n - 1, main + Math.round(WINDOW_AFTER_S * fps)) };
   const dir = rotationDirection(rot, win, main);

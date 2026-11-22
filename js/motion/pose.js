@@ -81,20 +81,71 @@ function seekTo(video, t) {
 const toFrame = (res) => (res.worldLandmarks && res.worldLandmarks[0]
   ? { world: res.worldLandmarks[0], image: res.landmarks[0] } : { world: null, image: null });
 
-// [start, end] 구간을 초당 hz 장씩 읽어 포즈를 뽑는다 → { frames, stalled(제때 못 옮긴 장 수), stopped }
-//  · frames[k] 는 영상 시각 start + (k + 0.5) / hz 의 포즈. onProgress(k + 1, total, frame) · shouldStop() 이 true 면 중단
+const PLAY_RATE = 0.5, PLAY_STALL_MS = 3000;
+
+// 영상을 재생하면서 새 프레임이 화면에 나올 때마다 잠깐 멈추고 포즈를 뽑아 frames[k] 를 채운다
+//  · 프레임마다 위치를 옮기면 그때마다 앞 키프레임부터 다시 풀어야 해서 느리다. 멈췄다 이어 재생하면 다시 풀 필요가 없다
+//  · 그래도 지나가 버린 프레임은 비워 두고, 뒤에서 위치를 옮겨 채운다. → { stopped }
+function playAndDetect(video, landmarker, { start, end, hz, frames, onFrame, shouldStop }) {
+  return new Promise((resolve) => {
+    let prevT = null, finished = false, watchdog = null;
+    const finish = (stopped) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(watchdog);
+      video.removeEventListener('ended', onEnded);
+      video.pause();
+      video.playbackRate = 1;
+      resolve({ stopped });
+    };
+    const onEnded = () => finish(false);
+    const arm = () => { clearTimeout(watchdog); watchdog = setTimeout(() => finish(false), PLAY_STALL_MS); };
+    const onPresented = (now, meta) => {
+      if (finished) return;
+      if (shouldStop && shouldStop()) { finish(true); return; }
+      const t = meta.mediaTime, k = Math.round((t - start) * hz);   // 프레임 시작 시각 → 칸 번호 (floor 는 소수 오차로 칸을 건너뛴다)
+      if (t >= end || k >= frames.length) { finish(false); return; }
+      video.pause();
+      if (k >= 0 && !frames[k]) {
+        lastTimestamp += Math.max(1, Math.round((prevT === null ? 1 / hz : t - prevT) * 1000));
+        prevT = t;
+        frames[k] = toFrame(landmarker.detectForVideo(video, lastTimestamp));
+        onFrame(frames[k]);
+      }
+      arm();
+      video.requestVideoFrameCallback(onPresented);
+      video.play().catch((e) => { console.warn('[motion] 분석용 재생이 멈췄다', e); finish(false); });
+    };
+    video.addEventListener('ended', onEnded);
+    video.playbackRate = PLAY_RATE;
+    video.requestVideoFrameCallback(onPresented);
+    arm();
+    video.play().catch((e) => { console.warn('[motion] 분석용 재생이 막혔다', e); finish(false); });
+  });
+}
+
+// [start, end] 구간을 초당 hz 장씩 읽어 포즈를 뽑는다 → { frames, stalled(제때 못 옮긴 장 수), refilled(위치를 옮겨 다시 읽은 장 수), stopped }
+//  · frames[k] 는 영상 시각 start + k / hz 부근의 포즈. onProgress(읽은 장 수, total, frame) · shouldStop() 이 true 면 중단
+//  · requestVideoFrameCallback 이 없는 브라우저는 처음부터 위치를 옮겨 한 장씩 읽는다
 export async function samplePoses(video, landmarker, { start, end, hz, onProgress, shouldStop }) {
   const total = Math.max(0, Math.floor((end - start) * hz));
-  const frames = [];
-  let stalled = 0;
+  const frames = new Array(total).fill(null);
+  let done = 0, stalled = 0, refilled = 0;
+  const onFrame = (frame) => { done++; if (onProgress) onProgress(done, total, frame); };
   video.pause();
+  if (typeof video.requestVideoFrameCallback === 'function' && total) {
+    if (!(await seekTo(video, start))) stalled++;
+    const played = await playAndDetect(video, landmarker, { start, end, hz, frames, onFrame, shouldStop });
+    if (played.stopped) return { frames: frames.map((f) => f || toFrame({})), stalled, refilled, stopped: true };
+  }
   for (let k = 0; k < total; k++) {
-    if (shouldStop && shouldStop()) return { frames, stalled, stopped: true };
+    if (frames[k]) continue;
+    if (shouldStop && shouldStop()) return { frames: frames.map((f) => f || toFrame({})), stalled, refilled, stopped: true };
     if (!(await seekTo(video, start + (k + 0.5) / hz))) stalled++;
     lastTimestamp += Math.round(1000 / hz);
-    const frame = toFrame(landmarker.detectForVideo(video, lastTimestamp));
-    frames.push(frame);
-    if (onProgress) onProgress(k + 1, total, frame);
+    frames[k] = toFrame(landmarker.detectForVideo(video, lastTimestamp));
+    refilled++;
+    onFrame(frames[k]);
   }
-  return { frames, stalled, stopped: false };
+  return { frames, stalled, refilled, stopped: false };
 }

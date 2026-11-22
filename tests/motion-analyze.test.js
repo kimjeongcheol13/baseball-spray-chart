@@ -35,7 +35,7 @@
   var run = function (o) { return A.analyzeMotion(Object.assign({ frames: clip(o.fps, o.hand, o.turn), mode: 'pitch', hand: 'R', fps: o.fps, aspect: 1 }, o)); };
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
-    A = await import('/js/motion/analyze.js?v=1'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
+    A = await import('/js/motion/analyze.js?v=2'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
     M = await import('/js/motion/metrics.js?v=1'); ST = await import('/js/motion/store.js?v=1');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
@@ -125,6 +125,15 @@
     ok(r.ok, '분석 실패');
     eq([r.quality.level, r.quality.notes], ['low', ['noRotation']], '신뢰도');
     ok(M.NOTE_TEXT.noRotation, '안내 문구');
+  });
+
+  test('자동 임팩트 · 릴리스는 사람을 못 찾은 프레임을 고르지 않는다', async function () {
+    var f = clip(120), full = run({ fps: 120 }), m = full.events.main;
+    f[m] = { world: null, image: null };
+    var r = A.analyzeMotion({ frames: f, mode: 'pitch', hand: 'R', fps: 120 });
+    ok(r.ok, '분석 실패');
+    ok(r.events.main !== m && f[r.events.main].world, '빈 프레임(' + m + ')을 골랐다: ' + r.events.main);
+    ok(Math.abs(r.events.main - m) <= 2, '원래 자리 근처여야 한다: ' + r.events.main + ' vs ' + m);
   });
 
   test('임팩트 · 릴리스를 직접 정하면 그 프레임 기준으로 다시 잰다', async function () {

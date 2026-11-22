@@ -9,7 +9,7 @@ export const COLOR = {
 const DRAW_MIN_VISIBILITY = 0.3;
 const FONT = "-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif";
 
-// 이 프레임에 붙일 관절 각도 표 → [{ key, text, color, x, y }] (x · y 는 화면 비율 0~1). 안 보이는 관절은 뺀다
+// 이 프레임에 붙일 관절 각도 표 → [{ key, joint(관절 번호), text, color, x, y }] (x · y 는 화면 비율 0~1). 안 보이는 관절은 뺀다
 export function jointLabels(frame, hand) {
   if (!frame || !frame.world || !frame.image) return [];
   const { lead, rear } = sides(hand);
@@ -23,7 +23,7 @@ export function jointLabels(frame, hand) {
   for (const [key, name, color, a, b, c] of defs) {
     if (!visible(frame.world, a, b, c)) continue;
     const deg = jointAngle(frame.world[a], frame.world[b], frame.world[c]);
-    if (deg !== null) out.push({ key, text: `${name} ${Math.round(deg)}°`, color, x: frame.image[b].x, y: frame.image[b].y });
+    if (deg !== null) out.push({ key, joint: b, text: `${name} ${Math.round(deg)}°`, color, x: frame.image[b].x, y: frame.image[b].y });
   }
   return out;
 }
@@ -95,7 +95,8 @@ function drawJoints(ctx, w, h, lm, u) {
   });
 }
 
-function drawLabels(ctx, w, h, labels, u) {
+// 관절 각도 표를 w × h 안에 그린다(가장자리에서는 안쪽으로 밀어 넣는다). 3D · 잘라 보여 주는 화면도 좌표만 바꿔 이 함수를 쓴다
+export function drawLabels(ctx, w, h, labels, u) {
   ctx.font = `700 ${11 * u}px ${FONT}`;
   ctx.textBaseline = 'middle';
   const center = labels.reduce((s, l) => s + l.x, 0) / (labels.length || 1);

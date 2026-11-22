@@ -1,7 +1,7 @@
 // 동작 분석 — 저장한 기록(sl_motion_log). 이 키를 읽고 쓰는 곳은 이 파일뿐이다
 //  · 여기에는 목록(선수 이름 · 지표 숫자 · 다시 보기 데이터가 있는지)만 둔다 — 기록 하나에 약 0.5KB. 프레임 좌표 · 영상은 db.js(IndexedDB)
 const KEY = 'sl_motion_log';
-const MAX_ENTRIES = 30;
+const MAX_ENTRIES = 200;   // 넘으면 가장 오래된 기록부터 빠진다(그 기록의 좌표 · 영상은 app.js pruneLibrary 가 정리)
 
 // 저장된 기록 배열(최신이 앞). 저장소를 못 읽거나 내용이 깨졌으면 빈 배열
 export function loadLog(storage = localStorage) {

@@ -36,7 +36,7 @@
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
     A = await import('/js/motion/analyze.js?v=3'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
-    M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=2');
+    M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=3');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
 
@@ -182,7 +182,7 @@
   });
 
   test('뼈대 선: 앞 팔다리 Teal · 뒤 Amber · 몸통 옆선 흰색, 반쯤 가려지면 점선, 거의 안 보이면 그리지 않는다', async function () {
-    var O = await import('/js/motion/overlay.js?v=5'), lm = pose(0.5, 'R', 1).image;
+    var O = await import('/js/motion/overlay.js?v=6'), lm = pose(0.5, 'R', 1).image;
     eq(O.boneStyle(11, 13, 'R', lm), { color: O.COLOR.lead, dashed: false }, '우타 왼팔 = 앞');
     eq(O.boneStyle(12, 14, 'R', lm), { color: O.COLOR.rear, dashed: false }, '우타 오른팔 = 뒤');
     eq(O.boneStyle(11, 13, 'L', lm).color, O.COLOR.rear, '좌타 왼팔 = 뒤');
@@ -201,17 +201,17 @@
     eq(M.noteText('lowFps', { windowValid: 1 }), M.NOTE_TEXT.lowFps, '다른 안내는 그대로');
   });
 
-  test('저장: 최신이 앞 · 30개까지 · 지우기 · 같은 종류의 앞 기록 찾기 · 깨진 값은 빈 목록', async function () {
+  test('저장: 최신이 앞 · 200개까지 · 지우기 · 같은 종류의 앞 기록 찾기 · 깨진 값은 빈 목록', async function () {
     var mem = {}, box = { getItem: function (k) { return k in mem ? mem[k] : null; }, setItem: function (k, v) { mem[k] = v; } }, i;
     var e = function (id, mode) { return { id: id, at: id, mode: mode, hand: 'R', metrics: { pelvisPeak: id } }; };
     eq(ST.loadLog(box), [], '처음엔 비어 있다');
-    for (i = 1; i <= 32; i++) ok(ST.addEntry(e(i, i % 2 ? 'bat' : 'pitch'), box), '저장 실패');
+    for (i = 1; i <= 202; i++) ok(ST.addEntry(e(i, i % 2 ? 'bat' : 'pitch'), box), '저장 실패');
     eq(Object.keys(mem), ['sl_motion_log'], '쓰는 키');
     var list = ST.loadLog(box);
-    eq([list.length, list[0].id, list[29].id], [30, 32, 3], '30개 · 최신이 앞');
-    eq(ST.previousEntry(list, list[0]).id, 30, '같은 종류의 앞 기록');
-    ST.removeEntry(32, box);
-    eq(ST.loadLog(box)[0].id, 31, '지우기');
+    eq([list.length, list[0].id, list[199].id], [200, 202, 3], '200개 · 최신이 앞');
+    eq(ST.previousEntry(list, list[0]).id, 200, '같은 종류의 앞 기록');
+    ST.removeEntry(202, box);
+    eq(ST.loadLog(box)[0].id, 201, '지우기');
     mem.sl_motion_log = '{깨짐';
     eq(ST.loadLog(box), [], '깨진 값');
     eq(ST.addEntry(e(1, 'bat'), { getItem: function () { return null; }, setItem: function () { throw new Error('quota'); } }), false, '저장 실패는 false');

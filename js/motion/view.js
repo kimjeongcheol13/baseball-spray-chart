@@ -1,13 +1,19 @@
 // 동작 분석 — 「동작 다시 보기」 화면 계산 (순수 함수): 반복 재생할 구간, 선수 주변만 크게 보여 줄 네모
 import { MIN_VISIBILITY } from './landmarks.js?v=1';
 
-const LOOP_BEFORE_S = 1.2, LOOP_AFTER_S = 0.5;   // 임팩트 · 릴리스 앞뒤로 이만큼(실제 시간)을 반복 재생한다
+export const LOOP_BEFORE_S = 1.2, LOOP_AFTER_S = 0.5;   // 임팩트 · 릴리스 앞뒤로 이만큼(실제 시간)을 반복 재생한다
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // 반복 재생할 프레임 범위 { from, to } — 준비 동작부터 마무리까지
 export function loopRange(result, frameCount) {
   const main = result.events.main;
   return { from: Math.max(0, main - Math.round(LOOP_BEFORE_S * result.fps)), to: Math.min(frameCount - 1, main + Math.round(LOOP_AFTER_S * result.fps)) };
+}
+
+// i 번째 프레임 앞뒤 reach 안에서 사람을 찾은 가장 가까운 프레임 번호(같은 거리면 앞쪽). 없으면 null
+export function nearestPose(frames, i, reach = 5) {
+  for (let d = 0; d <= reach; d++) for (const k of [i - d, i + d]) if (frames[k] && frames[k].world) return k;
+  return null;
 }
 
 // 길이 size(0~1) 짜리 구간을 가운데 center 에 두되 화면(0~1) 밖으로 나가지 않게 한 시작점

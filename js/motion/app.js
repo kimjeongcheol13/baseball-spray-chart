@@ -3,14 +3,15 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=4';
-import { drawOverlay, COLOR } from './overlay.js?v=5';
-import { createChart } from './chart.js?v=5';
-import { createSkeleton3D } from './skeleton3d.js?v=3';
+import { drawOverlay, drawLabels, jointLabels, COLOR } from './overlay.js?v=6';
+import { createChart } from './chart.js?v=6';
+import { createSkeleton3D } from './skeleton3d.js?v=4';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
-import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=2';
+import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
-import { loopRange, cropBox } from './view.js?v=1';
+import { loopRange, cropBox, nearestPose } from './view.js?v=2';
+import { createDuel } from './duel.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -19,7 +20,6 @@ const VIEWS = {
   side: [90, 0, '옆에서 본 모습이에요. 깊이는 추정이라 가장 부정확한 방향이에요.'],
   top: [0, 90, '위에서 내려다본 모습이에요. 파란 골반선과 빨간 어깨선이 벌어진 각이 분리각이에요.'],
 };
-const NEAR_3D = 5;         // 3D 에서 사람을 못 찾은 프레임이면 앞뒤 이만큼 안에서 가장 가까운 프레임을 보여 준다
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
 const LAYER_MAX_SIDE = 960;   // 「영상 + 선」 화면에 겹칠 선을 그려 두는 보조 캔버스의 긴 변
@@ -38,13 +38,14 @@ const el = {
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'),
+  duelBox: $('duelBox'), duelNone: $('duelNone'), duelPlay: $('btnDuel'), duelRate: $('duelRate'), duelTime: $('duelTime'), duelA: $('duelA'), duelB: $('duelB'), duelNameA: $('duelNameA'), duelNameB: $('duelNameB'),
 };
 const ctx = el.overlay.getContext('2d');
 const layer = document.createElement('canvas');   // 「영상 + 선」 화면용: 선만 그려 두었다가 선수 주변만 잘라 겹친다
 
 // clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수) }
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [] };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0 };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -187,12 +188,6 @@ function tick() {
   drawMirror();
 }
 
-// i 번째 프레임 앞뒤 NEAR_3D 안에서 사람을 찾은 가장 가까운 프레임 번호. 없으면 null
-function nearestPose(frames, i) {
-  for (let d = 0; d <= NEAR_3D; d++) for (const k of [i - d, i + d]) if (frames[k] && frames[k].world) return k;
-  return null;
-}
-
 // 3D 뷰어에 지금 영상 위치의 프레임을 넘긴다. 분석 구간 밖이면 마지막 프레임을 그대로 둔다
 function sync3d() {
   const i = currentIndex();
@@ -217,8 +212,13 @@ function drawMirror() {
   if (!frame || !frame.image) return;
   const ls = Math.min(1, LAYER_MAX_SIDE / Math.max(v.videoWidth, v.videoHeight)), lw = Math.round(v.videoWidth * ls), lh = Math.round(v.videoHeight * ls);
   if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
-  drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand: state.result.hand, labels: false });   // 잘라 보여 주는 화면이라 각도 표는 잘린다 — 선과 점만
+  drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand: state.result.hand, labels: false });
   m.drawImage(layer, box.x * lw, box.y * lh, box.w * lw, box.h * lh, dx, dy, dw, dh);
+  // 각도 표는 잘린 화면 기준 좌표로 바꿔 이 캔버스에 직접 그린다(잘리지 않고, 글자 크기도 화면에 맞는다)
+  const labels = jointLabels(frame, state.result.hand).map((l) => ({ ...l, x: (l.x - box.x) / box.w, y: (l.y - box.y) / box.h })).filter((l) => l.x >= 0 && l.x <= 1 && l.y >= 0 && l.y <= 1);
+  m.save(); m.translate(dx, dy);
+  drawLabels(m, dw, dh, labels, dpr * Math.max(0.9, Math.min(c.clientWidth, c.clientHeight) / 360));
+  m.restore();
 }
 
 // 동작 재생: 준비 동작부터 마무리까지를 고른 속도로 되풀이한다. 다시 누르면 멈춘다
@@ -535,7 +535,7 @@ function compareCell(text, cls) { return node('td', cls || '', text); }
 function renderCompare(list) {
   const picked = state.compare.map((id) => list.find((e) => e.id === id)).filter(Boolean);
   el.compareBox.hidden = picked.length < 2;
-  if (picked.length < 2) return;
+  if (picked.length < 2) { state.duelToken++; stopDuel(); return; }
   const [a, b] = picked, table = node('table'), head = node('tr'), body = node('tbody');
   for (const [text, cls] of [['지표', ''], [`A · ${titleOf(a)}`, 'mo-cmp-a'], [`B · ${titleOf(b)}`, 'mo-cmp-b'], ['차이 (B − A)', '']]) { const th = node('th', cls, text); th.scope = 'col'; head.append(th); }
   for (const row of compareRows(a, b)) {
@@ -549,6 +549,42 @@ function renderCompare(list) {
   const thead = node('thead'); thead.append(head); table.append(thead, body);
   const note = a.mode === b.mode ? '' : '타격과 투구를 비교하고 있어 공통 지표만 보여 줘요. ';
   el.compare.replaceChildren(table, node('p', 'mo-hint', `${note}신뢰도가 낮은 기록의 값은 참고만 해 주세요. 촬영 위치가 다르면 값도 달라져요.`));
+  renderDuel(a, b);
+}
+
+function stopDuel() {
+  if (state.duel) { state.duel.destroy(); state.duel = null; }
+  el.duelPlay.textContent = '▶ 나란히 재생';
+}
+
+// 기록 하나를 나란히 보기용으로 되살린다 → { frames, main, fps, hand } · 다시 보기 데이터가 없으면 null
+async function duelSide(e) {
+  const clip = e.hasData ? await getClip(e.id) : null;
+  if (!clip) return null;
+  const frames = unpackFrames(clip);
+  const r = analyzeMotion({ frames, mode: e.mode, hand: e.hand, fps: clip.hz * clip.slow, aspect: clip.aspect, eventIndex: clip.eventIndex });
+  return r.ok ? { frames, main: r.events.main, fps: r.fps, hand: e.hand } : null;
+}
+
+// 두 기록의 3D 뼈대를 나란히 올린다(둘 다 다시 보기 데이터가 있을 때). 임팩트 · 릴리스 순간에 맞춰 함께 움직인다
+async function renderDuel(a, b) {
+  const token = ++state.duelToken;
+  stopDuel();
+  let sides = [null, null];
+  try { sides = await Promise.all([duelSide(a), duelSide(b)]); } catch (e) { console.warn('[motion] 나란히 보기 데이터를 읽지 못했어요', e); }
+  if (token !== state.duelToken) return;   // 읽는 사이 다른 기록을 골랐다
+  const ready = !!(sides[0] && sides[1]);
+  el.duelBox.hidden = !ready;
+  el.duelNone.hidden = ready;
+  if (!ready) return;
+  el.duelNameA.textContent = `A · ${titleOf(a)}`;
+  el.duelNameB.textContent = `B · ${titleOf(b)}`;
+  state.duel = createDuel([el.duelA, el.duelB], sides, (t) => { el.duelTime.textContent = `임팩트 · 릴리스 기준 ${t > 0 ? '+' : ''}${Math.round(t * 1000)}ms`; });
+  state.duel.setRate(Number(el.duelRate.value));
+}
+
+function toggleDuel() {
+  if (state.duel) el.duelPlay.textContent = state.duel.toggle() ? '■ 멈춤' : '▶ 나란히 재생';
 }
 
 function renderLog() {
@@ -607,6 +643,9 @@ function bind() {
   el.motionRate.addEventListener('change', () => { if (state.loop) { el.video.playbackRate = Number(el.motionRate.value); el.rate.value = el.motionRate.value; } });
   el.save.addEventListener('click', save);
   el.attach.addEventListener('change', () => attachVideo(el.attach.files[0]));
+  el.duelPlay.addEventListener('click', toggleDuel);
+  el.duelRate.addEventListener('change', () => { if (state.duel) state.duel.setRate(Number(el.duelRate.value)); });
+  for (const b of document.querySelectorAll('[data-duel-view]')) b.addEventListener('click', () => { if (state.duel) state.duel.setView(VIEWS[b.dataset.duelView][0], VIEWS[b.dataset.duelView][1]); });
   el.image.addEventListener('click', saveImage);
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));
   new ResizeObserver(fitCanvas).observe(el.stage);

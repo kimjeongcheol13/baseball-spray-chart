@@ -2,7 +2,7 @@
 //  · side = { frames, main(임팩트 · 릴리스 프레임), fps(실제 시간 기준 초당 장 수), hz(영상 시간 기준 초당 장 수), start(구간 시작 영상 시각),
 //             slow(슬로모션 배수), hand, video(영상 요소 | null) }
 //  · 촬영 속도가 달라도 실제 시간으로 맞춘다: 시계 t(임팩트 기준 실제 초)를 하나 두고, 영상은 배속 × 슬로모션 배수로 틀어 같은 속도로 흐르게 한다
-import { createSkeleton3D } from './skeleton3d.js?v=4';
+import { createSkeleton3D } from './skeleton3d.js?v=5';
 import { createMirror } from './mirror.js?v=1';
 import { LOOP_BEFORE_S, LOOP_AFTER_S, nearestPose } from './view.js?v=3';
 

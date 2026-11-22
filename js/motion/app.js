@@ -14,6 +14,9 @@ import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=5';
 import { createMirror } from './mirror.js?v=1';
 import { dropStrays } from './track.js?v=1';
+import { summaryLines, readText, referenceLine } from './insight.js?v=1';
+import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
+import { attachDrop } from './drop.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -40,7 +43,7 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
@@ -403,7 +406,7 @@ function deltaText(prev, key, value) {
   return `지난 기록 ${before} · ${d > 0 ? '+' : ''}${d}`;
 }
 
-function tile(m, value, prev) {
+function tile(m, value, prev, r) {
   const box = node('div', 'mo-tile'), label = node('div', 'mo-tile-label'), val = node('div', 'mo-tile-value', formatValue(value));
   if (TILE_COLOR[m.key]) { const dot = node('i'); dot.style.background = TILE_COLOR[m.key]; label.append(dot); }
   label.append(node('span', '', m.label));
@@ -412,6 +415,9 @@ function tile(m, value, prev) {
   const delta = deltaText(prev, m.key, value);
   if (delta) box.append(node('div', 'mo-tile-delta', delta));
   box.append(node('div', 'mo-tile-help', m.help));
+  if (readText(m.key)) box.append(node('div', 'mo-tile-read', readText(m.key)));
+  const ref = referenceLine(r.mode, m.key, value, r.quality.level);
+  if (ref) { const tag = node('div', 'mo-tile-ref', ref.text); if (ref.position) tag.dataset.position = ref.position; box.append(tag); }
   return box;
 }
 
@@ -427,7 +433,26 @@ function sequenceTile(seq) {
 
 function renderTiles(r) {
   const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand) || null;
-  el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev)), sequenceTile(r.metrics.sequence));
+  el.insights.replaceChildren(...summaryLines(r, prev).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
+  el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev, r)), sequenceTile(r.metrics.sequence));
+  renderReferenceNote(r.mode);
+}
+
+// 프로 참고 범위가 어디서 온 값이고 왜 그대로 견주면 안 되는지 + 출처 링크
+function renderReferenceNote(mode) {
+  const sources = REFERENCE_SOURCES[mode] || [];
+  el.refNote.replaceChildren(REFERENCE_NOTE, ...sources.flatMap((s, i) => {
+    const a = node('a', '', s.label);
+    a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
+    return [i ? ', ' : ' 출처: ', a];
+  }));
+}
+
+// 끌어다 놓은 영상을 연다. 분석 중에는 받지 않는다
+function onDropFile(file) {
+  if (state.busy) { el.dropMsg.textContent = '분석이 끝난 뒤에 다른 영상을 열 수 있어요.'; return; }
+  el.dropMsg.textContent = `「${file.name}」을 열었어요.`;
+  openVideo(file);
 }
 
 // ── 저장 · 이미지 ───────────────────────────────────────────
@@ -711,6 +736,11 @@ function saveImage() {
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
   el.file.addEventListener('change', () => openVideo(el.file.files[0]));
+  attachDrop(document, {
+    onFile: onDropFile,
+    onReject: () => { el.dropMsg.textContent = '영상 파일(MP4 · MOV 등)만 열 수 있어요.'; },
+    onHover: (on) => { el.dropHint.hidden = !on; },
+  });
   el.setup.addEventListener('submit', (e) => e.preventDefault());
   // 동작 · 방향 · 촬영 속도를 바꾸면 뽑아 둔 포즈로 바로 다시 계산한다(엔진을 다시 돌리지 않는다)
   el.setup.addEventListener('change', (e) => { if (e.target !== el.file && e.target.name !== 'model' && state.clip) compute(null); else draw(); });

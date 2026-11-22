@@ -7,7 +7,9 @@ import { drawOverlay, COLOR } from './overlay.js?v=5';
 import { createChart } from './chart.js?v=5';
 import { createSkeleton3D } from './skeleton3d.js?v=3';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
-import { loadLog, addEntry, removeEntry } from './store.js?v=1';
+import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=2';
+import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
+import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { loopRange, cropBox } from './view.js?v=1';
 
 const MAX_RANGE_S = 12;
@@ -35,12 +37,14 @@ const el = {
   results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
+  player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'),
 };
 const ctx = el.overlay.getContext('2d');
 const layer = document.createElement('canvas');   // 「영상 + 선」 화면용: 선만 그려 두었다가 선수 주변만 잘라 겹친다
 
-// clip = 뽑아 둔 포즈 { frames, start, hz, missing(사람을 못 찾은 장 수) } · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null };
+// clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수) }
+// file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [] };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -70,14 +74,24 @@ function setBusy(busy) {
 }
 
 // ── 영상 · 구간 ─────────────────────────────────────────────
-function openVideo(file) {
-  if (!file) return;
+const fileRef = (file) => ({ blob: file, name: file.name, size: file.size, sig: videoSig(file) });
+
+// 영상 요소에 파일을 올린다(분석 상태는 건드리지 않는다)
+function showVideo(blob) {
   if (state.url) URL.revokeObjectURL(state.url);
-  clearResult();
-  state.clip = null;
-  state.url = URL.createObjectURL(file);
+  state.url = URL.createObjectURL(blob);
   el.video.src = state.url;
   el.stageCard.hidden = false;
+  el.attachWrap.hidden = true;
+}
+
+// 새 영상을 골랐다 — 앞의 분석은 지운다
+function openVideo(file) {
+  if (!file) return;
+  clearResult();
+  state.clip = null; state.restore = null; state.still = null;
+  state.file = fileRef(file);
+  showVideo(file);
   setStatus('영상을 여는 중…');
 }
 
@@ -85,6 +99,7 @@ function onVideoReady() {
   const v = el.video;
   if (!Number.isFinite(v.duration) || !v.videoWidth) { setStatus('영상 길이를 읽지 못했어요. MP4 · MOV 파일로 다시 시도해 주세요.', true); return; }
   el.stage.style.setProperty('--ar', String(v.videoWidth / v.videoHeight));
+  if (state.restore) { finishLoad(); return; }
   state.range = { start: 0, end: Math.min(v.duration, MAX_RANGE_S) };
   renderRange();
   fitCanvas();
@@ -113,12 +128,14 @@ function setRangeEdge(edge) {
 function currentIndex() {
   const c = state.clip;
   if (!c) return null;
+  if (!el.video.videoWidth) return state.still;   // 영상 없이 불러온 기록: 고른 프레임을 그대로 보여 준다
   const i = Math.floor((el.video.currentTime - c.start) * c.hz);
   return i >= 0 && i < c.frames.length ? i : null;
 }
 
 function seekToFrame(i) {
   const c = state.clip;
+  if (c && !el.video.videoWidth) { state.still = i; tick(); return; }
   if (c && i !== null) el.video.currentTime = c.start + (i + 0.5) / c.hz;
 }
 
@@ -244,7 +261,7 @@ async function analyze() {
     state.readStart = performance.now();
     const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, onProgress, shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
-    state.clip = { frames: sampled.frames, start: range.start, hz, missing: sampled.missing };
+    state.clip = { frames: sampled.frames, start: range.start, hz, aspect: el.video.videoWidth / el.video.videoHeight, missing: sampled.missing };
   } catch (e) {
     console.error('[motion] 분석 실패', e);
     setStatus('분석 엔진을 불러오거나 실행하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', true);
@@ -267,7 +284,7 @@ function onProgress(done, total, frame) {
 function compute(eventIndex) {
   const c = state.clip, opt = options();
   if (!c) return;
-  const result = analyzeMotion({ frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: el.video.videoWidth / el.video.videoHeight, eventIndex });
+  const result = analyzeMotion({ frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: c.aspect, eventIndex });
   if (!result.ok) { clearResult(); setStatus(FAIL_TEXT[result.reason] || '분석하지 못했어요.', true); return; }
   state.result = result;
   setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 사람을 찾았어요`);
@@ -359,32 +376,187 @@ function renderTiles(r) {
 }
 
 // ── 저장 · 이미지 ───────────────────────────────────────────
-function save() {
+const MB = (bytes) => Math.max(1, Math.round(bytes / 1e6));
+
+// 지금 영상을 IndexedDB 에 둔다(같은 영상은 한 번만) → { ref(기록에 남길 { sig, name, size }) | null, why(못 넣은 이유) }
+async function saveVideo() {
+  const f = state.file;
+  if (!f) return { ref: null, why: '영상 파일을 찾지 못했어요.' };
+  const ref = { sig: f.sig, name: f.name, size: f.size };
+  try {
+    if ((await videoSigs()).includes(f.sig)) return { ref };
+    const free = await freeBytes();
+    if (free !== null && free < f.size * 1.2) return { ref: null, why: `기기 저장 공간이 모자라 영상(${MB(f.size)}MB)은 넣지 못했어요.` };
+    await putVideo({ ...ref, blob: f.blob });
+    return { ref };
+  } catch (e) {
+    console.warn('[motion] 영상을 저장하지 못했어요', e);
+    return { ref: null, why: '영상은 저장하지 못했어요.' };
+  }
+}
+
+// 다시 보기용 데이터(프레임 좌표 + 영상)를 IndexedDB 에 둔다 → { patch(기록에 덧붙일 값), text(알림) }
+async function saveHeavy(id, r, c) {
+  try {
+    await putClip({ id, hz: c.hz, start: c.start, aspect: c.aspect, slow: options().slow, eventIndex: r.events.auto ? null : r.events.main, ...packFrames(c.frames) });
+  } catch (e) {
+    console.warn('[motion] 다시 보기 데이터를 저장하지 못했어요', e);
+    return { patch: {}, text: '숫자는 저장했지만 다시 보기용 데이터는 저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.' };
+  }
+  const video = await saveVideo();
+  const text = video.ref ? `저장했어요. 영상(${MB(video.ref.size)}MB)도 이 기기에 함께 넣어 「불러오기」로 다시 볼 수 있어요.`
+    : `저장했어요. ${video.why} 불러올 때 같은 영상을 다시 고르면 영상도 보여요.`;
+  return { patch: { hasData: true, video: video.ref }, text };
+}
+
+// 기록 목록에 없는 분석 데이터 · 영상을 IndexedDB 에서 지운다
+async function pruneLibrary() {
+  try {
+    const drop = orphanKeys(loadLog(), await clipIds(), await videoSigs());
+    await Promise.all([...drop.clips.map(deleteClip), ...drop.videos.map(deleteVideo)]);
+  } catch (e) {
+    console.warn('[motion] 저장 데이터를 정리하지 못했어요', e);
+  }
+}
+
+async function save() {
+  const r = state.result, c = state.clip;
+  if (!r || !c) return;
+  const entry = { id: Date.now(), at: new Date().toISOString(), name: el.player.value.trim(), mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level,
+    order: r.metrics.sequence.order, metrics: summarize(r), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
+  if (!addEntry(entry)) { el.saveMsg.textContent = '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; return; }
+  el.save.disabled = true;
+  el.saveMsg.textContent = '다시 보기용 데이터를 저장하는 중…';
+  const heavy = await saveHeavy(entry.id, r, c);
+  updateEntry(entry.id, heavy.patch);
+  el.saveMsg.textContent = heavy.text;
+  await pruneLibrary();
+  renderLog();
+}
+
+async function removeLogEntry(e) {
+  if (!window.confirm('이 기록을 지울까요? 함께 저장한 다시 보기 데이터도 지워져요.')) return;
+  removeEntry(e.id);
+  state.compare = state.compare.filter((id) => id !== e.id);
+  renderLog();
+  await pruneLibrary();
+}
+
+// 저장한 기록을 다시 연다: 프레임 좌표로 지표 · 그래프 · 3D 를 되살리고, 영상이 있으면 영상도 올린다
+async function loadEntry(e) {
+  if (state.busy) return;
+  let clip, video = null;
+  try {
+    clip = await getClip(e.id);
+    if (clip && e.video) video = await getVideo(e.video.sig);
+  } catch (err) {
+    console.warn('[motion] 저장한 데이터를 읽지 못했어요', err);
+    el.logMsg.textContent = '저장한 데이터를 읽지 못했어요.';
+    return;
+  }
+  if (!clip) { el.logMsg.textContent = '이 기록은 숫자만 저장돼 있어 다시 볼 수 없어요.'; return; }
+  el.logMsg.textContent = '';
+  el.video.pause();
+  clearResult();
+  el.setup.elements.mode.value = e.mode; el.setup.elements.hand.value = e.hand; el.setup.elements.slow.value = String(clip.slow);
+  const frames = unpackFrames(clip);
+  state.clip = { frames, start: clip.start, hz: clip.hz, aspect: clip.aspect, missing: frames.filter((f) => !f.world).length };
+  state.restore = { range: e.range, eventIndex: clip.eventIndex, name: e.name };
+  state.still = null;
+  el.player.value = e.name || '';
+  if (video) { state.file = { blob: video.blob, name: video.name, size: video.size, sig: video.sig }; showVideo(video.blob); return; }
+  state.file = null;
+  if (state.url) { URL.revokeObjectURL(state.url); state.url = null; }
+  el.video.removeAttribute('src'); el.video.load();
+  el.stage.style.setProperty('--ar', String(clip.aspect));
+  el.stageCard.hidden = false;
+  finishLoad();
+}
+
+// 불러온 기록을 화면에 올린다(영상이 준비됐거나, 영상 없이 볼 때)
+function finishLoad() {
+  const { range, eventIndex, name } = state.restore, v = el.video, hasVideo = !!v.videoWidth;
+  state.restore = null;
+  state.range = { ...range };
+  renderRange();
+  fitCanvas();
+  compute(eventIndex);
+  el.attachWrap.hidden = hasVideo;
+  const who = name ? `「${name}」 ` : '';
+  if (!hasVideo) setStatus(`${who}기록을 불러왔어요. 영상은 저장돼 있지 않아 뼈대만 보여요. 「영상 다시 고르기」로 같은 영상을 고르면 영상도 함께 볼 수 있어요.`);
+  else if (v.duration + 0.05 < range.end) setStatus('고른 영상이 저장할 때의 구간보다 짧아요. 다른 영상일 수 있어요.', true);
+  else setStatus(`${who}기록을 불러왔어요. 영상과 분석을 함께 볼 수 있어요.`);
+  el.stageCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 영상 없이 불러온 기록에 영상을 다시 붙인다
+function attachVideo(file) {
   const r = state.result;
-  if (!r) return;
-  const entry = { id: Date.now(), at: new Date().toISOString(), mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level, order: r.metrics.sequence.order, metrics: summarize(r) };
-  const ok = addEntry(entry);
-  el.saveMsg.textContent = ok ? '저장했어요. 다음 분석부터 이 기록과 비교해요.' : '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.';
-  el.save.disabled = ok;
+  if (!file || !r || !state.clip) return;
+  state.restore = { range: state.range, eventIndex: r.events.auto ? null : r.events.main, name: el.player.value.trim() };
+  state.file = fileRef(file);
+  state.still = null;
+  showVideo(file);
+}
+
+const whenText = (e) => new Date(e.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const titleOf = (e) => `${e.name ? e.name + ' · ' : ''}${MODE_TEXT[e.mode]} · ${HAND_TEXT[e.hand]} · ${whenText(e)}`;
+
+// 비교할 기록을 고르거나 뺀다(두 개까지 — 세 번째를 고르면 가장 먼저 고른 것이 빠진다)
+function toggleCompare(id, on) {
+  state.compare = state.compare.filter((x) => x !== id);
+  if (on) state.compare = state.compare.concat(id).slice(-2);
   renderLog();
 }
 
 function logItem(e) {
-  const li = node('li'), main = node('div', 'mo-log-main'), del = node('button', 'mo-btn', '지우기');
-  const m = e.metrics, when = new Date(e.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  main.append(node('b', '', `${MODE_TEXT[e.mode]} · ${HAND_TEXT[e.hand]} · ${when}`),
-    node('span', '', `골반 ${formatValue(m.pelvisPeak)}°/s · 몸통 ${formatValue(m.trunkPeak)}°/s · 분리각 ${formatValue(m.maxSeparation)}° · ${sequenceText(e.order)}`));
+  const li = node('li'), main = node('div', 'mo-log-main'), acts = node('div', 'mo-log-acts'), m = e.metrics;
+  main.append(node('b', '', titleOf(e)),
+    node('span', '', `골반 ${formatValue(m.pelvisPeak)}°/s · 몸통 ${formatValue(m.trunkPeak)}°/s · 분리각 ${formatValue(m.maxSeparation)}° · ${sequenceText(e.order)}`),
+    node('span', '', e.hasData ? (e.video ? `다시 보기 가능 · 영상 포함(${MB(e.video.size)}MB)` : '다시 보기 가능 · 영상 없음') : '숫자만 저장됨'));
+  const pick = node('label', 'mo-check'), box = node('input');
+  box.type = 'checkbox'; box.checked = state.compare.includes(e.id);
+  box.addEventListener('change', () => toggleCompare(e.id, box.checked));
+  pick.append(box, node('span', '', '비교'));
+  acts.append(pick);
+  if (e.hasData) { const load = node('button', 'mo-btn', '불러오기'); load.type = 'button'; load.addEventListener('click', () => loadEntry(e)); acts.append(load); }
+  const del = node('button', 'mo-btn', '지우기');
   del.type = 'button';
-  del.setAttribute('aria-label', `${when} 기록 지우기`);
-  del.addEventListener('click', () => { if (window.confirm('이 기록을 지울까요?')) { removeEntry(e.id); renderLog(); } });
-  li.append(main, del);
+  del.setAttribute('aria-label', `${titleOf(e)} 기록 지우기`);
+  del.addEventListener('click', () => removeLogEntry(e));
+  acts.append(del);
+  li.append(main, acts);
   return li;
+}
+
+function compareCell(text, cls) { return node('td', cls || '', text); }
+
+// 고른 두 기록의 지표를 나란히 보여 준다. A = 먼저 고른 기록, B = 나중에 고른 기록, 차이 = B − A
+function renderCompare(list) {
+  const picked = state.compare.map((id) => list.find((e) => e.id === id)).filter(Boolean);
+  el.compareBox.hidden = picked.length < 2;
+  if (picked.length < 2) return;
+  const [a, b] = picked, table = node('table'), head = node('tr'), body = node('tbody');
+  for (const [text, cls] of [['지표', ''], [`A · ${titleOf(a)}`, 'mo-cmp-a'], [`B · ${titleOf(b)}`, 'mo-cmp-b'], ['차이 (B − A)', '']]) { const th = node('th', cls, text); th.scope = 'col'; head.append(th); }
+  for (const row of compareRows(a, b)) {
+    const tr = node('tr'), th = node('th', '', `${row.label} (${row.unit})`);
+    th.scope = 'row';
+    tr.append(th, compareCell(formatValue(row.a)), compareCell(formatValue(row.b)), compareCell(row.diff === null ? '–' : `${row.diff > 0 ? '+' : ''}${Math.round(row.diff)}`));
+    body.append(tr);
+  }
+  const extra = [['회전 순서', sequenceText(a.order), sequenceText(b.order)], ['신뢰도', QUALITY_TEXT[a.quality] || '–', QUALITY_TEXT[b.quality] || '–']];
+  for (const [label, va, vb] of extra) { const tr = node('tr'), th = node('th', '', label); th.scope = 'row'; tr.append(th, compareCell(va), compareCell(vb), compareCell('')); body.append(tr); }
+  const thead = node('thead'); thead.append(head); table.append(thead, body);
+  const note = a.mode === b.mode ? '' : '타격과 투구를 비교하고 있어 공통 지표만 보여 줘요. ';
+  el.compare.replaceChildren(table, node('p', 'mo-hint', `${note}신뢰도가 낮은 기록의 값은 참고만 해 주세요. 촬영 위치가 다르면 값도 달라져요.`));
 }
 
 function renderLog() {
   const list = loadLog();
+  state.compare = state.compare.filter((id) => list.some((e) => e.id === id));
   el.logEmpty.hidden = list.length > 0;
   el.logList.replaceChildren(...list.map(logItem));
+  renderCompare(list);
 }
 
 // 지금 프레임 + 뼈대 + 요약 패널을 한 장의 PNG 로 내려받는다
@@ -434,6 +606,7 @@ function bind() {
   el.motion.addEventListener('click', toggleMotion);
   el.motionRate.addEventListener('change', () => { if (state.loop) { el.video.playbackRate = Number(el.motionRate.value); el.rate.value = el.motionRate.value; } });
   el.save.addEventListener('click', save);
+  el.attach.addEventListener('change', () => attachVideo(el.attach.files[0]));
   el.image.addEventListener('click', saveImage);
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));
   new ResizeObserver(fitCanvas).observe(el.stage);

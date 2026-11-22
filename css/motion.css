@@ -117,9 +117,23 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 .mo-table th { color: var(--mo-ink3); font-weight: 700; }
 
 .mo-log { list-style: none; margin: 0; padding: 0; }
-.mo-log li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--mo-line); }
+.mo-log li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 0; border-top: 1px solid var(--mo-line); }
+.mo-log-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mo-check { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.mo-check input { width: 20px; height: 20px; accent-color: var(--mo-blue); }
+.mo-input { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--mo-line); background: var(--mo-raised); color: var(--mo-ink); font: inherit; font-size: 14px; flex: 1 1 140px; min-width: 0; }
+.mo-input:focus-visible { outline: 2px solid var(--mo-blue); outline-offset: 2px; }
+#compareBox { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--mo-line); }
+.mo-compare { overflow-x: auto; }
+.mo-compare table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.mo-compare th, .mo-compare td { padding: 8px 6px; border-top: 1px solid var(--mo-line); text-align: right; }
+.mo-compare thead th { border-top: 0; color: var(--mo-ink2); font-size: 12px; vertical-align: bottom; }
+.mo-compare th[scope="row"], .mo-compare thead th:first-child { text-align: left; color: var(--mo-ink2); font-weight: 700; }
+.mo-compare td { font-family: var(--mo-mono); font-weight: 700; }
+.mo-cmp-a::before, .mo-cmp-b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--mo-blue); }
+.mo-cmp-b::before { background: var(--mo-amber); }
 .mo-log li:first-child { border-top: 0; }
-.mo-log-main { flex: 1; min-width: 0; }
+.mo-log-main { flex: 1 1 220px; min-width: 0; }
 .mo-log-main b { display: block; font-size: 14px; }
 .mo-log-main span { display: block; font-size: 12px; color: var(--mo-ink2); }
 .mo-foot { font-size: 12px; color: var(--mo-ink3); padding: 4px 2px; }

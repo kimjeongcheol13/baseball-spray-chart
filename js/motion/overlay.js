@@ -1,5 +1,5 @@
 // 동작 분석 — 영상 위에 그리는 뼈대 · 관절 각도 · 요약 패널 (화면 표시와 이미지 저장이 같은 함수를 쓴다)
-import { LM, BONES, MIN_VISIBILITY, sides, visible } from './landmarks.js?v=1';
+import { LM, MIN_VISIBILITY, sides, visible } from './landmarks.js?v=1';
 import { jointAngle } from './geometry.js?v=1';
 
 export const COLOR = {
@@ -34,15 +34,35 @@ function pill(ctx, x, y, w, h) {
   ctx.fill();
 }
 
+// MediaPipe 관절 33개를 잇는 선 전부(골반선 23-24 · 어깨선 11-12 는 색이 달라 따로 그린다)
+export const FULL_BONES = [
+  [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8], [9, 10],                      // 얼굴
+  [11, 13], [13, 15], [12, 14], [14, 16],                                                      // 팔
+  [15, 17], [15, 19], [15, 21], [17, 19], [16, 18], [16, 20], [16, 22], [18, 20],              // 손
+  [11, 23], [12, 24],                                                                          // 몸통 옆선
+  [23, 25], [25, 27], [24, 26], [26, 28],                                                      // 다리
+  [27, 29], [29, 31], [27, 31], [28, 30], [30, 32], [28, 32],                                  // 발
+];
+const FACE_MAX = 10;                                // 0~10 = 얼굴
+const SMALL_FROM = { hand: 17, handTo: 22, foot: 29 };   // 손가락 · 발 끝은 가는 선 · 작은 점
+
+// 팔다리 · 손 · 발은 앞(투수 쪽) Teal · 뒤 Amber — 관절 표의 점 색과 같다. 얼굴 · 몸통 옆선은 흰색
+export function boneColor(a, b, hand) {
+  const torso = (a === LM.L_SHOULDER && b === LM.L_HIP) || (a === LM.R_SHOULDER && b === LM.R_HIP);
+  if (torso || Math.max(a, b) <= FACE_MAX) return COLOR.bone;
+  const leadIsLeft = hand !== 'L', isLeft = a % 2 === 1;   // MediaPipe 번호: 왼쪽 관절은 홀수, 오른쪽은 짝수
+  return isLeft === leadIsLeft ? COLOR.lead : COLOR.rear;
+}
+
+// 손가락 · 발 끝 · 얼굴처럼 작은 부위인가 (가는 선 · 작은 점으로 그린다)
+export const isSmallJoint = (i) => i <= FACE_MAX || (i >= SMALL_FROM.hand && i <= SMALL_FROM.handTo) || i >= SMALL_FROM.foot;
+
 // 뼈대 선 하나의 모양 → { color, dashed } · 그릴 수 없을 만큼 안 보이면 null
-//  · 팔다리는 앞(투수 쪽) Teal · 뒤 Amber — 관절 표의 점 색과 같다. 몸통 옆선은 흰색, 골반선 · 어깨선은 따로 그린다
 //  · 인식이 불확실한 선(관절이 반쯤 가려짐)은 점선으로 그려 확실한 선과 구분한다
 export function boneStyle(a, b, hand, lm) {
   const vis = Math.min(lm[a] ? lm[a].visibility ?? 1 : 0, lm[b] ? lm[b].visibility ?? 1 : 0);
   if (vis < DRAW_MIN_VISIBILITY) return null;
-  const torso = (a === LM.L_SHOULDER && b === LM.L_HIP) || (a === LM.R_SHOULDER && b === LM.R_HIP);
-  const leadIsLeft = hand !== 'L', isLeft = a % 2 === 1;   // MediaPipe 번호: 왼쪽 관절은 홀수, 오른쪽은 짝수
-  return { color: torso ? COLOR.bone : isLeft === leadIsLeft ? COLOR.lead : COLOR.rear, dashed: vis < MIN_VISIBILITY };
+  return { color: boneColor(a, b, hand), dashed: vis < MIN_VISIBILITY };
 }
 
 // 선을 어두운 테두리 위에 한 번 더 그린다 — 흰 유니폼 · 밝은 잔디 · 어두운 관중석 어디서나 보이게
@@ -59,9 +79,20 @@ function drawSkeleton(ctx, w, h, lm, hand, u) {
   const line = (a, b, style, width) => { if (style) casedLine(ctx, lm[a].x * w, lm[a].y * h, lm[b].x * w, lm[b].y * h, style.color, width, u, style.dashed); };
   const fixed = (a, b, color) => { const s = boneStyle(a, b, hand, lm); return s && { color, dashed: s.dashed }; };
   ctx.lineCap = 'round';
-  for (const [a, b] of BONES) line(a, b, boneStyle(a, b, hand, lm), 3 * u);
+  for (const [a, b] of FULL_BONES) line(a, b, boneStyle(a, b, hand, lm), (isSmallJoint(a) && isSmallJoint(b) ? 2 : 3) * u);
   line(LM.L_HIP, LM.R_HIP, fixed(LM.L_HIP, LM.R_HIP, COLOR.pelvis), 5 * u);
   line(LM.L_SHOULDER, LM.R_SHOULDER, fixed(LM.L_SHOULDER, LM.R_SHOULDER, COLOR.trunk), 5 * u);
+  drawJoints(ctx, w, h, lm, u);
+}
+
+// 관절 33개의 점(확실히 보이는 것만). 어두운 테두리 안에 흰 점
+function drawJoints(ctx, w, h, lm, u) {
+  lm.forEach((p, i) => {
+    if ((p.visibility ?? 1) < MIN_VISIBILITY) return;
+    const r = (isSmallJoint(i) ? 1.6 : 2.6) * u;
+    ctx.fillStyle = COLOR.casing; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, r + 1.4 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COLOR.bone; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, r, 0, Math.PI * 2); ctx.fill();
+  });
 }
 
 function drawLabels(ctx, w, h, labels, u) {

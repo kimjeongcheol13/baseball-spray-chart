@@ -1,9 +1,9 @@
 // 동작 분석 — worldLandmarks 를 드래그로 360도 돌려 보는 3D 뼈대 뷰어 (직교 투영 · 캔버스 2D, 외부 라이브러리 없음)
-import { LM, BONES } from './landmarks.js?v=1';
-import { COLOR, boneStyle } from './overlay.js?v=3';
+import { LM, MIN_VISIBILITY } from './landmarks.js?v=1';
+import { COLOR, FULL_BONES, boneColor, isSmallJoint } from './overlay.js?v=4';
 
 const BODY_M = 2.2, FILL = 0.85, CENTER_Y = 0.46, FOOT_Y = 0.95;   // 몸 높이(m) · 캔버스 높이 대비 · 골반 세로 위치 · 발 높이(골반 기준 아래로)
-const PITCH_MAX = 60, DRAG_DEG_PER_PX = 0.5, KEY_STEP = 15;
+const PITCH_MAX = 90, HEAD_R = 0.1, DRAG_DEG_PER_PX = 0.5, KEY_STEP = 15;
 const FONT = "-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif";
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -51,14 +51,26 @@ function drawGrid(ctx, yaw, pitch, w, h, u) {
 }
 
 // 그릴 뼈대 선 목록 → [{ a, b, color, width, dashed, depth }] (멀리 있는 것부터 정렬)
+//  · 3D 좌표는 가려진 관절에도 추정값이 있으므로 선을 빼지 않고 전부 그린다. 불확실한 선(관절이 반쯤 가려짐)은 점선
 function boneSegments(world, pts, hand, u) {
   const segs = [];
-  const add = (a, b, style, width) => { if (style) segs.push({ a: pts[a], b: pts[b], color: style.color, width, dashed: style.dashed, depth: (pts[a].depth + pts[b].depth) / 2 }); };
-  const fixed = (a, b, color) => { const s = boneStyle(a, b, hand, world); return s && { color, dashed: s.dashed }; };
-  for (const [a, b] of BONES) add(a, b, boneStyle(a, b, hand, world), 3 * u);
-  add(LM.L_HIP, LM.R_HIP, fixed(LM.L_HIP, LM.R_HIP, COLOR.pelvis), 5 * u);
-  add(LM.L_SHOULDER, LM.R_SHOULDER, fixed(LM.L_SHOULDER, LM.R_SHOULDER, COLOR.trunk), 5 * u);
+  const add = (a, b, color, width) => {
+    const dashed = Math.min(world[a].visibility ?? 1, world[b].visibility ?? 1) < MIN_VISIBILITY;
+    segs.push({ a: pts[a], b: pts[b], color, width, dashed, depth: (pts[a].depth + pts[b].depth) / 2 });
+  };
+  for (const [a, b] of FULL_BONES) add(a, b, boneColor(a, b, hand), (isSmallJoint(a) && isSmallJoint(b) ? 2 : 3) * u);
+  add(LM.L_HIP, LM.R_HIP, COLOR.pelvis, 5 * u);
+  add(LM.L_SHOULDER, LM.R_SHOULDER, COLOR.trunk, 5 * u);
   return segs.sort((p, q) => q.depth - p.depth);
+}
+
+// 머리: 코를 중심으로 한 원 — 사람 모양으로 읽히게 한다
+function drawHead(ctx, pts, h, u) {
+  const r = (HEAD_R * FILL * h) / BODY_M, p = pts[LM.NOSE];
+  for (const [stroke, lw] of [[COLOR.casing, 5 * u], [COLOR.bone, 2 * u]]) {
+    ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.stroke();
+  }
 }
 
 function drawEmpty(ctx, w, h, u) {
@@ -87,6 +99,7 @@ function render(canvas, state) {
   drawGrid(ctx, state.yaw, state.pitch, w, h, u);
   const pts = projectPose(world, state.yaw, state.pitch, w, h);
   for (const s of boneSegments(world, pts, state.hand, u)) casedLine(ctx, s.a, s.b, s.color, s.width, u, s.dashed);
+  drawHead(ctx, pts, h, u);
 }
 
 // 캔버스에 3D 뼈대 뷰어를 붙인다 → { setFrame(frame, hand), setView(yaw, pitch), getView(), destroy() }

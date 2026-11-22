@@ -31,7 +31,7 @@
   }
 
   test('(준비) 3D 뷰어 · 오버레이 모듈을 불러온다', async function () {
-    V = await import('/js/motion/skeleton3d.js?v=5');
+    V = await import('/js/motion/skeleton3d.js?v=4');
     O = await import('/js/motion/overlay.js?v=6');
     ok(V.rotatePoint && V.projectPose && V.createSkeleton3D && O.drawOverlay, '모듈 로드');
   });
@@ -96,7 +96,7 @@
   });
 
   test('나란히 보기: 임팩트 기준 같은 실제 시간에 두 기록이 각자의 프레임을 보여 준다 · 사람이 없는 프레임은 가까운 프레임으로', async function () {
-    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=5');
+    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=4');
     var mk = function (n, holes) { var f = [], i; for (i = 0; i < n; i++) f.push(holes.indexOf(i) >= 0 ? { world: null, image: null } : { world: [1], image: [1] }); return f; };
     var slow = { frames: mk(120, []), main: 60, fps: 30, hand: 'R' }, fast = { frames: mk(900, []), main: 480, fps: 240, hand: 'L' };
     eq([U.duelIndex(slow, 0), U.duelIndex(fast, 0)], [60, 480], '임팩트 순간');

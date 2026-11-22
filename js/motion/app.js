@@ -3,15 +3,17 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
-import { drawOverlay, drawLabels, jointLabels, COLOR } from './overlay.js?v=6';
+import { drawOverlay, COLOR } from './overlay.js?v=6';
 import { createChart } from './chart.js?v=6';
 import { createSkeleton3D } from './skeleton3d.js?v=4';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
-import { loopRange, cropBox, nearestPose, pickRegion } from './view.js?v=3';
-import { createDuel } from './duel.js?v=2';
+import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
+import { createDuel } from './duel.js?v=3';
+import { createMirror } from './mirror.js?v=1';
+import { dropStrays } from './track.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -22,10 +24,14 @@ const VIEWS = {
 };
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
-const LAYER_MAX_SIDE = 960;   // 「영상 + 선」 화면에 겹칠 선을 그려 두는 보조 캔버스의 긴 변
 const MODE_TEXT = { bat: '타격', pitch: '투구' };
+const ROLE_TEXT = { bat: '타자', pitch: '투수' };
+// 저장 목록을 나누는 묶음(이 순서로 보여 준다)
+const GROUPS = [['bat', '타자 (타격)'], ['pitch', '투수 (투구)']];
 const DOWNLOAD_MB = { lite: 20, full: 24, heavy: 45 };   // 엔진(WASM 약 15MB) + 모델
 const HAND_TEXT = { R: '우', L: '좌' };
+// 타자는 우타 · 좌타, 투수는 우투 · 좌투
+const sideText = (mode, hand) => HAND_TEXT[hand] + (mode === 'pitch' ? '투' : '타');
 const TILE_COLOR = { pelvisPeak: COLOR.pelvis, trunkPeak: COLOR.trunk };
 
 const $ = (id) => document.getElementById(id);
@@ -38,15 +44,15 @@ const el = {
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
-  duelBox: $('duelBox'), duelNone: $('duelNone'), duelPlay: $('btnDuel'), duelRate: $('duelRate'), duelTime: $('duelTime'), duelA: $('duelA'), duelB: $('duelB'), duelNameA: $('duelNameA'), duelNameB: $('duelNameB'),
+  duelBox: $('duelBox'), duelNone: $('duelNone'), duelPlay: $('btnDuel'), duelRate: $('duelRate'), duelTime: $('duelTime'), duelA: $('duelA'), duelB: $('duelB'), duelVideoA: $('duelVideoA'), duelVideoB: $('duelVideoB'), duelVideos: $('duelVideos'), duelNameA: $('duelNameA'), duelNameB: $('duelNameB'),
 };
 const ctx = el.overlay.getContext('2d');
-const layer = document.createElement('canvas');   // 「영상 + 선」 화면용: 선만 그려 두었다가 선수 주변만 잘라 겹친다
+const mirror = createMirror($('viewVideo'));   // 동작 다시 보기의 「영상 + 선」 화면
 
-// clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수) }
+// clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수), strays(엉뚱한 곳에 잡혀 뺀 장 수) }
 // region = 분석할 선수 영역(화면 비율 네모 · 없으면 화면 전체) · picking = 선수를 고르는 중 · drag = 끌고 있는 네모의 두 점
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -158,7 +164,7 @@ function fitCanvas() {
 function hudOf(result) {
   const m = result.metrics;
   return {
-    title: `${MODE_TEXT[result.mode]} 분석${result.quality.level === 'low' ? ' · 신뢰도 낮음' : ''}`,
+    title: `${ROLE_TEXT[result.mode]} 분석${result.quality.level === 'low' ? ' · 신뢰도 낮음' : ''}`,
     rows: [
       { label: '골반 피크', value: formatValue(m.pelvisPeak), unit: '°/s', color: COLOR.pelvis },
       { label: '몸통 피크', value: formatValue(m.trunkPeak), unit: '°/s', color: COLOR.trunk },
@@ -260,28 +266,10 @@ function sync3d() {
   el.view3dNote.textContent = k === null || k === i ? '' : `이 프레임은 사람을 못 찾아 가장 가까운 프레임(${k > i ? '+' : ''}${k - i})을 보여 줘요`;
 }
 
-// 「영상 + 선」 화면: 지금 영상 프레임에서 선수 주변만 잘라 크게 그리고, 그 위에 같은 프레임의 선을 겹친다
+// 「영상 + 선」 화면: 지금 영상 프레임에서 선수 주변만 잘라 크게 그리고, 그 위에 같은 프레임의 선을 겹친다(mirror.js)
 function drawMirror() {
-  const c = el.viewVideo, v = el.video, clip = state.clip;
-  if (!state.result || !clip || !v.videoWidth || !c.clientWidth) return;
-  const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
-  if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; state.crop = null; }
-  if (!state.crop) { const r = loopRange(state.result, clip.frames.length); state.crop = cropBox(clip.frames, r.from, r.to, (cw / ch) / (v.videoWidth / v.videoHeight)); }
-  const box = state.crop, sw = box.w * v.videoWidth, sh = box.h * v.videoHeight, scale = Math.min(cw / sw, ch / sh);
-  const dw = sw * scale, dh = sh * scale, dx = (cw - dw) / 2, dy = (ch - dh) / 2, m = c.getContext('2d');
-  m.clearRect(0, 0, cw, ch);
-  m.drawImage(v, box.x * v.videoWidth, box.y * v.videoHeight, sw, sh, dx, dy, dw, dh);
-  const i = currentIndex(), frame = i === null ? null : clip.frames[i];
-  if (!frame || !frame.image) return;
-  const ls = Math.min(1, LAYER_MAX_SIDE / Math.max(v.videoWidth, v.videoHeight)), lw = Math.round(v.videoWidth * ls), lh = Math.round(v.videoHeight * ls);
-  if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
-  drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand: state.result.hand, labels: false });
-  m.drawImage(layer, box.x * lw, box.y * lh, box.w * lw, box.h * lh, dx, dy, dw, dh);
-  // 각도 표는 잘린 화면 기준 좌표로 바꿔 이 캔버스에 직접 그린다(잘리지 않고, 글자 크기도 화면에 맞는다)
-  const labels = jointLabels(frame, state.result.hand).map((l) => ({ ...l, x: (l.x - box.x) / box.w, y: (l.y - box.y) / box.h })).filter((l) => l.x >= 0 && l.x <= 1 && l.y >= 0 && l.y <= 1);
-  m.save(); m.translate(dx, dy);
-  drawLabels(m, dw, dh, labels, dpr * Math.max(0.9, Math.min(c.clientWidth, c.clientHeight) / 360));
-  m.restore();
+  const clip = state.clip, i = currentIndex();
+  if (state.result && clip) mirror.draw(el.video, i === null ? null : clip.frames[i], state.result.hand);
 }
 
 // 동작 재생: 준비 동작부터 마무리까지를 고른 속도로 되풀이한다. 다시 누르면 멈춘다
@@ -324,7 +312,8 @@ async function analyze() {
     state.readStart = performance.now();
     const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
-    state.clip = { frames: sampled.frames, start: range.start, hz, aspect: el.video.videoWidth / el.video.videoHeight, missing: sampled.missing };
+    const aspect = el.video.videoWidth / el.video.videoHeight, kept = dropStrays(sampled.frames, aspect);
+    state.clip = { frames: kept.frames, start: range.start, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped };
   } catch (e) {
     console.error('[motion] 분석 실패', e);
     setStatus('분석 엔진을 불러오거나 실행하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', true);
@@ -350,7 +339,8 @@ function compute(eventIndex) {
   const result = analyzeMotion({ frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: c.aspect, eventIndex });
   if (!result.ok) { clearResult(); setStatus(FAIL_TEXT[result.reason] || '분석하지 못했어요.', true); return; }
   state.result = result;
-  setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 사람을 찾았어요`);
+  const strays = c.strays ? ` · 선수와 떨어진 곳에 잡힌 ${c.strays}프레임은 뺐어요` : '';
+  setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 선수를 찾았어요${strays}`);
   renderResult();
   seekToFrame(result.events.main);
 }
@@ -359,7 +349,7 @@ function clearResult() {
   state.result = null;
   if (state.chart) { state.chart.destroy(); state.chart = null; }
   if (state.view3d) { state.view3d.destroy(); state.view3d = null; }
-  state.loop = null; state.crop = null;
+  state.loop = null;
   el.view3dNote.textContent = '';
   el.results.hidden = true;
   el.saveMsg.textContent = '';
@@ -369,7 +359,7 @@ function clearResult() {
 // ── 결과 화면 ───────────────────────────────────────────────
 function renderResult() {
   const r = state.result, ev = eventName(r.mode), how = r.events.auto ? '추정' : '직접 지정';
-  el.title.textContent = `3. ${MODE_TEXT[r.mode]} 분석 결과 (${HAND_TEXT[r.hand]})`;
+  el.title.textContent = `3. ${ROLE_TEXT[r.mode]} 분석 결과 (${sideText(r.mode, r.hand)})`;
   el.quality.textContent = QUALITY_TEXT[r.quality.level];
   el.quality.dataset.level = r.quality.level;
   renderNotes(r);
@@ -386,7 +376,8 @@ function renderResult() {
   if (state.view3d) state.view3d.destroy();
   state.view3d = createSkeleton3D(el.view3d);
   setView3d('front');
-  state.crop = null;
+  const loop = loopRange(r, state.clip.frames.length);
+  mirror.setScope(state.clip.frames, loop.from, loop.to);
   sync3d();
   drawMirror();
 }
@@ -563,12 +554,15 @@ function attachVideo(file) {
 }
 
 const whenText = (e) => new Date(e.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-const titleOf = (e) => `${e.name ? e.name + ' · ' : ''}${MODE_TEXT[e.mode]} · ${HAND_TEXT[e.hand]} · ${whenText(e)}`;
+const titleOf = (e) => `[${ROLE_TEXT[e.mode]}] ${e.name ? e.name + ' · ' : ''}${sideText(e.mode, e.hand)} · ${whenText(e)}`;
 
 // 비교할 기록을 고르거나 뺀다(두 개까지 — 세 번째를 고르면 가장 먼저 고른 것이 빠진다)
 function toggleCompare(id, on) {
-  state.compare = state.compare.filter((x) => x !== id);
-  if (on) state.compare = state.compare.concat(id).slice(-2);
+  const list = loadLog(), mode = (list.find((e) => e.id === id) || {}).mode;
+  const same = state.compare.filter((x) => x !== id && (list.find((e) => e.id === x) || {}).mode === mode);
+  const mixed = on && same.length < state.compare.filter((x) => x !== id).length;
+  state.compare = on ? same.concat(id).slice(-2) : state.compare.filter((x) => x !== id);
+  el.logMsg.textContent = mixed ? '타자는 타자끼리, 투수는 투수끼리 비교해요. 앞서 고른 다른 종류의 기록은 해제했어요.' : '';
   renderLog();
 }
 
@@ -610,39 +604,55 @@ function renderCompare(list) {
   const extra = [['회전 순서', sequenceText(a.order), sequenceText(b.order)], ['신뢰도', QUALITY_TEXT[a.quality] || '–', QUALITY_TEXT[b.quality] || '–']];
   for (const [label, va, vb] of extra) { const tr = node('tr'), th = node('th', '', label); th.scope = 'row'; tr.append(th, compareCell(va), compareCell(vb), compareCell('')); body.append(tr); }
   const thead = node('thead'); thead.append(head); table.append(thead, body);
-  const note = a.mode === b.mode ? '' : '타격과 투구를 비교하고 있어 공통 지표만 보여 줘요. ';
-  el.compare.replaceChildren(table, node('p', 'mo-hint', `${note}신뢰도가 낮은 기록의 값은 참고만 해 주세요. 촬영 위치가 다르면 값도 달라져요.`));
+  el.compare.replaceChildren(table, node('p', 'mo-hint', '신뢰도가 낮은 기록의 값은 참고만 해 주세요. 촬영 위치가 다르면 값도 달라져요.'));
   renderDuel(a, b);
 }
 
 function stopDuel() {
   if (state.duel) { state.duel.destroy(); state.duel = null; }
+  for (const v of el.duelVideos.querySelectorAll('video')) { URL.revokeObjectURL(v.src); v.remove(); }
   el.duelPlay.textContent = '▶ 나란히 재생';
 }
 
-// 기록 하나를 나란히 보기용으로 되살린다 → { frames, main, fps, hand } · 다시 보기 데이터가 없으면 null
+// 저장한 영상을 비교용 영상 요소로 올린다(화면에는 보이지 않는다 — 「영상 + 선」 캔버스가 이 영상을 그린다). 영상이 없거나 못 열면 null
+function duelVideo(blob) {
+  if (!blob) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const v = Object.assign(document.createElement('video'), { muted: true, playsInline: true, preload: 'auto' });
+    v.addEventListener('loadeddata', () => resolve(v), { once: true });
+    v.addEventListener('error', () => { console.warn('[motion] 비교할 영상을 열지 못했어요'); URL.revokeObjectURL(v.src); v.remove(); resolve(null); }, { once: true });
+    el.duelVideos.append(v);
+    v.src = URL.createObjectURL(blob);
+  });
+}
+
+// 기록 하나를 나란히 보기용으로 되살린다 → duel.js 의 side · 다시 보기 데이터가 없으면 null
 async function duelSide(e) {
   const clip = e.hasData ? await getClip(e.id) : null;
   if (!clip) return null;
   const frames = unpackFrames(clip);
   const r = analyzeMotion({ frames, mode: e.mode, hand: e.hand, fps: clip.hz * clip.slow, aspect: clip.aspect, eventIndex: clip.eventIndex });
-  return r.ok ? { frames, main: r.events.main, fps: r.fps, hand: e.hand } : null;
+  if (!r.ok) return null;
+  const stored = e.video ? await getVideo(e.video.sig) : null;
+  return { frames, main: r.events.main, fps: r.fps, hz: clip.hz, start: clip.start, slow: clip.slow, hand: e.hand, video: await duelVideo(stored && stored.blob) };
 }
 
-// 두 기록의 3D 뼈대를 나란히 올린다(둘 다 다시 보기 데이터가 있을 때). 임팩트 · 릴리스 순간에 맞춰 함께 움직인다
+// 두 기록을 나란히 올린다(둘 다 다시 보기 데이터가 있을 때): 기록마다 「영상 + 선」과 3D 뼈대. 임팩트 · 릴리스 순간에 맞춰 함께 움직인다
 async function renderDuel(a, b) {
   const token = ++state.duelToken;
   stopDuel();
   let sides = [null, null];
   try { sides = await Promise.all([duelSide(a), duelSide(b)]); } catch (e) { console.warn('[motion] 나란히 보기 데이터를 읽지 못했어요', e); }
-  if (token !== state.duelToken) return;   // 읽는 사이 다른 기록을 골랐다
+  if (token !== state.duelToken) { stopDuel(); return; }   // 읽는 사이 다른 기록을 골랐다
   const ready = !!(sides[0] && sides[1]);
   el.duelBox.hidden = !ready;
   el.duelNone.hidden = ready;
-  if (!ready) return;
+  if (!ready) { stopDuel(); return; }
   el.duelNameA.textContent = `A · ${titleOf(a)}`;
   el.duelNameB.textContent = `B · ${titleOf(b)}`;
-  state.duel = createDuel([el.duelA, el.duelB], sides, (t) => { el.duelTime.textContent = `임팩트 · 릴리스 기준 ${t > 0 ? '+' : ''}${Math.round(t * 1000)}ms`; });
+  const event = eventName(a.mode);
+  state.duel = createDuel(sides, [{ mirror: el.duelVideoA, view: el.duelA }, { mirror: el.duelVideoB, view: el.duelB }],
+    (t) => { el.duelTime.textContent = `${event} 기준 ${t > 0 ? '+' : ''}${Math.round(t * 1000)}ms`; });
   state.duel.setRate(Number(el.duelRate.value));
 }
 
@@ -654,7 +664,16 @@ function renderLog() {
   const list = loadLog();
   state.compare = state.compare.filter((id) => list.some((e) => e.id === id));
   el.logEmpty.hidden = list.length > 0;
-  el.logList.replaceChildren(...list.map(logItem));
+  // 타자 · 투수를 따로 묶어 보여 준다
+  const groups = [];
+  for (const [mode, label] of GROUPS) {
+    const items = list.filter((e) => e.mode === mode);
+    if (!items.length) continue;
+    const ul = node('ul', 'mo-log');
+    ul.append(...items.map(logItem));
+    groups.push(node('h3', 'mo-log-group', `${label} · ${items.length}개`), ul);
+  }
+  el.logList.replaceChildren(...groups);
   renderCompare(list);
 }
 

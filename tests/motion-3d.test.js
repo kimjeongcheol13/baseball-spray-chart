@@ -96,7 +96,7 @@
   });
 
   test('나란히 보기: 임팩트 기준 같은 실제 시간에 두 기록이 각자의 프레임을 보여 준다 · 사람이 없는 프레임은 가까운 프레임으로', async function () {
-    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=2');
+    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=3');
     var mk = function (n, holes) { var f = [], i; for (i = 0; i < n; i++) f.push(holes.indexOf(i) >= 0 ? { world: null, image: null } : { world: [1], image: [1] }); return f; };
     var slow = { frames: mk(120, []), main: 60, fps: 30, hand: 'R' }, fast = { frames: mk(900, []), main: 480, fps: 240, hand: 'L' };
     eq([U.duelIndex(slow, 0), U.duelIndex(fast, 0)], [60, 480], '임팩트 순간');
@@ -105,6 +105,11 @@
     eq([W.nearestPose(mk(10, [4]), 4), W.nearestPose(mk(10, [4, 3, 5]), 4), W.nearestPose(mk(10, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), 4)], [3, 2, null], '가까운 프레임');
     eq(U.duelIndex({ frames: mk(20, [10]), main: 10, fps: 30, hand: 'R' }, 0), 9, '빈 프레임이면 가까운 프레임');
     eq([W.LOOP_BEFORE_S, W.LOOP_AFTER_S], [1.2, 0.5], '되풀이 구간');
+    var clip = { frames: mk(120, []), main: 60, fps: 120, hz: 30, start: 10, slow: 4, hand: 'R' };   // 4배 슬로모션: 영상 1초 = 30장 = 실제 0.25초
+    eq([U.videoIndex(clip, 10), U.videoIndex(clip, 12.01), U.videoIndex(clip, 99), U.videoIndex(clip, 0)], [0, 60, 119, 0], '영상 시각 → 프레임');
+    near(U.videoTime(clip, 0), 10 + 60.5 / 30, 1e-9, '임팩트 순간의 영상 시각');
+    near(U.videoTime(clip, -0.25), 10 + 30.5 / 30, 1e-9, '실제 0.25초 전 = 영상 1초 전');
+    eq([U.playRate(0.25, 1), U.playRate(0.25, 4), U.playRate(1, 8), U.playRate(1, 32), U.playRate(0.01, 1)], [0.25, 1, 8, 16, 0.0625], '영상 재생 속도(슬로모션은 그만큼 빨리 틀어 실제 속도를 맞춘다)');
   });
 
   test('분석할 선수 고르기: 끌어 그린 네모에 여유를 더하고, 그냥 누르면 화면 높이 절반짜리 네모 · 화면 밖으로 안 나감 · 좌표 되돌리기', async function () {
@@ -123,6 +128,35 @@
     eq([m[0].visibility, W.mapToFrame(null, { x: 0, y: 0, w: 1, h: 1 })], [0.9, null], 'visibility 유지 · 사람 없음');
     var same = [{ x: 0.2, y: 0.3 }];
     ok(W.mapToFrame(same, null) === same, '영역이 없으면 그대로');
+  });
+
+  test('엉뚱한 곳에 잡힌 뼈대: 선수 자리에서 갑자기 튀거나 크기가 딴판인 프레임은 「못 찾음」으로 바꾸고, 천천히 움직이는 선수는 그대로 둔다', async function () {
+    var K = await import('/js/motion/track.js?v=1');
+    // 몸통 길이 0.1 인 사람: 골반 중심 (x, y), 어깨는 그 위 size 만큼
+    var person = function (x, y, size) { var p = [], i; for (i = 0; i < 33; i++) p.push({ x: x, y: y, visibility: 1 }); p[23] = { x: x - 0.01, y: y, visibility: 1 }; p[24] = { x: x + 0.01, y: y, visibility: 1 }; p[11] = { x: x - 0.01, y: y - size, visibility: 1 }; p[12] = { x: x + 0.01, y: y - size, visibility: 1 }; return { world: p, image: p }; };
+    var none = { world: null, image: null }, frames = [], i;
+    for (i = 0; i < 20; i++) frames.push(person(0.4 + i * 0.004, 0.5, 0.1));   // 천천히 옆으로 움직이는 선수
+    frames[5] = none; frames[6] = none;                                        // 잠깐 못 찾음
+    frames[10] = person(0.1, 0.15, 0.1);                                       // 관중석으로 튐
+    frames[15] = person(0.46, 0.5, 0.3);                                       // 같은 자리지만 3배 큰 다른 사람
+    frames.push(person(0.12, 0.16, 0.1), person(0.12, 0.16, 0.1));             // 선수가 빠진 뒤 관중석에 계속 잡힘
+    var r = K.dropStrays(frames, 1);
+    eq(r.dropped, 4, '뺀 수');
+    eq([10, 15, 20, 21].map(function (k) { return r.frames[k].image; }), [null, null, null, null], '엉뚱한 프레임');
+    ok(r.frames[9].image && r.frames[11].image && r.frames[19].image && r.frames[0].image, '선수 프레임은 그대로');
+    eq(r.frames[5], none, '원래 못 찾은 프레임은 그대로');
+    var few = [person(0.4, 0.5, 0.1), person(0.9, 0.1, 0.1)];
+    eq(K.dropStrays(few, 1).dropped, 0, '찾은 프레임이 너무 적으면 건드리지 않는다');
+    var walk = []; for (i = 0; i < 30; i++) walk.push(person(0.2 + i * 0.0103, 0.5, 0.1));   // 내딛으며 몸통 3배 거리를 움직이는 선수(투수)
+    eq(K.dropStrays(walk, 1).dropped, 0, '제자리에서 내딛는 정도의 움직임은 빼지 않는다');
+    var slide = []; for (i = 0; i < 20; i++) slide.push(person(0.4, 0.5, 0.1)); for (i = 0; i < 12; i++) slide.push(person(0.4, 0.5 - (i + 1) * 0.03, 0.1));   // 조금씩 미끄러져 위(관중석)로 올라감
+    var sl = K.dropStrays(slide, 1);
+    ok(sl.frames[19].image && sl.frames[23].image, '머문 자리 근처는 그대로');
+    var real = []; for (i = 0; i < 40; i++) real.push(person(0.41, 0.47, 0.13)); real.push(person(0.41, 0.19, 0.13));   // 실제 중계 영상의 값: 타자 위 관중석
+    eq(K.dropStrays(real, 1982 / 1124).frames[40].image, null, '타자 바로 위 관중석에 잡힌 뼈대');
+    eq([sl.frames[29].image, sl.frames[31].image], [null, null], '조금씩 미끄러져 멀리 벗어난 프레임');
+    var wide = []; for (i = 0; i < 10; i++) wide.push(person(0.4, 0.5, 0.1)); wide[4] = person(0.4 + 0.5 / (16 / 9), 0.5, 0.1);
+    eq(K.dropStrays(wide, 16 / 9).dropped, 1, '가로로 긴 영상에서도 거리를 같은 단위로 잰다');
   });
 
   test('영상 위 안내: 사람을 못 찾은 프레임에만 「이 프레임은 사람을 찾지 못했어요」를 그린다', async function () {

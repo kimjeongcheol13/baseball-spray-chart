@@ -3,11 +3,12 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=4';
-import { drawOverlay, COLOR } from './overlay.js?v=4';
-import { createChart } from './chart.js?v=4';
-import { createSkeleton3D } from './skeleton3d.js?v=2';
+import { drawOverlay, COLOR } from './overlay.js?v=5';
+import { createChart } from './chart.js?v=5';
+import { createSkeleton3D } from './skeleton3d.js?v=3';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry } from './store.js?v=1';
+import { loopRange, cropBox } from './view.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -19,6 +20,7 @@ const VIEWS = {
 const NEAR_3D = 5;         // 3D 에서 사람을 못 찾은 프레임이면 앞뒤 이만큼 안에서 가장 가까운 프레임을 보여 준다
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
+const LAYER_MAX_SIDE = 960;   // 「영상 + 선」 화면에 겹칠 선을 그려 두는 보조 캔버스의 긴 변
 const MODE_TEXT = { bat: '타격', pitch: '투구' };
 const DOWNLOAD_MB = { lite: 20, full: 24, heavy: 45 };   // 엔진(WASM 약 15MB) + 모델
 const HAND_TEXT = { R: '우', L: '좌' };
@@ -30,14 +32,15 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
 };
 const ctx = el.overlay.getContext('2d');
+const layer = document.createElement('canvas');   // 「영상 + 선」 화면용: 선만 그려 두었다가 선수 주변만 잘라 겹친다
 
 // clip = 뽑아 둔 포즈 { frames, start, hz, missing(사람을 못 찾은 장 수) } · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0 };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, crop: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -162,7 +165,9 @@ function tick() {
   if (Number.isFinite(v.duration) && v.duration > 0) el.seek.value = String(v.currentTime / v.duration);
   el.time.textContent = sec(v.currentTime);
   if (state.chart) state.chart.setCursor(currentIndex());
+  if (state.loop && v.currentTime >= state.loop.to) v.currentTime = state.loop.from;   // 동작 재생: 구간 끝에서 처음으로
   sync3d();
+  drawMirror();
 }
 
 // i 번째 프레임 앞뒤 NEAR_3D 안에서 사람을 찾은 가장 가까운 프레임 번호. 없으면 null
@@ -179,6 +184,40 @@ function sync3d() {
   state.view3d.setFrame(state.clip.frames[k === null ? i : k], state.result.hand);
   el.view3dNote.textContent = k === null || k === i ? '' : `이 프레임은 사람을 못 찾아 가장 가까운 프레임(${k > i ? '+' : ''}${k - i})을 보여 줘요`;
 }
+
+// 「영상 + 선」 화면: 지금 영상 프레임에서 선수 주변만 잘라 크게 그리고, 그 위에 같은 프레임의 선을 겹친다
+function drawMirror() {
+  const c = el.viewVideo, v = el.video, clip = state.clip;
+  if (!state.result || !clip || !v.videoWidth || !c.clientWidth) return;
+  const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
+  if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; state.crop = null; }
+  if (!state.crop) { const r = loopRange(state.result, clip.frames.length); state.crop = cropBox(clip.frames, r.from, r.to, (cw / ch) / (v.videoWidth / v.videoHeight)); }
+  const box = state.crop, sw = box.w * v.videoWidth, sh = box.h * v.videoHeight, scale = Math.min(cw / sw, ch / sh);
+  const dw = sw * scale, dh = sh * scale, dx = (cw - dw) / 2, dy = (ch - dh) / 2, m = c.getContext('2d');
+  m.clearRect(0, 0, cw, ch);
+  m.drawImage(v, box.x * v.videoWidth, box.y * v.videoHeight, sw, sh, dx, dy, dw, dh);
+  const i = currentIndex(), frame = i === null ? null : clip.frames[i];
+  if (!frame || !frame.image) return;
+  const ls = Math.min(1, LAYER_MAX_SIDE / Math.max(v.videoWidth, v.videoHeight)), lw = Math.round(v.videoWidth * ls), lh = Math.round(v.videoHeight * ls);
+  if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
+  drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand: state.result.hand, labels: false });   // 잘라 보여 주는 화면이라 각도 표는 잘린다 — 선과 점만
+  m.drawImage(layer, box.x * lw, box.y * lh, box.w * lw, box.h * lh, dx, dy, dw, dh);
+}
+
+// 동작 재생: 준비 동작부터 마무리까지를 고른 속도로 되풀이한다. 다시 누르면 멈춘다
+function toggleMotion() {
+  const c = state.clip, v = el.video;
+  if (!state.result || !c) return;
+  if (state.loop && !v.paused) { v.pause(); return; }
+  const r = loopRange(state.result, c.frames.length);
+  state.loop = { from: c.start + r.from / c.hz, to: c.start + (r.to + 1) / c.hz };
+  v.currentTime = state.loop.from;
+  v.playbackRate = Number(el.motionRate.value);
+  el.rate.value = el.motionRate.value;
+  v.play().catch((e) => { console.warn('[motion] 동작 재생 실패', e); state.loop = null; setStatus('영상을 재생하지 못했어요.', true); });
+}
+
+const renderMotionButton = () => { el.motion.textContent = state.loop && !el.video.paused ? '■ 멈춤' : '▶ 동작 재생'; };
 
 function playLoop() {
   if (el.video.paused || el.video.ended) return;
@@ -240,6 +279,7 @@ function clearResult() {
   state.result = null;
   if (state.chart) { state.chart.destroy(); state.chart = null; }
   if (state.view3d) { state.view3d.destroy(); state.view3d = null; }
+  state.loop = null; state.crop = null;
   el.view3dNote.textContent = '';
   el.results.hidden = true;
   el.saveMsg.textContent = '';
@@ -266,7 +306,9 @@ function renderResult() {
   if (state.view3d) state.view3d.destroy();
   state.view3d = createSkeleton3D(el.view3d);
   setView3d('front');
+  state.crop = null;
   sync3d();
+  drawMirror();
 }
 
 function renderNotes(r) {
@@ -373,8 +415,8 @@ function bind() {
   el.setup.addEventListener('change', (e) => { if (e.target !== el.file && e.target.name !== 'model' && state.clip) compute(null); else draw(); });
   el.video.addEventListener('loadedmetadata', onVideoReady);
   el.video.addEventListener('error', () => setStatus('이 영상은 열 수 없어요. MP4 · MOV 파일로 다시 시도해 주세요.', true));
-  el.video.addEventListener('play', () => { el.play.textContent = '멈춤'; playLoop(); });
-  el.video.addEventListener('pause', () => { el.play.textContent = '재생'; tick(); });
+  el.video.addEventListener('play', () => { el.play.textContent = '멈춤'; renderMotionButton(); playLoop(); });
+  el.video.addEventListener('pause', () => { el.play.textContent = '재생'; state.loop = null; renderMotionButton(); tick(); });
   el.video.addEventListener('seeked', () => { if (!state.busy) tick(); });
   el.play.addEventListener('click', togglePlay);
   el.prev.addEventListener('click', () => stepFrame(-1));
@@ -389,6 +431,8 @@ function bind() {
   el.goMain.addEventListener('click', () => seekToFrame(state.result.events.main));
   el.setMain.addEventListener('click', () => { const i = currentIndex(); if (i === null) setStatus('분석 구간 안의 프레임에서 눌러 주세요.', true); else compute(i); });
   el.autoMain.addEventListener('click', () => compute(null));
+  el.motion.addEventListener('click', toggleMotion);
+  el.motionRate.addEventListener('change', () => { if (state.loop) { el.video.playbackRate = Number(el.motionRate.value); el.rate.value = el.motionRate.value; } });
   el.save.addEventListener('click', save);
   el.image.addEventListener('click', saveImage);
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));

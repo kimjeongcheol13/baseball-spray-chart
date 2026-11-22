@@ -1,6 +1,6 @@
 // 동작 분석 — worldLandmarks 를 드래그로 360도 돌려 보는 3D 뼈대 뷰어 (직교 투영 · 캔버스 2D, 외부 라이브러리 없음)
 import { LM, MIN_VISIBILITY } from './landmarks.js?v=1';
-import { COLOR, FULL_BONES, boneColor, isSmallJoint } from './overlay.js?v=4';
+import { COLOR, FULL_BONES, boneColor, isSmallJoint } from './overlay.js?v=5';
 
 const BODY_M = 2.2, FILL = 0.85, CENTER_Y = 0.46, FOOT_Y = 0.95;   // 몸 높이(m) · 캔버스 높이 대비 · 골반 세로 위치 · 발 높이(골반 기준 아래로)
 const PITCH_MAX = 90, HEAD_R = 0.1, DRAG_DEG_PER_PX = 0.5, KEY_STEP = 15;

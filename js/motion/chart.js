@@ -1,7 +1,7 @@
 // 동작 분석 — 회전 속도 그래프 (SVG). 임팩트 · 릴리스를 0 으로 둔 실제 시간(ms) 축, 타깃 쪽 회전이 +
 //  · 한 축(°/s)에 골반 · 몸통 두 선. 손 속도는 단위가 달라 선으로 그리지 않는다
 //  · 값은 색이 아니라 글자로도 읽힌다: 범례 · 피크 값 표시 · 가리키면 나오는 값 · 표로 보기
-import { COLOR } from './overlay.js?v=6';
+import { COLOR } from './overlay.js?v=7';
 
 const NS = 'http://www.w3.org/2000/svg';
 const SERIES = [

@@ -127,4 +127,15 @@
     fire('drop', ['Files'], [{ name: 'swing.mp4', type: 'video/mp4' }]);
     eq(log, [], '떼면 반응하지 않는다');
   });
+
+  test('영상 주소 읽기: 유튜브 주소는 시작 시간까지 살려 보는 주소로 바꾸고, 주소가 아니면 null', async function () {
+    var L = await import('/js/motion/link.js?v=1');
+    eq(L.parseLink('https://youtu.be/dQw4w9WgXcQ?t=75'), { kind: 'youtube', id: 'dQw4w9WgXcQ', start: 75, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=75s' }, 'youtu.be + t');
+    eq(L.parseLink('  https://www.youtube.com/watch?list=x&v=dQw4w9WgXcQ&t=1m30s ').url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s', 'watch + 1m30s · 앞뒤 공백');
+    eq(L.parseLink('https://m.youtube.com/shorts/dQw4w9WgXcQ').url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'shorts · 시작 시간 없음');
+    eq(L.parseLink('https://www.youtube.com/live/dQw4w9WgXcQ?si=abc').id, 'dQw4w9WgXcQ', 'live');
+    eq(L.parseLink('https://example.com/clip.mp4'), { kind: 'web', url: 'https://example.com/clip.mp4' }, '다른 사이트는 그대로');
+    eq([L.parseLink('youtu.be/abc'), L.parseLink('javascript:alert(1)'), L.parseLink(''), L.parseLink('https://a.com/x y')], [null, null, null, null], '주소가 아닌 것');
+    eq([L.secondsOf('90'), L.secondsOf('90s'), L.secondsOf('1m30s'), L.secondsOf('1h2m3s'), L.secondsOf('abc')], [90, 90, 90, 3723, 0], 'secondsOf');
+  });
 })();

@@ -59,9 +59,16 @@
           <input type="file" id="file" accept="video/*">
           <span>영상 고르기</span>
         </label>
-        <button type="button" class="mo-btn" id="btnCapture" hidden>화면 녹화로 가져오기 (유튜브 등)</button>
       </div>
-      <p class="mo-hint" id="dropMsg" role="status">영상 파일을 이 화면 아무 데나 끌어다 놓아도 열려요.</p>
+      <p class="mo-hint" id="dropMsg" role="status">영상 파일을 이 화면 아무 데나 끌어다 놓아도 돼요. 12초 이하 영상은 놓자마자 분석까지 해요.</p>
+      <div class="mo-link" id="linkBox" hidden>
+        <p class="mo-link-title">유튜브처럼 파일이 없는 영상</p>
+        <div class="mo-link-row">
+          <input class="mo-input" id="linkUrl" type="url" inputmode="url" autocomplete="off" placeholder="영상 주소 붙여넣기 (예: https://youtu.be/…)" aria-label="영상 주소 (유튜브 등)">
+          <button type="button" class="mo-btn" id="btnLink">① 새 탭에서 열기</button>
+          <button type="button" class="mo-btn" id="btnCapture">② 화면 녹화로 가져오기</button>
+        </div>
+      </div>
       <p class="mo-hint" id="captureMsg" role="status"></p>
     </div>
     <details class="mo-guide">

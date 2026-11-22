@@ -6,7 +6,19 @@ export const COLOR = {
   pelvis: '#4b8cf5', trunk: '#ef5a5a', lead: '#2dd4a0', rear: '#f59e0b',
   bone: '#ffffff', casing: 'rgba(11,13,18,.9)', ink: '#ffffff', ink2: 'rgba(255,255,255,.72)', panel: 'rgba(11,13,18,.8)', line: 'rgba(255,255,255,.14)',
 };
-const DRAW_MIN_VISIBILITY = 0.3;
+const DRAW_MIN_VISIBILITY = 0.1;   // 이보다 낮으면 그리지 않는다. 그 위 ~ MIN_VISIBILITY 는 「추정」으로 점선 · 옅게 그린다
+//  · 스윙 · 투구 중에는 팔이 몸이나 배트에 자주 가려진다. 0.3 에서 끊었더니 팔이 통째로 빠져 뼈대가 끊겨 보였다
+const UNSURE_ALPHA = 0.7;
+// 선 굵기 · 점 크기는 화면 크기가 아니라 「화면 속 선수의 크기」에 맞춘다(중계 화면의 작은 선수에게 굵은 선은 몸을 다 덮는다)
+const TORSO_REF = 0.25, SCALE_MIN = 0.7, SCALE_MAX = 1.5;   // 몸통 길이가 짧은 변의 25% 일 때를 1 배로
+// 선수가 작게 보이면 얼굴 · 손가락 · 발끝의 잔점이 한 덩어리로 뭉친다 → 머리는 원 하나, 손 · 발은 선 하나로 줄인다
+const DETAIL_MIN_TORSO = 0.2;                                 // 화면에 보이는 몸통 길이(짧은 변 대비)가 이보다 크면 관절 33개를 모두 그린다
+const FACE_MIN_EARS = 0.07;                                   // 화면에 보이는 두 귀 사이(짧은 변 대비)가 이보다 넓어야 얼굴 점 11개를 그린다. 옆얼굴 · 작은 얼굴은 원 하나
+const FACE_MAX = 10;                                          // 관절 번호 0~10 = 얼굴
+const HEAD_BY_TORSO = 0.2;                                    // 줄여 그릴 때 머리 원의 반지름(몸통 길이 대비)
+const CORE_BONES = [[11, 13], [13, 15], [12, 14], [14, 16], [15, 19], [16, 20], [11, 23], [12, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
+const CORE_JOINTS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+const EAR_L = 7, EAR_R = 8;
 const FONT = "-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif";
 
 // 이 프레임에 붙일 관절 각도 표 → [{ key, joint(관절 번호), text, color, x, y }] (x · y 는 화면 비율 0~1). 안 보이는 관절은 뺀다
@@ -43,7 +55,6 @@ export const FULL_BONES = [
   [23, 25], [25, 27], [24, 26], [26, 28],                                                      // 다리
   [27, 29], [29, 31], [27, 31], [28, 30], [30, 32], [28, 32],                                  // 발
 ];
-const FACE_MAX = 10;                                // 0~10 = 얼굴
 const SMALL_FROM = { hand: 17, handTo: 22, foot: 29 };   // 손가락 · 발 끝은 가는 선 · 작은 점
 
 // 팔다리 · 손 · 발은 앞(투수 쪽) Teal · 뒤 Amber — 관절 표의 점 색과 같다. 얼굴 · 몸통 옆선은 흰색
@@ -65,58 +76,122 @@ export function boneStyle(a, b, hand, lm) {
   return { color: boneColor(a, b, hand), dashed: vis < MIN_VISIBILITY };
 }
 
-// 선을 어두운 테두리 위에 한 번 더 그린다 — 흰 유니폼 · 밝은 잔디 · 어두운 관중석 어디서나 보이게
+// 선을 어두운 테두리 위에 한 번 더 그린다 — 흰 유니폼 · 밝은 잔디 · 어두운 관중석 어디서나 보이게. 추정(dashed)은 점선 · 옅게
 function casedLine(ctx, x1, y1, x2, y2, color, width, u, dashed) {
-  for (const [stroke, lw] of [[COLOR.casing, width + 3 * u], [color, width]]) {
+  ctx.save();
+  if (dashed) { ctx.globalAlpha = UNSURE_ALPHA; ctx.setLineDash([width * 1.6, width * 1.8]); }
+  for (const [stroke, lw] of [[COLOR.casing, width + Math.max(2 * u, width * 0.7)], [color, width]]) {
     ctx.strokeStyle = stroke; ctx.lineWidth = lw;
-    ctx.setLineDash(dashed ? [6 * u, 6 * u] : []);
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   }
-  ctx.setLineDash([]);
+  ctx.restore();
 }
 
-function drawSkeleton(ctx, w, h, lm, hand, u) {
+// 화면 속 몸통 길이(어깨 중점 ↔ 골반 중점, 픽셀) · 어깨나 골반을 못 찾았으면 0
+function torsoPx(lm, w, h) {
+  const need = [LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP];
+  if (need.some((i) => !lm[i])) return 0;
+  const sx = (lm[need[0]].x + lm[need[1]].x) / 2, sy = (lm[need[0]].y + lm[need[1]].y) / 2, hx = (lm[need[2]].x + lm[need[3]].x) / 2, hy = (lm[need[2]].y + lm[need[3]].y) / 2;
+  return Math.hypot((sx - hx) * w, (sy - hy) * h);
+}
+
+// 선수 크기에 맞춘 배율(선 굵기 · 점 크기에 곱한다)과 세부를 그릴지 → { k, detail(손가락 · 발끝), face(얼굴 점) }
+//  · zoom: 이 그림이 나중에 몇 배로 키워져 보이는지(「영상 + 선」 화면은 선수 주변만 잘라 키운다)
+export function bodyScale(lm, w, h, zoom = 1) {
+  const ratio = torsoPx(lm, w, h) / Math.min(w, h);
+  if (!ratio) return { k: 1, detail: true, face: true };
+  const a = lm[EAR_L], b = lm[EAR_R], ears = a && b ? Math.hypot((a.x - b.x) * w, (a.y - b.y) * h) / Math.min(w, h) : 0;
+  const detail = ratio * zoom >= DETAIL_MIN_TORSO;
+  return { k: Math.max(SCALE_MIN, Math.min(SCALE_MAX, ratio / TORSO_REF)), detail, face: detail && ears * zoom >= FACE_MIN_EARS };
+}
+
+function drawSkeleton(ctx, w, h, lm, hand, u, zoom) {
+  const { k, detail, face } = bodyScale(lm, w, h, zoom), ku = k * u;
   const line = (a, b, style, width) => { if (style) casedLine(ctx, lm[a].x * w, lm[a].y * h, lm[b].x * w, lm[b].y * h, style.color, width, u, style.dashed); };
   const fixed = (a, b, color) => { const s = boneStyle(a, b, hand, lm); return s && { color, dashed: s.dashed }; };
   ctx.lineCap = 'round';
-  for (const [a, b] of FULL_BONES) line(a, b, boneStyle(a, b, hand, lm), (isSmallJoint(a) && isSmallJoint(b) ? 2 : 3) * u);
-  line(LM.L_HIP, LM.R_HIP, fixed(LM.L_HIP, LM.R_HIP, COLOR.pelvis), 5 * u);
-  line(LM.L_SHOULDER, LM.R_SHOULDER, fixed(LM.L_SHOULDER, LM.R_SHOULDER, COLOR.trunk), 5 * u);
-  drawJoints(ctx, w, h, lm, u);
+  for (const [a, b] of detail ? FULL_BONES : CORE_BONES) {
+    if (!face && Math.max(a, b) <= FACE_MAX) continue;
+    line(a, b, boneStyle(a, b, hand, lm), (isSmallJoint(a) && isSmallJoint(b) ? 2 : 3) * ku);
+  }
+  line(LM.L_HIP, LM.R_HIP, fixed(LM.L_HIP, LM.R_HIP, COLOR.pelvis), 5 * ku);
+  line(LM.L_SHOULDER, LM.R_SHOULDER, fixed(LM.L_SHOULDER, LM.R_SHOULDER, COLOR.trunk), 5 * ku);
+  if (!face) drawHead(ctx, w, h, lm, ku);
+  drawJoints(ctx, w, h, lm, ku, detail, face);
 }
 
-// 관절 33개의 점(확실히 보이는 것만). 어두운 테두리 안에 흰 점
-function drawJoints(ctx, w, h, lm, u) {
+// 줄여 그릴 때의 머리: 두 귀의 가운데에 원 하나
+function drawHead(ctx, w, h, lm, ku) {
+  const a = lm[EAR_L], b = lm[EAR_R];
+  if (!a || !b || Math.min(a.visibility ?? 1, b.visibility ?? 1) < DRAW_MIN_VISIBILITY) return;
+  const x = ((a.x + b.x) / 2) * w, y = ((a.y + b.y) / 2) * h, r = Math.max(4 * ku, torsoPx(lm, w, h) * HEAD_BY_TORSO);
+  for (const [stroke, lw] of [[COLOR.casing, 4.5 * ku], [COLOR.bone, 2.2 * ku]]) {
+    ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+// 관절 점(확실히 보이는 것만). 어두운 테두리 안에 흰 점. 줄여 그릴 때는 어깨 · 팔꿈치 · 손목 · 골반 · 무릎 · 발목만
+function drawJoints(ctx, w, h, lm, ku, detail, face) {
   lm.forEach((p, i) => {
-    if ((p.visibility ?? 1) < MIN_VISIBILITY) return;
-    const r = (isSmallJoint(i) ? 1.6 : 2.6) * u;
-    ctx.fillStyle = COLOR.casing; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, r + 1.4 * u, 0, Math.PI * 2); ctx.fill();
+    if ((p.visibility ?? 1) < MIN_VISIBILITY || (!detail && !CORE_JOINTS.includes(i)) || (!face && i <= FACE_MAX)) return;
+    const r = (isSmallJoint(i) ? 1.5 : 2.3) * ku;
+    ctx.fillStyle = COLOR.casing; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, r + 1.2 * ku, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = COLOR.bone; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, r, 0, Math.PI * 2); ctx.fill();
   });
 }
 
-// 관절 각도 표를 w × h 안에 그린다(가장자리에서는 안쪽으로 밀어 넣는다). 3D · 잘라 보여 주는 화면도 좌표만 바꿔 이 함수를 쓴다
-export function drawLabels(ctx, w, h, labels, u) {
-  ctx.font = `700 ${11 * u}px ${FONT}`;
-  ctx.textBaseline = 'middle';
-  const center = labels.reduce((s, l) => s + l.x, 0) / (labels.length || 1);
-  for (const l of labels) {
-    const px = l.x * w, py = l.y * h, tw = ctx.measureText(l.text).width, bw = tw + 22 * u, bh = 20 * u;
-    ctx.fillStyle = COLOR.casing; ctx.beginPath(); ctx.arc(px, py, 6.5 * u, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(px, py, 4.5 * u, 0, Math.PI * 2); ctx.fill();
-    const left = l.x < center ? px - 10 * u - bw : px + 10 * u;
-    const bx = Math.max(2 * u, Math.min(w - bw - 2 * u, left)), by = Math.max(2 * u, Math.min(h - bh - 2 * u, py - bh / 2));
-    ctx.fillStyle = COLOR.panel; pill(ctx, bx, by, bw, bh);
-    ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(bx + 9 * u, by + bh / 2, 3 * u, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = COLOR.ink; ctx.fillText(l.text, bx + 16 * u, by + bh / 2 + 0.5 * u);
+// 몸이 차지하는 가로 범위(화면 비율) → { left, right } · 각도 표를 몸 밖에 놓는 데 쓴다
+export function bodySpan(points) {
+  const xs = CORE_JOINTS.map((i) => points[i]).filter((p) => p && (p.visibility ?? 1) >= DRAW_MIN_VISIBILITY).map((p) => p.x);
+  return xs.length ? { left: Math.min(...xs), right: Math.max(...xs) } : null;
+}
+
+// 각도 표가 놓일 자리 → [{ ...label, px, py(관절 픽셀), bx, by, bw, bh(표 상자) }]
+//  · 표는 몸의 가로 범위(body) 바깥에 놓는다: 몸 왼쪽 관절은 왼쪽 바깥, 오른쪽 관절은 오른쪽 바깥. 자리가 없으면 반대쪽
+//  · 같은 쪽 표끼리 겹치면 아래로 민다
+export function placeLabels(labels, w, h, u, widthOf, body = null) {
+  if (!labels.length) return [];
+  const span = body || { left: Math.min(...labels.map((l) => l.x)), right: Math.max(...labels.map((l) => l.x)) };
+  const center = (span.left + span.right) / 2, gap = 12 * u, bh = 20 * u, edge = 2 * u;
+  const placed = labels.map((l) => {
+    const bw = widthOf(l.text) + 22 * u, leftX = span.left * w - gap - bw, rightX = span.right * w + gap;
+    const fits = { left: leftX >= edge, right: rightX + bw <= w - edge }, wantLeft = l.x < center;
+    const onLeft = wantLeft ? fits.left || !fits.right : !fits.right && fits.left;
+    const bx = Math.max(edge, Math.min(w - bw - edge, onLeft ? leftX : rightX));
+    return { ...l, px: l.x * w, py: l.y * h, bx, by: l.y * h - bh / 2, bw, bh, onLeft };
+  });
+  for (const side of [true, false]) {
+    let floor = edge;
+    for (const p of placed.filter((q) => q.onLeft === side).sort((a, b) => a.by - b.by)) {
+      p.by = Math.max(edge, Math.min(h - bh - edge, Math.max(p.by, floor)));
+      floor = p.by + bh + 3 * u;
+    }
+  }
+  return placed;
+}
+
+// 관절 각도 표를 w × h 안에 그린다: 관절에 작은 고리, 거기서 몸 밖의 표까지 가는 선. 3D · 잘라 보여 주는 화면도 좌표만 바꿔 이 함수를 쓴다
+export function drawLabels(ctx, w, h, labels, u, body = null) {
+  ctx.font = `600 ${11 * u}px ${FONT}`;
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  for (const l of placeLabels(labels, w, h, u, (text) => ctx.measureText(text).width, body)) {
+    const ax = l.onLeft ? l.bx + l.bw : l.bx, ay = l.by + l.bh / 2;
+    ctx.setLineDash([]); ctx.lineCap = 'round';
+    for (const [stroke, lw] of [[COLOR.casing, 3 * u], [l.color, 1.2 * u]]) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(l.px, l.py); ctx.stroke(); }
+    ctx.fillStyle = COLOR.casing; ctx.beginPath(); ctx.arc(l.px, l.py, 4.2 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(l.px, l.py, 2.8 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COLOR.panel; pill(ctx, l.bx, l.by, l.bw, l.bh);
+    ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(l.bx + 9 * u, ay, 3 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COLOR.ink; ctx.fillText(l.text, l.bx + 16 * u, ay + 0.5 * u);
   }
 }
 
-// hud = { title, rows: [{ label, value, unit, color }], footer } — 오른쪽 위 요약 패널
+// hud = { title, rows: [{ label, value, unit, color }], footer, side: 'left' | 'right'(기본) } — 위쪽 구석의 요약 패널
 function drawHud(ctx, w, hud, u) {
   const pw = Math.min(w * 0.5, 176 * u), pad = 10 * u, rowH = 21 * u;
   const ph = pad * 2 + 16 * u + hud.rows.length * rowH + (hud.footer ? 18 * u : 0);
-  const x = w - pw - 8 * u, y = 8 * u;
+  const x = hud.side === 'left' ? 8 * u : w - pw - 8 * u, y = 8 * u;
   ctx.fillStyle = COLOR.panel; ctx.beginPath(); ctx.roundRect(x, y, pw, ph, 10 * u); ctx.fill();
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.fillStyle = COLOR.ink; ctx.font = `800 ${11 * u}px ${FONT}`; ctx.fillText(hud.title, x + pad, y + pad + 6 * u);
@@ -154,13 +229,21 @@ function drawMissing(ctx, w, h, u) {
   ctx.textAlign = 'left';
 }
 
+// 요약 패널을 놓을 쪽: 선수가 화면 오른쪽에 있으면 왼쪽 위, 아니면 오른쪽 위 — 패널이 선수를 가리지 않게
+export function hudSideFor(frames) {
+  let sum = 0, n = 0;
+  for (const f of frames) if (f && f.image) { sum += (f.image[LM.L_HIP].x + f.image[LM.R_HIP].x) / 2; n += 1; }
+  return n && sum / n > 0.55 ? 'left' : 'right';
+}
+
 // ctx 에 w × h 크기로 그린다. frame 이 없으면 뼈대 없이 패널만, hud 가 없으면 뼈대만, missing 이면 「사람을 못 찾음」 안내, labels 가 false 면 관절 각도 표 없이 선과 점만
-export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false, missing = false, labels = true } = {}) {
+//  · zoom: 이 그림을 나중에 몇 배로 키워 보여 주는지(세부를 그릴지 정하는 데만 쓴다)
+export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false, missing = false, labels = true, zoom = 1 } = {}) {
   const u = Math.max(1, Math.min(w, h) / 360);
   ctx.clearRect(0, 0, w, h);
   if (frame && frame.image) {
-    drawSkeleton(ctx, w, h, frame.image, hand, u);
-    if (labels) drawLabels(ctx, w, h, jointLabels(frame, hand), u);
+    drawSkeleton(ctx, w, h, frame.image, hand, u, zoom);
+    if (labels) drawLabels(ctx, w, h, jointLabels(frame, hand), u, bodySpan(frame.image));
   }
   if (missing) drawMissing(ctx, w, h, u);
   if (hud) drawHud(ctx, w, hud, u);

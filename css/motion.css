@@ -114,6 +114,12 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 .mo-pick-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .mo-pick-acts > .mo-btn { flex: 1 1 220px; }
 .mo-pick .mo-hint { margin-top: 10px; }
+.mo-link { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--mo-line); }
+.mo-link-title { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--mo-ink3); }
+.mo-link-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.mo-link-row .mo-input { flex: 1 1 260px; }
+.mo-link-row .mo-btn { flex: 1 1 180px; }
+.mo-btn.next { border-color: var(--mo-blue); }
 .mo-btn.recording { border-color: var(--mo-red); color: #fff; background: rgba(239, 90, 90, .18); font-variant-numeric: tabular-nums; }
 .mo-drop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(11, 13, 18, .82); border: 2px dashed var(--mo-blue); pointer-events: none; }
 .mo-drop span { padding: 14px 20px; border-radius: var(--mo-r-card); border: 1px solid var(--mo-line2); background: var(--mo-card); font-size: 16px; font-weight: 600; color: var(--mo-ink); }
@@ -201,6 +207,7 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
   .mo-seg { grid-column: auto; }
   .mo-file { width: auto; }
   .mo-pick-acts > .mo-btn { flex: 0 0 auto; }
+  .mo-link-row .mo-btn { flex: 0 0 auto; }
   .mo-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .mo-view3d { height: 440px; }
 }

@@ -24,11 +24,23 @@ export function captureName(date, mime) {
 // 초 → '0:07'
 export const clock = (seconds) => `${Math.floor(seconds / 60)}:${two(Math.floor(seconds % 60))}`;
 
+// 화면 공유 창을 띄운다. 고르는 창이 「탭」 목록부터 열리고 이 페이지 자신은 빠지게 귀띔한다
+//  · 귀띔을 모르는 브라우저가 형식 오류(TypeError)를 내면 귀띔 없이 다시 묻는다. 사용자가 취소한 것(NotAllowedError)은 그대로 던진다
+async function askForScreen() {
+  const video = { frameRate: { ideal: 60, max: 60 } };
+  try {
+    return await navigator.mediaDevices.getDisplayMedia({ video: { ...video, displaySurface: 'browser' }, audio: false, selfBrowserSurface: 'exclude' });
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err;
+    return navigator.mediaDevices.getDisplayMedia({ video, audio: false });
+  }
+}
+
 // 화면 공유를 받아 녹화를 시작한다 → { stop() }
 //  · 사용자가 공유 창에서 취소하면 예외(NotAllowedError)를 던진다
 //  · 끝나면 onDone(file, 초). 「공유 중지」를 누르거나 MAX_CAPTURE_S 가 지나도 끝난다. 녹화된 것이 없으면 onFail()
 export async function startCapture({ onTick, onDone, onFail }) {
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60, max: 60 } }, audio: false });
+  const stream = await askForScreen();
   const mime = chooseMime((m) => MediaRecorder.isTypeSupported(m));
   const recorder = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: BITRATE } : { videoBitsPerSecond: BITRATE });
   const chunks = [], started = performance.now(), elapsed = () => (performance.now() - started) / 1000;

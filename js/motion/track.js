@@ -100,6 +100,31 @@ export function selectTrack(framesPeople, aspect) {
   return picks;
 }
 
+// ── 화면 전환(카메라 컷) ──────────────────────────────────────
+//  · 구간 안에서 화면이 바뀌면(클로즈업 → 넓은 화면 등) 앞 장면과 뒤 장면의 사람은 서로 이어지지 않는다. 한 장면만 분석한다
+const CUT_DIFF = 0.15;   // 이어진 두 프레임의 평균 밝기 차이(0~1)가 이보다 크면 화면이 바뀐 것으로 본다
+//   · 실제 중계 영상: 같은 장면 안에서는 0.01~0.11, 화면이 바뀔 때는 0.20 · 0.25 였다(2026-11-22 측정)
+
+// 작게 줄인 두 프레임의 픽셀(RGBA 배열)이 얼마나 다른가 → 0(같음) ~ 1
+export function frameDiff(a, b) {
+  if (!a || !b || a.length !== b.length || !a.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+  return sum / ((a.length / 4) * 3 * 255);
+}
+export const isCut = (diff) => diff > CUT_DIFF;
+
+// 화면이 바뀐 프레임 번호들(cuts: 새 장면의 첫 프레임)로 구간을 나눠 가장 긴 장면을 고른다 → { from, to } (둘 다 포함)
+export function longestShot(total, cuts) {
+  const starts = [0, ...[...new Set(cuts)].filter((k) => k > 0 && k < total).sort((a, b) => a - b)];
+  let best = { from: 0, to: Math.max(0, total - 1) }, bestLength = -1;
+  starts.forEach((from, i) => {
+    const to = (i + 1 < starts.length ? starts[i + 1] : total) - 1;
+    if (to - from > bestLength) { best = { from, to }; bestLength = to - from; }
+  });
+  return best;
+}
+
 // frames → { frames(엉뚱한 뼈대는 「못 찾음」으로 바꾼 것), dropped(바꾼 수) }. aspect = 영상 가로/세로
 export function dropStrays(frames, aspect) {
   const bodies = frames.map((f) => (f.image ? body(f, aspect) : null)), found = bodies.filter(Boolean);

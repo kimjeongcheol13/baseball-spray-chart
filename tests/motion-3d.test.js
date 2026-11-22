@@ -131,7 +131,7 @@
   });
 
   test('엉뚱한 곳에 잡힌 뼈대: 선수 자리에서 갑자기 튀거나 크기가 딴판인 프레임은 「못 찾음」으로 바꾸고, 천천히 움직이는 선수는 그대로 둔다', async function () {
-    var K = await import('/js/motion/track.js?v=2');
+    var K = await import('/js/motion/track.js?v=3');
     // 몸통 길이 0.1 인 사람: 골반 중심 (x, y), 어깨는 그 위 size 만큼
     var person = function (x, y, size) { var p = [], i; for (i = 0; i < 33; i++) p.push({ x: x, y: y, visibility: 1 }); p[23] = { x: x - 0.01, y: y, visibility: 1 }; p[24] = { x: x + 0.01, y: y, visibility: 1 }; p[11] = { x: x - 0.01, y: y - size, visibility: 1 }; p[12] = { x: x + 0.01, y: y - size, visibility: 1 }; return { world: p, image: p }; };
     var none = { world: null, image: null }, frames = [], i;
@@ -222,7 +222,7 @@
   });
 
   test('네모 안의 여러 사람: 네모 가운데에 있고 네모 크기에 맞는 사람을 기준으로 앞뒤 프레임을 따라간다', async function () {
-    var K = await import('/js/motion/track.js?v=2');
+    var K = await import('/js/motion/track.js?v=3');
     // 네모 안의 사람(가운데 cx · cy, 키 hgt) — 코 · 어깨 · 골반 · 무릎 · 발목만 채운다
     var person = function (cx, cy, hgt) { var p = [], set = function (i, dx, dy) { p[i] = { x: cx + dx, y: cy + dy * hgt }; };
       set(0, 0, -0.5); set(11, 0.03, -0.35); set(12, -0.03, -0.35); set(23, 0.02, 0); set(24, -0.02, 0); set(25, 0.02, 0.25); set(26, -0.02, 0.25); set(27, 0.02, 0.5); set(28, -0.02, 0.5); return p; };
@@ -242,5 +242,21 @@
     eq(K.selectTrack([[pitcher], [person(0.15, 0.5, 0.75)], [person(0.51, 0.53, 0.74)]], 1), [0, -1, 0], '한 프레임만 딴 곳에 잡히면 그 프레임만 비운다');
     // 엉뚱하게 큰 인식(키가 네모의 1.5배)은 기준으로 삼지 않는다
     eq(K.selectTrack([[person(0.5, 0.5, 1.5)], [pitcher]], 1)[1], 0, '엉뚱한 크기는 기준이 아니다');
+  });
+
+  test('화면 전환: 두 프레임의 차이로 알아채고, 가장 긴 장면만 고른다', async function () {
+    var K = await import('/js/motion/track.js?v=3');
+    var px = function (v) { var a = new Uint8ClampedArray(16); for (var i = 0; i < 16; i += 4) { a[i] = a[i + 1] = a[i + 2] = v; a[i + 3] = 255; } return a; };
+    near(K.frameDiff(px(100), px(100)), 0, 1e-12, '같은 그림');
+    near(K.frameDiff(px(0), px(255)), 1, 1e-12, '정반대 그림');
+    near(K.frameDiff(px(100), px(151)), 0.2, 1e-9, '밝기 51 차이 = 0.2');
+    eq([K.frameDiff(null, px(1)), K.frameDiff(px(1), new Uint8ClampedArray(8))], [0, 0], '견줄 수 없으면 0(첫 프레임 · 크기가 다름)');
+    eq([K.isCut(0.11), K.isCut(0.2)], [false, true], '같은 장면 안의 움직임(0.11)은 전환이 아니고 0.2 는 전환');
+    eq(K.longestShot(100, []), { from: 0, to: 99 }, '전환이 없으면 전체');
+    eq(K.longestShot(100, [30]), { from: 30, to: 99 }, '뒤 장면이 더 길다');
+    eq(K.longestShot(100, [70]), { from: 0, to: 69 }, '앞 장면이 더 길다');
+    eq(K.longestShot(100, [43, 31, 43]), { from: 43, to: 99 }, '여러 번 · 순서가 뒤섞이고 겹쳐도');
+    eq(K.longestShot(10, [0, 10, 99]), { from: 0, to: 9 }, '범위 밖의 번호는 무시');
+    eq(K.longestShot(0, []), { from: 0, to: 0 }, '빈 구간');
   });
 })();

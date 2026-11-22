@@ -1,5 +1,5 @@
 // 동작 분석 — 저장한 기록(sl_motion_log). 이 키를 읽고 쓰는 곳은 이 파일뿐이다
-//  · 영상 · 프레임 좌표는 저장하지 않는다. 지표 숫자만 남긴다(기록 하나에 약 300바이트)
+//  · 여기에는 목록(선수 이름 · 지표 숫자 · 다시 보기 데이터가 있는지)만 둔다 — 기록 하나에 약 0.5KB. 프레임 좌표 · 영상은 db.js(IndexedDB)
 const KEY = 'sl_motion_log';
 const MAX_ENTRIES = 30;
 
@@ -25,6 +25,11 @@ export function addEntry(entry, storage = localStorage) {
 
 export function removeEntry(id, storage = localStorage) {
   return writeLog(loadLog(storage).filter((e) => e.id !== id), storage);
+}
+
+// 기록 하나의 일부 값만 바꾼다(다시 보기 데이터를 저장한 뒤 표시를 붙일 때) → 저장 성공 여부
+export function updateEntry(id, patch, storage = localStorage) {
+  return writeLog(loadLog(storage).map((e) => (e.id === id ? { ...e, ...patch } : e)), storage);
 }
 
 // 같은 종류(타격/투구 · 좌우)의 바로 앞 기록 — 「지난 기록 대비」 비교용

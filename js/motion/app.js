@@ -5,13 +5,13 @@ import { analyzeMotion } from './analyze.js?v=3';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
 import { drawOverlay, COLOR } from './overlay.js?v=6';
 import { createChart } from './chart.js?v=6';
-import { createSkeleton3D } from './skeleton3d.js?v=4';
+import { createSkeleton3D } from './skeleton3d.js?v=5';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
-import { createDuel } from './duel.js?v=4';
+import { createDuel } from './duel.js?v=5';
 import { createMirror } from './mirror.js?v=1';
 import { dropStrays } from './track.js?v=1';
 

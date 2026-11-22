@@ -21,25 +21,35 @@ export const playRate = (rate, slow) => Math.max(0.0625, Math.min(16, rate * slo
 // 되풀이 구간의 프레임 범위
 const loopFrames = (side) => ({ from: clampIndex(side, side.main - Math.round(LOOP_BEFORE_S * side.fps)), to: clampIndex(side, side.main + Math.round(LOOP_AFTER_S * side.fps)) });
 
-// panels[k] = { mirror(영상 + 선 캔버스), view(3D 캔버스) } · onTime(t)
+// sides[k] 가 null 이면(숫자만 저장된 기록) 그 자리에는 안내만 그리고, 나머지 한쪽은 그대로 보여 준다
+// panels[k] = { mirror(영상 + 선 캔버스), view(3D 캔버스) } · onTime(t) · missingText = 데이터가 없는 쪽에 쓸 안내
 //  → { toggle()(재생 중이면 true), setRate(배속), setView(yaw, pitch), destroy() }. 처음에는 임팩트 · 릴리스 순간(t = 0)에 멈춰 있다
-export function createDuel(sides, panels, onTime) {
-  const views = panels.map((p) => createSkeleton3D(p.view));
-  const mirrors = panels.map((p, k) => { const m = createMirror(p.mirror), r = loopFrames(sides[k]); m.setScope(sides[k].frames, r.from, r.to); return m; });
+export function createDuel(sides, panels, onTime, missingText) {
+  const live = sides.map((s, k) => (s ? k : -1)).filter((k) => k >= 0);
+  const views = sides.map((s, k) => (s ? createSkeleton3D(panels[k].view) : null));
+  const mirrors = sides.map((s, k) => {
+    const m = createMirror(panels[k].mirror);
+    if (s) { const r = loopFrames(s); m.setScope(s.frames, r.from, r.to); }
+    return m;
+  });
+  const blanks = sides.map((s, k) => (s ? null : createMirror(panels[k].view)));   // 데이터가 없는 쪽의 3D 자리에도 안내를 쓴다
   let t = 0, rate = 0.25, raf = 0, last = 0;
 
   // 재생 중이고 영상이 있으면 영상이 실제로 보여 주는 프레임을 따른다(선이 영상과 어긋나지 않게). 아니면 시계를 따른다
   const indexOf = (s) => (s.video && raf ? videoIndex(s, s.video.currentTime) : clampIndex(s, s.main + Math.round(t * s.fps)));
+  const showMissing = () => sides.forEach((s, k) => { if (!s) { mirrors[k].note(missingText); blanks[k].note(missingText); } });
   const show = () => {
-    sides.forEach((s, k) => {
-      const i = indexOf(s), near = nearestPose(s.frames, i);
+    for (const k of live) {
+      const s = sides[k], i = indexOf(s), near = nearestPose(s.frames, i);
       views[k].setFrame(near === null ? null : s.frames[near], s.hand);
-      if (s.video) mirrors[k].draw(s.video, s.frames[i], s.hand); else mirrors[k].note('영상이 저장돼 있지 않아요');
-    });
+      if (s.video) mirrors[k].draw(s.video, s.frames[i], s.hand); else mirrors[k].note('영상이 저장돼 있지 않아요 (뼈대만 보여요)');
+    }
+    showMissing();
     onTime(t);
   };
-  const seekAll = () => { for (const s of sides) if (s.video) s.video.currentTime = videoTime(s, t); };
-  const setRates = () => { for (const s of sides) if (s.video) s.video.playbackRate = playRate(rate, s.slow); };
+  const videos = live.map((k) => sides[k]).filter((s) => s.video);
+  const seekAll = () => { for (const s of videos) s.video.currentTime = videoTime(s, t); };
+  const setRates = () => { for (const s of videos) s.video.playbackRate = playRate(rate, s.slow); };
   const onSeeked = () => { if (!raf) show(); };
   const step = (now) => {
     t += ((now - last) / 1000) * rate;
@@ -48,22 +58,22 @@ export function createDuel(sides, panels, onTime) {
     show();
     raf = requestAnimationFrame(step);
   };
-  const pause = () => { cancelAnimationFrame(raf); raf = 0; for (const s of sides) if (s.video) s.video.pause(); };
+  const pause = () => { cancelAnimationFrame(raf); raf = 0; for (const s of videos) s.video.pause(); };
 
-  for (const s of sides) if (s.video) s.video.addEventListener('seeked', onSeeked);
+  for (const s of videos) s.video.addEventListener('seeked', onSeeked);
   seekAll();
   show();
   return {
     toggle() {
       if (raf) { pause(); show(); return false; }
       seekAll(); setRates();
-      for (const s of sides) if (s.video) s.video.play().catch((e) => console.warn('[motion] 비교 영상 재생이 막혔어요', e));
+      for (const s of videos) s.video.play().catch((e) => console.warn('[motion] 비교 영상 재생이 막혔어요', e));
       last = performance.now();
       raf = requestAnimationFrame(step);
       return true;
     },
     setRate(r) { rate = r; setRates(); },
-    setView(yaw, pitch) { for (const v of views) v.setView(yaw, pitch); },
-    destroy() { pause(); for (const s of sides) if (s.video) s.video.removeEventListener('seeked', onSeeked); for (const v of views) v.destroy(); },
+    setView(yaw, pitch) { for (const v of views) if (v) v.setView(yaw, pitch); },
+    destroy() { pause(); for (const s of videos) s.video.removeEventListener('seeked', onSeeked); for (const v of views) if (v) v.destroy(); },
   };
 }

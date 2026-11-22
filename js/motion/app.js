@@ -331,7 +331,7 @@ async function analyze() {
     const hz = await estimateFps(el.video);
     setStatus('동작을 읽는 중…');
     state.readStart = performance.now();
-    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, shouldStop: () => state.stopping });
+    const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, onRetry: () => setStatus('네모 안의 다른 사람이 잡혔어요. 감싼 선수를 다시 찾는 중…'), shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
     const aspect = el.video.videoWidth / el.video.videoHeight, kept = dropStrays(sampled.frames, aspect);
     state.clip = { frames: kept.frames, start: range.start, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped, others: sampled.others || 0 };

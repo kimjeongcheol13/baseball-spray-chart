@@ -80,6 +80,9 @@ function seekTo(video, t) {
   });
 }
 
+const RETRY_BELOW = 0.6;   // 한 사람만 찾게 읽었을 때 감싼 선수를 찾은 프레임이 이 비율보다 적고, 다른 사람이 잡힌 프레임이 있으면 여러 사람으로 다시 읽는다
+//  · 처음부터 여러 사람을 찾게 하면 한 사람만 있어도 1.7배(31초 → 53초), 세 사람이면 2.4배(30초 → 71초) 느렸다(2026-11-22 측정)
+const needsRetry = (pass, total) => total > 0 && pass.others > 0 && (total - pass.missing) / total < RETRY_BELOW;
 const REGION_POSES = 3;   // 선수를 고른 네모 안에서는 이만큼까지 사람을 찾게 하고, 그중 감싼 사람을 고른다(track.js selectTrack)
 
 // 엔진 결과에서 한 사람을 골라 프레임 하나로 만든다. pick(landmarks 목록) → 고를 번호
@@ -185,31 +188,42 @@ async function seekAndDetect(video, ctx, keys, handle) {
 //  · region = 분석할 선수 영역({ x, y, w, h } 화면 비율). 주면 그 부분만 엔진에 넣고, 좌표는 화면 전체 기준으로 되돌린다
 //  · 사람을 놓친 프레임을 선수 주변만 잘라 다시 찾는 방법은 쓰지 않는다 — 찾은 수는 늘지만(28 → 34/42) 뼈대가 38% 작게 잡히는 등
 //    위치가 틀려 값이 더 흔들렸다(2026-11-22 측정). 못 찾은 프레임은 못 찾은 채로 두고 신뢰도에 반영한다
-export async function samplePoses(video, landmarker, { start, end, hz, region = null, onProgress, shouldStop }) {
-  const total = Math.max(0, Math.floor((end - start) * hz)), frames = new Array(total).fill(null);
-  const ctx = { start, end, hz, total, shouldStop }, source = makeSource(video, region), pick = regionPicker(video, region);
-  await landmarker.setOptions({ numPoses: region ? REGION_POSES : 1 });
-  const found = region ? new Array(total).fill(null) : null;   // 네모 안에서 찾은 사람 전부(끝난 뒤 감싼 사람을 다시 고른다)
-  let done = 0, refilled = 0, stopped = false;
-  const handle = (k, stepMs) => {
-    lastTimestamp += stepMs;
-    const res = landmarker.detectForVideo(source(), lastTimestamp);
-    if (found) found[k] = { image: res.landmarks || [], world: res.worldLandmarks || [] };
-    frames[k] = toFrame(res, region, pick);
-    if (onProgress) onProgress(++done, total, frames[k]);
+export async function samplePoses(video, landmarker, { start, end, hz, region = null, onProgress, onRetry, shouldStop }) {
+  const total = Math.max(0, Math.floor((end - start) * hz)), ctx = { start, end, hz, total, shouldStop };
+  const aspect = region ? regionAspect(video, region) : 1;
+  // 한 번 읽기: 구간을 재생하며 프레임마다 엔진을 돌린다. poses = 한 프레임에서 찾을 사람 수
+  const readOnce = async (poses) => {
+    const frames = new Array(total).fill(null), found = region ? new Array(total).fill(null) : null, pick = regionPicker(video, region), source = makeSource(video, region);
+    let done = 0, refilled = 0, stopped = false;
+    await landmarker.setOptions({ numPoses: poses });
+    const handle = (k, stepMs) => {
+      lastTimestamp += stepMs;
+      const res = landmarker.detectForVideo(source(), lastTimestamp);
+      if (found) found[k] = { image: res.landmarks || [], world: res.worldLandmarks || [] };
+      frames[k] = toFrame(res, region, pick);
+      if (onProgress) onProgress(++done, total, frames[k]);
+    };
+    video.pause();
+    if (total && typeof video.requestVideoFrameCallback === 'function') {
+      await seekTo(video, start);
+      stopped = (await playAndDetect(video, { ...ctx, pending: new Set(frames.keys()), handle })).stopped;
+    }
+    if (!stopped) {
+      const left = [...frames.keys()].filter((k) => !frames[k]);
+      refilled = left.length;
+      stopped = await seekAndDetect(video, ctx, left, handle);
+    }
+    // 네모가 있으면 모아 둔 사람들 중 감싼 선수만 남긴다. others = 사람은 찾았지만 감싼 선수가 아니라서 비운 프레임 수
+    const filled = found ? pickWrapped(found, region, aspect) : frames.map((f) => f || toFrame({}, null));
+    const others = found ? found.filter((f, k) => f && f.image.length && !filled[k].world).length : 0;
+    return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped, others };
   };
-  video.pause();
-  if (total && typeof video.requestVideoFrameCallback === 'function') {
-    await seekTo(video, start);
-    stopped = (await playAndDetect(video, { ...ctx, pending: new Set(frames.keys()), handle })).stopped;
-  }
-  if (!stopped) {
-    const left = [...frames.keys()].filter((k) => !frames[k]);
-    refilled = left.length;
-    stopped = await seekAndDetect(video, ctx, left, handle);
-  }
-  const filled = found ? pickWrapped(found, region, regionAspect(video, region)) : frames.map((f) => f || toFrame({}, null));
-  // others: 사람은 찾았지만 감싼 선수가 아니라서 비운 프레임 수
-  const others = found ? found.filter((f, k) => f && f.image.length && !filled[k].world).length : 0;
-  return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped, others };
+
+  // 먼저 한 사람만 찾게 해서 빠르게 읽는다(대부분은 이것으로 끝난다)
+  const first = await readOnce(1);
+  if (!region || first.stopped || !needsRetry(first, total)) return first;
+  // 엔진이 네모 안의 다른 사람(정면을 본 포수 등)에게 붙은 경우: 여러 사람을 찾게 해서 다시 읽고, 감싼 선수를 더 많이 찾은 쪽을 쓴다
+  if (onRetry) onRetry();
+  const second = await readOnce(REGION_POSES);
+  return second.stopped || second.missing <= first.missing ? second : first;
 }

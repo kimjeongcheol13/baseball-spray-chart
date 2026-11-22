@@ -2,7 +2,7 @@
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=6';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -13,7 +13,7 @@ import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo,
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=6';
 import { createMirror } from './mirror.js?v=2';
-import { dropStrays } from './track.js?v=1';
+import { dropStrays } from './track.js?v=2';
 import { summaryLines, readText, referenceLine } from './insight.js?v=1';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';

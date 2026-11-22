@@ -35,6 +35,35 @@ function follow(bodies, ok, keep, anchor, dir, size) {
   }
 }
 
+// ── 네모 안의 여러 사람 중 사용자가 감싼 사람 고르기 ─────────────
+//  · 투수를 감싸도 네모 안에 포수 · 타자 · 심판이 같이 들어온다. 엔진에 한 사람만 찾게 하면 엔진이 고른 사람(정면을 본 포수 등)에
+//    붙어 버린다. 그래서 여러 사람을 찾게 한 뒤, 네모 가운데에 크게 있는 사람을 고르고 그 사람을 프레임마다 따라간다
+const EXTENT_JOINTS = [0, 11, 12, 23, 24, 25, 26, 27, 28];   // 코 · 어깨 · 골반 · 무릎 · 발목
+const OFF_CENTER = 2;   // 네모 가운데에서 벗어난 거리(네모 높이 대비)에 곱하는 벌점
+const OFF_TRACK = 3;    // 직전에 고른 자리에서 벗어난 거리에 곱하는 벌점 — 한 번 고른 사람을 쉽게 바꾸지 않는다
+
+// 한 사람이 네모 안에서 차지하는 자리 → { x, y(가운데), height } (네모 높이를 1 로 한 단위. aspect = 네모의 가로/세로)
+export function extentOf(landmarks, aspect) {
+  const pts = EXTENT_JOINTS.map((i) => landmarks[i]).filter(Boolean);
+  if (!pts.length) return null;
+  const xs = pts.map((p) => p.x * aspect), ys = pts.map((p) => p.y);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2, height: Math.max(...ys) - Math.min(...ys) };
+}
+
+// 네모 안에서 찾은 사람들 중 고를 사람의 번호 → -1 이면 아무도 없음
+//  · 점수 = 키(클수록) − 네모 가운데에서 벗어난 거리 × OFF_CENTER − 직전 자리에서 벗어난 거리 × OFF_TRACK
+//  · prev: 직전에 고른 사람의 자리(extentOf 결과) 또는 null
+export function chooseInRegion(people, aspect, prev = null) {
+  let best = -1, bestScore = -Infinity;
+  people.forEach((landmarks, i) => {
+    const e = extentOf(landmarks, aspect);
+    if (!e) return;
+    const score = e.height - OFF_CENTER * Math.hypot(e.x - aspect / 2, e.y - 0.5) - (prev ? OFF_TRACK * Math.hypot(e.x - prev.x, e.y - prev.y) : 0);
+    if (score > bestScore) { best = i; bestScore = score; }
+  });
+  return best;
+}
+
 // frames → { frames(엉뚱한 뼈대는 「못 찾음」으로 바꾼 것), dropped(바꾼 수) }. aspect = 영상 가로/세로
 export function dropStrays(frames, aspect) {
   const bodies = frames.map((f) => (f.image ? body(f, aspect) : null)), found = bodies.filter(Boolean);

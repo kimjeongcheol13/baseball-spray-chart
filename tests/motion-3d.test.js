@@ -131,7 +131,7 @@
   });
 
   test('엉뚱한 곳에 잡힌 뼈대: 선수 자리에서 갑자기 튀거나 크기가 딴판인 프레임은 「못 찾음」으로 바꾸고, 천천히 움직이는 선수는 그대로 둔다', async function () {
-    var K = await import('/js/motion/track.js?v=1');
+    var K = await import('/js/motion/track.js?v=2');
     // 몸통 길이 0.1 인 사람: 골반 중심 (x, y), 어깨는 그 위 size 만큼
     var person = function (x, y, size) { var p = [], i; for (i = 0; i < 33; i++) p.push({ x: x, y: y, visibility: 1 }); p[23] = { x: x - 0.01, y: y, visibility: 1 }; p[24] = { x: x + 0.01, y: y, visibility: 1 }; p[11] = { x: x - 0.01, y: y - size, visibility: 1 }; p[12] = { x: x + 0.01, y: y - size, visibility: 1 }; return { world: p, image: p }; };
     var none = { world: null, image: null }, frames = [], i;
@@ -219,5 +219,23 @@
   test('요약 패널 자리: 선수가 화면 오른쪽에 있으면 왼쪽 위, 아니면 오른쪽 위', async function () {
     var frame = function (x) { var p = []; for (var i = 0; i < 33; i++) p.push({ x: x, y: 0.5 }); return { image: p }; };
     eq([O.hudSideFor([frame(0.8), frame(0.7), { image: null }]), O.hudSideFor([frame(0.3)]), O.hudSideFor([frame(0.5)]), O.hudSideFor([])], ['left', 'right', 'right', 'right'], 'hudSideFor');
+  });
+
+  test('네모 안의 여러 사람: 가운데에 크게 있는 사람을 고르고, 한 번 고른 사람을 따라간다', async function () {
+    var K = await import('/js/motion/track.js?v=2');
+    // 네모 안의 사람(가운데 cx · cy, 키 hgt) — 코 · 어깨 · 골반 · 무릎 · 발목만 채운다
+    var person = function (cx, cy, hgt) { var p = [], set = function (i, dx, dy) { p[i] = { x: cx + dx, y: cy + dy * hgt }; };
+      set(0, 0, -0.5); set(11, 0.03, -0.35); set(12, -0.03, -0.35); set(23, 0.02, 0); set(24, -0.02, 0); set(25, 0.02, 0.25); set(26, -0.02, 0.25); set(27, 0.02, 0.5); set(28, -0.02, 0.5); return p; };
+    var pitcher = person(0.45, 0.55, 0.7), catcher = person(0.85, 0.3, 0.3), umpire = person(0.9, 0.25, 0.35);
+    eq(K.chooseInRegion([catcher, pitcher, umpire], 1), 1, '엔진이 포수를 먼저 줘도 가운데의 큰 사람(투수)을 고른다');
+    eq(K.chooseInRegion([catcher], 1), 0, '한 사람뿐이면 그 사람');
+    eq(K.chooseInRegion([], 1), -1, '아무도 없으면 -1');
+    var e = K.extentOf(pitcher, 1);
+    near(e.x, 0.45, 1e-9, '가운데 x'); near(e.y, 0.55, 1e-9, '가운데 y'); near(e.height, 0.7, 1e-9, '키');
+    near(K.extentOf(pitcher, 2).x, 0.9, 1e-9, '가로가 긴 네모는 x 를 그만큼 늘려 잰다');
+    // 투수가 숙여서 작아지고(키 0.4) 옆으로 움직여도 계속 투수를 고른다
+    var bent = person(0.52, 0.62, 0.4), batter = person(0.75, 0.35, 0.5);
+    eq(K.chooseInRegion([batter, bent], 1, e), 1, '직전 자리에서 가까운 사람을 따라간다');
+    eq(K.chooseInRegion([batter, bent], 1, K.extentOf(batter, 1)), 0, '직전에 고른 사람이 타자였다면 타자를 따라간다(한 번 고른 사람을 쉽게 바꾸지 않는다)');
   });
 })();

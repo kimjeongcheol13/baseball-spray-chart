@@ -6,6 +6,7 @@
 //    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
 import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
 import { mapToFrame } from './view.js?v=3';
+import { chooseInRegion, extentOf } from './track.js?v=2';
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
 const MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
@@ -79,8 +80,25 @@ function seekTo(video, t) {
   });
 }
 
-const toFrame = (res, region) => (res.worldLandmarks && res.worldLandmarks[0]
-  ? { world: res.worldLandmarks[0], image: mapToFrame(res.landmarks[0], region) } : { world: null, image: null });
+const REGION_POSES = 3;   // 선수를 고른 네모 안에서는 이만큼까지 사람을 찾게 하고, 그중 감싼 사람을 고른다(track.js chooseInRegion)
+
+// 엔진 결과에서 한 사람을 골라 프레임 하나로 만든다. pick(landmarks 목록) → 고를 번호
+const toFrame = (res, region, pick = () => 0) => {
+  const i = res.worldLandmarks && res.worldLandmarks.length ? pick(res.landmarks) : -1;
+  return i >= 0 ? { world: res.worldLandmarks[i], image: mapToFrame(res.landmarks[i], region) } : { world: null, image: null };
+};
+
+// 네모 안의 사람을 프레임마다 이어서 고르는 함수를 만든다(직전에 고른 자리를 기억한다). 네모가 없으면 엔진이 준 첫 사람
+function regionPicker(video, region) {
+  if (!region) return () => 0;
+  const aspect = (region.w * video.videoWidth) / (region.h * video.videoHeight);
+  let prev = null;
+  return (people) => {
+    const i = chooseInRegion(people, aspect, prev);
+    if (i >= 0) prev = extentOf(people[i], aspect);
+    return i;
+  };
+}
 
 const CROP_MAX_SIDE = 1024, CROP_MAX_SCALE = 3;
 
@@ -160,11 +178,12 @@ async function seekAndDetect(video, ctx, keys, handle) {
 //    위치가 틀려 값이 더 흔들렸다(2026-11-22 측정). 못 찾은 프레임은 못 찾은 채로 두고 신뢰도에 반영한다
 export async function samplePoses(video, landmarker, { start, end, hz, region = null, onProgress, shouldStop }) {
   const total = Math.max(0, Math.floor((end - start) * hz)), frames = new Array(total).fill(null);
-  const ctx = { start, end, hz, total, shouldStop }, source = makeSource(video, region);
+  const ctx = { start, end, hz, total, shouldStop }, source = makeSource(video, region), pick = regionPicker(video, region);
+  await landmarker.setOptions({ numPoses: region ? REGION_POSES : 1 });
   let done = 0, refilled = 0, stopped = false;
   const handle = (k, stepMs) => {
     lastTimestamp += stepMs;
-    frames[k] = toFrame(landmarker.detectForVideo(source(), lastTimestamp), region);
+    frames[k] = toFrame(landmarker.detectForVideo(source(), lastTimestamp), region, pick);
     if (onProgress) onProgress(++done, total, frames[k]);
   };
   video.pause();

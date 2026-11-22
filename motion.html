@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B0D12">
+<title>SprayLab Motion — 스윙 · 투구 동작 분석 (베타)</title>
+<meta name="description" content="폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정합니다. 영상은 기기 밖으로 나가지 않습니다.">
+<link rel="icon" href="player-logo.png">
+<link rel="stylesheet" href="css/motion.css?v=1">
+</head>
+<body>
+<header class="mo-top">
+  <a class="mo-brand" href="landing.html"><i></i>SPRAYLAB <b>MOTION</b></a>
+  <span class="mo-beta">베타</span>
+</header>
+
+<main class="mo">
+  <section class="mo-hero">
+    <p class="mo-kicker">YOUR SWING, VISUALIZED</p>
+    <h1>영상 하나로 보는 스윙 · 투구 동작</h1>
+    <p class="mo-sub">폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정해요. 영상은 이 기기 안에서만 처리하고 어디로도 보내지 않아요.</p>
+  </section>
+
+  <form class="mo-card" id="setup">
+    <h2>1. 영상 고르기</h2>
+    <div class="mo-fields">
+      <fieldset class="mo-seg">
+        <legend>동작</legend>
+        <label><input type="radio" name="mode" value="bat" checked><span>타격</span></label>
+        <label><input type="radio" name="mode" value="pitch"><span>투구</span></label>
+      </fieldset>
+      <fieldset class="mo-seg">
+        <legend>방향</legend>
+        <label><input type="radio" name="hand" value="R" checked><span>우타 · 우투</span></label>
+        <label><input type="radio" name="hand" value="L"><span>좌타 · 좌투</span></label>
+      </fieldset>
+      <label class="mo-field">촬영 속도
+        <select name="slow">
+          <option value="1">일반 영상</option>
+          <option value="2">슬로모션 · 2배 느림</option>
+          <option value="4">슬로모션 · 4배 느림</option>
+          <option value="8">슬로모션 · 8배 느림</option>
+        </select>
+      </label>
+      <label class="mo-field">분석 엔진
+        <select name="model">
+          <option value="full">정밀 (모델 약 9MB)</option>
+          <option value="lite">빠름 (모델 약 6MB)</option>
+        </select>
+      </label>
+    </div>
+    <p class="mo-hint">느리게 재생되는 슬로모션 영상이면 몇 배 느린지 골라 주세요. 회전 속도를 실제 시간으로 바꾸는 데 써요.</p>
+    <label class="mo-btn primary mo-file">
+      <input type="file" id="file" accept="video/*">
+      <span>영상 고르기</span>
+    </label>
+    <details class="mo-guide">
+      <summary>이렇게 찍으면 더 정확해요</summary>
+      <ul>
+        <li>한 사람의 전신이 처음부터 끝까지 화면 안에 보이게 찍어요.</li>
+        <li>폰은 손에 들지 말고 고정해요. 매번 같은 자리 · 같은 높이에서 찍어야 내 기록끼리 비교할 수 있어요.</li>
+        <li>초당 60프레임 이상이나 슬로모션으로 찍으면 빠른 구간이 덜 뭉개져요.</li>
+        <li>준비 자세부터 마무리까지 한 번의 동작만 들어가게 구간을 잡아요 (최대 12초).</li>
+      </ul>
+    </details>
+  </form>
+
+  <section class="mo-card" id="stageCard" hidden>
+    <h2>2. 구간 정하고 분석</h2>
+    <div class="mo-stage" id="stage">
+      <video id="video" playsinline muted preload="auto"></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="mo-transport" id="transport">
+      <button type="button" class="mo-btn" id="btnPlay">재생</button>
+      <button type="button" class="mo-btn mo-icon" id="btnPrev" aria-label="한 프레임 앞으로">◀</button>
+      <button type="button" class="mo-btn mo-icon" id="btnNext" aria-label="한 프레임 뒤로">▶</button>
+      <input type="range" id="seek" min="0" max="1" step="0.001" value="0" aria-label="영상 위치">
+      <output id="timeOut">0.00초</output>
+      <select id="rate" aria-label="재생 속도">
+        <option value="1">1×</option>
+        <option value="0.5">0.5×</option>
+        <option value="0.25">0.25×</option>
+        <option value="0.1">0.1×</option>
+      </select>
+    </div>
+    <div class="mo-range" id="rangeRow">
+      <span id="rangeText">분석 구간</span>
+      <button type="button" class="mo-btn" id="btnStart">여기부터</button>
+      <button type="button" class="mo-btn" id="btnEnd">여기까지</button>
+    </div>
+    <div class="mo-run">
+      <button type="button" class="mo-btn primary" id="btnAnalyze">분석 시작</button>
+      <button type="button" class="mo-btn" id="btnStop" hidden>중단</button>
+      <progress id="progress" max="1" value="0" hidden></progress>
+    </div>
+    <p class="mo-status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="results" hidden>
+    <div class="mo-card">
+      <div class="mo-head">
+        <h2 id="resultTitle">3. 분석 결과</h2>
+        <span class="mo-quality" id="quality"></span>
+      </div>
+      <ul class="mo-notes" id="notes"></ul>
+      <div class="mo-tiles" id="tiles"></div>
+      <div class="mo-actions">
+        <button type="button" class="mo-btn" id="btnGoPlant">착지 프레임 보기</button>
+        <button type="button" class="mo-btn" id="btnGoMain">임팩트 프레임 보기</button>
+        <button type="button" class="mo-btn" id="btnSetMain">지금 프레임을 임팩트로</button>
+        <button type="button" class="mo-btn" id="btnAutoMain" hidden>자동으로 되돌리기</button>
+      </div>
+    </div>
+    <div class="mo-card">
+      <h2>회전 속도</h2>
+      <p class="mo-hint">골반이 먼저, 몸통이 그다음에 최고 속도에 닿는 순서인지 봐요. 그래프를 누르면 영상이 그 순간으로 가요.</p>
+      <div id="chart"></div>
+    </div>
+    <div class="mo-card mo-actions">
+      <button type="button" class="mo-btn primary" id="btnSave">기록 저장</button>
+      <button type="button" class="mo-btn" id="btnImage">이미지 저장</button>
+      <span class="mo-status" id="saveMsg" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section class="mo-card" id="logCard">
+    <h2>저장한 기록</h2>
+    <p class="mo-hint" id="logEmpty">아직 저장한 기록이 없어요. 분석한 뒤 「기록 저장」을 누르면 숫자만 이 기기에 남아요 (영상은 저장하지 않아요).</p>
+    <ul class="mo-log" id="logList"></ul>
+  </section>
+
+  <footer class="mo-foot">
+    <p>모든 값은 카메라 한 대의 영상에서 추정한 값이에요. 측정 장비의 값과 다를 수 있으니, 같은 조건으로 찍은 내 영상끼리 비교하는 데 써 주세요.</p>
+    <p>포즈 인식은 Google MediaPipe(Apache License 2.0)를 써요. 분석을 처음 누를 때 엔진 파일을 jsDelivr · Google 서버에서 내려받아요.</p>
+    <p><a href="landing.html">SprayLab 홈</a> · <a href="privacy.html">개인정보 처리방침</a></p>
+  </footer>
+</main>
+<script type="module" src="js/motion/app.js?v=1"></script>
+</body>
+</html>

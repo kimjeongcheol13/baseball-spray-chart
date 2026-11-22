@@ -6,7 +6,6 @@ import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=5';
 import { drawOverlay, COLOR } from './overlay.js?v=6';
 import { createChart } from './chart.js?v=6';
 import { createSkeleton3D } from './skeleton3d.js?v=5';
-import { createAvatar } from './avatar.js?v=1';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, noteText, FAIL_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
 import { packFrames, unpackFrames, videoSig, orphanKeys, compareRows } from './library.js?v=1';
@@ -15,6 +14,9 @@ import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=5';
 import { createMirror } from './mirror.js?v=1';
 import { dropStrays } from './track.js?v=1';
+import { summaryLines, readText, referenceLine } from './insight.js?v=1';
+import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
+import { attachDrop } from './drop.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -22,12 +24,6 @@ const VIEWS = {
   front: [0, 0, '카메라에서 본 모습이에요. 영상과 같은 방향이에요.'],
   side: [90, 0, '옆에서 본 모습이에요. 깊이는 추정이라 가장 부정확한 방향이에요.'],
   top: [0, 90, '위에서 내려다본 모습이에요. 파란 골반선과 빨간 어깨선이 벌어진 각이 분리각이에요.'],
-};
-// 오른쪽 3D 화면의 종류: 선(분석 기준) · 사람 모형(보기용)
-const FIGURE_TEXT = {
-  loading: '사람 모형을 불러오는 중이에요… 처음 한 번만 약 3.5MB 를 내려받아요.',
-  avatar: '보기용이에요. 누구에게나 같은 모형이고, 팔다리가 비틀린 정도는 알 수 없어 실제 자세와 다를 수 있어요. 각도 · 속도 숫자는 선 화면과 그래프 기준이에요.',
-  failed: '사람 모형을 불러오지 못했어요(인터넷 연결이나 브라우저 버전 때문일 수 있어요). 선 화면으로 볼 수 있어요.',
 };
 const MIN_RANGE_S = 0.3;
 const EXPORT_MAX_WIDTH = 1280;
@@ -47,7 +43,7 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'), viewAvatar: $('viewAvatar'), figureNote: $('figureNote'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
@@ -59,7 +55,7 @@ const mirror = createMirror($('viewVideo'));   // 동작 다시 보기의 「영
 // clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수), strays(엉뚱한 곳에 잡혀 뺀 장 수) }
 // region = 분석할 선수 영역(화면 비율 네모 · 없으면 화면 전체) · picking = 선수를 고르는 중 · drag = 끌고 있는 네모의 두 점
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, avatar: null, figure: 'lines', figureToken: 0, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], duel: null, duelToken: 0, region: null, picking: false, drag: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -267,10 +263,9 @@ function tick() {
 // 3D 뷰어에 지금 영상 위치의 프레임을 넘긴다. 분석 구간 밖이면 마지막 프레임을 그대로 둔다
 function sync3d() {
   const i = currentIndex();
-  const viewer = activeViewer();
-  if (!viewer || !state.result || i === null) return;
+  if (!state.view3d || !state.result || i === null) return;
   const k = nearestPose(state.clip.frames, i);
-  viewer.setFrame(state.clip.frames[k === null ? i : k], state.result.hand);
+  state.view3d.setFrame(state.clip.frames[k === null ? i : k], state.result.hand);
   el.view3dNote.textContent = k === null || k === i ? '' : `이 프레임은 사람을 못 찾아 가장 가까운 프레임(${k > i ? '+' : ''}${k - i})을 보여 줘요`;
 }
 
@@ -398,42 +393,10 @@ function renderNotes(r) {
 
 function setView3d(name) {
   const [yaw, pitch, text] = VIEWS[name];
-  for (const viewer of [state.view3d, state.avatar]) if (viewer) viewer.setView(yaw, pitch);
+  if (state.view3d) state.view3d.setView(yaw, pitch);
   el.view3dCap.textContent = text;
 }
 
-// 지금 오른쪽에 보이는 3D 화면(선 또는 사람 모형). 프레임은 보이는 쪽에만 넘긴다
-function activeViewer() {
-  return state.figure === 'avatar' ? state.avatar : state.view3d;
-}
-
-// 오른쪽 3D 화면을 바꾼다. 사람 모형은 처음 고를 때 도구와 모형을 내려받고, 실패하면 선 화면에 남는다
-async function setFigure(kind) {
-  const token = ++state.figureToken;
-  if (kind === 'avatar' && !state.avatar) {
-    el.figureNote.textContent = FIGURE_TEXT.loading;
-    try {
-      state.avatar = await createAvatar(el.viewAvatar);
-    } catch (err) {
-      console.warn('[motion] 사람 모형을 불러오지 못함', err);
-      if (token === state.figureToken) showFigure('lines', FIGURE_TEXT.failed);
-      return;
-    }
-  }
-  if (token === state.figureToken) showFigure(kind, kind === 'avatar' ? FIGURE_TEXT.avatar : '');
-}
-
-function showFigure(kind, note) {
-  const from = activeViewer();
-  state.figure = kind;
-  const to = activeViewer();
-  el.view3d.hidden = kind === 'avatar';
-  el.viewAvatar.hidden = kind !== 'avatar';
-  for (const b of document.querySelectorAll('[data-figure]')) b.setAttribute('aria-pressed', String(b.dataset.figure === kind));
-  el.figureNote.textContent = note;
-  if (from && to && from !== to) { const v = from.getView(); to.setView(v.yaw, v.pitch); }   // 돌려 둔 방향을 그대로 잇는다
-  sync3d();
-}
 
 // 지난 기록 대비 문구. 비교할 기록이나 값이 없으면 ''
 function deltaText(prev, key, value) {
@@ -443,7 +406,7 @@ function deltaText(prev, key, value) {
   return `지난 기록 ${before} · ${d > 0 ? '+' : ''}${d}`;
 }
 
-function tile(m, value, prev) {
+function tile(m, value, prev, r) {
   const box = node('div', 'mo-tile'), label = node('div', 'mo-tile-label'), val = node('div', 'mo-tile-value', formatValue(value));
   if (TILE_COLOR[m.key]) { const dot = node('i'); dot.style.background = TILE_COLOR[m.key]; label.append(dot); }
   label.append(node('span', '', m.label));
@@ -452,6 +415,9 @@ function tile(m, value, prev) {
   const delta = deltaText(prev, m.key, value);
   if (delta) box.append(node('div', 'mo-tile-delta', delta));
   box.append(node('div', 'mo-tile-help', m.help));
+  if (readText(m.key)) box.append(node('div', 'mo-tile-read', readText(m.key)));
+  const ref = referenceLine(r.mode, m.key, value, r.quality.level);
+  if (ref) { const tag = node('div', 'mo-tile-ref', ref.text); if (ref.position) tag.dataset.position = ref.position; box.append(tag); }
   return box;
 }
 
@@ -467,7 +433,26 @@ function sequenceTile(seq) {
 
 function renderTiles(r) {
   const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand) || null;
-  el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev)), sequenceTile(r.metrics.sequence));
+  el.insights.replaceChildren(...summaryLines(r, prev).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
+  el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev, r)), sequenceTile(r.metrics.sequence));
+  renderReferenceNote(r.mode);
+}
+
+// 참고 범위가 누구를 어떻게 잰 값이고 왜 그대로 견주면 안 되는지 + 출처 링크
+function renderReferenceNote(mode) {
+  const sources = REFERENCE_SOURCES[mode] || [];
+  el.refNote.replaceChildren(REFERENCE_NOTE[mode] || '', ...sources.flatMap((s, i) => {
+    const a = node('a', '', s.label);
+    a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
+    return [i ? ', ' : ' 출처: ', a];
+  }));
+}
+
+// 끌어다 놓은 영상을 연다. 분석 중에는 받지 않는다
+function onDropFile(file) {
+  if (state.busy) { el.dropMsg.textContent = '분석이 끝난 뒤에 다른 영상을 열 수 있어요.'; return; }
+  el.dropMsg.textContent = `「${file.name}」을 열었어요.`;
+  openVideo(file);
 }
 
 // ── 저장 · 이미지 ───────────────────────────────────────────
@@ -751,6 +736,11 @@ function saveImage() {
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
   el.file.addEventListener('change', () => openVideo(el.file.files[0]));
+  attachDrop(document, {
+    onFile: onDropFile,
+    onReject: () => { el.dropMsg.textContent = '영상 파일(MP4 · MOV 등)만 열 수 있어요.'; },
+    onHover: (on) => { el.dropHint.hidden = !on; },
+  });
   el.setup.addEventListener('submit', (e) => e.preventDefault());
   // 동작 · 방향 · 촬영 속도를 바꾸면 뽑아 둔 포즈로 바로 다시 계산한다(엔진을 다시 돌리지 않는다)
   el.setup.addEventListener('change', (e) => { if (e.target !== el.file && e.target.name !== 'model' && state.clip) compute(null); else draw(); });
@@ -787,7 +777,6 @@ function bind() {
   for (const b of document.querySelectorAll('[data-duel-view]')) b.addEventListener('click', () => { if (state.duel) state.duel.setView(VIEWS[b.dataset.duelView][0], VIEWS[b.dataset.duelView][1]); });
   el.image.addEventListener('click', saveImage);
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));
-  for (const b of document.querySelectorAll('[data-figure]')) b.addEventListener('click', () => setFigure(b.dataset.figure));
   new ResizeObserver(fitCanvas).observe(el.stage);
 }
 

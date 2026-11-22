@@ -8,9 +8,7 @@
 <title>SprayLab Motion — 스윙 · 투구 동작 분석 (베타)</title>
 <meta name="description" content="폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정합니다. 영상은 기기 밖으로 나가지 않습니다.">
 <link rel="icon" href="player-logo.png">
-<link rel="stylesheet" href="css/motion.css?v=6">
-<!-- 「사람 모형」 화면을 고를 때만 내려받는 3D 그리기 도구의 주소 (js/motion/avatar.js) -->
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<link rel="stylesheet" href="css/motion.css?v=8">
 </head>
 <body>
 <header class="mo-top">
@@ -59,6 +57,7 @@
       <input type="file" id="file" accept="video/*">
       <span>영상 고르기</span>
     </label>
+    <p class="mo-hint" id="dropMsg" role="status">영상 파일을 이 화면 아무 데나 끌어다 놓아도 열려요.</p>
     <details class="mo-guide">
       <summary>이렇게 찍으면 더 정확해요</summary>
       <ul>
@@ -118,7 +117,11 @@
         <span class="mo-quality" id="quality"></span>
       </div>
       <ul class="mo-notes" id="notes"></ul>
+      <h3 class="mo-sub">한눈에 보기</h3>
+      <ul class="mo-insights" id="insights"></ul>
+      <h3 class="mo-sub">숫자로 보기</h3>
       <div class="mo-tiles" id="tiles"></div>
+      <p class="mo-hint" id="refNote"></p>
       <div class="mo-actions">
         <button type="button" class="mo-btn" id="btnGoPlant">착지 프레임 보기</button>
         <button type="button" class="mo-btn" id="btnGoMain">임팩트 프레임 보기</button>
@@ -146,16 +149,10 @@
         <button type="button" class="mo-btn" data-view="side">옆</button>
         <button type="button" class="mo-btn" data-view="top">위</button>
       </div>
-      <div class="mo-actions" role="group" aria-label="오른쪽 3D 화면의 종류">
-        <button type="button" class="mo-btn mo-toggle" data-figure="lines" aria-pressed="true">선</button>
-        <button type="button" class="mo-btn mo-toggle" data-figure="avatar" aria-pressed="false">사람 모형 (보기용)</button>
-      </div>
-      <p class="mo-hint" id="figureNote" role="status"></p>
       <p class="mo-hint" id="view3dCap"></p>
       <div class="mo-view-pair">
         <canvas id="viewVideo" class="mo-view3d mo-view-video" aria-label="선수 영상에 뼈대 선을 겹친 화면"></canvas>
         <canvas id="view3d" class="mo-view3d" aria-label="3D 뼈대. 끌어서 돌리거나 좌우 화살표로 돌려요."></canvas>
-        <canvas id="viewAvatar" class="mo-view3d" aria-label="같은 자세를 잡은 3D 사람 모형(보기용). 끌어서 돌리거나 좌우 화살표로 돌려요." hidden></canvas>
       </div>
       <p class="mo-hint" id="view3dNote" role="status"></p>
     </div>
@@ -218,6 +215,7 @@
     <p><a href="landing.html">SprayLab 홈</a> · <a href="privacy.html">개인정보 처리방침</a></p>
   </footer>
 </main>
-<script type="module" src="js/motion/app.js?v=13"></script>
+<div class="mo-drop" id="dropHint" hidden><span>여기에 놓으면 영상을 열어요</span></div>
+<script type="module" src="js/motion/app.js?v=15"></script>
 </body>
 </html>

@@ -221,21 +221,26 @@
     eq([O.hudSideFor([frame(0.8), frame(0.7), { image: null }]), O.hudSideFor([frame(0.3)]), O.hudSideFor([frame(0.5)]), O.hudSideFor([])], ['left', 'right', 'right', 'right'], 'hudSideFor');
   });
 
-  test('네모 안의 여러 사람: 가운데에 크게 있는 사람을 고르고, 한 번 고른 사람을 따라간다', async function () {
+  test('네모 안의 여러 사람: 네모 가운데에 있고 네모 크기에 맞는 사람을 기준으로 앞뒤 프레임을 따라간다', async function () {
     var K = await import('/js/motion/track.js?v=2');
     // 네모 안의 사람(가운데 cx · cy, 키 hgt) — 코 · 어깨 · 골반 · 무릎 · 발목만 채운다
     var person = function (cx, cy, hgt) { var p = [], set = function (i, dx, dy) { p[i] = { x: cx + dx, y: cy + dy * hgt }; };
       set(0, 0, -0.5); set(11, 0.03, -0.35); set(12, -0.03, -0.35); set(23, 0.02, 0); set(24, -0.02, 0); set(25, 0.02, 0.25); set(26, -0.02, 0.25); set(27, 0.02, 0.5); set(28, -0.02, 0.5); return p; };
-    var pitcher = person(0.45, 0.55, 0.7), catcher = person(0.85, 0.3, 0.3), umpire = person(0.9, 0.25, 0.35);
-    eq(K.chooseInRegion([catcher, pitcher, umpire], 1), 1, '엔진이 포수를 먼저 줘도 가운데의 큰 사람(투수)을 고른다');
-    eq(K.chooseInRegion([catcher], 1), 0, '한 사람뿐이면 그 사람');
-    eq(K.chooseInRegion([], 1), -1, '아무도 없으면 -1');
+    var pitcher = person(0.5, 0.52, 0.75), catcher = person(0.85, 0.2, 0.3);
     var e = K.extentOf(pitcher, 1);
-    near(e.x, 0.45, 1e-9, '가운데 x'); near(e.y, 0.55, 1e-9, '가운데 y'); near(e.height, 0.7, 1e-9, '키');
-    near(K.extentOf(pitcher, 2).x, 0.9, 1e-9, '가로가 긴 네모는 x 를 그만큼 늘려 잰다');
-    // 투수가 숙여서 작아지고(키 0.4) 옆으로 움직여도 계속 투수를 고른다
-    var bent = person(0.52, 0.62, 0.4), batter = person(0.75, 0.35, 0.5);
-    eq(K.chooseInRegion([batter, bent], 1, e), 1, '직전 자리에서 가까운 사람을 따라간다');
-    eq(K.chooseInRegion([batter, bent], 1, K.extentOf(batter, 1)), 0, '직전에 고른 사람이 타자였다면 타자를 따라간다(한 번 고른 사람을 쉽게 바꾸지 않는다)');
+    near(e.x, 0.5, 1e-9, '가운데 x'); near(e.y, 0.52, 1e-9, '가운데 y'); near(e.height, 0.75, 1e-9, '키');
+    near(K.extentOf(pitcher, 2).x, 1.0, 1e-9, '가로가 긴 네모는 x 를 그만큼 늘려 잰다');
+    eq(K.chooseInRegion([catcher, pitcher], 1), 1, '미리 보기: 엔진이 포수를 먼저 줘도 가운데의 맞는 사람');
+    eq(K.chooseInRegion([], 1), -1, '미리 보기: 아무도 없으면 -1');
+
+    // 앞의 3프레임은 엔진이 포수만 찾았고(투수가 등을 돌림), 그 뒤로는 둘 다 찾았다. 투수는 조금씩 움직인다
+    var frames = [[catcher], [catcher], [catcher], [catcher, pitcher], [person(0.52, 0.54, 0.7), catcher], [catcher, person(0.55, 0.57, 0.6)], [person(0.58, 0.6, 0.5)]];
+    eq(K.selectTrack(frames, 1), [-1, -1, -1, 1, 0, 1, 0], '투수만 고른다 · 포수만 있던 프레임은 비운다(포수를 대신 고르지 않는다)');
+    eq(K.selectTrack([[catcher], [catcher]], 1), [-1, -1], '네모 가운데에 맞는 사람이 한 번도 없으면 아무도 고르지 않는다');
+    eq(K.selectTrack([[], null, [pitcher]], 1), [-1, -1, 0], '사람이 없는 프레임 · 빈 프레임');
+    // 갑자기 멀리 떨어진 곳의 사람은 같은 사람으로 보지 않는다
+    eq(K.selectTrack([[pitcher], [person(0.15, 0.5, 0.75)], [person(0.51, 0.53, 0.74)]], 1), [0, -1, 0], '한 프레임만 딴 곳에 잡히면 그 프레임만 비운다');
+    // 엉뚱하게 큰 인식(키가 네모의 1.5배)은 기준으로 삼지 않는다
+    eq(K.selectTrack([[person(0.5, 0.5, 1.5)], [pitcher]], 1)[1], 0, '엉뚱한 크기는 기준이 아니다');
   });
 })();

@@ -6,7 +6,7 @@
 //    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
 import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
 import { mapToFrame } from './view.js?v=3';
-import { chooseInRegion, extentOf } from './track.js?v=2';
+import { chooseInRegion, extentOf, selectTrack } from './track.js?v=2';
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
 const MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
@@ -80,7 +80,7 @@ function seekTo(video, t) {
   });
 }
 
-const REGION_POSES = 3;   // 선수를 고른 네모 안에서는 이만큼까지 사람을 찾게 하고, 그중 감싼 사람을 고른다(track.js chooseInRegion)
+const REGION_POSES = 3;   // 선수를 고른 네모 안에서는 이만큼까지 사람을 찾게 하고, 그중 감싼 사람을 고른다(track.js selectTrack)
 
 // 엔진 결과에서 한 사람을 골라 프레임 하나로 만든다. pick(landmarks 목록) → 고를 번호
 const toFrame = (res, region, pick = () => 0) => {
@@ -88,10 +88,19 @@ const toFrame = (res, region, pick = () => 0) => {
   return i >= 0 ? { world: res.worldLandmarks[i], image: mapToFrame(res.landmarks[i], region) } : { world: null, image: null };
 };
 
-// 네모 안의 사람을 프레임마다 이어서 고르는 함수를 만든다(직전에 고른 자리를 기억한다). 네모가 없으면 엔진이 준 첫 사람
+// 프레임마다 모아 둔 사람들 중 감싼 선수를 골라 프레임 목록으로 만든다(좌표는 화면 전체 기준으로 되돌린다)
+function pickWrapped(found, region, aspect) {
+  const picks = selectTrack(found.map((f) => (f ? f.image : [])), aspect);
+  return found.map((f, k) => (picks[k] >= 0 ? { world: f.world[picks[k]], image: mapToFrame(f.image[picks[k]], region) } : { world: null, image: null }));
+}
+
+const regionAspect = (video, region) => (region.w * video.videoWidth) / (region.h * video.videoHeight);
+
+// (분석 중 미리 보기용) 네모 안의 사람을 프레임마다 이어서 고르는 함수. 네모가 없으면 엔진이 준 첫 사람
+//  · 최종 선택은 모든 프레임을 본 뒤 selectTrack 이 다시 한다
 function regionPicker(video, region) {
   if (!region) return () => 0;
-  const aspect = (region.w * video.videoWidth) / (region.h * video.videoHeight);
+  const aspect = regionAspect(video, region);
   let prev = null;
   return (people) => {
     const i = chooseInRegion(people, aspect, prev);
@@ -180,10 +189,13 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
   const total = Math.max(0, Math.floor((end - start) * hz)), frames = new Array(total).fill(null);
   const ctx = { start, end, hz, total, shouldStop }, source = makeSource(video, region), pick = regionPicker(video, region);
   await landmarker.setOptions({ numPoses: region ? REGION_POSES : 1 });
+  const found = region ? new Array(total).fill(null) : null;   // 네모 안에서 찾은 사람 전부(끝난 뒤 감싼 사람을 다시 고른다)
   let done = 0, refilled = 0, stopped = false;
   const handle = (k, stepMs) => {
     lastTimestamp += stepMs;
-    frames[k] = toFrame(landmarker.detectForVideo(source(), lastTimestamp), region, pick);
+    const res = landmarker.detectForVideo(source(), lastTimestamp);
+    if (found) found[k] = { image: res.landmarks || [], world: res.worldLandmarks || [] };
+    frames[k] = toFrame(res, region, pick);
     if (onProgress) onProgress(++done, total, frames[k]);
   };
   video.pause();
@@ -196,6 +208,8 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
     refilled = left.length;
     stopped = await seekAndDetect(video, ctx, left, handle);
   }
-  const filled = frames.map((f) => f || toFrame({}, null));
-  return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped };
+  const filled = found ? pickWrapped(found, region, regionAspect(video, region)) : frames.map((f) => f || toFrame({}, null));
+  // others: 사람은 찾았지만 감싼 선수가 아니라서 비운 프레임 수
+  const others = found ? found.filter((f, k) => f && f.image.length && !filled[k].world).length : 0;
+  return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped, others };
 }

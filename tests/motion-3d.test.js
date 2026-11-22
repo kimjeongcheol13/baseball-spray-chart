@@ -180,4 +180,12 @@
     eq(moved.texts.length, 4, '좌표만 바꿔 다른 화면에 그릴 수 있다');
     eq(noLabels.texts, [], 'labels: false 면 글자를 그리지 않는다');
   });
+
+  test('화면 틀(orbit.js): 위아래 기울기는 ±90 으로 막는다 · 골반 위치와 배율은 FRAME 한 곳에서 정한다', async function () {
+    var B = await import('/js/motion/orbit.js?v=1');
+    eq([B.clampPitch(120), B.clampPitch(-200), B.clampPitch(15)], [90, -90, 15], 'clampPitch');
+    var pts = V.projectPose(world(), 0, 0, 300, 400);
+    near((pts[23].y + pts[24].y) / 2, 400 * B.FRAME.centerY, 1e-9, '골반 세로 위치');
+    near(pts[23].x - pts[24].x, 0.3 * 400 / B.FRAME.heightM, 1e-9, '배율(골반 폭 0.3m)');
+  });
 })();

@@ -48,7 +48,6 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 .mo-btn:focus-visible, select:focus-visible, .mo-chart:focus-visible, summary:focus-visible { outline: 2px solid var(--mo-blue); outline-offset: 2px; }
 .mo-btn:disabled { opacity: .45; cursor: default; }
 .mo-btn.primary { background: var(--mo-blue); border-color: var(--mo-blue); color: #fff; }
-.mo-toggle[aria-pressed="true"] { border-color: var(--mo-blue); background: rgba(75, 140, 245, .16); }
 .mo-icon { padding: 0; }
 .mo-file { margin-top: 14px; width: 100%; position: relative; }
 .mo-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

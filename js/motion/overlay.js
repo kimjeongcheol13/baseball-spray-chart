@@ -112,14 +112,25 @@ function drawMark(ctx, w, h, u) {
   ctx.fillStyle = COLOR.ink2; ctx.fillText(text, 18 * u, h - 8 * u - bh / 2 + 0.5 * u);
 }
 
-// ctx 에 w × h 크기로 그린다. frame 이 없으면 뼈대 없이 패널만, hud 가 없으면 뼈대만
-export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false } = {}) {
+// 분석 구간 안인데 사람을 못 찾은 프레임에 영상 가운데 띄우는 안내
+function drawMissing(ctx, w, h, u) {
+  const text = '이 프레임은 사람을 찾지 못했어요', bh = 28 * u;
+  ctx.font = `700 ${12 * u}px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  const bw = ctx.measureText(text).width + 28 * u;
+  ctx.fillStyle = COLOR.panel; pill(ctx, (w - bw) / 2, (h - bh) / 2, bw, bh);
+  ctx.fillStyle = COLOR.ink; ctx.fillText(text, w / 2, h / 2 + 0.5 * u);
+  ctx.textAlign = 'left';
+}
+
+// ctx 에 w × h 크기로 그린다. frame 이 없으면 뼈대 없이 패널만, hud 가 없으면 뼈대만, missing 이면 「사람을 못 찾음」 안내
+export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false, missing = false } = {}) {
   const u = Math.max(1, Math.min(w, h) / 360);
   ctx.clearRect(0, 0, w, h);
   if (frame && frame.image) {
     drawSkeleton(ctx, w, h, frame.image, hand, u);
     drawLabels(ctx, w, h, jointLabels(frame, hand), u);
   }
+  if (missing) drawMissing(ctx, w, h, u);
   if (hud) drawHud(ctx, w, hud, u);
   if (mark) drawMark(ctx, w, h, u);
 }

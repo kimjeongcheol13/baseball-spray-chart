@@ -3,8 +3,9 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=1';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=2';
-import { drawOverlay, COLOR } from './overlay.js?v=2';
-import { createChart } from './chart.js?v=2';
+import { drawOverlay, COLOR } from './overlay.js?v=3';
+import { createChart } from './chart.js?v=3';
+import { createSkeleton3D } from './skeleton3d.js?v=1';
 import { metricList, eventName, formatValue, sequenceText, summarize, QUALITY_TEXT, NOTE_TEXT, FAIL_TEXT } from './metrics.js?v=1';
 import { loadLog, addEntry, removeEntry } from './store.js?v=1';
 
@@ -22,14 +23,14 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), chart: $('chart'), view3d: $('view3d'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
 };
 const ctx = el.overlay.getContext('2d');
 
 // clip = 뽑아 둔 포즈 { frames, start, hz, stalled } · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, busy: false, stopping: false, liveFrame: null };
+const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -127,7 +128,7 @@ function fitCanvas() {
 function hudOf(result) {
   const m = result.metrics;
   return {
-    title: `${MODE_TEXT[result.mode]} 분석`,
+    title: `${MODE_TEXT[result.mode]} 분석${result.quality.level === 'low' ? ' · 신뢰도 낮음' : ''}`,
     rows: [
       { label: '골반 피크', value: formatValue(m.pelvisPeak), unit: '°/s', color: COLOR.pelvis },
       { label: '몸통 피크', value: formatValue(m.trunkPeak), unit: '°/s', color: COLOR.trunk },
@@ -140,7 +141,7 @@ function hudOf(result) {
 function overlayScene() {
   const i = currentIndex();
   const frame = state.busy ? state.liveFrame : i === null ? null : state.clip.frames[i];
-  return { frame, hand: state.result ? state.result.hand : options().hand, hud: state.result && !state.busy ? hudOf(state.result) : null };
+  return { frame, missing: !!frame && !frame.world, hand: state.result ? state.result.hand : options().hand, hud: state.result && !state.busy ? hudOf(state.result) : null };
 }
 
 function draw() {
@@ -154,6 +155,13 @@ function tick() {
   if (Number.isFinite(v.duration) && v.duration > 0) el.seek.value = String(v.currentTime / v.duration);
   el.time.textContent = sec(v.currentTime);
   if (state.chart) state.chart.setCursor(currentIndex());
+  sync3d();
+}
+
+// 3D 뷰어에 지금 영상 위치의 프레임을 넘긴다. 분석 구간 밖이면 마지막 프레임을 그대로 둔다
+function sync3d() {
+  const i = currentIndex();
+  if (state.view3d && state.result && i !== null) state.view3d.setFrame(state.clip.frames[i], state.result.hand);
 }
 
 function playLoop() {
@@ -213,6 +221,7 @@ function compute(eventIndex) {
 function clearResult() {
   state.result = null;
   if (state.chart) { state.chart.destroy(); state.chart = null; }
+  if (state.view3d) { state.view3d.destroy(); state.view3d = null; }
   el.results.hidden = true;
   el.saveMsg.textContent = '';
   draw();
@@ -235,6 +244,9 @@ function renderResult() {
   el.results.hidden = false;
   if (state.chart) state.chart.destroy();
   state.chart = createChart(el.chart, { result: r, eventLabel: `${ev}(${how})`, onSeek: seekToFrame });
+  if (state.view3d) state.view3d.destroy();
+  state.view3d = createSkeleton3D(el.view3d);
+  sync3d();
 }
 
 function renderNotes(r) {

@@ -59,6 +59,7 @@ select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px sol
 .mo-stage { position: relative; width: min(100%, calc(70vh * var(--ar, 1.7778))); aspect-ratio: var(--ar, 1.7778); margin: 0 auto; background: #000; border-radius: 10px; overflow: hidden; }
 .mo-stage video, .mo-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .mo-stage canvas { pointer-events: none; }
+.mo-stage.picking canvas { pointer-events: auto; cursor: crosshair; touch-action: none; }
 .mo-transport { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .mo-transport input[type="range"] { flex: 1 1 140px; min-height: 44px; accent-color: var(--mo-blue); }
 .mo-transport output { font: 600 13px var(--mo-mono); color: var(--mo-ink2); min-width: 9em; text-align: right; }

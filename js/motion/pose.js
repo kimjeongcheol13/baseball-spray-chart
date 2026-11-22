@@ -5,6 +5,7 @@
 //    4배 빨랐다. VIDEO 모드의 손목은 IMAGE 모드의 한 프레임 전보다 같은 프레임에 더 가까워 지연이 없었고, 사람을 찾은 프레임도 많았다(29 대 18).
 //    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
 import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
+import { mapToFrame } from './view.js?v=3';
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
 const MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
@@ -78,8 +79,22 @@ function seekTo(video, t) {
   });
 }
 
-const toFrame = (res) => (res.worldLandmarks && res.worldLandmarks[0]
-  ? { world: res.worldLandmarks[0], image: res.landmarks[0] } : { world: null, image: null });
+const toFrame = (res, region) => (res.worldLandmarks && res.worldLandmarks[0]
+  ? { world: res.worldLandmarks[0], image: mapToFrame(res.landmarks[0], region) } : { world: null, image: null });
+
+const CROP_MAX_SIDE = 1024, CROP_MAX_SCALE = 3;
+
+// 엔진에 넣을 그림: 영역이 없으면 영상 그대로, 있으면 그 부분만 잘라 키운 캔버스(다시 쓰는 캔버스 하나)
+//  · 엔진은 화면에서 가장 크게 잡히는 한 사람만 본다. 여러 사람이 나오는 영상(중계 화면의 투수 · 타자 · 포수)에서는 고른 선수 주변만 넣는다
+//  · 화면 높이의 14% 로 찍힌 뒤쪽 타자를 이렇게 지정해 33프레임 중 32프레임에서 찾았다(2026-11-22 측정)
+function makeSource(video, region) {
+  if (!region) return () => video;
+  const sw = region.w * video.videoWidth, sh = region.h * video.videoHeight;
+  const scale = Math.min(CROP_MAX_SCALE, CROP_MAX_SIDE / Math.max(sw, sh));
+  const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(sw * scale), height: Math.round(sh * scale) });
+  const ctx = canvas.getContext('2d');
+  return () => { ctx.drawImage(video, region.x * video.videoWidth, region.y * video.videoHeight, sw, sh, 0, 0, canvas.width, canvas.height); return canvas; };
+}
 
 const FAST_RATE = 2, SAFE_RATE = 1, MISS_CHECK_AFTER = 20, MISS_LIMIT = 0.05, PLAY_STALL_MS = 3000;
 
@@ -140,15 +155,16 @@ async function seekAndDetect(video, ctx, keys, handle) {
 
 // [start, end] 구간을 초당 hz 장씩 읽어 포즈를 뽑는다 → { frames, missing(사람을 못 찾은 장 수), refilled(위치를 옮겨 읽은 장 수), stopped }
 //  · frames[k] 는 영상 시각 start + k / hz 부근의 포즈. onProgress(읽은 장 수, 전체, frame) · shouldStop() 이 true 면 중단
+//  · region = 분석할 선수 영역({ x, y, w, h } 화면 비율). 주면 그 부분만 엔진에 넣고, 좌표는 화면 전체 기준으로 되돌린다
 //  · 사람을 놓친 프레임을 선수 주변만 잘라 다시 찾는 방법은 쓰지 않는다 — 찾은 수는 늘지만(28 → 34/42) 뼈대가 38% 작게 잡히는 등
 //    위치가 틀려 값이 더 흔들렸다(2026-11-22 측정). 못 찾은 프레임은 못 찾은 채로 두고 신뢰도에 반영한다
-export async function samplePoses(video, landmarker, { start, end, hz, onProgress, shouldStop }) {
+export async function samplePoses(video, landmarker, { start, end, hz, region = null, onProgress, shouldStop }) {
   const total = Math.max(0, Math.floor((end - start) * hz)), frames = new Array(total).fill(null);
-  const ctx = { start, end, hz, total, shouldStop };
+  const ctx = { start, end, hz, total, shouldStop }, source = makeSource(video, region);
   let done = 0, refilled = 0, stopped = false;
   const handle = (k, stepMs) => {
     lastTimestamp += stepMs;
-    frames[k] = toFrame(landmarker.detectForVideo(video, lastTimestamp));
+    frames[k] = toFrame(landmarker.detectForVideo(source(), lastTimestamp), region);
     if (onProgress) onProgress(++done, total, frames[k]);
   };
   video.pause();
@@ -161,6 +177,6 @@ export async function samplePoses(video, landmarker, { start, end, hz, onProgres
     refilled = left.length;
     stopped = await seekAndDetect(video, ctx, left, handle);
   }
-  const filled = frames.map((f) => f || toFrame({}));
+  const filled = frames.map((f) => f || toFrame({}, null));
   return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped };
 }

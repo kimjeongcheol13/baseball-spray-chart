@@ -1,6 +1,6 @@
 // 동작 분석 — 두 기록 나란히 보기: 임팩트 · 릴리스를 같은 순간에 맞춰 3D 뼈대 두 개를 함께 되풀이 재생한다 (영상 없이 저장한 좌표만으로)
 import { createSkeleton3D } from './skeleton3d.js?v=4';
-import { LOOP_BEFORE_S, LOOP_AFTER_S, nearestPose } from './view.js?v=2';
+import { LOOP_BEFORE_S, LOOP_AFTER_S, nearestPose } from './view.js?v=3';
 
 // side = { frames, main(임팩트 · 릴리스 프레임), fps(실제 시간 기준 초당 장 수), hand } · t = 임팩트 기준 실제 시간(초)
 //  → 그 순간에 보여 줄 프레임 번호. 촬영 속도가 달라도 실제 시간으로 맞춘다. 가까이에 사람을 찾은 프레임이 없으면 null

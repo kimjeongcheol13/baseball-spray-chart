@@ -31,8 +31,8 @@
   }
 
   test('(준비) 3D 뷰어 · 오버레이 모듈을 불러온다', async function () {
-    V = await import('/js/motion/skeleton3d.js?v=5');
-    O = await import('/js/motion/overlay.js?v=6');
+    V = await import('/js/motion/skeleton3d.js?v=6');
+    O = await import('/js/motion/overlay.js?v=7');
     ok(V.rotatePoint && V.projectPose && V.createSkeleton3D && O.drawOverlay, '모듈 로드');
   });
 
@@ -96,7 +96,7 @@
   });
 
   test('나란히 보기: 임팩트 기준 같은 실제 시간에 두 기록이 각자의 프레임을 보여 준다 · 사람이 없는 프레임은 가까운 프레임으로', async function () {
-    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=5');
+    var W = await import('/js/motion/view.js?v=3'), U = await import('/js/motion/duel.js?v=6');
     var mk = function (n, holes) { var f = [], i; for (i = 0; i < n; i++) f.push(holes.indexOf(i) >= 0 ? { world: null, image: null } : { world: [1], image: [1] }); return f; };
     var slow = { frames: mk(120, []), main: 60, fps: 30, hand: 'R' }, fast = { frames: mk(900, []), main: 480, fps: 240, hand: 'L' };
     eq([U.duelIndex(slow, 0), U.duelIndex(fast, 0)], [60, 480], '임팩트 순간');
@@ -187,5 +187,37 @@
     var pts = V.projectPose(world(), 0, 0, 300, 400);
     near((pts[23].y + pts[24].y) / 2, 400 * B.FRAME.centerY, 1e-9, '골반 세로 위치');
     near(pts[23].x - pts[24].x, 0.3 * 400 / B.FRAME.heightM, 1e-9, '배율(골반 폭 0.3m)');
+  });
+
+  test('영상 위 선: 선수 크기에 맞춰 굵기를 정하고, 작게 보이면 세부(얼굴 · 손가락 · 발끝)를 줄인다', async function () {
+    // 몸통 길이가 화면 짧은 변의 10% · 25% · 60% 인 사람
+    var person = function (torso) { var p = []; for (var i = 0; i < 33; i++) p.push({ x: 0.5, y: 0.5, visibility: 1 }); p[11] = { x: 0.45, y: 0.3, visibility: 1 }; p[12] = { x: 0.55, y: 0.3, visibility: 1 }; p[23] = { x: 0.47, y: 0.3 + torso, visibility: 1 }; p[24] = { x: 0.53, y: 0.3 + torso, visibility: 1 }; return p; };
+    var small = O.bodyScale(person(0.10), 400, 400), ref = O.bodyScale(person(0.25), 400, 400), big = O.bodyScale(person(0.60), 400, 400);
+    near(ref.k, 1, 1e-9, '기준 크기는 1 배');
+    ok(small.k < ref.k && small.k >= 0.7 && big.k <= 1.5 && big.k > ref.k, '작으면 가늘게 · 크면 굵게(상한 · 하한 안): ' + [small.k, big.k]);
+    eq([small.detail, ref.detail, big.detail], [false, true, true], '작으면 세부를 줄인다');
+    eq(O.bodyScale(person(0.10), 400, 400, 3).detail, true, '잘라 키워 보여 줄 때(zoom 3)는 세부를 그린다');
+    var none = person(0.25); none[11] = undefined;
+    eq(O.bodyScale(none, 400, 400), { k: 1, detail: true, face: true }, '어깨를 못 찾으면 기본값');
+    var wide = person(0.60); wide[7] = { x: 0.56, y: 0.2, visibility: 1 }; wide[8] = { x: 0.44, y: 0.2, visibility: 1 };
+    eq([O.bodyScale(wide, 400, 400).face, big.face], [true, false], '얼굴 점은 두 귀 사이가 충분히 넓을 때만(옆얼굴은 원 하나)');
+  });
+
+  test('각도 표: 몸 바깥에 놓고, 같은 쪽끼리 겹치지 않게 아래로 민다 · 자리가 없으면 반대쪽', async function () {
+    var width = function () { return 60; }, body = { left: 0.4, right: 0.6 };
+    var labels = [{ text: 'a', x: 0.42, y: 0.50 }, { text: 'b', x: 0.58, y: 0.50 }, { text: 'c', x: 0.43, y: 0.51 }];
+    var p = O.placeLabels(labels, 1000, 600, 1, width, body);
+    ok(p[0].bx + p[0].bw <= 400 && p[2].bx + p[2].bw <= 400, '몸 왼쪽 관절의 표는 몸 왼쪽 바깥: ' + [p[0].bx, p[2].bx]);
+    ok(p[1].bx >= 600, '몸 오른쪽 관절의 표는 몸 오른쪽 바깥: ' + p[1].bx);
+    ok(Math.abs(p[0].by - p[2].by) >= p[0].bh, '같은 쪽 표는 겹치지 않는다: ' + [p[0].by, p[2].by]);
+    var edge = O.placeLabels([{ text: 'a', x: 0.03, y: 0.5 }], 1000, 600, 1, width, { left: 0.02, right: 0.2 });
+    ok(edge[0].bx >= 200, '왼쪽에 자리가 없으면 오른쪽 바깥: ' + edge[0].bx);
+    eq(O.placeLabels([], 100, 100, 1, width, body), [], '표가 없으면 빈 목록');
+    eq(O.bodySpan([]), null, '관절이 없으면 범위도 없다');
+  });
+
+  test('요약 패널 자리: 선수가 화면 오른쪽에 있으면 왼쪽 위, 아니면 오른쪽 위', async function () {
+    var frame = function (x) { var p = []; for (var i = 0; i < 33; i++) p.push({ x: x, y: 0.5 }); return { image: p }; };
+    eq([O.hudSideFor([frame(0.8), frame(0.7), { image: null }]), O.hudSideFor([frame(0.3)]), O.hudSideFor([frame(0.5)]), O.hudSideFor([])], ['left', 'right', 'right', 'right'], 'hudSideFor');
   });
 })();

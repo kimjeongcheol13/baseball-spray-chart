@@ -1,6 +1,6 @@
 // 동작 분석 — 「영상 + 선」 화면: 영상에서 선수 주변만 잘라 크게 그리고 같은 프레임의 선 · 관절 점 · 각도 표를 겹친다
 //  · 동작 다시 보기와 두 기록 나란히 보기가 같은 그리기를 쓴다
-import { drawOverlay, drawLabels, jointLabels } from './overlay.js?v=6';
+import { drawOverlay, drawLabels, jointLabels, bodySpan } from './overlay.js?v=7';
 import { cropBox } from './view.js?v=3';
 
 const LAYER_MAX_SIDE = 960;   // 선만 그려 두는 보조 캔버스의 긴 변
@@ -21,12 +21,13 @@ export function createMirror(canvas) {
   function drawLines(m, video, frame, hand, rect, dpr) {
     const ls = Math.min(1, LAYER_MAX_SIDE / Math.max(video.videoWidth, video.videoHeight)), lw = Math.round(video.videoWidth * ls), lh = Math.round(video.videoHeight * ls);
     if (layer.width !== lw || layer.height !== lh) { layer.width = lw; layer.height = lh; }
-    drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand, labels: false });
+    drawOverlay(layer.getContext('2d'), lw, lh, { frame, hand, labels: false, zoom: rect.dw / (box.w * lw) });   // 잘라 키운 배율만큼 세부를 그릴 여유가 생긴다
     m.drawImage(layer, box.x * lw, box.y * lh, box.w * lw, box.h * lh, rect.dx, rect.dy, rect.dw, rect.dh);
     // 각도 표는 잘린 화면 기준 좌표로 바꿔 직접 그린다(잘리지 않고, 글자 크기도 화면에 맞는다)
     const labels = jointLabels(frame, hand).map((l) => ({ ...l, x: (l.x - box.x) / box.w, y: (l.y - box.y) / box.h })).filter((l) => l.x >= 0 && l.x <= 1 && l.y >= 0 && l.y <= 1);
+    const span = bodySpan(frame.image), body = span && { left: (span.left - box.x) / box.w, right: (span.right - box.x) / box.w };
     m.save(); m.translate(rect.dx, rect.dy);
-    drawLabels(m, rect.dw, rect.dh, labels, dpr * Math.max(0.9, Math.min(canvas.clientWidth, canvas.clientHeight) / 360));
+    drawLabels(m, rect.dw, rect.dh, labels, dpr * Math.max(0.9, Math.min(canvas.clientWidth, canvas.clientHeight) / 360), body);
     m.restore();
   }
 

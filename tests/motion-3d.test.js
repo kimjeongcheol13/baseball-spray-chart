@@ -31,8 +31,8 @@
   }
 
   test('(준비) 3D 뷰어 · 오버레이 모듈을 불러온다', async function () {
-    V = await import('/js/motion/skeleton3d.js?v=1');
-    O = await import('/js/motion/overlay.js?v=3');
+    V = await import('/js/motion/skeleton3d.js?v=2');
+    O = await import('/js/motion/overlay.js?v=4');
     ok(V.rotatePoint && V.projectPose && V.createSkeleton3D && O.drawOverlay, '모듈 로드');
   });
 
@@ -67,6 +67,16 @@
   test('투영: 캔버스 크기에 비례(프레임 · 크기가 바뀌어도 배율이 일정)', async function () {
     var a = V.projectPose(world(), 25, 10, 200, 300), b = V.projectPose(world(), 25, 10, 400, 600);
     a.forEach(function (p, i) { near(b[i].x, p.x * 2, 1e-6, 'x ' + i); near(b[i].y, p.y * 2, 1e-6, 'y ' + i); });
+  });
+
+  test('관절 33개가 모두 선으로 이어진다 · 얼굴은 흰색, 손 · 발은 팔다리와 같은 쪽 색', async function () {
+    var used = {}, i;
+    O.FULL_BONES.concat([[11, 12], [23, 24]]).forEach(function (b) { used[b[0]] = used[b[1]] = true; });
+    for (i = 0; i <= 32; i++) ok(used[i], '선이 없는 관절 ' + i);
+    eq(O.boneColor(0, 1, 'R'), O.COLOR.bone, '얼굴');
+    eq([O.boneColor(15, 17, 'R'), O.boneColor(16, 18, 'R'), O.boneColor(27, 29, 'R'), O.boneColor(28, 30, 'R')], [O.COLOR.lead, O.COLOR.rear, O.COLOR.lead, O.COLOR.rear], '우타 손 · 발');
+    eq(O.boneColor(15, 17, 'L'), O.COLOR.rear, '좌타 왼손 = 뒤');
+    eq([O.isSmallJoint(0), O.isSmallJoint(13), O.isSmallJoint(19), O.isSmallJoint(27), O.isSmallJoint(31)], [true, false, true, false, true], '작은 부위');
   });
 
   test('영상 위 안내: 사람을 못 찾은 프레임에만 「이 프레임은 사람을 찾지 못했어요」를 그린다', async function () {

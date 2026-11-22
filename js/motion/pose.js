@@ -81,14 +81,16 @@ function seekTo(video, t) {
 const toFrame = (res) => (res.worldLandmarks && res.worldLandmarks[0]
   ? { world: res.worldLandmarks[0], image: res.landmarks[0] } : { world: null, image: null });
 
-const PLAY_RATE = 0.5, PLAY_STALL_MS = 3000;
+const FAST_RATE = 2, SAFE_RATE = 1, MISS_CHECK_AFTER = 20, MISS_LIMIT = 0.05, PLAY_STALL_MS = 3000;
 
-// 영상을 재생하면서 새 프레임이 화면에 나올 때마다 잠깐 멈추고 포즈를 뽑아 frames[k] 를 채운다
+// 영상을 재생하면서 pending 에 든 칸의 프레임이 화면에 나오면 잠깐 멈추고 handle(k, 앞 프레임과의 간격 ms) 을 부른다
 //  · 프레임마다 위치를 옮기면 그때마다 앞 키프레임부터 다시 풀어야 해서 느리다. 멈췄다 이어 재생하면 다시 풀 필요가 없다
-//  · 그래도 지나가 버린 프레임은 비워 두고, 뒤에서 위치를 옮겨 채운다. → { stopped }
-function playAndDetect(video, landmarker, { start, end, hz, frames, onFrame, shouldStop }) {
+//  · 2배속으로 시작하고, 멈추기 전에 지나가 버리는 프레임이 5% 를 넘으면 1배속으로 낮춘다
+//    (가짜 인식기 30ms · 90프레임으로 잰 값: 0.5배속 8.8초 · 1배속 5.8초 · 2배속 4.2초)
+//  · 처리한 칸은 pending 에서 뺀다. 지나가 버린 칸은 pending 에 남는다 → { stopped }
+function playAndDetect(video, { start, end, hz, total, pending, handle, shouldStop }) {
   return new Promise((resolve) => {
-    let prevT = null, finished = false, watchdog = null;
+    let prevT = null, prevK = null, seen = 0, missed = 0, finished = false, watchdog = null;
     const finish = (stopped) => {
       if (finished) return;
       finished = true;
@@ -104,48 +106,61 @@ function playAndDetect(video, landmarker, { start, end, hz, frames, onFrame, sho
       if (finished) return;
       if (shouldStop && shouldStop()) { finish(true); return; }
       const t = meta.mediaTime, k = Math.round((t - start) * hz);   // 프레임 시작 시각 → 칸 번호 (floor 는 소수 오차로 칸을 건너뛴다)
-      if (t >= end || k >= frames.length) { finish(false); return; }
-      video.pause();
-      if (k >= 0 && !frames[k]) {
-        lastTimestamp += Math.max(1, Math.round((prevT === null ? 1 / hz : t - prevT) * 1000));
-        prevT = t;
-        frames[k] = toFrame(landmarker.detectForVideo(video, lastTimestamp));
-        onFrame(frames[k]);
+      if (t >= end || k >= total || !pending.size) { finish(false); return; }
+      const wanted = pending.has(k);
+      if (wanted) {
+        video.pause();
+        if (prevK !== null) { seen += k - prevK; missed += k - prevK - 1; }
+        if (video.playbackRate > SAFE_RATE && seen >= MISS_CHECK_AFTER && missed / seen > MISS_LIMIT) video.playbackRate = SAFE_RATE;
+        pending.delete(k);
+        handle(k, Math.max(1, Math.round((prevT === null ? 1 / hz : t - prevT) * 1000)));
+        prevK = k; prevT = t;
       }
-      arm();
+      arm();   // 인식이 오래 걸린 뒤(첫 장은 몇 초)에도 멈춤 감시가 잘못 터지지 않게, 일을 끝낸 다음에 다시 건다
       video.requestVideoFrameCallback(onPresented);
-      video.play().catch((e) => { console.warn('[motion] 분석용 재생이 멈췄다', e); finish(false); });
+      if (wanted) video.play().catch((e) => { console.warn('[motion] 분석용 재생이 멈췄다', e); finish(false); });
     };
     video.addEventListener('ended', onEnded);
-    video.playbackRate = PLAY_RATE;
+    video.playbackRate = FAST_RATE;
     video.requestVideoFrameCallback(onPresented);
     arm();
     video.play().catch((e) => { console.warn('[motion] 분석용 재생이 막혔다', e); finish(false); });
   });
 }
 
-// [start, end] 구간을 초당 hz 장씩 읽어 포즈를 뽑는다 → { frames, stalled(제때 못 옮긴 장 수), refilled(위치를 옮겨 다시 읽은 장 수), stopped }
-//  · frames[k] 는 영상 시각 start + k / hz 부근의 포즈. onProgress(읽은 장 수, total, frame) · shouldStop() 이 true 면 중단
-//  · requestVideoFrameCallback 이 없는 브라우저는 처음부터 위치를 옮겨 한 장씩 읽는다
+// 위치를 옮겨 가며 keys 의 칸을 한 장씩 읽는다(재생으로 못 읽은 칸 · requestVideoFrameCallback 이 없는 브라우저) → 중단했으면 true
+async function seekAndDetect(video, ctx, keys, handle) {
+  for (const k of keys) {
+    if (ctx.shouldStop && ctx.shouldStop()) return true;
+    await seekTo(video, ctx.start + (k + 0.5) / ctx.hz);
+    handle(k, Math.round(1000 / ctx.hz));
+  }
+  return false;
+}
+
+// [start, end] 구간을 초당 hz 장씩 읽어 포즈를 뽑는다 → { frames, missing(사람을 못 찾은 장 수), refilled(위치를 옮겨 읽은 장 수), stopped }
+//  · frames[k] 는 영상 시각 start + k / hz 부근의 포즈. onProgress(읽은 장 수, 전체, frame) · shouldStop() 이 true 면 중단
+//  · 사람을 놓친 프레임을 선수 주변만 잘라 다시 찾는 방법은 쓰지 않는다 — 찾은 수는 늘지만(28 → 34/42) 뼈대가 38% 작게 잡히는 등
+//    위치가 틀려 값이 더 흔들렸다(2026-11-22 측정). 못 찾은 프레임은 못 찾은 채로 두고 신뢰도에 반영한다
 export async function samplePoses(video, landmarker, { start, end, hz, onProgress, shouldStop }) {
-  const total = Math.max(0, Math.floor((end - start) * hz));
-  const frames = new Array(total).fill(null);
-  let done = 0, stalled = 0, refilled = 0;
-  const onFrame = (frame) => { done++; if (onProgress) onProgress(done, total, frame); };
-  video.pause();
-  if (typeof video.requestVideoFrameCallback === 'function' && total) {
-    if (!(await seekTo(video, start))) stalled++;
-    const played = await playAndDetect(video, landmarker, { start, end, hz, frames, onFrame, shouldStop });
-    if (played.stopped) return { frames: frames.map((f) => f || toFrame({})), stalled, refilled, stopped: true };
-  }
-  for (let k = 0; k < total; k++) {
-    if (frames[k]) continue;
-    if (shouldStop && shouldStop()) return { frames: frames.map((f) => f || toFrame({})), stalled, refilled, stopped: true };
-    if (!(await seekTo(video, start + (k + 0.5) / hz))) stalled++;
-    lastTimestamp += Math.round(1000 / hz);
+  const total = Math.max(0, Math.floor((end - start) * hz)), frames = new Array(total).fill(null);
+  const ctx = { start, end, hz, total, shouldStop };
+  let done = 0, refilled = 0, stopped = false;
+  const handle = (k, stepMs) => {
+    lastTimestamp += stepMs;
     frames[k] = toFrame(landmarker.detectForVideo(video, lastTimestamp));
-    refilled++;
-    onFrame(frames[k]);
+    if (onProgress) onProgress(++done, total, frames[k]);
+  };
+  video.pause();
+  if (total && typeof video.requestVideoFrameCallback === 'function') {
+    await seekTo(video, start);
+    stopped = (await playAndDetect(video, { ...ctx, pending: new Set(frames.keys()), handle })).stopped;
   }
-  return { frames, stalled, refilled, stopped: false };
+  if (!stopped) {
+    const left = [...frames.keys()].filter((k) => !frames[k]);
+    refilled = left.length;
+    stopped = await seekAndDetect(video, ctx, left, handle);
+  }
+  const filled = frames.map((f) => f || toFrame({}));
+  return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped };
 }

@@ -35,8 +35,8 @@
   var run = function (o) { return A.analyzeMotion(Object.assign({ frames: clip(o.fps, o.hand, o.turn), mode: 'pitch', hand: 'R', fps: o.fps, aspect: 1 }, o)); };
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
-    A = await import('/js/motion/analyze.js?v=2'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
-    M = await import('/js/motion/metrics.js?v=1'); ST = await import('/js/motion/store.js?v=1');
+    A = await import('/js/motion/analyze.js?v=3'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
+    M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=1');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
 
@@ -127,6 +127,35 @@
     ok(M.NOTE_TEXT.noRotation, '안내 문구');
   });
 
+  test('관절이 순간 뒤집힌 프레임(좌우 엉덩이 · 어깨가 바뀜)은 빼고 계산해 피크가 부풀지 않는다', async function () {
+    var f = clip(120), clean = run({ fps: 120 }), swap = function (w, a, b) { var t = w[a]; w[a] = w[b]; w[b] = t; };
+    [50, 58, 59, 66].forEach(function (i) { swap(f[i].world, 23, 24); swap(f[i].world, 11, 12); });
+    var r = A.analyzeMotion({ frames: f, mode: 'pitch', hand: 'R', fps: 120 });
+    ok(r.ok, '분석 실패');
+    near(r.metrics.pelvisPeak, clean.metrics.pelvisPeak, clean.metrics.pelvisPeak * 0.1, '골반 피크');
+    near(r.metrics.trunkPeak, clean.metrics.trunkPeak, clean.metrics.trunkPeak * 0.1, '몸통 피크');
+    ok(r.metrics.trunkPeak < 2500, '한계를 넘는 피크 ' + r.metrics.trunkPeak);
+    eq(clean.quality.jumpRatio, 0, '깨끗한 영상은 뺀 프레임이 없다');
+    ok(r.quality.jumpRatio > 0 && r.quality.jumpRatio < 0.1, '뺀 비율 ' + r.quality.jumpRatio);
+    var d = A.dropJumps([0, 2, 181, 4, null, 6], 1 / 120);
+    eq([d.values, d.jump], [[0, 2, null, 4, null, 6], [false, false, true, false, false, false]], 'dropJumps');
+    var many = A.dropJumps([0, 180, 180, 180, 180, 180, 180, 180], 1 / 120);
+    eq(many.values[6], 180, '연달아 튀면 실제 자세로 받아들인다');
+    ok(M.noteText('jumpy', { jumpRatio: 0.2, windowValid: 1 }).indexOf('20%') >= 0, '안내 문구');
+  });
+
+  test('회전 속도가 사람 몸으로 나오기 어려운 값이면 신뢰도를 낮추고 알린다', async function () {
+    var keep = P.pelvis.len, keepT = P.trunk.len;
+    P.pelvis.len = 0.03; P.trunk.len = 0.03;
+    var r;
+    try { r = run({ fps: 240 }); } finally { P.pelvis.len = keep; P.trunk.len = keepT; }
+    ok(r.ok, '분석 실패');
+    eq(r.quality.level, 'low', '신뢰도 (골반 ' + Math.round(r.metrics.pelvisPeak) + ' · 몸통 ' + Math.round(r.metrics.trunkPeak) + ')');
+    ok(r.quality.notes.indexOf('tooFast') >= 0 || r.quality.notes.indexOf('jumpy') >= 0, '안내 ' + JSON.stringify(r.quality.notes));
+    ok(M.NOTE_TEXT.tooFast, '안내 문구');
+    eq(run({ fps: 120 }).quality.notes.indexOf('tooFast'), -1, '정상 속도에는 붙지 않는다');
+  });
+
   test('자동 임팩트 · 릴리스는 사람을 못 찾은 프레임을 고르지 않는다', async function () {
     var f = clip(120), full = run({ fps: 120 }), m = full.events.main;
     f[m] = { world: null, image: null };
@@ -153,7 +182,7 @@
   });
 
   test('뼈대 선: 앞 팔다리 Teal · 뒤 Amber · 몸통 옆선 흰색, 반쯤 가려지면 점선, 거의 안 보이면 그리지 않는다', async function () {
-    var O = await import('/js/motion/overlay.js?v=3'), lm = pose(0.5, 'R', 1).image;
+    var O = await import('/js/motion/overlay.js?v=4'), lm = pose(0.5, 'R', 1).image;
     eq(O.boneStyle(11, 13, 'R', lm), { color: O.COLOR.lead, dashed: false }, '우타 왼팔 = 앞');
     eq(O.boneStyle(12, 14, 'R', lm), { color: O.COLOR.rear, dashed: false }, '우타 오른팔 = 뒤');
     eq(O.boneStyle(11, 13, 'L', lm).color, O.COLOR.rear, '좌타 왼팔 = 뒤');
@@ -164,6 +193,12 @@
     lm[13] = Object.assign({}, lm[13], { visibility: 0.1 });
     eq(O.boneStyle(11, 13, 'R', lm), null, '거의 안 보이는 팔꿈치 → 그리지 않는다');
     ok(O.COLOR.casing && O.COLOR.bone === '#ffffff', '선 아래 어두운 테두리 색');
+  });
+
+  test('신뢰도 안내: 사람을 놓친 비율을 실제 숫자로 알려 준다', async function () {
+    var t = M.noteText('lowVisibility', { windowValid: 0.62 });
+    ok(t.indexOf('38%') >= 0, '비율이 없다: ' + t);
+    eq(M.noteText('lowFps', { windowValid: 1 }), M.NOTE_TEXT.lowFps, '다른 안내는 그대로');
   });
 
   test('저장: 최신이 앞 · 30개까지 · 지우기 · 같은 종류의 앞 기록 찾기 · 깨진 값은 빈 목록', async function () {

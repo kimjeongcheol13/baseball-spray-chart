@@ -15,6 +15,9 @@ const MIN_VALID_RATIO = 0.5;
 const PLANT_MIN_SPEED = 0.5;    // 앞발이 이보다 느리게만 움직였으면(다리 길이/초) 내딛지 않은 것으로 본다
 const PLANT_STOP_RATIO = 0.2;   // 앞발 속도가 최대의 이 비율 아래로 떨어지면 착지
 const MIN_ROTATION = 150;       // 골반 · 몸통 피크가 둘 다 이보다 느리면(°/s) 스윙 · 투구가 없는 구간으로 본다
+const MAX_TURN = 2500;         // 골반선 · 어깨선이 이보다 빨리(°/s) 돈 것으로 나오면 인식 오류로 본다 (사람 몸의 한계를 넉넉히 넘는 값으로 잡은 가정 — 검증 필요)
+const TOO_FAST = 2000;         // 다듬은 뒤의 피크가 이보다 크면(°/s) 인식 오류일 가능성이 크다고 알린다 (가정 — 검증 필요)
+const MAX_JUMP_RUN = 5;        // 연달아 이만큼 튀면 오류가 아니라 실제로 그 자세라고 보고 받아들인다
 const TORSO = [LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP];
 
 const median = (xs) => { const s = xs.slice().sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
@@ -27,13 +30,28 @@ function smoothSeries(frames, pick, sigma, unwrap = false) {
   return smooth(unwrap ? unwrapDeg(filled) : filled, sigma);
 }
 
-// 골반선 · 어깨선의 수평 방향(도)과 각속도(도/초)
+// 앞 프레임에서 사람 몸이 돌 수 없는 만큼 튄 각도는 인식 오류(카메라 한 대라 좌우 · 앞뒤가 순간 뒤집힌다)로 보고 뺀다
+//  → { values(뺀 자리는 null), jump(프레임별 뺐는지) }. 빼지 않으면 한 프레임 튄 것이 수천 °/s 피크로 잡힌다
+export function dropJumps(values, dt) {
+  const out = values.slice(), jump = values.map(() => false);
+  let prev = null, prevI = -1, run = 0;
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === null) continue;
+    const tooFast = prev !== null && Math.abs(wrapDeg(out[i] - prev)) / ((i - prevI) * dt) > MAX_TURN;
+    if (tooFast && run < MAX_JUMP_RUN) { out[i] = null; jump[i] = true; run++; continue; }
+    prev = out[i]; prevI = i; run = 0;
+  }
+  return { values: out, jump };
+}
+
+// 골반선 · 어깨선의 수평 방향(도)과 각속도(도/초). jump = 튀어서 뺀 프레임
 function rotationSeries(frames, sigma, dt) {
-  const yaw = (a, b) => (f) => (visible(f.world, a, b) ? yawDeg(f.world[a], f.world[b]) : null);
-  const pelvisYaw = smoothSeries(frames, yaw(LM.L_HIP, LM.R_HIP), sigma, true);
-  const trunkYaw = smoothSeries(frames, yaw(LM.L_SHOULDER, LM.R_SHOULDER), sigma, true);
+  const yaw = (a, b) => dropJumps(frames.map((f) => (visible(f.world, a, b) ? yawDeg(f.world[a], f.world[b]) : null)), dt);
+  const tidy = (values) => { const filled = fillGaps(values); return filled && smooth(unwrapDeg(filled), sigma); };
+  const pelvis = yaw(LM.L_HIP, LM.R_HIP), trunk = yaw(LM.L_SHOULDER, LM.R_SHOULDER);
+  const pelvisYaw = tidy(pelvis.values), trunkYaw = tidy(trunk.values);
   if (!pelvisYaw || !trunkYaw) return null;
-  return { pelvisYaw, trunkYaw, pelvisVel: derivative(pelvisYaw, dt), trunkVel: derivative(trunkYaw, dt) };
+  return { pelvisYaw, trunkYaw, pelvisVel: derivative(pelvisYaw, dt), trunkVel: derivative(trunkYaw, dt), jump: pelvis.jump.map((j, i) => j || trunk.jump[i]) };
 }
 
 // 손 속도(m/초, 골반 기준) — 투구는 던지는 손목, 타격은 두 손목의 가운데
@@ -153,16 +171,20 @@ function sequenceOf(ev, fps) {
   };
 }
 
-function assessQuality(valid, win, fps, metrics) {
+function assessQuality(valid, jump, win, fps, metrics) {
   const inWin = valid.slice(win.from, win.to + 1);
   const windowValid = inWin.filter(Boolean).length / inWin.length;
+  const jumpRatio = jump.slice(win.from, win.to + 1).filter(Boolean).length / inWin.length;
   const noRotation = Math.max(metrics.pelvisPeak || 0, metrics.trunkPeak || 0) < MIN_ROTATION;
   const notes = [];
   if (noRotation) notes.push('noRotation');
   if (fps < 60) notes.push('lowFps');
   if (windowValid < 0.9) notes.push('lowVisibility');
-  const level = noRotation || windowValid < 0.7 ? 'low' : notes.length ? 'mid' : 'high';
-  return { level, notes, windowValid, validRatio: valid.filter(Boolean).length / valid.length };
+  if (jumpRatio > 0.1) notes.push('jumpy');
+  const tooFast = Math.max(metrics.pelvisPeak || 0, metrics.trunkPeak || 0) > TOO_FAST;
+  if (tooFast) notes.push('tooFast');
+  const level = noRotation || tooFast || windowValid < 0.7 || jumpRatio > 0.3 ? 'low' : notes.length ? 'mid' : 'high';
+  return { level, notes, windowValid, jumpRatio, validRatio: valid.filter(Boolean).length / valid.length };
 }
 
 // mode = 'bat' | 'pitch' · hand = 'R' | 'L' · aspect = 영상 가로/세로 · eventIndex = 임팩트 · 릴리스 프레임을 직접 정할 때
@@ -199,5 +221,5 @@ export function analyzeMotion({ frames, mode, hand, fps, aspect = 1, eventIndex 
     sequence: sequenceOf(events, fps),
     ...postureMetrics(frames, mode, side, events, win, aspect),
   };
-  return { ok: true, mode, hand, fps, window: win, series: { pelvisVel, trunkVel, separation, handSpeed }, events, metrics, quality: assessQuality(valid, win, fps, metrics) };
+  return { ok: true, mode, hand, fps, window: win, series: { pelvisVel, trunkVel, separation, handSpeed }, events, metrics, quality: assessQuality(valid, rot.jump, win, fps, metrics) };
 }

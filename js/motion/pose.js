@@ -6,7 +6,7 @@
 //    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
 import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
 import { mapToFrame } from './view.js?v=3';
-import { chooseInRegion, extentOf, selectTrack } from './track.js?v=2';
+import { chooseInRegion, extentOf, selectTrack, frameDiff, isCut, longestShot } from './track.js?v=3';
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
 const MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker';
@@ -82,7 +82,8 @@ function seekTo(video, t) {
 
 const RETRY_BELOW = 0.6;   // 한 사람만 찾게 읽었을 때 감싼 선수를 찾은 프레임이 이 비율보다 적고, 다른 사람이 잡힌 프레임이 있으면 여러 사람으로 다시 읽는다
 //  · 처음부터 여러 사람을 찾게 하면 한 사람만 있어도 1.7배(31초 → 53초), 세 사람이면 2.4배(30초 → 71초) 느렸다(2026-11-22 측정)
-const needsRetry = (pass, total) => total > 0 && pass.others > 0 && (total - pass.missing) / total < RETRY_BELOW;
+const needsRetry = (pass) => pass.others > 0 && pass.coverage < RETRY_BELOW;
+const CUT_MAX_SKIP = 3;    // 재생하며 읽을 때 한두 프레임은 건너뛸 수 있다. 이보다 멀리 뛰었으면 순서대로 읽은 것이 아니다
 const REGION_POSES = 3;   // 선수를 고른 네모 안에서는 이만큼까지 사람을 찾게 하고, 그중 감싼 사람을 고른다(track.js selectTrack)
 
 // 엔진 결과에서 한 사람을 골라 프레임 하나로 만든다. pick(landmarks 목록) → 고를 번호
@@ -91,11 +92,28 @@ const toFrame = (res, region, pick = () => 0) => {
   return i >= 0 ? { world: res.worldLandmarks[i], image: mapToFrame(res.landmarks[i], region) } : { world: null, image: null };
 };
 
-// 프레임마다 모아 둔 사람들 중 감싼 선수를 골라 프레임 목록으로 만든다(좌표는 화면 전체 기준으로 되돌린다)
-function pickWrapped(found, region, aspect) {
-  const picks = selectTrack(found.map((f) => (f ? f.image : [])), aspect);
+// 프레임마다 모아 둔 사람들 중 감싼 선수를 골라 프레임 목록으로 만든다(좌표는 화면 전체 기준으로 되돌린다). shot 밖의 프레임은 보지 않는다
+function pickWrapped(found, region, aspect, shot) {
+  const picks = selectTrack(found.map((f, k) => (f && k >= shot.from && k <= shot.to ? f.image : [])), aspect);
   return found.map((f, k) => (picks[k] >= 0 ? { world: f.world[picks[k]], image: mapToFrame(f.image[picks[k]], region) } : { world: null, image: null }));
 }
+
+// 화면 전환을 알아채는 도구: 프레임을 아주 작게 줄여 직전 프레임과 견준다 → check(그림) 이 true 면 화면이 바뀐 것
+const TINY_W = 32, TINY_H = 18;
+function cutWatcher() {
+  const canvas = Object.assign(document.createElement('canvas'), { width: TINY_W, height: TINY_H }), ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let prev = null;
+  return (image) => {
+    ctx.drawImage(image, 0, 0, TINY_W, TINY_H);
+    const now = ctx.getImageData(0, 0, TINY_W, TINY_H).data, cut = isCut(frameDiff(prev, now));
+    prev = now;
+    return cut;
+  };
+}
+// 엔진의 추적을 끊는 빈 화면. 화면이 바뀐 뒤에도 엔진은 앞 장면의 사람 자리를 붙잡고 있는다 — 빈 화면을 한 장 넣으면 놓고 새로 찾는다
+//  · 중계 영상에서 클로즈업 → 넓은 화면으로 바뀐 뒤 5프레임 동안 화면만 한 가짜 뼈대가 나왔고, 흐린 옛 영상에서는 끝까지 남았다(2026-11-22)
+const BLANK = Object.assign(document.createElement('canvas'), { width: 64, height: 36 });
+BLANK.getContext('2d').fillRect(0, 0, 64, 36);
 
 const regionAspect = (video, region) => (region.w * video.videoWidth) / (region.h * video.videoHeight);
 
@@ -194,11 +212,19 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
   // 한 번 읽기: 구간을 재생하며 프레임마다 엔진을 돌린다. poses = 한 프레임에서 찾을 사람 수
   const readOnce = async (poses) => {
     const frames = new Array(total).fill(null), found = region ? new Array(total).fill(null) : null, pick = regionPicker(video, region), source = makeSource(video, region);
-    let done = 0, refilled = 0, stopped = false;
+    const changed = cutWatcher(), cuts = [];
+    let done = 0, refilled = 0, stopped = false, lastK = -1;
     await landmarker.setOptions({ numPoses: poses });
     const handle = (k, stepMs) => {
       lastTimestamp += stepMs;
-      const res = landmarker.detectForVideo(source(), lastTimestamp);
+      const image = source();
+      if (changed(image)) {
+        landmarker.detectForVideo(BLANK, lastTimestamp);   // 추적을 끊는다
+        lastTimestamp += 1;
+        if (k > lastK && k - lastK <= CUT_MAX_SKIP) cuts.push(k);   // 차례대로 읽는 중에 생긴 차이만 화면 전환으로 적는다(놓친 프레임을 따로 찾아갈 때는 순서가 뒤섞인다)
+      }
+      lastK = k;
+      const res = landmarker.detectForVideo(image, lastTimestamp);
       if (found) found[k] = { image: res.landmarks || [], world: res.worldLandmarks || [] };
       frames[k] = toFrame(res, region, pick);
       if (onProgress) onProgress(++done, total, frames[k]);
@@ -213,15 +239,18 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
       refilled = left.length;
       stopped = await seekAndDetect(video, ctx, left, handle);
     }
-    // 네모가 있으면 모아 둔 사람들 중 감싼 선수만 남긴다. others = 사람은 찾았지만 감싼 선수가 아니라서 비운 프레임 수
-    const filled = found ? pickWrapped(found, region, aspect) : frames.map((f) => f || toFrame({}, null));
-    const others = found ? found.filter((f, k) => f && f.image.length && !filled[k].world).length : 0;
-    return { frames: filled, missing: filled.filter((f) => !f.world).length, refilled, stopped, others };
+    // 화면이 바뀌었으면 가장 긴 장면만 남긴다. 네모가 있으면 모아 둔 사람들 중 감싼 선수만 남긴다
+    const shot = longestShot(total, cuts), inShot = (k) => k >= shot.from && k <= shot.to, empty = toFrame({}, null);
+    const filled = found ? pickWrapped(found, region, aspect, shot) : frames.map((f, k) => (f && inShot(k) ? f : empty));
+    // others = 사람은 찾았지만 감싼 선수가 아니라서 비운 프레임 수(같은 장면 안에서만 센다)
+    const others = found ? found.filter((f, k) => f && inShot(k) && f.image.length && !filled[k].world).length : 0;
+    const got = filled.filter((f) => f.world).length, length = total ? shot.to - shot.from + 1 : 0;
+    return { frames: filled, missing: filled.length - got, refilled, stopped, others, cuts: cuts.length, shot, coverage: length ? got / length : 0 };
   };
 
   // 먼저 한 사람만 찾게 해서 빠르게 읽는다(대부분은 이것으로 끝난다)
   const first = await readOnce(1);
-  if (!region || first.stopped || !needsRetry(first, total)) return first;
+  if (!region || first.stopped || !needsRetry(first)) return first;
   // 엔진이 네모 안의 다른 사람(정면을 본 포수 등)에게 붙은 경우: 여러 사람을 찾게 해서 다시 읽고, 감싼 선수를 더 많이 찾은 쪽을 쓴다
   if (onRetry) onRetry();
   const second = await readOnce(REGION_POSES);

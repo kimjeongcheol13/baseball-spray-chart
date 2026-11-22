@@ -2,7 +2,7 @@
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=3';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=6';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=7';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -13,7 +13,7 @@ import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo,
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=6';
 import { createMirror } from './mirror.js?v=2';
-import { dropStrays } from './track.js?v=2';
+import { dropStrays } from './track.js?v=3';
 import { summaryLines, readText, referenceLine } from './insight.js?v=1';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';
@@ -333,8 +333,11 @@ async function analyze() {
     state.readStart = performance.now();
     const sampled = await samplePoses(el.video, landmarker, { start: range.start, end: range.end, hz, region: state.region, onProgress, onRetry: () => setStatus('네모 안의 다른 사람이 잡혔어요. 감싼 선수를 다시 찾는 중…'), shouldStop: () => state.stopping });
     if (sampled.stopped) { setStatus('분석을 중단했어요.'); return; }
-    const aspect = el.video.videoWidth / el.video.videoHeight, kept = dropStrays(sampled.frames, aspect);
-    state.clip = { frames: kept.frames, start: range.start, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped, others: sampled.others || 0 };
+    // 구간 안에서 화면이 바뀌었으면 가장 긴 장면만 남기고, 구간 표시도 그 장면으로 줄인다
+    const shot = sampled.shot || { from: 0, to: sampled.frames.length - 1 }, shotFrames = sampled.frames.slice(shot.from, shot.to + 1);
+    if (sampled.cuts) { state.range = { start: range.start + shot.from / hz, end: range.start + (shot.to + 1) / hz }; renderRange(); }
+    const aspect = el.video.videoWidth / el.video.videoHeight, kept = dropStrays(shotFrames, aspect);
+    state.clip = { frames: kept.frames, start: range.start + shot.from / hz, hz, aspect, missing: kept.frames.filter((f) => !f.world).length, strays: kept.dropped, others: sampled.others || 0, cuts: sampled.cuts || 0 };
   } catch (e) {
     console.error('[motion] 분석 실패', e);
     setStatus('분석 엔진을 불러오거나 실행하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', true);
@@ -369,7 +372,9 @@ function compute(eventIndex) {
   const strays = c.strays ? ` · 선수와 떨어진 곳에 잡힌 ${c.strays}프레임은 뺐어요` : '';
   // 선수를 고르지 않고 분석하면 화면에서 가장 크게 보이는 사람이 잡힌다 → 다른 사람이 잡혔을 때 할 일을 알려 준다
   const who = state.region ? (c.others ? ` · 네모 안의 다른 사람이 잡힌 ${c.others}프레임은 뺐어요` : '') : ' · 다른 사람이 분석됐으면 「선수 고르기」로 감싼 뒤 다시 분석해 주세요';
-  setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 선수를 찾았어요${strays}${who}`);
+  // 구간 안에서 화면이 바뀌었으면(카메라 전환) 가장 긴 장면만 분석했다고 알린다
+  const cut = c.cuts ? ` · 구간 안에서 화면이 ${c.cuts}번 바뀌어 가장 긴 장면만 분석했어요(구간도 그 장면으로 줄였어요)` : '';
+  setStatus(`분석 끝 · ${c.frames.length} 프레임 중 ${c.frames.length - c.missing}프레임에서 선수를 찾았어요${strays}${who}${cut}`);
   renderResult();
   seekToFrame(result.events.main);
 }

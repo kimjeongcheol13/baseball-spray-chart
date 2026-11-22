@@ -153,13 +153,13 @@ function drawMissing(ctx, w, h, u) {
   ctx.textAlign = 'left';
 }
 
-// ctx 에 w × h 크기로 그린다. frame 이 없으면 뼈대 없이 패널만, hud 가 없으면 뼈대만, missing 이면 「사람을 못 찾음」 안내
-export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false, missing = false } = {}) {
+// ctx 에 w × h 크기로 그린다. frame 이 없으면 뼈대 없이 패널만, hud 가 없으면 뼈대만, missing 이면 「사람을 못 찾음」 안내, labels 가 false 면 관절 각도 표 없이 선과 점만
+export function drawOverlay(ctx, w, h, { frame = null, hand = 'R', hud = null, mark = false, missing = false, labels = true } = {}) {
   const u = Math.max(1, Math.min(w, h) / 360);
   ctx.clearRect(0, 0, w, h);
   if (frame && frame.image) {
     drawSkeleton(ctx, w, h, frame.image, hand, u);
-    drawLabels(ctx, w, h, jointLabels(frame, hand), u);
+    if (labels) drawLabels(ctx, w, h, jointLabels(frame, hand), u);
   }
   if (missing) drawMissing(ctx, w, h, u);
   if (hud) drawHud(ctx, w, hud, u);

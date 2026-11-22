@@ -182,7 +182,7 @@
   });
 
   test('뼈대 선: 앞 팔다리 Teal · 뒤 Amber · 몸통 옆선 흰색, 반쯤 가려지면 점선, 거의 안 보이면 그리지 않는다', async function () {
-    var O = await import('/js/motion/overlay.js?v=4'), lm = pose(0.5, 'R', 1).image;
+    var O = await import('/js/motion/overlay.js?v=5'), lm = pose(0.5, 'R', 1).image;
     eq(O.boneStyle(11, 13, 'R', lm), { color: O.COLOR.lead, dashed: false }, '우타 왼팔 = 앞');
     eq(O.boneStyle(12, 14, 'R', lm), { color: O.COLOR.rear, dashed: false }, '우타 오른팔 = 뒤');
     eq(O.boneStyle(11, 13, 'L', lm).color, O.COLOR.rear, '좌타 왼팔 = 뒤');

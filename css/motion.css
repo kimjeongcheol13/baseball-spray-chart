@@ -163,6 +163,8 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 .mo-table th, .mo-table td { padding: 5px 6px; text-align: right; border-top: 1px solid var(--mo-line); }
 .mo-table th { color: var(--mo-ink3); font-weight: 600; }
 
+.mo-trend { margin-top: 12px; }
+.mo-trend-svg { display: block; max-width: 100%; height: auto; }
 .mo-log { list-style: none; margin: 0; padding: 0; }
 .mo-log li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 0; border-top: 1px solid var(--mo-line); }
 .mo-log-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

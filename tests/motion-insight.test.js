@@ -16,7 +16,7 @@
   }
 
   test('(준비) 풀이 · 참고 범위 · 끌어다 놓기 모듈을 불러온다', async function () {
-    I = await import('/js/motion/insight.js?v=1');
+    I = await import('/js/motion/insight.js?v=2');
     R = await import('/js/motion/reference.js?v=1');
     D = await import('/js/motion/drop.js?v=1');
     ok(I.summaryLines && I.readText && I.referenceLine && I.positionIn && R.REFERENCE && D.videoFrom && D.attachDrop, '모듈 로드');
@@ -45,6 +45,8 @@
     ok(has(I.summaryLines(result({ metrics: { pelvisPeak: 500, trunkPeak: 400 } }), null), '몸통 회전(400°/s)이 골반(500°/s)보다 느렸어요'), '느린 몸통');
     ok(has(I.summaryLines(result({ metrics: { pelvisPeak: 500, trunkPeak: 510 } }), null), '비슷했어요'), '비슷');
     ok(has(I.summaryLines(result({ metrics: { maxSeparation: 8 } }), null), '한 덩어리로'), '작은 분리각');
+    var zero = I.summaryLines(result({ metrics: { maxSeparation: 0 } }), null).filter(function (l) { return l.text.indexOf('분리각 0°') >= 0; })[0];
+    ok(zero && zero.tone === 'warn' && zero.text.indexOf('참고만') > 0 && zero.text.indexOf('한 덩어리') < 0, '0° 는 확정해서 말하지 않는다: ' + JSON.stringify(zero));
     ok(has(I.summaryLines(result({ metrics: { maxSeparation: 48 } }), null), '크게 먼저'), '큰 분리각');
     ok(!has(I.summaryLines(result({ metrics: { maxSeparation: null } }), null), '분리각'), '값이 없으면 말하지 않는다');
   });
@@ -137,5 +139,24 @@
     eq(L.parseLink('https://example.com/clip.mp4'), { kind: 'web', url: 'https://example.com/clip.mp4' }, '다른 사이트는 그대로');
     eq([L.parseLink('youtu.be/abc'), L.parseLink('javascript:alert(1)'), L.parseLink(''), L.parseLink('https://a.com/x y')], [null, null, null, null], '주소가 아닌 것');
     eq([L.secondsOf('90'), L.secondsOf('90s'), L.secondsOf('1m30s'), L.secondsOf('1h2m3s'), L.secondsOf('abc')], [90, 90, 90, 3723, 0], 'secondsOf');
+  });
+
+  test('흔들림 폭(±): 지난 기록과의 차이가 두 폭을 더한 것보다 작으면 달라졌다고 말하지 않는다', async function () {
+    var prev = { metrics: { pelvisPeak: 380, trunkPeak: 500, maxSeparation: 24 } };
+    ok(has(I.summaryLines(result(), prev, { pelvisPeak: 10, trunkPeak: 30, maxSeparation: 2 }), '20% 빨라졌어요'), '차이(100) > 폭(30) → 말한다');
+    var inside = I.summaryLines(result(), prev, { pelvisPeak: 30, trunkPeak: 120, maxSeparation: 2 });
+    ok(!has(inside, '몸통 회전이') && !has(inside, '골반 회전이') && has(inside, '흔들림 폭(±) 안'), '골반 차이(20) < 폭(30) · 몸통 차이(100) < 폭(120) → 말하지 않고 폭 안이라고 한다: ' + JSON.stringify(inside));
+    var one = I.summaryLines(result(), prev, { pelvisPeak: 10, trunkPeak: 120, maxSeparation: 2 });
+    ok(has(one, '골반 회전이 5% 빨라졌어요') && !has(one, '몸통 회전이'), '폭을 넘은 것(골반)만 말한다');
+    var both = I.summaryLines(result(), { metrics: prev.metrics, spread: { pelvisPeak: 15, trunkPeak: 60 } }, { pelvisPeak: 10, trunkPeak: 50 });
+    ok(has(both, '흔들림 폭(±) 안'), '지난 기록의 폭도 더한다(50 + 60 > 100)');
+    ok(has(I.summaryLines(result(), prev), '20% 빨라졌어요'), '폭을 모르면 예전처럼');
+  });
+
+  test('흔들림 폭(±)과 참고 범위: 폭까지 범위 밖이어야 낮음 · 높음, 걸치면 「걸침」', async function () {
+    var ref = { low: 600, high: 800, unit: '°/s' };
+    eq([I.positionIn(ref, 550, 20), I.positionIn(ref, 550, 60), I.positionIn(ref, 700, 50), I.positionIn(ref, 780, 50), I.positionIn(ref, 850, 30), I.positionIn(ref, 850, 60)], ['below', 'overlap', 'within', 'overlap', 'above', 'overlap'], 'positionIn');
+    var r = I.referenceLine('bat', 'pelvisPeak', 560, 'mid', 40);
+    ok(r.position === 'overlap' && r.text.indexOf('걸침') > 0, '걸침 문구: ' + r.text);
   });
 })();

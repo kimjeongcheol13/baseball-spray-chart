@@ -1,7 +1,8 @@
 // 동작 분석 화면 (motion.html) — 영상 고르기 → 구간 정하기 → 포즈 뽑기 → 지표 · 그래프 · 저장
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-import { analyzeMotion } from './analyze.js?v=3';
+import { analyzeMotion } from './analyze.js?v=4';
+import { estimateSpread, roundSpread } from './spread.js?v=1';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=7';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
@@ -14,11 +15,12 @@ import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=6';
 import { createMirror } from './mirror.js?v=2';
 import { dropStrays } from './track.js?v=3';
-import { summaryLines, readText, referenceLine } from './insight.js?v=1';
+import { summaryLines, readText, referenceLine } from './insight.js?v=2';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';
 import { canCapture, startCapture, settleDuration, clock, MAX_CAPTURE_S, MIN_CAPTURE_S } from './capture.js?v=1';
 import { parseLink } from './link.js?v=1';
+import { TREND_METRICS, trendGroups, trendPoints, trendSummary, drawTrend } from './trend.js?v=1';
 
 const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -46,7 +48,7 @@ const el = {
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
-  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), capture: $('btnCapture'), captureMsg: $('captureMsg'), linkBox: $('linkBox'), linkUrl: $('linkUrl'), link: $('btnLink'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
+  results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), capture: $('btnCapture'), captureMsg: $('captureMsg'), linkBox: $('linkBox'), trendBox: $('trendBox'), trendEmpty: $('trendEmpty'), trendGroup: $('trendGroup'), trendMetric: $('trendMetric'), trendChart: $('trendChart'), trendText: $('trendText'), linkUrl: $('linkUrl'), link: $('btnLink'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
   player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
@@ -58,7 +60,7 @@ const mirror = createMirror($('viewVideo'));   // 동작 다시 보기의 「영
 // clip = 뽑아 둔 포즈 { frames, start, hz, aspect(영상 가로/세로), missing(사람을 못 찾은 장 수), strays(엉뚱한 곳에 잡혀 뺀 장 수) }
 // region = 분석할 선수 영역(화면 비율 네모 · 없으면 화면 전체) · picking = 선수를 고르는 중 · drag = 끌고 있는 네모의 두 점
 // file = 지금 영상 { blob, name, size, sig } · restore = 불러오는 중인 기록 { range, eventIndex } · still = 영상 없이 볼 때 고른 프레임 · compare = 비교할 기록 id 들 · result = analyzeMotion 결과 · liveFrame = 분석 도중 방금 읽은 프레임
-const state = { url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], capture: null, autoRun: false, duel: null, duelToken: 0, region: null, picking: false, drag: null };
+const state = { spread: null, url: null, range: { start: 0, end: 0 }, clip: null, result: null, chart: null, view3d: null, busy: false, stopping: false, liveFrame: null, readStart: 0, loop: null, file: null, restore: null, still: null, compare: [], capture: null, autoRun: false, duel: null, duelToken: 0, region: null, picking: false, drag: null };
 
 function node(tag, cls, text) {
   const e = document.createElement(tag);
@@ -360,7 +362,7 @@ function onProgress(done, total, frame) {
 function compute(eventIndex) {
   const c = state.clip, opt = options();
   if (!c) return;
-  const result = analyzeMotion({ frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: c.aspect, eventIndex });
+  const input = { frames: c.frames, mode: opt.mode, hand: opt.hand, fps: c.hz * opt.slow, aspect: c.aspect, eventIndex }, result = analyzeMotion(input);
   if (!result.ok) {
     clearResult();
     // 네모 안에 사람은 있었지만 감싼 선수는 아니었던 경우: 다른 사람을 대신 분석하지 않고 그렇게 알린다
@@ -369,6 +371,7 @@ function compute(eventIndex) {
     return;
   }
   state.result = result;
+  state.spread = estimateSpread(input, result);   // 숫자마다 흔들림 폭(±) — 화면 · 문장 · 저장에 함께 쓴다
   const strays = c.strays ? ` · 선수와 떨어진 곳에 잡힌 ${c.strays}프레임은 뺐어요` : '';
   // 선수를 고르지 않고 분석하면 화면에서 가장 크게 보이는 사람이 잡힌다 → 다른 사람이 잡혔을 때 할 일을 알려 준다
   const who = state.region ? (c.others ? ` · 네모 안의 다른 사람이 잡힌 ${c.others}프레임은 뺐어요` : '') : ' · 다른 사람이 분석됐으면 「선수 고르기」로 감싼 뒤 다시 분석해 주세요';
@@ -380,7 +383,7 @@ function compute(eventIndex) {
 }
 
 function clearResult() {
-  state.result = null;
+  state.result = null; state.spread = null;
   if (state.chart) { state.chart.destroy(); state.chart = null; }
   if (state.view3d) { state.view3d.destroy(); state.view3d = null; }
   state.loop = null;
@@ -441,13 +444,15 @@ function tile(m, value, prev, r) {
   const box = node('div', 'mo-tile'), label = node('div', 'mo-tile-label'), val = node('div', 'mo-tile-value', formatValue(value));
   if (TILE_COLOR[m.key]) { const dot = node('i'); dot.style.background = TILE_COLOR[m.key]; label.append(dot); }
   label.append(node('span', '', m.label));
-  val.append(node('small', '', m.unit));
+  const spread = state.spread && state.spread[m.key];
+  // 흔들림 폭이 1 이상이면 「± 폭」을 단위 앞에 붙인다
+  val.append(node('small', '', (typeof spread === 'number' && spread >= 0.5 ? ` ± ${Math.round(spread)} ` : '') + m.unit));
   box.append(label, val);
   const delta = deltaText(prev, m.key, value);
   if (delta) box.append(node('div', 'mo-tile-delta', delta));
   box.append(node('div', 'mo-tile-help', m.help));
   if (readText(m.key)) box.append(node('div', 'mo-tile-read', readText(m.key)));
-  const ref = referenceLine(r.mode, m.key, value, r.quality.level);
+  const ref = referenceLine(r.mode, m.key, value, r.quality.level, spread);
   if (ref) { const tag = node('div', 'mo-tile-ref', ref.text); if (ref.position) tag.dataset.position = ref.position; box.append(tag); }
   return box;
 }
@@ -464,7 +469,7 @@ function sequenceTile(seq) {
 
 function renderTiles(r) {
   const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand) || null;
-  el.insights.replaceChildren(...summaryLines(r, prev).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
+  el.insights.replaceChildren(...summaryLines(r, prev, state.spread || {}).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
   el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev, r)), sequenceTile(r.metrics.sequence));
   renderReferenceNote(r.mode);
 }
@@ -600,7 +605,7 @@ async function save() {
   const r = state.result, c = state.clip;
   if (!r || !c) return;
   const entry = { id: Date.now(), at: new Date().toISOString(), name: el.player.value.trim(), mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level,
-    order: r.metrics.sequence.order, metrics: summarize(r), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
+    order: r.metrics.sequence.order, metrics: summarize(r), spread: roundSpread(state.spread), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
   if (!addEntry(entry)) { el.saveMsg.textContent = '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; return; }
   el.save.disabled = true;
   el.saveMsg.textContent = '다시 보기용 데이터를 저장하는 중…';
@@ -808,6 +813,27 @@ function renderLog() {
   }
   el.logList.replaceChildren(...groups);
   renderCompare(list);
+  renderTrend(list);
+}
+
+// ── 내 기록 추이 (trend.js) ─────────────────────────────────────
+// 고를 수 있는 선수 · 종류 묶음과 지표를 채우고 그래프를 그린다. 고른 것은 다시 그려도 유지한다
+function renderTrend(list) {
+  const groups = trendGroups(list);
+  el.trendBox.hidden = !groups.length;
+  el.trendEmpty.hidden = !list.length || groups.length > 0;
+  if (!groups.length) return;
+  const keepGroup = groups.some((g) => g.key === el.trendGroup.value) ? el.trendGroup.value : groups[0].key, keepMetric = el.trendMetric.value || TREND_METRICS[0].key;
+  el.trendGroup.replaceChildren(...groups.map((g) => { const o = node('option', '', `${g.name} · ${ROLE_TEXT[g.mode]} · ${sideText(g.mode, g.hand)} (${g.count}개)`); o.value = g.key; return o; }));
+  el.trendMetric.replaceChildren(...TREND_METRICS.map((m) => { const o = node('option', '', m.name); o.value = m.key; return o; }));
+  el.trendGroup.value = keepGroup; el.trendMetric.value = keepMetric;
+  drawTrendNow(list);
+}
+
+function drawTrendNow(list = loadLog()) {
+  const metric = TREND_METRICS.find((m) => m.key === el.trendMetric.value) || TREND_METRICS[0], points = trendPoints(list, el.trendGroup.value, metric.key);
+  el.trendChart.replaceChildren(drawTrend(points, metric, el.trendChart.clientWidth));
+  el.trendText.textContent = points.length ? trendSummary(points, metric.unit) : '이 지표가 기록된 것이 없어요.';
 }
 
 // 지금 프레임 + 뼈대 + 요약 패널을 한 장의 PNG 로 내려받는다
@@ -835,6 +861,8 @@ function bind() {
   el.file.addEventListener('change', () => openVideo(el.file.files[0]));
   el.linkBox.hidden = !canCapture();
   el.link.addEventListener('click', openLink);
+  el.trendGroup.addEventListener('change', () => drawTrendNow());
+  el.trendMetric.addEventListener('change', () => drawTrendNow());
   el.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openLink(); } });
   el.captureMsg.textContent = canCapture() ? CAPTURE_TEXT.idle : CAPTURE_TEXT.unsupported;
   el.capture.addEventListener('click', toggleCapture);
@@ -881,6 +909,9 @@ function bind() {
   el.image.addEventListener('click', saveImage);
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));
   new ResizeObserver(fitCanvas).observe(el.stage);
+  // 추이 그래프는 보이는 폭 그대로 그리므로 폭이 바뀌면 다시 그린다
+  let trendWidth = 0;
+  new ResizeObserver(() => { const w = el.trendChart.clientWidth; if (w && w !== trendWidth && !el.trendBox.hidden) { trendWidth = w; drawTrendNow(); } }).observe(el.trendChart);
 }
 
 bind();

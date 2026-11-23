@@ -35,7 +35,7 @@
   var run = function (o) { return A.analyzeMotion(Object.assign({ frames: clip(o.fps, o.hand, o.turn), mode: 'pitch', hand: 'R', fps: o.fps, aspect: 1 }, o)); };
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
-    A = await import('/js/motion/analyze.js?v=3'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
+    A = await import('/js/motion/analyze.js?v=4'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
     M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=3');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
@@ -215,5 +215,29 @@
     mem.sl_motion_log = '{깨짐';
     eq(ST.loadLog(box), [], '깨진 값');
     eq(ST.addEntry(e(1, 'bat'), { getItem: function () { return null; }, setItem: function () { throw new Error('quota'); } }), false, '저장 실패는 false');
+  });
+
+  test('흔들림 폭(±): 매끈한 영상은 작고, 피크 근처가 흔들리면 커진다 · 계산이 실패하면 모두 null', async function () {
+    var SP = await import('/js/motion/spread.js?v=1');
+    var input = { frames: clip(60), mode: 'pitch', hand: 'R', fps: 60, aspect: 1 }, base = A.analyzeMotion(input), sp = SP.estimateSpread(input, base);
+    eq(Object.keys(sp), ['pelvisPeak', 'trunkPeak', 'maxSeparation'], '재는 지표');
+    ok(SP.SPREAD_KEYS.every(function (k) { return typeof sp[k] === 'number' && sp[k] >= 0; }), '세 지표 모두 0 이상의 폭: ' + JSON.stringify(sp));
+    ok(sp.pelvisPeak < base.metrics.pelvisPeak * 0.1 && sp.trunkPeak < base.metrics.trunkPeak * 0.1, '매끈하면 값의 10% 미만: ' + JSON.stringify(sp) + ' / ' + [base.metrics.pelvisPeak, base.metrics.trunkPeak]);
+    // 골반 피크 앞뒤 프레임의 골반 좌표를 흔든다(인식이 흔들린 것처럼)
+    var noisy = clip(60), at = base.events.pelvisPeak;
+    [-2, -1, 1, 2].forEach(function (d, j) { var f = noisy[at + d], w = f.world.slice(), k = j % 2 ? 0.04 : -0.04;
+      w[23] = Object.assign({}, w[23], { z: w[23].z + k }); w[24] = Object.assign({}, w[24], { z: w[24].z - k }); noisy[at + d] = { world: w, image: f.image }; });
+    var nIn = Object.assign({}, input, { frames: noisy }), nBase = A.analyzeMotion(nIn), nSp = SP.estimateSpread(nIn, nBase);
+    ok(nSp.pelvisPeak > sp.pelvisPeak * 2, '흔들린 영상의 골반 폭이 더 크다: ' + nSp.pelvisPeak + ' > ' + sp.pelvisPeak);
+    eq(A.analyzeMotion(input).metrics.pelvisPeak, base.metrics.pelvisPeak, '폭을 재도 원래 결과는 그대로');
+    eq(SP.estimateSpread(input, { ok: false }), { pelvisPeak: null, trunkPeak: null, maxSeparation: null }, '실패한 결과');
+    eq(SP.roundSpread({ pelvisPeak: 12.4, trunkPeak: null, maxSeparation: 2.6 }), { pelvisPeak: 12, trunkPeak: null, maxSeparation: 3 }, '저장용 반올림');
+    eq(SP.roundSpread(null), { pelvisPeak: null, trunkPeak: null, maxSeparation: null }, '폭이 없을 때');
+  });
+
+  test('평활 배수: 기본(1)은 예전과 같고, 배수를 바꾸면 피크가 달라진다', async function () {
+    var a = run({ fps: 30 }), b = run({ fps: 30, smoothScale: 1 }), c = run({ fps: 30, smoothScale: 1.6 });
+    eq(b.metrics.pelvisPeak, a.metrics.pelvisPeak, '기본값');
+    ok(c.metrics.pelvisPeak < a.metrics.pelvisPeak, '더 다듬으면 피크가 낮아진다(30fps 에서도 배수가 먹는다): ' + [c.metrics.pelvisPeak, a.metrics.pelvisPeak]);
   });
 })();

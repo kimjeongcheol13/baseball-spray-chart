@@ -20,7 +20,7 @@
   <section class="mo-hero">
     <p class="mo-kicker">YOUR SWING, VISUALIZED</p>
     <h1>영상 하나로 보는 스윙 · 투구 동작</h1>
-    <p class="mo-sub">폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정해요. 영상은 이 기기 안에서만 처리하고 어디로도 보내지 않아요.</p>
+    <p class="mo-sub">폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정해요. 영상은 이 기기 안에서 분석해요. 로그인하고 「영상도 다른 기기로 보내기」를 켠 채 저장할 때만, 분석한 몇 초를 작게 줄여 내 계정에 올려요(나만 볼 수 있어요).</p>
   </section>
 
   <form class="mo-card" id="setup">
@@ -182,13 +182,14 @@
       <input type="text" class="mo-input" id="playerName" maxlength="20" placeholder="선수 이름 (선택)" aria-label="선수 이름" autocomplete="off">
       <button type="button" class="mo-btn primary" id="btnSave">기록 저장</button>
       <button type="button" class="mo-btn" id="btnImage">이미지 저장</button>
+      <label class="mo-check" id="sendVideoWrap" hidden><input type="checkbox" id="sendVideo" checked><span>영상도 다른 기기로 보내기 (분석한 구간만 · 나만 봐요)</span></label>
       <span class="mo-status" id="saveMsg" role="status" aria-live="polite"></span>
     </div>
   </section>
 
   <section class="mo-card" id="logCard">
     <h2>저장한 기록</h2>
-    <p class="mo-hint">기록은 이 기기에 쌓이고, 앱에서 로그인했으면 다른 기기와도 이어져요(영상은 보내지 않아요). 「불러오기」로 영상과 분석을 다시 보고, 「비교」를 두 개 고르면 나란히 비교해요. 타자는 타자끼리, 투수는 투수끼리 비교해요.</p>
+    <p class="mo-hint">기록은 이 기기에 쌓이고, 앱에서 로그인했으면 다른 기기와도 이어져요(영상은 「영상도 다른 기기로 보내기」를 켜고 저장한 것만, 분석한 구간만). 「불러오기」로 영상과 분석을 다시 보고, 「비교」를 두 개 고르면 나란히 비교해요. 타자는 타자끼리, 투수는 투수끼리 비교해요.</p>
     <p class="mo-hint" id="syncMsg" role="status"></p>
     <p class="mo-hint" id="logEmpty">아직 저장한 기록이 없어요. 분석한 뒤 선수 이름을 적고 「기록 저장」을 눌러 주세요.</p>
     <p class="mo-status" id="logMsg" role="status" aria-live="polite"></p>
@@ -251,6 +252,6 @@
   </footer>
 </main>
 <div class="mo-drop" id="dropHint" hidden><span>여기에 놓으면 영상을 열어요</span></div>
-<script type="module" src="js/motion/app.js?v=25"></script>
+<script type="module" src="js/motion/app.js?v=26"></script>
 </body>
 </html>

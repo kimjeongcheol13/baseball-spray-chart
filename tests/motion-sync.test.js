@@ -7,7 +7,7 @@
   var memStore = function (init) { var m = {}; if (init) m.sl_motion_log = JSON.stringify(init); return { getItem: function (k) { return k in m ? m[k] : null; }, setItem: function (k, v) { m[k] = String(v); } }; };
 
   test('(준비) 기록 잇기 · 저장 모듈을 불러온다 (서버 요청 없이)', async function () {
-    S = await import('/js/motion/sync.js?v=1'); ST = await import('/js/motion/store.js?v=4');
+    S = await import('/js/motion/sync.js?v=2'); ST = await import('/js/motion/store.js?v=4');
     ok(S.planSync && S.encodeClip && S.decodeClip && S.toCloudEntry && S.fromCloudRow && S.hasSession && ST.mergeEntries, '모듈 로드');
   });
 
@@ -18,7 +18,7 @@
     eq(p.upload.map(function (u) { return [u.entry.id, u.withClip]; }), [[1, true], [4, true]], '올릴 것(1 은 없음 · 4 는 좌표만 빠짐)');
     eq(p.remove, [3], '서버에서 지운 것');
     eq(p.add.map(function (e) { return [e.id, e.hasData, e.cloud, e.video]; }), [[5, true, true, null]], '받을 것(6 은 지움 표시라 받지 않음)');
-    eq(S.planSync([], []), { upload: [], add: [], remove: [] }, '둘 다 비었을 때');
+    eq(S.planSync([], []), { upload: [], add: [], remove: [], patch: [] }, '둘 다 비었을 때');
   });
 
   test('올릴 칸 · 받은 행: 영상 정보와 이 기기 표시는 올리지 않는다', async function () {

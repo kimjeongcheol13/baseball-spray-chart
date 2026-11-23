@@ -1,0 +1,59 @@
+// 동작 분석 — 영상을 다른 기기로 (js/motion/cut.js · sync.js): 줄일 크기 · 비트 · 구간 · 시간 맞추기 · 파일 자리 · 나중에 온 영상 표시
+(function () {
+  var T = window.__T, ok = T.ok, eq = T.eq, test = T.test;
+  var C, S;
+
+  test('(준비) 영상 줄이기 · 기록 잇기 모듈을 불러온다 (서버 요청 없이)', async function () {
+    C = await import('/js/motion/cut.js?v=1'); S = await import('/js/motion/sync.js?v=2');
+    ok(C.outputSize && C.bitrateFor && C.cutRange && C.offsetFrom && C.shiftClip && C.shiftRange && S.videoPath && S.baseType, '모듈 로드');
+  });
+
+  test('줄일 크기: 짧은 변 720 이하 · 짝수 · 작은 영상은 그대로', async function () {
+    eq(C.outputSize(1920, 1080), { width: 1280, height: 720 }, '가로 1080p');
+    eq(C.outputSize(1080, 1920), { width: 720, height: 1280 }, '세로 1080p');
+    eq(C.outputSize(640, 360), { width: 640, height: 360 }, '작으면 그대로');
+    eq(C.outputSize(1271, 721), { width: 1270, height: 720 }, '홀수는 짝수로');
+  });
+
+  test('비트: 짧은 구간은 기본값 · 긴 구간은 8MB 를 넘지 않게', async function () {
+    eq(C.bitrateFor(4), 2500000, '4초');
+    var b = C.bitrateFor(40);
+    ok(b < 2500000 && (b * 40) / 8 <= 8000000, '40초도 8MB 안: ' + b);
+  });
+
+  test('구간: 앞뒤 0.3초 여유 · 영상 길이 안으로', async function () {
+    eq(C.cutRange({ start: 2, end: 5 }, 10), { start: 1.7, end: 5.3 }, '가운데');
+    eq(C.cutRange({ start: 0.1, end: 9.9 }, 10), { start: 0, end: 10 }, '양 끝');
+  });
+
+  test('시간 맞추기: 가운데 값 · 받은 기기에서 좌표 시작 · 구간을 당긴다', async function () {
+    eq(C.offsetFrom([]), null, '표본 없음');
+    eq(C.offsetFrom([1.7, 1.62, 1.61, 1.6, 1.61]), 1.61, '재생 시작이 늦은 첫 표본에 끌려가지 않는다');
+    eq(C.shiftClip({ start: 2.5, hz: 30 }, 1.7).start, 0.8, '좌표 시작');
+    var same = { start: 2.5 }; ok(C.shiftClip(same, 0) === same, 'offset 0 이면 그대로');
+    var r = C.shiftRange({ start: 2, end: 5 }, 1.7);
+    ok(Math.abs(r.start - 0.3) < 1e-9 && Math.abs(r.end - 3.3) < 1e-9, '구간');
+    eq(C.shiftRange(null, 1), null, '구간 없음');
+  });
+
+  test('파일 자리 · 형식: <내 id>/<기록 id>.webm|mp4 · codecs 는 뗀다', async function () {
+    eq(S.videoPath('u-1', 77, 'video/webm;codecs=vp9'), 'u-1/77.webm', 'webm');
+    eq(S.videoPath('u-1', 77, 'video/mp4;codecs=avc1'), 'u-1/77.mp4', 'mp4');
+    eq([S.baseType('video/mp4'), S.baseType('video/webm;codecs=vp8'), S.baseType('')], ['video/mp4', 'video/webm', 'video/webm'], 'baseType');
+  });
+
+  test('나중에 올라온 영상: 이미 받은 기록에 영상 표시를 붙인다 · 이미 있으면 그대로', async function () {
+    var cv = { path: 'u/1.webm', type: 'video/webm', size: 1, offset: 1.2 };
+    var local = [{ id: 1, metrics: {}, hasData: true }, { id: 2, metrics: {}, cloudVideo: cv }, { id: 3, metrics: {} }];
+    var rows = [{ entry_id: '1', entry: { id: 1, cloudVideo: cv }, deleted: false, has_clip: 30 }, { entry_id: '2', entry: { id: 2, cloudVideo: cv }, deleted: false, has_clip: null },
+      { entry_id: '3', entry: {}, deleted: true, has_clip: null }];
+    var p = S.planSync(local, rows);
+    eq(p.patch, [{ id: 1, cloudVideo: cv }], 'patch');
+    eq(p.remove, [3], '지운 것은 patch 하지 않는다');
+  });
+
+  test('올릴 칸: 영상 표시(cloudVideo)는 올리고, 이 기기 영상 정보(video)는 올리지 않는다', async function () {
+    var c = S.toCloudEntry({ id: 5, metrics: {}, video: { sig: 'cloud:5', offset: 1 }, cloudVideo: { path: 'u/5.webm' } });
+    eq([c.video, c.cloudVideo && c.cloudVideo.path], [undefined, 'u/5.webm'], 'toCloudEntry');
+  });
+})();

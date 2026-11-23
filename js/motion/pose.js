@@ -20,6 +20,7 @@ const FPS_PROBE_FRAMES = 12;
 const FPS_PROBE_TIMEOUT_MS = 1500;
 
 const landmarkers = new Map();   // 모델 이름 → 만들어 둔 엔진(Promise)
+const PROBE_GUARD_MS = 8000;   // 후보 한 구간을 읽다 이만큼 더 걸리면 그만둔다
 let lastTimestamp = 0;           // 엔진에 넘기는 시각은 계속 커져야 한다(다시 분석해도)
 
 async function build(model) {
@@ -214,7 +215,7 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
     const frames = new Array(total).fill(null), found = region ? new Array(total).fill(null) : null, pick = regionPicker(video, region), source = makeSource(video, region);
     const changed = cutWatcher(), cuts = [];
     let done = 0, refilled = 0, stopped = false, lastK = -1;
-    await landmarker.setOptions({ numPoses: poses });
+    await landmarker.setOptions({ runningMode: 'VIDEO', numPoses: poses });   // 후보 확인(probeWindows)이 IMAGE 로 바꿔 두었을 수 있다
     const handle = (k, stepMs) => {
       lastTimestamp += stepMs;
       const image = source();
@@ -255,4 +256,44 @@ export async function samplePoses(video, landmarker, { start, end, hz, region = 
   if (onRetry) onRetry();
   const second = await readOnce(REGION_POSES);
   return second.stopped || second.missing <= first.missing ? second : first;
+}
+
+// ── 후보 확인(scan.js) ─────────────────────────────────────────
+// 영상의 몇 구간에서만 step 초 간격으로 사람을 찾는다 → 구간마다 [{ t, world, image }]
+//  · 구간마다 빈 화면을 먼저 넣어 앞 구간의 추적을 끊는다. 재생하며 읽는다(멈춘 채 옮기면 화면이 안 바뀌는 브라우저가 있다)
+//  · 장면마다 따로 찾는 IMAGE 방식도 시험했지만, 중계처럼 선수가 작은 화면에서 손목을 자주 놓쳐 투구 장면 3곳이 탈락했다(2026-11-23)
+//  · video 는 화면의 영상과 다른 숨긴 영상 요소를 넘긴다
+export async function probeWindows(video, landmarker, windows, { region = null, step = 0.1, onProgress, shouldStop } = {}) {
+  await landmarker.setOptions({ runningMode: 'VIDEO', numPoses: 1 });
+  const source = makeSource(video, region), out = [];
+  for (const [n, w] of windows.entries()) {
+    if (shouldStop && shouldStop()) return null;
+    await seekTo(video, w.from);
+    lastTimestamp += 1;
+    landmarker.detectForVideo(BLANK, lastTimestamp);
+    const frames = [];
+    await new Promise((resolve) => {
+      let done = false, next = w.from;
+      const finish = () => { if (!done) { done = true; clearTimeout(guard); video.pause(); resolve(); } };
+      const guard = setTimeout(finish, (w.to - w.from) * 1000 + PROBE_GUARD_MS);
+      const onFrame = (_, meta) => {
+        if (done) return;
+        const t = meta.mediaTime;
+        if (t >= next - 1e-3) {
+          video.pause();
+          lastTimestamp += Math.max(1, Math.round(step * 1000));
+          frames.push({ t, ...toFrame(landmarker.detectForVideo(source(), lastTimestamp), region) });
+          next = t + step;
+        }
+        if (t >= w.to || video.ended) { finish(); return; }
+        video.requestVideoFrameCallback(onFrame);
+        video.play().catch(finish);
+      };
+      video.requestVideoFrameCallback(onFrame);
+      video.play().catch(finish);
+    });
+    out.push(frames);
+    if (onProgress) onProgress(n + 1, windows.length);
+  }
+  return out;
 }

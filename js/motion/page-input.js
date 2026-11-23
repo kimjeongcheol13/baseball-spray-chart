@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 영상 넣기: 파일 열기 · 구간 · 끌어다 놓기 · 주소 열기 · 화면 녹화
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { track } from './usage.js?v=1';
 import { videoSig } from './library.js?v=1';
 import { startCapture, settleDuration, clock, MAX_CAPTURE_S, MIN_CAPTURE_S } from './capture.js?v=1';
 import { parseLink } from './link.js?v=1';
@@ -93,6 +94,7 @@ export const CAPTURE_LABEL = '② 화면 녹화로 가져오기';
 
 // ① 붙여넣은 주소의 영상을 새 탭에 연다(유튜브는 주소에 든 시작 시간부터). 화면을 받는 것은 ② 화면 녹화가 한다
 export function openLink() {
+  track('motion_link_open');
   const link = parseLink(el.linkUrl.value);
   if (!link) { el.captureMsg.textContent = CAPTURE_TEXT.badLink; return; }
   const tab = window.open(link.url, '_blank');
@@ -110,6 +112,7 @@ export function resetCapture(message) {
 }
 
 export function onCaptured(file, seconds) {
+  track('motion_video_open', { source: 'capture' });
   if (seconds < MIN_CAPTURE_S) { resetCapture(CAPTURE_TEXT.empty); return; }
   resetCapture(`녹화한 ${clock(seconds)} 길이의 영상을 열었어요. 선수가 작게 나오면 「선수 고르기」로 감싸 주세요.`);
   openVideo(file);
@@ -136,6 +139,7 @@ export async function toggleCapture() {
 
 // 끌어다 놓은 영상을 연다. 분석 중에는 받지 않는다
 export function onDropFile(file) {
+  track('motion_video_open', { source: 'drop' });
   if (state.busy) { el.dropMsg.textContent = '분석이 끝난 뒤에 다른 영상을 열 수 있어요.'; return; }
   el.dropMsg.textContent = `「${file.name}」을 열었어요.`;
   openVideo(file);

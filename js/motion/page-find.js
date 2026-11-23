@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 긴 영상에서 스윙 · 투구 순간 찾기(scan.js)를 화면에 잇는다
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { track } from './usage.js?v=1';
 import { loadLandmarker, probeWindows } from './pose.js?v=9';
 import { scanVideo, findMoments, checkOrder, verifyMoment, probeWindow, rangeAround, PROBE_STEP_S, MAX_CHECK, MAX_SHOW } from './scan.js?v=1';
 import { $, el, state, node, sec, options, setStatus, setBusy } from './page.js?v=1';
@@ -30,6 +31,7 @@ export async function findMoments_() {
     const found = order.map((m, k) => ({ m, v: verifyMoment(frames[k], aspect) })).filter((x) => x.v.ok && x.v.at !== null)
       .sort((a, b) => b.v.speed - a.v.speed).slice(0, MAX_SHOW).map((x) => ({ at: x.v.at, range: rangeAround(x.m, x.v.at) })).sort((a, b) => a.at - b.at);
     renderMoments(found);
+    track('motion_find', { found: found.length, checked: order.length, picked: Boolean(region) });
   } catch (err) {
     console.warn('[motion] 스윙 · 투구 순간을 찾지 못함', err);
     setStatus('스윙 · 투구 순간을 찾지 못했어요. 「여기부터」 · 「여기까지」로 직접 구간을 잡아 주세요.', true);
@@ -57,6 +59,7 @@ export function renderMoments(found) {
 
 // 찾은 순간 하나를 분석 구간으로 쓴다
 export function useMoment(f, button) {
+  if (button !== el.momentList.firstChild || state.range.start !== f.range.start) track('motion_moment_pick');
   for (const b of el.momentList.children) b.setAttribute('aria-pressed', String(b === button));
   state.range = { ...f.range };
   renderRange();

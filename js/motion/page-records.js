@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 저장 · 불러오기 · 기록 목록 · 비교 · 나란히 보기 · 내 기록 추이 · 이미지 저장
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { track } from './usage.js?v=1';
 import { analyzeMotion } from './analyze.js?v=5';
 import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
@@ -63,6 +64,7 @@ export async function save() {
   const entry = { id: Date.now(), at: new Date().toISOString(), name: el.player.value.trim(), mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level,
     order: r.metrics.sequence.order, metrics: summarize(r), spread: roundSpread(state.spread), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
   if (!addEntry(entry)) { el.saveMsg.textContent = '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; return; }
+  track('motion_save', { mode: entry.mode, quality: entry.quality });
   el.save.disabled = true;
   el.saveMsg.textContent = '다시 보기용 데이터를 저장하는 중…';
   const heavy = await saveHeavy(entry.id, r, c);
@@ -83,6 +85,7 @@ export async function removeLogEntry(e) {
 // 저장한 기록을 다시 연다: 프레임 좌표로 지표 · 그래프 · 3D 를 되살리고, 영상이 있으면 영상도 올린다
 export async function loadEntry(e) {
   if (state.busy) return;
+  track('motion_load');
   let clip, video = null;
   try {
     clip = await getClip(e.id);
@@ -146,6 +149,7 @@ export function toggleCompare(id, on) {
   const same = state.compare.filter((x) => x !== id && (list.find((e) => e.id === x) || {}).mode === mode);
   const mixed = on && same.length < state.compare.filter((x) => x !== id).length;
   state.compare = on ? same.concat(id).slice(-2) : state.compare.filter((x) => x !== id);
+  if (on && state.compare.length === 2) track('motion_compare');
   el.logMsg.textContent = mixed ? '타자는 타자끼리, 투수는 투수끼리 비교해요. 앞서 고른 다른 종류의 기록은 해제했어요.' : '';
   renderLog();
 }
@@ -294,6 +298,7 @@ export function drawTrendNow(list = loadLog()) {
 
 // 지금 프레임 + 뼈대 + 요약 패널을 한 장의 PNG 로 내려받는다
 export function saveImage() {
+  track('motion_image');
   const v = el.video, scale = Math.min(1, EXPORT_MAX_WIDTH / v.videoWidth);
   const w = Math.round(v.videoWidth * scale), h = Math.round(v.videoHeight * scale);
   const out = Object.assign(document.createElement('canvas'), { width: w, height: h });

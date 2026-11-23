@@ -3,7 +3,7 @@
 //  · 화면 연결은 영역별로 나눴다: page.js(공통 상태) · page-input.js(영상 넣기) · page-core.js(재생 · 분석) · page-find.js(순간 찾기)
 //    · page-results.js(결과) · page-records.js(기록 · 비교 · 추이). 여기는 버튼을 잇고 시작만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-//  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { startUsage, track } from './usage.js?v=1';
 import { attachDrop } from './drop.js?v=1';
 import { canCapture } from './capture.js?v=1';
 import { VIEWS, el, state, setStatus } from './page.js?v=1';
@@ -15,11 +15,11 @@ import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } fro
 
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
-  el.file.addEventListener('change', () => openVideo(el.file.files[0]));
+  el.file.addEventListener('change', () => { track('motion_video_open', { source: 'file' }); openVideo(el.file.files[0]); });
   el.linkBox.hidden = !canCapture();
   el.link.addEventListener('click', openLink);
-  el.trendGroup.addEventListener('change', () => drawTrendNow());
-  el.trendMetric.addEventListener('change', () => drawTrendNow());
+  el.trendGroup.addEventListener('change', () => { track('motion_trend'); drawTrendNow(); });
+  el.trendMetric.addEventListener('change', () => { track('motion_trend'); drawTrendNow(); });
   el.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); openLink(); } });
   el.captureMsg.textContent = canCapture() ? CAPTURE_TEXT.idle : CAPTURE_TEXT.unsupported;
   el.capture.addEventListener('click', toggleCapture);
@@ -72,5 +72,6 @@ function bind() {
   new ResizeObserver(() => { const w = el.trendChart.clientWidth; if (w && w !== trendWidth && !el.trendBox.hidden) { trendWidth = w; drawTrendNow(); } }).observe(el.trendChart);
 }
 
+startUsage();
 bind();
 renderLog();

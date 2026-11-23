@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 재생 · 프레임 · 그리기 · 선수 고르기 · 분석 · 다시 계산
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { track } from './usage.js?v=1';
 import { analyzeMotion } from './analyze.js?v=5';
 import { estimateSpread } from './spread.js?v=2';
 import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=9';
@@ -214,6 +215,7 @@ export async function analyze() {
     setBusy(false);
   }
   compute(null);
+  if (state.result) track('motion_analyze', { mode: state.result.mode, quality: state.result.quality.level, picked: Boolean(state.region), fps: Math.round(state.result.fps) });
 }
 
 export function onProgress(done, total, frame) {

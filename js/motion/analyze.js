@@ -188,13 +188,14 @@ function assessQuality(valid, jump, win, fps, metrics) {
 }
 
 // mode = 'bat' | 'pitch' · hand = 'R' | 'L' · aspect = 영상 가로/세로 · eventIndex = 임팩트 · 릴리스 프레임을 직접 정할 때
-export function analyzeMotion({ frames, mode, hand, fps, aspect = 1, eventIndex = null }) {
+//  · smoothScale: 평활 폭에 곱하는 배수(기본 1). 흔들림 폭을 잴 때(spread.js)만 바꾼다
+export function analyzeMotion({ frames, mode, hand, fps, aspect = 1, eventIndex = null, smoothScale = 1 }) {
   const n = frames.length, side = sides(hand);
   if (n < MIN_FRAMES) return fail('short');
   const valid = frames.map((f) => visible(f.world, ...TORSO));
   if (valid.filter(Boolean).length / n < MIN_VALID_RATIO) return fail('noPose');
 
-  const sigma = Math.max(1, SMOOTH_S * fps), dt = 1 / fps;
+  const sigma = Math.max(1, SMOOTH_S * fps) * smoothScale, dt = 1 / fps;
   const rot = rotationSeries(frames, sigma, dt);
   const handSpeed = handSpeedSeries(frames, mode, side, sigma, dt);
   if (!rot || !handSpeed) return fail('noPose');

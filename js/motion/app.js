@@ -3,16 +3,16 @@
 //  · 화면 연결은 영역별로 나눴다: page.js(공통 상태) · page-input.js(영상 넣기) · page-core.js(재생 · 분석) · page-find.js(순간 찾기)
 //    · page-results.js(결과) · page-records.js(기록 · 비교 · 추이). 여기는 버튼을 잇고 시작만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-import { startSync } from './page-sync.js?v=1';
+import { startSync, rememberSendVideo } from './page-sync.js?v=2';
 import { startUsage, track } from './usage.js?v=1';
 import { attachDrop } from './drop.js?v=1';
 import { canCapture } from './capture.js?v=1';
-import { VIEWS, el, state, setStatus } from './page.js?v=1';
+import { VIEWS, el, state, setStatus } from './page.js?v=2';
 import { openVideo, onVideoReady, setRangeEdge, CAPTURE_TEXT, openLink, toggleCapture, onDropFile } from './page-input.js?v=1';
 import { currentIndex, seekToFrame, stepFrame, fitCanvas, draw, setRegion, startPicking, onPickDown, onPickMove, onPickUp, tick, toggleMotion, renderMotionButton, playLoop, togglePlay, analyze, compute } from './page-core.js?v=1';
 import { setView3d } from './page-results.js?v=1';
 import { findMoments_ } from './page-find.js?v=1';
-import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=1';
+import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=2';
 
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
@@ -55,6 +55,7 @@ function bind() {
   el.motion.addEventListener('click', toggleMotion);
   el.motionRate.addEventListener('change', () => { if (state.loop) { el.video.playbackRate = Number(el.motionRate.value); el.rate.value = el.motionRate.value; } });
   el.save.addEventListener('click', save);
+  el.sendVideo.addEventListener('change', rememberSendVideo);
   el.attach.addEventListener('change', () => attachVideo(el.attach.files[0]));
   el.pick.addEventListener('click', startPicking);
   el.pickClear.addEventListener('click', () => { setRegion(null); setStatus(state.clip ? '화면 전체에서 찾도록 되돌렸어요. 「분석 시작」을 다시 눌러 주세요.' : '화면 전체에서 가장 크게 찍힌 사람을 분석해요.'); });

@@ -7,12 +7,13 @@ import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
-import { syncSaved, syncRemoved, clipFor } from './page-sync.js?v=1';
+import { syncSaved, syncRemoved, clipFor, videoFor } from './page-sync.js?v=2';
+import { shiftRange } from './cut.js?v=1';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { createDuel } from './duel.js?v=6';
 import { TREND_METRICS, trendGroups, trendPoints, trendSummary, drawTrend } from './trend.js?v=1';
-import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=1';
+import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=2';
 import { fileRef, showVideo, renderRange } from './page-input.js?v=1';
 import { fitCanvas, overlayScene, compute, clearResult } from './page-core.js?v=1';
 
@@ -93,7 +94,7 @@ export async function loadEntry(e) {
   let clip, video = null;
   try {
     clip = await clipFor(e);   // 다른 기기에서 온 기록이면 서버에서 받아 온다
-    if (clip && e.video) video = await getVideo(e.video.sig);
+    if (clip) video = await videoFor(e, () => { el.logMsg.textContent = '다른 기기에서 보낸 영상을 받는 중…'; });
   } catch (err) {
     console.warn('[motion] 저장한 데이터를 읽지 못했어요', err);
     el.logMsg.textContent = '저장한 데이터를 읽지 못했어요.';
@@ -104,9 +105,9 @@ export async function loadEntry(e) {
   el.video.pause();
   clearResult();
   el.setup.elements.mode.value = e.mode; el.setup.elements.hand.value = e.hand; el.setup.elements.slow.value = String(clip.slow);
-  const frames = unpackFrames(clip);
-  state.clip = { frames, start: clip.start, hz: clip.hz, aspect: clip.aspect, missing: frames.filter((f) => !f.world).length };
-  state.restore = { range: e.range, eventIndex: clip.eventIndex, name: e.name };
+  const frames = unpackFrames(clip), offset = video ? video.offset : 0;   // 다른 기기에서 받은 영상은 분석 구간만 담겨 있어 시간을 그만큼 당긴다
+  state.clip = { frames, start: clip.start - offset, hz: clip.hz, aspect: clip.aspect, missing: frames.filter((f) => !f.world).length };
+  state.restore = { range: shiftRange(e.range, offset), eventIndex: clip.eventIndex, name: e.name };
   state.still = null;
   el.player.value = e.name || '';
   if (video) { state.file = { blob: video.blob, name: video.name, size: video.size, sig: video.sig }; showVideo(video.blob); return; }
@@ -162,7 +163,7 @@ export function logItem(e) {
   const li = node('li'), main = node('div', 'mo-log-main'), acts = node('div', 'mo-log-acts'), m = e.metrics;
   main.append(node('b', '', titleOf(e)),
     node('span', '', `골반 ${formatValue(m.pelvisPeak)}°/s · 몸통 ${formatValue(m.trunkPeak)}°/s · 분리각 ${formatValue(m.maxSeparation)}° · ${sequenceText(e.order)}`),
-    node('span', '', e.hasData ? (e.video ? `다시 보기 가능 · 영상 포함(${MB(e.video.size)}MB)` : '다시 보기 가능 · 영상 없음') : '숫자만 저장됨'));
+    node('span', '', e.hasData ? (e.video ? `다시 보기 가능 · 영상 포함(${MB(e.video.size)}MB)` : e.cloudVideo ? '다시 보기 가능 · 영상은 불러올 때 받아요' : '다시 보기 가능 · 영상 없음') : '숫자만 저장됨'));
   const pick = node('label', 'mo-check'), box = node('input');
   box.type = 'checkbox'; box.checked = state.compare.includes(e.id);
   box.addEventListener('change', () => toggleCompare(e.id, box.checked));
@@ -225,8 +226,8 @@ export async function duelSide(e) {
   const frames = unpackFrames(clip);
   const r = analyzeMotion({ frames, mode: e.mode, hand: e.hand, fps: clip.hz * clip.slow, aspect: clip.aspect, eventIndex: clip.eventIndex });
   if (!r.ok) return null;
-  const stored = e.video ? await getVideo(e.video.sig) : null;
-  return { frames, main: r.events.main, fps: r.fps, hz: clip.hz, start: clip.start, slow: clip.slow, hand: e.hand, video: await duelVideo(stored && stored.blob) };
+  const stored = await videoFor(e);
+  return { frames, main: r.events.main, fps: r.fps, hz: clip.hz, start: clip.start - (stored ? stored.offset : 0), slow: clip.slow, hand: e.hand, video: await duelVideo(stored && stored.blob) };
 }
 
 // 다시 보기 데이터가 없는 기록이 있으면 무엇이 없고 어떻게 하면 되는지 알린다

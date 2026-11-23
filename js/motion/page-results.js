@@ -9,7 +9,7 @@ import { loadLog } from './store.js?v=4';
 import { loopRange } from './view.js?v=3';
 import { summaryLines, readText, referenceLine } from './insight.js?v=3';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
-import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node, renderLines } from './page.js?v=1';
+import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node, renderLines } from './page.js?v=2';
 import { seekToFrame, sync3d, drawMirror } from './page-core.js?v=1';
 
 // ── 결과 화면 ───────────────────────────────────────────────

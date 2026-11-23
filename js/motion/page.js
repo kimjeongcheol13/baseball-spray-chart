@@ -3,7 +3,7 @@
 import { COLOR } from './overlay.js?v=7';
 import { createMirror } from './mirror.js?v=2';
 import { analyze } from './page-core.js?v=1';
-import { save } from './page-records.js?v=1';
+import { save } from './page-records.js?v=2';
 
 export const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -27,7 +27,7 @@ export const TILE_COLOR = { pelvisPeak: COLOR.pelvis, trunkPeak: COLOR.trunk };
 
 export const $ = (id) => document.getElementById(id);
 export const el = {
-  syncMsg: $('syncMsg'), openChecks: $('openChecks'), checks: $('checks'),
+  syncMsg: $('syncMsg'), sendVideo: $('sendVideo'), sendVideoWrap: $('sendVideoWrap'), openChecks: $('openChecks'), checks: $('checks'),
   setup: $('setup'), file: $('file'), stageCard: $('stageCard'), stage: $('stage'), video: $('video'), overlay: $('overlay'),
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), momentRow: $('momentRow'), momentText: $('momentText'), find: $('btnFind'), momentList: $('momentList'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),

@@ -163,6 +163,10 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 .mo-table th, .mo-table td { padding: 5px 6px; text-align: right; border-top: 1px solid var(--mo-line); }
 .mo-table th { color: var(--mo-ink3); font-weight: 600; }
 
+.mo-moments { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mo-moments:empty { display: none; }
+.mo-moments .mo-btn { font-variant-numeric: tabular-nums; }
+.mo-moments .mo-btn[aria-pressed="true"] { border-color: var(--mo-blue); background: rgba(75, 140, 245, .16); }
 .mo-trend { margin-top: 12px; }
 .mo-trend-svg { display: block; max-width: 100%; height: auto; }
 .mo-log { list-style: none; margin: 0; padding: 0; }

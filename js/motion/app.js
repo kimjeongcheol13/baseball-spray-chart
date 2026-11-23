@@ -3,7 +3,8 @@
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
 import { analyzeMotion } from './analyze.js?v=5';
 import { estimateSpread, roundSpread, separationStill, rivalEvents } from './spread.js?v=2';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=8';
+import { loadLandmarker, estimateFps, samplePoses, probeWindows } from './pose.js?v=9';
+import { scanVideo, findMoments, checkOrder, verifyMoment, probeWindow, rangeAround, PROBE_STEP_S, MAX_CHECK, MAX_SHOW } from './scan.js?v=1';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -46,7 +47,7 @@ const $ = (id) => document.getElementById(id);
 const el = {
   setup: $('setup'), file: $('file'), stageCard: $('stageCard'), stage: $('stage'), video: $('video'), overlay: $('overlay'),
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
-  rangeRow: $('rangeRow'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
+  rangeRow: $('rangeRow'), momentRow: $('momentRow'), momentText: $('momentText'), find: $('btnFind'), momentList: $('momentList'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
   analyze: $('btnAnalyze'), stop: $('btnStop'), progress: $('progress'), status: $('status'),
   results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), capture: $('btnCapture'), captureMsg: $('captureMsg'), linkBox: $('linkBox'), trendBox: $('trendBox'), trendEmpty: $('trendEmpty'), trendGroup: $('trendGroup'), trendMetric: $('trendMetric'), trendChart: $('trendChart'), trendText: $('trendText'), linkUrl: $('linkUrl'), link: $('btnLink'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
@@ -83,7 +84,7 @@ function setStatus(text, bad = false) {
 function setBusy(busy) {
   state.busy = busy;
   state.stopping = false;
-  for (const part of [el.setup, el.transport, el.rangeRow, el.pickRow]) part.inert = busy;
+  for (const part of [el.setup, el.transport, el.rangeRow, el.pickRow, el.momentRow, el.momentList]) part.inert = busy;
   el.analyze.disabled = busy;
   el.stop.hidden = el.progress.hidden = !busy;
   if (!busy) state.liveFrame = null;
@@ -106,6 +107,7 @@ function openVideo(file) {
   if (!file) return;
   clearResult();
   state.clip = null; state.restore = null; state.still = null; state.autoRun = false;
+  el.momentList.replaceChildren();
   setRegion(null);
   state.file = fileRef(file);
   showVideo(file);
@@ -126,6 +128,8 @@ function onVideoReady() {
   const runNow = state.autoRun && v.duration <= MAX_RANGE_S;
   state.autoRun = false;
   if (runNow) { analyze(); return; }
+  // 분석 구간보다 긴 영상은 스윙 · 투구 순간을 먼저 찾아 본다
+  if (v.duration > MAX_RANGE_S) { findMoments_(); return; }
   setStatus(v.duration > MAX_RANGE_S ? `영상이 길어요. 한 번의 동작만 들어가게 「여기부터」 · 「여기까지」로 구간을 잡아 주세요 (최대 ${MAX_RANGE_S}초).` : '구간을 확인하고 「분석 시작」을 눌러 주세요.');
 }
 
@@ -488,6 +492,63 @@ function renderReferenceNote(mode) {
     a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
     return [i ? ', ' : ' 출처: ', a];
   }));
+}
+
+// ── 스윙 · 투구 순간 찾기 (scan.js) ─────────────────────────────
+// 1) 숨긴 영상으로 빨리 훑어 움직임이 솟은 후보를 뽑고 2) 움직임이 큰 후보부터 자세를 찾아 사람이 빠르게 움직였는지 확인한다
+async function findMoments_() {
+  if (state.busy || !state.url) return;
+  const url = state.url, region = state.region, model = options().model;
+  el.momentList.replaceChildren();
+  setBusy(true);
+  try {
+    setStatus('스윙 · 투구 순간을 찾는 중… 영상을 빠르게 훑고 있어요');
+    const scanned = await scanVideo(url, { region, onProgress: (p) => { el.progress.value = p * 0.4; }, shouldStop: () => state.stopping });
+    if (!scanned || url !== state.url) return;
+    const order = checkOrder(findMoments(scanned.samples, scanned.duration)).slice(0, MAX_CHECK);
+    if (!order.length) { setStatus('움직임이 크게 바뀌는 순간을 찾지 못했어요. 「여기부터」 · 「여기까지」로 직접 구간을 잡아 주세요.'); return; }
+    setStatus(`후보 ${order.length}곳에서 사람이 움직였는지 확인하는 중… (처음이면 분석 엔진을 내려받아요)`);
+    const landmarker = await loadLandmarker(model);
+    const probe = Object.assign(document.createElement('video'), { muted: true, playsInline: true, preload: 'auto', src: url });
+    await new Promise((resolve, reject) => { probe.addEventListener('loadeddata', resolve, { once: true }); probe.addEventListener('error', reject, { once: true }); });
+    const aspect = probe.videoWidth / probe.videoHeight;
+    const frames = await probeWindows(probe, landmarker, order.map(probeWindow), { region, step: PROBE_STEP_S, onProgress: (k, n) => { el.progress.value = 0.4 + (0.6 * k) / n; }, shouldStop: () => state.stopping });
+    probe.removeAttribute('src'); probe.load();
+    if (!frames || url !== state.url) return;
+    const found = order.map((m, k) => ({ m, v: verifyMoment(frames[k], aspect) })).filter((x) => x.v.ok && x.v.at !== null)
+      .sort((a, b) => b.v.speed - a.v.speed).slice(0, MAX_SHOW).map((x) => ({ at: x.v.at, range: rangeAround(x.m, x.v.at) })).sort((a, b) => a.at - b.at);
+    renderMoments(found);
+  } catch (err) {
+    console.warn('[motion] 스윙 · 투구 순간을 찾지 못함', err);
+    setStatus('스윙 · 투구 순간을 찾지 못했어요. 「여기부터」 · 「여기까지」로 직접 구간을 잡아 주세요.', true);
+  } finally {
+    setBusy(false);
+    if (state.stopping) setStatus('찾기를 멈췄어요.');
+  }
+}
+
+function renderMoments(found) {
+  if (!found.length) { setStatus('사람이 빠르게 움직인 순간을 찾지 못했어요. 선수가 작거나 가려졌으면 「선수 고르기」로 감싼 뒤 다시 찾거나, 직접 구간을 잡아 주세요.'); return; }
+  el.momentText.textContent = '찾은 순간을 누르면 그 앞뒤로 구간을 잡아요. 다른 선수를 보려면 「선수 고르기」 뒤 다시 찾아 주세요.';
+  el.momentList.replaceChildren(...found.map((f, k) => {
+    const b = node('button', 'mo-btn', `${k + 1}. ${sec(f.at)}`);
+    b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', `${sec(f.at)} 순간을 분석 구간으로`);
+    b.addEventListener('click', () => useMoment(f, b));
+    return b;
+  }));
+  // 여러 사람이 나오는 영상(중계 등)은 엔진이 그때그때 다른 사람을 잡아 순간을 놓치기 쉽다 → 선수를 고르고 다시 찾게 안내한다
+  const tip = state.region ? '' : ' 여러 사람이 나오는 영상이면 「선수 고르기」로 선수를 감싼 뒤 다시 찾으면 더 정확해요.';
+  setStatus(`스윙 · 투구로 보이는 순간 ${found.length}곳을 찾았어요. 눌러서 구간을 고른 뒤 「분석 시작」을 눌러 주세요.${tip}`);
+  useMoment(found[0], el.momentList.firstChild);
+}
+
+// 찾은 순간 하나를 분석 구간으로 쓴다
+function useMoment(f, button) {
+  for (const b of el.momentList.children) b.setAttribute('aria-pressed', String(b === button));
+  state.range = { ...f.range };
+  renderRange();
+  el.video.currentTime = f.at;
 }
 
 // 길이 정보가 없는 영상의 길이를 알아낸다. 그 사이 다른 영상을 열었으면 아무것도 하지 않는다
@@ -892,6 +953,7 @@ function bind() {
   el.seek.addEventListener('input', () => { el.video.currentTime = Number(el.seek.value) * el.video.duration; });
   el.rate.addEventListener('change', () => { el.video.playbackRate = Number(el.rate.value); });
   el.start.addEventListener('click', () => setRangeEdge('start'));
+  el.find.addEventListener('click', findMoments_);
   el.end.addEventListener('click', () => setRangeEdge('end'));
   el.analyze.addEventListener('click', analyze);
   el.stop.addEventListener('click', () => { state.stopping = true; });

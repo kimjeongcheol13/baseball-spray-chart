@@ -44,6 +44,9 @@ function speedLine(m) {
 function separationLine(m) {
   if (!num(m.maxSeparation)) return null;
   const v = Math.round(m.maxSeparation);
+  // 0° = 구간 안에서 골반이 어깨보다 앞선 순간이 한 번도 잡히지 않은 것. 실제로 그렇게 돌았다기보다 인식이 흔들린 경우가 많았다
+  //  · 같은 영상을 세 번 분석해 28° · 0° · 27° 가 나온 일이 있다(2026-11-23 측정) → 확정해서 말하지 않는다
+  if (v === 0) return { tone: 'warn', text: '골반이 어깨보다 먼저 열린 순간이 잡히지 않았어요(분리각 0°). 인식이 흔들렸을 수 있어 다시 분석하면 다르게 나올 수 있어요. 분리각은 참고만 해 주세요.' };
   if (v < SEP_SMALL) return { tone: 'info', text: `골반과 어깨가 거의 한 덩어리로 돌았어요(분리각 ${v}°).` };
   if (v > SEP_LARGE) return { tone: 'info', text: `골반이 어깨보다 크게 먼저 열렸어요(분리각 ${v}°).` };
   return { tone: 'info', text: `골반이 먼저 열리고 어깨가 뒤따라 돌았어요(분리각 ${v}°).` };

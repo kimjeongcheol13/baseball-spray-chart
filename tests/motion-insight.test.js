@@ -45,6 +45,8 @@
     ok(has(I.summaryLines(result({ metrics: { pelvisPeak: 500, trunkPeak: 400 } }), null), '몸통 회전(400°/s)이 골반(500°/s)보다 느렸어요'), '느린 몸통');
     ok(has(I.summaryLines(result({ metrics: { pelvisPeak: 500, trunkPeak: 510 } }), null), '비슷했어요'), '비슷');
     ok(has(I.summaryLines(result({ metrics: { maxSeparation: 8 } }), null), '한 덩어리로'), '작은 분리각');
+    var zero = I.summaryLines(result({ metrics: { maxSeparation: 0 } }), null).filter(function (l) { return l.text.indexOf('분리각 0°') >= 0; })[0];
+    ok(zero && zero.tone === 'warn' && zero.text.indexOf('참고만') > 0 && zero.text.indexOf('한 덩어리') < 0, '0° 는 확정해서 말하지 않는다: ' + JSON.stringify(zero));
     ok(has(I.summaryLines(result({ metrics: { maxSeparation: 48 } }), null), '크게 먼저'), '큰 분리각');
     ok(!has(I.summaryLines(result({ metrics: { maxSeparation: null } }), null), '분리각'), '값이 없으면 말하지 않는다');
   });

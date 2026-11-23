@@ -16,7 +16,7 @@
   }
 
   test('(준비) 풀이 · 참고 범위 · 끌어다 놓기 모듈을 불러온다', async function () {
-    I = await import('/js/motion/insight.js?v=2');
+    I = await import('/js/motion/insight.js?v=3');
     R = await import('/js/motion/reference.js?v=1');
     D = await import('/js/motion/drop.js?v=1');
     ok(I.summaryLines && I.readText && I.referenceLine && I.positionIn && R.REFERENCE && D.videoFrom && D.attachDrop, '모듈 로드');
@@ -158,5 +158,13 @@
     eq([I.positionIn(ref, 550, 20), I.positionIn(ref, 550, 60), I.positionIn(ref, 700, 50), I.positionIn(ref, 780, 50), I.positionIn(ref, 850, 30), I.positionIn(ref, 850, 60)], ['below', 'overlap', 'within', 'overlap', 'above', 'overlap'], 'positionIn');
     var r = I.referenceLine('bat', 'pelvisPeak', 560, 'mid', 40);
     ok(r.position === 'overlap' && r.text.indexOf('걸침') > 0, '걸침 문구: ' + r.text);
+  });
+
+  test('주의 문장: 후보가 둘이면 두 시각을, 분리각이 그대로면 그 범위를 말하고 분리각 풀이는 하지 않는다', async function () {
+    var lines = I.summaryLines(result(), null, {}, { rivals: [0.93, 2.6], still: { from: 26, to: 28, offset: 27 } });
+    ok(lines[0].tone === 'warn' && lines[0].text.indexOf('0.93초 · 2.60초') > 0, '후보 시각: ' + lines[0].text);
+    ok(lines[1].tone === 'warn' && lines[1].text.indexOf('26°~28°') > 0, '그대로인 범위: ' + lines[1].text);
+    ok(!has(lines, '분리각 25°'), '분리각 풀이는 빠진다');
+    ok(has(I.summaryLines(result(), null, {}, {}), '분리각 25°'), '주의가 없으면 그대로');
   });
 })();

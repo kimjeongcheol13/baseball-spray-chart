@@ -4,7 +4,7 @@
 //  · 기본은 full · VIDEO 모드. 실제 실내 타격장 스윙 42프레임에서 잰 값(2026-11-22): full 이 heavy 보다 관절을 더 잡았고(평균 28.8 대 22.0개)
 //    4배 빨랐다. VIDEO 모드의 손목은 IMAGE 모드의 한 프레임 전보다 같은 프레임에 더 가까워 지연이 없었고, 사람을 찾은 프레임도 많았다(29 대 18).
 //    검출 기준을 0.3 으로 낮추면 오히려 덜 찾았다(23프레임) — 기본값(0.5)을 둔다
-import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=1';
+import { DEFAULT_FPS, fpsFromMediaTimes } from './signal.js?v=2';
 import { mapToFrame } from './view.js?v=3';
 import { chooseInRegion, extentOf, selectTrack, frameDiff, isCut, longestShot } from './track.js?v=3';
 

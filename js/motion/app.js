@@ -1,9 +1,9 @@
 // 동작 분석 화면 (motion.html) — 영상 고르기 → 구간 정하기 → 포즈 뽑기 → 지표 · 그래프 · 저장
 //  · 계산은 analyze.js, 엔진은 pose.js, 그림은 overlay.js · chart.js, 저장은 store.js 가 한다. 여기는 화면과 그 사이를 잇기만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-import { analyzeMotion } from './analyze.js?v=4';
-import { estimateSpread, roundSpread } from './spread.js?v=1';
-import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=7';
+import { analyzeMotion } from './analyze.js?v=5';
+import { estimateSpread, roundSpread, separationStill, rivalEvents } from './spread.js?v=2';
+import { loadLandmarker, estimateFps, samplePoses } from './pose.js?v=8';
 import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -15,7 +15,7 @@ import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { createDuel } from './duel.js?v=6';
 import { createMirror } from './mirror.js?v=2';
 import { dropStrays } from './track.js?v=3';
-import { summaryLines, readText, referenceLine } from './insight.js?v=2';
+import { summaryLines, readText, referenceLine } from './insight.js?v=3';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
 import { attachDrop } from './drop.js?v=1';
 import { canCapture, startCapture, settleDuration, clock, MAX_CAPTURE_S, MIN_CAPTURE_S } from './capture.js?v=1';
@@ -467,9 +467,15 @@ function sequenceTile(seq) {
   return box;
 }
 
+// 믿기 어려운 부분(spread.js) → insight.js 가 쓰는 모양. 프레임 번호는 영상 시각(초)으로 바꾼다
+function cautionOf(r) {
+  const rivals = rivalEvents(r), c = state.clip;
+  return { rivals: rivals && c ? rivals.map((k) => c.start + k / c.hz) : null, still: separationStill(r) };
+}
+
 function renderTiles(r) {
   const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand) || null;
-  el.insights.replaceChildren(...summaryLines(r, prev, state.spread || {}).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
+  el.insights.replaceChildren(...summaryLines(r, prev, state.spread || {}, cautionOf(r)).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
   el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev, r)), sequenceTile(r.metrics.sequence));
   renderReferenceNote(r.mode);
 }

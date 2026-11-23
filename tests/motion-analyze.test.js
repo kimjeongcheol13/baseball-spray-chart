@@ -35,7 +35,7 @@
   var run = function (o) { return A.analyzeMotion(Object.assign({ frames: clip(o.fps, o.hand, o.turn), mode: 'pitch', hand: 'R', fps: o.fps, aspect: 1 }, o)); };
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
-    A = await import('/js/motion/analyze.js?v=4'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=1');
+    A = await import('/js/motion/analyze.js?v=5'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=2');
     M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=3');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
@@ -218,7 +218,7 @@
   });
 
   test('흔들림 폭(±): 매끈한 영상은 작고, 피크 근처가 흔들리면 커진다 · 계산이 실패하면 모두 null', async function () {
-    var SP = await import('/js/motion/spread.js?v=1');
+    var SP = await import('/js/motion/spread.js?v=2');
     var input = { frames: clip(60), mode: 'pitch', hand: 'R', fps: 60, aspect: 1 }, base = A.analyzeMotion(input), sp = SP.estimateSpread(input, base);
     eq(Object.keys(sp), ['pelvisPeak', 'trunkPeak', 'maxSeparation'], '재는 지표');
     ok(SP.SPREAD_KEYS.every(function (k) { return typeof sp[k] === 'number' && sp[k] >= 0; }), '세 지표 모두 0 이상의 폭: ' + JSON.stringify(sp));
@@ -239,5 +239,44 @@
     var a = run({ fps: 30 }), b = run({ fps: 30, smoothScale: 1 }), c = run({ fps: 30, smoothScale: 1.6 });
     eq(b.metrics.pelvisPeak, a.metrics.pelvisPeak, '기본값');
     ok(c.metrics.pelvisPeak < a.metrics.pelvisPeak, '더 다듬으면 피크가 낮아진다(30fps 에서도 배수가 먹는다): ' + [c.metrics.pelvisPeak, a.metrics.pelvisPeak]);
+  });
+
+  test('빈 프레임 메우기: ±180° 근처의 빈 칸을 먼 길(340°)로 메우지 않는다 · 그 때문에 피크가 수천 °/s 로 튀지 않는다', async function () {
+    var SG = await import('/js/motion/signal.js?v=2');
+    eq(SG.unwrapGaps([170, null, -170, null, null, 175]), [170, null, 190, null, null, 175], '값이 있는 칸끼리 짧은 쪽으로 잇는다');
+    eq(SG.fillGaps(SG.unwrapGaps([170, null, -170])), [170, 180, 190], '메우면 180 을 지난다(0 을 지나지 않는다)');
+    eq(SG.unwrapGaps([null, 10, null]), [null, 10, null], '앞뒤 빈 칸');
+    // 골반선이 ±180° 를 지나는 순간에 한 프레임을 놓친 영상: 사람이 실제로 돈 속도(최고 약 700°/s)에서 크게 벗어나면 안 된다
+    // 몸 전체를 세로축 둘레로 돌려 놓아, 스윙 중에 골반선 방향이 ±180° 를 지나게 만든다
+    var turned = function (phi) { var c = Math.cos(rad(phi)), sn = Math.sin(rad(phi)); return clip(60).map(function (fr) {
+      return { world: fr.world.map(function (p) { return { x: p.x * c - p.z * sn, y: p.y, z: p.x * sn + p.z * c, visibility: 1 }; }), image: fr.image }; }); };
+    var f = null, cross = -1;
+    for (var phi = 0; phi < 360 && cross < 0; phi += 10) {
+      f = turned(phi);
+      for (var i = 20; i < 40; i++) { var a = G.yawDeg(f[i - 1].world[23], f[i - 1].world[24]), b = G.yawDeg(f[i].world[23], f[i].world[24]); if (Math.abs(a - b) > 180) { cross = i; break; } }
+    }
+    var base = A.analyzeMotion({ frames: f, mode: 'pitch', hand: 'R', fps: 60 });
+    ok(cross > 0, '시험 영상에서 골반선이 ±180° 를 지나는 프레임이 있어야 한다');
+    var gap = f.slice(); gap[cross] = { world: null, image: null };
+    var r = A.analyzeMotion({ frames: gap, mode: 'pitch', hand: 'R', fps: 60 });
+    ok(r.ok && Math.abs(r.metrics.pelvisPeak - base.metrics.pelvisPeak) < 100, '한 프레임을 놓쳐도 골반 피크가 비슷하다: ' + [Math.round(base.metrics.pelvisPeak), r.ok && Math.round(r.metrics.pelvisPeak)]);
+  });
+
+  test('믿기 어려운 경우 알아채기: 분리각이 내내 그대로 · 손이 빠른 순간 후보가 둘 — 정상 스윙에서는 아무것도 뜨지 않는다', async function () {
+    var SP = await import('/js/motion/spread.js?v=2');
+    var input = { frames: clip(60), mode: 'pitch', hand: 'R', fps: 60 }, r = A.analyzeMotion(input);
+    eq([SP.separationStill(r), SP.rivalEvents(r)], [null, null], '정상 스윙');
+    // 어깨선을 골반선보다 늘 27° 앞에 두고 같이만 돌린 영상: 분리각이 그대로다
+    var still = clip(60).map(function (fr) { var w = fr.world.slice(), th = Math.atan2(w[23].z, w[23].x) + rad(27);
+      w[11] = Object.assign({}, w[11], { x: 0.2 * Math.cos(th), z: 0.2 * Math.sin(th) }); w[12] = Object.assign({}, w[12], { x: -0.2 * Math.cos(th), z: -0.2 * Math.sin(th) }); return { world: w, image: fr.image }; });
+    var sIn = { frames: still, mode: 'pitch', hand: 'R', fps: 60 }, sr = A.analyzeMotion(sIn), st = SP.separationStill(sr), sp = SP.estimateSpread(sIn, sr);
+    ok(st && st.to - st.from < 8 && Math.abs(st.offset - 27) < 3, '그대로인 분리각: ' + JSON.stringify(st));
+    ok(sp.maxSeparation >= st.offset - 0.5, '폭을 어긋남만큼 넓힌다(값과 0 을 구분할 수 없다): ' + sp.maxSeparation);
+    // 손이 0.25초 · 0.75초에 거의 같은 빠르기로 두 번 움직인 영상
+    var twice = clip(60).map(function (fr, i) { var t = (i + 0.5) / 60, w = fr.world.slice(), ph = rad(180 * (step(t, 0.25, 0.1) + step(t, 0.75, 0.1)) / 2 * 2);
+      w[16] = Object.assign({}, w[16], { x: 0.6 * Math.cos(ph), y: -0.5 - 0.6 * Math.sin(ph) }); w[14] = Object.assign({}, w[14], { x: 0.3 * Math.cos(ph), y: -0.5 - 0.3 * Math.sin(ph) }); return { world: w, image: fr.image }; });
+    var rv = SP.rivalEvents(A.analyzeMotion({ frames: twice, mode: 'pitch', hand: 'R', fps: 60 }));
+    ok(rv && rv.length === 2 && rv[1] - rv[0] >= 18, '후보 둘(0.3초 이상 떨어짐): ' + JSON.stringify(rv));
+    eq([SP.separationStill({ ok: false }), SP.rivalEvents(null)], [null, null], '실패한 결과');
   });
 })();

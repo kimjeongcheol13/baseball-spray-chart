@@ -5,9 +5,15 @@
 //     2) 피크가 난 프레임과 그 앞뒤 한 프레임을 하나씩 「못 찾음」으로 바꿔서(피크가 프레임 하나에 기대고 있는지)
 //    임팩트 · 릴리스 순간은 처음 계산한 자리로 고정한다. 흔들림 폭 = 처음 값에서 가장 멀어진 거리
 //  · 이 폭은 「같은 영상 안」의 흔들림이다. 엔진이 사람을 다르게 잡으면(가려짐 · 흐린 화면) 다시 분석했을 때 이보다 더 달라질 수 있다
-import { analyzeMotion } from './analyze.js?v=4';
+import { analyzeMotion } from './analyze.js?v=5';
 
 const SMOOTH_SCALES = [0.6, 1.6];
+// 분리각이 동작 내내 이만큼도 안 변하면(°) 몸의 꼬임이 아니라 골반선 · 어깨선이 처음부터 어긋나게 잡힌 값으로 본다(가정 — 검증 필요)
+//  · 실제 중계 영상: 같은 영상을 네 번 분석해 분리각이 동작 내내 -28~-20° 또는 26~28° 로 거의 그대로였고, 부호에 따라 28° · 0° 로 갈렸다(2026-11-23)
+const SEP_STATIC = 8;
+// 손이 가장 빠른 순간 후보: 두 번째 봉우리가 첫 번째의 이 비율 이상이고 이 시간(초) 이상 떨어져 있으면 「후보가 둘」
+//  · 같은 영상에서 두 봉우리 비율이 0.86~0.98 이었고, 분석마다 임팩트로 고른 프레임이 62 · 23 으로 바뀌었다
+const RIVAL_RATIO = 0.8, RIVAL_GAP_S = 0.3;
 const DROP_AROUND = [-1, 0, 1];
 export const SPREAD_KEYS = ['pelvisPeak', 'trunkPeak', 'maxSeparation'];
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -42,7 +48,30 @@ export function estimateSpread(input, base) {
     const gaps = runs.filter((r) => r.ok && num(r.metrics[key])).map((r) => Math.abs(r.metrics[key] - v0));
     if (gaps.length) out[key] = Math.max(...gaps);
   }
+  // 분리각이 동작 내내 그대로면, 그 값은 처음부터 있던 어긋남과 구분되지 않는다 → 폭을 그 어긋남의 크기만큼으로 넓힌다
+  const still = separationStill(base);
+  if (still && num(base.metrics.maxSeparation)) out.maxSeparation = Math.max(out.maxSeparation || 0, still.offset);
   return out;
+}
+
+// 분리각이 동작 내내 거의 그대로였나 → { from, to(그 구간의 최소 · 최대 °), offset(평균 크기) } | null
+export function separationStill(result) {
+  if (!result || !result.ok) return null;
+  const s = result.series.separation.slice(result.window.from, result.events.main + 1).filter(num);
+  if (s.length < 3) return null;
+  const lo = Math.min(...s), hi = Math.max(...s);
+  return hi - lo < SEP_STATIC ? { from: lo, to: hi, offset: s.reduce((a, v) => a + Math.abs(v), 0) / s.length } : null;
+}
+
+// 손이 가장 빠른 순간 후보가 둘인가 → [첫째 프레임, 둘째 프레임] | null (자동으로 고른 임팩트 · 릴리스가 분석마다 바뀔 수 있다)
+export function rivalEvents(result) {
+  if (!result || !result.ok) return null;
+  const h = result.series.handSpeed, peaks = [];
+  for (let k = 2; k < h.length - 2; k++) if (num(h[k]) && h[k] >= h[k - 1] && h[k] >= h[k + 1] && h[k] >= h[k - 2] && h[k] >= h[k + 2]) peaks.push(k);
+  peaks.sort((a, b) => h[b] - h[a]);
+  if (peaks.length < 2) return null;
+  const first = peaks[0], rival = peaks.find((k) => Math.abs(k - first) >= RIVAL_GAP_S * result.fps);
+  return rival !== undefined && h[rival] >= RIVAL_RATIO * h[first] ? [first, rival].sort((a, b) => a - b) : null;
 }
 
 // 저장용: 반올림한 흔들림 폭 { key: 정수 | null }

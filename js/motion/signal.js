@@ -16,6 +16,20 @@ export function fillGaps(values) {
   return out;
 }
 
+// 빈 칸(null)이 섞인 각도 열을 이어 붙인다: 값이 있는 칸끼리 ±180 을 넘는 곳을 짧은 쪽으로 잇고, 빈 칸은 그대로 둔다
+//  · 빈 칸을 먼저 메우고(fillGaps) 이어 붙이면, 170° 와 -170° 사이의 빈 칸이 0° 를 지나는 먼 길(340°)로 메워져
+//    한 프레임에 수백 도를 돈 것처럼 나온다 → 각도는 반드시 이걸로 먼저 이어 붙이고 나서 메운다
+export function unwrapGaps(values) {
+  const out = values.slice();
+  let prev = null;
+  for (let i = 0; i < out.length; i++) {
+    if (!isNum(out[i])) continue;
+    if (prev !== null) { let d = out[i] - prev; d -= 360 * Math.round(d / 360); out[i] = prev + d; }
+    prev = out[i];
+  }
+  return out;
+}
+
 // ±180 에서 끊기는 각도를 이어 붙인다 (359 → 1 을 +2 로)
 export function unwrapDeg(values) {
   const out = values.slice();

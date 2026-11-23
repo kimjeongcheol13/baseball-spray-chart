@@ -4,7 +4,7 @@
 //  · 한 대의 카메라로 추정한 3D 라서 모든 값은 추정치다. 같은 위치에서 찍은 내 영상끼리 비교하는 용도
 import { LM, sides, visible } from './landmarks.js?v=1';
 import { dist, mid, wrapDeg, jointAngle, yawDeg, tiltFromVertical, elevationDeg } from './geometry.js?v=1';
-import { fillGaps, unwrapDeg, smooth, derivative, argMax } from './signal.js?v=1';
+import { fillGaps, unwrapGaps, smooth, derivative, argMax } from './signal.js?v=2';
 
 const WINDOW_BEFORE_S = 0.5;    // 임팩트 · 릴리스 앞 이만큼에서 회전 피크를 찾는다
 const WINDOW_AFTER_S = 0.15;
@@ -25,9 +25,9 @@ const fail = (reason, extra = {}) => ({ ok: false, reason, ...extra });
 
 // 프레임마다 값을 뽑아(없으면 null) 빈 곳을 잇고 평활한 시계열. 값이 하나도 없으면 null
 function smoothSeries(frames, pick, sigma, unwrap = false) {
-  const filled = fillGaps(frames.map(pick));
+  const raw = frames.map(pick), filled = fillGaps(unwrap ? unwrapGaps(raw) : raw);   // 각도는 먼저 이어 붙이고 메운다(signal.js unwrapGaps)
   if (!filled) return null;
-  return smooth(unwrap ? unwrapDeg(filled) : filled, sigma);
+  return smooth(filled, sigma);
 }
 
 // 앞 프레임에서 사람 몸이 돌 수 없는 만큼 튄 각도는 인식 오류(카메라 한 대라 좌우 · 앞뒤가 순간 뒤집힌다)로 보고 뺀다
@@ -47,7 +47,7 @@ export function dropJumps(values, dt) {
 // 골반선 · 어깨선의 수평 방향(도)과 각속도(도/초). jump = 튀어서 뺀 프레임
 function rotationSeries(frames, sigma, dt) {
   const yaw = (a, b) => dropJumps(frames.map((f) => (visible(f.world, a, b) ? yawDeg(f.world[a], f.world[b]) : null)), dt);
-  const tidy = (values) => { const filled = fillGaps(values); return filled && smooth(unwrapDeg(filled), sigma); };
+  const tidy = (values) => { const filled = fillGaps(unwrapGaps(values)); return filled && smooth(filled, sigma); };
   const pelvis = yaw(LM.L_HIP, LM.R_HIP), trunk = yaw(LM.L_SHOULDER, LM.R_SHOULDER);
   const pelvisYaw = tidy(pelvis.values), trunkYaw = tidy(trunk.values);
   if (!pelvisYaw || !trunkYaw) return null;

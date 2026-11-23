@@ -79,15 +79,25 @@ function changeLine(m, prev, spread = {}) {
   return { tone: 'info', text: '지난 기록과 회전 속도 · 분리각이 거의 같아요.' };
 }
 
+// 믿기 어려운 부분을 먼저 알린다 · caution = { rivals: [초, 초] | null, still: { from, to } | null } (spread.js 결과를 화면 시각으로 바꾼 것)
+function cautionLines(caution) {
+  const out = [];
+  if (caution.rivals) out.push({ tone: 'warn', text: `손이 가장 빨랐던 순간 후보가 두 곳(${caution.rivals.map((t) => t.toFixed(2) + '초').join(' · ')})이라, 다시 분석하면 다른 순간이 임팩트 · 릴리스로 골라질 수 있어요. 영상을 그 순간으로 옮기고 「지금 프레임을 …로」를 눌러 직접 정해 주세요.` });
+  if (caution.still) out.push({ tone: 'warn', text: `분리각이 동작 내내 거의 그대로(${Math.round(caution.still.from)}°~${Math.round(caution.still.to)}°)였어요. 몸이 꼬였다 풀린 것보다, 카메라 각도 때문에 골반선과 어깨선이 처음부터 어긋나게 잡힌 값일 가능성이 커서 분리각은 믿기 어려워요.` });
+  return out;
+}
+
 // 한눈에 보기 문장 → [{ tone: 'good' | 'warn' | 'info', text }]
 //  · prev: 같은 종류(타격/투구 · 좌우)의 지난 기록 또는 null
 //  · spread: 이번 결과의 흔들림 폭 { pelvisPeak, trunkPeak, maxSeparation } (spread.js) · 없으면 폭을 0 으로 본다
-export function summaryLines(result, prev, spread = {}) {
+export function summaryLines(result, prev, spread = {}, caution = {}) {
   const m = result.metrics, lines = [];
   if (result.quality.notes.includes('noRotation')) return [{ tone: 'warn', text: '빠른 회전 동작을 찾지 못해서 순서와 속도는 풀이하지 않았어요. 스윙 · 투구가 들어간 구간인지 확인해 주세요.' }];
   if (result.quality.level === 'low') lines.push({ tone: 'warn', text: '신뢰도가 낮아요. 아래 숫자는 참고만 하고, 영상과 순서 위주로 봐 주세요.' });
+  lines.push(...cautionLines(caution));
   lines.push(sequenceLine(m.sequence));
-  for (const line of [speedLine(m), separationLine(m), changeLine(m, prev, spread)]) if (line) lines.push(line);
+  // 분리각이 그대로였으면 분리각 풀이는 하지 않는다(위 주의 문장과 어긋나지 않게)
+  for (const line of [speedLine(m), caution.still ? null : separationLine(m), changeLine(m, prev, spread)]) if (line) lines.push(line);
   return lines;
 }
 

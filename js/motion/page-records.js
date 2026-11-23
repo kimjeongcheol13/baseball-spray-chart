@@ -5,7 +5,8 @@ import { analyzeMotion } from './analyze.js?v=5';
 import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
-import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=3';
+import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
+import { syncSaved, syncRemoved, clipFor } from './page-sync.js?v=1';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { createDuel } from './duel.js?v=6';
@@ -72,6 +73,7 @@ export async function save() {
   el.saveMsg.textContent = heavy.text;
   await pruneLibrary();
   renderLog();
+  syncSaved(entry.id);   // 로그인했으면 다른 기기로도(page-sync.js)
 }
 
 export async function removeLogEntry(e) {
@@ -80,6 +82,7 @@ export async function removeLogEntry(e) {
   state.compare = state.compare.filter((id) => id !== e.id);
   renderLog();
   await pruneLibrary();
+  syncRemoved(e.id);
 }
 
 // 저장한 기록을 다시 연다: 프레임 좌표로 지표 · 그래프 · 3D 를 되살리고, 영상이 있으면 영상도 올린다
@@ -88,7 +91,7 @@ export async function loadEntry(e) {
   track('motion_load');
   let clip, video = null;
   try {
-    clip = await getClip(e.id);
+    clip = await clipFor(e);   // 다른 기기에서 온 기록이면 서버에서 받아 온다
     if (clip && e.video) video = await getVideo(e.video.sig);
   } catch (err) {
     console.warn('[motion] 저장한 데이터를 읽지 못했어요', err);
@@ -216,7 +219,7 @@ export function duelVideo(blob) {
 
 // 기록 하나를 나란히 보기용으로 되살린다 → duel.js 의 side · 다시 보기 데이터가 없으면 null
 export async function duelSide(e) {
-  const clip = e.hasData ? await getClip(e.id) : null;
+  const clip = e.hasData ? await clipFor(e) : null;
   if (!clip) return null;
   const frames = unpackFrames(clip);
   const r = analyzeMotion({ frames, mode: e.mode, hand: e.hand, fps: clip.hz * clip.slow, aspect: clip.aspect, eventIndex: clip.eventIndex });

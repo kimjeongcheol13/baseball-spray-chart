@@ -27,6 +27,7 @@ export const TILE_COLOR = { pelvisPeak: COLOR.pelvis, trunkPeak: COLOR.trunk };
 
 export const $ = (id) => document.getElementById(id);
 export const el = {
+  syncMsg: $('syncMsg'),
   setup: $('setup'), file: $('file'), stageCard: $('stageCard'), stage: $('stage'), video: $('video'), overlay: $('overlay'),
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), momentRow: $('momentRow'), momentText: $('momentText'), find: $('btnFind'), momentList: $('momentList'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),

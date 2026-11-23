@@ -185,7 +185,8 @@
 
   <section class="mo-card" id="logCard">
     <h2>저장한 기록</h2>
-    <p class="mo-hint">기록은 이 기기에만 쌓여요(서버로 보내지 않아요). 「불러오기」로 영상과 분석을 다시 보고, 「비교」를 두 개 고르면 나란히 비교해요. 타자는 타자끼리, 투수는 투수끼리 비교해요.</p>
+    <p class="mo-hint">기록은 이 기기에 쌓이고, 앱에서 로그인했으면 다른 기기와도 이어져요(영상은 보내지 않아요). 「불러오기」로 영상과 분석을 다시 보고, 「비교」를 두 개 고르면 나란히 비교해요. 타자는 타자끼리, 투수는 투수끼리 비교해요.</p>
+    <p class="mo-hint" id="syncMsg" role="status"></p>
     <p class="mo-hint" id="logEmpty">아직 저장한 기록이 없어요. 분석한 뒤 선수 이름을 적고 「기록 저장」을 눌러 주세요.</p>
     <p class="mo-status" id="logMsg" role="status" aria-live="polite"></p>
     <div id="logList"></div>
@@ -247,6 +248,6 @@
   </footer>
 </main>
 <div class="mo-drop" id="dropHint" hidden><span>여기에 놓으면 영상을 열어요</span></div>
-<script type="module" src="js/motion/app.js?v=23"></script>
+<script type="module" src="js/motion/app.js?v=24"></script>
 </body>
 </html>

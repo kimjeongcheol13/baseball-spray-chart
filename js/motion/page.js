@@ -27,7 +27,7 @@ export const TILE_COLOR = { pelvisPeak: COLOR.pelvis, trunkPeak: COLOR.trunk };
 
 export const $ = (id) => document.getElementById(id);
 export const el = {
-  syncMsg: $('syncMsg'),
+  syncMsg: $('syncMsg'), openChecks: $('openChecks'), checks: $('checks'),
   setup: $('setup'), file: $('file'), stageCard: $('stageCard'), stage: $('stage'), video: $('video'), overlay: $('overlay'),
   transport: $('transport'), play: $('btnPlay'), prev: $('btnPrev'), next: $('btnNext'), seek: $('seek'), time: $('timeOut'), rate: $('rate'),
   rangeRow: $('rangeRow'), momentRow: $('momentRow'), momentText: $('momentText'), find: $('btnFind'), momentList: $('momentList'), rangeText: $('rangeText'), start: $('btnStart'), end: $('btnEnd'),
@@ -71,4 +71,9 @@ export function setBusy(busy) {
   el.analyze.disabled = busy;
   el.stop.hidden = el.progress.hidden = !busy;
   if (!busy) state.liveFrame = null;
+}
+
+// 점검 · 풀이 문장 목록을 그린다 · lines = [{ tone: 'good' | 'warn' | 'info', text }]
+export function renderLines(list, lines) {
+  list.replaceChildren(...lines.map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
 }

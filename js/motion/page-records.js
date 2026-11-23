@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 저장 · 불러오기 · 기록 목록 · 비교 · 나란히 보기 · 내 기록 추이 · 이미지 저장
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { roundFraming } from './framing.js?v=1';
 import { track } from './usage.js?v=1';
 import { analyzeMotion } from './analyze.js?v=5';
 import { roundSpread } from './spread.js?v=2';
@@ -63,7 +64,7 @@ export async function save() {
   const r = state.result, c = state.clip;
   if (!r || !c) return;
   const entry = { id: Date.now(), at: new Date().toISOString(), name: el.player.value.trim(), mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level,
-    order: r.metrics.sequence.order, metrics: summarize(r), spread: roundSpread(state.spread), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
+    order: r.metrics.sequence.order, metrics: summarize(r), spread: roundSpread(state.spread), framing: roundFraming(state.framing), range: { start: c.start, end: c.start + c.frames.length / c.hz }, hasData: false, video: null };
   if (!addEntry(entry)) { el.saveMsg.textContent = '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.'; return; }
   track('motion_save', { mode: entry.mode, quality: entry.quality });
   el.save.disabled = true;

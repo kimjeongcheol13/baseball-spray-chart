@@ -1,10 +1,12 @@
 // 동작 분석 화면 — 영상 넣기: 파일 열기 · 구간 · 끌어다 놓기 · 주소 열기 · 화면 녹화
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { openChecks } from './framing.js?v=1';
+import { estimateFps } from './pose.js?v=9';
 import { track } from './usage.js?v=1';
 import { videoSig } from './library.js?v=1';
 import { startCapture, settleDuration, clock, MAX_CAPTURE_S, MIN_CAPTURE_S } from './capture.js?v=1';
 import { parseLink } from './link.js?v=1';
-import { MAX_RANGE_S, MIN_RANGE_S, $, el, state, sec, setStatus } from './page.js?v=1';
+import { MAX_RANGE_S, MIN_RANGE_S, $, el, state, sec, setStatus, options, renderLines } from './page.js?v=1';
 import { fitCanvas, setRegion, analyze, clearResult } from './page-core.js?v=1';
 import { findMoments_ } from './page-find.js?v=1';
 import { finishLoad } from './page-records.js?v=1';
@@ -33,6 +35,22 @@ export function openVideo(file) {
   setStatus('영상을 여는 중…');
 }
 
+// 영상을 열 때 촬영 상태(초당 프레임 · 화질)를 점검해 알려 준다(framing.js). 숨긴 영상으로 재서 화면의 영상은 건드리지 않는다
+export async function checkOpen() {
+  const url = state.url, v = el.video;
+  el.openChecks.replaceChildren();
+  const probe = Object.assign(document.createElement('video'), { muted: true, playsInline: true, preload: 'auto', src: url });
+  try {
+    await new Promise((resolve, reject) => { probe.addEventListener('loadeddata', resolve, { once: true }); probe.addEventListener('error', reject, { once: true }); });
+    const fps = await estimateFps(probe);
+    if (url === state.url) renderLines(el.openChecks, openChecks({ fps: fps * options().slow, width: v.videoWidth, height: v.videoHeight }));
+  } catch (err) {
+    console.warn('[motion] 촬영 상태를 재지 못함', err);
+  } finally {
+    probe.removeAttribute('src'); probe.load();
+  }
+}
+
 export function onVideoReady() {
   const v = el.video;
   // 방금 화면 녹화한 영상은 길이 정보가 비어 있다 → 길이를 알아낸 뒤 다시 들어온다
@@ -43,6 +61,7 @@ export function onVideoReady() {
   state.range = { start: 0, end: Math.min(v.duration, MAX_RANGE_S) };
   renderRange();
   fitCanvas();
+  checkOpen();   // 초당 프레임 · 화질을 바로 알려 준다(기다리지 않는다)
   el.stageCard.scrollIntoView({ behavior: 'smooth', block: 'start' });   // 영상 카드가 화면 아래에 있어 열린 줄 모르는 일이 없게
   const runNow = state.autoRun && v.duration <= MAX_RANGE_S;
   state.autoRun = false;

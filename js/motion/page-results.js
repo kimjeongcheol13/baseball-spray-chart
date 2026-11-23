@@ -1,5 +1,6 @@
 // 동작 분석 화면 — 결과 화면: 숫자 칸 · 한눈에 보기 · 참고 범위 · 3D 방향
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
+import { framingOf, framingChecks } from './framing.js?v=1';
 import { separationStill, rivalEvents } from './spread.js?v=2';
 import { createChart } from './chart.js?v=7';
 import { createSkeleton3D } from './skeleton3d.js?v=6';
@@ -8,7 +9,7 @@ import { loadLog } from './store.js?v=4';
 import { loopRange } from './view.js?v=3';
 import { summaryLines, readText, referenceLine } from './insight.js?v=3';
 import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
-import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node } from './page.js?v=1';
+import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node, renderLines } from './page.js?v=1';
 import { seekToFrame, sync3d, drawMirror } from './page-core.js?v=1';
 
 // ── 결과 화면 ───────────────────────────────────────────────
@@ -91,9 +92,18 @@ export function cautionOf(r) {
   return { rivals: rivals && c ? rivals.map((k) => c.start + k / c.hz) : null, still: separationStill(r) };
 }
 
+// 촬영 점검(framing.js): 선수 크기 · 화면 밖으로 나간 부위 · 지난 기록과 같은 자리였는지. 저장할 때 쓰려고 state.framing 에 둔다
+export function renderFramingChecks(r) {
+  state.framing = framingOf(state.clip.frames, state.clip.aspect);
+  const name = el.player.value.trim();
+  const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand && e.framing && (!name || e.name === name));
+  renderLines(el.checks, framingChecks(state.framing, prev ? prev.framing : null));
+}
+
 export function renderTiles(r) {
   const prev = loadLog().find((e) => e.mode === r.mode && e.hand === r.hand) || null;
   el.insights.replaceChildren(...summaryLines(r, prev, state.spread || {}, cautionOf(r)).map((l) => { const li = node('li', '', l.text); li.dataset.tone = l.tone; return li; }));
+  renderFramingChecks(r);
   el.tiles.replaceChildren(...metricList(r.mode).map((m) => tile(m, r.metrics[m.key], prev, r)), sequenceTile(r.metrics.sequence));
   renderReferenceNote(r.mode);
 }

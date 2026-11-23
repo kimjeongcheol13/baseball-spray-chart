@@ -23,6 +23,14 @@ export function addEntry(entry, storage = localStorage) {
   return writeLog([entry].concat(loadLog(storage)).slice(0, MAX_ENTRIES), storage);
 }
 
+// 다른 기기에서 받은 기록을 넣는다(같은 id 는 이 기기 것을 둔다). 날짜가 최신인 것부터 다시 줄 세운다 → 저장 성공 여부
+export function mergeEntries(entries, storage = localStorage) {
+  const list = loadLog(storage), have = new Set(list.map((e) => e.id));
+  const merged = list.concat(entries.filter((e) => e && e.id && e.metrics && !have.has(e.id)));
+  merged.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return writeLog(merged.slice(0, MAX_ENTRIES), storage);
+}
+
 export function removeEntry(id, storage = localStorage) {
   return writeLog(loadLog(storage).filter((e) => e.id !== id), storage);
 }

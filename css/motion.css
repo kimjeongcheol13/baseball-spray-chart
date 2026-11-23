@@ -165,6 +165,8 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 
 .mo-moments { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .mo-moments:empty { display: none; }
+.mo-checks:empty { display: none; }
+.mo-checks li { font-size: 13px; }
 .mo-moments .mo-btn { font-variant-numeric: tabular-nums; }
 .mo-moments .mo-btn[aria-pressed="true"] { border-color: var(--mo-blue); background: rgba(75, 140, 245, .16); }
 .mo-trend { margin-top: 12px; }

@@ -13,7 +13,7 @@
   var entry = function (id, mode, metrics, video) { return { id: id, at: '2026-11-22T00:00:00Z', mode: mode, hand: 'R', metrics: metrics, video: video || null }; };
 
   test('(준비) 저장 모듈을 불러온다', async function () {
-    L = await import('/js/motion/library.js?v=1'); ST = await import('/js/motion/store.js?v=3');
+    L = await import('/js/motion/library.js?v=1'); ST = await import('/js/motion/store.js?v=4');
     ok(L.packFrames && L.unpackFrames && L.compareRows && ST.updateEntry, '모듈 로드');
   });
 

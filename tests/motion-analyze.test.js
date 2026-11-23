@@ -36,7 +36,7 @@
 
   test('(준비) 동작 분석 모듈을 불러온다', async function () {
     A = await import('/js/motion/analyze.js?v=5'); G = await import('/js/motion/geometry.js?v=1'); S = await import('/js/motion/signal.js?v=2');
-    M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=3');
+    M = await import('/js/motion/metrics.js?v=2'); ST = await import('/js/motion/store.js?v=4');
     ok(A.analyzeMotion && G.jointAngle && S.smooth && M.metricList && ST.loadLog, '모듈 로드');
   });
 

@@ -1,10 +1,10 @@
 // 동작 분석 화면 — 기록 잇기(sync.js)를 화면에 연결한다: 열 때 맞추기 · 저장 · 지우기 · 다시 보기 데이터 · 영상 받기
-import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo, unsentVideos } from './sync.js?v=3';
-import { cutVideo, canCut } from './cut.js?v=1';
+import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo, unsentVideos, brokenCloudVideo, removeVideoFiles } from './sync.js?v=4';
+import { cutVideo, canCut, MIN_VIDEO_BYTES } from './cut.js?v=2';
 import { loadLog, mergeEntries, removeEntry, updateEntry } from './store.js?v=4';
 import { getClip, putClip, getVideo, putVideo } from './db.js?v=1';
 import { el, state } from './page.js?v=3';
-import { renderLog, pruneLibrary } from './page-records.js?v=4';
+import { renderLog, pruneLibrary } from './page-records.js?v=5';
 import { track } from './usage.js?v=1';
 
 const SEND_KEY = 'sl_motion_send_video';   // 「영상도 다른 기기로 보내기」를 껐는지(이 기기에서만 기억)
@@ -13,6 +13,7 @@ const TEXT = {
   off: '「SprayLab 앱」에서 로그인하면 저장한 기록이 휴대폰 · 컴퓨터 사이에 이어져요. 영상은 로그인한 뒤 저장할 때 고를 수 있어요.',
   busy: '다른 기기와 기록을 맞추는 중…',
   fail: '다른 기기와 기록을 맞추지 못했어요. 이 기기에는 그대로 저장돼 있고, 다음에 열 때 다시 맞춰요.',
+  keepTab: '영상을 보내는 동안 이 탭을 화면에 띄워 두세요(다른 탭 · 창으로 옮기면 브라우저가 녹화를 멈춰요).',
 };
 
 function showSync(text, withLink = false) {
@@ -32,7 +33,7 @@ export async function startSync() {
     const plan = planSync(loadLog(), await fetchRows());
     if (plan.add.length) mergeEntries(plan.add);
     for (const id of plan.remove) removeEntry(id);
-    for (const p of plan.patch) updateEntry(p.id, { cloudVideo: p.cloudVideo });
+    for (const p of plan.patch) updateEntry(p.id, p.dropVideo ? { cloudVideo: p.cloudVideo, video: null } : { cloudVideo: p.cloudVideo });
     if (plan.add.length || plan.remove.length || plan.patch.length) { renderLog(); await pruneLibrary(); }
     showSendVideo();
     for (const u of plan.upload) await uploadEntry(u.entry, u.withClip ? await getClip(u.entry.id).catch(() => null) : null);
@@ -65,7 +66,7 @@ export async function syncSaved(id) {
   const file = state.file;
   if (!wantVideo() || !file || !e.range) return;
   const before = el.saveMsg.textContent;
-  el.saveMsg.textContent = `${before} 영상을 다른 기기로 보내는 중…(분석한 구간만)`;
+  el.saveMsg.textContent = `${before} 영상을 다른 기기로 보내는 중…(분석한 구간만 · 이 탭을 띄워 두세요)`;
   try {
     const cut = await cutVideo(file.blob, e.range);
     const cloudVideo = await uploadVideo(id, cut);
@@ -76,7 +77,7 @@ export async function syncSaved(id) {
     renderLog();
   } catch (err) {
     console.warn('[motion] 영상을 보내지 못함', err);
-    el.saveMsg.textContent = `${before} 영상은 다른 기기로 보내지 못했어요(기록과 좌표는 보냈어요).`;
+    el.saveMsg.textContent = `${before} 영상은 다른 기기로 보내지 못했어요(기록과 좌표는 보냈어요). ${TEXT.keepTab}`;
   }
 }
 
@@ -84,9 +85,11 @@ export async function syncSaved(id) {
 function offerOldVideos() {
   const list = unsentVideos(loadLog());
   if (!list.length || !canCut()) return;
+  const broken = list.filter((e) => brokenCloudVideo(e.cloudVideo)).length;
   const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'mo-btn', textContent: `이 기기 영상 ${list.length}개 다른 기기로 보내기` });
   const note = document.createElement('span');
-  note.textContent = ' 전에 저장한 기록이라 영상은 아직 이 기기에만 있어요(분석한 구간만 줄여 보내요 · 하나에 몇 초).';
+  note.textContent = (broken ? ` 그중 ${broken}개는 전에 보낼 때 장면 없이 빈 파일이 올라가 다시 보내요.` : ' 전에 저장한 기록이라 영상은 아직 이 기기에만 있어요.')
+    + ` 분석한 구간만 줄여 보내요 · 하나에 몇 초. ${TEXT.keepTab}`;
   btn.addEventListener('click', () => sendOldVideos(list, btn, note));
   el.syncMsg.append(document.createElement('br'), btn, note);
 }
@@ -99,10 +102,11 @@ async function sendOldVideos(list, btn, note) {
     try {
       const v = await getVideo(e.video.sig);
       if (!v) { failed++; continue; }
-      const cut = await cutVideo(v.blob, e.range);
-      const cloudVideo = await uploadVideo(e.id, cut);
+      const cut = await cutVideo(v.blob, e.range), old = e.cloudVideo;
+      const cloudVideo = await uploadVideo(e.id, cut, old ? Date.now().toString(36) : '');   // 다시 보낼 때는 새 이름으로
       updateEntry(e.id, { cloudVideo });
       await uploadEntry({ ...e, cloudVideo }, null);
+      if (old && old.path !== cloudVideo.path) await removeVideoFiles([old.path]);
       sent++;
     } catch (err) {
       console.warn('[motion] 전에 저장한 영상을 보내지 못함', err);
@@ -111,7 +115,7 @@ async function sendOldVideos(list, btn, note) {
   }
   track('motion_video_backfill', { sent, failed });
   btn.remove();
-  note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요).` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
+  note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요). 페이지를 새로고침하면 다시 보낼 수 있어요.` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
   renderLog();
 }
 
@@ -137,9 +141,9 @@ export async function syncAttached(id) {
 export async function videoFor(e, onFetch) {
   if (e.video) {
     const v = await getVideo(e.video.sig);
-    if (v) return { ...v, offset: e.video.offset || 0 };
+    if (v && v.size >= MIN_VIDEO_BYTES) return { ...v, offset: e.video.offset || 0 };   // 전에 받아 둔 빈 파일은 쓰지 않는다
   }
-  if (!e.cloudVideo || !signedIn()) return null;
+  if (!e.cloudVideo || brokenCloudVideo(e.cloudVideo) || !signedIn()) return null;
   try {
     if (onFetch) onFetch();
     const blob = await fetchVideo(e.cloudVideo);
@@ -154,10 +158,10 @@ export async function videoFor(e, onFetch) {
   }
 }
 
-// 지운 기록을 다른 기기에서도 지우게 표시한다(로그인했을 때만)
-export async function syncRemoved(id) {
+// 지운 기록을 다른 기기에서도 지우게 표시한다(로그인했을 때만) · cloudVideo: 그 기록의 서버 영상(꼬리표 붙은 이름까지 지우려고)
+export async function syncRemoved(id, cloudVideo = null) {
   if (!signedIn()) return;
-  try { await markDeleted(id); } catch (err) { console.warn('[motion] 지운 것을 알리지 못함', err); showSync(TEXT.fail); }
+  try { await markDeleted(id, cloudVideo); } catch (err) { console.warn('[motion] 지운 것을 알리지 못함', err); showSync(TEXT.fail); }
 }
 
 // 다시 보기 데이터: 이 기기에 없고 다른 기기에서 온 기록이면 서버에서 받아 이 기기에 넣는다 → 데이터 | null

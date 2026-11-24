@@ -4,8 +4,8 @@
   var C, S;
 
   test('(준비) 영상 줄이기 · 기록 잇기 모듈을 불러온다 (서버 요청 없이)', async function () {
-    C = await import('/js/motion/cut.js?v=1'); S = await import('/js/motion/sync.js?v=3');
-    ok(C.outputSize && C.bitrateFor && C.cutRange && C.offsetFrom && C.shiftClip && C.shiftRange && S.videoPath && S.baseType, '모듈 로드');
+    C = await import('/js/motion/cut.js?v=2'); S = await import('/js/motion/sync.js?v=4');
+    ok(C.outputSize && C.enoughFrames && C.bitrateFor && C.cutRange && C.offsetFrom && C.shiftClip && C.shiftRange && S.videoPath && S.baseType, '모듈 로드');
   });
 
   test('줄일 크기: 짧은 변 720 이하 · 짝수 · 작은 영상은 그대로', async function () {
@@ -48,7 +48,10 @@
     var rows = [{ entry_id: '1', entry: { id: 1, cloudVideo: cv }, deleted: false, has_clip: 30 }, { entry_id: '2', entry: { id: 2, cloudVideo: cv }, deleted: false, has_clip: null },
       { entry_id: '3', entry: {}, deleted: true, has_clip: null }];
     var p = S.planSync(local, rows);
-    eq(p.patch, [{ id: 1, cloudVideo: cv }], 'patch');
+    eq(p.patch, [{ id: 1, cloudVideo: cv, dropVideo: false }], 'patch');
+    var cv2 = { path: 'u/2-x1.webm', type: 'video/webm', size: 500000 };
+    var p2 = S.planSync([{ id: 2, metrics: {}, cloudVideo: cv, video: { sig: 'cloud:2' } }], [{ entry_id: '2', entry: { id: 2, cloudVideo: cv2 }, deleted: false, has_clip: 1 }]);
+    eq(p2.patch, [{ id: 2, cloudVideo: cv2, dropVideo: true }], '다시 보낸 영상: 표시를 바꾸고 받아 둔 영상은 버린다');
     eq(p.remove, [3], '지운 것은 patch 하지 않는다');
   });
 
@@ -57,6 +60,15 @@
     var log = [{ id: 1, hasData: true, range: r, video: { sig: 'a|1|2' } }, { id: 2, hasData: true, range: r, video: { sig: 'cloud:2' } },
       { id: 3, hasData: true, range: r, video: { sig: 'b|1|2' }, cloudVideo: { path: 'u/3.webm' } }, { id: 4, hasData: true, range: r, video: null }, { id: 5, hasData: false, range: r, video: { sig: 'c' } }];
     eq(S.unsentVideos(log).map(function (e) { return e.id; }), [1], '1 만');
+  });
+
+  test('빈 영상: 작은 파일 · 장면 부족을 실패로 보고, 빈 파일이 올라간 기록은 다시 보낼 목록에 넣는다', async function () {
+    eq([S.brokenCloudVideo({ size: 110 }), S.brokenCloudVideo({ size: 400000 }), S.brokenCloudVideo(null), S.brokenCloudVideo({})], [true, false, false, false], 'brokenCloudVideo');
+    eq([C.enoughFrames(0, 2.7), C.enoughFrames(5, 2.7), C.enoughFrames(13, 2.7), C.enoughFrames(80, 2.7)], [false, false, true, true], 'enoughFrames(초당 5장 이상)');
+    eq(S.videoPath('u', 9, 'video/webm', 'abc'), 'u/9-abc.webm', '다시 보낼 때 꼬리표');
+    var r = { start: 0, end: 3 };
+    var log = [{ id: 1, hasData: true, range: r, video: { sig: 'a' }, cloudVideo: { path: 'u/1.webm', size: 110 } }, { id: 2, hasData: true, range: r, video: { sig: 'b' }, cloudVideo: { path: 'u/2.webm', size: 400000 } }];
+    eq(S.unsentVideos(log).map(function (e) { return e.id; }), [1], '빈 파일만 다시');
   });
 
   test('올릴 칸: 영상 표시(cloudVideo)는 올리고, 이 기기 영상 정보(video)는 올리지 않는다', async function () {

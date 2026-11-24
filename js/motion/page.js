@@ -3,7 +3,7 @@
 import { COLOR } from './overlay.js?v=7';
 import { createMirror } from './mirror.js?v=2';
 import { analyze } from './page-core.js?v=1';
-import { save } from './page-records.js?v=4';
+import { save } from './page-records.js?v=5';
 
 export const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]

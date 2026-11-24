@@ -9,7 +9,7 @@ import { parseLink } from './link.js?v=1';
 import { MAX_RANGE_S, MIN_RANGE_S, $, el, state, sec, setStatus, options, renderLines } from './page.js?v=3';
 import { fitCanvas, setRegion, analyze, clearResult } from './page-core.js?v=1';
 import { findMoments_ } from './page-find.js?v=1';
-import { finishLoad } from './page-records.js?v=4';
+import { finishLoad } from './page-records.js?v=5';
 
 // ── 영상 · 구간 ─────────────────────────────────────────────
 export const fileRef = (file) => ({ blob: file, name: file.name, size: file.size, sig: videoSig(file) });

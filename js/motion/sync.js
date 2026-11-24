@@ -71,6 +71,10 @@ export function planSync(local, rows) {
 export const baseType = (type) => (String(type || '').startsWith('video/mp4') ? 'video/mp4' : 'video/webm');
 export const videoPath = (userId, id, type) => `${userId}/${id}.${baseType(type) === 'video/mp4' ? 'mp4' : 'webm'}`;
 
+// 영상을 아직 다른 기기로 보내지 않은 기록 중, 이 기기에 원본 영상이 있어 지금 보낼 수 있는 것(영상 보내기 기능 전에 저장했거나, 끄고 저장한 기록)
+//  · 다른 기기에서 받은 영상(sig 가 cloud: 로 시작)은 이미 서버에 있으니 뺀다
+export const unsentVideos = (log) => log.filter((e) => e.hasData && e.range && e.video && e.video.sig && !String(e.video.sig).startsWith('cloud:') && !e.cloudVideo);
+
 // 로그인한 사람을 알아볼 수 있을 만큼만 보이는 이메일(앞 두 글자 · 도메인)
 export const maskEmail = (email) => {
   const m = /^([^@]{0,2})[^@]*(@.*)$/.exec(email || '');

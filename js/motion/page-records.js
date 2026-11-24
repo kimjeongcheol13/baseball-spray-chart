@@ -7,14 +7,14 @@ import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
-import { syncSaved, syncRemoved, clipFor, videoFor } from './page-sync.js?v=2';
+import { syncSaved, syncRemoved, clipFor, videoFor } from './page-sync.js?v=3';
 import { shiftRange } from './cut.js?v=1';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { createDuel } from './duel.js?v=6';
 import { TREND_METRICS, trendGroups, trendPoints, trendSummary, drawTrend } from './trend.js?v=1';
-import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=2';
-import { fileRef, showVideo, renderRange } from './page-input.js?v=1';
+import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=3';
+import { fileRef, showVideo, renderRange } from './page-input.js?v=2';
 import { fitCanvas, overlayScene, compute, clearResult } from './page-core.js?v=1';
 
 // ── 저장 · 이미지 ───────────────────────────────────────────
@@ -119,6 +119,10 @@ export async function loadEntry(e) {
   finishLoad();
 }
 
+// 영상 없이 불러온 기록(다른 기기에서 영상 없이 넘어왔거나, 이 기기에 영상을 넣지 못한 기록)일 때 화면 위에 띄우는 말
+export const NO_VIDEO_TEXT = '영상 없이 넘어온 기록이라 뼈대만 보여요 · 아래 안내를 봐 주세요';
+export const NO_VIDEO_HELP = '영상을 찍은 기기(휴대폰 등)에서 동작 분석을 열고 「이 기기 영상 … 다른 기기로 보내기」를 누른 뒤 이 페이지를 새로고침하면 영상도 보여요. 영상 파일이 이 기기에 있으면 「영상 다시 고르기」로 바로 붙일 수도 있어요.';
+
 // 불러온 기록을 화면에 올린다(영상이 준비됐거나, 영상 없이 볼 때)
 export function finishLoad() {
   const { range, eventIndex, name } = state.restore, v = el.video, hasVideo = !!v.videoWidth;
@@ -128,8 +132,10 @@ export function finishLoad() {
   fitCanvas();
   compute(eventIndex);
   el.attachWrap.hidden = hasVideo;
+  el.noVideo.hidden = hasVideo;
+  el.noVideo.textContent = hasVideo ? '' : NO_VIDEO_TEXT;
   const who = name ? `「${name}」 ` : '';
-  if (!hasVideo) setStatus(`${who}기록을 불러왔어요. 영상은 저장돼 있지 않아 뼈대만 보여요. 「영상 다시 고르기」로 같은 영상을 고르면 영상도 함께 볼 수 있어요.`);
+  if (!hasVideo) setStatus(`${who}기록을 불러왔어요. 영상이 없어 뼈대만 보여요. ${NO_VIDEO_HELP}`);
   else if (v.duration + 0.05 < range.end) setStatus('고른 영상이 저장할 때의 구간보다 짧아요. 다른 영상일 수 있어요.', true);
   else setStatus(`${who}기록을 불러왔어요. 영상과 분석을 함께 볼 수 있어요.`);
   el.stageCard.scrollIntoView({ behavior: 'smooth', block: 'start' });

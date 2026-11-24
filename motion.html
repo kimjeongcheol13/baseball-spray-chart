@@ -8,7 +8,7 @@
 <title>SprayLab Motion — 스윙 · 투구 동작 분석 (베타)</title>
 <meta name="description" content="폰으로 찍은 영상에서 관절 각도, 골반 · 몸통 회전 속도, 회전 순서를 추정합니다. 영상은 기기 밖으로 나가지 않습니다.">
 <link rel="icon" href="player-logo.png">
-<link rel="stylesheet" href="css/motion.css?v=12">
+<link rel="stylesheet" href="css/motion.css?v=13">
 </head>
 <body>
 <header class="mo-top">
@@ -87,6 +87,7 @@
     <div class="mo-stage" id="stage">
       <video id="video" playsinline muted preload="auto"></video>
       <canvas id="overlay"></canvas>
+      <p class="mo-novideo" id="noVideo" hidden></p>
     </div>
     <div class="mo-transport" id="transport">
       <button type="button" class="mo-btn" id="btnPlay">재생</button>
@@ -252,6 +253,6 @@
   </footer>
 </main>
 <div class="mo-drop" id="dropHint" hidden><span>여기에 놓으면 영상을 열어요</span></div>
-<script type="module" src="js/motion/app.js?v=26"></script>
+<script type="module" src="js/motion/app.js?v=27"></script>
 </body>
 </html>

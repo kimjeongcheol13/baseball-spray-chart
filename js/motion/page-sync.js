@@ -1,10 +1,10 @@
 // 동작 분석 화면 — 기록 잇기(sync.js)를 화면에 연결한다: 열 때 맞추기 · 저장 · 지우기 · 다시 보기 데이터 · 영상 받기
-import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo } from './sync.js?v=2';
+import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo, unsentVideos } from './sync.js?v=3';
 import { cutVideo, canCut } from './cut.js?v=1';
 import { loadLog, mergeEntries, removeEntry, updateEntry } from './store.js?v=4';
 import { getClip, putClip, getVideo, putVideo } from './db.js?v=1';
-import { el, state } from './page.js?v=2';
-import { renderLog, pruneLibrary } from './page-records.js?v=2';
+import { el, state } from './page.js?v=3';
+import { renderLog, pruneLibrary } from './page-records.js?v=3';
 import { track } from './usage.js?v=1';
 
 const SEND_KEY = 'sl_motion_send_video';   // 「영상도 다른 기기로 보내기」를 껐는지(이 기기에서만 기억)
@@ -38,6 +38,7 @@ export async function startSync() {
     for (const u of plan.upload) await uploadEntry(u.entry, u.withClip ? await getClip(u.entry.id).catch(() => null) : null);
     showSync(`${maskEmail(user.email)} 로 로그인됨 · 기록 ${loadLog().length}개가 다른 기기와 이어져 있어요. 「영상도 다른 기기로 보내기」를 켜고 저장한 기록은 영상(분석한 구간만)도 함께 보여요.`);
     track('motion_sync', { added: plan.add.length, removed: plan.remove.length, uploaded: plan.upload.length });
+    offerOldVideos();
   } catch (err) {
     console.warn('[motion] 다른 기기와 기록을 맞추지 못함', err);
     showSync(TEXT.fail);
@@ -77,6 +78,41 @@ export async function syncSaved(id) {
     console.warn('[motion] 영상을 보내지 못함', err);
     el.saveMsg.textContent = `${before} 영상은 다른 기기로 보내지 못했어요(기록과 좌표는 보냈어요).`;
   }
+}
+
+// 영상 보내기 기능 전에 저장한 기록: 이 기기에 원본 영상이 있으면 「영상 보내기」 버튼을 붙인다(누를 때만 보낸다 — 그때는 보낸다고 약속하지 않았던 기록이라)
+function offerOldVideos() {
+  const list = unsentVideos(loadLog());
+  if (!list.length || !canCut()) return;
+  const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'mo-btn', textContent: `이 기기 영상 ${list.length}개 다른 기기로 보내기` });
+  const note = document.createElement('span');
+  note.textContent = ' 전에 저장한 기록이라 영상은 아직 이 기기에만 있어요(분석한 구간만 줄여 보내요 · 하나에 몇 초).';
+  btn.addEventListener('click', () => sendOldVideos(list, btn, note));
+  el.syncMsg.append(document.createElement('br'), btn, note);
+}
+
+async function sendOldVideos(list, btn, note) {
+  btn.disabled = true;
+  let sent = 0, failed = 0;
+  for (const e of list) {
+    note.textContent = ` 보내는 중… ${sent + failed + 1}/${list.length}`;
+    try {
+      const v = await getVideo(e.video.sig);
+      if (!v) { failed++; continue; }
+      const cut = await cutVideo(v.blob, e.range);
+      const cloudVideo = await uploadVideo(e.id, cut);
+      updateEntry(e.id, { cloudVideo });
+      await uploadEntry({ ...e, cloudVideo }, null);
+      sent++;
+    } catch (err) {
+      console.warn('[motion] 전에 저장한 영상을 보내지 못함', err);
+      failed++;
+    }
+  }
+  track('motion_video_backfill', { sent, failed });
+  btn.remove();
+  note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요).` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
+  renderLog();
 }
 
 // 불러올 영상: 이 기기에 저장한 것 → 없으면 다른 기기에서 보낸 것을 받아 이 기기에 넣는다 → { blob, name, size, sig, offset } | null

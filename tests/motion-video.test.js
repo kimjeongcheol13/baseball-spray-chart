@@ -4,7 +4,7 @@
   var C, S;
 
   test('(준비) 영상 줄이기 · 기록 잇기 모듈을 불러온다 (서버 요청 없이)', async function () {
-    C = await import('/js/motion/cut.js?v=1'); S = await import('/js/motion/sync.js?v=2');
+    C = await import('/js/motion/cut.js?v=1'); S = await import('/js/motion/sync.js?v=3');
     ok(C.outputSize && C.bitrateFor && C.cutRange && C.offsetFrom && C.shiftClip && C.shiftRange && S.videoPath && S.baseType, '모듈 로드');
   });
 
@@ -50,6 +50,13 @@
     var p = S.planSync(local, rows);
     eq(p.patch, [{ id: 1, cloudVideo: cv }], 'patch');
     eq(p.remove, [3], '지운 것은 patch 하지 않는다');
+  });
+
+  test('전에 저장한 기록 중 지금 영상을 보낼 수 있는 것: 이 기기 원본이 있고 아직 안 보낸 것만', async function () {
+    var r = { start: 0, end: 3 };
+    var log = [{ id: 1, hasData: true, range: r, video: { sig: 'a|1|2' } }, { id: 2, hasData: true, range: r, video: { sig: 'cloud:2' } },
+      { id: 3, hasData: true, range: r, video: { sig: 'b|1|2' }, cloudVideo: { path: 'u/3.webm' } }, { id: 4, hasData: true, range: r, video: null }, { id: 5, hasData: false, range: r, video: { sig: 'c' } }];
+    eq(S.unsentVideos(log).map(function (e) { return e.id; }), [1], '1 만');
   });
 
   test('올릴 칸: 영상 표시(cloudVideo)는 올리고, 이 기기 영상 정보(video)는 올리지 않는다', async function () {

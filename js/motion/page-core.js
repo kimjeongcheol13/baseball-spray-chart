@@ -8,10 +8,10 @@ import { drawOverlay, hudSideFor, COLOR } from './overlay.js?v=7';
 import { formatValue, sequenceText, FAIL_TEXT } from './metrics.js?v=2';
 import { loopRange, nearestPose, pickRegion } from './view.js?v=3';
 import { dropStrays } from './track.js?v=3';
-import { NO_WRAPPED_TEXT, ROLE_TEXT, DOWNLOAD_MB, $, el, ctx, mirror, state, sec, options, setStatus, setBusy } from './page.js?v=2';
-import { renderRange } from './page-input.js?v=1';
+import { NO_WRAPPED_TEXT, ROLE_TEXT, DOWNLOAD_MB, $, el, ctx, mirror, state, sec, options, setStatus, setBusy } from './page.js?v=3';
+import { renderRange } from './page-input.js?v=2';
 import { renderResult } from './page-results.js?v=1';
-import { MB } from './page-records.js?v=2';
+import { MB } from './page-records.js?v=3';
 
 // ── 재생 · 프레임 ───────────────────────────────────────────
 // 지금 영상 위치에 해당하는 프레임 번호. 분석 구간 밖이면 null

@@ -75,6 +75,14 @@ export const baseType = (type) => (String(type || '').startsWith('video/mp4') ? 
 //  · tag: 다시 보낼 때 붙이는 꼬리표. 이름을 바꿔야 다른 기기 · 중간 캐시가 예전(빈) 파일을 다시 쓰지 않는다
 export const videoPath = (userId, id, type, tag = '') => `${userId}/${id}${tag ? `-${tag}` : ''}.${baseType(type) === 'video/mp4' ? 'mp4' : 'webm'}`;
 
+// 한 사람당 영상 저장 한도 — sql/20_motion_video_quota.sql 과 같은 숫자(서버가 실제로 막는다. 여기서는 올리기 전에 미리 알리려고)
+export const VIDEO_QUOTA = { count: 100, bytes: 100_000_000 };
+// 사용량 { count, bytes } → 한 개 더 올릴 수 있나
+export const hasRoom = (usage, quota = VIDEO_QUOTA) => !usage || (usage.count < quota.count && usage.bytes < quota.bytes);
+export const usageText = (usage, quota = VIDEO_QUOTA) => `영상 ${usage.count}개 · ${(usage.bytes / 1e6).toFixed(1)}MB / ${Math.round(quota.bytes / 1e6)}MB`;
+// 서버가 한도(또는 권한)로 막은 오류인가
+export const isQuotaError = (err) => Boolean(err) && (String(err.statusCode) === '403' || /row-level security|42501/i.test(String(err.message || err.error || '')));
+
 // 서버의 영상이 장면 없는 빈 파일인가(녹화 중 탭이 가려져 빈 파일이 올라간 일이 있었다)
 export const brokenCloudVideo = (cv) => Boolean(cv && typeof cv.size === 'number' && cv.size < MIN_VIDEO_BYTES);
 
@@ -131,6 +139,18 @@ export async function markDeleted(id, cloudVideo = null) {
   check(await client.from(TABLE).upsert({ user_id: user.id, entry_id: id, entry: {}, clip: null, deleted: true }, { onConflict: 'user_id,entry_id' }));
   const paths = ['video/mp4', 'video/webm'].map((t) => videoPath(user.id, id, t)).concat(cloudVideo && cloudVideo.path ? [cloudVideo.path] : []);
   await removeVideoFiles(paths);
+}
+
+// 내 영상 사용량 { count, bytes } | null(알 수 없음 — 그때는 막지 않고 서버 판정에 맡긴다)
+export async function videoUsage() {
+  try {
+    const files = check(await client.storage.from(BUCKET).list(user.id, { limit: 1000 })) || [];
+    const real = files.filter((f) => f && f.id !== null && f.name);   // 폴더 표시는 뺀다
+    return { count: real.length, bytes: real.reduce((s, f) => s + ((f.metadata && Number(f.metadata.size)) || 0), 0) };
+  } catch (err) {
+    console.warn('[motion] 영상 사용량을 읽지 못함', err);
+    return null;
+  }
 }
 
 // 서버의 영상 파일을 지운다(실패해도 기록 잇기는 계속)

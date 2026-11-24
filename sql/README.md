@@ -27,6 +27,7 @@ GitHub Pages + LocalStorage 구조라 서버 쪽 마이그레이션 도구가 �
 | `17_log_visit.sql` | 방문 수: `log_visit(uid, kind)` 함수(security definer · anon/authenticated 실행) — 같은 uid 20시간에 1줄, 표 전체 10분 300줄까지, 1년 지난 줄 삭제. `visits` 표는 07 그대로(정책 없음 · 직접 읽기/쓰기 막힘). `visits (uid, created_at)` 색인. 클라이언트 js/analytics.js(github.io · 하루 한 번). **순서 무관** — 함수가 없으면 요청이 404 로 끝나고 화면 영향 없음. **2026-11-11 적용** | 함수 1개 · 인덱스 1개 추가 (DROP 없음) |
 | `18_user_motion.sql` | 동작 분석 기록을 기기 사이에 잇기: `public.user_motion`(기록 1개 = 1행 · 숫자 기록 entry · 관절 좌표 clip · 지움 표시 deleted). RLS 로 로그인한 본인 행만, 비로그인은 권한 없음. 크기 check(entry 32KB · clip 3MB). 영상은 올리지 않는다 | 표 1개 · 정책 4개 · 트리거 1개 생성 |
 | `19_motion_video.sql` | 동작 분석 기록의 영상을 기기 사이에 잇기: Storage 버킷 `motion-video`(비공개 · 파일 10MB · webm/mp4). 경로 `<user_id>/<entry_id>.*` 의 첫 폴더가 본인 id 인 파일만 읽고 쓴다. 원본이 아니라 분석 구간만 720p 로 다시 만든 영상 | 버킷 1개 · storage.objects 정책 4개 생성 |
+| `20_motion_video_quota.sql` | 동작 분석 영상 한 사람당 한도: `motion_video_room()`(security definer · authenticated 만 실행 — 본인 폴더 영상 100개 미만 · 합계 100MB 미만이면 true)을 `motion_video_insert` 정책에 더한다. 읽기 · 지우기는 그대로(찼어도 지워서 비울 수 있게). 클라이언트 `js/motion/sync.js` VIDEO_QUOTA 와 같은 숫자. 19 선행 | 함수 1개 생성 · 정책 1개 변경(alter policy) |
 
 ## 공개 정책 닫기 런북 (games / feedback / shared_links)
 순서를 바꾸지 않는다: **05 → 클라이언트 배포 → 06**.

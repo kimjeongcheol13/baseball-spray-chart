@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +56,21 @@ jobs:
         with:
           path: '.'
 
+      # 올린 직후 바로 찾으면 「github-pages 아티팩트 0개」로 실패하는 일이 잦았다(#427 · #429 · #432) — 조금 기다렸다 배포하고, 실패하면 한 번 더
+      #  · 잡을 통째로 다시 실행하면 같은 실행 안에 아티팩트가 2개가 돼 또 실패한다. 그래서 같은 잡 안에서 배포 단계만 다시 한다
+      - name: Wait for artifact to register
+        run: sleep 15
+
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Wait before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy to GitHub Pages (retry)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4

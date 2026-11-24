@@ -3,7 +3,7 @@
 import { COLOR } from './overlay.js?v=7';
 import { createMirror } from './mirror.js?v=2';
 import { analyze } from './page-core.js?v=1';
-import { save } from './page-records.js?v=2';
+import { save } from './page-records.js?v=3';
 
 export const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]
@@ -35,7 +35,7 @@ export const el = {
   results: $('results'), title: $('resultTitle'), quality: $('quality'), notes: $('notes'), tiles: $('tiles'), insights: $('insights'), refNote: $('refNote'), dropHint: $('dropHint'), dropMsg: $('dropMsg'), capture: $('btnCapture'), captureMsg: $('captureMsg'), linkBox: $('linkBox'), trendBox: $('trendBox'), trendEmpty: $('trendEmpty'), trendGroup: $('trendGroup'), trendMetric: $('trendMetric'), trendChart: $('trendChart'), trendText: $('trendText'), linkUrl: $('linkUrl'), link: $('btnLink'), chart: $('chart'), view3d: $('view3d'), view3dNote: $('view3dNote'), view3dCap: $('view3dCap'), viewVideo: $('viewVideo'), motion: $('btnMotion'), motionRate: $('motionRate'),
   goPlant: $('btnGoPlant'), goMain: $('btnGoMain'), setMain: $('btnSetMain'), autoMain: $('btnAutoMain'),
   save: $('btnSave'), image: $('btnImage'), saveMsg: $('saveMsg'), logList: $('logList'), logEmpty: $('logEmpty'),
-  player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
+  player: $('playerName'), logMsg: $('logMsg'), attachWrap: $('attachWrap'), noVideo: $('noVideo'), attach: $('fileAttach'), compareBox: $('compareBox'), compare: $('compare'), pickRow: $('pickRow'), pick: $('btnPick'), pickClear: $('btnPickClear'), pickText: $('pickText'),
   duelBox: $('duelBox'), duelNone: $('duelNone'), duelPlay: $('btnDuel'), duelRate: $('duelRate'), duelTime: $('duelTime'), duelA: $('duelA'), duelB: $('duelB'), duelVideoA: $('duelVideoA'), duelVideoB: $('duelVideoB'), duelVideos: $('duelVideos'), duelNameA: $('duelNameA'), duelNameB: $('duelNameB'),
 };
 export const ctx = el.overlay.getContext('2d');

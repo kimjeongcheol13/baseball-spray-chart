@@ -3,8 +3,8 @@
 import { track } from './usage.js?v=1';
 import { loadLandmarker, probeWindows } from './pose.js?v=9';
 import { scanVideo, findMoments, checkOrder, verifyMoment, probeWindow, rangeAround, PROBE_STEP_S, MAX_CHECK, MAX_SHOW } from './scan.js?v=1';
-import { $, el, state, node, sec, options, setStatus, setBusy } from './page.js?v=2';
-import { renderRange } from './page-input.js?v=1';
+import { $, el, state, node, sec, options, setStatus, setBusy } from './page.js?v=3';
+import { renderRange } from './page-input.js?v=2';
 import { onProgress } from './page-core.js?v=1';
 
 // ── 스윙 · 투구 순간 찾기 (scan.js) ─────────────────────────────

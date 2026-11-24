@@ -70,6 +70,8 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 .mo-stage video, .mo-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .mo-stage canvas { pointer-events: none; }
 .mo-stage.picking canvas { pointer-events: auto; cursor: crosshair; touch-action: none; }
+/* 영상 없이 불러온 기록: 검은 화면만 보고 고장으로 여기지 않게 이유와 할 일을 위에 띄운다(뼈대는 그대로 보인다) */
+.mo-novideo { position: absolute; left: 12px; top: 12px; max-width: min(52%, 420px); margin: 0; padding: 10px 14px; border-radius: var(--mo-r-ctl); background: rgba(20, 24, 33, .88); color: #e6e9ef; font-size: 14px; line-height: 1.5; pointer-events: none; }
 .mo-transport { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .mo-transport input[type="range"] { flex: 1 1 140px; min-height: 44px; accent-color: var(--mo-blue); }
 .mo-transport output { font: 600 13px var(--mo-mono); color: var(--mo-ink2); min-width: 9em; text-align: right; }
@@ -218,4 +220,7 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
   .mo-link-row .mo-btn { flex: 0 0 auto; }
   .mo-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .mo-view3d { height: 440px; }
+}
+@media (max-width: 720px) {
+  .mo-novideo { left: 6px; top: 6px; max-width: 40%; padding: 6px 8px; font-size: 11px; line-height: 1.4; }
 }

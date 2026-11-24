@@ -7,8 +7,8 @@ import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
-import { syncSaved, syncRemoved, clipFor, videoFor, syncAttached } from './page-sync.js?v=4';
-import { shiftRange } from './cut.js?v=1';
+import { syncSaved, syncRemoved, clipFor, videoFor, syncAttached } from './page-sync.js?v=5';
+import { shiftRange } from './cut.js?v=2';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { createDuel } from './duel.js?v=6';
@@ -84,7 +84,7 @@ export async function removeLogEntry(e) {
   state.compare = state.compare.filter((id) => id !== e.id);
   renderLog();
   await pruneLibrary();
-  syncRemoved(e.id);
+  syncRemoved(e.id, e.cloudVideo);
 }
 
 // 저장한 기록을 다시 연다: 프레임 좌표로 지표 · 그래프 · 3D 를 되살리고, 영상이 있으면 영상도 올린다

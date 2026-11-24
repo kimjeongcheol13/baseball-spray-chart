@@ -10,6 +10,7 @@ const SURL = 'https://bsmbrngkpsdmbwoqcrps.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWJybmdrcHNkbWJ3b3FjcnBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTE1OTcsImV4cCI6MjA5NDk4NzU5N30.kVkKSvrXMtVOEtTNEELr8_9bQret60pTngFRsHgY5nk';
 const SESSION_KEY = 'sl_cloud_session';   // 앱의 로그인 저장 열쇠(js/cloud.js) — 이름을 바꾸지 않는다
 const LIB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';   // 앱(index.html)과 같은 주소
+import { MIN_VIDEO_BYTES } from './cut.js?v=2';
 const TABLE = 'user_motion';
 const BUCKET = 'motion-video';
 const LOCAL_ONLY = ['video', 'hasData', 'cloud'];   // 이 기기에만 의미가 있는 칸 — 올리지 않는다
@@ -61,7 +62,9 @@ export function planSync(local, rows) {
     if (!r) upload.push({ entry: e, withClip: Boolean(e.hasData) });
     else if (r.deleted) remove.push(e.id);
     else if (e.hasData && (r.has_clip === null || r.has_clip === undefined)) upload.push({ entry: e, withClip: true });
-    if (r && !r.deleted && r.entry && r.entry.cloudVideo && !e.cloudVideo) patch.push({ id: e.id, cloudVideo: r.entry.cloudVideo });
+    // 서버 쪽 영상이 새로 생겼거나 바뀌었으면(빈 파일을 다시 보낸 경우 등) 표시를 바꾸고, 전에 받아 둔 영상은 버린다(다시 받게)
+    const cv = r && !r.deleted && r.entry && r.entry.cloudVideo;
+    if (cv && (!e.cloudVideo || e.cloudVideo.path !== cv.path)) patch.push({ id: e.id, cloudVideo: cv, dropVideo: Boolean(e.video && String(e.video.sig).startsWith('cloud:')) });
   }
   for (const r of rows) if (!r.deleted && !mine.has(Number(r.entry_id))) add.push(fromCloudRow(r));
   return { upload, add, remove, patch };
@@ -69,11 +72,16 @@ export function planSync(local, rows) {
 
 // 영상 파일 자리 · 형식: <내 id>/<기록 id>.mp4|webm (녹화기 형식에 붙은 codecs 는 뗀다 — 버킷은 video/webm · video/mp4 만 받는다)
 export const baseType = (type) => (String(type || '').startsWith('video/mp4') ? 'video/mp4' : 'video/webm');
-export const videoPath = (userId, id, type) => `${userId}/${id}.${baseType(type) === 'video/mp4' ? 'mp4' : 'webm'}`;
+//  · tag: 다시 보낼 때 붙이는 꼬리표. 이름을 바꿔야 다른 기기 · 중간 캐시가 예전(빈) 파일을 다시 쓰지 않는다
+export const videoPath = (userId, id, type, tag = '') => `${userId}/${id}${tag ? `-${tag}` : ''}.${baseType(type) === 'video/mp4' ? 'mp4' : 'webm'}`;
+
+// 서버의 영상이 장면 없는 빈 파일인가(녹화 중 탭이 가려져 빈 파일이 올라간 일이 있었다)
+export const brokenCloudVideo = (cv) => Boolean(cv && typeof cv.size === 'number' && cv.size < MIN_VIDEO_BYTES);
 
 // 영상을 아직 다른 기기로 보내지 않은 기록 중, 이 기기에 원본 영상이 있어 지금 보낼 수 있는 것(영상 보내기 기능 전에 저장했거나, 끄고 저장한 기록)
 //  · 다른 기기에서 받은 영상(sig 가 cloud: 로 시작)은 이미 서버에 있으니 뺀다
-export const unsentVideos = (log) => log.filter((e) => e.hasData && e.range && e.video && e.video.sig && !String(e.video.sig).startsWith('cloud:') && !e.cloudVideo);
+//  · 보냈는데 빈 파일이 올라간 기록도 다시 보낼 수 있게 넣는다
+export const unsentVideos = (log) => log.filter((e) => e.hasData && e.range && e.video && e.video.sig && !String(e.video.sig).startsWith('cloud:') && (!e.cloudVideo || brokenCloudVideo(e.cloudVideo)));
 
 // 로그인한 사람을 알아볼 수 있을 만큼만 보이는 이메일(앞 두 글자 · 도메인)
 export const maskEmail = (email) => {
@@ -118,15 +126,21 @@ export async function uploadEntry(entry, clip = null) {
   check(await client.from(TABLE).upsert(row, { onConflict: 'user_id,entry_id' }));
 }
 
-// 지웠다는 표시만 남긴다(내용은 비운다). 올린 영상이 있으면 파일도 지운다(없는 파일을 지워도 오류가 아니다)
-export async function markDeleted(id) {
+// 지웠다는 표시만 남긴다(내용은 비운다). 올린 영상이 있으면 파일도 지운다(없는 파일을 지워도 오류가 아니다) · cloudVideo: 꼬리표 붙은 이름까지 지우려고
+export async function markDeleted(id, cloudVideo = null) {
   check(await client.from(TABLE).upsert({ user_id: user.id, entry_id: id, entry: {}, clip: null, deleted: true }, { onConflict: 'user_id,entry_id' }));
-  try { check(await client.storage.from(BUCKET).remove(['video/mp4', 'video/webm'].map((t) => videoPath(user.id, id, t)))); } catch (err) { console.warn('[motion] 올린 영상을 지우지 못함', err); }
+  const paths = ['video/mp4', 'video/webm'].map((t) => videoPath(user.id, id, t)).concat(cloudVideo && cloudVideo.path ? [cloudVideo.path] : []);
+  await removeVideoFiles(paths);
+}
+
+// 서버의 영상 파일을 지운다(실패해도 기록 잇기는 계속)
+export async function removeVideoFiles(paths) {
+  try { check(await client.storage.from(BUCKET).remove(paths)); } catch (err) { console.warn('[motion] 올린 영상을 지우지 못함', err); }
 }
 
 // 다시 만든 영상(cut.js 결과)을 올린다 → 기록에 붙일 표시 { path, type, size, offset, width, height }
-export async function uploadVideo(id, cut) {
-  const path = videoPath(user.id, id, cut.type), type = baseType(cut.type);
+export async function uploadVideo(id, cut, tag = '') {
+  const path = videoPath(user.id, id, cut.type, tag), type = baseType(cut.type);
   check(await client.storage.from(BUCKET).upload(path, cut.blob, { contentType: type, upsert: true }));
   return { path, type, size: cut.blob.size, offset: Math.round(cut.offset * 1000) / 1000, width: cut.width, height: cut.height };
 }

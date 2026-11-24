@@ -37,6 +37,12 @@ export function offsetFrom(samples) {
 export const shiftClip = (clip, offset) => (offset ? { ...clip, start: clip.start - offset } : clip);
 export const shiftRange = (range, offset) => (offset && range ? { start: range.start - offset, end: range.end - offset } : range);
 
+// 이보다 작은 영상 파일은 장면이 하나도 없는 빈 파일로 본다(빈 webm 머리말만 110바이트였다)
+export const MIN_VIDEO_BYTES = 2000;
+// 담은 장면이 이보다 적으면(초당) 실패로 본다 — 탭이 가려져 브라우저가 재생 · 그리기를 멈춘 경우
+const MIN_DRAW_FPS = 5, TRIES = 3;
+export const enoughFrames = (frames, seconds) => frames >= Math.max(3, Math.floor(seconds * MIN_DRAW_FPS));
+
 export const canCut = (win = window) => Boolean(win.MediaRecorder && win.HTMLCanvasElement && win.HTMLCanvasElement.prototype.captureStream);
 
 const once = (target, name) => new Promise((resolve) => target.addEventListener(name, resolve, { once: true }));
@@ -47,9 +53,27 @@ function loaded(video) {
   });
 }
 
+// 탭이 보일 때까지 기다린다(가려진 탭에서는 크롬이 영상 재생 · 화면 그리기를 멈춰 빈 영상이 된다)
+async function whenVisible() {
+  while (document.hidden) await once(document, 'visibilitychange');
+}
+
 // blob(원본 영상) · range(분석 구간) → { blob, type, offset, width, height, seconds } · 못 만들면 예외
+//  · 녹화하는 동안 탭이 가려졌거나 장면을 거의 못 담았으면, 탭이 다시 보일 때 처음부터 다시 한다(최대 TRIES 번)
 export async function cutVideo(blob, range) {
   if (!canCut()) throw new Error('이 브라우저는 영상을 다시 만들지 못함');
+  let last = null;
+  for (let k = 0; k < TRIES; k++) {
+    await whenVisible();
+    const r = await cutOnce(blob, range);
+    if (!r.hidden && enoughFrames(r.frames, r.seconds) && r.blob.size >= MIN_VIDEO_BYTES) return r;
+    last = r;
+    console.warn('[motion] 영상 구간을 다시 만든다', { hidden: r.hidden, frames: r.frames, bytes: r.blob.size });
+  }
+  throw new Error(`영상 장면을 담지 못함(담은 장면 ${last ? last.frames : 0}개 · 녹화 중 탭이 가려졌을 수 있음)`);
+}
+
+async function cutOnce(blob, range) {
   const url = URL.createObjectURL(blob);
   const video = Object.assign(document.createElement('video'), { muted: true, playsInline: true, preload: 'auto', src: url });
   // 화면에 붙여 두어야 어느 브라우저에서나 프레임을 풀어 준다(보이지는 않게)
@@ -67,6 +91,7 @@ export async function cutVideo(blob, range) {
     const opts = { videoBitsPerSecond: bitrateFor(seconds) };
     const recorder = new MediaRecorder(stream, mime ? { ...opts, mimeType: mime } : opts);
     const chunks = [], samples = [];
+    let frames = 0, hidden = false;
     recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = once(recorder, 'stop');
     recorder.start();
@@ -75,9 +100,12 @@ export async function cutVideo(blob, range) {
     samples.push(span.start);
     await new Promise((resolve) => {
       let done = false;
-      const finish = () => { if (!done) { done = true; video.pause(); resolve(); } };
+      const finish = () => { if (!done) { done = true; video.pause(); document.removeEventListener('visibilitychange', onHide); resolve(); } };
+      const onHide = () => { if (document.hidden) { hidden = true; finish(); } };   // 가려지면 바로 멈추고 다시 한다
+      document.addEventListener('visibilitychange', onHide);
       const draw = (mediaTime) => {
         ctx.drawImage(video, 0, 0, width, height);
+        frames++;
         samples.push(mediaTime - (performance.now() - t0) / 1000);
         if (mediaTime >= span.end) finish();
       };
@@ -96,8 +124,7 @@ export async function cutVideo(blob, range) {
     await stopped;
     for (const t of stream.getTracks()) t.stop();
     const type = recorder.mimeType || mime || 'video/webm', out = new Blob(chunks, { type });
-    if (!out.size) throw new Error('다시 만든 영상이 비었음');
-    return { blob: out, type, offset: offsetFrom(samples), width, height, seconds };
+    return { blob: out, type, offset: offsetFrom(samples), width, height, seconds, frames, hidden };
   } finally {
     video.pause();
     video.removeAttribute('src'); video.load(); video.remove();

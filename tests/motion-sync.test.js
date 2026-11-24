@@ -7,7 +7,7 @@
   var memStore = function (init) { var m = {}; if (init) m.sl_motion_log = JSON.stringify(init); return { getItem: function (k) { return k in m ? m[k] : null; }, setItem: function (k, v) { m[k] = String(v); } }; };
 
   test('(준비) 기록 잇기 · 저장 모듈을 불러온다 (서버 요청 없이)', async function () {
-    S = await import('/js/motion/sync.js?v=3'); ST = await import('/js/motion/store.js?v=4');
+    S = await import('/js/motion/sync.js?v=4'); ST = await import('/js/motion/store.js?v=4');
     ok(S.planSync && S.encodeClip && S.decodeClip && S.toCloudEntry && S.fromCloudRow && S.hasSession && ST.mergeEntries, '모듈 로드');
   });
 

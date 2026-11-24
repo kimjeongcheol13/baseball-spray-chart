@@ -4,7 +4,7 @@ import { cutVideo, canCut } from './cut.js?v=1';
 import { loadLog, mergeEntries, removeEntry, updateEntry } from './store.js?v=4';
 import { getClip, putClip, getVideo, putVideo } from './db.js?v=1';
 import { el, state } from './page.js?v=3';
-import { renderLog, pruneLibrary } from './page-records.js?v=3';
+import { renderLog, pruneLibrary } from './page-records.js?v=4';
 import { track } from './usage.js?v=1';
 
 const SEND_KEY = 'sl_motion_send_video';   // 「영상도 다른 기기로 보내기」를 껐는지(이 기기에서만 기억)
@@ -113,6 +113,23 @@ async function sendOldVideos(list, btn, note) {
   btn.remove();
   note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요).` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
   renderLog();
+}
+
+// 「영상 다시 고르기」로 붙여 이 기기에 저장한 영상을 다른 기기로도 보낸다(로그인 · 「영상도 다른 기기로 보내기」 켜짐일 때만) → 알림 문장 | ''
+export async function syncAttached(id) {
+  const e = loadLog().find((x) => x.id === id), file = state.file;
+  if (!wantVideo() || !e || !file || !e.range || e.cloudVideo) return '';
+  try {
+    const cut = await cutVideo(file.blob, e.range);
+    const cloudVideo = await uploadVideo(id, cut);
+    updateEntry(id, { cloudVideo });
+    await uploadEntry({ ...e, cloudVideo }, null);
+    renderLog();
+    return `다른 기기로도 보냈어요(${MB1(cloudVideo.size)}MB · 분석한 구간만).`;
+  } catch (err) {
+    console.warn('[motion] 붙인 영상을 보내지 못함', err);
+    return '다른 기기로는 보내지 못했어요.';
+  }
 }
 
 // 불러올 영상: 이 기기에 저장한 것 → 없으면 다른 기기에서 보낸 것을 받아 이 기기에 넣는다 → { blob, name, size, sig, offset } | null

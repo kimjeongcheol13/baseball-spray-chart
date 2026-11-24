@@ -3,7 +3,7 @@
 //  · 화면 연결은 영역별로 나눴다: page.js(공통 상태) · page-input.js(영상 넣기) · page-core.js(재생 · 분석) · page-find.js(순간 찾기)
 //    · page-results.js(결과) · page-records.js(기록 · 비교 · 추이). 여기는 버튼을 잇고 시작만 한다
 //  · 모듈 파일을 고치면 그 파일을 부르는 import 의 ?v= 와 motion.html 의 app.js?v= 를 함께 올린다
-import { startSync, rememberSendVideo } from './page-sync.js?v=3';
+import { startSync, rememberSendVideo } from './page-sync.js?v=4';
 import { startUsage, track } from './usage.js?v=1';
 import { attachDrop } from './drop.js?v=1';
 import { canCapture } from './capture.js?v=1';
@@ -12,7 +12,7 @@ import { openVideo, onVideoReady, setRangeEdge, CAPTURE_TEXT, openLink, toggleCa
 import { currentIndex, seekToFrame, stepFrame, fitCanvas, draw, setRegion, startPicking, onPickDown, onPickMove, onPickUp, tick, toggleMotion, renderMotionButton, playLoop, togglePlay, analyze, compute } from './page-core.js?v=1';
 import { setView3d } from './page-results.js?v=1';
 import { findMoments_ } from './page-find.js?v=1';
-import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=3';
+import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=4';
 
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {

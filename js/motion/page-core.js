@@ -11,7 +11,7 @@ import { dropStrays } from './track.js?v=3';
 import { NO_WRAPPED_TEXT, ROLE_TEXT, DOWNLOAD_MB, $, el, ctx, mirror, state, sec, options, setStatus, setBusy } from './page.js?v=3';
 import { renderRange } from './page-input.js?v=2';
 import { renderResult } from './page-results.js?v=1';
-import { MB } from './page-records.js?v=3';
+import { MB } from './page-records.js?v=4';
 
 // ── 재생 · 프레임 ───────────────────────────────────────────
 // 지금 영상 위치에 해당하는 프레임 번호. 분석 구간 밖이면 null

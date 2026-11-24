@@ -7,7 +7,7 @@ import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
-import { syncSaved, syncRemoved, clipFor, videoFor } from './page-sync.js?v=3';
+import { syncSaved, syncRemoved, clipFor, videoFor, syncAttached } from './page-sync.js?v=4';
 import { shiftRange } from './cut.js?v=1';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
@@ -108,6 +108,7 @@ export async function loadEntry(e) {
   const frames = unpackFrames(clip), offset = video ? video.offset : 0;   // 다른 기기에서 받은 영상은 분석 구간만 담겨 있어 시간을 그만큼 당긴다
   state.clip = { frames, start: clip.start - offset, hz: clip.hz, aspect: clip.aspect, missing: frames.filter((f) => !f.world).length };
   state.restore = { range: shiftRange(e.range, offset), eventIndex: clip.eventIndex, name: e.name };
+  state.loadedId = e.id; state.attaching = null;   // 「영상 다시 고르기」로 붙인 영상을 이 기록에 저장할 때 쓴다
   state.still = null;
   el.player.value = e.name || '';
   if (video) { state.file = { blob: video.blob, name: video.name, size: video.size, sig: video.sig }; showVideo(video.blob); return; }
@@ -121,7 +122,7 @@ export async function loadEntry(e) {
 
 // 영상 없이 불러온 기록(다른 기기에서 영상 없이 넘어왔거나, 이 기기에 영상을 넣지 못한 기록)일 때 화면 위에 띄우는 말
 export const NO_VIDEO_TEXT = '영상 없이 넘어온 기록이라 뼈대만 보여요 · 아래 안내를 봐 주세요';
-export const NO_VIDEO_HELP = '영상을 찍은 기기(휴대폰 등)에서 동작 분석을 열고 「이 기기 영상 … 다른 기기로 보내기」를 누른 뒤 이 페이지를 새로고침하면 영상도 보여요. 영상 파일이 이 기기에 있으면 「영상 다시 고르기」로 바로 붙일 수도 있어요.';
+export const NO_VIDEO_HELP = '영상은 그 기록을 저장한 기기 · 브라우저 안에만 있어요(같은 컴퓨터라도 크롬 · 엣지 · 웨일은 저장소가 따로예요 · 바탕화면 바로가기는 기본 브라우저로 열려요). 그 브라우저에서 동작 분석을 열고 「이 기기 영상 … 다른 기기로 보내기」를 누른 뒤 여기서 새로고침하면 영상도 보여요. 영상 파일이 이 컴퓨터에 있으면 「영상 다시 고르기」로 붙여도 되고, 붙인 영상은 이 기록에 저장돼요.';
 
 // 불러온 기록을 화면에 올린다(영상이 준비됐거나, 영상 없이 볼 때)
 export function finishLoad() {
@@ -139,6 +140,22 @@ export function finishLoad() {
   else if (v.duration + 0.05 < range.end) setStatus('고른 영상이 저장할 때의 구간보다 짧아요. 다른 영상일 수 있어요.', true);
   else setStatus(`${who}기록을 불러왔어요. 영상과 분석을 함께 볼 수 있어요.`);
   el.stageCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const attaching = state.attaching;
+  state.attaching = null;
+  if (attaching && hasVideo && v.duration + 0.05 >= range.end) keepAttached(attaching);
+}
+
+// 「영상 다시 고르기」로 붙인 영상을 그 기록에 저장한다 — 전에는 그때만 보이고 다음에 불러오면 다시 사라졌다
+//  · 로그인했고 「영상도 다른 기기로 보내기」가 켜져 있으면 다른 기기로도 보낸다(page-sync.js)
+async function keepAttached(id) {
+  setStatus('붙인 영상을 이 기록에 저장하는 중…');
+  const saved = await saveVideo();
+  if (!saved.ref) { setStatus(`${saved.why} 지금만 영상과 함께 보여요.`, true); return; }
+  updateEntry(id, { video: saved.ref });
+  renderLog();
+  setStatus('영상을 이 기록에 저장했어요. 다음에 불러올 때도 영상이 함께 나와요.');
+  const sent = await syncAttached(id);
+  if (sent) setStatus(`영상을 이 기록에 저장했어요. 다음에 불러올 때도 영상이 함께 나와요. ${sent}`);
 }
 
 // 영상 없이 불러온 기록에 영상을 다시 붙인다
@@ -146,6 +163,7 @@ export function attachVideo(file) {
   const r = state.result;
   if (!file || !r || !state.clip) return;
   state.restore = { range: state.range, eventIndex: r.events.auto ? null : r.events.main, name: el.player.value.trim() };
+  state.attaching = state.loadedId || null;
   state.file = fileRef(file);
   state.still = null;
   showVideo(file);

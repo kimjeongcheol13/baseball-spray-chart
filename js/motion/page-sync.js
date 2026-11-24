@@ -1,10 +1,10 @@
 // 동작 분석 화면 — 기록 잇기(sync.js)를 화면에 연결한다: 열 때 맞추기 · 저장 · 지우기 · 다시 보기 데이터 · 영상 받기
-import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo, unsentVideos, brokenCloudVideo, removeVideoFiles } from './sync.js?v=4';
+import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fetchClip, planSync, maskEmail, uploadVideo, fetchVideo, unsentVideos, brokenCloudVideo, removeVideoFiles, videoUsage, hasRoom, usageText, isQuotaError, VIDEO_QUOTA } from './sync.js?v=5';
 import { cutVideo, canCut, MIN_VIDEO_BYTES } from './cut.js?v=2';
 import { loadLog, mergeEntries, removeEntry, updateEntry } from './store.js?v=4';
 import { getClip, putClip, getVideo, putVideo } from './db.js?v=1';
 import { el, state } from './page.js?v=3';
-import { renderLog, pruneLibrary } from './page-records.js?v=5';
+import { renderLog, pruneLibrary } from './page-records.js?v=6';
 import { track } from './usage.js?v=1';
 
 const SEND_KEY = 'sl_motion_send_video';   // 「영상도 다른 기기로 보내기」를 껐는지(이 기기에서만 기억)
@@ -13,6 +13,7 @@ const TEXT = {
   off: '「SprayLab 앱」에서 로그인하면 저장한 기록이 휴대폰 · 컴퓨터 사이에 이어져요. 영상은 로그인한 뒤 저장할 때 고를 수 있어요.',
   busy: '다른 기기와 기록을 맞추는 중…',
   fail: '다른 기기와 기록을 맞추지 못했어요. 이 기기에는 그대로 저장돼 있고, 다음에 열 때 다시 맞춰요.',
+  full: `영상 저장 한도(${VIDEO_QUOTA.count}개 · ${Math.round(VIDEO_QUOTA.bytes / 1e6)}MB)가 찼어요. 오래된 기록을 지우면 그 영상도 지워져 다시 보낼 수 있어요(숫자 · 관절 좌표는 그대로 이어져요).`,
   keepTab: '영상을 보내는 동안 이 탭을 화면에 띄워 두세요(다른 탭 · 창으로 옮기면 브라우저가 녹화를 멈춰요).',
 };
 
@@ -37,9 +38,10 @@ export async function startSync() {
     if (plan.add.length || plan.remove.length || plan.patch.length) { renderLog(); await pruneLibrary(); }
     showSendVideo();
     for (const u of plan.upload) await uploadEntry(u.entry, u.withClip ? await getClip(u.entry.id).catch(() => null) : null);
-    showSync(`${maskEmail(user.email)} 로 로그인됨 · 기록 ${loadLog().length}개가 다른 기기와 이어져 있어요. 「영상도 다른 기기로 보내기」를 켜고 저장한 기록은 영상(분석한 구간만)도 함께 보여요.`);
+    const usage = await videoUsage();
+    showSync(`${maskEmail(user.email)} 로 로그인됨 · 기록 ${loadLog().length}개가 다른 기기와 이어져 있어요. 「영상도 다른 기기로 보내기」를 켜고 저장한 기록은 영상(분석한 구간만)도 함께 보여요.${usage ? ` (${usageText(usage)})` : ''}${hasRoom(usage) ? '' : ` ${TEXT.full}`}`);
     track('motion_sync', { added: plan.add.length, removed: plan.remove.length, uploaded: plan.upload.length });
-    offerOldVideos();
+    if (hasRoom(usage)) offerOldVideos();
   } catch (err) {
     console.warn('[motion] 다른 기기와 기록을 맞추지 못함', err);
     showSync(TEXT.fail);
@@ -66,6 +68,7 @@ export async function syncSaved(id) {
   const file = state.file;
   if (!wantVideo() || !file || !e.range) return;
   const before = el.saveMsg.textContent;
+  if (!hasRoom(await videoUsage())) { el.saveMsg.textContent = `${before} ${TEXT.full}`; return; }
   el.saveMsg.textContent = `${before} 영상을 다른 기기로 보내는 중…(분석한 구간만 · 이 탭을 띄워 두세요)`;
   try {
     const cut = await cutVideo(file.blob, e.range);
@@ -77,7 +80,7 @@ export async function syncSaved(id) {
     renderLog();
   } catch (err) {
     console.warn('[motion] 영상을 보내지 못함', err);
-    el.saveMsg.textContent = `${before} 영상은 다른 기기로 보내지 못했어요(기록과 좌표는 보냈어요). ${TEXT.keepTab}`;
+    el.saveMsg.textContent = `${before} ${isQuotaError(err) ? TEXT.full : `영상은 다른 기기로 보내지 못했어요(기록과 좌표는 보냈어요). ${TEXT.keepTab}`}`;
   }
 }
 
@@ -97,8 +100,10 @@ function offerOldVideos() {
 async function sendOldVideos(list, btn, note) {
   btn.disabled = true;
   let sent = 0, failed = 0;
+  let full = false;
   for (const e of list) {
     note.textContent = ` 보내는 중… ${sent + failed + 1}/${list.length}`;
+    if (!hasRoom(await videoUsage())) { full = true; break; }
     try {
       const v = await getVideo(e.video.sig);
       if (!v) { failed++; continue; }
@@ -110,12 +115,13 @@ async function sendOldVideos(list, btn, note) {
       sent++;
     } catch (err) {
       console.warn('[motion] 전에 저장한 영상을 보내지 못함', err);
+      if (isQuotaError(err)) { full = true; break; }
       failed++;
     }
   }
-  track('motion_video_backfill', { sent, failed });
+  track('motion_video_backfill', { sent, failed, full });
   btn.remove();
-  note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요). 페이지를 새로고침하면 다시 보낼 수 있어요.` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
+  note.textContent = ` 영상 ${sent}개를 보냈어요.${failed ? ` ${failed}개는 보내지 못했어요(이 기기에 영상이 없거나 연결이 끊겼어요). 페이지를 새로고침하면 다시 보낼 수 있어요.` : ''}${full ? ` ${TEXT.full}` : ''} 다른 기기에서 페이지를 새로고침하면 보여요.`;
   renderLog();
 }
 
@@ -123,6 +129,7 @@ async function sendOldVideos(list, btn, note) {
 export async function syncAttached(id) {
   const e = loadLog().find((x) => x.id === id), file = state.file;
   if (!wantVideo() || !e || !file || !e.range || e.cloudVideo) return '';
+  if (!hasRoom(await videoUsage())) return TEXT.full;
   try {
     const cut = await cutVideo(file.blob, e.range);
     const cloudVideo = await uploadVideo(id, cut);
@@ -132,7 +139,7 @@ export async function syncAttached(id) {
     return `다른 기기로도 보냈어요(${MB1(cloudVideo.size)}MB · 분석한 구간만).`;
   } catch (err) {
     console.warn('[motion] 붙인 영상을 보내지 못함', err);
-    return '다른 기기로는 보내지 못했어요.';
+    return isQuotaError(err) ? TEXT.full : '다른 기기로는 보내지 못했어요.';
   }
 }
 

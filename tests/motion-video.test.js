@@ -4,7 +4,7 @@
   var C, S;
 
   test('(준비) 영상 줄이기 · 기록 잇기 모듈을 불러온다 (서버 요청 없이)', async function () {
-    C = await import('/js/motion/cut.js?v=2'); S = await import('/js/motion/sync.js?v=4');
+    C = await import('/js/motion/cut.js?v=2'); S = await import('/js/motion/sync.js?v=5');
     ok(C.outputSize && C.enoughFrames && C.bitrateFor && C.cutRange && C.offsetFrom && C.shiftClip && C.shiftRange && S.videoPath && S.baseType, '모듈 로드');
   });
 
@@ -69,6 +69,13 @@
     var r = { start: 0, end: 3 };
     var log = [{ id: 1, hasData: true, range: r, video: { sig: 'a' }, cloudVideo: { path: 'u/1.webm', size: 110 } }, { id: 2, hasData: true, range: r, video: { sig: 'b' }, cloudVideo: { path: 'u/2.webm', size: 400000 } }];
     eq(S.unsentVideos(log).map(function (e) { return e.id; }), [1], '빈 파일만 다시');
+  });
+
+  test('저장 한도: 100개 · 100MB(sql/20 과 같은 숫자) · 사용량 문장 · 서버가 막은 오류 알아보기', async function () {
+    eq(S.VIDEO_QUOTA, { count: 100, bytes: 100000000 }, '한도');
+    eq([S.hasRoom({ count: 99, bytes: 5e6 }), S.hasRoom({ count: 100, bytes: 5e6 }), S.hasRoom({ count: 3, bytes: 100000000 }), S.hasRoom(null)], [true, false, false, true], 'hasRoom(모르면 막지 않는다)');
+    eq(S.usageText({ count: 8, bytes: 7600000 }), '영상 8개 · 7.6MB / 100MB', 'usageText');
+    eq([S.isQuotaError({ statusCode: '403', message: 'x' }), S.isQuotaError({ message: 'new row violates row-level security policy' }), S.isQuotaError(new Error('network')), S.isQuotaError(null)], [true, true, false, false], 'isQuotaError');
   });
 
   test('올릴 칸: 영상 표시(cloudVideo)는 올리고, 이 기기 영상 정보(video)는 올리지 않는다', async function () {

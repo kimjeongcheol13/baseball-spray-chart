@@ -13,8 +13,8 @@ import { currentIndex, seekToFrame, stepFrame, fitCanvas, draw, setRegion, start
 import { setView3d } from './page-results.js?v=2';
 import { findMoments_ } from './page-find.js?v=2';
 import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=7';
-import { exportJson } from './page-export.js?v=3';
-import { startCoach } from './page-coach.js?v=3';
+import { exportJson } from './page-export.js?v=4';
+import { startCoach } from './page-coach.js?v=4';
 import { startMirrorStill } from './mirror-still.js?v=2';
 
 // ── 연결 ───────────────────────────────────────────────────

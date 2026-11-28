@@ -6,7 +6,7 @@
 import { summarize } from './metrics.js?v=2';
 import { runCoach, checkMeasurements, compareSession, candidatesFor, usableCards, evidenceText, unitText, noPrevReason, SEQUENCE_KEY } from './coach.js?v=3';
 import { MODEL, gpuReady, modelCached, loadModel, ask } from './coach-llm.js?v=1';
-import { currentExport } from './page-export.js?v=3';
+import { currentExport } from './page-export.js?v=4';
 import { loadEvidence, evidenceDetails, mountReferences } from './evidence.js?v=1';
 import { loadLog } from './store.js?v=4';
 import { state, el, node } from './page.js?v=4';
@@ -80,12 +80,13 @@ async function prepareAi() {
   return engine ? { llm: ask, note: null } : { llm: null, note: 'AI 를 불러오지 못해(메모리 부족 등) AI 없이 받았어요.' };
 }
 
-export async function runCoachNow() {
+// alias = 같은 선수로 볼 다른 저장 이름(결과 카드의 「「이름」 기록과 견주기」 버튼). 저장한 기록 이름은 바꾸지 않는다
+export async function runCoachNow(alias = []) {
   const r = state.result;
   if (!r) return;
   btn.disabled = true; msg.textContent = '숫자를 모으는 중…';
   try {
-    const verify = verifyMode(), got = await currentExport(), cards = usableCards(await cardsFor(r.mode), verify);
+    const verify = verifyMode(), got = await currentExport(new Date(), alias), cards = usableCards(await cardsFor(r.mode), verify);
     const all = got.data.sessions, at = all.findIndex((s) => s.session_id === got.currentId);
     const sessions = (at < 0 ? all : all.slice(0, at + 1)).filter((s) => s.motion_type === TYPE[r.mode]);
     const snapshot = { player: { id: got.playerId }, sessions };
@@ -98,11 +99,12 @@ export async function runCoachNow() {
     const res = await runCoach({ snapshot, cards, llm: ai.llm });
     if (ai.note) { const s3 = res.steps.find((s) => s.n === 3); if (s3) s3.lines.unshift(ai.note); }
     // 지난 기록이 없으면 왜 없는지(이름 칸 비었음 · 첫 기록을 열었음 · 이름이 다름)를 결과 카드와 2단계에 적는다
-    const name = el.player.value.trim(), note = sessions.length > 1 ? null : noPrevReason({ name, motion: r.mode === 'bat' ? '타격' : '투구',
-      later: at < 0 ? 0 : all.slice(at + 1).filter((s) => s.motion_type === TYPE[r.mode]).length,
-      others: [...new Set(loadLog().filter((e) => e.mode === r.mode).map((e) => (e.name || '').trim()).filter((n) => n && n !== name))] });
+    const name = el.player.value.trim(), others = [...new Set(loadLog().filter((e) => e.mode === r.mode).map((e) => (e.name || '').trim()).filter((n) => n && n !== name))];
+    const linked = alias.length ? `${alias.map((n) => `「${n}」`).join(', ')} 기록을 같은 선수로 보고 견줬어요(저장한 이름은 그대로예요).` : null;
+    const note = sessions.length > 1 ? linked : noPrevReason({ name, motion: r.mode === 'bat' ? '타격' : '투구', others,
+      later: at < 0 ? 0 : all.slice(at + 1).filter((s) => s.motion_type === TYPE[r.mode]).length });
     if (note) { const s2 = res.steps.find((s) => s.n === 2); if (s2) s2.lines.splice(1, 0, note); }
-    const saved = { at: new Date().toISOString(), verify, snapshot, status: res.status, source: res.source, summary: res.summary, note, steps: res.steps,
+    const saved = { at: new Date().toISOString(), verify, snapshot, status: res.status, source: res.source, summary: res.summary, note, alias, others: sessions.length > 1 ? [] : others.slice(0, 5), steps: res.steps,
       picked: res.picked.map((p) => ({ card: p.card, reason: p.reason, numbers: p.numbers_used.map((k) => numberOf(cur, res.findings, k)) })) };
     keepResult(sigOf(r), saved);
     await withEvidence();
@@ -128,6 +130,12 @@ function render(saved) {
   if (saved.verify) card.append(node('p', 'mo-coach-draft', '검증용 초안 — 지도자 확인 전이에요'));
   card.append(node('p', 'mo-coach-summary', saved.summary));
   if (saved.note) card.append(node('p', 'mo-drill-note', saved.note));
+  // 이름만 달라 못 견줬으면: 같은 선수인 저장 이름을 눌러 그 기록과 견준다(그 이름이 지금 이름보다 앞서 저장한 기록과만 견줘진다)
+  if (saved.others && saved.others.length) {
+    const pick = node('div', 'mo-actions');
+    pick.append(...saved.others.map((n) => { const b = node('button', 'mo-btn', `「${n}」 기록과 견주기`); b.type = 'button'; b.addEventListener('click', () => runCoachNow([n])); return b; }));
+    card.append(node('p', 'mo-hint', '같은 선수라면 아래 이름을 눌러 그 기록과 견줘요. 저장한 이름은 바뀌지 않아요.'), pick);
+  }
   for (const p of saved.picked) {
     const sec = node('section', 'mo-drill'), ol = node('ol');
     ol.append(...p.card.how.map((t) => node('li', '', t)));
@@ -251,7 +259,7 @@ function savePng(saved) {
 }
 
 export function startCoach() {
-  btn.addEventListener('click', runCoachNow);
+  btn.addEventListener('click', () => runCoachNow());
   if (verifyMode()) document.body.dataset.verify = '1';
   // 결과 화면(숫자 칸)이 새로 그려질 때마다 버튼 · 지난 결과 · 「이 앱이 참고한 연구」를 맞춘다 — page-results.js 를 고치지 않고 따라간다
   new MutationObserver(() => { refreshCoach(); mountReferences($('refNote'), state.result && state.result.mode); }).observe($('tiles'), { childList: true });

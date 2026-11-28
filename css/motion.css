@@ -224,3 +224,29 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 @media (max-width: 720px) {
   .mo-novideo { left: 6px; top: 6px; max-width: 40%; padding: 6px 8px; font-size: 11px; line-height: 1.4; }
 }
+/* AI 훈련 코치 (page-coach.js) — 숫자 칸 아래 「훈련 방향 받기」 · 결과 카드 · 과정 보기 · 검증 모드 · 처음 동의 창 */
+.mo-coach { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--mo-line); }
+.mo-coach #btnCoach .mo-beta { margin-left: 8px; background: rgba(0, 0, 0, .25); color: #ffd58a; }
+.mo-coach-progress { width: 100%; height: 8px; margin-top: 8px; accent-color: var(--mo-blue); }
+.mo-coach-card { margin-top: 12px; padding: 16px; border-radius: var(--mo-r-card); border: 1px solid var(--mo-line); background: var(--mo-raised); display: grid; gap: 10px; }
+.mo-coach-card p { margin: 0; }
+.mo-coach-draft { justify-self: start; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: var(--mo-amber); background: rgba(245, 158, 11, .12); }
+.mo-coach-summary { font-size: 16px; font-weight: 700; color: var(--mo-ink); line-height: 1.5; }
+.mo-drill { padding: 12px; border-radius: var(--mo-r-ctl); background: var(--mo-card); border: 1px solid var(--mo-line); display: grid; gap: 6px; }
+.mo-drill h4, .mo-coach-sub { margin: 0; font-size: 15px; color: var(--mo-ink); }
+.mo-drill ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; color: var(--mo-ink2); }
+.mo-drill-why { font-size: 14px; color: var(--mo-ink2); }
+.mo-drill-note { font-size: 13px; color: var(--mo-ink3); }
+.mo-coach-nums { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; color: var(--mo-ink2); font-variant-numeric: tabular-nums; }
+.mo-coach-foot { font-size: 14px; font-weight: 600; color: var(--mo-ink); }
+.mo-coach-step { margin: 8px 0; }
+.mo-coach-step b { display: block; margin-bottom: 4px; color: var(--mo-ink); }
+.mo-verdict { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.mo-verdict-label { font-size: 13px; font-weight: 600; color: var(--mo-ink3); }
+.mo-verdict .mo-btn[aria-pressed="true"] { border-color: var(--mo-blue); background: rgba(75, 140, 245, .16); }
+.mo-verify { margin-top: 12px; padding: 16px; border-radius: var(--mo-r-card); border: 1px dashed var(--mo-amber); display: grid; gap: 8px; }
+.mo-verify p { margin: 0; }
+.mo-dialog { max-width: min(440px, calc(100vw - 32px)); padding: 20px; border-radius: var(--mo-r-card); border: 1px solid var(--mo-line2); background: var(--mo-card); color: var(--mo-ink); }
+.mo-dialog::backdrop { background: rgba(0, 0, 0, .6); }
+.mo-dialog h3 { margin: 0 0 8px; font-size: 16px; }
+.mo-dialog p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--mo-ink2); }

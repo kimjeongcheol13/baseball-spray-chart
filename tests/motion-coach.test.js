@@ -18,7 +18,7 @@
   var ENDS = /요\.(\s*\([^)]*\))?$|요\s*\([^)]*\)\.$/; // 「~요.」 · 끝에 괄호 덧붙임 허용(「~요(…).」 · 「~요. (…)」)
 
   test('(준비) 코치 모듈 · 카드 파일 · 근거 목록을 불러온다', async function () {
-    C = await import('/js/motion/coach.js?v=2');
+    C = await import('/js/motion/coach.js?v=3');
     X = await import('/js/motion/export.js?v=2');
     E = await import('/js/motion/evidence.js?v=1');
     bat = (await (await fetch('/assets/motion/drills_batting.json?v=2')).json()).cards;
@@ -186,5 +186,14 @@
     eq(p.querySelectorAll('a').length, count('pitching') + count('measurement'), '투구 = 투구 + 측정 정확도');
     ok(b.textContent.indexOf(ev.measurement_notes.can_say[0]) >= 0 && b.textContent.indexOf(ev.measurement_notes.cannot_say[0]) >= 0, '말해도 되는 것 · 안 되는 것');
     eq(E.referenceList('bat', { papers: [] }), null, '빈 목록이면 그리지 않는다');
+  });
+test('지난 기록을 못 찾은 이유 — 이름 칸 빔 · 첫 기록을 열었음 · 이름이 다름', function () {
+    ok(/이름 칸이 비어/.test(C.noPrevReason({ name: '', motion: '투구' })), '이름 칸이 비면 그 이유');
+    ok(/첫 투구 기록/.test(C.noPrevReason({ name: '오승환', later: 1, motion: '투구' })), '나중 기록이 있으면 첫 기록을 열었다고');
+    var t = C.noPrevReason({ name: '오승환', others: ['오승환 삼성', '오승환(세인트루이스)'], motion: '투구' });
+    ok(/「오승환」 이름으로 저장한 다른 투구 기록이 없어요/.test(t) && t.indexOf('「오승환 삼성」, 「오승환(세인트루이스)」') >= 0, '다른 이름 목록');
+    ok(!/저장된 다른 이름/.test(C.noPrevReason({ name: '오승환', motion: '투구' })), '다른 이름이 없으면 목록 줄 없음');
+    eq(C.noPrevReason({ name: 'a', others: ['b', 'c', 'd', 'e', 'f', 'g'] }).split('「').length - 2, 5, '이름은 5개까지');
+    ok([C.noPrevReason({ name: '' }), C.noPrevReason({ name: 'a', later: 2 }), C.noPrevReason({ name: 'a', others: ['b'] })].every(function (x) { return ENDS.test(x) || /」$/.test(x); }), '문장 끝');
   });
 })();

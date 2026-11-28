@@ -26,17 +26,26 @@ async function savedDetail(e) {
 
 const appVersion = () => { const s = document.querySelector('script[src*="motion/app.js"]'); return s ? new URL(s.src).searchParams.get('v') : null; };
 
-export async function exportJson() {
+// 지금 분석 + 같은 선수의 저장 기록 → { data(buildExport 결과), currentId(지금 분석의 session_id), playerId } | null
+//  · AI 훈련 코치(page-coach.js)도 이 스냅숏을 쓴다
+export async function currentExport(now = new Date()) {
   const r = state.result, c = state.clip;
-  if (!r || !c) return;
-  track('motion_export', { mode: r.mode });
-  const name = el.player.value.trim(), now = new Date();
+  if (!r || !c) return null;
+  const name = el.player.value.trim();
   const cur = { id: 'unsaved', at: now.toISOString(), name, mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level, order: r.metrics.sequence.order,
     metrics: summarize(r), spread: roundSpread(state.spread), range: { start: c.start, end: c.start + c.frames.length / c.hz } };
   const saved = samePlayer(loadLog(), name), match = savedMatch(saved, cur), entries = match ? saved : saved.concat(cur), details = {};
   for (const e of saved) if (e !== match) details[e.id] = await savedDetail(e);
   details[match ? match.id : cur.id] = { result: r, n: c.frames.length, width: el.video.videoWidth || null, height: el.video.videoHeight || null };
-  const id = playerIdFor(name), data = buildExport({ entries, details, playerId: id, version: appVersion(), now });
+  const playerId = playerIdFor(name);
+  return { data: buildExport({ entries, details, playerId, version: appVersion(), now }), currentId: String(match ? match.id : cur.id), playerId };
+}
+
+export async function exportJson() {
+  const now = new Date(), got = await currentExport(now);
+  if (!got) return;
+  track('motion_export', { mode: state.result.mode });
+  const { data, playerId: id } = got;
   const a = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   a.href = url; a.download = exportFileName(id, now); a.click();
   URL.revokeObjectURL(url);

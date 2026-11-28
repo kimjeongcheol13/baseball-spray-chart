@@ -1,7 +1,7 @@
-// SprayLab Service Worker v24
+// SprayLab Service Worker v25
 // 전략: HTML = 네트워크 우선 + 캐시 저장(오프라인 폴백용)
 //        CSS/JS/이미지 = stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE_NAME = 'spraylab-v255';
+const CACHE_NAME = 'spraylab-v256';
 
 // HTML 을 이만큼 기다려도 안 오면(신호가 아주 약할 때) 전에 열어 둔 같은 주소를 먼저 보여 준다 (받은 최신본은 그대로 캐시에 들어가 다음에 열 때 쓴다)
 const HTML_WAIT_MS = 3000;
@@ -68,6 +68,10 @@ self.addEventListener('fetch', function(e) {
   // Supabase API(GET 포함)는 SW 가 가로채지 않는다: 같은 URL 이라도 헤더(x-team-code · Authorization)에 따라 응답이 달라지는데
   // 아래 stale-while-revalidate 는 URL 만으로 캐시해 오래된(또는 권한 변경 직후의 빈) 응답을 먼저 돌려준다
   if (new URL(req.url).hostname.endsWith('.supabase.co')) return;
+
+  // 동작 분석 AI 훈련 코치의 모델 파일(수백 MB · Hugging Face · GitHub)은 SW 캐시에 넣지 않는다 — web-llm 이 자기 캐시(webllm/*)에 한 번만 넣는다
+  var host = new URL(req.url).hostname;
+  if (host === 'huggingface.co' || host === 'hf.co' || host.endsWith('.hf.co') || host.endsWith('.huggingface.co') || host === 'raw.githubusercontent.com') return;
 
   // HTML 네비게이션: 네트워크 우선, 성공 시 캐시에도 저장, 실패 시 캐시 폴백
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {

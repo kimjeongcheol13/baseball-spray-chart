@@ -13,7 +13,8 @@ import { currentIndex, seekToFrame, stepFrame, fitCanvas, draw, setRegion, start
 import { setView3d } from './page-results.js?v=1';
 import { findMoments_ } from './page-find.js?v=1';
 import { save, attachVideo, toggleDuel, renderLog, drawTrendNow, saveImage } from './page-records.js?v=6';
-import { exportJson } from './page-export.js?v=1';
+import { exportJson } from './page-export.js?v=2';
+import { startCoach } from './page-coach.js?v=1';
 
 // ── 연결 ───────────────────────────────────────────────────
 function bind() {
@@ -69,6 +70,7 @@ function bind() {
   for (const b of document.querySelectorAll('[data-duel-view]')) b.addEventListener('click', () => { if (state.duel) state.duel.setView(VIEWS[b.dataset.duelView][0], VIEWS[b.dataset.duelView][1]); });
   el.image.addEventListener('click', saveImage);
   document.getElementById('btnExport').addEventListener('click', exportJson);
+  startCoach();
   for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView3d(b.dataset.view));
   new ResizeObserver(fitCanvas).observe(el.stage);
   // 추이 그래프는 보이는 폭 그대로 그리므로 폭이 바뀌면 다시 그린다

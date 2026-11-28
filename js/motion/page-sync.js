@@ -3,8 +3,8 @@ import { hasSession, connect, signedIn, fetchRows, uploadEntry, markDeleted, fet
 import { cutVideo, canCut, MIN_VIDEO_BYTES } from './cut.js?v=2';
 import { loadLog, mergeEntries, removeEntry, updateEntry } from './store.js?v=4';
 import { getClip, putClip, getVideo, putVideo } from './db.js?v=1';
-import { el, state } from './page.js?v=3';
-import { renderLog, pruneLibrary } from './page-records.js?v=6';
+import { el, state } from './page.js?v=4';
+import { renderLog, pruneLibrary } from './page-records.js?v=7';
 import { track } from './usage.js?v=1';
 
 const SEND_KEY = 'sl_motion_send_video';   // 「영상도 다른 기기로 보내기」를 껐는지(이 기기에서만 기억)

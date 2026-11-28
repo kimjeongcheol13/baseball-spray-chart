@@ -1,47 +1,76 @@
 {
-  "version": 1,
+  "version": 2,
   "motion_type": "pitching",
-  "note": "팔 · 손목 지표(throwing_elbow_angle · arm_slot_angle)는 휴대폰 영상으로 정확히 재기 어려워 카드에 쓰지 않는다. 승인 절차는 docs/COACH.md",
+  "evidence_version": "2026-11-28",
+  "note": "팔 · 손목 지표(throwing_elbow_angle · arm_slot_angle)는 휴대폰 영상으로 정확히 재기 어려워 카드에 쓰지 않는다. when 은 하나라도 맞으면 후보가 된다. is = lower_than_last | higher_than_last | sequence_off. 참고 범위(below_ref · above_ref)로는 카드를 고르지 않는다 — 연구실 장비 값과 휴대폰 값은 장비가 달라 바로 견줄 수 없다(docs/EVIDENCE.md). evidence.refs = assets/motion/evidence.json 의 논문 id, evidence.level = 그 파일의 levels. 승인 절차는 docs/COACH.md",
   "cards": [
     {
       "id": "pitch_hip_turn",
       "motion_type": "pitching",
       "title": "하체부터 돌리기 — 골반 회전",
       "when": [
-        { "metric": "pelvis_peak_velocity", "is": "below_ref" },
-        { "metric": "pelvis_peak_velocity", "is": "lower_than_last" }
+        {
+          "metric": "pelvis_peak_velocity",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "골반이 도는 속도가 참고 범위나 지난 기록보다 낮게 나왔어요. 앞발이 닿은 뒤 골반을 힘 있게 돌리는 연습이 도움이 될 수 있어요.",
+      "why": "골반이 도는 속도가 지난 기록보다 낮아졌어요. 앞발이 닿은 뒤 골반을 힘 있게 돌리는 느낌을 다시 살려 보는 연습이에요.",
       "how": [
         "공 없이 투구 자세로 앞발을 내디딘 뒤, 골반을 포수 쪽으로 돌리는 동작만 10번 해요.",
         "수건을 쥐고 같은 동작으로 섀도 피칭 10번을 해요.",
         "가까운 거리 캐치볼에서 그 느낌을 살려 10개 던져요."
       ],
       "caution": "투구 수와 휴식은 지도자와 정해요. 몸이 불편하면 멈추고 지도자에게 알려 주세요.",
-      "evidence": { "status": "draft", "source": "참고 범위: Dowling 외 2022 (Orthop J Sports Med) https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/" }
+      "evidence": {
+        "status": "draft",
+        "level": "mixed",
+        "summary": "프로 투수 287명 연구에서 골반 순서가 어긋난 그룹은 골반 회전이 더 느렸어요. 하지만 프로 투수 157명 연구에서는 구속이 조금 더 빨랐던 그룹(골반을 연 채 착지)과 아닌 그룹의 골반 회전 속도가 비슷했고(680 대 666°/s), 7,824명을 모은 학회 초록에서도 골반 회전 속도로 구속을 거의 설명하지 못했어요. 골반 회전을 따로 훈련해 구속이 오른 연구는 찾지 못했어요.",
+        "refs": [
+          "manzi2022",
+          "dowling2022",
+          "covarrubias2023",
+          "luera2020",
+          "fortenbaugh2009"
+        ]
+      }
     },
     {
       "id": "pitch_trunk_turn",
       "motion_type": "pitching",
       "title": "몸통 회전 이어 주기",
       "when": [
-        { "metric": "trunk_peak_velocity", "is": "lower_than_last" }
+        {
+          "metric": "trunk_peak_velocity",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "어깨선이 도는 속도가 지난 기록보다 낮게 나왔어요. 골반에서 몸통으로 회전을 이어 주는 연습을 해 볼 만해요.",
+      "why": "어깨선이 도는 속도가 지난 기록보다 낮아졌어요. 골반에서 몸통으로 회전을 이어 주는 연습을 해 볼 만해요.",
       "how": [
         "가벼운 공(메디신볼 등)을 두 손으로 잡고 투구 방향으로 몸을 돌려 벽에 던지기를 8번 해요.",
         "골반이 먼저 돌고 가슴이 뒤따라 포수 쪽을 보게 해요.",
         "섀도 피칭 10번으로 같은 순서를 이어 가요."
       ],
       "caution": "공 무게는 지도자와 정해요. 몸이 불편하면 멈추고 지도자에게 알려 주세요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "evidence": {
+        "status": "draft",
+        "level": "weak",
+        "summary": "구속이 빠른 프로 투수 71명이 느린 투수 78명보다 몸통 회전 속도가 빨랐지만, 구속과의 관계는 약했어요(r=0.29). 7,824명을 모은 학회 초록에서도 몸통 회전 속도의 설명력은 13%였어요. 몸통 회전을 따로 훈련해 구속이 올랐다는 연구는 찾지 못했어요.",
+        "refs": [
+          "luera2020",
+          "covarrubias2023",
+          "fortenbaugh2009"
+        ]
+      }
     },
     {
       "id": "pitch_separation",
       "motion_type": "pitching",
       "title": "골반과 어깨 사이 꼬임 지키기",
       "when": [
-        { "metric": "max_hip_shoulder_separation", "is": "lower_than_last" }
+        {
+          "metric": "max_hip_shoulder_separation",
+          "is": "lower_than_last"
+        }
       ],
       "why": "골반이 어깨보다 먼저 열리며 생기는 꼬임(분리각)이 지난 기록보다 작아졌어요. 앞발이 닿을 때까지 어깨를 닫아 두는 연습을 해 볼 만해요.",
       "how": [
@@ -50,38 +79,77 @@
         "가까운 거리 캐치볼에서 멈춤 없이 같은 느낌으로 10개 던져요."
       ],
       "caution": "꼬임을 억지로 크게 만들지 말고 편한 범위에서만 해요. 몸이 불편하면 멈추고 지도자에게 알려 주세요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "evidence": {
+        "status": "draft",
+        "level": "weak",
+        "summary": "대학 투수 335명을 잰 연구에서 분리각과 구속의 관계는 약했어요(상관계수 최대 0.16). 연구들은 주로 앞발 착지 순간의 값을 써서, 앱의 최대 분리각과 재는 방식이 달라요.",
+        "refs": [
+          "jump2025",
+          "giordano2024"
+        ]
+      }
     },
     {
       "id": "pitch_sequence",
       "motion_type": "pitching",
       "title": "골반 → 몸통 → 팔 순서 익히기",
       "when": [
-        { "metric": "rotation_sequence", "is": "sequence_off" }
+        {
+          "metric": "rotation_sequence",
+          "is": "sequence_off"
+        }
       ],
-      "why": "몸통이나 팔이 골반보다 먼저 가장 빨라졌어요. 아래에서 위로 차례로 도는 순서를 익히는 연습을 해 볼 만해요.",
+      "why": "이번 투구에서는 몸통이나 팔이 골반보다 먼저 가장 빨라졌어요. 아래에서 위로 차례로 도는 순서를 느린 동작으로 확인해 보는 연습이에요.",
       "how": [
         "수건을 쥐고 「발 — 골반 — 가슴 — 팔」을 세며 느린 섀도 피칭을 5번 해요.",
         "순서를 지키며 속도를 반 정도로 올려 5번 해요.",
         "가까운 거리 캐치볼에서 순서가 무너지지 않는 힘으로 10개 던져요."
       ],
-      "caution": "카메라 한 대로 추정한 순서라, 한 번 결과보다 여러 번 찍은 결과를 함께 보세요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "caution": "카메라 한 대로 추정한 순서예요. 초당 120프레임 이상 영상에서만 보고, 한 번보다 여러 번 찍은 결과를 함께 보세요.",
+      "evidence": {
+        "status": "draft",
+        "level": "mixed",
+        "summary": "프로 투수 287명 연구에서 아래에서 위로 차례대로 빨라진 투수의 구속이 가장 빨랐고 팔 부하는 늘지 않았어요. 하지만 골반-몸통 순서가 어긋난 투수의 구속이 조금 더 빨랐다는 연구도 있어요(대신 어깨에 걸리는 힘이 컸어요).",
+        "refs": [
+          "manzi2022",
+          "manzi2021",
+          "scarborough2021",
+          "fortenbaugh2009",
+          "fleisig2018",
+          "fleisig1999",
+          "fleisig2021"
+        ]
+      }
     },
     {
       "id": "pitch_stride",
       "motion_type": "pitching",
       "title": "앞발 내딛기 폭 되찾기",
       "when": [
-        { "metric": "stride_length", "is": "lower_than_last" }
+        {
+          "metric": "stride_length",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "앞발을 내디딘 폭(다리 길이 대비)이 지난 기록보다 줄었어요. 같은 폭으로 내딛는 연습을 해 볼 만해요.",
+      "why": "앞발을 내디딘 폭(다리 길이 대비)이 지난 기록보다 줄었어요. 평소 폭으로 다시 내딛는 연습이에요.",
       "how": [
         "지난번 착지 자리에 테이프나 표시를 두고, 섀도 피칭으로 그 자리에 앞발을 10번 내디뎌요.",
         "같은 표시를 두고 가까운 거리 캐치볼에서 10개 던져요."
       ],
-      "caution": "보폭을 억지로 늘리지 말고 지난번 폭을 되찾는 데까지만 해요. 같은 자리·같은 높이에서 찍어야 견줄 수 있어요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "caution": "보폭을 억지로 늘리지 말고 지난번 폭을 되찾는 데까지만 해요. 같은 자리 · 같은 높이에서 다시 찍어야 변화를 견줄 수 있어요.",
+      "evidence": {
+        "status": "draft",
+        "level": "supported",
+        "summary": "프로 투수 315명에서는 보폭이 긴 투수의 구속이 빨랐어요(키의 10%당 0.9m/s). 하지만 대학 투수 20명이 그 자리에서 보폭을 평소보다 20% 줄이거나 늘리자 구속이 떨어졌어요. 그래서 이 카드는 늘리기가 아니라 줄어든 폭을 평소만큼 되찾는 연습이에요.",
+        "refs": [
+          "matsuda2025",
+          "manzi2021stride",
+          "yanagisawa2020",
+          "fortenbaugh2009",
+          "fleisig2018",
+          "dowling2022"
+        ]
+      }
     }
   ]
 }

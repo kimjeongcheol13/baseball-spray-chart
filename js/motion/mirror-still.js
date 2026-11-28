@@ -6,8 +6,8 @@
 //    → 화면이 다시 보일 때 · 크기가 바뀔 때(회전 · 주소창)도 다시 그린다
 import { createMirror } from './mirror.js?v=2';
 import { loopRange } from './view.js?v=3';
-import { mirror, state } from './page.js?v=3';
-import { drawMirror } from './page-core.js?v=1';
+import { mirror, state } from './page.js?v=4';
+import { drawMirror } from './page-core.js?v=2';
 
 const blank = document.createElement('canvas');
 const canvasNow = () => document.getElementById('viewVideo');

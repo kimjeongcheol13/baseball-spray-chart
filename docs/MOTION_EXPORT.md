@@ -59,9 +59,9 @@
 
 | key | 앱 이름 | 단위 | phase | 타격 | 투구 | 흔들림 폭 | 참고 범위 |
 |---|---|---|---|:-:|:-:|:-:|---|
-| `pelvis_peak_velocity` | 골반 회전 피크 | deg/s | null | ○ | ○ | ○ | 타격 593–693 · 투구 587–773 |
+| `pelvis_peak_velocity` | 골반 회전 피크 | deg/s | null | ○ | ○ | ○ | 타격 593–693 · 투구 580–766 |
 | `trunk_peak_velocity` | 몸통 회전 피크 | deg/s | null | ○ | ○ | ○ | 타격 726–1222 · 투구 없음 |
-| `max_hip_shoulder_separation` | 최대 분리각 | deg | null | ○ | ○ | ○ | 타격 29–38 · 투구 없음 |
+| `max_hip_shoulder_separation` | 최대 분리각 | deg | null | ○ | ○ | ○ | 없음(정의가 달라 뺐다 · docs/EVIDENCE.md) |
 | `stride_length` | 스트라이드 폭 | pct_leg_length | null | ○ | ○ | – | 없음 |
 | `lead_knee_angle` | 임팩트 · 릴리스 앞무릎 | deg | contact / ball_release | ○ | ○ | – | 없음 |
 | `trunk_tilt` | 임팩트 · 릴리스 몸통 기울기 | deg | contact / ball_release | ○ | ○ | – | 없음 |
@@ -83,11 +83,10 @@
 
 ### 참고 범위 (`js/motion/reference.js`)
 
-연구실 장비(카메라 여러 대 250~480Hz 또는 몸에 붙인 센서)로 잰 평균 ± 표준편차. 휴대폰 한 대로 잰 값과 그대로 견줄 수 있는지는 검증하지 않았다. 등급 기준으로 쓰지 말 것.
+연구실 장비(카메라 여러 대 250~480Hz 또는 몸에 붙인 센서)로 잰 평균 ± 표준편차. 휴대폰 한 대로 잰 값과 그대로 견줄 수 있는지는 검증하지 않았다. 등급 기준으로 쓰지 말 것. AI 훈련 코치도 이 범위로 카드를 고르지 않는다(지난 기록과의 차이로만).
 
 - 타격 골반 · 몸통: Punchihewa 외 2020 (Sensors), 대학 동아리 타자 8명 · 티 배팅 · 센서 — https://pmc.ncbi.nlm.nih.gov/articles/PMC7766213/
-- 타격 분리각: Taguchi 외 2023 (Fukushima J Med Sci), 일본 대학 1부 타자 11명 · 카메라 14대 250Hz — https://pmc.ncbi.nlm.nih.gov/articles/PMC10122975/
-- 투구 골반: Dowling 외 2022 (Orthop J Sports Med), 프로 투수 78명 · 카메라 8대 480Hz — https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/
+- 투구 골반: Dowling 외 2022 (Orthop J Sports Med), 프로 투수 157명(골반 열림 78 · 닫힘 79 합친 값) · 카메라 8대 480Hz — https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/
 
 ### 회전 순서
 
@@ -115,7 +114,7 @@
       "metrics": [
         { "key": "pelvis_peak_velocity", "label": "골반 회전 피크", "value": 610, "unit": "deg/s", "uncertainty": 40, "phase": null, "ref_range": [593, 693], "ref_source": "Punchihewa 외 2020 (Sensors) https://pmc.ncbi.nlm.nih.gov/articles/PMC7766213/" },
         { "key": "trunk_peak_velocity", "label": "몸통 회전 피크", "value": 820, "unit": "deg/s", "uncertainty": 55, "phase": null, "ref_range": [726, 1222], "ref_source": "Punchihewa 외 2020 (Sensors) https://pmc.ncbi.nlm.nih.gov/articles/PMC7766213/" },
-        { "key": "max_hip_shoulder_separation", "label": "최대 분리각", "value": 31, "unit": "deg", "uncertainty": 6, "phase": null, "ref_range": [29, 38], "ref_source": "Taguchi 외 2023 (Fukushima J Med Sci) https://pmc.ncbi.nlm.nih.gov/articles/PMC10122975/" },
+        { "key": "max_hip_shoulder_separation", "label": "최대 분리각", "value": 31, "unit": "deg", "uncertainty": 6, "phase": null, "ref_range": null, "ref_source": null },
         { "key": "stride_length", "label": "스트라이드 폭", "value": 88, "unit": "pct_leg_length", "uncertainty": null, "phase": null, "ref_range": null, "ref_source": null },
         { "key": "lead_knee_angle", "label": "임팩트 앞무릎", "value": 160, "unit": "deg", "uncertainty": null, "phase": "contact", "ref_range": null, "ref_source": null },
         { "key": "trunk_tilt", "label": "임팩트 몸통 기울기", "value": 25, "unit": "deg", "uncertainty": null, "phase": "contact", "ref_range": null, "ref_source": null },
@@ -139,7 +138,7 @@
         { "name": "hand_peak", "time_s": 1.65 }
       ],
       "metrics": [
-        { "key": "pelvis_peak_velocity", "label": "골반 회전 피크", "value": 640, "unit": "deg/s", "uncertainty": 35, "phase": null, "ref_range": [587, 773], "ref_source": "Dowling 외 2022 (Orthop J Sports Med) https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/" },
+        { "key": "pelvis_peak_velocity", "label": "골반 회전 피크", "value": 640, "unit": "deg/s", "uncertainty": 35, "phase": null, "ref_range": [580, 766], "ref_source": "Dowling 외 2022 (Orthop J Sports Med) https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/" },
         { "key": "trunk_peak_velocity", "label": "몸통 회전 피크", "value": 910, "unit": "deg/s", "uncertainty": 60, "phase": null, "ref_range": null, "ref_source": null },
         { "key": "max_hip_shoulder_separation", "label": "최대 분리각", "value": 38, "unit": "deg", "uncertainty": 7, "phase": null, "ref_range": null, "ref_source": null },
         { "key": "stride_length", "label": "스트라이드 폭", "value": 82, "unit": "pct_leg_length", "uncertainty": null, "phase": null, "ref_range": null, "ref_source": null },

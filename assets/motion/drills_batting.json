@@ -1,89 +1,155 @@
 {
-  "version": 1,
+  "version": 2,
   "motion_type": "batting",
-  "note": "when 은 하나라도 맞으면 후보가 된다. is = below_ref | above_ref | lower_than_last | higher_than_last | sequence_off. 승인 절차는 docs/COACH.md",
+  "evidence_version": "2026-11-28",
+  "note": "when 은 하나라도 맞으면 후보가 된다. is = lower_than_last | higher_than_last | sequence_off. 참고 범위(below_ref · above_ref)로는 카드를 고르지 않는다 — 연구실 장비 값과 휴대폰 값은 장비가 달라 바로 견줄 수 없다(docs/EVIDENCE.md). evidence.refs = assets/motion/evidence.json 의 논문 id, evidence.level = 그 파일의 levels. 승인 절차는 docs/COACH.md",
   "cards": [
     {
       "id": "bat_hip_turn",
       "motion_type": "batting",
       "title": "하체부터 돌리기 — 골반 회전",
       "when": [
-        { "metric": "pelvis_peak_velocity", "is": "below_ref" },
-        { "metric": "pelvis_peak_velocity", "is": "lower_than_last" }
+        {
+          "metric": "pelvis_peak_velocity",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "골반이 도는 속도가 참고 범위나 지난 기록보다 낮게 나왔어요. 하체로 회전을 시작하는 연습이 도움이 될 수 있어요.",
+      "why": "골반이 도는 속도가 지난 기록보다 낮아졌어요. 하체로 회전을 시작하는 느낌을 다시 살려 보는 연습이에요.",
       "how": [
         "배트 없이 타격 자세를 잡고 앞발을 내디딘 뒤, 뒷무릎과 골반을 투수 쪽으로 돌리는 동작만 10번 해요.",
         "배트를 등 뒤 어깨에 걸치고 같은 동작을 10번 해서 골반이 어깨보다 먼저 도는 느낌을 익혀요.",
         "티 배팅 10번에서 그 느낌을 살려 쳐요."
       ],
-      "caution": "몸이 불편하면 멈추고 지도자에게 알려 주세요. 같은 자리·같은 높이에서 다시 찍어야 변화를 견줄 수 있어요.",
-      "evidence": { "status": "draft", "source": "참고 범위: Punchihewa 외 2020 (Sensors) https://pmc.ncbi.nlm.nih.gov/articles/PMC7766213/" }
+      "caution": "몸이 불편하면 멈추고 지도자에게 알려 주세요. 같은 자리 · 같은 높이에서 다시 찍어야 변화를 견줄 수 있어요.",
+      "evidence": {
+        "status": "draft",
+        "level": "mixed",
+        "summary": "골반 회전 속도와 배트 속도의 관계는 연구마다 달라요. 관계가 있다는 연구도, 뚜렷하지 않거나 없다는 연구도 있어요. 고교 선수 49명을 무작위로 나눈 12주 연구에서는 메디신볼 회전 운동을 더한 그룹만 골반 회전 속도가 올랐어요.",
+        "refs": [
+          "sinclair2017",
+          "inkster2011",
+          "escamilla2009",
+          "bannister2024",
+          "szymanski2007",
+          "li2025",
+          "welch1995",
+          "punchihewa2020"
+        ]
+      }
     },
     {
       "id": "bat_trunk_turn",
       "motion_type": "batting",
       "title": "몸통 회전 이어 주기",
       "when": [
-        { "metric": "trunk_peak_velocity", "is": "below_ref" },
-        { "metric": "trunk_peak_velocity", "is": "lower_than_last" }
+        {
+          "metric": "trunk_peak_velocity",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "어깨선이 도는 속도가 참고 범위나 지난 기록보다 낮게 나왔어요. 골반에서 몸통으로 회전을 이어 주는 연습을 해 볼 만해요.",
+      "why": "어깨선이 도는 속도가 지난 기록보다 낮아졌어요. 골반에서 몸통으로 회전을 이어 주는 연습을 해 볼 만해요.",
       "how": [
         "가벼운 공(메디신볼 등)을 두 손으로 잡고 타격 자세에서 옆으로 벽에 던지기를 8번 해요.",
         "던질 때 골반이 먼저 돌고 가슴이 뒤따라 벽을 보게 해요.",
         "바로 이어서 티 배팅 10번을 같은 느낌으로 쳐요."
       ],
       "caution": "공 무게는 지도자와 정해요. 몸이 불편하면 멈추고 지도자에게 알려 주세요.",
-      "evidence": { "status": "draft", "source": "참고 범위: Punchihewa 외 2020 (Sensors) https://pmc.ncbi.nlm.nih.gov/articles/PMC7766213/" }
+      "evidence": {
+        "status": "draft",
+        "level": "mixed",
+        "summary": "성인 타자의 몸통 회전이 청소년보다 빨랐다는 연구가 있지만, 129명을 잰 학회 초록에서는 몸통 회전 속도가 타구 속도와 관계없었어요. 메디신볼 회전 운동을 12주 더한 고교 선수는 어깨 회전 속도가 올랐어요.",
+        "refs": [
+          "escamilla2009",
+          "sinclair2017",
+          "bannister2024",
+          "szymanski2007",
+          "punchihewa2020"
+        ]
+      }
     },
     {
       "id": "bat_separation",
       "motion_type": "batting",
       "title": "골반과 어깨 사이 꼬임 만들기",
       "when": [
-        { "metric": "max_hip_shoulder_separation", "is": "below_ref" },
-        { "metric": "max_hip_shoulder_separation", "is": "lower_than_last" }
+        {
+          "metric": "max_hip_shoulder_separation",
+          "is": "lower_than_last"
+        }
       ],
-      "why": "골반이 어깨보다 먼저 열리며 생기는 꼬임(분리각)이 참고 범위나 지난 기록보다 작게 나왔어요. 어깨를 잠깐 닫아 두는 연습이 도움이 될 수 있어요.",
+      "why": "골반이 어깨보다 먼저 열리며 생기는 꼬임(분리각)이 지난 기록보다 작아졌어요. 어깨를 잠깐 닫아 두는 연습을 해 볼 만해요.",
       "how": [
         "앞발을 내디딜 때 앞 어깨를 투수 쪽으로 닫아 둔 채 골반만 살짝 여는 동작을 거울 앞에서 10번 해요.",
         "그 자세에서 1초 멈췄다가 스윙하는 「멈췄다 치기」 티 배팅을 10번 해요.",
         "멈춤을 점점 줄여 보통 스윙으로 돌아가요."
       ],
       "caution": "꼬임을 억지로 크게 만들지 말고 편한 범위에서만 해요. 몸이 불편하면 멈추고 지도자에게 알려 주세요.",
-      "evidence": { "status": "draft", "source": "참고 범위: Taguchi 외 2023 (Fukushima J Med Sci) https://pmc.ncbi.nlm.nih.gov/articles/PMC10122975/" }
+      "evidence": {
+        "status": "draft",
+        "level": "weak",
+        "summary": "숙련 타자의 상체-골반 비틀림 변화가 초보보다 컸다는 연구는 있어요. 분리각과 배트 속도를 직접 견준 타격 연구는 찾지 못했어요. 연구마다 재는 구간도 달라 앱 값과 바로 견줄 수 없어요.",
+        "refs": [
+          "nakata2014",
+          "taguchi2023"
+        ]
+      }
     },
     {
       "id": "bat_sequence",
       "motion_type": "batting",
       "title": "골반 → 몸통 → 손 순서 익히기",
       "when": [
-        { "metric": "rotation_sequence", "is": "sequence_off" }
+        {
+          "metric": "rotation_sequence",
+          "is": "sequence_off"
+        }
       ],
-      "why": "몸통이나 손이 골반보다 먼저 가장 빨라졌어요. 아래에서 위로 차례로 도는 순서를 몸에 익히는 연습을 해 볼 만해요.",
+      "why": "이번 스윙에서는 몸통이나 손이 골반보다 먼저 가장 빨라졌어요. 순서가 무너졌는지 느린 스윙으로 확인해 보는 연습이에요.",
       "how": [
         "느린 스윙으로 「골반 — 가슴 — 손」을 소리 내어 세며 5번 휘둘러요.",
         "같은 순서를 지키며 속도를 반 정도로 올려 5번 휘둘러요.",
         "티 배팅 10번에서 순서가 무너지지 않는 속도로 쳐요."
       ],
-      "caution": "카메라 한 대로 추정한 순서라, 한 번 결과보다 여러 번 찍은 결과를 함께 보세요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "caution": "카메라 한 대로 추정한 순서예요. 초당 120프레임 이상 영상에서만 보고, 한 번보다 여러 번 찍은 결과를 함께 보세요.",
+      "evidence": {
+        "status": "draft",
+        "level": "weak",
+        "summary": "타자는 보통 골반 → 몸통 → 손 순서로 가장 빨라졌어요. 하지만 129명을 잰 학회 초록에서는 이 순서가 타구 속도와 관계없었어요. 순서 간격이 0.01초 안팎이라, 초당 120프레임 이상 영상에서 2프레임 이상 어긋났을 때만 봐요.",
+        "refs": [
+          "punchihewa2020",
+          "welch1995",
+          "bannister2024",
+          "fleisig2021"
+        ]
+      }
     },
     {
       "id": "bat_head_still",
       "motion_type": "batting",
-      "title": "머리 제자리 지키기",
+      "title": "머리 움직임 확인하기",
       "when": [
-        { "metric": "head_displacement", "is": "higher_than_last" }
+        {
+          "metric": "head_displacement",
+          "is": "higher_than_last"
+        }
       ],
-      "why": "앞발 착지부터 임팩트까지 머리가 움직인 거리가 지난 기록보다 커졌어요. 머리를 제자리에 두고 치는 연습을 해 볼 만해요.",
+      "why": "앞발 착지부터 임팩트까지 머리가 움직인 거리가 지난 기록보다 커졌어요. 공을 보려고 머리를 돌리는 건 자연스러워서, 몸이 앞이나 뒤로 쏠리지 않았는지만 확인해 봐요.",
       "how": [
-        "티 배팅 자세에서 공을 끝까지 보고, 친 뒤에도 1초 동안 머리를 그대로 둬요. 10번 해요.",
-        "동료가 옆에서 머리 위치를 봐 주거나, 같은 자리에서 영상을 찍어 견줘요."
+        "같은 자리에서 찍은 지난 영상과 이번 영상을 나란히 놓고, 앞발 착지와 임팩트 순간의 머리 위치를 견줘요.",
+        "몸이 앞으로 쏠렸다면, 앞발을 내디딘 뒤 체중을 두 발 사이에 둔 채 티 배팅 10번을 해요.",
+        "고칠지 말지는 영상을 지도자와 함께 보고 정해요."
       ],
-      "caution": "같은 자리·같은 높이에서 찍어야 머리 이동을 견줄 수 있어요.",
-      "evidence": { "status": "draft", "source": "근거 확인 필요" }
+      "caution": "같은 자리 · 같은 높이에서 찍어야 머리 이동을 견줄 수 있어요. 머리를 억지로 고정하느라 공을 덜 보게 되면 안 돼요.",
+      "evidence": {
+        "status": "draft",
+        "level": "context",
+        "summary": "프로 · 대학 타자는 공을 쫓아 머리를 돌렸어요. 크리켓에서는 숙련 타자의 머리가 더 앞쪽에 있었어요. 머리가 얼마나 움직여야 좋은지 밝힌 야구 연구는 찾지 못해서, 이 카드는 확인용이에요.",
+        "refs": [
+          "kishita2020",
+          "higuchi2018",
+          "taliep2007"
+        ]
+      }
     }
   ]
 }

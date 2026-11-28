@@ -2,8 +2,8 @@
 //  · app.js 에서 나눈 파일이다. 같은 모듈은 언제나 같은 ?v= 로 불러야 한 벌만 생긴다(상태가 둘로 갈리지 않게)
 import { COLOR } from './overlay.js?v=7';
 import { createMirror } from './mirror.js?v=2';
-import { analyze } from './page-core.js?v=1';
-import { save } from './page-records.js?v=6';
+import { analyze } from './page-core.js?v=2';
+import { save } from './page-records.js?v=7';
 
 export const MAX_RANGE_S = 12;
 // 3D 보기 방향: [yaw, pitch, 설명]

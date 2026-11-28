@@ -7,8 +7,8 @@ import { summarize } from './metrics.js?v=2';
 import { loadLog } from './store.js?v=4';
 import { unpackFrames } from './library.js?v=1';
 import { getClip } from './db.js?v=1';
-import { samePlayer, savedMatch, playerIdFor, buildExport, exportFileName } from './export.js?v=1';
-import { el, state } from './page.js?v=3';
+import { samePlayer, savedMatch, playerIdFor, buildExport, exportFileName } from './export.js?v=2';
+import { el, state } from './page.js?v=4';
 
 // 저장한 기록의 단계 시각용: 이 기기에 남은 관절 좌표로 다시 분석 → detail | null
 async function savedDetail(e) {

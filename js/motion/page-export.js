@@ -27,14 +27,14 @@ async function savedDetail(e) {
 const appVersion = () => { const s = document.querySelector('script[src*="motion/app.js"]'); return s ? new URL(s.src).searchParams.get('v') : null; };
 
 // 지금 분석 + 같은 선수의 저장 기록 → { data(buildExport 결과), currentId(지금 분석의 session_id), playerId } | null
-//  · AI 훈련 코치(page-coach.js)도 이 스냅숏을 쓴다
-export async function currentExport(now = new Date()) {
+//  · AI 훈련 코치(page-coach.js)도 이 스냅숏을 쓴다. alias = 같은 선수로 볼 다른 저장 이름들(코치의 「이 기록과 견주기」 — 저장한 이름은 그대로)
+export async function currentExport(now = new Date(), alias = []) {
   const r = state.result, c = state.clip;
   if (!r || !c) return null;
   const name = el.player.value.trim();
   const cur = { id: 'unsaved', at: now.toISOString(), name, mode: r.mode, hand: r.hand, fps: r.fps, quality: r.quality.level, order: r.metrics.sequence.order,
     metrics: summarize(r), spread: roundSpread(state.spread), range: { start: c.start, end: c.start + c.frames.length / c.hz } };
-  const saved = samePlayer(loadLog(), name), match = savedMatch(saved, cur), entries = match ? saved : saved.concat(cur), details = {};
+  const log = loadLog(), saved = [name, ...alias.filter((n) => n !== name)].flatMap((n) => samePlayer(log, n)), match = savedMatch(saved, cur), entries = match ? saved : saved.concat(cur), details = {};
   for (const e of saved) if (e !== match) details[e.id] = await savedDetail(e);
   details[match ? match.id : cur.id] = { result: r, n: c.frames.length, width: el.video.videoWidth || null, height: el.video.videoHeight || null };
   const playerId = playerIdFor(name);

@@ -16,8 +16,8 @@
   }
 
   test('(준비) 풀이 · 참고 범위 · 끌어다 놓기 모듈을 불러온다', async function () {
-    I = await import('/js/motion/insight.js?v=3');
-    R = await import('/js/motion/reference.js?v=1');
+    I = await import('/js/motion/insight.js?v=4');
+    R = await import('/js/motion/reference.js?v=2');
     D = await import('/js/motion/drop.js?v=1');
     ok(I.summaryLines && I.readText && I.referenceLine && I.positionIn && R.REFERENCE && D.videoFrom && D.attachDrop, '모듈 로드');
   });
@@ -92,7 +92,8 @@
       ok(R.REFERENCE_SOURCES[mode].length > 0 && R.REFERENCE_SOURCES[mode].every(function (s) { return /^https:\/\//.test(s.url) && s.label; }), mode + ' 출처');
     });
     ok(R.REFERENCE_NOTE.bat.indexOf('참고로만') > 0 && R.REFERENCE_NOTE.pitch.indexOf('참고로만') > 0, '주의 문구');
-    eq([R.REFERENCE.bat.pelvisPeak.low, R.REFERENCE.bat.pelvisPeak.high, R.REFERENCE.bat.maxSeparation.low, R.REFERENCE.bat.maxSeparation.high], [593, 693, 29, 38], '평균 ± 표준편차를 반올림한 범위');
+    eq([R.REFERENCE.bat.pelvisPeak.low, R.REFERENCE.bat.pelvisPeak.high, R.REFERENCE.pitch.pelvisPeak.low, R.REFERENCE.pitch.pelvisPeak.high], [593, 693, 580, 766], '평균 ± 표준편차를 반올림한 범위(투구 = 157명 합친 값)');
+    ok(!R.REFERENCE.bat.maxSeparation, '타격 분리각은 정의가 달라 뺐다(taguchi2023)');
     eq(Object.keys(R.REFERENCE.pitch), ['pelvisPeak'], '투구는 골반만(나머지는 근거가 모자라 넣지 않는다)');
   });
 

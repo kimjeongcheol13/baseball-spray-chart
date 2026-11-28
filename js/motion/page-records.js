@@ -7,15 +7,15 @@ import { roundSpread } from './spread.js?v=2';
 import { drawOverlay } from './overlay.js?v=7';
 import { eventName, formatValue, sequenceText, summarize, QUALITY_TEXT } from './metrics.js?v=2';
 import { loadLog, addEntry, removeEntry, updateEntry } from './store.js?v=4';
-import { syncSaved, syncRemoved, clipFor, videoFor, syncAttached } from './page-sync.js?v=6';
+import { syncSaved, syncRemoved, clipFor, videoFor, syncAttached } from './page-sync.js?v=7';
 import { shiftRange } from './cut.js?v=2';
 import { packFrames, unpackFrames, orphanKeys, compareRows } from './library.js?v=1';
 import { putClip, getClip, deleteClip, clipIds, putVideo, getVideo, deleteVideo, videoSigs, freeBytes } from './db.js?v=1';
 import { createDuel } from './duel.js?v=6';
 import { TREND_METRICS, trendGroups, trendPoints, trendSummary, drawTrend } from './trend.js?v=1';
-import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=3';
-import { fileRef, showVideo, renderRange } from './page-input.js?v=2';
-import { fitCanvas, overlayScene, compute, clearResult } from './page-core.js?v=1';
+import { EXPORT_MAX_WIDTH, ROLE_TEXT, GROUPS, sideText, $, el, mirror, state, node, options, setStatus } from './page.js?v=4';
+import { fileRef, showVideo, renderRange } from './page-input.js?v=3';
+import { fitCanvas, overlayScene, compute, clearResult } from './page-core.js?v=2';
 
 // ── 저장 · 이미지 ───────────────────────────────────────────
 export const MB = (bytes) => Math.max(1, Math.round(bytes / 1e6));

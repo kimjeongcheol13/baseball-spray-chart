@@ -7,10 +7,10 @@ import { createSkeleton3D } from './skeleton3d.js?v=6';
 import { metricList, eventName, formatValue, sequenceText, QUALITY_TEXT, noteText } from './metrics.js?v=2';
 import { loadLog } from './store.js?v=4';
 import { loopRange } from './view.js?v=3';
-import { summaryLines, readText, referenceLine } from './insight.js?v=3';
-import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=1';
-import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node, renderLines } from './page.js?v=3';
-import { seekToFrame, sync3d, drawMirror } from './page-core.js?v=1';
+import { summaryLines, readText, referenceLine } from './insight.js?v=4';
+import { REFERENCE_NOTE, REFERENCE_SOURCES } from './reference.js?v=2';
+import { VIEWS, ROLE_TEXT, sideText, TILE_COLOR, $, el, mirror, state, node, renderLines } from './page.js?v=4';
+import { seekToFrame, sync3d, drawMirror } from './page-core.js?v=2';
 
 // ── 결과 화면 ───────────────────────────────────────────────
 export function renderResult() {

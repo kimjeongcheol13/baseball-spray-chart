@@ -3,9 +3,9 @@
 import { track } from './usage.js?v=1';
 import { loadLandmarker, probeWindows } from './pose.js?v=9';
 import { scanVideo, findMoments, checkOrder, verifyMoment, probeWindow, rangeAround, PROBE_STEP_S, MAX_CHECK, MAX_SHOW } from './scan.js?v=1';
-import { $, el, state, node, sec, options, setStatus, setBusy } from './page.js?v=3';
-import { renderRange } from './page-input.js?v=2';
-import { onProgress } from './page-core.js?v=1';
+import { $, el, state, node, sec, options, setStatus, setBusy } from './page.js?v=4';
+import { renderRange } from './page-input.js?v=3';
+import { onProgress } from './page-core.js?v=2';
 
 // ── 스윙 · 투구 순간 찾기 (scan.js) ─────────────────────────────
 // 1) 숨긴 영상으로 빨리 훑어 움직임이 솟은 후보를 뽑고 2) 움직임이 큰 후보부터 자세를 찾아 사람이 빠르게 움직였는지 확인한다

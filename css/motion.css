@@ -250,3 +250,17 @@ select { min-height: 44px; padding: 0 10px; border-radius: var(--mo-r-ctl); bord
 .mo-dialog::backdrop { background: rgba(0, 0, 0, .6); }
 .mo-dialog h3 { margin: 0 0 8px; font-size: 16px; }
 .mo-dialog p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--mo-ink2); }
+
+/* 근거 — 결과 카드 「근거 자세히」 · 결과 화면 「이 앱이 참고한 연구」(evidence.js) */
+.mo-evidence { margin-top: 0; }
+.mo-evidence-sum { margin: 0 0 8px; color: var(--mo-ink2); line-height: 1.5; }
+.mo-evidence-list { list-style: none; padding-left: 0 !important; gap: 10px !important; }
+.mo-evidence-list p { margin: 2px 0 0; line-height: 1.5; }
+.mo-evidence-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--mo-ink3); border: 1px solid var(--mo-line); }
+.mo-evidence-limits { font-size: 12px; color: var(--mo-ink3); }
+.mo-refs ul { line-height: 1.5; }
+.mo-refs-head { margin: 10px 0 4px; font-size: 13px; color: var(--mo-ink); }
+.mo-evidence a, .mo-refs a { color: var(--mo-blue); }
+@media (max-width: 720px) {
+  .mo-evidence-badge { margin: 2px 0 0; }
+}

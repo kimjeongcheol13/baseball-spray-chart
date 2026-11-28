@@ -11,7 +11,7 @@
   var store = function () { var m = {}; return { getItem: function (k) { return k in m ? m[k] : null; }, setItem: function (k, v) { m[k] = String(v); } }; };
 
   test('(준비) 내보내기 모듈을 불러온다', async function () {
-    X = await import('/js/motion/export.js?v=1');
+    X = await import('/js/motion/export.js?v=2');
     ok(X.buildExport && X.samePlayer && X.savedMatch && X.playerIdFor && X.exportFileName, '모듈 로드');
   });
 
@@ -31,11 +31,11 @@
     eq(p.phases, [{ name: 'foot_strike', time_s: 0.5 }, { name: 'ball_release', time_s: 0.7 }, { name: 'pelvis_peak', time_s: 0.583 }, { name: 'trunk_peak', time_s: 0.633 }, { name: 'hand_peak', time_s: 0.7 }], '투구 단계 시각(실제 초)');
     eq(p.video, { fps: 120, width: 1920, height: 1080, duration_s: 1.2, view: 'unknown' }, '영상 정보');
     eq(p.metrics.map(function (m) { return m.key; }), ['pelvis_peak_velocity', 'trunk_peak_velocity', 'max_hip_shoulder_separation', 'stride_length', 'lead_knee_angle', 'trunk_tilt', 'throwing_elbow_angle', 'arm_slot_angle', 'pelvis_to_trunk_peak_gap'], '투구 key');
-    eq(key(p, 'pelvis_peak_velocity'), { key: 'pelvis_peak_velocity', label: '골반 회전 피크', value: 650, unit: 'deg/s', uncertainty: null, phase: null, ref_range: [587, 773], ref_source: 'Dowling 외 2022 (Orthop J Sports Med) https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/' }, '투구 골반 · 참고 범위');
+    eq(key(p, 'pelvis_peak_velocity'), { key: 'pelvis_peak_velocity', label: '골반 회전 피크', value: 650, unit: 'deg/s', uncertainty: null, phase: null, ref_range: [580, 766], ref_source: 'Dowling 외 2022 (Orthop J Sports Med) https://pmc.ncbi.nlm.nih.gov/articles/PMC9720809/' }, '투구 골반 · 참고 범위');
     eq([key(p, 'throwing_elbow_angle').phase, key(p, 'arm_slot_angle').phase, key(p, 'lead_knee_angle').phase, key(p, 'max_hip_shoulder_separation').value, key(p, 'trunk_peak_velocity').ref_range, key(p, 'pelvis_to_trunk_peak_gap').value], ['foot_strike', 'ball_release', 'ball_release', null, null, 50], '잰 순간 · 없는 값 null');
     var b = out.sessions[1];
     eq(b.metrics.map(function (m) { return m.key; }), ['pelvis_peak_velocity', 'trunk_peak_velocity', 'max_hip_shoulder_separation', 'stride_length', 'lead_knee_angle', 'trunk_tilt', 'head_displacement', 'pelvis_to_trunk_peak_gap'], '타격 key');
-    eq([key(b, 'pelvis_peak_velocity').uncertainty, key(b, 'max_hip_shoulder_separation').ref_range, key(b, 'lead_knee_angle').phase, key(b, 'stride_length').unit], [40, [29, 38], 'contact', 'pct_leg_length'], '타격 흔들림 폭 · 참고 범위 · 잰 순간');
+    eq([key(b, 'pelvis_peak_velocity').uncertainty, key(b, 'max_hip_shoulder_separation').ref_range, key(b, 'lead_knee_angle').phase, key(b, 'stride_length').unit], [40, null, 'contact', 'pct_leg_length'], '타격 흔들림 폭 · 참고 범위 · 잰 순간');
     eq([b.phases, b.video, b.sequence, key(b, 'pelvis_to_trunk_peak_gap').value], [[], { fps: 120, width: null, height: null, duration_s: null, view: 'unknown' }, { order: ['pelvis', 'trunk', 'hand'], estimated: true }, null], '좌표가 없는 기록은 단계 · 길이를 비운다');
   });
 

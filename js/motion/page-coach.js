@@ -1,12 +1,14 @@
 // 동작 분석 화면 — 「훈련 방향 받기」(AI 훈련 코치 · 베타): 버튼 · 동의 창 · 결과 카드 · 과정 보기 · 그림 저장 · 검증 모드
 //  · 계산은 coach.js(4단계), AI 는 coach-llm.js(기기 안 web-llm), 스냅숏은 page-export.js currentExport 를 그대로 쓴다
 //  · 공개 범위: 일반 모드는 지도자가 승인(coach_approved)한 카드가 있을 때만 버튼을 보인다. 주소에 ?mode=verify 면 초안까지 쓰고 「검증용 초안」을 붙인다
+//  · 카드마다 「근거 자세히」, 결과 화면에 「이 앱이 참고한 연구」 — 글은 전부 assets/motion/evidence.json(evidence.js)
 //  · 결과는 sl_motion_coach, 검증 기록은 sl_motion_verify(localStorage)에만 둔다. 기록 동기화(sl_motion_log)에 넣지 않아 서버로 가지 않는다
 import { summarize } from './metrics.js?v=2';
-import { runCoach, checkMeasurements, compareSession, candidatesFor, usableCards, evidenceText, unitText, SEQUENCE_KEY } from './coach.js?v=1';
+import { runCoach, checkMeasurements, compareSession, candidatesFor, usableCards, evidenceText, unitText, SEQUENCE_KEY } from './coach.js?v=2';
 import { MODEL, gpuReady, modelCached, loadModel, ask } from './coach-llm.js?v=1';
-import { currentExport } from './page-export.js?v=2';
-import { state, node } from './page.js?v=3';
+import { currentExport } from './page-export.js?v=3';
+import { loadEvidence, evidenceDetails, mountReferences } from './evidence.js?v=1';
+import { state, node } from './page.js?v=4';
 
 const RESULT_KEY = 'sl_motion_coach', VERIFY_KEY = 'sl_motion_verify', KEEP = 100;
 const TYPE = { bat: 'batting', pitch: 'pitching' };
@@ -15,6 +17,8 @@ const ANSWERS = [['pay', '낸다'], ['no', '안 낸다'], ['unsure', '모르겠�
 const PASS = { n: 15, yes: 3 };
 export const verifyMode = () => new URLSearchParams(location.search).get('mode') === 'verify';
 const $ = (id) => document.getElementById(id);
+let evidence = null; // 불러온 evidence.json (render · savePng · 검증 기록이 쓴다)
+const withEvidence = async () => (evidence = await loadEvidence());
 const box = $('coachBox'), btn = $('btnCoach'), msg = $('coachMsg'), bar = $('coachProgress'), out = $('coachResult'), dialog = $('coachConsent');
 
 // ── 저장소 (읽기 실패 · 꽉 참은 조용히 넘긴다 — 결과 화면은 그대로 보인다)
@@ -33,7 +37,7 @@ function keepResult(sig, saved) {
 // ── 카드 파일(assets/motion/drills_*.json) — 판단 기준은 이 파일에 있다
 const cardFiles = {};
 function cardsFor(mode) {
-  cardFiles[mode] ||= fetch(`assets/motion/drills_${TYPE[mode]}.json?v=1`).then((r) => r.json()).then((j) => j.cards || []).catch((e) => { console.warn('[motion] 훈련 카드를 읽지 못했어요', e); delete cardFiles[mode]; return []; });
+  cardFiles[mode] ||= fetch(`assets/motion/drills_${TYPE[mode]}.json?v=2`).then((r) => r.json()).then((j) => j.cards || []).catch((e) => { console.warn('[motion] 훈련 카드를 읽지 못했어요', e); delete cardFiles[mode]; return []; });
   return cardFiles[mode];
 }
 
@@ -43,6 +47,7 @@ export async function refreshCoach() {
   out.replaceChildren(); msg.textContent = ''; bar.hidden = true;
   if (!r) { box.hidden = true; return; }
   const cards = usableCards(await cardsFor(r.mode), verifyMode());
+  await withEvidence();
   if (state.result !== r) return;
   box.hidden = !cards.length;
   btn.disabled = false;
@@ -94,6 +99,7 @@ export async function runCoachNow() {
     const saved = { at: new Date().toISOString(), verify, snapshot, status: res.status, source: res.source, summary: res.summary, steps: res.steps,
       picked: res.picked.map((p) => ({ card: p.card, reason: p.reason, numbers: p.numbers_used.map((k) => numberOf(cur, res.findings, k)) })) };
     keepResult(sigOf(r), saved);
+    await withEvidence();
     msg.textContent = '';
     render(saved);
   } catch (e) {
@@ -103,11 +109,11 @@ export async function runCoachNow() {
   btn.disabled = false;
 }
 
-// 근거 숫자 한 줄에 쓸 값: 이번 값 · 단위 · 참고 범위 · 지난 값
+// 근거 숫자 한 줄에 쓸 값: 이번 값 · 단위 · 지난 값 (카드는 지난 기록과만 견줘서 고른다 — 참고 범위는 쓰지 않는다)
 function numberOf(cur, findings, key) {
   if (key === SEQUENCE_KEY) { const f = findings.find((x) => x.key === key); return { key, label: '회전 순서', text: f ? f.value : '' }; }
   const m = cur.metrics.find((x) => x.key === key) || { label: key }, f = findings.find((x) => x.key === key && x.last !== undefined);
-  return { key, label: m.label, text: `${m.value}${unitText(m.unit)}${m.uncertainty ? ` ± ${m.uncertainty}` : ''}${m.ref_range ? ` · 참고 ${m.ref_range[0]}~${m.ref_range[1]}` : ''}${f ? ` · 지난 기록 ${f.last}` : ''}` };
+  return { key, label: m.label, text: `${m.value}${unitText(m.unit)}${m.uncertainty ? ` ± ${m.uncertainty}` : ''}${f ? ` · 지난 기록 ${f.last}` : ''}` };
 }
 
 // ── 결과 카드
@@ -119,7 +125,7 @@ function render(saved) {
     const sec = node('section', 'mo-drill'), ol = node('ol');
     ol.append(...p.card.how.map((t) => node('li', '', t)));
     sec.append(node('h4', '', p.card.title), node('p', 'mo-drill-why', p.reason), ol, node('p', 'mo-drill-note', `주의 · ${p.card.caution}`),
-      node('p', 'mo-drill-note', `근거 · ${evidenceText(p.card)}${p.card.evidence.source && p.card.evidence.source !== '근거 확인 필요' ? ` (${p.card.evidence.source.replace(/\s*https?:\S+/, '')})` : ''}`));
+      node('p', 'mo-drill-note', `근거 · ${evidenceText(p.card)}`), evidenceDetails(p.card, evidence || { papers: [] }));
     if (saved.verify) sec.append(verdictRow(p.card.id));
     card.append(sec);
   }
@@ -171,7 +177,8 @@ function verifyPanel(saved) {
   keep.addEventListener('click', () => {
     const list = read(VERIFY_KEY, []), last = saved.snapshot.sessions[saved.snapshot.sessions.length - 1];
     list.push({ at: new Date().toISOString(), player_id: saved.snapshot.player.id, session_id: last.session_id, snapshot: saved.snapshot,
-      coach: { status: saved.status, source: saved.source, summary: saved.summary, picked: saved.picked.map((p) => ({ card_id: p.card.id, reason: p.reason, numbers: p.numbers.map((n) => n.key) })), steps: saved.steps },
+      evidence_version: evidence ? evidence.version : null,
+      coach: { status: saved.status, source: saved.source, summary: saved.summary, picked: saved.picked.map((p) => ({ card_id: p.card.id, evidence_level: (p.card.evidence && p.card.evidence.level) || null, reason: p.reason, numbers: p.numbers.map((n) => n.key) })), steps: saved.steps },
       checks: saved.picked.map((p) => ({ card_id: p.card.id, verdict: (draft.checks[p.card.id] || {}).verdict || null, memo: (draft.checks[p.card.id] || {}).memo || '' })),
       answer: draft.answer });
     done.textContent = write(VERIFY_KEY, list) ? `저장했어요(이 기기 검증 기록 ${list.length}개).` : '저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.';
@@ -194,7 +201,7 @@ const ymd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0'
 // 검증 기록 전부(스냅숏 · 코치 결과 · 지도자 확인 · 선수 응답)를 파일 하나로. 선수 이름은 처음부터 없다(익명 ID 만)
 function exportVerify() {
   const list = read(VERIFY_KEY, []), now = new Date();
-  download(new Blob([JSON.stringify({ schema_version: '1.0', exported_at: now.toISOString(), app: 'SprayLab Motion · AI 훈련 코치', pass_rule: PASS, tally: tally(list), records: list }, null, 2)], { type: 'application/json' }), `spraylab-verify_${ymd(now)}.json`);
+  download(new Blob([JSON.stringify({ schema_version: '1.1', evidence_version: evidence ? evidence.version : null, exported_at: now.toISOString(), app: 'SprayLab Motion · AI 훈련 코치', pass_rule: PASS, tally: tally(list), records: list }, null, 2)], { type: 'application/json' }), `spraylab-verify_${ymd(now)}.json`);
 }
 
 // ── 결과 카드 그림(PNG) — 기기 안 캔버스로 만들고 바로 내려받는다(올리지 않는다)
@@ -210,7 +217,9 @@ function savePng(saved) {
     add(p.reason, 28, '#C3C9D4', 400, 12);
     p.card.how.forEach((t, i) => add(`${i + 1}. ${t}`, 26, '#C3C9D4', 400, 8));
     add(`주의 · ${p.card.caution}`, 24, '#8C94A3', 400, 8);
-    add(`근거 · ${evidenceText(p.card)}`, 24, '#8C94A3', 400, 26);
+    const names = (p.card.evidence.refs || []).slice(0, 3).map((id) => ((evidence && evidence.papers) || []).find((x) => x.id === id)).filter(Boolean).map((x) => x.short.replace(/\s*\(.*\)\s*$/, ''));
+    add(`근거 · ${evidenceText(p.card)}`, 24, '#8C94A3', 400, names.length ? 8 : 26);
+    if (names.length) add(`연구 · ${names.join(' · ')}`, 24, '#8C94A3', 400, 26);
   }
   const nums = saved.picked.flatMap((p) => p.numbers).filter((n, i, a) => a.findIndex((x) => x.key === n.key) === i);
   if (nums.length) add(`근거 숫자 · ${nums.map((n) => `${n.label} ${n.text}`).join(' / ')}`, 24, '#8C94A3', 400, 20);
@@ -237,6 +246,6 @@ function savePng(saved) {
 export function startCoach() {
   btn.addEventListener('click', runCoachNow);
   if (verifyMode()) document.body.dataset.verify = '1';
-  // 결과 화면(숫자 칸)이 새로 그려질 때마다 버튼 · 지난 결과를 맞춘다 — page-results.js 를 고치지 않고 따라간다
-  new MutationObserver(() => refreshCoach()).observe($('tiles'), { childList: true });
+  // 결과 화면(숫자 칸)이 새로 그려질 때마다 버튼 · 지난 결과 · 「이 앱이 참고한 연구」를 맞춘다 — page-results.js 를 고치지 않고 따라간다
+  new MutationObserver(() => { refreshCoach(); mountReferences($('refNote'), state.result && state.result.mode); }).observe($('tiles'), { childList: true });
 }

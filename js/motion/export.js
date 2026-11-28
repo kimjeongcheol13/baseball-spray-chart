@@ -3,7 +3,7 @@
 //  · 넣는 것: 이미 계산해 둔 숫자 · 흔들림 폭(±) · 참고 범위 · 단계 시각 · 회전 순서. 넣지 않는 것: 영상 · 프레임 이미지 · 관절 좌표 · 선수 이름
 //  · key 는 한번 정하면 바꾸지 않는다(에이전트가 이 이름으로 읽는다). 새 지표는 key 를 새로 더한다
 import { metricList } from './metrics.js?v=2';
-import { REFERENCE, REFERENCE_SOURCES } from './reference.js?v=1';
+import { REFERENCE, REFERENCE_SOURCES } from './reference.js?v=2';
 
 export const SCHEMA_VERSION = '1.0';
 const ID_KEY = 'sl_motion_export_ids';   // 선수 이름 → 익명 ID (이 기기에만 둔다. 파일에는 ID 만 나간다)

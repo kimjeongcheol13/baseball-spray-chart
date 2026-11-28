@@ -4,11 +4,12 @@
 //  · 카드마다 「근거 자세히」, 결과 화면에 「이 앱이 참고한 연구」 — 글은 전부 assets/motion/evidence.json(evidence.js)
 //  · 결과는 sl_motion_coach, 검증 기록은 sl_motion_verify(localStorage)에만 둔다. 기록 동기화(sl_motion_log)에 넣지 않아 서버로 가지 않는다
 import { summarize } from './metrics.js?v=2';
-import { runCoach, checkMeasurements, compareSession, candidatesFor, usableCards, evidenceText, unitText, SEQUENCE_KEY } from './coach.js?v=2';
+import { runCoach, checkMeasurements, compareSession, candidatesFor, usableCards, evidenceText, unitText, noPrevReason, SEQUENCE_KEY } from './coach.js?v=3';
 import { MODEL, gpuReady, modelCached, loadModel, ask } from './coach-llm.js?v=1';
 import { currentExport } from './page-export.js?v=3';
 import { loadEvidence, evidenceDetails, mountReferences } from './evidence.js?v=1';
-import { state, node } from './page.js?v=4';
+import { loadLog } from './store.js?v=4';
+import { state, el, node } from './page.js?v=4';
 
 const RESULT_KEY = 'sl_motion_coach', VERIFY_KEY = 'sl_motion_verify', KEEP = 100;
 const TYPE = { bat: 'batting', pitch: 'pitching' };
@@ -96,7 +97,12 @@ export async function runCoachNow() {
     msg.textContent = ai.llm ? 'AI 가 훈련 카드를 고르는 중…(최대 90초)' : '훈련 카드를 고르는 중…';
     const res = await runCoach({ snapshot, cards, llm: ai.llm });
     if (ai.note) { const s3 = res.steps.find((s) => s.n === 3); if (s3) s3.lines.unshift(ai.note); }
-    const saved = { at: new Date().toISOString(), verify, snapshot, status: res.status, source: res.source, summary: res.summary, steps: res.steps,
+    // 지난 기록이 없으면 왜 없는지(이름 칸 비었음 · 첫 기록을 열었음 · 이름이 다름)를 결과 카드와 2단계에 적는다
+    const name = el.player.value.trim(), note = sessions.length > 1 ? null : noPrevReason({ name, motion: r.mode === 'bat' ? '타격' : '투구',
+      later: at < 0 ? 0 : all.slice(at + 1).filter((s) => s.motion_type === TYPE[r.mode]).length,
+      others: [...new Set(loadLog().filter((e) => e.mode === r.mode).map((e) => (e.name || '').trim()).filter((n) => n && n !== name))] });
+    if (note) { const s2 = res.steps.find((s) => s.n === 2); if (s2) s2.lines.splice(1, 0, note); }
+    const saved = { at: new Date().toISOString(), verify, snapshot, status: res.status, source: res.source, summary: res.summary, note, steps: res.steps,
       picked: res.picked.map((p) => ({ card: p.card, reason: p.reason, numbers: p.numbers_used.map((k) => numberOf(cur, res.findings, k)) })) };
     keepResult(sigOf(r), saved);
     await withEvidence();
@@ -121,6 +127,7 @@ function render(saved) {
   const card = node('article', 'mo-coach-card'), when = new Date(saved.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   if (saved.verify) card.append(node('p', 'mo-coach-draft', '검증용 초안 — 지도자 확인 전이에요'));
   card.append(node('p', 'mo-coach-summary', saved.summary));
+  if (saved.note) card.append(node('p', 'mo-drill-note', saved.note));
   for (const p of saved.picked) {
     const sec = node('section', 'mo-drill'), ol = node('ol');
     ol.append(...p.card.how.map((t) => node('li', '', t)));

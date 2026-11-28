@@ -239,6 +239,15 @@ export async function runCoach({ snapshot, cards, llm = null, rules = COACH_RULE
   return finish(rules_(), 'rules', [...lines4, 'AI 결과를 쓰지 못해 규칙 결과로 바꿨어요(차이가 큰 순서 · 카드 설명 그대로).']);
 }
 
+// 지난 기록을 못 찾은 이유(결과 카드 · 「과정 보기」에 보인다) — 앱은 선수를 영상으로 알아보지 않고 「선수 이름」 글자로만 묶는다
+//  · name = 지금 이름 칸, later = 같은 이름 · 같은 동작에서 지금 기록보다 나중에 저장한 기록 수, others = 같은 동작의 다른 저장 이름들, motion = '타격' | '투구'
+export function noPrevReason({ name, later = 0, others = [], motion = '' }) {
+  if (!name) return '선수 이름 칸이 비어 있어 지난 기록을 찾지 못했어요. 저장할 때 쓴 이름을 똑같이 넣고 다시 눌러 주세요.';
+  if (later > 0) return `지금 연 기록이 「${name}」의 첫 ${motion} 기록이라 견줄 지난 기록이 없어요. 나중에 저장한 기록을 열고 눌러 주세요.`;
+  const list = others.slice(0, 5).map((n) => `「${n}」`).join(', ');
+  return `「${name}」 이름으로 저장한 다른 ${motion} 기록이 없어요. 이름이 한 글자라도(띄어쓰기 포함) 다르면 다른 선수로 봐요.${list ? ` 저장된 다른 이름: ${list}` : ''}`;
+}
+
 // 공개 범위: 일반 모드는 지도자가 승인한 카드만, 검증 모드(?mode=verify)는 초안까지
 export const usableCards = (cards, verify) => cards.filter((c) => verify || (c.evidence && c.evidence.status === 'coach_approved'));
 // 근거 수준 글자 — assets/motion/evidence.json 의 levels 와 같다(시험이 본다)
